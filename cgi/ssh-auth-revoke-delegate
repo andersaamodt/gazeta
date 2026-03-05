@@ -1,0 +1,46 @@
+#!/bin/sh
+# Revoke a WebAuthn delegate.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false true; then
+  exit 0
+fi
+
+requested=$(blog_param username)
+delegate_id=$(blog_param delegate_id)
+if [ -z "$delegate_id" ]; then
+  blog_json_error "delegate_id is required" "invalid_request"
+  exit 0
+fi
+
+username=$BLOG_SESSION_USERNAME
+if [ -n "$requested" ] && [ "$requested" != "$BLOG_SESSION_USERNAME" ]; then
+  if [ "$BLOG_SESSION_IS_ADMIN" != "true" ]; then
+    blog_json_error "Cannot modify another user" "forbidden"
+    exit 0
+  fi
+  username=$requested
+fi
+
+if ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+file="$(ssh_auth_delegate_dir "$username")/$delegate_id.conf"
+if [ ! -f "$file" ]; then
+  blog_json_error "Delegate not found" "not_found"
+  exit 0
+fi
+
+rm -f "$file"
+printf '{"success":true,"username":"%s","delegate_id":"%s","revoked":true}\n' \
+  "$(blog_json_escape "$username")" "$(blog_json_escape "$delegate_id")"

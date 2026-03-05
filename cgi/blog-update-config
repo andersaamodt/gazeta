@@ -1,0 +1,147 @@
+#!/bin/sh
+# Update blog configuration (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+registration_enabled=$(blog_param registration_enabled)
+site_title=$(blog_param site_title)
+theme=$(blog_param theme)
+drip_interval_hours=$(blog_param drip_interval_hours)
+drip_interval_minutes_legacy=$(blog_param drip_interval_minutes)
+drip_randomness=$(blog_param drip_randomness_minutes)
+drip_jitter_legacy=$(blog_param drip_jitter_minutes)
+feed_full_text=$(blog_param feed_full_text)
+feed_items=$(blog_param feed_items)
+nostr_bridge_enabled=$(blog_param nostr_bridge_enabled)
+new_users_are_admins=$(blog_param new_users_are_admins)
+nostr_lists_update=$(blog_param nostr_lists_update)
+nostr_authors=$(blog_param nostr_authors)
+nostr_relays=$(blog_param nostr_relays)
+nostr_blocklist=$(blog_param nostr_blocklist)
+
+write_nostr_lines_file() {
+  target_file=$1
+  raw_value=$2
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-list-write.XXXXXX")
+  printf '%s' "$raw_value" | tr '\r' '\n' | sed -e 's/#.*$//' -e 's/[[:space:]]\+$//' -e 's/^[[:space:]]*//' | awk 'NF { if (!seen[$0]++) print $0; }' > "$tmp_file"
+  mv "$tmp_file" "$target_file"
+  chmod 644 "$target_file" 2>/dev/null || true
+}
+
+if [ -n "$registration_enabled" ]; then
+  case "$registration_enabled" in
+    true|false) config-set "$blog_site_conf" registration_enabled "$registration_enabled" ;;
+  esac
+fi
+
+if [ -n "$site_title" ]; then
+  config-set "$blog_site_conf" site_title "$site_title"
+fi
+
+if [ -n "$theme" ]; then
+  case "$theme" in
+    archmage|wizard|warlock|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|enchanter|illusionist|lich|druid|empath|shaman|geomancer|hermeticist|hierophant|necromancer|conjurer|pyromancer|chronomancer|alchemist|seer|adept)
+      config-set "$blog_site_conf" theme "$theme"
+      ;;
+  esac
+fi
+
+if [ -n "$drip_interval_hours" ] || [ -n "$drip_interval_minutes_legacy" ]; then
+  interval_hours_value=
+  if [ -n "$drip_interval_hours" ]; then
+    if blog_is_positive_decimal "$drip_interval_hours"; then
+      interval_hours_value=$drip_interval_hours
+    fi
+  elif [ -n "$drip_interval_minutes_legacy" ]; then
+    case "$drip_interval_minutes_legacy" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$drip_interval_minutes_legacy" -lt 1 ]; then
+          drip_interval_minutes_legacy=1
+        fi
+        interval_hours_value=$(awk -v m="$drip_interval_minutes_legacy" 'BEGIN { printf "%.4f", m / 60 }')
+        ;;
+    esac
+  fi
+
+  if [ -n "$interval_hours_value" ]; then
+    normalized_hours=$(awk -v h="$interval_hours_value" 'BEGIN { min_h = 1.0 / 60.0; x = h + 0; if (x < min_h) x = min_h; printf "%.4f", x }')
+    normalized_hours=$(blog_format_decimal "$normalized_hours")
+    interval_minutes=$(awk -v h="$normalized_hours" 'BEGIN { m = int(h * 60 + 0.5); if (m < 1) m = 1; print m }')
+    config-set "$blog_site_conf" drip_interval_hours "$normalized_hours"
+    config-set "$blog_site_conf" drip_interval_minutes "$interval_minutes"
+  fi
+fi
+
+if [ -n "$drip_randomness" ] || [ -n "$drip_jitter_legacy" ]; then
+  randomness_value=$drip_randomness
+  if [ -z "$randomness_value" ]; then
+    randomness_value=$drip_jitter_legacy
+  fi
+  case "$randomness_value" in
+    ''|*[!0-9]*) ;;
+    *)
+      config-set "$blog_site_conf" drip_randomness_minutes "$randomness_value"
+      config-set "$blog_site_conf" drip_jitter_minutes "$randomness_value"
+      ;;
+  esac
+fi
+
+if [ -n "$feed_full_text" ]; then
+  case "$feed_full_text" in
+    true|false) config-set "$blog_site_conf" feed_full_text "$feed_full_text" ;;
+  esac
+fi
+
+if [ -n "$feed_items" ]; then
+  case "$feed_items" in
+    ''|*[!0-9]*) ;;
+    *)
+      if [ "$feed_items" -lt 1 ]; then
+        feed_items=1
+      fi
+      config-set "$blog_site_conf" feed_items "$feed_items"
+      ;;
+  esac
+fi
+
+if [ -n "$nostr_bridge_enabled" ]; then
+  case "$nostr_bridge_enabled" in
+    true|false)
+      config-set "$blog_site_conf" nostr_bridge_enabled "$nostr_bridge_enabled"
+      if [ "$nostr_bridge_enabled" = "true" ]; then
+        blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+      fi
+      ;;
+  esac
+fi
+
+if [ -n "$new_users_are_admins" ]; then
+  case "$new_users_are_admins" in
+    true|false) config-set "$blog_site_conf" new_users_are_admins "$new_users_are_admins" ;;
+  esac
+fi
+
+if [ "$nostr_lists_update" = "true" ]; then
+  case "$BLOG_REQUEST_BODY" in
+    *nostr_authors=*) write_nostr_lines_file "$blog_nostr_authors_file" "$nostr_authors" ;;
+  esac
+  write_nostr_lines_file "$blog_nostr_relays_file" "$nostr_relays"
+  write_nostr_lines_file "$blog_nostr_blocklist_file" "$nostr_blocklist"
+  if blog_nostr_bridge_enabled; then
+    blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+  fi
+fi
+
+printf '{"success":true,"message":"Configuration updated"}\n'

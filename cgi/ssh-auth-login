@@ -1,0 +1,9 @@
+#!/bin/sh
+# Legacy endpoint kept for compatibility.
+
+set -eu
+
+http-status 400 "Bad Request"
+http-header "Content-Type" "application/json"
+http-end-headers
+printf '{"success":false,"error":"Use /cgi/ssh-auth-login-begin and /cgi/ssh-auth-login-finish"}\n'

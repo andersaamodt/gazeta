@@ -1,0 +1,83 @@
+#!/bin/sh
+# Manage published posts (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+action=$(blog_param action)
+post_path=$(blog_param post_path)
+
+if [ -z "$action" ] || [ -z "$post_path" ]; then
+  blog_json_error "action and post_path are required" "missing_params"
+  exit 0
+fi
+
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+case "$post_path" in
+  *'..'*|*'\\'*|*'//'*)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+file="$blog_site_root/site/pages/$post_path"
+case "$file" in
+  "$blog_posts_dir"/*) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+if [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
+case "$action" in
+  delete)
+    nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
+    case "$nostr_projection" in
+      true|1|yes|on)
+        blog_json_error "Nostr-projected posts cannot be deleted directly; hide them from this site instead" "use_hide"
+        exit 0
+        ;;
+    esac
+
+    rel_post=${file#"$blog_posts_dir/"}
+    html_file="$blog_site_root/build/pages/posts/${rel_post%.md}.html"
+    rm -f "$file"
+    rm -f "$html_file"
+    printf '{"success":true,"message":"Post deleted","post_path":"%s"}\n' "$(blog_json_escape "$post_path")"
+    ;;
+  hide)
+    nostr_address=$(blog_post_nostr_address_for_file "$file")
+    if [ -z "$nostr_address" ]; then
+      blog_json_error "Only Nostr-projected posts can be hidden" "hide_not_supported"
+      exit 0
+    fi
+    blog_nostr_list_add_value "$blog_nostr_hidden_posts_file" "$nostr_address" >/dev/null 2>&1 || true
+    rm -f "$file"
+    printf '{"success":true,"message":"Post hidden from this site","post_path":"%s"}\n' "$(blog_json_escape "$post_path")"
+    ;;
+  *)
+    blog_json_error "Unknown action" "invalid_action"
+    ;;
+esac

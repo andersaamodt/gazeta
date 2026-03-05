@@ -1,0 +1,29 @@
+#!/bin/sh
+# Delete a draft (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+draft_id=$(blog_param draft_id)
+if [ -z "$draft_id" ]; then
+  blog_json_error "draft_id is required" "invalid_request"
+  exit 0
+fi
+
+if ! blog_draft_exists "$draft_id"; then
+  blog_json_error "Draft not found" "not_found"
+  exit 0
+fi
+
+blog_delete_draft "$draft_id"
+printf '{"success":true,"deleted":true,"draft_id":"%s"}\n' "$(blog_json_escape "$draft_id")"

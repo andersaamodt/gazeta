@@ -1,0 +1,119 @@
+#!/bin/sh
+# Complete "log out everywhere" flow with a fresh Nostr signature.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_nostr_verifier_available; then
+  blog_json_error "Nostr signature verification requires nostril tooling on the server. Run: web-wizardry install-nostril" "nostril_required"
+  exit 0
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  blog_json_error "jq is required for revocation verification" "jq_required"
+  exit 0
+fi
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+request_id=$(blog_param request_id)
+event_json=$(blog_param event_json)
+if [ -z "$request_id" ] || [ -z "$event_json" ]; then
+  blog_json_error "request_id and event_json are required" "invalid_request"
+  exit 0
+fi
+
+if ! req_info=$(blog_get_nostr_login_request "$request_id" 2>/dev/null); then
+  blog_json_error "Revocation challenge expired or missing" "challenge_missing"
+  exit 0
+fi
+req_pubkey=${req_info%%;*}
+rest=${req_info#*;}
+req_challenge=${rest%%;*}
+rest=${rest#*;}
+req_domain=${rest%%;*}
+rest=${rest#*;}
+req_type=${rest%%;*}
+req_expires_at=${rest##*;}
+if [ "$req_type" != "revoke_all" ]; then
+  blog_json_error "Challenge type mismatch" "challenge_type_mismatch"
+  exit 0
+fi
+trap 'blog_clear_nostr_login_request "$request_id" >/dev/null 2>&1 || true' EXIT HUP INT TERM
+
+account_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+if [ -z "$account_pubkey" ] || [ "$req_pubkey" != "$account_pubkey" ]; then
+  blog_json_error "Revocation challenge does not match your signed-in account" "pubkey_mismatch"
+  exit 0
+fi
+
+event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json must be valid JSON" "invalid_event_json"
+  exit 0
+fi
+if ! blog_nostr_verify_event_json "$event_json"; then
+  blog_json_error "Invalid Nostr signature" "invalid_signature"
+  exit 0
+fi
+
+ev_pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+ev_pubkey=$(blog_validate_nostr_pubkey "$ev_pubkey" 2>/dev/null || printf '')
+if [ "$ev_pubkey" != "$account_pubkey" ]; then
+  blog_json_error "Revocation must be signed by your account key" "pubkey_mismatch"
+  exit 0
+fi
+
+kind=$(printf '%s\n' "$event_json" | jq -r '.kind // 0' 2>/dev/null || printf '0')
+if [ "$kind" != "22242" ]; then
+  blog_json_error "Revocation event kind must be 22242" "invalid_kind"
+  exit 0
+fi
+
+challenge_ok=$(printf '%s\n' "$event_json" | jq -r --arg c "$req_challenge" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="challenge" and .[1]==$c)] | length' 2>/dev/null || printf '0')
+case "$challenge_ok" in ''|*[!0-9]*) challenge_ok=0 ;; esac
+if [ "$challenge_ok" -lt 1 ]; then
+  blog_json_error "Signed event is missing required challenge tag" "challenge_mismatch"
+  exit 0
+fi
+
+domain_ok=$(printf '%s\n' "$event_json" | jq -r '
+  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="origin" and .[1]==$d)] | length) +
+  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="domain" and .[1]==$d)] | length)
+' --arg d "$req_domain" 2>/dev/null || printf '0')
+case "$domain_ok" in ''|*[!0-9]*) domain_ok=0 ;; esac
+if [ "$domain_ok" -lt 1 ]; then
+  blog_json_error "Signed event is missing required domain/origin binding" "origin_mismatch"
+  exit 0
+fi
+
+action_ok=$(printf '%s\n' "$event_json" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="action" and .[1]=="revoke_all")] | length' 2>/dev/null || printf '0')
+case "$action_ok" in ''|*[!0-9]*) action_ok=0 ;; esac
+if [ "$action_ok" -lt 1 ]; then
+  blog_json_error "Signed event is missing required revoke action tag" "action_mismatch"
+  exit 0
+fi
+
+created_at=$(printf '%s\n' "$event_json" | jq -r '.created_at // 0' 2>/dev/null || printf '0')
+case "$created_at" in ''|*[!0-9]*) created_at=0 ;; esac
+case "$req_expires_at" in ''|*[!0-9]*) req_expires_at=0 ;; esac
+now=$(blog_now_epoch)
+if [ "$created_at" -le 0 ] || [ "$created_at" -gt "$((now + 90))" ] || [ "$((now - created_at))" -gt 300 ] || [ "$req_expires_at" -le 0 ] || [ "$now" -gt "$req_expires_at" ]; then
+  blog_json_error "Signed revocation event timestamp is outside the allowed window" "stale_signature"
+  exit 0
+fi
+
+revoked_delegations=$(blog_nostr_revoke_user_delegations "$account_pubkey" 2>/dev/null || printf '0')
+invalidated_sessions=$(blog_invalidate_user_sessions "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '0')
+
+printf '{"success":true,'
+printf '"revoked_delegations":"%s",' "$(blog_json_escape "$revoked_delegations")"
+printf '"invalidated_sessions":"%s"' "$(blog_json_escape "$invalidated_sessions")"
+printf '}\n'

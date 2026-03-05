@@ -1,0 +1,107 @@
+#!/bin/sh
+# Validate session and return user/admin context.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+token=$(blog_param session_token)
+if ! blog_load_session "$token"; then
+  printf '{"success":false,"authenticated":false}\n'
+  exit 0
+fi
+
+# Dynamic admin check.
+if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+  BLOG_SESSION_IS_ADMIN=true
+fi
+blog_extend_session
+
+player_name=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+nostr_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+session_user_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
+session_signer_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_SIGNER_PUBKEY-}" 2>/dev/null || printf '')
+session_delegation_id=${BLOG_SESSION_DELEGATION_ID-}
+session_auth_method=${BLOG_SESSION_AUTH_METHOD-nostr}
+session_force_interactive=${BLOG_SESSION_FORCE_INTERACTIVE-false}
+profile=$(blog_user_profile "$BLOG_SESSION_USERNAME")
+ssh_fingerprint=''
+if [ -f "$profile" ]; then
+  ssh_fingerprint=$(config-get "$profile" ssh_fingerprint 2>/dev/null || printf '')
+fi
+
+now_epoch=$(blog_now_epoch)
+other_web_sessions=0
+for file in "$blog_sessions_dir"/*.conf; do
+  [ -f "$file" ] || continue
+  file_token=$(basename "$file" .conf)
+  if [ "$file_token" = "$token" ]; then
+    continue
+  fi
+  session_user=$(config-get "$file" username 2>/dev/null || printf '')
+  if [ "$session_user" != "$BLOG_SESSION_USERNAME" ]; then
+    continue
+  fi
+  expires_at=$(config-get "$file" expires_at 2>/dev/null || printf '0')
+  case "$expires_at" in ''|*[!0-9]*) expires_at=0 ;; esac
+  if [ "$expires_at" -le "$now_epoch" ]; then
+    continue
+  fi
+  other_web_sessions=$((other_web_sessions + 1))
+done
+
+other_delegated_sessions=0
+domain=${HTTP_HOST:-${SERVER_NAME:-}}
+if [ -n "$nostr_pubkey" ] && [ -n "$domain" ]; then
+  for file in "$blog_nostr_delegations_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    d_user=$(config-get "$file" user_pubkey 2>/dev/null || printf '')
+    d_user=$(blog_validate_nostr_pubkey "$d_user" 2>/dev/null || printf '')
+    if [ "$d_user" != "$nostr_pubkey" ]; then
+      continue
+    fi
+    d_id=$(config-get "$file" delegation_id 2>/dev/null || printf '')
+    d_session=$(config-get "$file" session_pubkey 2>/dev/null || printf '')
+    d_domain=$(config-get "$file" domain 2>/dev/null || printf '')
+    d_expires=$(config-get "$file" expires_at 2>/dev/null || printf '0')
+    d_revoked=$(config-get "$file" revoked 2>/dev/null || printf 'false')
+    d_session=$(blog_validate_nostr_pubkey "$d_session" 2>/dev/null || printf '')
+    [ -n "$d_id" ] || d_id=$(basename "$file" .conf)
+    case "$d_expires" in ''|*[!0-9]*) d_expires=0 ;; esac
+    if [ -z "$d_session" ] || [ "$d_domain" != "$domain" ] || [ "$d_expires" -le "$now_epoch" ]; then
+      continue
+    fi
+    if [ "$d_revoked" = "true" ] || blog_nostr_delegation_revoked "$d_id" || blog_nostr_delegation_revoked "$d_session"; then
+      continue
+    fi
+    if [ -n "$session_delegation_id" ] && [ "$d_id" = "$session_delegation_id" ]; then
+      continue
+    fi
+    other_delegated_sessions=$((other_delegated_sessions + 1))
+  done
+fi
+other_sessions_count=$((other_web_sessions + other_delegated_sessions))
+
+printf '{"success":true,'
+printf '"authenticated":true,'
+printf '"username":"%s",' "$(blog_json_escape "$BLOG_SESSION_USERNAME")"
+printf '"player_name":"%s",' "$(blog_json_escape "$player_name")"
+printf '"nostr_pubkey":"%s",' "$(blog_json_escape "$nostr_pubkey")"
+printf '"session_user_pubkey":"%s",' "$(blog_json_escape "$session_user_pubkey")"
+printf '"session_signer_pubkey":"%s",' "$(blog_json_escape "$session_signer_pubkey")"
+printf '"session_delegation_id":"%s",' "$(blog_json_escape "$session_delegation_id")"
+printf '"session_auth_method":"%s",' "$(blog_json_escape "$session_auth_method")"
+printf '"session_force_interactive":"%s",' "$(blog_json_escape "$session_force_interactive")"
+printf '"ssh_fingerprint":"%s",' "$(blog_json_escape "$ssh_fingerprint")"
+printf '"fingerprint":"%s",' "$(blog_json_escape "$BLOG_SESSION_FINGERPRINT")"
+printf '"other_web_sessions":%s,' "$other_web_sessions"
+printf '"other_delegated_sessions":%s,' "$other_delegated_sessions"
+printf '"other_sessions_count":%s,' "$other_sessions_count"
+printf '"is_admin":%s,' "$BLOG_SESSION_IS_ADMIN"
+printf '"csrf_token":"%s"' "$(blog_json_escape "$BLOG_SESSION_CSRF")"
+printf '}\n'

@@ -1,0 +1,47 @@
+#!/bin/sh
+# Get blog configuration.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_send_json_headers
+
+registration_enabled=$(config-get "$blog_site_conf" registration_enabled 2>/dev/null || printf 'true')
+site_title=$(config-get "$blog_site_conf" site_title 2>/dev/null || printf 'My Blog')
+theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf 'archmage')
+drip_interval_hours=$(blog_drip_interval_hours)
+drip_interval_minutes=$(blog_drip_interval_minutes)
+drip_randomness=$(blog_drip_randomness_minutes)
+feed_full_text=$(config-get "$blog_site_conf" feed_full_text 2>/dev/null || printf 'true')
+feed_items=$(config-get "$blog_site_conf" feed_items 2>/dev/null || printf '50')
+nostr_bridge_enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
+new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'false')
+nostr_authors=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file")
+nostr_relays=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
+nostr_blocklist=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
+
+case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; esac
+case "$feed_full_text" in true|false) ;; *) feed_full_text=true ;; esac
+case "$feed_items" in ''|*[!0-9]*) feed_items=50 ;; esac
+case "$nostr_bridge_enabled" in true|false) ;; *) nostr_bridge_enabled=false ;; esac
+case "$new_users_are_admins" in true|false) ;; *) new_users_are_admins=false ;; esac
+
+printf '{"success":true,'
+printf '"registration_enabled":%s,' "$registration_enabled"
+printf '"site_title":"%s",' "$(blog_json_escape "$site_title")"
+printf '"theme":"%s",' "$(blog_json_escape "$theme")"
+printf '"drip_interval_hours":%s,' "$drip_interval_hours"
+printf '"drip_interval_minutes":%s,' "$drip_interval_minutes"
+printf '"drip_randomness_minutes":%s,' "$drip_randomness"
+printf '"drip_jitter_minutes":%s,' "$drip_randomness"
+printf '"feed_full_text":%s,' "$feed_full_text"
+printf '"feed_items":%s,' "$feed_items"
+printf '"nostr_bridge_enabled":%s,' "$nostr_bridge_enabled"
+printf '"new_users_are_admins":%s,' "$new_users_are_admins"
+printf '"nostr_authors":%s,' "$nostr_authors"
+printf '"nostr_relays":%s,' "$nostr_relays"
+printf '"nostr_blocklist":%s' "$nostr_blocklist"
+printf '}\n'

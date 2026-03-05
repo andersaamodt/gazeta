@@ -1,0 +1,87 @@
+#!/bin/sh
+# Upload media for blog editor (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+filename=$(blog_param filename)
+mime_type=$(blog_param mime_type)
+data_b64=$(blog_param data_base64)
+
+if [ -z "$filename" ] || [ -z "$data_b64" ]; then
+  blog_json_error "filename and data_base64 are required" "invalid_request"
+  exit 0
+fi
+
+# Strip optional data URL prefix if sent.
+case "$data_b64" in
+  data:*\;base64,*) data_b64=${data_b64#*,} ;;
+esac
+
+# Soft size limit (~20MB raw decoded).
+if [ ${#data_b64} -gt 28000000 ]; then
+  blog_json_error "Upload too large" "file_too_large"
+  exit 0
+fi
+
+base=${filename##*/}
+base=$(printf '%s' "$base" | sed 's/[^a-zA-Z0-9._-]/-/g')
+if [ -z "$base" ]; then
+  base="upload.bin"
+fi
+
+ext=${base##*.}
+ext=$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')
+case "$ext" in
+  png|jpg|jpeg|gif|webp|svg|avif)
+    ;;
+  *)
+    case "$mime_type" in
+      image/png) ext=png ;;
+      image/jpeg) ext=jpg ;;
+      image/gif) ext=gif ;;
+      image/webp) ext=webp ;;
+      image/svg+xml) ext=svg ;;
+      image/avif) ext=avif ;;
+      *) ext=bin ;;
+    esac
+    name_no_ext=${base%.*}
+    base="${name_no_ext}.${ext}"
+    ;;
+esac
+
+name_no_ext=${base%.*}
+name_no_ext=$(blog_slugify "$name_no_ext")
+base="${name_no_ext}.${ext}"
+
+year=$(date -u +%Y)
+month=$(date -u +%m)
+dest_dir="$blog_uploads_dir/$year/$month"
+mkdir -p "$dest_dir"
+
+dest="$dest_dir/$base"
+if [ -f "$dest" ]; then
+  suffix=$(blog_random_token 4)
+  dest="$dest_dir/${name_no_ext}-${suffix}.${ext}"
+fi
+
+if ! blog_b64_to_file "$data_b64" "$dest"; then
+  rm -f "$dest"
+  blog_json_error "Failed to decode upload" "decode_error"
+  exit 0
+fi
+
+chmod 644 "$dest" 2>/dev/null || true
+
+rel="/uploads/$year/$month/$(basename "$dest")"
+printf '{"success":true,"url":"%s","filename":"%s"}\n' "$(blog_json_escape "$rel")" "$(blog_json_escape "$(basename "$dest")")"

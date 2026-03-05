@@ -1,0 +1,217 @@
+#!/bin/sh
+# Verify signed Nostr auth challenge and create a backend session.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_nostr_verifier_available; then
+  blog_json_error "Nostr login requires nostril verifier tooling on the server. Run: web-wizardry install-nostril" "nostril_required"
+  exit 0
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  blog_json_error "jq is required for Nostr login" "jq_required"
+  exit 0
+fi
+
+request_id=$(blog_param request_id)
+event_json=$(blog_param event_json)
+delegation_json=$(blog_param delegation_json)
+force_interactive=$(blog_param force_interactive)
+username_hint=$(blog_param username_hint)
+case "$force_interactive" in
+  true|1|yes|on) force_interactive=true ;;
+  *) force_interactive=false ;;
+esac
+username_hint=$(printf '%s' "$username_hint" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+
+if [ -z "$request_id" ] || [ -z "$event_json" ]; then
+  blog_json_error "request_id and event_json are required" "invalid_request"
+  exit 0
+fi
+
+if ! req_info=$(blog_get_nostr_login_request "$request_id" 2>/dev/null); then
+  blog_json_error "Login challenge expired or missing" "challenge_missing"
+  exit 0
+fi
+req_pubkey_hint=${req_info%%;*}
+rest=${req_info#*;}
+req_challenge=${rest%%;*}
+rest=${rest#*;}
+req_domain=${rest%%;*}
+rest=${rest#*;}
+req_type=${rest%%;*}
+req_expires_at=${rest##*;}
+
+if [ "$req_type" != "login" ]; then
+  blog_json_error "Challenge type mismatch" "challenge_type_mismatch"
+  exit 0
+fi
+
+trap 'blog_clear_nostr_login_request "$request_id" >/dev/null 2>&1 || true' EXIT HUP INT TERM
+
+event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json must be valid JSON" "invalid_event_json"
+  exit 0
+fi
+if ! blog_nostr_verify_event_json "$event_json"; then
+  blog_json_error "Invalid Nostr signature" "invalid_signature"
+  exit 0
+fi
+
+ev_pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+ev_pubkey=$(blog_validate_nostr_pubkey "$ev_pubkey" 2>/dev/null || printf '')
+if [ -z "$ev_pubkey" ]; then
+  blog_json_error "Signed event is missing a valid pubkey" "invalid_pubkey"
+  exit 0
+fi
+
+kind=$(printf '%s\n' "$event_json" | jq -r '.kind // 0' 2>/dev/null || printf '0')
+if [ "$kind" != "22242" ]; then
+  blog_json_error "Login event kind must be 22242" "invalid_kind"
+  exit 0
+fi
+
+challenge_ok=$(printf '%s\n' "$event_json" | jq -r --arg c "$req_challenge" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="challenge" and .[1]==$c)] | length' 2>/dev/null || printf '0')
+case "$challenge_ok" in ''|*[!0-9]*) challenge_ok=0 ;; esac
+if [ "$challenge_ok" -lt 1 ]; then
+  blog_json_error "Signed event is missing required challenge tag" "challenge_mismatch"
+  exit 0
+fi
+
+domain_ok=$(printf '%s\n' "$event_json" | jq -r --arg d "$req_domain" '
+  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="origin" and .[1]==$d)] | length) +
+  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="domain" and .[1]==$d)] | length)
+' 2>/dev/null || printf '0')
+case "$domain_ok" in ''|*[!0-9]*) domain_ok=0 ;; esac
+if [ "$domain_ok" -lt 1 ]; then
+  blog_json_error "Signed event is missing required domain/origin binding" "origin_mismatch"
+  exit 0
+fi
+
+created_at=$(printf '%s\n' "$event_json" | jq -r '.created_at // 0' 2>/dev/null || printf '0')
+case "$created_at" in ''|*[!0-9]*) created_at=0 ;; esac
+now=$(blog_now_epoch)
+if [ "$created_at" -le 0 ] || [ "$created_at" -gt "$((now + 90))" ] || [ "$((now - created_at))" -gt 300 ]; then
+  blog_json_error "Signed event timestamp is outside the allowed window" "stale_signature"
+  exit 0
+fi
+case "$req_expires_at" in ''|*[!0-9]*) req_expires_at=0 ;; esac
+if [ "$req_expires_at" -le 0 ] || [ "$now" -gt "$req_expires_at" ]; then
+  blog_json_error "Login challenge expired" "challenge_expired"
+  exit 0
+fi
+
+client_ip=$(blog_client_ip)
+if ! blog_rate_limit_check login_finish_ip "$client_ip" 30 300; then
+  blog_json_error "Too many login attempts from this network. Try again shortly." "rate_limited_ip"
+  exit 0
+fi
+if ! blog_rate_limit_check login_finish_pubkey "$ev_pubkey" 20 300; then
+  blog_json_error "Too many login attempts for this signer key. Try again shortly." "rate_limited_pubkey"
+  exit 0
+fi
+
+signer_pubkey=$ev_pubkey
+user_pubkey=$ev_pubkey
+delegation_id=''
+delegation_session_pubkey=''
+delegation_expires_at=''
+delegated_login=false
+
+if deleg_info=$(blog_nostr_active_delegation_for_session "$signer_pubkey" "$req_domain" 2>/dev/null); then
+  delegation_id=${deleg_info%%;*}
+  rest=${deleg_info#*;}
+  user_pubkey=${rest%%;*}
+  delegation_expires_at=${rest##*;}
+  delegation_session_pubkey=$signer_pubkey
+  delegated_login=true
+fi
+
+if [ -n "$req_pubkey_hint" ] && [ "$user_pubkey" != "$req_pubkey_hint" ]; then
+  blog_json_error "Signer does not match the expected Nostr identity" "pubkey_mismatch"
+  exit 0
+fi
+
+if [ -n "$delegation_json" ]; then
+  if [ "$delegated_login" = "true" ]; then
+    blog_json_error "Delegation setup requires a direct owner signature" "delegation_owner_required"
+    exit 0
+  fi
+  if ! deleg_created=$(blog_nostr_delegation_activate "$delegation_json" "$user_pubkey" "$req_domain" 2>/dev/null); then
+    blog_json_error "Delegation payload is invalid or expired" "delegation_invalid"
+    exit 0
+  fi
+  delegation_id=${deleg_created%%;*}
+  rest=${deleg_created#*;}
+  delegation_session_pubkey=${rest%%;*}
+  delegation_expires_at=${rest##*;}
+fi
+
+username=$(blog_find_username_by_nostr_pubkey "$user_pubkey" 2>/dev/null || printf '')
+account_created=false
+if [ -z "$username" ]; then
+  if [ -n "$username_hint" ]; then
+    if ! blog_validate_username "$username_hint"; then
+      blog_json_error "Username may only contain letters, numbers, dot, underscore, and hyphen" "invalid_username"
+      exit 0
+    fi
+    if [ "${#username_hint}" -gt 24 ]; then
+      blog_json_error "Username must be 24 characters or fewer" "invalid_username"
+      exit 0
+    fi
+    if [ -e "$(blog_user_profile "$username_hint")" ]; then
+      blog_json_error "That username is already taken" "username_taken"
+      exit 0
+    fi
+    username=$username_hint
+  else
+    username=$(blog_suggest_username_from_nostr_pubkey "$user_pubkey" 2>/dev/null || printf '')
+  fi
+  if [ -z "$username" ]; then
+    blog_json_error "Failed to create username for Nostr identity" "username_failed"
+    exit 0
+  fi
+  account_created=true
+fi
+
+fingerprint=$(printf '%s' "$user_pubkey" | blog_sha256)
+blog_save_user_profile "$username" "$fingerprint" ""
+blog_set_nostr_pubkey "$username" "$user_pubkey"
+if [ "$account_created" = "true" ] && blog_new_users_are_admins_enabled; then
+  profile=$(blog_user_profile "$username")
+  config-set "$profile" is_admin true
+  config-set "$profile" updated_at "$(blog_now_iso)"
+fi
+
+auth_method=nostr_direct
+if [ "$delegated_login" = "true" ]; then
+  auth_method=nostr_delegated
+fi
+
+session_info=$(blog_create_session "$username" "$fingerprint" "$user_pubkey" "$signer_pubkey" "$delegation_id" "$auth_method" "$force_interactive")
+session_token=${session_info%%;*}
+rest=${session_info#*;}
+csrf_token=${rest%%;*}
+is_admin=${rest##*;}
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"pubkey":"%s",' "$(blog_json_escape "$user_pubkey")"
+printf '"signer_pubkey":"%s",' "$(blog_json_escape "$signer_pubkey")"
+printf '"auth_method":"%s",' "$(blog_json_escape "$auth_method")"
+printf '"delegated_login":%s,' "$delegated_login"
+printf '"delegation_id":"%s",' "$(blog_json_escape "$delegation_id")"
+printf '"delegation_session_pubkey":"%s",' "$(blog_json_escape "$delegation_session_pubkey")"
+printf '"delegation_expires_at":"%s",' "$(blog_json_escape "$delegation_expires_at")"
+printf '"account_created":%s,' "$account_created"
+printf '"is_admin":%s,' "$is_admin"
+printf '"session_token":"%s",' "$(blog_json_escape "$session_token")"
+printf '"csrf_token":"%s"' "$(blog_json_escape "$csrf_token")"
+printf '}\n'

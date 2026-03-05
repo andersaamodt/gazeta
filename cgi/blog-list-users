@@ -1,0 +1,73 @@
+#!/bin/sh
+# List blog users with rank and admin metadata (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true false; then
+  exit 0
+fi
+
+blog_users_reindex
+actor="$BLOG_SESSION_USERNAME"
+actor_rank=$(blog_user_rank_value "$actor")
+case "$actor_rank" in ''|*[!0-9]*) actor_rank=0 ;; esac
+
+printf '{"success":true,'
+printf '"actor_username":"%s",' "$(blog_json_escape "$actor")"
+printf '"actor_rank":%s,' "$actor_rank"
+printf '"users":['
+
+first=1
+for username in $(blog_users_sorted_usernames); do
+  [ -n "$username" ] || continue
+  profile=$(blog_user_profile "$username")
+  [ -f "$profile" ] || continue
+
+  player_name=$(blog_get_player_name "$username" 2>/dev/null || printf '%s' "$username")
+  nostr_pubkey=$(blog_get_nostr_pubkey "$username" 2>/dev/null || printf '')
+  is_admin=$(config-get "$profile" is_admin 2>/dev/null || printf 'false')
+  case "$is_admin" in true|false) ;; *) is_admin=false ;; esac
+  is_author=false
+  is_blocked=false
+  if [ -n "$nostr_pubkey" ]; then
+    if blog_nostr_list_has_value "$blog_nostr_authors_file" "$nostr_pubkey"; then
+      is_author=true
+    fi
+    if blog_nostr_list_has_value "$blog_nostr_blocklist_file" "$nostr_pubkey"; then
+      is_blocked=true
+    fi
+  fi
+  rank=$(blog_user_rank_value "$username")
+  case "$rank" in ''|*[!0-9]*) rank=0 ;; esac
+
+  is_self=false
+  if [ "$username" = "$actor" ]; then
+    is_self=true
+  fi
+
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+
+  printf '{'
+  printf '"username":"%s",' "$(blog_json_escape "$username")"
+  printf '"player_name":"%s",' "$(blog_json_escape "$player_name")"
+  printf '"nostr_pubkey":"%s",' "$(blog_json_escape "$nostr_pubkey")"
+  printf '"is_admin":%s,' "$is_admin"
+  printf '"is_author":%s,' "$is_author"
+  printf '"is_blocked":%s,' "$is_blocked"
+  printf '"rank":%s,' "$rank"
+  printf '"is_self":%s' "$is_self"
+  printf '}'
+done
+
+printf ']'
+printf '}\n'

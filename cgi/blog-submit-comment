@@ -1,0 +1,122 @@
+#!/bin/sh
+# Validate and store a signed Nostr comment event locally.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_nostr_bridge_enabled; then
+  blog_nostr_bridge_disabled_json
+  exit 0
+fi
+if ! blog_require_session false; then
+  exit 0
+fi
+
+if ! blog_nostr_verifier_available; then
+  blog_json_error "Comment signing verification requires nostril tooling on the server. Run: web-wizardry install-nostril" "nostril_required"
+  exit 0
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  blog_json_error "jq is required for comment processing" "jq_required"
+  exit 0
+fi
+
+requested_path=$(blog_param path)
+if [ -z "$requested_path" ]; then
+  requested_path=$(blog_param slug)
+fi
+if [ -z "$requested_path" ]; then
+  blog_json_error "path is required" "invalid_request"
+  exit 0
+fi
+
+record=$(blog_nostr_post_record_for_path "$requested_path" 2>/dev/null || printf '')
+if [ -z "$record" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+address=$(printf '%s\n' "$record" | jq -r '.address // empty' 2>/dev/null || printf '')
+post_id=$(printf '%s\n' "$record" | jq -r '.id // empty' 2>/dev/null || printf '')
+if [ -z "$address" ]; then
+  blog_json_error "Post Nostr address is unavailable" "missing_address"
+  exit 0
+fi
+
+event_json=$(blog_param event_json)
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json is required" "missing_event"
+  exit 0
+fi
+
+event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json must be valid JSON" "invalid_event_json"
+  exit 0
+fi
+
+kind=$(printf '%s\n' "$event_json" | jq -r '.kind // empty' 2>/dev/null || printf '')
+content=$(printf '%s\n' "$event_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+if [ "$kind" != "1" ]; then
+  blog_json_error "Comment event must be kind 1" "invalid_kind"
+  exit 0
+fi
+if [ -z "$content" ]; then
+  blog_json_error "Comment content is required" "content_required"
+  exit 0
+fi
+if [ -z "$pubkey" ]; then
+  blog_json_error "Comment event pubkey is required" "missing_pubkey"
+  exit 0
+fi
+
+account_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+if [ -z "$account_pubkey" ]; then
+  blog_json_error "Your account does not have a bound Nostr pubkey" "nostr_identity_required"
+  exit 0
+fi
+if [ "$pubkey" != "$account_pubkey" ]; then
+  blog_json_error "Comment pubkey does not match your signed-in account" "pubkey_mismatch"
+  exit 0
+fi
+if blog_nostr_list_file_lines "$blog_nostr_blocklist_file" | grep -Fqx "$pubkey"; then
+  blog_json_error "Comment author is blocked" "author_blocked"
+  exit 0
+fi
+
+has_addr=$(printf '%s\n' "$event_json" | jq -r --arg a "$address" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="a" and .[1]==$a)] | length' 2>/dev/null || printf '0')
+case "$has_addr" in ''|*[!0-9]*) has_addr=0 ;; esac
+if [ "$has_addr" -lt 1 ]; then
+  blog_json_error "Comment must include an a-tag for this post" "missing_post_reference"
+  exit 0
+fi
+
+if [ -n "$post_id" ]; then
+  has_reply=$(printf '%s\n' "$event_json" | jq -r --arg e "$post_id" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="e" and .[1]==$e)] | length' 2>/dev/null || printf '0')
+  case "$has_reply" in ''|*[!0-9]*) has_reply=0 ;; esac
+  if [ "$has_reply" -lt 1 ]; then
+    blog_json_error "Comment must include an e-tag reply reference" "missing_reply_reference"
+    exit 0
+  fi
+fi
+
+if ! blog_nostr_verify_event_json "$event_json"; then
+  blog_json_error "Comment signature verification failed" "invalid_signature"
+  exit 0
+fi
+
+if ! stored_path=$(blog_nostr_store_event_json "$event_json" 2>/dev/null); then
+  blog_json_error "Failed to store comment event" "store_failed"
+  exit 0
+fi
+
+blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+
+event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+printf '{"success":true,"stored":true,"event_id":"%s","path":"%s"}\n' "$(blog_json_escape "$event_id")" "$(blog_json_escape "$stored_path")"

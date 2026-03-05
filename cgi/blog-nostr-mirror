@@ -1,0 +1,34 @@
+#!/bin/sh
+# Mirror Nostr post/comment events into local event store (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+if ! blog_nostr_bridge_enabled; then
+  blog_nostr_bridge_disabled_json
+  exit 0
+fi
+
+if ! result=$(blog_nostr_mirror_all 2>/dev/null); then
+  blog_json_error "Mirror failed. Check Nostr relay and dependency setup." "nostr_mirror_failed"
+  exit 0
+fi
+
+posts_mirrored=${result%%|*}
+comments_mirrored=${result#*|}
+case "$posts_mirrored" in ''|*[!0-9]*) posts_mirrored=0 ;; esac
+case "$comments_mirrored" in ''|*[!0-9]*) comments_mirrored=0 ;; esac
+
+blog_run_build_async
+
+printf '{"success":true,"posts_mirrored":%s,"comments_mirrored":%s}\n' "$posts_mirrored" "$comments_mirrored"

@@ -1,0 +1,152 @@
+#!/bin/sh
+# Open a post safely: ensure built page exists, then redirect.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+
+path=$(blog_param path)
+if [ -z "$path" ]; then
+  http-status 400 "Bad Request"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'Missing post path\n'
+  exit 0
+fi
+
+path=$(printf '%s' "$path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/posts/##' -e 's#^posts/##')
+case "$path" in
+  *'..'*|*'\\'*|*'//'*)
+    http-status 400 "Bad Request"
+    http-header "Content-Type" "text/plain; charset=utf-8"
+    http-end-headers
+    printf 'Invalid path\n'
+    exit 0
+    ;;
+esac
+
+case "$path" in
+  *.html) rel_md=${path%.html}.md ;;
+  *.md) rel_md=$path ;;
+  *) rel_md="${path}.md" ;;
+esac
+
+md_file="$blog_posts_dir/$rel_md"
+if [ ! -f "$md_file" ] && blog_nostr_bridge_enabled; then
+  blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+fi
+if [ ! -f "$md_file" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'Post not found\n'
+  exit 0
+fi
+
+visibility=$(blog_read_front_matter_value "$md_file" visibility 2>/dev/null || printf 'public')
+if [ -z "$visibility" ]; then
+  visibility=public
+fi
+if [ "$visibility" != "public" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'Post not found\n'
+  exit 0
+fi
+
+rel_html=${rel_md%.md}.html
+html_file="$blog_site_root/build/pages/posts/$rel_html"
+
+if [ ! -f "$html_file" ] && [ -n "${WIZARDRY_DIR-}" ] && [ -x "$WIZARDRY_DIR/spells/web/build" ]; then
+  WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$WIZARDRY_DIR" "$WIZARDRY_DIR/spells/web/build" "$blog_site_name" >/dev/null 2>&1 || true
+fi
+
+if [ -f "$html_file" ]; then
+  http-status 302 "Found"
+  http-header "Location" "/pages/posts/$rel_html"
+  http-end-headers
+  exit 0
+fi
+
+# Fallback: render page on-demand via CGI so links remain functional.
+if command -v pandoc >/dev/null 2>&1; then
+  tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/blog-open-post.XXXXXX")
+  trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+
+  htmx_header="$tmp_dir/htmx-header.html"
+  out_html="$tmp_dir/post.html"
+  cat > "$htmx_header" <<'HTMX_HEADER'
+<script src="/static/js/htmx.min.js"></script>
+<script src="/static/js/idiomorph-ext.min.js"></script>
+HTMX_HEADER
+
+  includes_dir="$blog_site_root/site/includes"
+  nav_file="$includes_dir/nav.md"
+  footer_file="$includes_dir/footer.md"
+  head_file="$includes_dir/head.html"
+
+  head_arg=""
+  if [ -f "$head_file" ]; then
+    head_arg="--include-in-header=$head_file"
+  fi
+
+  pandoc \
+    --from markdown+yaml_metadata_block+raw_html \
+    --to html5 \
+    --standalone \
+    --css=/static/style.css \
+    --include-in-header="$htmx_header" \
+    $head_arg \
+    --output="$out_html" \
+    "$md_file" >/dev/null 2>&1 || true
+
+  if [ -f "$out_html" ]; then
+    if [ -f "$nav_file" ]; then
+      with_nav="$tmp_dir/post-nav.html"
+      awk -v nav_file="$nav_file" '
+        /<body>/ {
+          print
+          while ((getline line < nav_file) > 0) {
+            print line
+          }
+          close(nav_file)
+          next
+        }
+        { print }
+      ' "$out_html" > "$with_nav"
+      mv "$with_nav" "$out_html"
+    fi
+
+    if [ -f "$footer_file" ]; then
+      with_footer="$tmp_dir/post-footer.html"
+      awk -v footer_file="$footer_file" '
+        /<\/body>/ {
+          while ((getline line < footer_file) > 0) {
+            print line
+          }
+          close(footer_file)
+          print
+          next
+        }
+        { print }
+      ' "$out_html" > "$with_footer"
+      mv "$with_footer" "$out_html"
+    fi
+
+    http-status 200 "OK"
+    http-header "Content-Type" "text/html; charset=utf-8"
+    http-end-headers
+    cat "$out_html"
+    exit 0
+  fi
+fi
+
+http-status 404 "Not Found"
+http-header "Content-Type" "text/plain; charset=utf-8"
+http-end-headers
+printf 'Post page is unavailable\n'

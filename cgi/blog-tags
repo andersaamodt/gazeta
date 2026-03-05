@@ -1,0 +1,74 @@
+#!/bin/sh
+# Render tag index.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_send_html_headers
+
+
+posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-tag-posts.XXXXXX")
+tag_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-tags.XXXXXX")
+post_rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-tag-post-rows.XXXXXX")
+comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-tags-comment-counts.XXXXXX")
+blog_collect_public_posts "$posts_tmp"
+blog_nostr_comment_counts_build "$comment_counts_tmp"
+
+while IFS= read -r post_file; do
+  [ -n "$post_file" ] || continue
+  title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf 'Untitled')
+  published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
+  pub_date=${published_at%%T*}
+  url=$(blog_rel_post_html_url "$post_file")
+  post_address=$(blog_post_nostr_address_for_file "$post_file")
+  comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
+
+  tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
+  tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+  tags=$(blog_normalize_tags "$tags_csv")
+  [ -n "$tags" ] || continue
+
+  printf '%s\t%s\t%s\t%s\t%s\n' "$url" "$title" "$pub_date" "$tags" "$comment_count" >> "$post_rows_tmp"
+  printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
+    clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
+    [ -n "$clean" ] || continue
+    printf '%s\t%s\n' "$clean" "$url"
+  done
+done < "$posts_tmp" > "$tag_tmp"
+
+if [ ! -s "$tag_tmp" ] || [ ! -s "$post_rows_tmp" ]; then
+  printf '<p>No tags found yet.</p>\n'
+  rm -f "$posts_tmp" "$tag_tmp" "$post_rows_tmp" "$comment_counts_tmp"
+  exit 0
+fi
+
+tab=$(printf '\t')
+printf '<div class="tag-cloud">\n'
+sort "$tag_tmp" | awk -F'\t' '{count[$1]++} END {for (k in count) printf "%s\t%s\n", k, count[k]}' | sort -k2,2nr -k1,1 | while IFS="$tab" read -r tag count; do
+  printf '  <button type="button" class="tag" data-tag="%s" aria-pressed="false">%s <span class="tag-count">(%s)</span></button>\n' \
+    "$(blog_html_escape "$tag")" "$(blog_html_escape "$tag")" "$(blog_html_escape "$count")"
+done
+printf '</div>\n\n'
+printf '<p class="tag-filter-hint"><em>Shift-click to multi-select.</em></p>\n\n'
+
+printf '<div class="tag-results">\n'
+printf '  <ul class="tag-results-list">\n'
+while IFS="$tab" read -r url title pub_date tags comment_count; do
+  [ -n "$url" ] || continue
+  printf '    <li class="tag-result-item" data-post-url="%s" data-post-tags="%s">' \
+    "$(blog_html_escape "$url")" "$(blog_html_escape "$tags")"
+  printf '<a href="%s">%s</a>' "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
+  if [ -n "$pub_date" ]; then
+    printf ' <span class="post-date">(%s)</span>' "$(blog_html_escape "$pub_date")"
+  fi
+  printf ' <span class="post-comments-count">(%s comments)</span>' "$(blog_html_escape "$comment_count")"
+  printf '</li>\n'
+done < "$post_rows_tmp"
+printf '  </ul>\n'
+printf '  <p class="placeholder tag-results-empty" hidden>No posts match the selected categories.</p>\n'
+printf '</div>\n'
+
+rm -f "$posts_tmp" "$tag_tmp" "$post_rows_tmp" "$comment_counts_tmp"

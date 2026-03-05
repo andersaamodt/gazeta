@@ -1,0 +1,70 @@
+#!/bin/sh
+# List WebAuthn delegates for a user.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+requested=$(blog_param username)
+username=$BLOG_SESSION_USERNAME
+if [ -n "$requested" ] && [ "$requested" != "$BLOG_SESSION_USERNAME" ]; then
+  if [ "$BLOG_SESSION_IS_ADMIN" != "true" ]; then
+    blog_json_error "Cannot inspect another user" "forbidden"
+    exit 0
+  fi
+  username=$requested
+fi
+
+if ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+profile=$(ssh_auth_profile_path "$username")
+if [ ! -f "$profile" ]; then
+  blog_json_error "User not found" "user_not_found"
+  exit 0
+fi
+
+fingerprint=$(config-get "$profile" fingerprint 2>/dev/null || printf '')
+delegates_dir=$(ssh_auth_delegate_dir "$username")
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"fingerprint":"%s",' "$(blog_json_escape "$fingerprint")"
+printf '"delegates":['
+first=1
+if [ -d "$delegates_dir" ]; then
+  for file in "$delegates_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    delegate_id=$(config-get "$file" delegate_id 2>/dev/null || printf '')
+    credential_id=$(config-get "$file" credential_id 2>/dev/null || printf '')
+    created_at=$(config-get "$file" created_at 2>/dev/null || printf '')
+    last_used=$(config-get "$file" last_used_at 2>/dev/null || printf '')
+    sign_count=$(config-get "$file" sign_count 2>/dev/null || printf '0')
+
+    if [ "$first" -eq 0 ]; then
+      printf ','
+    fi
+    first=0
+
+    printf '{'
+    printf '"delegate_id":"%s",' "$(blog_json_escape "$delegate_id")"
+    printf '"credential_id":"%s",' "$(blog_json_escape "$credential_id")"
+    printf '"created_at":"%s",' "$(blog_json_escape "$created_at")"
+    printf '"last_used_at":"%s",' "$(blog_json_escape "$last_used")"
+    printf '"sign_count":%s' "$sign_count"
+    printf '}'
+  done
+fi
+printf ']}'
+printf '\n'

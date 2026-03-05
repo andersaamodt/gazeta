@@ -1,0 +1,21 @@
+#!/bin/sh
+# Destroy a session token.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+token=$(blog_param session_token)
+if [ -z "$token" ]; then
+  printf '{"success":true,"logged_out":true}\n'
+  exit 0
+fi
+
+path=$(blog_session_path "$token")
+rm -f "$path"
+printf '{"success":true,"logged_out":true}\n'

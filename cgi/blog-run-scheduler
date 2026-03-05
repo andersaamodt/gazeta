@@ -1,0 +1,28 @@
+#!/bin/sh
+# Trigger scheduler run (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+result=$(blog_run_scheduler)
+if [ "$result" = "locked" ]; then
+  printf '{"success":true,"scheduled_published":0,"drip_published":0,"locked":true}\n'
+  exit 0
+fi
+
+scheduled=${result%%|*}
+drip=${result#*|}
+case "$scheduled" in ''|*[!0-9]*) scheduled=0 ;; esac
+case "$drip" in ''|*[!0-9]*) drip=0 ;; esac
+
+printf '{"success":true,"scheduled_published":%s,"drip_published":%s}\n' "$scheduled" "$drip"

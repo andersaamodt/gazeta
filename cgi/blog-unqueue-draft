@@ -1,0 +1,34 @@
+#!/bin/sh
+# Move a queued/scheduled draft back to normal draft state.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+draft_id=$(blog_param draft_id)
+if [ -z "$draft_id" ]; then
+  blog_json_error "draft_id is required" "invalid_request"
+  exit 0
+fi
+
+meta=$(blog_draft_resolve_meta_path "$draft_id" 2>/dev/null || printf '')
+if [ -z "$meta" ] || [ ! -f "$meta" ]; then
+  blog_json_error "Draft not found" "not_found"
+  exit 0
+fi
+
+config-set "$meta" publish_mode draft
+config-set "$meta" status draft
+config-set "$meta" scheduled_at ""
+config-set "$meta" updated_at "$(blog_now_iso)"
+
+printf '{"success":true,"message":"Draft moved back to drafts","draft_id":"%s"}\n' "$(blog_json_escape "$draft_id")"

@@ -1,0 +1,33 @@
+#!/bin/sh
+# Serve current theme CSS.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+
+http-status 200 "OK"
+http-header "Content-Type" "text/css; charset=utf-8"
+http-end-headers
+
+theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf 'archmage')
+case "$theme" in
+  archmage|wizard|warlock|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|enchanter|illusionist|lich|druid|empath|shaman|geomancer|hermeticist|hierophant|necromancer|conjurer|pyromancer|chronomancer|alchemist|seer|adept)
+    ;;
+  *)
+    theme=archmage
+    ;;
+esac
+
+theme_file="$blog_site_root/build/static/themes/${theme}.css"
+if [ ! -f "$theme_file" ]; then
+  theme_file="$blog_site_root/site/static/themes/${theme}.css"
+fi
+
+if [ -f "$theme_file" ]; then
+  cat "$theme_file"
+else
+  printf '/* theme not found: %s */\n' "$theme"
+fi

@@ -1,0 +1,259 @@
+#!/bin/sh
+# Mutate user admin status/order/delete with rank-based authority.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+action=$(blog_param action)
+username=$(blog_param username)
+after_username=$(blog_param after_username)
+delete_account=$(blog_param delete_account)
+
+if ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+profile=$(blog_user_profile "$username")
+if [ ! -f "$profile" ]; then
+  blog_json_error "User not found" "not_found"
+  exit 0
+fi
+
+actor="$BLOG_SESSION_USERNAME"
+if [ -z "$actor" ]; then
+  blog_json_error "Not authenticated" "auth_required"
+  exit 0
+fi
+
+blog_users_reindex
+profile=$(blog_user_profile "$username")
+actor_rank=$(blog_user_rank_value "$actor")
+target_rank=$(blog_user_rank_value "$username")
+case "$actor_rank" in ''|*[!0-9]*) actor_rank=0 ;; esac
+case "$target_rank" in ''|*[!0-9]*) target_rank=0 ;; esac
+
+target_admin=$(config-get "$profile" is_admin 2>/dev/null || printf 'false')
+case "$target_admin" in true|false) ;; *) target_admin=false ;; esac
+target_pubkey=$(blog_get_nostr_pubkey "$username" 2>/dev/null || printf '')
+
+require_below() {
+  if [ "$target_rank" -le "$actor_rank" ]; then
+    blog_json_error "You can only perform this action on users below you in the list" "rank_forbidden"
+    exit 0
+  fi
+}
+
+case "$action" in
+  grant_author)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot change your own author status here" "invalid_target"
+      exit 0
+    fi
+    if [ -z "$target_pubkey" ]; then
+      blog_json_error "User has no Nostr pubkey" "missing_pubkey"
+      exit 0
+    fi
+    blog_nostr_list_add_value "$blog_nostr_authors_file" "$target_pubkey"
+    blog_nostr_list_remove_value "$blog_nostr_blocklist_file" "$target_pubkey"
+    if blog_nostr_bridge_enabled; then
+      blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+    fi
+    printf '{"success":true,"message":"Author granted","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  remove_author)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot change your own author status here" "invalid_target"
+      exit 0
+    fi
+    if [ -z "$target_pubkey" ]; then
+      blog_json_error "User has no Nostr pubkey" "missing_pubkey"
+      exit 0
+    fi
+    blog_nostr_list_remove_value "$blog_nostr_authors_file" "$target_pubkey"
+    if blog_nostr_bridge_enabled; then
+      blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+    fi
+    printf '{"success":true,"message":"Author removed","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  block_account)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot block your own account" "invalid_target"
+      exit 0
+    fi
+    if [ "$target_admin" = "true" ] && [ "$target_rank" -le "$actor_rank" ]; then
+      blog_json_error "Cannot block an admin above you" "rank_forbidden"
+      exit 0
+    fi
+    if [ -z "$target_pubkey" ]; then
+      blog_json_error "User has no Nostr pubkey" "missing_pubkey"
+      exit 0
+    fi
+    blog_nostr_list_add_value "$blog_nostr_blocklist_file" "$target_pubkey"
+    blog_nostr_list_remove_value "$blog_nostr_authors_file" "$target_pubkey"
+    config-set "$profile" updated_at "$(blog_now_iso)"
+    case "$delete_account" in true|1|yes|on) delete_account=true ;; *) delete_account=false ;; esac
+    if [ "$delete_account" = "true" ]; then
+      target_dir=$(blog_user_dir "$username")
+      rm -rf "$target_dir"
+      blog_invalidate_user_sessions "$username" >/dev/null 2>&1 || true
+      blog_users_reindex
+      if blog_nostr_bridge_enabled; then
+        blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+      fi
+      printf '{"success":true,"message":"Account blocked and deleted","username":"%s"}\n' "$(blog_json_escape "$username")"
+      exit 0
+    fi
+    if blog_nostr_bridge_enabled; then
+      blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+    fi
+    printf '{"success":true,"message":"Account blocked","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  unblock_account)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot unblock your own account here" "invalid_target"
+      exit 0
+    fi
+    if [ -z "$target_pubkey" ]; then
+      blog_json_error "User has no Nostr pubkey" "missing_pubkey"
+      exit 0
+    fi
+    blog_nostr_list_remove_value "$blog_nostr_blocklist_file" "$target_pubkey"
+    if blog_nostr_bridge_enabled; then
+      blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+    fi
+    printf '{"success":true,"message":"Account unblocked","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  grant_admin)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "You are already managing your own account" "invalid_target"
+      exit 0
+    fi
+    if [ "$target_admin" = "true" ]; then
+      printf '{"success":true,"message":"User is already an admin"}\n'
+      exit 0
+    fi
+    if [ "$target_rank" -lt "$actor_rank" ]; then
+      blog_users_move_after "$username" "$actor"
+      blog_users_reindex
+      target_rank=$(blog_user_rank_value "$username")
+    fi
+    config-set "$profile" is_admin true
+    config-set "$profile" updated_at "$(blog_now_iso)"
+    printf '{"success":true,"message":"Admin granted","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  remove_admin)
+    if [ "$target_admin" != "true" ]; then
+      blog_json_error "Target user is not an admin" "not_admin"
+      exit 0
+    fi
+    require_below
+    config-set "$profile" is_admin false
+    config-set "$profile" updated_at "$(blog_now_iso)"
+    blog_invalidate_user_sessions "$username" >/dev/null 2>&1 || true
+    printf '{"success":true,"message":"Admin removed","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  promote_above)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot promote yourself" "invalid_target"
+      exit 0
+    fi
+    require_below
+    blog_users_move_before "$username" "$actor"
+    blog_users_reindex
+    printf '{"success":true,"message":"User promoted above you","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  move_after)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot move yourself" "invalid_target"
+      exit 0
+    fi
+    if ! blog_validate_username "$after_username"; then
+      blog_json_error "Invalid placement target" "invalid_target"
+      exit 0
+    fi
+    after_profile=$(blog_user_profile "$after_username")
+    if [ ! -f "$after_profile" ]; then
+      blog_json_error "Placement target not found" "not_found"
+      exit 0
+    fi
+    if [ "$after_username" = "$username" ]; then
+      printf '{"success":true,"message":"Order unchanged","username":"%s"}\n' "$(blog_json_escape "$username")"
+      exit 0
+    fi
+    if [ "$target_rank" -le "$actor_rank" ]; then
+      blog_json_error "You can only drag users who are below you in the list" "rank_forbidden"
+      exit 0
+    fi
+    after_rank=$(blog_user_rank_value "$after_username")
+    case "$after_rank" in ''|*[!0-9]*) after_rank=0 ;; esac
+    if [ "$after_username" != "$actor" ] && [ "$after_rank" -le "$actor_rank" ]; then
+      blog_json_error "You cannot move a user above your rank. Use Promote Above explicitly." "rank_forbidden"
+      exit 0
+    fi
+    blog_users_move_after "$username" "$after_username"
+    blog_users_reindex
+    printf '{"success":true,"message":"User reordered","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  move_up)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot move yourself" "invalid_target"
+      exit 0
+    fi
+    if [ "$target_admin" = "true" ]; then
+      require_below
+    fi
+    blog_users_move_up_one "$username"
+    blog_users_reindex
+    printf '{"success":true,"message":"User moved up","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  move_down)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot move yourself" "invalid_target"
+      exit 0
+    fi
+    if [ "$target_admin" = "true" ]; then
+      require_below
+    fi
+    blog_users_move_down_one "$username"
+    blog_users_reindex
+    printf '{"success":true,"message":"User moved down","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  delete)
+    if [ "$username" = "$actor" ]; then
+      blog_json_error "Cannot delete your own account" "invalid_target"
+      exit 0
+    fi
+    if [ "$target_admin" = "true" ] && [ "$target_rank" -le "$actor_rank" ]; then
+      blog_json_error "Cannot delete an admin above you" "rank_forbidden"
+      exit 0
+    fi
+    target_dir=$(blog_user_dir "$username")
+    rm -rf "$target_dir"
+    if [ -e "$target_dir" ]; then
+      blog_json_error "Delete failed on server" "delete_failed"
+      exit 0
+    fi
+    profile=$(blog_user_profile "$username")
+    if [ -f "$profile" ]; then
+      blog_json_error "Delete failed on server" "delete_failed"
+      exit 0
+    fi
+    blog_invalidate_user_sessions "$username" >/dev/null 2>&1 || true
+    blog_users_reindex
+    printf '{"success":true,"message":"User deleted","username":"%s"}\n' "$(blog_json_escape "$username")"
+    ;;
+  *)
+    blog_json_error "Unsupported action" "invalid_action"
+    ;;
+esac

@@ -1,0 +1,37 @@
+#!/bin/sh
+# Link an SSH public key to the currently logged-in Nostr-backed account.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false true; then
+  exit 0
+fi
+
+pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+if [ -z "$pubkey" ]; then
+  blog_json_error "Account has no bound Nostr pubkey" "nostr_identity_required"
+  exit 0
+fi
+
+ssh_public_key=$(blog_param ssh_public_key)
+ssh_public_key=$(ssh_auth_normalize_public_key "$ssh_public_key" 2>/dev/null || printf '')
+if [ -z "$ssh_public_key" ]; then
+  blog_json_error "Invalid SSH public key format" "invalid_ssh_public_key"
+  exit 0
+fi
+
+ssh_fingerprint=$(ssh_auth_compute_fingerprint "$ssh_public_key")
+blog_set_user_ssh_key "$BLOG_SESSION_USERNAME" "$ssh_public_key" "$ssh_fingerprint"
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$BLOG_SESSION_USERNAME")"
+printf '"nostr_pubkey":"%s",' "$(blog_json_escape "$pubkey")"
+printf '"ssh_fingerprint":"%s"' "$(blog_json_escape "$ssh_fingerprint")"
+printf '}\n'

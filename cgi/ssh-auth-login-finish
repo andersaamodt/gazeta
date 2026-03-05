@@ -1,0 +1,86 @@
+#!/bin/sh
+# Finish passkey login and create session.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+username=$(blog_param username)
+request_id=$(blog_param request_id)
+credential_id=$(blog_param credential_id)
+authenticator_data=$(blog_param authenticator_data)
+client_data_json=$(blog_param client_data_json)
+signature=$(blog_param signature)
+
+if [ -n "$username" ] && ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+if [ -z "$credential_id" ] || [ -z "$authenticator_data" ] || [ -z "$client_data_json" ] || [ -z "$signature" ]; then
+  blog_json_error "Missing required parameters" "invalid_request"
+  exit 0
+fi
+
+challenge=""
+if [ -n "$request_id" ]; then
+  challenge=$(ssh_auth_get_login_request_challenge "$request_id" 2>/dev/null || printf '')
+fi
+if [ -z "$challenge" ] && [ -n "$username" ]; then
+  profile=$(ssh_auth_profile_path "$username")
+  if [ -f "$profile" ]; then
+    challenge=$(config-get "$profile" login_challenge 2>/dev/null || printf '')
+  fi
+fi
+if [ -z "$challenge" ]; then
+  blog_json_error "No pending login challenge" "challenge_missing"
+  exit 0
+fi
+
+if ! ssh_auth_verify_client_data "$client_data_json" "$challenge" "webauthn.get"; then
+  blog_json_error "WebAuthn challenge/origin validation failed" "webauthn_validation_failed"
+  exit 0
+fi
+
+delegate_file=""
+if [ -n "$username" ]; then
+  delegate_file=$(ssh_auth_find_delegate_by_credential "$username" "$credential_id" 2>/dev/null || printf '')
+else
+  found=$(ssh_auth_find_delegate_any_user "$credential_id" 2>/dev/null || printf '')
+  if [ -n "$found" ]; then
+    username=${found%%;*}
+    delegate_file=${found#*;}
+  fi
+fi
+if [ -z "$username" ] || [ -z "$delegate_file" ] || [ ! -f "$delegate_file" ]; then
+  blog_json_error "Credential not found" "credential_not_found"
+  exit 0
+fi
+
+if ! ssh_auth_verify_assertion_signature "$delegate_file" "$authenticator_data" "$client_data_json" "$signature"; then
+  blog_json_error "Signature verification failed" "signature_invalid"
+  exit 0
+fi
+
+ssh_auth_clear_login_request "$request_id"
+ssh_auth_clear_login_challenge "$username"
+profile=$(ssh_auth_profile_path "$username")
+fingerprint=$(config-get "$profile" fingerprint 2>/dev/null || printf '')
+session_info=$(blog_create_session "$username" "$fingerprint")
+session_token=${session_info%%;*}
+rest=${session_info#*;}
+csrf_token=${rest%%;*}
+is_admin=${rest##*;}
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"fingerprint":"%s",' "$(blog_json_escape "$fingerprint")"
+printf '"session_token":"%s",' "$(blog_json_escape "$session_token")"
+printf '"csrf_token":"%s",' "$(blog_json_escape "$csrf_token")"
+printf '"is_admin":%s' "$is_admin"
+printf '}\n'

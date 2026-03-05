@@ -1,0 +1,28 @@
+#!/bin/sh
+# Update blog theme.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+theme=$(blog_param theme)
+
+if [ -z "$theme" ]; then
+  blog_json_error "Theme is required" "invalid_theme"
+  exit 0
+fi
+
+case "$theme" in
+  archmage|wizard|warlock|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|enchanter|illusionist|lich|druid|empath|shaman|geomancer|hermeticist|hierophant|necromancer|conjurer|pyromancer|chronomancer|alchemist|seer|adept)
+    config-set "$blog_site_conf" theme "$theme"
+    printf '{"success":true,"theme":"%s"}\n' "$(blog_json_escape "$theme")"
+    ;;
+  *)
+    blog_json_error "Invalid theme" "invalid_theme"
+    ;;
+esac

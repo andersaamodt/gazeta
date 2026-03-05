@@ -1,0 +1,73 @@
+#!/bin/sh
+# List published posts (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+tmp=$(mktemp "${TMPDIR:-/tmp}/blog-posts-admin.XXXXXX")
+blog_collect_public_posts "$tmp"
+
+printf '{"success":true,"posts":['
+first=1
+while IFS= read -r file || [ -n "$file" ]; do
+  [ -n "$file" ] || continue
+  [ -f "$file" ] || continue
+
+  rel=${file#"$blog_site_root/site/pages/"}
+  case "$rel" in
+    posts/*.md) ;;
+    *) continue ;;
+  esac
+
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+  published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
+  author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+  publish_mode=$(blog_read_front_matter_value "$file" publish_mode 2>/dev/null || printf '')
+  nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
+  nostr_address=$(blog_post_nostr_address_for_file "$file")
+  open_url=$(blog_rel_post_html_url "$file")
+
+  source="local"
+  can_delete=true
+  can_hide=false
+  case "$nostr_projection" in
+    true|1|yes|on)
+      source="nostr"
+      can_delete=false
+      if [ -n "$nostr_address" ]; then
+        can_hide=true
+      fi
+      ;;
+  esac
+
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+
+  printf '{'
+  printf '"path":"%s",' "$(blog_json_escape "$rel")"
+  printf '"title":"%s",' "$(blog_json_escape "$title")"
+  printf '"published_at":"%s",' "$(blog_json_escape "$published_at")"
+  printf '"author":"%s",' "$(blog_json_escape "$author")"
+  printf '"publish_mode":"%s",' "$(blog_json_escape "$publish_mode")"
+  printf '"source":"%s",' "$(blog_json_escape "$source")"
+  printf '"nostr_address":"%s",' "$(blog_json_escape "$nostr_address")"
+  printf '"open_url":"%s",' "$(blog_json_escape "$open_url")"
+  printf '"can_delete":%s,' "$can_delete"
+  printf '"can_hide":%s' "$can_hide"
+  printf '}'
+done < "$tmp"
+printf ']}'
+rm -f "$tmp"
+printf '\n'

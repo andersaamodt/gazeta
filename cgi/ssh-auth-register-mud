@@ -1,0 +1,55 @@
+#!/bin/sh
+# Register using existing MUD/system player account SSH key.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! ssh_auth_registration_enabled; then
+  blog_json_error "User registration is disabled" "registration_disabled"
+  exit 0
+fi
+
+username=$(blog_param username)
+if ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+if ! id "$username" >/dev/null 2>&1; then
+  blog_json_error "No MUD player account found" "user_not_found"
+  exit 0
+fi
+
+ssh_public_key=$(ssh_auth_read_authorized_key "$username" 2>/dev/null || printf '')
+if [ -z "$ssh_public_key" ]; then
+  blog_json_error "No SSH key found for player" "ssh_key_missing"
+  exit 0
+fi
+
+ssh_public_key=$(ssh_auth_normalize_public_key "$ssh_public_key" 2>/dev/null || printf '')
+if [ -z "$ssh_public_key" ]; then
+  blog_json_error "Invalid SSH public key format" "invalid_ssh_public_key"
+  exit 0
+fi
+
+fingerprint=$(ssh_auth_compute_fingerprint "$ssh_public_key")
+blog_save_user_profile "$username" "$fingerprint" "$ssh_public_key"
+challenge=$(ssh_auth_set_registration_challenge "$username")
+
+is_admin=false
+if blog_user_is_admin "$username"; then
+  is_admin=true
+fi
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"fingerprint":"%s",' "$(blog_json_escape "$fingerprint")"
+printf '"challenge":"%s",' "$(blog_json_escape "$challenge")"
+printf '"is_admin":%s' "$is_admin"
+printf '}\n'

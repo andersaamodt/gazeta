@@ -1,0 +1,51 @@
+#!/bin/sh
+# Mirror latest comments for a post from configured relays.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_nostr_bridge_enabled; then
+  blog_nostr_bridge_disabled_json
+  exit 0
+fi
+
+requested_path=$(blog_param path)
+if [ -z "$requested_path" ]; then
+  requested_path=$(blog_param slug)
+fi
+if [ -z "$requested_path" ]; then
+  blog_json_error "path is required" "invalid_request"
+  exit 0
+fi
+
+record=$(blog_nostr_post_record_for_path "$requested_path" 2>/dev/null || printf '')
+if [ -z "$record" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
+address=$(printf '%s\n' "$record" | jq -r '.address // empty' 2>/dev/null || printf '')
+if [ -z "$address" ]; then
+  blog_json_error "Post is missing Nostr address metadata" "missing_address"
+  exit 0
+fi
+
+if ! mirrored=$(blog_nostr_mirror_comments_for_address "$address" 2>/dev/null); then
+  blog_json_error "Comment refresh failed. Check relay/dependency configuration." "nostr_comment_refresh_failed"
+  exit 0
+fi
+
+case "$mirrored" in ''|*[!0-9]*) mirrored=0 ;; esac
+
+blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+comments_json=$(blog_nostr_comments_for_address_json "$address")
+count=$(printf '%s\n' "$comments_json" | jq -r 'length' 2>/dev/null || printf '0')
+case "$count" in ''|*[!0-9]*) count=0 ;; esac
+
+printf '{"success":true,"mirrored":%s,"comments_count":%s}\n' "$mirrored" "$count"

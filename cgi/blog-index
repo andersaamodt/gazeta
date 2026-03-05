@@ -1,0 +1,123 @@
+#!/bin/sh
+# Render public blog index with pagination.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_html_headers
+
+page=$(blog_param page)
+case "$page" in ''|*[!0-9]*) page=1 ;; esac
+if [ "$page" -lt 1 ]; then
+  page=1
+fi
+
+posts_per_page=10
+posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-index-posts.XXXXXX")
+comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-index-comment-counts.XXXXXX")
+blog_collect_public_posts "$posts_tmp"
+blog_nostr_comment_counts_build "$comment_counts_tmp"
+
+total_posts=$(wc -l < "$posts_tmp" | tr -d ' ')
+total_pages=$(( (total_posts + posts_per_page - 1) / posts_per_page ))
+if [ "$total_pages" -lt 1 ]; then
+  total_pages=1
+fi
+if [ "$page" -gt "$total_pages" ]; then
+  page=$total_pages
+fi
+
+start=$(( (page - 1) * posts_per_page + 1 ))
+end=$(( start + posts_per_page - 1 ))
+
+printf '<div class="post-list">\n'
+if [ "$total_posts" -eq 0 ]; then
+  printf '<p>No posts published yet.</p>\n'
+else
+  n=0
+  while IFS= read -r post_file; do
+    n=$((n + 1))
+    if [ "$n" -lt "$start" ] || [ "$n" -gt "$end" ]; then
+      continue
+    fi
+
+    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf 'Untitled')
+    author=$(blog_read_front_matter_value "$post_file" author 2>/dev/null || printf '')
+    published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
+    summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
+    tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
+    tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+    tags=$(blog_normalize_tags "$tags_csv")
+
+    url=$(blog_rel_post_html_url "$post_file")
+    post_address=$(blog_post_nostr_address_for_file "$post_file")
+    comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
+    pub_date=${published_at%%T*}
+    if [ -z "$pub_date" ]; then
+      pub_date="Unknown date"
+    fi
+    if [ -z "$author" ]; then
+      author="Blog Author"
+    fi
+
+    printf '<article class="post-item">\n'
+    printf '  <div class="post-head">\n'
+    printf '    <div class="post-head-main">\n'
+    printf '      <h2 class="post-title"><a href="%s">%s</a></h2>\n' \
+      "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
+    printf '      <div class="post-author">%s</div>\n' "$(blog_html_escape "$author")"
+    printf '    </div>\n'
+    printf '    <div class="post-meta"><span class="post-date">%s</span>' "$(blog_html_escape "$pub_date")"
+    if [ "$comment_count" -gt 0 ]; then
+      printf ' <span class="post-comments-count">%s comments</span>' "$(blog_html_escape "$comment_count")"
+    else
+      printf ' <span class="post-comments-count">0 comments</span>'
+    fi
+    printf '</div>\n'
+    printf '  </div>\n'
+
+    if [ -n "$summary" ]; then
+      printf '  <p class="post-summary">%s</p>\n' "$(blog_html_escape "$summary")"
+    fi
+
+    if [ -n "$tags" ]; then
+      printf '  <div class="tags">\n'
+      printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
+        clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
+        [ -n "$clean" ] || continue
+        printf '    <a href="/pages/tags.html#%s" class="tag">%s</a>\n' \
+          "$(blog_html_escape "$clean")" "$(blog_html_escape "$clean")"
+      done
+      printf '  </div>\n'
+    fi
+
+    printf '</article>\n\n'
+  done < "$posts_tmp"
+fi
+printf '</div>\n'
+
+if [ "$total_posts" -gt 0 ] && [ "$total_pages" -gt 1 ]; then
+  printf '<div class="pagination">\n'
+  if [ "$page" -gt 1 ]; then
+    prev=$((page - 1))
+    printf '  <a class="page-link" href="?page=%s">&laquo; Previous</a>\n' "$prev"
+  else
+    printf '  <span class="page-link disabled">&laquo; Previous</span>\n'
+  fi
+
+  printf '  <span class="page-info">Page %s of %s</span>\n' "$page" "$total_pages"
+
+  if [ "$page" -lt "$total_pages" ]; then
+    next=$((page + 1))
+    printf '  <a class="page-link" href="?page=%s">Next &raquo;</a>\n' "$next"
+  else
+    printf '  <span class="page-link disabled">Next &raquo;</span>\n'
+  fi
+  printf '</div>\n'
+fi
+
+rm -f "$posts_tmp" "$comment_counts_tmp"

@@ -1,0 +1,49 @@
+#!/bin/sh
+# Start "log out everywhere" flow by issuing a signed revocation challenge.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+user_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+if [ -z "$user_pubkey" ]; then
+  blog_json_error "Signed-in account has no bound Nostr pubkey" "nostr_identity_required"
+  exit 0
+fi
+
+client_ip=$(blog_client_ip)
+if ! blog_rate_limit_check revoke_ip "$client_ip" 12 300; then
+  blog_json_error "Too many revocation requests from this network. Try again shortly." "rate_limited_ip"
+  exit 0
+fi
+if ! blog_rate_limit_check revoke_pubkey "$user_pubkey" 8 300; then
+  blog_json_error "Too many revocation requests for this account. Try again shortly." "rate_limited_pubkey"
+  exit 0
+fi
+
+origin_host=${HTTP_HOST:-${SERVER_NAME:-}}
+if ! request_info=$(blog_create_nostr_login_request "$user_pubkey" "$origin_host" "revoke_all" 2>/dev/null); then
+  blog_json_error "Unable to create revocation challenge" "request_failed"
+  exit 0
+fi
+request_id=${request_info%%;*}
+rest=${request_info#*;}
+challenge=${rest%%;*}
+expires_at=${rest##*;}
+
+printf '{"success":true,'
+printf '"request_id":"%s",' "$(blog_json_escape "$request_id")"
+printf '"challenge":"%s",' "$(blog_json_escape "$challenge")"
+printf '"pubkey":"%s",' "$(blog_json_escape "$user_pubkey")"
+printf '"expires_at":"%s",' "$(blog_json_escape "$expires_at")"
+printf '"origin":"%s"' "$(blog_json_escape "$origin_host")"
+printf '}\n'

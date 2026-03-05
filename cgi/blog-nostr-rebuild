@@ -1,0 +1,18 @@
+#!/bin/sh
+# Rebuild derived Nostr indexes and markdown projections from local event files.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+
+if ! blog_nostr_bridge_enabled; then
+  exit 0
+fi
+
+if ! blog_nostr_rebuild_derived; then
+  printf '%s\n' "blog-nostr-rebuild: failed to rebuild derived indexes" >&2
+  exit 1
+fi

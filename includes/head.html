@@ -1,0 +1,28 @@
+<link id="theme-stylesheet" rel="stylesheet" href="/cgi/blog-theme.css" />
+<script defer src="/static/post-context.js"></script>
+<link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
+<link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
+<meta name="description" content="Personal blog built with wizardry web" />
+<meta property="og:site_name" content="Wizardry Blog" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<script>
+(function () {
+  var canonical = document.createElement('link');
+  canonical.rel = 'canonical';
+  canonical.href = window.location.origin + window.location.pathname;
+  document.head.appendChild(canonical);
+
+  var ogUrl = document.createElement('meta');
+  ogUrl.setAttribute('property', 'og:url');
+  ogUrl.setAttribute('content', canonical.href);
+  document.head.appendChild(ogUrl);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var firstHeading = document.querySelector('h1[id]') || document.querySelector('h1');
+    if (firstHeading && !firstHeading.id) {
+      firstHeading.id = 'main-content';
+    }
+  });
+})();
+</script>

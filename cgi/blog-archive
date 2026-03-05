@@ -1,0 +1,79 @@
+#!/bin/sh
+# Render archive listing grouped by month.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_send_html_headers
+
+
+posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-archive-posts.XXXXXX")
+rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-archive-rows.XXXXXX")
+comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-archive-comment-counts.XXXXXX")
+blog_collect_public_posts "$posts_tmp"
+blog_nostr_comment_counts_build "$comment_counts_tmp"
+
+while IFS= read -r post_file; do
+  [ -n "$post_file" ] || continue
+
+  title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf 'Untitled')
+  published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
+  date_only=${published_at%%T*}
+  year=$(printf '%s' "$date_only" | cut -d- -f1)
+  month=$(printf '%s' "$date_only" | cut -d- -f2)
+  day=$(printf '%s' "$date_only" | cut -d- -f3 | sed 's/^0//')
+  if [ -z "$year" ] || [ -z "$month" ] || [ -z "$day" ]; then
+    year=1970
+    month=01
+    day=1
+  fi
+
+  month_key="$year-$month"
+  month_label="$(blog_month_name "$month") $year"
+  date_label="$(blog_month_name "$month") $day, $year"
+  url=$(blog_rel_post_html_url "$post_file")
+  post_address=$(blog_post_nostr_address_for_file "$post_file")
+  comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$month_key" "$month_label" "$date_label" "$url" "$title" "$comment_count"
+done < "$posts_tmp" > "$rows_tmp"
+
+if [ ! -s "$rows_tmp" ]; then
+  printf '<p>No published posts yet.</p>\n'
+  rm -f "$posts_tmp" "$rows_tmp" "$comment_counts_tmp"
+  exit 0
+fi
+
+tab=$(printf '\t')
+current_key=''
+printf '<div class="archive-list">\n'
+while IFS="$tab" read -r month_key month_label date_label url title comment_count; do
+  [ -n "$month_key" ] || continue
+
+  if [ "$month_key" != "$current_key" ]; then
+    if [ -n "$current_key" ]; then
+      printf '  </ul>\n'
+      printf '</section>\n'
+    fi
+
+    count=$(awk -F'\t' -v k="$month_key" '$1 == k { c++ } END { print c + 0 }' "$rows_tmp")
+    printf '<section class="archive-month" id="archive-%s">\n' "$(blog_html_escape "$month_key")"
+    printf '  <h2>%s <span class="archive-count">(%s)</span></h2>\n' "$(blog_html_escape "$month_label")" "$(blog_html_escape "$count")"
+    printf '  <ul class="archive-posts">\n'
+    current_key=$month_key
+  fi
+
+  printf '    <li class="archive-item"><time class="archive-date">%s</time> <a href="%s">%s</a> <span class="post-comments-count">(%s comments)</span></li>\n' \
+    "$(blog_html_escape "$date_label")" "$(blog_html_escape "$url")" "$(blog_html_escape "$title")" "$(blog_html_escape "$comment_count")"
+done < "$rows_tmp"
+
+if [ -n "$current_key" ]; then
+  printf '  </ul>\n'
+  printf '</section>\n'
+fi
+printf '</div>\n'
+
+rm -f "$posts_tmp" "$rows_tmp" "$comment_counts_tmp"

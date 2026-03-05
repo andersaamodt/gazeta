@@ -1,0 +1,42 @@
+#!/bin/sh
+# Return locally mirrored comments for a post path.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_send_json_headers
+
+requested_path=$(blog_param path)
+if [ -z "$requested_path" ]; then
+  requested_path=$(blog_param slug)
+fi
+
+if ! blog_nostr_bridge_enabled; then
+  printf '{"success":true,"bridge_enabled":false,"comments":[]}\n'
+  exit 0
+fi
+
+if [ -z "$requested_path" ]; then
+  blog_json_error "path is required" "invalid_request"
+  exit 0
+fi
+
+record=$(blog_nostr_post_record_for_path "$requested_path" 2>/dev/null || printf '')
+if [ -z "$record" ]; then
+  printf '{"success":true,"bridge_enabled":true,"comments":[]}\n'
+  exit 0
+fi
+
+address=$(printf '%s\n' "$record" | jq -r '.address // empty' 2>/dev/null || printf '')
+if [ -z "$address" ]; then
+  printf '{"success":true,"bridge_enabled":true,"comments":[]}\n'
+  exit 0
+fi
+
+comments_json=$(blog_nostr_comments_for_address_json "$address")
+comments_json=$(printf '%s\n' "$comments_json" | jq -c 'map(. + {created_at_iso: (if (.created_at // 0) > 0 then (.created_at | todateiso8601) else "" end)})' 2>/dev/null || printf '[]')
+
+printf '{"success":true,"bridge_enabled":true,"comments":%s}\n' "$comments_json"

@@ -1,0 +1,89 @@
+#!/bin/sh
+# Begin passkey login challenge.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+username=$(blog_param username)
+if [ -n "$username" ] && ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+cred_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-login-creds.XXXXXX")
+if [ -n "$username" ]; then
+  profile=$(ssh_auth_profile_path "$username")
+  if [ ! -f "$profile" ]; then
+    rm -f "$cred_tmp"
+    blog_json_error "User not found" "user_not_found"
+    exit 0
+  fi
+
+  delegates_dir=$(ssh_auth_delegate_dir "$username")
+  if [ -d "$delegates_dir" ]; then
+    for delegate_file in "$delegates_dir"/*.conf; do
+      [ -f "$delegate_file" ] || continue
+      credential_id=$(config-get "$delegate_file" credential_id 2>/dev/null || printf '')
+      [ -n "$credential_id" ] || continue
+      printf '%s\n' "$credential_id" >> "$cred_tmp"
+    done
+  fi
+else
+  if [ -d "$blog_users_dir" ]; then
+    for user_dir in "$blog_users_dir"/*; do
+      [ -d "$user_dir" ] || continue
+      delegates_dir="$user_dir/delegates"
+      [ -d "$delegates_dir" ] || continue
+      for delegate_file in "$delegates_dir"/*.conf; do
+        [ -f "$delegate_file" ] || continue
+        credential_id=$(config-get "$delegate_file" credential_id 2>/dev/null || printf '')
+        [ -n "$credential_id" ] || continue
+        printf '%s\n' "$credential_id" >> "$cred_tmp"
+      done
+    done
+  fi
+fi
+
+if [ ! -s "$cred_tmp" ]; then
+  rm -f "$cred_tmp"
+  if [ -n "$username" ]; then
+    blog_json_error "No credentials bound for this user" "no_credentials"
+  else
+    blog_json_error "No passkeys are registered yet" "no_credentials"
+  fi
+  exit 0
+fi
+
+request_info=$(ssh_auth_create_login_request "$username")
+request_id=${request_info%%;*}
+challenge=${request_info#*;}
+if [ -n "$username" ]; then
+  ssh_auth_set_login_challenge "$username" >/dev/null 2>&1 || true
+fi
+
+printf '{"success":true,'
+if [ -n "$username" ]; then
+  printf '"username":"%s",' "$(blog_json_escape "$username")"
+fi
+printf '"request_id":"%s",' "$(blog_json_escape "$request_id")"
+printf '"challenge":"%s",' "$(blog_json_escape "$challenge")"
+printf '"allow_credentials":['
+first=1
+while IFS= read -r credential_id; do
+  [ -n "$credential_id" ] || continue
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+  printf '"%s"' "$(blog_json_escape "$credential_id")"
+done < "$cred_tmp"
+printf ']}'
+printf '\n'
+
+rm -f "$cred_tmp"

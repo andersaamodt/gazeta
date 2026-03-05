@@ -1,0 +1,106 @@
+#!/bin/sh
+# Register an SSH public key for passkey binding.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/ssh-auth-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! ssh_auth_registration_enabled; then
+  blog_json_error "User registration is disabled" "registration_disabled"
+  exit 0
+fi
+
+requested_username=$(blog_param username)
+ssh_public_key=$(blog_param ssh_public_key)
+
+if [ -z "$ssh_public_key" ]; then
+  blog_json_error "Missing ssh_public_key" "invalid_request"
+  exit 0
+fi
+
+ssh_public_key=$(ssh_auth_normalize_public_key "$ssh_public_key" 2>/dev/null || printf '')
+if [ -z "$ssh_public_key" ]; then
+  blog_json_error "Invalid SSH public key format" "invalid_ssh_public_key"
+  exit 0
+fi
+
+fingerprint=$(ssh_auth_compute_fingerprint "$ssh_public_key")
+existing_username=$(blog_find_username_by_fingerprint "$fingerprint" 2>/dev/null | head -n 1 || true)
+
+derive_username_from_key() {
+  key_line=${1-}
+  fallback_fp=${2-}
+  comment=$(printf '%s' "$key_line" | awk '{print $3}')
+  base=${comment%%@*}
+  candidate=$(printf '%s' "$base" | tr -cd '[:alnum:]._-')
+  if [ -n "$candidate" ] && blog_validate_username "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  suffix=$(printf '%s' "$fallback_fp" | cut -c1-6)
+  printf 'player-%s\n' "$suffix"
+}
+
+key_derived_username=$(derive_username_from_key "$ssh_public_key" "$fingerprint")
+
+migrate_profile_if_needed() {
+  from_user=${1-}
+  to_user=${2-}
+  [ -n "$from_user" ] && [ -n "$to_user" ] || return 0
+  [ "$from_user" != "$to_user" ] || return 0
+  from_dir=$(blog_user_dir "$from_user")
+  to_dir=$(blog_user_dir "$to_user")
+  from_delegates="$from_dir/delegates"
+  to_delegates="$to_dir/delegates"
+  if [ -d "$from_delegates" ] && [ ! -d "$to_delegates" ]; then
+    mkdir -p "$to_dir"
+    mv "$from_delegates" "$to_delegates" 2>/dev/null || true
+  fi
+}
+
+username=""
+if [ -n "$existing_username" ]; then
+  username=$existing_username
+  case "$existing_username" in
+    player-[0-9]*|player[0-9]*)
+      if [ -n "$key_derived_username" ] && [ "$key_derived_username" != "$existing_username" ]; then
+        username=$key_derived_username
+        migrate_profile_if_needed "$existing_username" "$username"
+      fi
+      ;;
+  esac
+fi
+
+if [ -z "$username" ] && [ -n "$requested_username" ] && blog_validate_username "$requested_username"; then
+  requested_profile=$(blog_user_profile "$requested_username")
+  if [ -f "$requested_profile" ] || id "$requested_username" >/dev/null 2>&1; then
+    username=$requested_username
+  fi
+fi
+if [ -z "$username" ]; then
+  username=$key_derived_username
+fi
+if ! blog_validate_username "$username"; then
+  blog_json_error "Invalid username" "invalid_username"
+  exit 0
+fi
+
+blog_save_user_profile "$username" "$fingerprint" "$ssh_public_key"
+challenge=$(ssh_auth_set_registration_challenge "$username")
+
+is_admin=false
+if blog_user_is_admin "$username"; then
+  is_admin=true
+fi
+
+printf '{"success":true,'
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"fingerprint":"%s",' "$(blog_json_escape "$fingerprint")"
+printf '"challenge":"%s",' "$(blog_json_escape "$challenge")"
+printf '"is_admin":%s' "$is_admin"
+printf '}\n'

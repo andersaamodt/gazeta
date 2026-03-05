@@ -1,0 +1,46 @@
+#!/bin/sh
+# Begin Nostr login by issuing a single-use challenge.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+pubkey_hint=$(blog_param pubkey_hint)
+if [ -z "$pubkey_hint" ]; then
+  pubkey_hint=$(blog_param pubkey)
+fi
+pubkey_hint=$(blog_validate_nostr_pubkey "$pubkey_hint" 2>/dev/null || printf '')
+client_ip=$(blog_client_ip)
+
+if ! blog_rate_limit_check challenge_ip "$client_ip" 25 300; then
+  blog_json_error "Too many login challenges from this network. Try again shortly." "rate_limited_ip"
+  exit 0
+fi
+if [ -n "$pubkey_hint" ] && ! blog_rate_limit_check challenge_pubkey "$pubkey_hint" 18 300; then
+  blog_json_error "Too many login challenges for this Nostr identity. Try again shortly." "rate_limited_pubkey"
+  exit 0
+fi
+
+origin_host=${HTTP_HOST:-${SERVER_NAME:-}}
+if ! request_info=$(blog_create_nostr_login_request "$pubkey_hint" "$origin_host" "login" 2>/dev/null); then
+  blog_json_error "Unable to create login challenge" "request_failed"
+  exit 0
+fi
+
+request_id=${request_info%%;*}
+rest=${request_info#*;}
+challenge=${rest%%;*}
+expires_at=${rest##*;}
+
+printf '{"success":true,'
+printf '"request_id":"%s",' "$(blog_json_escape "$request_id")"
+printf '"challenge":"%s",' "$(blog_json_escape "$challenge")"
+printf '"pubkey_hint":"%s",' "$(blog_json_escape "$pubkey_hint")"
+printf '"expires_at":"%s",' "$(blog_json_escape "$expires_at")"
+printf '"origin":"%s"' "$(blog_json_escape "$origin_host")"
+printf '}\n'
