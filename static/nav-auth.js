@@ -145,7 +145,19 @@
       { id: "custom:quill-icon-17", src: "/static/icons/quill-icon-17.svg", name: "quill-icon-17" },
       { id: "custom:quill-icon-18", src: "/static/icons/quill-icon-18.svg", name: "quill-icon-18" },
       { id: "custom:quill-icon-19", src: "/static/icons/quill-icon-19.svg", name: "quill-icon-19" },
-      { id: "custom:quill-icon-20", src: "/static/icons/quill-icon-20.svg", name: "quill-icon-20" }
+      { id: "custom:quill-icon-20", src: "/static/icons/quill-icon-20.svg", name: "quill-icon-20" },
+      { id: "custom:quill-icon-21", src: "/static/icons/quill-icon-21.svg", name: "quill-icon-21" },
+      { id: "custom:quill-icon-22", src: "/static/icons/quill-icon-22.svg", name: "quill-icon-22" },
+      { id: "custom:quill-icon-23", src: "/static/icons/quill-icon-23.svg", name: "quill-icon-23" },
+      { id: "custom:quill-icon-24", src: "/static/icons/quill-icon-24.svg", name: "quill-icon-24" },
+      { id: "custom:quill-icon-25", src: "/static/icons/quill-icon-25.svg", name: "quill-icon-25" },
+      { id: "custom:quill-icon-26", src: "/static/icons/quill-icon-26.svg", name: "quill-icon-26" },
+      { id: "custom:quill-icon-27", src: "/static/icons/quill-icon-27.svg", name: "quill-icon-27" },
+      { id: "custom:quill-icon-28", src: "/static/icons/quill-icon-28.svg", name: "quill-icon-28" },
+      { id: "custom:quill-icon-29", src: "/static/icons/quill-icon-29.svg", name: "quill-icon-29" },
+      { id: "custom:quill-icon-30", src: "/static/icons/quill-icon-30.svg", name: "quill-icon-30" },
+      { id: "custom:quill-icon-31", src: "/static/icons/quill-icon-31.svg", name: "quill-icon-31" },
+      { id: "custom:quill-icon-32", src: "/static/icons/quill-icon-32.svg", name: "quill-icon-32" }
     ];
   }
   function composeIconShortName(id) {
