@@ -1,6 +1,6 @@
-# Personal Blog Template
+# Nostr Blog
 
-A single-author blog template for wizardry web with optional Nostr bridge support for post authorship, version selection, and local-first mirrored comments.
+A single-author Nostr-focused blog for wizardry web with optional bridge support for post authorship, version selection, and local-first mirrored comments.
 
 ## Features
 
