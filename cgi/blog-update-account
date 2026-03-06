@@ -25,16 +25,31 @@ if ! blog_validate_player_name "$player_name"; then
 fi
 
 old_player_name=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
-legacy_username="$BLOG_SESSION_USERNAME"
 rename_candidate_count=0
+rename_aliases=""
 if [ "$old_player_name" != "$player_name" ]; then
-  rename_candidate_count=$(blog_count_authored_posts_by_author "$old_player_name")
-  case "$rename_candidate_count" in ''|*[!0-9]*) rename_candidate_count=0 ;; esac
-  if [ "$legacy_username" != "$old_player_name" ]; then
-    legacy_count=$(blog_count_authored_posts_by_author "$legacy_username")
-    case "$legacy_count" in ''|*[!0-9]*) legacy_count=0 ;; esac
-    rename_candidate_count=$((rename_candidate_count + legacy_count))
-  fi
+  aliases=$(blog_player_name_aliases "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s\n' "$BLOG_SESSION_USERNAME")
+  old_ifs=$IFS
+  IFS='
+'
+  for alias in $aliases; do
+    [ -n "$alias" ] || continue
+    if [ "$alias" = "$player_name" ]; then
+      continue
+    fi
+    alias_count=$(blog_count_authored_posts_by_author "$alias")
+    case "$alias_count" in ''|*[!0-9]*) alias_count=0 ;; esac
+    if [ "$alias_count" -gt 0 ]; then
+      rename_candidate_count=$((rename_candidate_count + alias_count))
+      if [ -z "$rename_aliases" ]; then
+        rename_aliases="$alias"
+      else
+        rename_aliases="$rename_aliases
+$alias"
+      fi
+    fi
+  done
+  IFS=$old_ifs
 fi
 
 if [ "$preview_rename" = "true" ]; then
@@ -50,13 +65,16 @@ fi
 blog_set_player_name "$BLOG_SESSION_USERNAME" "$player_name"
 renamed_posts=0
 if [ "$rename_authored_posts" = "true" ] && [ "$rename_candidate_count" -gt 0 ] && [ "$old_player_name" != "$player_name" ]; then
-  renamed_posts=$(blog_rename_authored_posts "$old_player_name" "$player_name")
-  case "$renamed_posts" in ''|*[!0-9]*) renamed_posts=0 ;; esac
-  if [ "$legacy_username" != "$old_player_name" ]; then
-    renamed_legacy=$(blog_rename_authored_posts "$legacy_username" "$player_name")
-    case "$renamed_legacy" in ''|*[!0-9]*) renamed_legacy=0 ;; esac
-    renamed_posts=$((renamed_posts + renamed_legacy))
-  fi
+  old_ifs=$IFS
+  IFS='
+'
+  for alias in $rename_aliases; do
+    [ -n "$alias" ] || continue
+    renamed_count=$(blog_rename_authored_posts "$alias" "$player_name")
+    case "$renamed_count" in ''|*[!0-9]*) renamed_count=0 ;; esac
+    renamed_posts=$((renamed_posts + renamed_count))
+  done
+  IFS=$old_ifs
   if [ "$renamed_posts" -gt 0 ]; then
     blog_run_build_async
   fi
