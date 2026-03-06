@@ -14,7 +14,6 @@
   var KEY_DEVICE_SESSION = 'nostr_device_session_v1';
   var KEY_NIP46_PAIR = 'nostr_nip46_pair_v1';
   var NAV_TOAST_KEY = 'wizardry_blog_nav_toast_v1';
-  var COMPOSE_ICON_KEY = 'wizardry_blog_compose_icon_idx_v1';
 
   var state = {
     currentTheme: 'archmage',
@@ -48,9 +47,6 @@
     navToastHost: document.getElementById('nav-top-toast-host'),
     composeTools: document.getElementById('nav-compose-tools'),
     composeLink: document.querySelector('.nav-compose'),
-    composeIconPrevBtn: document.getElementById('compose-icon-prev-btn'),
-    composeIconCycleBtn: document.getElementById('compose-icon-cycle-btn'),
-    composeIconName: document.getElementById('compose-icon-name'),
     userMenu: document.getElementById('nav-user-menu'),
     menuBtn: document.getElementById('nav-menu-btn'),
     menuPanel: document.getElementById('nav-menu-panel'),
@@ -124,74 +120,12 @@
 
   function composeIconSvgPaths() {
     return [
-      { id: "streamline-pixel:content-files-quill-ink", viewBox: "0 0 32 32", body: '<path fill="currentColor" d="M27.435 3.05h1.52V1.52h1.52V0h-9.14v1.52h6.1zm-1.53 0h1.53v1.52h-1.53Zm-1.52 1.52h1.52V6.1h-1.52Zm-1.52 1.53h1.52v1.52h-1.52Zm-1.53 1.52h1.53v3.05h-1.53Zm0-4.57h1.53v1.52h-1.53Zm-1.52 7.62h1.52v1.52h-1.52Zm0-6.1h1.52V6.1h-1.52Z"/><path fill="currentColor" d="M18.285 1.52h3.05v1.53h-3.05Zm0 4.58h1.53v1.52h-1.53Zm-1.52 6.09h3.05v1.53h-3.05Zm0-4.57h1.52v1.52h-1.52Zm0-4.57h1.52v1.52h-1.52ZM3.055 32h13.71v-1.52h1.52v-6.1h-1.52v1.53h-7.62v-1.53H6.1v-1.52H3.055v1.52h-1.53v6.1h1.53Zm1.52-6.09H6.1v3.04h3.05v1.53H6.1v-1.53H4.575Zm10.67-16.77h1.52v1.53h-1.52Zm0-4.57h1.52V6.1h-1.52Z"/><path fill="currentColor" d="M13.715 22.86h3.05v1.52h-3.05Zm3.05-9.14h-3.05v-1.53h-1.52v-1.52h-1.52v4.57h6.09z"/><path fill="currentColor" d="M13.715 10.67h1.53v1.52h-1.53Zm0-4.57h1.53v1.52h-1.53Zm-1.52 1.52h1.52v3.05h-1.52Zm-4.57 12.19h4.57v3.05h1.52v-3.05h1.53v-1.52h-4.57v-3.05h-1.53v3.05h-4.57v1.52h1.52v3.05h1.53z"/>' },
-      { id: "hugeicons:quill-write-02", viewBox: "0 0 24 24", body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M10.55 3c-3.852.007-5.87.102-7.159 1.39C2 5.783 2 8.022 2 12.5s0 6.717 1.391 8.109C4.783 22 7.021 22 11.501 22c4.478 0 6.717 0 8.108-1.391c1.29-1.29 1.384-3.307 1.391-7.16"/><path d="M11.056 13C10.332 3.866 16.802 1.276 21.98 2.164c.209 3.027-1.273 4.16-4.093 4.684c.545.57 1.507 1.286 1.403 2.18c-.074.638-.506.95-1.372 1.576c-1.896 1.37-4.093 2.234-6.863 2.396"/><path d="M9 17c2-5.5 3.96-7.364 6-9"/></g>' },
-      { id: "custom:quill-icon-01", src: "/static/icons/quill-icon-01.svg", name: "quill-icon-01" },
-      { id: "custom:quill-icon-02", src: "/static/icons/quill-icon-02.svg", name: "quill-icon-02" },
-      { id: "custom:quill-icon-03", src: "/static/icons/quill-icon-03.svg", name: "quill-icon-03" },
-      { id: "custom:quill-icon-04", src: "/static/icons/quill-icon-04.svg", name: "quill-icon-04" },
-      { id: "custom:quill-icon-05", src: "/static/icons/quill-icon-05.svg", name: "quill-icon-05" },
-      { id: "custom:quill-icon-06", src: "/static/icons/quill-icon-06.svg", name: "quill-icon-06" },
-      { id: "custom:quill-icon-07", src: "/static/icons/quill-icon-07.svg", name: "quill-icon-07" },
-      { id: "custom:quill-icon-08", src: "/static/icons/quill-icon-08.svg", name: "quill-icon-08" },
-      { id: "custom:quill-icon-09", src: "/static/icons/quill-icon-09.svg", name: "quill-icon-09" },
-      { id: "custom:quill-icon-10", src: "/static/icons/quill-icon-10.svg", name: "quill-icon-10" },
-      { id: "custom:quill-icon-11", src: "/static/icons/quill-icon-11.svg", name: "quill-icon-11" },
-      { id: "custom:quill-icon-12", src: "/static/icons/quill-icon-12.svg", name: "quill-icon-12" },
-      { id: "custom:quill-icon-13", src: "/static/icons/quill-icon-13.svg", name: "quill-icon-13" },
-      { id: "custom:quill-icon-14", src: "/static/icons/quill-icon-14.svg", name: "quill-icon-14" },
-      { id: "custom:quill-icon-15", src: "/static/icons/quill-icon-15.svg", name: "quill-icon-15" },
-      { id: "custom:quill-icon-16", src: "/static/icons/quill-icon-16.svg", name: "quill-icon-16" },
-      { id: "custom:quill-icon-17", src: "/static/icons/quill-icon-17.svg", name: "quill-icon-17" },
-      { id: "custom:quill-icon-18", src: "/static/icons/quill-icon-18.svg", name: "quill-icon-18" },
-      { id: "custom:quill-icon-19", src: "/static/icons/quill-icon-19.svg", name: "quill-icon-19" },
-      { id: "custom:quill-icon-20", src: "/static/icons/quill-icon-20.svg", name: "quill-icon-20" },
-      { id: "custom:quill-icon-21", src: "/static/icons/quill-icon-21.svg", name: "quill-icon-21" },
-      { id: "custom:quill-icon-22", src: "/static/icons/quill-icon-22.svg", name: "quill-icon-22" },
-      { id: "custom:quill-icon-23", src: "/static/icons/quill-icon-23.svg", name: "quill-icon-23" },
-      { id: "custom:quill-icon-24", src: "/static/icons/quill-icon-24.svg", name: "quill-icon-24" },
-      { id: "custom:quill-icon-25", src: "/static/icons/quill-icon-25.svg", name: "quill-icon-25" },
-      { id: "custom:quill-icon-26", src: "/static/icons/quill-icon-26.svg", name: "quill-icon-26" },
-      { id: "custom:quill-icon-27", src: "/static/icons/quill-icon-27.svg", name: "quill-icon-27" },
-      { id: "custom:quill-icon-28", src: "/static/icons/quill-icon-28.svg", name: "quill-icon-28" },
-      { id: "custom:quill-icon-29", src: "/static/icons/quill-icon-29.svg", name: "quill-icon-29" },
-      { id: "custom:quill-icon-30", src: "/static/icons/quill-icon-30.svg", name: "quill-icon-30" },
-      { id: "custom:quill-icon-31", src: "/static/icons/quill-icon-31.svg", name: "quill-icon-31" },
-      { id: "custom:quill-icon-32", src: "/static/icons/quill-icon-32.svg", name: "quill-icon-32" },
-      { id: "custom:quill-icon-33", src: "/static/icons/quill-icon-33.svg", name: "quill-icon-33" },
-      { id: "custom:quill-icon-34", src: "/static/icons/quill-icon-34.svg", name: "quill-icon-34" },
-      { id: "custom:quill-icon-35", src: "/static/icons/quill-icon-35.svg", name: "quill-icon-35" },
-      { id: "custom:quill-icon-36", src: "/static/icons/quill-icon-36.svg", name: "quill-icon-36" },
-      { id: "custom:quill-icon-37", src: "/static/icons/quill-icon-37.svg", name: "quill-icon-37" },
-      { id: "custom:quill-icon-38", src: "/static/icons/quill-icon-38.svg", name: "quill-icon-38" },
-      { id: "custom:quill-icon-39", src: "/static/icons/quill-icon-39.svg", name: "quill-icon-39" },
-      { id: "custom:quill-icon-40", src: "/static/icons/quill-icon-40.svg", name: "quill-icon-40" },
-      { id: "custom:quill-icon-41", src: "/static/icons/quill-icon-41.svg", name: "quill-icon-41" },
-      { id: "custom:quill-icon-42", src: "/static/icons/quill-icon-42.svg", name: "quill-icon-42" }
+      { id: "custom:quill-icon-32", src: "/static/icons/quill-icon-32.svg", name: "quill-icon-32" }
     ];
   }
-  function composeIconShortName(id) {
-    var raw = String(id || '').trim();
-    if (!raw) {
-      return 'icon';
-    }
-    return raw.replace(/^.*:/, '')
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 26) || 'icon';
-  }
 
-  function readComposeIconIndex(total) {
-    var count = Number(total || 1);
-    if (!isFinite(count) || count < 1) {
-      count = 1;
-    }
-    var raw = localStorage.getItem(COMPOSE_ICON_KEY) || '0';
-    var idx = Number(raw);
-    if (!isFinite(idx) || idx < 0) {
-      idx = 0;
-    }
-    return idx % count;
+  function readComposeIconIndex() {
+    return 0;
   }
 
   function renderComposeIcon(index) {
@@ -209,18 +143,11 @@
     var body = typeof icon === 'string' ? icon : (icon && icon.body ? icon.body : '');
     var src = (icon && icon.src) ? String(icon.src) : '';
     var viewBox = (icon && icon.viewBox) ? icon.viewBox : '0 0 24 24';
-    var iconId = (icon && icon.id) ? icon.id : ('icon-' + String(idx + 1));
-    var iconName = (icon && icon.name) ? String(icon.name) : composeIconShortName(iconId);
     if (src) {
       els.composeLink.innerHTML = '<img src="' + src + '" width="21" height="21" alt="" aria-hidden="true">';
     } else {
       els.composeLink.innerHTML = '<svg width="21" height="21" viewBox="' + viewBox + '" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" style="color:#111">' + body + '</svg>';
     }
-    if (els.composeIconName) {
-      els.composeIconName.textContent = iconName;
-      els.composeIconName.title = iconId;
-    }
-    localStorage.setItem(COMPOSE_ICON_KEY, String(idx));
   }
 
   function waitMs(ms) {
@@ -1644,26 +1571,6 @@
   }
 
   function bindUiEvents() {
-    if (els.composeIconPrevBtn) {
-      els.composeIconPrevBtn.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        var icons = composeIconSvgPaths();
-        var current = readComposeIconIndex(icons.length);
-        renderComposeIcon((current - 1 + icons.length) % icons.length);
-      });
-    }
-
-    if (els.composeIconCycleBtn) {
-      els.composeIconCycleBtn.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        var icons = composeIconSvgPaths();
-        var current = readComposeIconIndex(icons.length);
-        renderComposeIcon((current + 1) % icons.length);
-      });
-    }
-
     if (els.loginBtn) {
       els.loginBtn.addEventListener('click', function () {
         closeLoginMenu();
@@ -1890,7 +1797,7 @@
   }
 
   function bootstrap() {
-    renderComposeIcon(readComposeIconIndex(composeIconSvgPaths().length));
+    renderComposeIcon(readComposeIconIndex());
     highlightCurrentPage();
     window.addEventListener('hashchange', highlightCurrentPage);
     bindThemeSelect();

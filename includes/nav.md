@@ -17,17 +17,12 @@
 </button>
 </form>
 <div class="nav-compose-tools" id="nav-compose-tools" style="display:none;">
-<div class="nav-compose-row">
 <a href="/pages/admin.html#compose" class="nav-compose nav-compose-icon" aria-label="Compose post" title="Compose post">
-<!-- Default icon is replaced by nav-auth.js icon cycler -->
+<!-- Icon is replaced by nav-auth.js -->
 <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"/>
 </svg>
 </a>
-<button id="compose-icon-prev-btn" class="nav-compose-cycle" type="button" aria-label="Previous compose icon" title="Previous compose icon">&#x2039;</button>
-<button id="compose-icon-cycle-btn" class="nav-compose-cycle" type="button" aria-label="Next compose icon" title="Next compose icon">&#x203A;</button>
-</div>
-<span id="compose-icon-name" class="nav-compose-name" aria-live="polite"></span>
 </div>
 <span id="nav-user-name" class="nav-username" style="display:none;"></span>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
