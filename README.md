@@ -237,6 +237,7 @@ This prevents new users from registering while keeping your access.
 - **Publish Control**: Publish now, scheduled, or drip
 - **Draft CRUD**: Create/load/delete drafts from GUI
 - **Media Uploads**: Drag/drop images to upload + insert markdown embeds
+- **Draft-local assets**: Relative markdown paths in draft preview resolve inside the current draft folder
 - **Global Queue Settings**: Drip interval + optional random jitter
 - **Feed Settings**: Full-text feeds toggle + feed item count
 - **Manage Settings**: Site title, registration toggle, themes
@@ -290,6 +291,7 @@ Access admin panel (if in blog-admin group)
 - `blog-run-scheduler` - Trigger scheduler tick
 - `blog-nostr-mirror` - Mirror Nostr posts/comments from configured relays
 - `blog-upload-media` - Upload images for markdown embedding
+- `blog-draft-asset` - Serve draft-local files for relative-path preview rendering
 - `blog-archive` - Render month-grouped archive listing
 - `blog-post-context` - Return post metadata + older/newer navigation context
 

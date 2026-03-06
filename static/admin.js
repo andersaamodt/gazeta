@@ -904,6 +904,49 @@
       return;
     }
     els.markdownPreview.innerHTML = marked.parse(md);
+    rewritePreviewRelativeLinks();
+  }
+
+  function isRelativeContentPath(raw) {
+    const value = String(raw || '').trim();
+    if (!value) {
+      return false;
+    }
+    if (value[0] === '#' || value[0] === '/') {
+      return false;
+    }
+    if (value.indexOf('//') === 0) {
+      return false;
+    }
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) {
+      return false;
+    }
+    return true;
+  }
+
+  function draftAssetUrl(raw) {
+    const value = String(raw || '').trim();
+    if (!state.currentDraftId || !isRelativeContentPath(value)) {
+      return value;
+    }
+    return '/cgi/blog-draft-asset?draft_id=' +
+      encodeURIComponent(state.currentDraftId) +
+      '&path=' + encodeURIComponent(value);
+  }
+
+  function rewritePreviewRelativeLinks() {
+    if (!els.markdownPreview || !state.currentDraftId) {
+      return;
+    }
+    const nodes = els.markdownPreview.querySelectorAll('img[src], source[src], audio[src], video[src], a[href]');
+    nodes.forEach(function (node) {
+      const attr = node.hasAttribute('href') ? 'href' : 'src';
+      const current = node.getAttribute(attr);
+      const next = draftAssetUrl(current);
+      if (next && next !== current) {
+        node.setAttribute(attr, next);
+      }
+    });
   }
 
   function placeCursor(textarea, start, end) {

@@ -1,0 +1,86 @@
+#!/bin/sh
+# Serve draft-local files (admin only) so preview can resolve relative paths.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+draft_id=$(blog_param draft_id)
+rel_path=$(blog_param path)
+
+if [ -z "$draft_id" ] || [ -z "$rel_path" ]; then
+  http-status 400 "Bad Request"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'draft_id and path are required\n'
+  exit 0
+fi
+
+# Standard relative-path semantics only: no absolute paths, no traversal.
+case "$rel_path" in
+  /*|*'\\'*|*'//'*) 
+    http-status 400 "Bad Request"
+    http-header "Content-Type" "text/plain; charset=utf-8"
+    http-end-headers
+    printf 'Invalid path\n'
+    exit 0
+    ;;
+esac
+
+cleaned=$(printf '%s' "$rel_path" | sed -E 's#/+#/#g; s#^\./##')
+case "$cleaned" in
+  ''|'.'|'..'|*'/../'*|'../'*|*'/..')
+    http-status 400 "Bad Request"
+    http-header "Content-Type" "text/plain; charset=utf-8"
+    http-end-headers
+    printf 'Invalid path\n'
+    exit 0
+    ;;
+esac
+
+draft_dir=$(blog_draft_resolve_dir "$draft_id" 2>/dev/null || printf '')
+if [ -z "$draft_dir" ] || [ ! -d "$draft_dir" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'Draft not found\n'
+  exit 0
+fi
+
+file_path="$draft_dir/$cleaned"
+if [ ! -f "$file_path" ] || [ -L "$file_path" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'File not found\n'
+  exit 0
+fi
+
+ext=$(printf '%s' "${file_path##*.}" | tr '[:upper:]' '[:lower:]')
+ctype='application/octet-stream'
+case "$ext" in
+  png) ctype='image/png' ;;
+  jpg|jpeg) ctype='image/jpeg' ;;
+  gif) ctype='image/gif' ;;
+  webp) ctype='image/webp' ;;
+  svg) ctype='image/svg+xml' ;;
+  avif) ctype='image/avif' ;;
+  txt|log) ctype='text/plain; charset=utf-8' ;;
+  md|markdown) ctype='text/markdown; charset=utf-8' ;;
+  json) ctype='application/json' ;;
+  pdf) ctype='application/pdf' ;;
+esac
+
+http-status 200 "OK"
+http-header "Content-Type" "$ctype"
+http-header "Cache-Control" "no-store"
+http-end-headers
+cat "$file_path"
