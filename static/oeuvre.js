@@ -1422,14 +1422,10 @@
         }
         var nextInlineField = activeEl.closest('[data-inline-field][data-element-uid]');
         if (!nextInlineField) {
-          var removedTransient = pruneTransientEntries();
           state.activeEntryUid = '';
           state.activeCellField = '';
           renderList();
           renderAdmin();
-          if (removedTransient) {
-            queueAutosave(120);
-          }
         }
       }, 0);
     });
