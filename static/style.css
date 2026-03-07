@@ -362,11 +362,21 @@ header h1 {
 .list-page-shell {
   max-width: 100%;
   margin: 1.25rem 0 2.4rem;
-  padding: 0;
+  padding: 1.15rem 1.25rem 1rem;
+  border: 1px solid #afbdd8;
+  border-radius: 12px;
+  background: var(--post-card-bg-single, #fdfdfb);
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 
 .list-page-head h1 {
   margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
 .list-validation {
@@ -619,6 +629,13 @@ header h1 {
   color: #b43535;
 }
 
+.list-page-title-actions .list-admin-save-status {
+  margin: 0;
+  width: auto;
+  min-height: 0;
+  font-size: 0.8rem;
+}
+
 .save-spinner {
   width: 0.82rem;
   height: 0.82rem;
@@ -640,6 +657,7 @@ header h1 {
 
 .list-page-admin-bar {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.4rem;
 }
@@ -672,6 +690,30 @@ header h1 {
   font-size: 0.8rem;
   color: #46619a;
   text-decoration: underline;
+}
+
+.list-page-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.list-head-inline-input {
+  width: min(30rem, 72vw);
+  height: 2.2rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.list-head-description-input {
+  width: min(36rem, 84vw);
+  font-size: 0.98rem;
+  font-weight: 500;
+}
+
+.list-page-description-edit-wrap {
+  display: inline-block;
 }
 
 .list-inline-edit-shell {

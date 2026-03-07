@@ -31,8 +31,10 @@
     saveStatus: 'saved',
     saveError: '',
     autosaveQueued: false,
+    saveIndicatorVisible: false,
     editMode: false,
     activeEntryUid: '',
+    activeHeadField: '',
     dragUid: '',
     uidCounter: 1
   };
@@ -283,6 +285,8 @@
     if (state.saveTimer) {
       clearTimeout(state.saveTimer);
     }
+    state.saveIndicatorVisible = true;
+    renderAdmin();
     state.saveTimer = setTimeout(function () {
       state.saveTimer = null;
       persistDraft({ alertOnError: false });
@@ -517,7 +521,11 @@
     var s = getRenderState();
     if (els.title) {
       if (isAdmin()) {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="title">Edit...</button>';
+        if (state.activeHeadField === 'title') {
+          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="list-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'List') + '" data-head-input="title"></span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
+        } else {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="title">Edit...</button><span id="list-page-title-actions" class="list-page-title-actions"></span>';
+        }
       } else {
         els.title.textContent = s.title || 'List';
       }
@@ -529,10 +537,27 @@
     var descText = String(s.description || '');
     if (isAdmin()) {
       els.description.hidden = false;
-      els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+      if (state.activeHeadField === 'description') {
+        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-done="description">Done</button>';
+      } else {
+        els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+      }
     } else {
       els.description.textContent = descText;
       els.description.hidden = !descText;
+    }
+
+    if (isAdmin() && state.activeHeadField) {
+      requestAnimationFrame(function () {
+        var id = state.activeHeadField === 'title' ? 'list-head-title-input' : 'list-head-description-input';
+        var input = document.getElementById(id);
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
     }
   }
 
@@ -711,24 +736,29 @@
     var canRevert = !!state.payload.canonical_exists;
     var revertTitle = canRevert ? 'Revert draft to Nostr version' : 'No Nostr version found';
 
+    var actionsHost = document.getElementById('list-page-title-actions');
     var html = '';
-    html += '<div class="list-page-admin-bar">';
+    html += '<span class="list-page-admin-bar">';
+    if (state.saveIndicatorVisible) {
+      html += '<span id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
+      if (state.saveStatus === 'saving') {
+        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      } else if (state.saveStatus === 'error') {
+        html += 'Save failed';
+      } else {
+        html += 'Saved';
+      }
+      html += '</span>';
+    }
     html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     html += '<button type="button" data-list-action="publish">Publish to Nostr...</button>';
     html += '<button type="button" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '</div>';
-    html += '<div id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
-    if (state.saveStatus === 'saving') {
-      html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-    } else if (state.saveStatus === 'error') {
-      html += 'Save failed';
-    } else {
-      html += 'Saved';
+    html += '</span>';
+    if (actionsHost) {
+      actionsHost.innerHTML = html;
     }
-    html += '</div>';
-
-    els.admin.hidden = false;
-    els.admin.innerHTML = html;
+    els.admin.hidden = true;
+    els.admin.innerHTML = '';
   }
 
   function bindAdminEvents() {
@@ -736,66 +766,56 @@
       return;
     }
 
-    els.admin.addEventListener('click', function (event) {
-      var target = event.target;
-      if (!(target instanceof Element)) {
-        return;
-      }
-      var actionNode = target.closest('[data-list-action]');
-      if (!(actionNode instanceof HTMLElement) || !isAdmin()) {
-        return;
-      }
-      var action = actionNode.getAttribute('data-list-action');
-      if (action === 'toggle-edit') {
-        state.editMode = !state.editMode;
-        if (!state.editMode) {
-          state.activeEntryUid = '';
-        } else if (!state.activeEntryUid && state.draft.entries.length) {
-          state.activeEntryUid = state.draft.entries[0]._uid;
-        }
-        renderAdmin();
-        renderList();
-        return;
-      }
-      if (action === 'publish') {
-        publishDraft();
-        return;
-      }
-      if (action === 'revert') {
-        if (actionNode.disabled) {
-          return;
-        }
-        revertDraft();
-      }
-    });
-
     root.addEventListener('click', function (event) {
       var target = event.target;
       if (!(target instanceof Element) || !isAdmin()) {
         return;
       }
 
+      var topAction = target.closest('[data-list-action]');
+      if (topAction instanceof HTMLElement) {
+        var topActionName = topAction.getAttribute('data-list-action');
+        if (topActionName === 'toggle-edit') {
+          state.editMode = !state.editMode;
+          if (!state.editMode) {
+            state.activeEntryUid = '';
+          } else if (!state.activeEntryUid && state.draft.entries.length) {
+            state.activeEntryUid = state.draft.entries[0]._uid;
+          }
+          renderList();
+          renderAdmin();
+          return;
+        }
+        if (topActionName === 'publish') {
+          publishDraft();
+          return;
+        }
+        if (topActionName === 'revert') {
+          if (topAction.disabled) {
+            return;
+          }
+          revertDraft();
+          return;
+        }
+      }
+
       var headEdit = target.closest('[data-list-head-edit]');
       if (headEdit instanceof HTMLElement) {
         var field = headEdit.getAttribute('data-list-head-edit');
-        if (field === 'title') {
-          var nextTitle = window.prompt('Edit title:', state.draft.title || '');
-          if (nextTitle !== null) {
-            state.draft.title = String(nextTitle || '').trim();
-            renderList();
-            queueAutosave(120);
-          }
+        if (field === 'title' || field === 'description') {
+          state.activeHeadField = field;
+          renderList();
+          renderAdmin();
           return;
         }
-        if (field === 'description') {
-          var nextDesc = window.prompt('Edit description:', state.draft.description || '');
-          if (nextDesc !== null) {
-            state.draft.description = String(nextDesc || '').trim();
-            renderList();
-            queueAutosave(120);
-          }
-          return;
-        }
+      }
+
+      var headDone = target.closest('[data-list-head-done]');
+      if (headDone instanceof HTMLElement) {
+        state.activeHeadField = '';
+        renderList();
+        renderAdmin();
+        return;
       }
 
       var listAction = target.closest('[data-list-action]');
@@ -851,6 +871,64 @@
           queueAutosave(120);
         }
       }
+    });
+
+    root.addEventListener('input', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      var headField = String(target.getAttribute('data-head-input') || '');
+      if (!headField) {
+        return;
+      }
+      if (headField === 'title') {
+        state.draft.title = String(target.value || '');
+        queueAutosave(500);
+      } else if (headField === 'description') {
+        state.draft.description = String(target.value || '');
+        queueAutosave(500);
+      }
+    });
+
+    root.addEventListener('keydown', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      var headField = String(target.getAttribute('data-head-input') || '');
+      if (!headField) {
+        return;
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderList();
+        renderAdmin();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderList();
+        renderAdmin();
+      }
+    });
+
+    root.addEventListener('focusout', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      var headField = String(target.getAttribute('data-head-input') || '');
+      if (!headField) {
+        return;
+      }
+      setTimeout(function () {
+        if (!document.activeElement || !document.activeElement.hasAttribute || !document.activeElement.hasAttribute('data-head-input')) {
+          state.activeHeadField = '';
+          renderList();
+          renderAdmin();
+        }
+      }, 0);
     });
 
     els.content.addEventListener('input', function (event) {
@@ -986,13 +1064,14 @@
         csrf_token: auth.csrf_token
       });
       state.draft = readEditableStateFromPayload();
+      state.saveIndicatorVisible = false;
       if (!state.activeEntryUid && state.draft.entries.length) {
         state.activeEntryUid = state.draft.entries[0]._uid;
       }
       setSaveStatus('saved');
+      renderList();
       renderAdmin();
       renderValidation();
-      renderList();
     } catch (err) {
       if (els.content) {
         els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load list page') + '</p>';
