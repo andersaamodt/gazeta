@@ -115,7 +115,10 @@
       throw new Error('Invalid server response');
     }
     if (!response.ok || !data || data.success === false) {
-      throw new Error((data && data.error) ? data.error : ('Request failed (' + response.status + ')'));
+      var err = new Error((data && data.error) ? data.error : ('Request failed (' + response.status + ')'));
+      err.code = (data && data.code) ? String(data.code) : '';
+      err.httpStatus = response.status;
+      throw err;
     }
     return data;
   }
@@ -396,6 +399,7 @@
       return;
     }
     var opts = options || {};
+    var shouldRetryAuth = false;
     state.busy = true;
     syncMetaFromInputs();
     setSaveStatus('saving');
@@ -418,17 +422,41 @@
       setSaveStatus('saved');
       refreshValidation();
     } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
-      if (opts.alertOnError !== false) {
-        window.alert(err.message || 'Could not save draft');
+      var errCode = String(err && err.code || '');
+      if ((errCode === 'csrf_invalid' || errCode === 'auth_required') && opts.retryAuth !== false) {
+        try {
+          await load();
+          if (isAdmin()) {
+            shouldRetryAuth = true;
+          } else {
+            setSaveStatus('error', err && err.message ? err.message : 'Authentication required');
+          }
+        } catch (_reloadErr) {
+          setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
+        }
+      } else {
+        setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
       }
-      return false;
+      if (shouldRetryAuth) {
+        // Retry once after auth/session refresh.
+      } else {
+        if (opts.alertOnError !== false) {
+          window.alert(err.message || 'Could not save draft');
+        }
+        return false;
+      }
     } finally {
       state.busy = false;
       if (state.autosaveQueued) {
         state.autosaveQueued = false;
         queueAutosave(250);
       }
+    }
+    if (shouldRetryAuth) {
+      return persistDraft({
+        alertOnError: opts.alertOnError,
+        retryAuth: false
+      });
     }
     return true;
   }
