@@ -765,7 +765,7 @@
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? escapeHtml(markdownText) : placeholderHtml('Add text...')) + '</span></button>';
+      html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? markdownInline(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
     }
     if (active && activeField === 'event_id') {
       html += '<div class="list-inline-cell list-inline-link"><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '" placeholder="EVENT_ID"></div>';
@@ -1062,6 +1062,7 @@
           return;
         }
         if (actionType === 'edit') {
+          event.preventDefault();
           state.activeEntryUid = uid;
           state.activeCellField = String(inlineAction.getAttribute('data-inline-field') || '');
           renderList();
@@ -1235,6 +1236,24 @@
         renderListWithFlip(beforeDate);
       }
       queueAutosave(320);
+    });
+
+    els.content.addEventListener('keydown', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var inlineAction = target.closest('[data-list-inline-action="edit"]');
+      if (!(inlineAction instanceof HTMLElement)) {
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        inlineAction.click();
+      }
     });
 
     els.content.addEventListener('dragstart', function (event) {

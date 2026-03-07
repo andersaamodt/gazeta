@@ -887,6 +887,10 @@ header h1 {
   border-radius: 0;
 }
 
+.list-entry-inline .list-inline-markdown a {
+  cursor: text;
+}
+
 .list-inline-handle {
   color: #8ca0c7;
   cursor: move;
