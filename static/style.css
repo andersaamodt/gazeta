@@ -703,7 +703,16 @@ header h1 {
   margin-left: 0.35rem;
   font-size: 0.8rem;
   color: #46619a;
+  text-decoration: none;
+}
+
+.list-inline-edit-link:hover,
+.list-inline-edit-link:focus-visible {
+  background: transparent !important;
+  color: #46619a !important;
+  -webkit-text-fill-color: #46619a;
   text-decoration: underline;
+  box-shadow: none;
 }
 
 .list-page-title-actions {
