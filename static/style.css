@@ -670,7 +670,7 @@ header h1 {
 
 .list-page-admin-bar button[data-list-action="publish"],
 .list-page-admin-bar button[data-list-action="toggle-edit"] {
-  color: #fff;
+  color: #fff !important;
 }
 
 .list-page-admin-bar button:disabled {
@@ -825,7 +825,7 @@ header h1 {
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.46rem;
-  padding: 0;
+  padding: 0 0.35rem;
   border: 0;
   border-radius: 0;
   background: transparent;

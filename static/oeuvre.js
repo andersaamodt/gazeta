@@ -770,6 +770,9 @@
 
   function renderInlineEditor(elements) {
     var html = '';
+    var groupedModes = ['year', 'first_letter', 'month', 'marker'];
+    var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
+    var hasStructural = hasStructuralElements(elements);
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
@@ -797,11 +800,35 @@
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
 
-    html += '<ul class="list-entries list-entries-inline">';
-    elements.forEach(function (el) {
-      html += renderElementInline(el);
-    });
-    html += '</ul>';
+    if (isGrouped && !hasStructural) {
+      var currentLabel = '__none__';
+      var groupOpen = false;
+      elements.forEach(function (el) {
+        var label = groupLabelForEntry(el, state.draft.group_by);
+        if (label !== currentLabel) {
+          if (groupOpen) {
+            html += '</ul></section>';
+          }
+          currentLabel = label;
+          groupOpen = true;
+          html += '<section class="list-year-group">';
+          html += '<div class="list-year-head">';
+          html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
+          html += '</div>';
+          html += '<ul class="list-entries list-entries-inline">';
+        }
+        html += renderElementInline(el);
+      });
+      if (groupOpen) {
+        html += '</ul></section>';
+      }
+    } else {
+      html += '<ul class="list-entries list-entries-inline">';
+      elements.forEach(function (el) {
+        html += renderElementInline(el);
+      });
+      html += '</ul>';
+    }
     return html;
   }
 
