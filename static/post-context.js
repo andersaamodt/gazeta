@@ -4,6 +4,7 @@
   var currentNostrEventId = '';
   var refreshInFlight = false;
   var submitInFlight = false;
+  var postMenuBusy = false;
 
   function isPostPage(pathname) {
     var path = String(pathname || '');
@@ -23,6 +24,242 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function getSessionToken() {
+    try {
+      return String(localStorage.getItem('session_token') || '').trim();
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function getCsrfToken() {
+    try {
+      return String(localStorage.getItem('csrf_token') || '').trim();
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function postForm(path, payload) {
+    var params = new URLSearchParams();
+    Object.keys(payload || {}).forEach(function (key) {
+      var value = payload[key];
+      if (value === undefined || value === null) {
+        return;
+      }
+      params.set(key, String(value));
+    });
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      credentials: 'same-origin',
+      body: params.toString()
+    }).then(function (res) { return res.json(); });
+  }
+
+  function closePostPageMenu() {
+    var panel = document.querySelector('.post-page-menu-panel');
+    var trigger = document.querySelector('.post-page-menu-trigger');
+    if (panel) {
+      panel.hidden = true;
+    }
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function togglePostPageMenu() {
+    var panel = document.querySelector('.post-page-menu-panel');
+    var trigger = document.querySelector('.post-page-menu-trigger');
+    if (!panel || !trigger) {
+      return;
+    }
+    var nextOpen = !!panel.hidden;
+    panel.hidden = !nextOpen;
+    trigger.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  }
+
+  function ensurePostPageMenu(layout) {
+    if (!layout || !layout.card) {
+      return null;
+    }
+    var head = layout.card.querySelector('.post-head');
+    if (!head) {
+      return null;
+    }
+    var existing = head.querySelector('.post-page-menu');
+    if (existing) {
+      return existing;
+    }
+    var wrap = document.createElement('div');
+    wrap.className = 'post-page-menu';
+    wrap.hidden = true;
+    wrap.innerHTML = '' +
+      '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋯</button>' +
+      '<div class="post-page-menu-panel" role="menu" hidden>' +
+      '<button type="button" data-post-page-action="add_to_oeuvre" role="menuitem">Add to oeuvre...</button>' +
+      '<button type="button" data-post-page-action="add_to_list" role="menuitem">Add to list...</button>' +
+      '<button type="button" data-post-page-action="edit_post" role="menuitem">Edit post...</button>' +
+      '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" role="menuitem">Delete post...</button>' +
+      '</div>';
+    head.appendChild(wrap);
+    return wrap;
+  }
+
+  function checkAdminSession() {
+    var token = getSessionToken();
+    if (!token || token === 'undefined' || token === 'null') {
+      return Promise.resolve(false);
+    }
+    return fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token), {
+      credentials: 'same-origin'
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        return !!(data && data.authenticated && data.is_admin);
+      })
+      .catch(function () {
+        return false;
+      });
+  }
+
+  function refreshPostPageMenuVisibility() {
+    var menu = document.querySelector('.post-page-menu');
+    if (!menu) {
+      return;
+    }
+    checkAdminSession().then(function (isAdmin) {
+      menu.hidden = !isAdmin;
+      if (!isAdmin) {
+        closePostPageMenu();
+      }
+    });
+  }
+
+  function runPostPageAction(action) {
+    var picked = String(action || '').trim();
+    if (!picked || postMenuBusy || !currentRelPath) {
+      return;
+    }
+    var token = getSessionToken();
+    var csrf = getCsrfToken();
+    if (!token || !csrf) {
+      window.alert('Sign in as admin first.');
+      return;
+    }
+
+    if (picked === 'edit_post') {
+      postMenuBusy = true;
+      postForm('/cgi/blog-create-draft-from-post', {
+        post_path: currentRelPath,
+        session_token: token,
+        csrf_token: csrf
+      })
+        .then(function (data) {
+          if (!data || !data.success) {
+            throw new Error((data && data.error) || 'Could not create draft from post');
+          }
+          closePostPageMenu();
+          window.location.href = '/pages/admin.html#compose';
+        })
+        .catch(function (err) {
+          window.alert(err.message || 'Could not create draft from post');
+        })
+        .finally(function () {
+          postMenuBusy = false;
+        });
+      return;
+    }
+
+    if (picked === 'add_to_oeuvre' || picked === 'add_to_list') {
+      var targetSlug = 'oeuvre';
+      var sequence = Promise.resolve();
+      if (picked === 'add_to_list') {
+        sequence = postForm('/cgi/blog-list-pages', {
+          session_token: token,
+          csrf_token: csrf
+        }).then(function (listsData) {
+          if (!listsData || !listsData.success) {
+            throw new Error((listsData && listsData.error) || 'Could not load lists');
+          }
+          var lists = Array.isArray(listsData.lists) ? listsData.lists : [];
+          var options = lists.map(function (item) { return String((item && item.slug) || '').trim(); }).filter(Boolean);
+          var fallback = options.length ? options[0] : 'oeuvre';
+          var pickedSlug = window.prompt('Select list slug:\n' + (options.length ? options.join(', ') : 'oeuvre'), fallback);
+          if (pickedSlug === null) {
+            throw new Error('__cancel__');
+          }
+          targetSlug = String(pickedSlug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+          if (!targetSlug) {
+            throw new Error('List slug is required.');
+          }
+        });
+      }
+      postMenuBusy = true;
+      sequence
+        .then(function () {
+          var dateInput = window.prompt('Optional entry date (YYYY / YYYY-MM / YYYY-MM-DD):', '');
+          if (dateInput === null) {
+            throw new Error('__cancel__');
+          }
+          var markdownInput = window.prompt('Optional markdown line for this entry:', '');
+          if (markdownInput === null) {
+            throw new Error('__cancel__');
+          }
+          return postForm('/cgi/blog-add-post-to-list', {
+            list_slug: targetSlug,
+            post_path: currentRelPath,
+            date: String(dateInput || '').trim(),
+            markdown: String(markdownInput || '').trim(),
+            marker: picked === 'add_to_oeuvre' ? 'oeuvre' : '',
+            session_token: token,
+            csrf_token: csrf
+          });
+        })
+        .then(function (data) {
+          if (!data || !data.success) {
+            throw new Error((data && data.error) || 'Could not add post to list');
+          }
+          closePostPageMenu();
+        })
+        .catch(function (err) {
+          if (!err || err.message === '__cancel__') {
+            return;
+          }
+          window.alert(err.message || 'Could not update list');
+        })
+        .finally(function () {
+          postMenuBusy = false;
+        });
+      return;
+    }
+
+    if (picked === 'delete_post') {
+      if (!window.confirm('Delete this published post from this site? This cannot be undone.')) {
+        return;
+      }
+      postMenuBusy = true;
+      postForm('/cgi/blog-manage-post', {
+        action: 'delete',
+        post_path: currentRelPath,
+        session_token: token,
+        csrf_token: csrf
+      })
+        .then(function (data) {
+          if (!data || !data.success) {
+            throw new Error((data && data.error) || 'Delete failed');
+          }
+          window.location.href = '/pages/archive.html';
+        })
+        .catch(function (err) {
+          window.alert(err.message || 'Delete failed');
+        })
+        .finally(function () {
+          postMenuBusy = false;
+        });
+    }
   }
 
   function ensureMeta(name, value, attrType) {
@@ -462,6 +699,9 @@
       layout.body.insertAdjacentHTML('beforeend', renderPostNav(payload));
     }
 
+    ensurePostPageMenu(layout);
+    refreshPostPageMenuVisibility();
+
     if (payload.current.nostr && !document.querySelector('.post-nostr-proof')) {
       currentNostrAddress = payload.current.nostr.address || '';
       currentNostrEventId = payload.current.nostr.id || '';
@@ -510,5 +750,30 @@
       });
   }
 
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    var trigger = target.closest('.post-page-menu-trigger');
+    if (trigger) {
+      event.preventDefault();
+      togglePostPageMenu();
+      return;
+    }
+    var actionNode = target.closest('[data-post-page-action]');
+    if (actionNode instanceof HTMLElement) {
+      event.preventDefault();
+      var action = actionNode.getAttribute('data-post-page-action');
+      runPostPageAction(action);
+      return;
+    }
+    var menu = document.querySelector('.post-page-menu');
+    if (menu && !menu.hidden && !menu.contains(target)) {
+      closePostPageMenu();
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', loadPostContext);
+  window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);
 })();

@@ -252,13 +252,15 @@
     if (!state.draft) {
       state.draft = readEditableStateFromPayload();
     }
+    var canRevert = !!(state.payload && state.payload.canonical_exists);
+    var revertTitle = canRevert ? 'Revert draft to Nostr version' : 'No Nostr version found';
     var entries = Array.isArray(state.draft.entries) ? state.draft.entries : [];
     var html = '';
     html += '<details class="list-admin-panel" open>';
     html += '<summary class="list-admin-summary">Edit List</summary>';
     html += '<div class="list-admin-topbar">';
     html += '<div class="list-admin-actions">';
-    html += '<button type="button" data-list-action="revert" title="Revert draft to Nostr version">Revert</button>';
+    html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     html += '<button type="button" data-list-action="publish">Publish to Nostr...</button>';
     html += '</div>';
     html += '</div>';
@@ -454,6 +456,9 @@
     if (state.busy) {
       return;
     }
+    if (!(state.payload && state.payload.canonical_exists)) {
+      return;
+    }
     if (!window.confirm('Discard local draft changes and restore canonical Nostr version?')) {
       return;
     }
@@ -493,6 +498,9 @@
           return;
         }
         if (action === 'revert') {
+          if (actionNode.disabled) {
+            return;
+          }
           revertDraft();
           return;
         }

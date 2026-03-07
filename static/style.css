@@ -450,6 +450,20 @@ header h1 {
   border-radius: 8px;
 }
 
+.list-admin-actions button:disabled {
+  background: #d4dae6;
+  border-color: #c3cada;
+  color: #6d778d;
+  cursor: default;
+  box-shadow: none;
+}
+
+.list-admin-actions button:disabled:hover {
+  background: #d4dae6;
+  border-color: #c3cada;
+  color: #6d778d;
+}
+
 .list-admin-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, max-content));
@@ -1569,6 +1583,71 @@ a:hover {
   margin: 0;
   text-align: right;
   white-space: nowrap;
+}
+
+.post-page-menu {
+  position: relative;
+  align-self: flex-start;
+}
+
+.post-page-menu-trigger {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.post-page-menu-trigger:hover,
+.post-page-menu-trigger:focus-visible {
+  background: var(--light-bg);
+}
+
+.post-page-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 12rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  padding: 0.28rem;
+  z-index: 60;
+}
+
+.post-page-menu-panel button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 0.45rem 0.58rem;
+  font-size: 0.86rem;
+}
+
+.post-page-menu-panel button:hover,
+.post-page-menu-panel button:focus-visible {
+  background: #f0f4ff;
+  outline: none;
+}
+
+.post-page-menu-panel .post-page-menu-delete {
+  color: #b13a3a;
+}
+
+.post-page-menu-panel .post-page-menu-delete:hover,
+.post-page-menu-panel .post-page-menu-delete:focus-visible {
+  background: #fdecec;
 }
 
 .post-date {
