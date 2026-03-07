@@ -82,7 +82,7 @@ next_state=$(printf '%s\n' "$state_json" | jq -c \
     date: $date,
     markdown: $markdown
   }])
-  | .entries = (.elements | map(select(.type != "group")))
+  | .entries = (.elements // [])
 ')
 next_state=$(blog_list_normalize_state_json "$list_slug" "$next_state")
 blog_list_save_draft_state_json "$list_slug" "$next_state"

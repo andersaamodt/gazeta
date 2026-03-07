@@ -52,12 +52,12 @@ blog_list_normalize_state_json() {
     def elements_from_tags:
       [ .tags[]?
         | select(type=="array" and length>=1)
-        | if .[0] == "group" then
-            { type: "group", title: (.[1] // "" | tostring) }
-          elif .[0] == "entry" then
+        | if .[0] == "entry" then
             entry_like_from("entry")
+          elif .[0] == "subentry" then
+            entry_like_from("subentry")
           elif .[0] == "sub" then
-            entry_like_from("sub")
+            entry_like_from("subentry")
           else empty end
       ];
     def elements_from_entries:
@@ -72,20 +72,14 @@ blog_list_normalize_state_json() {
           }
       ];
     ((.elements // elements_from_entries // elements_from_tags // [])) as $raw_elements
-    | ($raw_elements | map(
-        if (.type == "group") then
-          { type: "group", title: (flex(.; 1; "title") | tostring) }
-        else
-          {
-            type: (if (.type == "sub") then "sub" else "entry" end),
-            event_id: (flex(.; 1; "event_id") | tostring),
-            relay_hint: (flex(.; 2; "relay_hint") | tostring),
-            marker: (flex(.; 3; "marker") | tostring),
-            date: (flex(.; 4; "date") | tostring),
-            markdown: (flex(.; 5; "markdown") | tostring)
-          }
-        end
-      )) as $elements
+    | ($raw_elements | map({
+        type: (if (.type == "subentry" or .type == "sub") then "subentry" else "entry" end),
+        event_id: (flex(.; 1; "event_id") | tostring),
+        relay_hint: (flex(.; 2; "relay_hint") | tostring),
+        marker: (flex(.; 3; "marker") | tostring),
+        date: (flex(.; 4; "date") | tostring),
+        markdown: (flex(.; 5; "markdown") | tostring)
+      })) as $elements
     | {
         slug: $slug,
         title: ((.title // first_tag("title") // "List") | tostring),
@@ -93,7 +87,7 @@ blog_list_normalize_state_json() {
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         content: ((.content // "") | tostring),
         elements: $elements,
-        entries: ($elements | map(select(.type != "group")))
+        entries: $elements
       }
     | .tags = (
         [
@@ -102,10 +96,8 @@ blog_list_normalize_state_json() {
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end)
         ]
         + (.elements | map(
-            if .type == "group" then
-              ["group", (.title // "")]
-            elif .type == "sub" then
-              ["sub", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
+            if .type == "subentry" then
+              ["subentry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
             else
               ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
             end
@@ -216,25 +208,15 @@ blog_list_validate_and_enrich_state_json() {
 
   current_year=""
   seen_years="|"
-  active_group=""
-  have_group=false
+  have_entry=false
   idx=0
   printf '%s\n' "$state_json" | jq -c '(.elements // ((.entries // []) | map(. + {type:"entry"})) // []) | .[]' 2>/dev/null | while IFS= read -r element || [ -n "$element" ]; do
     element_type=$(printf '%s\n' "$element" | jq -r '.type // "entry"' 2>/dev/null || printf 'entry')
-    if [ "$element_type" = "group" ]; then
-      title=$(printf '%s\n' "$element" | jq -r '.title // ""' 2>/dev/null || printf '')
-      if [ -n "$active_group" ]; then
-        printf 'Group %s appears before closing previous group "%s"\n' "$((idx + 1))" "$active_group" >> "$errors_tmp"
-      fi
-      active_group="$title"
-      have_group=true
-      jq -cn --arg type "group" --arg title "$title" '{type:$type,title:$title}' >> "$elements_tmp"
-      idx=$((idx + 1))
-      continue
-    fi
-
-    if [ "$element_type" != "entry" ] && [ "$element_type" != "sub" ]; then
+    if [ "$element_type" != "entry" ] && [ "$element_type" != "subentry" ] && [ "$element_type" != "sub" ]; then
       element_type="entry"
+    fi
+    if [ "$element_type" = "sub" ]; then
+      element_type="subentry"
     fi
 
     event_id=$(printf '%s\n' "$element" | jq -r '.event_id // ""' 2>/dev/null || printf '')
@@ -243,12 +225,12 @@ blog_list_validate_and_enrich_state_json() {
     date_raw=$(printf '%s\n' "$element" | jq -r '.date // ""' 2>/dev/null || printf '')
     markdown=$(printf '%s\n' "$element" | jq -r '.markdown // ""' 2>/dev/null || printf '')
 
-    if [ "$element_type" = "sub" ]; then
-      if [ "$have_group" != "true" ] || [ -z "$active_group" ]; then
-        printf 'Sub entry %s appears before any group\n' "$((idx + 1))" >> "$errors_tmp"
+    if [ "$element_type" = "subentry" ]; then
+      if [ "$have_entry" != "true" ]; then
+        printf 'Subentry %s appears before any entry\n' "$((idx + 1))" >> "$errors_tmp"
       fi
     else
-      active_group=""
+      have_entry=true
     fi
 
     resolved=false
@@ -325,7 +307,6 @@ blog_list_validate_and_enrich_state_json() {
       --arg date "$date_raw" \
       --arg markdown "$markdown" \
       --arg type "$element_type" \
-      --arg group_title "$active_group" \
       --arg year "$year" \
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
@@ -333,7 +314,6 @@ blog_list_validate_and_enrich_state_json() {
       --argjson resolved "$( [ "$resolved" = "true" ] && printf true || printf false )" \
       '{
         type: $type,
-        group_title: $group_title,
         event_id: $event_id,
         relay_hint: $relay_hint,
         marker: $marker,

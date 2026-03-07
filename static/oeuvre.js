@@ -120,20 +120,13 @@
   }
 
   function isEntryType(type) {
-    return type === 'entry' || type === 'sub';
+    return type === 'entry' || type === 'subentry';
   }
 
   function normalizeElement(raw) {
     var type = String(raw && raw.type || 'entry');
-    if (type !== 'group' && type !== 'sub') {
+    if (type !== 'subentry') {
       type = 'entry';
-    }
-    if (type === 'group') {
-      return {
-        _uid: String(raw && raw._uid || nextUid()),
-        type: 'group',
-        title: String(raw && raw.title || '')
-      };
     }
     return {
       _uid: String(raw && raw._uid || nextUid()),
@@ -196,7 +189,7 @@
   function hasStructuralElements(elements) {
     return (Array.isArray(elements) ? elements : []).some(function (el) {
       var type = String(el && el.type || 'entry');
-      return type === 'group' || type === 'sub';
+      return type === 'subentry';
     });
   }
 
@@ -532,18 +525,8 @@
       return;
     }
     var kind = String(type || 'entry');
-    if (kind !== 'group' && !isEntryType(kind)) {
+    if (!isEntryType(kind)) {
       kind = 'entry';
-    }
-    if (kind === 'group') {
-      state.draft.elements.push({
-        _uid: nextUid(),
-        type: 'group',
-        title: ''
-      });
-      state.activeEntryUid = state.draft.elements[state.draft.elements.length - 1]._uid;
-      state.activeCellField = 'title';
-      return;
     }
     var entry = {
       _uid: nextUid(),
@@ -561,28 +544,8 @@
 
   function applyTypeChange(element, nextType) {
     var targetType = String(nextType || 'entry');
-    if (targetType !== 'entry' && targetType !== 'sub' && targetType !== 'group') {
+    if (targetType !== 'entry' && targetType !== 'subentry') {
       targetType = 'entry';
-    }
-    if (targetType === 'group') {
-      element.type = 'group';
-      element.title = String(element.title || element.markdown || '');
-      element.event_id = '';
-      element.relay_hint = '';
-      element.marker = '';
-      element.date = '';
-      element.markdown = '';
-      return;
-    }
-    if (String(element.type || '') === 'group') {
-      element.type = targetType;
-      element.markdown = String(element.title || '');
-      element.title = '';
-      element.event_id = '';
-      element.relay_hint = '';
-      element.marker = String(element.marker || 'oeuvre');
-      element.date = '';
-      return;
     }
     element.type = targetType;
   }
@@ -676,8 +639,7 @@
     var t = String(type || 'entry');
     return '<select class="list-inline-type-select" data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '">' +
       '<option value="entry"' + (t === 'entry' ? ' selected' : '') + '>entry</option>' +
-      '<option value="sub"' + (t === 'sub' ? ' selected' : '') + '>sub</option>' +
-      '<option value="group"' + (t === 'group' ? ' selected' : '') + '>group</option>' +
+      '<option value="subentry"' + (t === 'subentry' ? ' selected' : '') + '>subentry</option>' +
       '</select>';
   }
 
@@ -687,21 +649,30 @@
 
   function renderStructuredReadOnly(elements) {
     var html = '<ul class="list-entries">';
-    var groupOpen = false;
+    var entryOpen = false;
+    var subListOpen = false;
 
     (Array.isArray(elements) ? elements : []).forEach(function (el) {
       var type = String(el && el.type || 'entry');
-      if (type === 'group') {
-        if (groupOpen) {
-          html += '</ul></li>';
+      if (type === 'entry') {
+        if (subListOpen) {
+          html += '</ul>';
+          subListOpen = false;
         }
-        html += '<li class="list-entry-line list-group-line"><span class="list-group-title">' + escapeHtml(String(el && el.title || '')) + '</span><ul class="list-sub-entries">';
-        groupOpen = true;
+        if (entryOpen) {
+          html += '</li>';
+        }
+        html += '<li class="list-entry-line">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '');
+        entryOpen = true;
         return;
       }
 
-      if (type === 'sub') {
-        if (groupOpen) {
+      if (type === 'subentry') {
+        if (entryOpen) {
+          if (!subListOpen) {
+            html += '<ul class="list-sub-entries">';
+            subListOpen = true;
+          }
           html += renderEntryReadOnly(el);
         } else {
           html += '<li class="list-entry-line list-sub-orphan">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '') + '</li>';
@@ -709,15 +680,22 @@
         return;
       }
 
-      if (groupOpen) {
-        html += '</ul></li>';
-        groupOpen = false;
+      if (entryOpen) {
+        if (subListOpen) {
+          html += '</ul>';
+          subListOpen = false;
+        }
+        html += '</li>';
+        entryOpen = false;
       }
-      html += renderEntryReadOnly(el);
+      html += '<li class="list-entry-line">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '') + '</li>';
     });
 
-    if (groupOpen) {
-      html += '</ul></li>';
+    if (subListOpen) {
+      html += '</ul>';
+    }
+    if (entryOpen) {
+      html += '</li>';
     }
     html += '</ul>';
     return html;
@@ -770,22 +748,6 @@
     html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" draggable="true">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
-    if (type === 'group') {
-      html += '<div class="list-inline-cell list-inline-date">' + renderTypeSelect(uid, type) + '</div>';
-      if (active && activeField === 'title') {
-        html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(String(el && el.title || '')) + '" placeholder="Group title"></div>';
-        html += '<div class="list-inline-cell list-inline-link"></div>';
-        html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
-      } else {
-        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (String(el && el.title || '').trim() ? escapeHtml(String(el && el.title || '')) : placeholderHtml('Add text...')) + '</span></button>';
-        html += '<div class="list-inline-cell list-inline-link"></div>';
-        html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
-      }
-
-      html += '</li>';
-      return html;
-    }
-
     var markdownText = String(el && el.markdown || '').trim();
     var dateText = String(el && el.date || '');
     var eventId = String(el && el.event_id || '');
@@ -811,7 +773,7 @@
       html += '<details class="list-admin-eventid-details" open>';
       html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
-      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="sub"' + (type === 'sub' ? ' selected' : '') + '>sub</option></select></label>';
+      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="subentry"' + (type === 'subentry' ? ' selected' : '') + '>subentry</option></select></label>';
       html += '</details>';
       html += '</div>';
     }
@@ -834,7 +796,7 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<label><span>Type</span><select id="list-admin-add-type"><option value="entry" selected>entry</option><option value="sub">sub</option><option value="group">group</option></select></label>';
+    html += '<label><span>Type</span><select id="list-admin-add-type"><option value="entry" selected>entry</option><option value="subentry">subentry</option></select></label>';
     html += '<button type="button" data-list-action="add" title="Add entry">+</button>';
     html += '</div>';
     html += '</div>';
