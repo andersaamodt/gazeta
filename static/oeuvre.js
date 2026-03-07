@@ -41,6 +41,8 @@
     dragDropped: false,
     dragLastTargetKey: '',
     dragStartElements: null,
+    pointerDownEntryUid: '',
+    pointerDownAt: 0,
     pendingNewEntry: null,
     uidCounter: 1
   };
@@ -978,17 +980,20 @@
       } else {
         els.content.innerHTML = '<p class="placeholder">No entries yet.</p>';
       }
+      renderAdmin();
       return;
     }
 
     if (inlineMode) {
       els.content.innerHTML = renderInlineEditor(elements);
+      renderAdmin();
       return;
     }
 
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     }), s.group_by);
+    renderAdmin();
   }
 
   function renderValidation() {
@@ -1237,6 +1242,19 @@
       }
     });
 
+    els.content.addEventListener('mousedown', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var row = target.closest('.list-entry-inline[data-element-uid]');
+      state.pointerDownEntryUid = row ? String(row.getAttribute('data-element-uid') || '') : '';
+      state.pointerDownAt = Date.now();
+    });
+
     root.addEventListener('input', function (event) {
       var target = event.target;
       if (!(target instanceof HTMLInputElement) || !isAdmin()) {
@@ -1391,6 +1409,10 @@
           state.activeCellField = '';
           renderList();
           renderAdmin();
+          return;
+        }
+        var pointerIsSameRow = state.pointerDownEntryUid === uid && (Date.now() - Number(state.pointerDownAt || 0)) < 600;
+        if (pointerIsSameRow) {
           return;
         }
         var sameRow = activeEl.closest('.list-entry-inline[data-element-uid]');
