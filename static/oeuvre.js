@@ -624,6 +624,26 @@
     }
   }
 
+  function isPendingNewEntryEditedAnyField() {
+    if (!state.pendingNewEntry || !state.pendingNewEntry.uid) {
+      return false;
+    }
+    var idx = findElementIndex(state.pendingNewEntry.uid);
+    if (idx < 0) {
+      return false;
+    }
+    var entry = state.draft.elements[idx] || {};
+    var d = state.pendingNewEntry.defaults || {};
+    return (
+      String(entry.event_id || '') !== String(d.event_id || '') ||
+      String(entry.relay_hint || '') !== String(d.relay_hint || '') ||
+      String(entry.marker || '') !== String(d.marker || '') ||
+      String(entry.date || '') !== String(d.date || '') ||
+      Math.max(0, Number(entry.depth || 0) || 0) !== Math.max(0, Number(d.depth || 0) || 0) ||
+      String(entry.markdown || '') !== String(d.markdown || '')
+    );
+  }
+
   function shouldAutosaveForUid(uid) {
     var targetUid = String(uid || '');
     if (!targetUid || !state.pendingNewEntry || !state.pendingNewEntry.uid) {
@@ -647,7 +667,18 @@
       return false;
     }
     var beforeLen = state.draft.elements.length;
-    state.draft.elements = state.draft.elements.filter(isSubstantiveEntry);
+    state.draft.elements = state.draft.elements.filter(function (entry) {
+      if (isSubstantiveEntry(entry)) {
+        return true;
+      }
+      var uid = String(entry && entry._uid || '');
+      if (uid && state.pendingNewEntry && String(state.pendingNewEntry.uid || '') === uid) {
+        // Keep a pending row visible while the admin is actively filling it out,
+        // even if it is not yet publishable.
+        return isPendingNewEntryEditedAnyField();
+      }
+      return false;
+    });
     if (state.pendingNewEntry && state.pendingNewEntry.uid && findElementIndex(state.pendingNewEntry.uid) < 0) {
       state.pendingNewEntry = null;
     }
@@ -1465,6 +1496,75 @@
         event.preventDefault();
         inlineAction.click();
       }
+    });
+
+    els.content.addEventListener('keydown', function (event) {
+      if (!state.editMode || !isAdmin() || event.key !== 'Tab') {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      var uid = String(target.getAttribute('data-element-uid') || '');
+      var field = String(target.getAttribute('data-inline-field') || '');
+      if (!uid || !field) {
+        return;
+      }
+      var rowNodes = Array.prototype.slice.call(els.content.querySelectorAll('.list-entry-inline[data-element-uid]'));
+      if (!rowNodes.length) {
+        return;
+      }
+      var rowUids = rowNodes.map(function (row) {
+        return String(row.getAttribute('data-element-uid') || '');
+      });
+      var rowIdx = rowUids.indexOf(uid);
+      if (rowIdx < 0) {
+        return;
+      }
+
+      var nextUid = uid;
+      var nextField = field;
+      var backward = !!event.shiftKey;
+
+      if (field === 'event_id') {
+        nextField = backward ? 'date' : 'markdown';
+        if (!backward) {
+          nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
+        }
+      } else if (field === 'markdown') {
+        if (backward) {
+          nextUid = rowUids[(rowIdx - 1 + rowUids.length) % rowUids.length] || uid;
+          nextField = 'date';
+        } else {
+          nextField = 'date';
+        }
+      } else if (field === 'date') {
+        if (backward) {
+          nextField = 'markdown';
+        } else {
+          nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
+          nextField = 'markdown';
+        }
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      state.activeEntryUid = nextUid;
+      state.activeCellField = nextField;
+      renderList();
+      renderAdmin();
+      requestAnimationFrame(function () {
+        var selector = '[data-inline-field="' + nextField + '"][data-element-uid="' + nextUid + '"]';
+        var nextInput = els.content.querySelector(selector);
+        if (nextInput && typeof nextInput.focus === 'function') {
+          nextInput.focus();
+          if (nextInput instanceof HTMLInputElement && typeof nextInput.select === 'function') {
+            nextInput.select();
+          }
+        }
+      });
     });
 
     els.content.addEventListener('dragstart', function (event) {
