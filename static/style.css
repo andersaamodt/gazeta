@@ -402,6 +402,8 @@ header h1 {
 
 .list-admin-panel {
   margin: 0;
+  display: block;
+  width: 100%;
 }
 
 .list-admin-panel[open] {
@@ -413,6 +415,8 @@ header h1 {
   font-weight: 700;
   font-size: 0.95rem;
   list-style: none;
+  display: block;
+  width: 100%;
 }
 
 .list-admin-summary::-webkit-details-marker {
