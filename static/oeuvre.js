@@ -918,8 +918,14 @@
       return;
     }
 
-    var canRevert = !!state.payload.canonical_exists;
-    var revertTitle = canRevert ? 'Revert draft to Nostr version' : 'No Nostr version found';
+    var hasCanonical = !!state.payload.canonical_exists;
+    var hasDraftChanges = !!state.payload.draft_differs;
+    var showRevert = !!state.editMode;
+    var showPublish = !!state.editMode || hasDraftChanges;
+    var canRevert = hasCanonical && hasDraftChanges;
+    var revertTitle = canRevert
+      ? 'Revert draft to Nostr version'
+      : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
 
     var actionsHost = document.getElementById('list-page-title-actions');
     var html = '';
@@ -935,8 +941,12 @@
       }
       html += '</span>';
     }
-    html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
+    if (showRevert) {
+      html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
+    }
+    if (showPublish) {
+      html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
+    }
     html += '<button type="button" class="list-admin-primary-btn" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
     html += '</span>';
     if (actionsHost) {
