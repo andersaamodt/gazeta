@@ -223,10 +223,11 @@
     if (!src) {
       return '#';
     }
-    var ch = src.charAt(0).toUpperCase();
-    if (!/[A-Z0-9]/.test(ch)) {
+    var match = src.match(/[A-Za-z0-9]/);
+    if (!match) {
       return '#';
     }
+    var ch = String(match[0] || '').toUpperCase();
     return ch;
   }
 
