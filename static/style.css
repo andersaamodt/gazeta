@@ -947,9 +947,17 @@ header h1 {
 
 .list-inline-actions button:hover,
 .list-inline-actions button:focus-visible {
-  background: rgba(180, 35, 24, 0.14);
+  background: rgba(180, 35, 24, 0.14) !important;
   color: var(--danger, #b42318) !important;
   -webkit-text-fill-color: var(--danger, #b42318);
+  box-shadow: none;
+}
+
+.list-inline-actions button:active {
+  background: rgba(180, 35, 24, 0.2) !important;
+  color: var(--danger, #b42318) !important;
+  -webkit-text-fill-color: var(--danger, #b42318);
+  box-shadow: none;
 }
 
 .list-inline-eventid {
