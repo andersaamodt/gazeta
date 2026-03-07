@@ -934,7 +934,17 @@ header h1 {
 .list-entry-inline input[type=\"text\"] {
   width: 100%;
   min-width: 0;
-  height: 2.05rem;
+  height: 2rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.55rem;
+  line-height: 1.2;
+}
+
+.list-inline-eventid input[type="text"] {
+  box-sizing: border-box;
+  height: 2rem;
+  padding: 0.35rem 0.55rem;
+  line-height: 1.2;
 }
 
 .list-inline-actions button {
