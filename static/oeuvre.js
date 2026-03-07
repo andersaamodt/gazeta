@@ -881,11 +881,6 @@
     } else {
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
-    if (active && activeField === 'event_id') {
-      html += '<div class="list-inline-cell list-inline-link"><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '" placeholder="EVENT_ID"></div>';
-    } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-link" data-list-inline-action="edit" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : placeholderHtml('Add link...')) + '</button>';
-    }
     html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button></div>';
     if (active) {
       html += '<div class="list-inline-eventid">';
@@ -929,7 +924,6 @@
     html += '<span class="list-inline-head-depth" aria-hidden="true"></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-date">Date</span>';
-    html += '<span class="list-inline-head-link">Link</span>';
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
 
@@ -1142,6 +1136,15 @@
           renderList();
           renderAdmin();
           return;
+        }
+      }
+
+      var eventSummary = target.closest('.list-admin-eventid-details summary');
+      if (eventSummary instanceof HTMLElement && state.editMode) {
+        var eventRow = eventSummary.closest('.list-entry-inline[data-element-uid]');
+        if (eventRow instanceof HTMLElement) {
+          state.activeEntryUid = String(eventRow.getAttribute('data-element-uid') || '');
+          state.activeCellField = 'event_id';
         }
       }
 
