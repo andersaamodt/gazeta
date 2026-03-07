@@ -752,7 +752,7 @@
       html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
       html += '<div class="list-inline-eventid">';
       html += '<details class="list-admin-eventid-details"' + (eventId ? ' open' : '') + '>';
-      html += '<summary>Add event_id</summary>';
+      html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
       html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="sub"' + (type === 'sub' ? ' selected' : '') + '>sub</option></select></label>';
       html += '</details>';
@@ -770,9 +770,7 @@
 
   function renderInlineEditor(elements) {
     var html = '';
-    html += '<div class="list-inline-edit-shell">';
-    html += '<div class="list-inline-edit-header">';
-    html += '<span class="list-inline-edit-title">Edit List</span>';
+    html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
@@ -788,7 +786,6 @@
 
     if (!elements.length) {
       html += '<div class="list-inline-empty">No entries yet.</div>';
-      html += '</div>';
       return html;
     }
 
@@ -805,7 +802,6 @@
       html += renderElementInline(el);
     });
     html += '</ul>';
-    html += '</div>';
     return html;
   }
 
@@ -937,8 +933,6 @@
           state.editMode = !state.editMode;
           if (!state.editMode) {
             state.activeEntryUid = '';
-          } else if (!state.activeEntryUid && state.draft.elements.length) {
-            state.activeEntryUid = state.draft.elements[0]._uid;
           }
           renderList();
           renderAdmin();
