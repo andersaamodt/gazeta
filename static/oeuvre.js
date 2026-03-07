@@ -37,6 +37,10 @@
     activeCellField: '',
     activeHeadField: '',
     dragUid: '',
+    dragMoved: false,
+    dragDropped: false,
+    dragLastTargetKey: '',
+    dragStartElements: null,
     uidCounter: 1
   };
 
@@ -552,8 +556,9 @@
     var from = findElementIndex(dragUid);
     var to = findElementIndex(targetUid);
     if (from < 0 || to < 0) {
-      return;
+      return false;
     }
+    var beforeOrder = elements.map(function (el) { return String(el && el._uid || ''); }).join('|');
     var item = elements[from];
     elements.splice(from, 1);
     var insertAt = to;
@@ -570,6 +575,8 @@
       insertAt = elements.length;
     }
     elements.splice(insertAt, 0, item);
+    var afterOrder = elements.map(function (el) { return String(el && el._uid || ''); }).join('|');
+    return beforeOrder !== afterOrder;
   }
 
   function renderHead() {
@@ -739,13 +746,12 @@
     var activeField = rowSelected ? String(state.activeCellField || '') : '';
     var active = !!activeField;
     var depth = Math.max(0, Number(el && el.depth || 0) || 0);
+    var guiDepth = depth > 0 ? 1 : 0;
     var idx = findElementIndex(uid);
-    var prevDepth = idx > 0 ? Math.max(0, Number(state.draft.elements[idx - 1] && state.draft.elements[idx - 1].depth || 0) || 0) : -1;
-    var canIndent = idx > 0 && (depth + 1) <= (prevDepth + 1);
-    var canOutdent = depth > 0;
+    var canToggle = !(idx === 0 && guiDepth === 0);
     var html = '';
 
-    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';" draggable="true">';
+    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(guiDepth) + '" style="--list-depth:' + String(guiDepth) + ';" draggable="true">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
     var markdownText = String(el && el.markdown || '').trim();
@@ -753,19 +759,18 @@
     var eventId = String(el && el.event_id || '');
 
     html += '<div class="list-inline-cell list-inline-indent-controls">';
-    html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="outdent" data-element-uid="' + escapeHtml(uid) + '" title="Outdent"' + (canOutdent ? '' : ' disabled aria-disabled="true"') + '>←</button>';
-    html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="indent" data-element-uid="' + escapeHtml(uid) + '" title="Indent"' + (canIndent ? '' : ' disabled aria-disabled="true"') + '>→</button>';
+    html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="toggle-depth" data-element-uid="' + escapeHtml(uid) + '" title="' + (guiDepth > 0 ? 'Unindent entry' : 'Indent entry') + '"' + (canToggle ? '' : ' disabled aria-disabled="true"') + '>' + (guiDepth > 0 ? '←' : '→') + '</button>';
     html += '</div>';
 
-    if (active && activeField === 'date') {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
-    } else {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
-    }
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
       html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? markdownInline(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
+    }
+    if (active && activeField === 'date') {
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
+    } else {
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
     if (active && activeField === 'event_id') {
       html += '<div class="list-inline-cell list-inline-link"><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '" placeholder="EVENT_ID"></div>';
@@ -811,8 +816,8 @@
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
     html += '<span class="list-inline-head-depth">Depth</span>';
-    html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
+    html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-link">Link</span>';
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
@@ -1083,7 +1088,7 @@
           queueAutosave(120);
           return;
         }
-        if (actionType === 'indent' || actionType === 'outdent') {
+        if (actionType === 'toggle-depth') {
           if (inlineAction.hasAttribute('disabled')) {
             return;
           }
@@ -1093,17 +1098,14 @@
           }
           var beforeDepth = captureEntryRects();
           var currentDepth = Math.max(0, Number(state.draft.elements[depthIdx].depth || 0) || 0);
-          if (actionType === 'outdent') {
-            state.draft.elements[depthIdx].depth = Math.max(0, currentDepth - 1);
-          } else {
-            var previousDepth = depthIdx > 0 ? Math.max(0, Number(state.draft.elements[depthIdx - 1] && state.draft.elements[depthIdx - 1].depth || 0) || 0) : -1;
-            var targetDepth = currentDepth + 1;
-            if (depthIdx > 0 && targetDepth <= previousDepth + 1) {
-              state.draft.elements[depthIdx].depth = targetDepth;
-            }
+          if (currentDepth > 0) {
+            state.draft.elements[depthIdx].depth = 0;
+          } else if (depthIdx > 0) {
+            state.draft.elements[depthIdx].depth = 1;
           }
           renderListWithFlip(beforeDepth);
           queueAutosave(120);
+          return;
         }
       }
     });
@@ -1266,6 +1268,10 @@
         return;
       }
       state.dragUid = String(row.getAttribute('data-element-uid') || '');
+      state.dragStartElements = cloneEditableElements(state.draft.elements || []);
+      state.dragMoved = false;
+      state.dragDropped = false;
+      state.dragLastTargetKey = '';
       event.dataTransfer.effectAllowed = 'move';
       try {
         event.dataTransfer.setData('text/plain', state.dragUid);
@@ -1280,7 +1286,16 @@
       if (row) {
         row.classList.remove('is-dragging');
       }
+      if (state.dragUid && state.dragMoved && !state.dragDropped && Array.isArray(state.dragStartElements)) {
+        var beforeSnap = captureEntryRects();
+        state.draft.elements = cloneEditableElements(state.dragStartElements);
+        renderListWithFlip(beforeSnap);
+      }
       state.dragUid = '';
+      state.dragMoved = false;
+      state.dragDropped = false;
+      state.dragLastTargetKey = '';
+      state.dragStartElements = null;
     });
 
     els.content.addEventListener('dragover', function (event) {
@@ -1294,6 +1309,24 @@
       }
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
+      var targetUid = String(row.getAttribute('data-element-uid') || '');
+      if (!targetUid || targetUid === state.dragUid) {
+        return;
+      }
+      var rect = row.getBoundingClientRect();
+      var placeAfter = event.clientY > (rect.top + rect.height / 2);
+      var targetKey = targetUid + ':' + (placeAfter ? 'after' : 'before');
+      if (targetKey === state.dragLastTargetKey) {
+        return;
+      }
+      var beforeLiveMove = captureEntryRects();
+      var changed = reorderByDrag(state.dragUid, targetUid, placeAfter);
+      if (!changed) {
+        return;
+      }
+      state.dragLastTargetKey = targetKey;
+      state.dragMoved = true;
+      renderListWithFlip(beforeLiveMove);
     });
 
     els.content.addEventListener('drop', function (event) {
@@ -1306,16 +1339,24 @@
         return;
       }
       event.preventDefault();
+      state.dragDropped = true;
       var targetUid = String(row.getAttribute('data-element-uid') || '');
-      if (!targetUid || targetUid === state.dragUid) {
-        return;
+      if (targetUid && targetUid !== state.dragUid) {
+        var rect = row.getBoundingClientRect();
+        var placeAfter = event.clientY > (rect.top + rect.height / 2);
+        var targetKey = targetUid + ':' + (placeAfter ? 'after' : 'before');
+        if (targetKey !== state.dragLastTargetKey) {
+          var beforeDrop = captureEntryRects();
+          var changed = reorderByDrag(state.dragUid, targetUid, placeAfter);
+          if (changed) {
+            state.dragMoved = true;
+            renderListWithFlip(beforeDrop);
+          }
+        }
       }
-      var rect = row.getBoundingClientRect();
-      var placeAfter = event.clientY > (rect.top + rect.height / 2);
-      var beforeDrop = captureEntryRects();
-      reorderByDrag(state.dragUid, targetUid, placeAfter);
-      renderListWithFlip(beforeDrop);
-      queueAutosave(120);
+      if (state.dragMoved) {
+        queueAutosave(120);
+      }
     });
   }
 
