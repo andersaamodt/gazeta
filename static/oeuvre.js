@@ -41,6 +41,7 @@
     dragDropped: false,
     dragLastTargetKey: '',
     dragStartElements: null,
+    pendingNewEntry: null,
     uidCounter: 1
   };
 
@@ -533,19 +534,61 @@
     if (!isAdmin()) {
       return;
     }
+    var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
       _uid: nextUid(),
       type: 'entry',
       event_id: '',
       relay_hint: '',
       marker: 'oeuvre',
-      date: prefillYear ? String(prefillYear) : '',
+      date: defaultDate,
       depth: 0,
       markdown: ''
     };
     state.draft.elements.push(entry);
     state.activeEntryUid = entry._uid;
     state.activeCellField = 'markdown';
+    state.pendingNewEntry = {
+      uid: entry._uid,
+      defaults: {
+        event_id: '',
+        relay_hint: '',
+        marker: 'oeuvre',
+        date: defaultDate,
+        depth: 0,
+        markdown: ''
+      }
+    };
+  }
+
+  function isPendingNewEntryUnedited() {
+    if (!state.pendingNewEntry || !state.pendingNewEntry.uid) {
+      return false;
+    }
+    var idx = findElementIndex(state.pendingNewEntry.uid);
+    if (idx < 0) {
+      state.pendingNewEntry = null;
+      return false;
+    }
+    var entry = state.draft.elements[idx] || {};
+    var d = state.pendingNewEntry.defaults || {};
+    return (
+      String(entry.event_id || '') === String(d.event_id || '') &&
+      String(entry.relay_hint || '') === String(d.relay_hint || '') &&
+      String(entry.marker || '') === String(d.marker || '') &&
+      String(entry.date || '') === String(d.date || '') &&
+      Math.max(0, Number(entry.depth || 0) || 0) === Math.max(0, Number(d.depth || 0) || 0) &&
+      String(entry.markdown || '') === String(d.markdown || '')
+    );
+  }
+
+  function updatePendingNewEntryState() {
+    if (!state.pendingNewEntry || !state.pendingNewEntry.uid) {
+      return;
+    }
+    if (!isPendingNewEntryUnedited()) {
+      state.pendingNewEntry = null;
+    }
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
@@ -795,6 +838,8 @@
     var html = '';
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
+    var pendingUnedited = isPendingNewEntryUnedited();
+    var addTitle = pendingUnedited ? 'Edit the new entry before adding another' : 'Add entry';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
@@ -805,7 +850,7 @@
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
     html += '</div></div>';
-    html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="Add entry">+</button></div>';
+    html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
 
     if (!elements.length) {
@@ -838,7 +883,7 @@
           html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
           if (state.draft.group_by === 'year') {
             var prefillYear = (/^\d{4}$/.test(String(label || '')) ? String(label || '') : '');
-            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-prefill-year="' + escapeHtml(prefillYear) + '" title="Add entry for ' + escapeHtml(prefillYear || 'this year section') + '">+</button>';
+            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-prefill-year="' + escapeHtml(prefillYear) + '" title="' + escapeHtml(pendingUnedited ? 'Edit the new entry before adding another' : ('Add entry for ' + (prefillYear || 'this year section'))) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
           }
           html += '</div>';
           html += '<ul class="list-entries list-entries-inline">';
@@ -1051,6 +1096,9 @@
       if (listAction instanceof HTMLElement && state.editMode) {
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
+          if (isPendingNewEntryUnedited()) {
+            return;
+          }
           var before = captureEntryRects();
           addEntry('');
           renderListWithFlip(before);
@@ -1058,6 +1106,9 @@
           return;
         }
         if (action === 'add-year') {
+          if (isPendingNewEntryUnedited()) {
+            return;
+          }
           var prefill = String(listAction.getAttribute('data-prefill-year') || '').trim();
           var beforeYear = captureEntryRects();
           addEntry(prefill);
@@ -1096,6 +1147,9 @@
             state.activeEntryUid = '';
             state.activeCellField = '';
           }
+          if (state.pendingNewEntry && state.pendingNewEntry.uid === uid) {
+            state.pendingNewEntry = null;
+          }
           renderListWithFlip(beforeRemove);
           queueAutosave(120);
           return;
@@ -1116,6 +1170,7 @@
             state.draft.elements[depthIdx].depth = 1;
           }
           renderListWithFlip(beforeDepth);
+          updatePendingNewEntryState();
           queueAutosave(120);
           return;
         }
@@ -1211,6 +1266,7 @@
       }
       state.activeEntryUid = uid;
       state.draft.elements[idx][field] = String(target.value || '');
+      updatePendingNewEntryState();
       queueAutosave(500);
     });
 
@@ -1244,6 +1300,7 @@
         return;
       }
       state.draft.elements[idx][field] = String(target.value || '');
+      updatePendingNewEntryState();
       if (field === 'date') {
         var beforeDate = captureEntryRects();
         moveEntryByYear(uid);
@@ -1382,6 +1439,7 @@
         csrf_token: auth.csrf_token
       });
       state.draft = readEditableStateFromPayload();
+      state.pendingNewEntry = null;
       state.saveIndicatorVisible = false;
       if (!state.activeEntryUid && state.draft.elements.length) {
         state.activeEntryUid = state.draft.elements[0]._uid;

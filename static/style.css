@@ -1019,6 +1019,15 @@ header h1 {
   border-radius: 999px;
 }
 
+.list-inline-toolbar-right button[disabled],
+.list-inline-toolbar-right button[aria-disabled="true"],
+.list-year-add[disabled],
+.list-year-add[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .list-entry-post-link {
   display: inline-block;
   margin-right: 0.38rem;
