@@ -401,6 +401,7 @@
     var opts = options || {};
     var shouldRetryAuth = false;
     state.busy = true;
+    pruneTransientEntries();
     syncMetaFromInputs();
     setSaveStatus('saving');
     try {
@@ -618,6 +619,29 @@
     if (!isPendingNewEntryUnedited()) {
       state.pendingNewEntry = null;
     }
+  }
+
+  function isSubstantiveEntry(entry) {
+    if (!entry) {
+      return false;
+    }
+    return String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '';
+  }
+
+  function pruneTransientEntries() {
+    if (!isAdmin() || !Array.isArray(state.draft && state.draft.elements)) {
+      return false;
+    }
+    var beforeLen = state.draft.elements.length;
+    state.draft.elements = state.draft.elements.filter(isSubstantiveEntry);
+    if (state.pendingNewEntry && state.pendingNewEntry.uid && findElementIndex(state.pendingNewEntry.uid) < 0) {
+      state.pendingNewEntry = null;
+    }
+    if (state.activeEntryUid && findElementIndex(state.activeEntryUid) < 0) {
+      state.activeEntryUid = '';
+      state.activeCellField = '';
+    }
+    return state.draft.elements.length !== beforeLen;
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
@@ -1065,6 +1089,10 @@
       if (topAction instanceof HTMLElement) {
         var topActionName = topAction.getAttribute('data-list-action');
         if (topActionName === 'toggle-edit') {
+          var removedTransient = false;
+          if (state.editMode) {
+            removedTransient = pruneTransientEntries();
+          }
           state.editMode = !state.editMode;
           if (!state.editMode) {
             state.activeEntryUid = '';
@@ -1072,6 +1100,9 @@
           }
           renderList();
           renderAdmin();
+          if (removedTransient) {
+            queueAutosave(120);
+          }
           return;
         }
         if (topActionName === 'publish') {
@@ -1363,9 +1394,13 @@
         }
         var nextInlineField = activeEl.closest('[data-inline-field][data-element-uid]');
         if (!nextInlineField) {
+          var removedTransient = pruneTransientEntries();
           state.activeEntryUid = '';
           state.activeCellField = '';
           renderList();
+          if (removedTransient) {
+            queueAutosave(120);
+          }
         }
       }, 0);
     });
@@ -1526,9 +1561,13 @@
       return;
     }
     if (!root.contains(target)) {
+      var removedTransient = pruneTransientEntries();
       state.activeEntryUid = '';
       state.activeCellField = '';
       renderList();
+      if (removedTransient) {
+        queueAutosave(120);
+      }
     }
   });
   document.addEventListener('click', function (event) {
@@ -1556,9 +1595,13 @@
     if (onActiveEventDetails) {
       return;
     }
+    var removedTransient = pruneTransientEntries();
     state.activeEntryUid = '';
     state.activeCellField = '';
     renderList();
+    if (removedTransient) {
+      queueAutosave(120);
+    }
   });
   window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
   window.addEventListener('storage', function (event) {
