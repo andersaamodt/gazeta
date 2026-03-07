@@ -796,7 +796,7 @@
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
     html += '<div class="list-inline-toolbar">';
-    html += '<div class="list-inline-edit-controls">';
+    html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
     html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
@@ -804,8 +804,8 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<button type="button" data-list-action="add" title="Add entry">+</button>';
-    html += '</div>';
+    html += '</div></div>';
+    html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="Add entry">+</button></div>';
     html += '</div>';
 
     if (!elements.length) {
@@ -815,7 +815,7 @@
 
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
-    html += '<span class="list-inline-head-depth">Depth</span>';
+    html += '<span class="list-inline-head-depth" aria-hidden="true"></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-link">Link</span>';
@@ -836,6 +836,10 @@
           html += '<section class="list-year-group">';
           html += '<div class="list-year-head">';
           html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
+          if (state.draft.group_by === 'year') {
+            var prefillYear = (/^\d{4}$/.test(String(label || '')) ? String(label || '') : '');
+            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-prefill-year="' + escapeHtml(prefillYear) + '" title="Add entry for ' + escapeHtml(prefillYear || 'this year section') + '">+</button>';
+          }
           html += '</div>';
           html += '<ul class="list-entries list-entries-inline">';
         }
@@ -1050,6 +1054,14 @@
           var before = captureEntryRects();
           addEntry('');
           renderListWithFlip(before);
+          queueAutosave(120);
+          return;
+        }
+        if (action === 'add-year') {
+          var prefill = String(listAction.getAttribute('data-prefill-year') || '').trim();
+          var beforeYear = captureEntryRects();
+          addEntry(prefill);
+          renderListWithFlip(beforeYear);
           queueAutosave(120);
           return;
         }
