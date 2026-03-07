@@ -40,6 +40,18 @@ blog_list_normalize_state_json() {
     def first_tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first);
     def flex($obj; $idx; $key):
       if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
+    def flex_markdown($obj):
+      if ($obj | type) == "array" then
+        (($obj[6] // $obj[5] // "") | tostring)
+      else
+        (($obj.markdown // "") | tostring)
+      end;
+    def flex_depth($obj):
+      if ($obj | type) == "array" then
+        ($obj[5] // 0)
+      else
+        ($obj.depth // 0)
+      end;
     def parse_depth_markdown:
       if type == "array" then
         (.[5] // "") as $f5
@@ -59,6 +71,7 @@ blog_list_normalize_state_json() {
     def entry_like_from($t):
       (parse_depth_markdown) as $dm
       | ($dm.depth | tonumber? // 0) as $depth
+      |
       {
         type: $t,
         event_id: (flex(.; 1; "event_id") | tostring),
@@ -85,11 +98,19 @@ blog_list_normalize_state_json() {
             relay_hint: (flex(.; 2; "relay_hint") | tostring),
             marker: (flex(.; 3; "marker") | tostring),
             date: (flex(.; 4; "date") | tostring),
-            depth: ((.depth // 0) | tonumber? // 0),
-            markdown: ((.markdown // .[6] // .[5] // "") | tostring)
+            depth: (flex_depth(.) | tonumber? // 0),
+            markdown: (flex_markdown(.))
           }
       ];
-    ((.elements // elements_from_entries // elements_from_tags // [])) as $raw_elements
+    (
+      if (.elements | type) == "array" then
+        .elements
+      elif (.entries | type) == "array" then
+        elements_from_entries
+      else
+        elements_from_tags
+      end
+    ) as $raw_elements
     | ($raw_elements | map({
         type: "entry",
         event_id: (flex(.; 1; "event_id") | tostring),
@@ -97,7 +118,7 @@ blog_list_normalize_state_json() {
         marker: (flex(.; 3; "marker") | tostring),
         date: (flex(.; 4; "date") | tostring),
         depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
-        markdown: ((.markdown // .[6] // .[5] // "") | tostring)
+        markdown: (flex_markdown(.))
       })) as $elements
     | {
         slug: $slug,
