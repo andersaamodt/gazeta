@@ -25,7 +25,11 @@
     payload: null,
     draft: null,
     busy: false,
-    authSignature: ''
+    authSignature: '',
+    saveTimer: null,
+    saveStatus: 'saved',
+    saveError: '',
+    autosaveQueued: false
   };
 
   function authSignature() {
@@ -154,6 +158,10 @@
     }
     var entries = Array.isArray(s.entries) ? s.entries : [];
     if (!entries.length) {
+      if (state.payload && state.payload.is_admin) {
+        els.content.innerHTML = '';
+        return;
+      }
       els.content.innerHTML = '<p class="placeholder">No entries yet.</p>';
       return;
     }
@@ -233,6 +241,10 @@
       return;
     }
     if (!(state.payload && state.payload.is_admin)) {
+      if (state.saveTimer) {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = null;
+      }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
       return;
@@ -240,47 +252,60 @@
     if (!state.draft) {
       state.draft = readEditableStateFromPayload();
     }
-    var banner = 'No local draft yet.';
-    if (state.payload.draft_exists) {
-      banner = state.payload.draft_differs
-        ? 'Local draft differs from canonical Nostr version.'
-        : 'Local draft matches canonical Nostr version.';
-    }
     var entries = Array.isArray(state.draft.entries) ? state.draft.entries : [];
     var html = '';
-    html += '<div class="list-admin-banner">' + escapeHtml(banner) + '</div>';
-    html += '<div class="list-admin-toolbar">';
-    html += '<button type="button" data-list-action="save">Save draft</button>';
+    html += '<details class="list-admin-panel" open>';
+    html += '<summary class="list-admin-summary">Edit List</summary>';
+    html += '<div class="list-admin-topbar">';
+    html += '<div class="list-admin-actions">';
+    html += '<button type="button" data-list-action="revert" title="Revert draft to Nostr version">Revert</button>';
     html += '<button type="button" data-list-action="publish">Publish to Nostr...</button>';
-    html += '<button type="button" data-list-action="revert">Revert to Nostr version</button>';
-    html += '<button type="button" data-list-action="add">Add markdown entry</button>';
+    html += '</div>';
     html += '</div>';
     html += '<div class="list-admin-meta">';
-    html += '<label>Title <input id="list-admin-title" type="text" value="' + escapeHtml(state.draft.title || '') + '"></label>';
-    html += '<label>Description <input id="list-admin-description" type="text" value="' + escapeHtml(state.draft.description || '') + '"></label>';
-    html += '<label>Group by <select id="list-admin-group-by">';
+    html += '<label><span>Title</span><input id="list-admin-title" type="text" value="' + escapeHtml(state.draft.title || '') + '"></label>';
+    html += '<label><span>Description</span><input id="list-admin-description" type="text" value="' + escapeHtml(state.draft.description || '') + '"></label>';
+    html += '<label><span>Group by</span><select id="list-admin-group-by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
     html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
     html += '</select></label>';
     html += '</div>';
+    html += '<section class="list-admin-entries-wrap">';
+    html += '<h2 class="list-admin-entries-title">Entries</h2>';
     html += '<div class="list-admin-entries">';
-    entries.forEach(function (entry, idx) {
-      html += '<div class="list-admin-entry" data-entry-index="' + idx + '">';
-      html += '<div class="list-admin-entry-controls">';
-      html += '<button type="button" data-list-entry-action="up" data-entry-index="' + idx + '" aria-label="Move up">↑</button>';
-      html += '<button type="button" data-list-entry-action="down" data-entry-index="' + idx + '" aria-label="Move down">↓</button>';
-      html += '<button type="button" data-list-entry-action="remove" data-entry-index="' + idx + '" aria-label="Remove">✕</button>';
-      html += '</div>';
-      html += '<div class="list-admin-entry-fields">';
-      html += '<label>EVENT_ID <input data-field="event_id" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.event_id || '') + '"></label>';
-      html += '<label>Relay <input data-field="relay_hint" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.relay_hint || '') + '" placeholder="wss://..."></label>';
-      html += '<label>Marker <input data-field="marker" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.marker || '') + '" placeholder="oeuvre"></label>';
-      html += '<label>Date <input data-field="date" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.date || '') + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></label>';
-      html += '<label>Markdown <input data-field="markdown" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.markdown || '') + '"></label>';
-      html += '</div>';
-      html += '</div>';
-    });
+    if (!entries.length) {
+      html += '<p class="placeholder list-admin-empty">No entries yet.</p>';
+    } else {
+      entries.forEach(function (entry, idx) {
+        html += '<div class="list-admin-entry" data-entry-index="' + idx + '">';
+        html += '<div class="list-admin-entry-controls">';
+        html += '<button type="button" data-list-entry-action="up" data-entry-index="' + idx + '" aria-label="Move up">↑</button>';
+        html += '<button type="button" data-list-entry-action="down" data-entry-index="' + idx + '" aria-label="Move down">↓</button>';
+        html += '<button type="button" data-list-entry-action="remove" data-entry-index="' + idx + '" aria-label="Remove">✕</button>';
+        html += '</div>';
+        html += '<div class="list-admin-entry-fields">';
+        html += '<label><span>EVENT_ID</span><input data-field="event_id" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.event_id || '') + '"></label>';
+        html += '<label><span>Relay</span><input data-field="relay_hint" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.relay_hint || '') + '" placeholder="wss://..."></label>';
+        html += '<label><span>Marker</span><input data-field="marker" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.marker || '') + '" placeholder="oeuvre"></label>';
+        html += '<label><span>Date</span><input data-field="date" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.date || '') + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></label>';
+        html += '<label class="list-admin-field-wide"><span>Markdown</span><input data-field="markdown" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.markdown || '') + '"></label>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
     html += '</div>';
+    html += '<button type="button" class="list-admin-add-fab" data-list-action="add" aria-label="Add markdown entry" title="Add markdown entry">+</button>';
+    html += '</section>';
+    html += '<div id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
+    if (state.saveStatus === 'saving') {
+      html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+    } else if (state.saveStatus === 'error') {
+      html += 'Save failed';
+    } else {
+      html += 'Saved';
+    }
+    html += '</div>';
+    html += '</details>';
     els.admin.hidden = false;
     els.admin.innerHTML = html;
   }
@@ -322,12 +347,48 @@
     return String(node.value || '').trim();
   }
 
-  async function saveDraft() {
-    if (state.busy || !(state.payload && state.payload.is_admin && state.draft)) {
+  function setSaveStatus(next, errorMessage) {
+    state.saveStatus = next;
+    state.saveError = String(errorMessage || '');
+    var node = document.getElementById('list-admin-save-status');
+    if (!node) {
       return;
     }
+    node.classList.toggle('is-error', next === 'error');
+    if (next === 'saving') {
+      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      return;
+    }
+    if (next === 'error') {
+      node.textContent = 'Save failed';
+      return;
+    }
+    node.textContent = 'Saved';
+  }
+
+  function queueAutosave(delayMs) {
+    if (!(state.payload && state.payload.is_admin && state.draft)) {
+      return;
+    }
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+    }
+    setSaveStatus('saving');
+    state.saveTimer = setTimeout(function () {
+      state.saveTimer = null;
+      persistDraft({ alertOnError: false });
+    }, Number(delayMs) > 0 ? Number(delayMs) : 420);
+  }
+
+  async function persistDraft(options) {
+    if (state.busy || !(state.payload && state.payload.is_admin && state.draft)) {
+      state.autosaveQueued = true;
+      return;
+    }
+    var opts = options || {};
     state.busy = true;
     syncDraftFromInputs();
+    setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
       await apiPost('/cgi/blog-save-list-draft', {
@@ -340,12 +401,25 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      await load();
+      if (state.payload) {
+        state.payload.draft_exists = true;
+        state.payload.draft_differs = false;
+      }
+      setSaveStatus('saved');
     } catch (err) {
-      window.alert(err.message || 'Could not save draft');
+      setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
+      if (opts.alertOnError !== false) {
+        window.alert(err.message || 'Could not save draft');
+      }
+      return false;
     } finally {
       state.busy = false;
+      if (state.autosaveQueued) {
+        state.autosaveQueued = false;
+        queueAutosave(250);
+      }
     }
+    return true;
   }
 
   async function publishDraft() {
@@ -353,8 +427,12 @@
       return;
     }
     syncDraftFromInputs();
-    await saveDraft();
+    var saved = await persistDraft({ alertOnError: true });
+    if (!saved) {
+      return;
+    }
     state.busy = true;
+    setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
       await apiPost('/cgi/blog-publish-list-page', {
@@ -363,7 +441,9 @@
         csrf_token: auth.csrf_token
       });
       await load();
+      setSaveStatus('saved');
     } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not publish list');
       window.alert(err.message || 'Could not publish list');
     } finally {
       state.busy = false;
@@ -378,6 +458,7 @@
       return;
     }
     state.busy = true;
+    setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
       await apiPost('/cgi/blog-revert-list-draft', {
@@ -386,7 +467,9 @@
         csrf_token: auth.csrf_token
       });
       await load();
+      setSaveStatus('saved');
     } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not revert draft');
       window.alert(err.message || 'Could not revert draft');
     } finally {
       state.busy = false;
@@ -405,10 +488,6 @@
       var actionNode = target.closest('[data-list-action]');
       if (actionNode instanceof HTMLElement) {
         var action = actionNode.getAttribute('data-list-action');
-        if (action === 'save') {
-          saveDraft();
-          return;
-        }
         if (action === 'publish') {
           publishDraft();
           return;
@@ -425,6 +504,7 @@
           state.draft.entries.push({ event_id: '', relay_hint: '', marker: 'oeuvre', date: '', markdown: '' });
           renderAdmin();
           renderList();
+          queueAutosave(120);
           return;
         }
       }
@@ -453,16 +533,19 @@
       }
       renderAdmin();
       renderList();
+      queueAutosave(120);
     });
 
     els.admin.addEventListener('input', function () {
       syncDraftFromInputs();
       renderList();
+      queueAutosave(500);
     });
 
     els.admin.addEventListener('change', function () {
       syncDraftFromInputs();
       renderList();
+      queueAutosave(300);
     });
   }
 
@@ -476,6 +559,7 @@
         csrf_token: auth.csrf_token
       });
       state.draft = readEditableStateFromPayload();
+      setSaveStatus('saved');
       renderAdmin();
       renderValidation();
       renderList();
