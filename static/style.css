@@ -717,7 +717,8 @@ header h1 {
 }
 
 #list-page-title {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   align-items: baseline;
   gap: 0.38rem;
 }
