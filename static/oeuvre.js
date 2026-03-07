@@ -623,6 +623,17 @@
     }
   }
 
+  function shouldAutosaveForUid(uid) {
+    var targetUid = String(uid || '');
+    if (!targetUid || !state.pendingNewEntry || !state.pendingNewEntry.uid) {
+      return true;
+    }
+    if (String(state.pendingNewEntry.uid) !== targetUid) {
+      return true;
+    }
+    return !isPendingNewEntryUnedited();
+  }
+
   function isSubstantiveEntry(entry) {
     if (!entry) {
       return false;
@@ -1167,7 +1178,6 @@
           var before = captureEntryRects();
           addEntry('');
           renderListWithFlip(before);
-          queueAutosave(120);
           return;
         }
         if (action === 'add-year') {
@@ -1178,7 +1188,6 @@
           var beforeYear = captureEntryRects();
           addEntry(prefill);
           renderListWithFlip(beforeYear);
-          queueAutosave(120);
           return;
         }
       }
@@ -1236,7 +1245,9 @@
           }
           renderListWithFlip(beforeDepth);
           updatePendingNewEntryState();
-          queueAutosave(120);
+          if (shouldAutosaveForUid(uid)) {
+            queueAutosave(120);
+          }
           return;
         }
       }
@@ -1345,7 +1356,9 @@
       state.activeEntryUid = uid;
       state.draft.elements[idx][field] = String(target.value || '');
       updatePendingNewEntryState();
-      queueAutosave(500);
+      if (shouldAutosaveForUid(uid)) {
+        queueAutosave(500);
+      }
     });
 
     els.content.addEventListener('change', function (event) {
@@ -1384,7 +1397,9 @@
         moveEntryByYear(uid);
         renderListWithFlip(beforeDate);
       }
-      queueAutosave(320);
+      if (shouldAutosaveForUid(uid)) {
+        queueAutosave(320);
+      }
     });
 
     els.content.addEventListener('focusout', function (event) {
