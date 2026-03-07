@@ -120,13 +120,17 @@
   }
 
   function isEntryType(type) {
-    return type === 'entry' || type === 'subentry';
+    return type === 'entry';
   }
 
   function normalizeElement(raw) {
-    var type = String(raw && raw.type || 'entry');
-    if (type !== 'subentry') {
-      type = 'entry';
+    var type = 'entry';
+    var depth = Number(raw && raw.depth);
+    if (!Number.isFinite(depth) || depth < 0) {
+      depth = 0;
+    }
+    if (String(raw && raw.type || '') === 'subentry' || String(raw && raw.type || '') === 'sub') {
+      depth = 1;
     }
     return {
       _uid: String(raw && raw._uid || nextUid()),
@@ -135,6 +139,7 @@
       relay_hint: String(raw && raw.relay_hint || ''),
       marker: String(raw && raw.marker || ''),
       date: String(raw && raw.date || ''),
+      depth: depth,
       markdown: String(raw && raw.markdown || ''),
       year: String(raw && raw.year || ''),
       post_url: String(raw && raw.post_url || '')
@@ -169,6 +174,7 @@
         relay_hint: String(el && el.relay_hint || ''),
         marker: String(el && el.marker || ''),
         date: String(el && el.date || ''),
+        depth: Math.max(0, Number(el && el.depth || 0) || 0),
         markdown: String(el && el.markdown || '')
       };
     });
@@ -188,8 +194,7 @@
 
   function hasStructuralElements(elements) {
     return (Array.isArray(elements) ? elements : []).some(function (el) {
-      var type = String(el && el.type || 'entry');
-      return type === 'subentry';
+      return (Number(el && el.depth || 0) || 0) > 0;
     });
   }
 
@@ -530,11 +535,12 @@
     }
     var entry = {
       _uid: nextUid(),
-      type: kind,
+      type: 'entry',
       event_id: '',
       relay_hint: '',
       marker: 'oeuvre',
       date: prefillYear ? String(prefillYear) : '',
+      depth: (kind === 'subentry') ? 1 : 0,
       markdown: ''
     };
     state.draft.elements.push(entry);
@@ -547,7 +553,8 @@
     if (targetType !== 'entry' && targetType !== 'subentry') {
       targetType = 'entry';
     }
-    element.type = targetType;
+    element.type = 'entry';
+    element.depth = (targetType === 'subentry') ? 1 : 0;
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
@@ -635,8 +642,8 @@
     return '<li class="list-entry-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span></li>';
   }
 
-  function renderTypeSelect(uid, type) {
-    var t = String(type || 'entry');
+  function renderTypeSelect(uid, depth) {
+    var t = (Number(depth || 0) > 0) ? 'subentry' : 'entry';
     return '<select class="list-inline-type-select" data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '">' +
       '<option value="entry"' + (t === 'entry' ? ' selected' : '') + '>entry</option>' +
       '<option value="subentry"' + (t === 'subentry' ? ' selected' : '') + '>subentry</option>' +
@@ -653,8 +660,8 @@
     var subListOpen = false;
 
     (Array.isArray(elements) ? elements : []).forEach(function (el) {
-      var type = String(el && el.type || 'entry');
-      if (type === 'entry') {
+      var depth = Math.max(0, Number(el && el.depth || 0) || 0);
+      if (depth === 0) {
         if (subListOpen) {
           html += '</ul>';
           subListOpen = false;
@@ -667,7 +674,7 @@
         return;
       }
 
-      if (type === 'subentry') {
+      if (depth > 0) {
         if (entryOpen) {
           if (!subListOpen) {
             html += '<ul class="list-sub-entries">';
@@ -743,6 +750,7 @@
     var activeField = rowSelected ? String(state.activeCellField || '') : '';
     var active = !!activeField;
     var type = String(el && el.type || 'entry');
+    var depth = Math.max(0, Number(el && el.depth || 0) || 0);
     var html = '';
 
     html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" draggable="true">';
@@ -753,9 +761,9 @@
     var eventId = String(el && el.event_id || '');
 
     if (active && activeField === 'date') {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, type) + '<input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, depth) + '<input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
     } else {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, type) + '<button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, depth) + '<button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
@@ -773,7 +781,7 @@
       html += '<details class="list-admin-eventid-details" open>';
       html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
-      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="subentry"' + (type === 'subentry' ? ' selected' : '') + '>subentry</option></select></label>';
+      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (depth > 0 ? '' : ' selected') + '>entry</option><option value="subentry"' + (depth > 0 ? ' selected' : '') + '>subentry</option></select></label>';
       html += '</details>';
       html += '</div>';
     }

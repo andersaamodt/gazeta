@@ -40,14 +40,33 @@ blog_list_normalize_state_json() {
     def first_tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first);
     def flex($obj; $idx; $key):
       if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
+    def parse_depth_markdown:
+      if type == "array" then
+        (.[5] // "") as $f5
+        | (.[6] // "") as $f6
+        | if ($f6 | tostring | length) > 0 then
+            { depth: $f5, markdown: $f6 }
+          else
+            if (($f5 | tostring) | test("^[0-9]+$")) then
+              { depth: $f5, markdown: "" }
+            else
+              { depth: 0, markdown: $f5 }
+            end
+          end
+      else
+        { depth: (.depth // 0), markdown: (.markdown // "") }
+      end;
     def entry_like_from($t):
+      (parse_depth_markdown) as $dm
+      | ($dm.depth | tonumber? // 0) as $depth
       {
         type: $t,
         event_id: (flex(.; 1; "event_id") | tostring),
         relay_hint: (flex(.; 2; "relay_hint") | tostring),
         marker: (flex(.; 3; "marker") | tostring),
         date: (flex(.; 4; "date") | tostring),
-        markdown: (flex(.; 5; "markdown") | tostring)
+        depth: (if $depth < 0 then 0 else $depth end),
+        markdown: ($dm.markdown | tostring)
       };
     def elements_from_tags:
       [ .tags[]?
@@ -55,9 +74,7 @@ blog_list_normalize_state_json() {
         | if .[0] == "entry" then
             entry_like_from("entry")
           elif .[0] == "subentry" then
-            entry_like_from("subentry")
-          elif .[0] == "sub" then
-            entry_like_from("subentry")
+            (entry_like_from("entry") | .depth = 1)
           else empty end
       ];
     def elements_from_entries:
@@ -68,17 +85,19 @@ blog_list_normalize_state_json() {
             relay_hint: (flex(.; 2; "relay_hint") | tostring),
             marker: (flex(.; 3; "marker") | tostring),
             date: (flex(.; 4; "date") | tostring),
-            markdown: (flex(.; 5; "markdown") | tostring)
+            depth: ((.depth // 0) | tonumber? // 0),
+            markdown: ((.markdown // .[6] // .[5] // "") | tostring)
           }
       ];
     ((.elements // elements_from_entries // elements_from_tags // [])) as $raw_elements
     | ($raw_elements | map({
-        type: (if (.type == "subentry" or .type == "sub") then "subentry" else "entry" end),
+        type: "entry",
         event_id: (flex(.; 1; "event_id") | tostring),
         relay_hint: (flex(.; 2; "relay_hint") | tostring),
         marker: (flex(.; 3; "marker") | tostring),
         date: (flex(.; 4; "date") | tostring),
-        markdown: (flex(.; 5; "markdown") | tostring)
+        depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
+        markdown: ((.markdown // .[6] // .[5] // "") | tostring)
       })) as $elements
     | {
         slug: $slug,
@@ -96,11 +115,7 @@ blog_list_normalize_state_json() {
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end)
         ]
         + (.elements | map(
-            if .type == "subentry" then
-              ["subentry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
-            else
-              ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
-            end
+            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // "")]
           ))
       )
   '
@@ -208,30 +223,40 @@ blog_list_validate_and_enrich_state_json() {
 
   current_year=""
   seen_years="|"
-  have_entry=false
+  prev_depth=-1
   idx=0
   printf '%s\n' "$state_json" | jq -c '(.elements // ((.entries // []) | map(. + {type:"entry"})) // []) | .[]' 2>/dev/null | while IFS= read -r element || [ -n "$element" ]; do
-    element_type=$(printf '%s\n' "$element" | jq -r '.type // "entry"' 2>/dev/null || printf 'entry')
-    if [ "$element_type" != "entry" ] && [ "$element_type" != "subentry" ] && [ "$element_type" != "sub" ]; then
-      element_type="entry"
+    element_type="entry"
+    depth_raw=$(printf '%s\n' "$element" | jq -r '
+      if (.type // "") == "subentry" or (.type // "") == "sub" then
+        1
+      else
+        (.depth // 0)
+      end
+    ' 2>/dev/null || printf '0')
+    if ! printf '%s' "$depth_raw" | grep -Eq '^[0-9]+$'; then
+      printf 'Entry %s has invalid DEPTH: %s\n' "$((idx + 1))" "$depth_raw" >> "$errors_tmp"
+      depth_int=0
+    else
+      depth_int=$depth_raw
     fi
-    if [ "$element_type" = "sub" ]; then
-      element_type="subentry"
+    if [ "$depth_int" -lt 0 ]; then
+      printf 'Entry %s has invalid DEPTH: %s\n' "$((idx + 1))" "$depth_int" >> "$errors_tmp"
+      depth_int=0
     fi
+    if [ "$idx" -eq 0 ] && [ "$depth_int" -gt 0 ]; then
+      printf 'Entry %s has DEPTH %s before any root entry\n' "$((idx + 1))" "$depth_int" >> "$errors_tmp"
+    fi
+    if [ "$idx" -gt 0 ] && [ "$depth_int" -gt $((prev_depth + 1)) ]; then
+      printf 'Entry %s has DEPTH %s but previous depth is %s (cannot skip levels)\n' "$((idx + 1))" "$depth_int" "$prev_depth" >> "$errors_tmp"
+    fi
+    prev_depth=$depth_int
 
     event_id=$(printf '%s\n' "$element" | jq -r '.event_id // ""' 2>/dev/null || printf '')
     relay_hint=$(printf '%s\n' "$element" | jq -r '.relay_hint // ""' 2>/dev/null || printf '')
     marker=$(printf '%s\n' "$element" | jq -r '.marker // ""' 2>/dev/null || printf '')
     date_raw=$(printf '%s\n' "$element" | jq -r '.date // ""' 2>/dev/null || printf '')
-    markdown=$(printf '%s\n' "$element" | jq -r '.markdown // ""' 2>/dev/null || printf '')
-
-    if [ "$element_type" = "subentry" ]; then
-      if [ "$have_entry" != "true" ]; then
-        printf 'Subentry %s appears before any entry\n' "$((idx + 1))" >> "$errors_tmp"
-      fi
-    else
-      have_entry=true
-    fi
+    markdown=$(printf '%s\n' "$element" | jq -r '.markdown // .[6] // .[5] // ""' 2>/dev/null || printf '')
 
     resolved=false
     post_url=""
@@ -307,6 +332,7 @@ blog_list_validate_and_enrich_state_json() {
       --arg date "$date_raw" \
       --arg markdown "$markdown" \
       --arg type "$element_type" \
+      --argjson depth "$depth_int" \
       --arg year "$year" \
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
@@ -318,6 +344,7 @@ blog_list_validate_and_enrich_state_json() {
         relay_hint: $relay_hint,
         marker: $marker,
         date: $date,
+        depth: $depth,
         markdown: $markdown,
         year: $year,
         resolved: $resolved,
