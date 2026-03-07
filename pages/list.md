@@ -9,13 +9,13 @@ license: "CC BY 4.0"
 ---
 
 <section id="oeuvre-root" class="list-page-shell" data-list-slug="oeuvre" data-list-title="List">
-  <div class="list-page-head">
-    <h1 id="list-page-title">List</h1>
-    <p id="list-page-description" class="muted"></p>
-  </div>
-  <div id="list-page-admin" class="list-admin" hidden></div>
-  <div id="list-page-validation" class="list-validation" hidden></div>
-  <div id="list-page-content" class="list-page-content"></div>
+<div class="list-page-head">
+<h1 id="list-page-title">List</h1>
+<p id="list-page-description" class="muted"></p>
+</div>
+<div id="list-page-admin" class="list-admin" hidden></div>
+<div id="list-page-validation" class="list-validation" hidden></div>
+<div id="list-page-content" class="list-page-content"></div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
