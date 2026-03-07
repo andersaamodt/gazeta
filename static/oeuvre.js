@@ -778,9 +778,9 @@
       html += '<button type="button" class="list-inline-cell list-inline-open list-inline-link" data-list-inline-action="edit" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : placeholderHtml('Add link...')) + '</button>';
     }
     html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button></div>';
-    if (active && activeField === 'event_id') {
+    if (active) {
       html += '<div class="list-inline-eventid">';
-      html += '<details class="list-admin-eventid-details" open>';
+      html += '<details class="list-admin-eventid-details"' + (activeField === 'event_id' ? ' open' : '') + '>';
       html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
       html += '</details>';
