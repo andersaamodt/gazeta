@@ -707,6 +707,8 @@ header h1 {
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
+  align-self: flex-start;
+  transform: translateY(-2px);
 }
 
 .list-head-inline-input {
