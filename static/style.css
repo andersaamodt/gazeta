@@ -825,7 +825,7 @@ header h1 {
 
 .list-inline-head {
   display: grid;
-  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) 2.2rem 2.1rem;
+  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) minmax(6.8rem, 8.2rem) 2.1rem;
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.5rem;
@@ -853,7 +853,7 @@ header h1 {
 
 .list-entry-inline {
   display: grid;
-  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) 2.2rem 2.1rem;
+  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) minmax(6.8rem, 8.2rem) 2.1rem;
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.46rem;
