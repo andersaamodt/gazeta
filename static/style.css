@@ -976,7 +976,7 @@ header h1 {
   background: transparent;
   color: var(--danger, #b42318) !important;
   -webkit-text-fill-color: var(--danger, #b42318);
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .list-inline-actions button:hover,
