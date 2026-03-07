@@ -885,6 +885,31 @@ header h1 {
   margin: 0 0 0.42rem;
 }
 
+.list-group-line > .list-group-title {
+  font-weight: 700;
+}
+
+.list-sub-entries {
+  margin: 0.4rem 0 0.1rem;
+  padding-left: 1.2rem;
+}
+
+.list-inline-type-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: lowercase;
+  color: #36507d;
+  background: #e8eefb;
+  margin-right: 0.35rem;
+  padding: 0 0.45rem;
+}
+
 .list-entry-post-link {
   display: inline-block;
   margin-right: 0.38rem;

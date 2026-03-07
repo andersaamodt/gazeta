@@ -19,6 +19,7 @@ blog_list_default_state_json() {
     description: "",
     group_by: "year",
     content: "",
+    elements: [],
     entries: [],
     tags: [["title", $title], ["group_by", "year"]]
   }'
@@ -37,41 +38,78 @@ blog_list_normalize_state_json() {
   fi
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" '
     def first_tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first);
-    def entries_from_tags:
+    def flex($obj; $idx; $key):
+      if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
+    def entry_like_from($t):
+      {
+        type: $t,
+        event_id: (flex(.; 1; "event_id") | tostring),
+        relay_hint: (flex(.; 2; "relay_hint") | tostring),
+        marker: (flex(.; 3; "marker") | tostring),
+        date: (flex(.; 4; "date") | tostring),
+        markdown: (flex(.; 5; "markdown") | tostring)
+      };
+    def elements_from_tags:
       [ .tags[]?
-        | select(type=="array" and length>=1 and .[0]=="entry")
+        | select(type=="array" and length>=1)
+        | if .[0] == "group" then
+            { type: "group", title: (.[1] // "" | tostring) }
+          elif .[0] == "entry" then
+            entry_like_from("entry")
+          elif .[0] == "sub" then
+            entry_like_from("sub")
+          else empty end
+      ];
+    def elements_from_entries:
+      [ .entries[]?
         | {
-            event_id: (.[1] // "" | tostring),
-            relay_hint: (.[2] // "" | tostring),
-            marker: (.[3] // "" | tostring),
-            date: (.[4] // "" | tostring),
-            markdown: (.[5] // "" | tostring)
+            type: "entry",
+            event_id: (flex(.; 1; "event_id") | tostring),
+            relay_hint: (flex(.; 2; "relay_hint") | tostring),
+            marker: (flex(.; 3; "marker") | tostring),
+            date: (flex(.; 4; "date") | tostring),
+            markdown: (flex(.; 5; "markdown") | tostring)
           }
       ];
-    (.entries // entries_from_tags // []) as $entries
+    ((.elements // elements_from_entries // elements_from_tags // [])) as $raw_elements
+    | ($raw_elements | map(
+        if (.type == "group") then
+          { type: "group", title: (flex(.; 1; "title") | tostring) }
+        else
+          {
+            type: (if (.type == "sub") then "sub" else "entry" end),
+            event_id: (flex(.; 1; "event_id") | tostring),
+            relay_hint: (flex(.; 2; "relay_hint") | tostring),
+            marker: (flex(.; 3; "marker") | tostring),
+            date: (flex(.; 4; "date") | tostring),
+            markdown: (flex(.; 5; "markdown") | tostring)
+          }
+        end
+      )) as $elements
     | {
         slug: $slug,
         title: ((.title // first_tag("title") // "List") | tostring),
         description: ((.description // first_tag("description") // "") | tostring),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         content: ((.content // "") | tostring),
-        entries: (
-          $entries
-          | map({
-              event_id: (.event_id // .[1] // "" | tostring),
-              relay_hint: (.relay_hint // .[2] // "" | tostring),
-              marker: (.marker // .[3] // "" | tostring),
-              date: (.date // .[4] // "" | tostring),
-              markdown: (.markdown // .[5] // "" | tostring)
-            })
-        )
+        elements: $elements,
+        entries: ($elements | map(select(.type != "group")))
       }
     | .tags = (
         [
           (if (.title | length) > 0 then ["title", .title] else empty end),
           (if (.description | length) > 0 then ["description", .description] else empty end),
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end)
-        ] + (.entries | map(["entry", .event_id, .relay_hint, .marker, .date, .markdown]))
+        ]
+        + (.elements | map(
+            if .type == "group" then
+              ["group", (.title // "")]
+            elif .type == "sub" then
+              ["sub", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
+            else
+              ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), (.markdown // "")]
+            end
+          ))
       )
   '
 }
@@ -87,6 +125,7 @@ blog_list_state_signature_json() {
     description: (.description // ""),
     group_by: (.group_by // ""),
     content: (.content // ""),
+    elements: (.elements // []),
     entries: (.entries // [])
   }' 2>/dev/null || printf '{}\n'
 }
@@ -102,24 +141,7 @@ blog_list_state_from_event_json() {
     blog_list_default_state_json "$slug"
     return 0
   fi
-  normalized=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{
-    slug: $slug,
-    title: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // "List"),
-    description: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="description") | .[1]] | first) // ""),
-    group_by: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="group_by") | .[1]] | first) // ""),
-    content: (.content // ""),
-    entries: (
-      [.tags[]? | select(type=="array" and length>=1 and .[0]=="entry")
-      | {
-          event_id: (.[1] // "" | tostring),
-          relay_hint: (.[2] // "" | tostring),
-          marker: (.[3] // "" | tostring),
-          date: (.[4] // "" | tostring),
-          markdown: (.[5] // "" | tostring)
-        }
-      ]
-    )
-  }')
+  normalized=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{ slug: $slug, content: (.content // ""), tags: (.tags // []) }')
   blog_list_normalize_state_json "$slug" "$normalized"
 }
 
@@ -178,27 +200,56 @@ blog_list_validate_and_enrich_state_json() {
   state_json=${1-}
   strict_publish=${2-false}
   if [ -z "$state_json" ]; then
-    printf '{"entries":[],"errors":["Missing list state"],"warnings":[],"can_publish":false}\n'
+    printf '{"elements":[],"entries":[],"errors":["Missing list state"],"warnings":[],"can_publish":false}\n'
     return 0
   fi
 
   group_by=$(printf '%s\n' "$state_json" | jq -r '.group_by // ""' 2>/dev/null || printf '')
+  elements_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-elements.XXXXXX")
   entries_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-entries.XXXXXX")
   errors_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-errors.XXXXXX")
   warnings_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-warnings.XXXXXX")
+  : > "$elements_tmp"
   : > "$entries_tmp"
   : > "$errors_tmp"
   : > "$warnings_tmp"
 
   current_year=""
   seen_years="|"
+  active_group=""
+  have_group=false
   idx=0
-  printf '%s\n' "$state_json" | jq -c '.entries // [] | .[]' 2>/dev/null | while IFS= read -r entry || [ -n "$entry" ]; do
-    event_id=$(printf '%s\n' "$entry" | jq -r '.event_id // ""' 2>/dev/null || printf '')
-    relay_hint=$(printf '%s\n' "$entry" | jq -r '.relay_hint // ""' 2>/dev/null || printf '')
-    marker=$(printf '%s\n' "$entry" | jq -r '.marker // ""' 2>/dev/null || printf '')
-    date_raw=$(printf '%s\n' "$entry" | jq -r '.date // ""' 2>/dev/null || printf '')
-    markdown=$(printf '%s\n' "$entry" | jq -r '.markdown // ""' 2>/dev/null || printf '')
+  printf '%s\n' "$state_json" | jq -c '(.elements // ((.entries // []) | map(. + {type:"entry"})) // []) | .[]' 2>/dev/null | while IFS= read -r element || [ -n "$element" ]; do
+    element_type=$(printf '%s\n' "$element" | jq -r '.type // "entry"' 2>/dev/null || printf 'entry')
+    if [ "$element_type" = "group" ]; then
+      title=$(printf '%s\n' "$element" | jq -r '.title // ""' 2>/dev/null || printf '')
+      if [ -n "$active_group" ]; then
+        printf 'Group %s appears before closing previous group "%s"\n' "$((idx + 1))" "$active_group" >> "$errors_tmp"
+      fi
+      active_group="$title"
+      have_group=true
+      jq -cn --arg type "group" --arg title "$title" '{type:$type,title:$title}' >> "$elements_tmp"
+      idx=$((idx + 1))
+      continue
+    fi
+
+    if [ "$element_type" != "entry" ] && [ "$element_type" != "sub" ]; then
+      element_type="entry"
+    fi
+
+    event_id=$(printf '%s\n' "$element" | jq -r '.event_id // ""' 2>/dev/null || printf '')
+    relay_hint=$(printf '%s\n' "$element" | jq -r '.relay_hint // ""' 2>/dev/null || printf '')
+    marker=$(printf '%s\n' "$element" | jq -r '.marker // ""' 2>/dev/null || printf '')
+    date_raw=$(printf '%s\n' "$element" | jq -r '.date // ""' 2>/dev/null || printf '')
+    markdown=$(printf '%s\n' "$element" | jq -r '.markdown // ""' 2>/dev/null || printf '')
+
+    if [ "$element_type" = "sub" ]; then
+      if [ "$have_group" != "true" ] || [ -z "$active_group" ]; then
+        printf 'Sub entry %s appears before any group\n' "$((idx + 1))" >> "$errors_tmp"
+      fi
+    else
+      active_group=""
+    fi
 
     resolved=false
     post_url=""
@@ -249,15 +300,15 @@ blog_list_validate_and_enrich_state_json() {
 
     if [ "$group_by" = "year" ]; then
       if [ -z "$event_id" ] && [ -z "$date_raw" ]; then
-        printf 'Entry %s is markdown-only and must include DATE when group_by=year\n' "$((idx + 1))" >> "$errors_tmp"
+        printf '%s %s is markdown-only and must include DATE when group_by=year\n' "$(printf '%s' "$element_type" | tr '[:lower:]' '[:upper:]')" "$((idx + 1))" >> "$errors_tmp"
       fi
       if [ -z "$year" ]; then
-        printf 'Entry %s has no resolvable year\n' "$((idx + 1))" >> "$warnings_tmp"
+        printf '%s %s has no resolvable year\n' "$(printf '%s' "$element_type" | tr '[:lower:]' '[:upper:]')" "$((idx + 1))" >> "$warnings_tmp"
       fi
       if [ -n "$year" ] && [ "$year" != "$current_year" ]; then
         case "$seen_years" in
           *"|$year|"*)
-            printf 'Entry %s reopens year section %s; year sections must be monotone\n' "$((idx + 1))" "$year" >> "$errors_tmp"
+            printf '%s %s reopens year section %s; year sections must be monotone\n' "$(printf '%s' "$element_type" | tr '[:lower:]' '[:upper:]')" "$((idx + 1))" "$year" >> "$errors_tmp"
             ;;
           *)
             seen_years="${seen_years}${year}|"
@@ -273,12 +324,16 @@ blog_list_validate_and_enrich_state_json() {
       --arg marker "$marker" \
       --arg date "$date_raw" \
       --arg markdown "$markdown" \
+      --arg type "$element_type" \
+      --arg group_title "$active_group" \
       --arg year "$year" \
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
       --arg post_oeuvre_date "$post_oeuvre_date" \
       --argjson resolved "$( [ "$resolved" = "true" ] && printf true || printf false )" \
       '{
+        type: $type,
+        group_title: $group_title,
         event_id: $event_id,
         relay_hint: $relay_hint,
         marker: $marker,
@@ -289,10 +344,14 @@ blog_list_validate_and_enrich_state_json() {
         post_url: $post_url,
         post_created_at: $post_created_at,
         post_oeuvre_date: $post_oeuvre_date
-      }' >> "$entries_tmp"
+      }' | tee -a "$elements_tmp" >> "$entries_tmp"
     idx=$((idx + 1))
   done
 
+  elements_json='[]'
+  if [ -s "$elements_tmp" ]; then
+    elements_json=$(jq -s '.' "$elements_tmp" 2>/dev/null || printf '[]')
+  fi
   entries_json='[]'
   if [ -s "$entries_tmp" ]; then
     entries_json=$(jq -s '.' "$entries_tmp" 2>/dev/null || printf '[]')
@@ -306,8 +365,9 @@ blog_list_validate_and_enrich_state_json() {
     warnings_json=$(awk 'NF' "$warnings_tmp" | jq -R . | jq -s '.' 2>/dev/null || printf '[]')
   fi
 
-  rm -f "$entries_tmp" "$errors_tmp" "$warnings_tmp"
-  jq -cn --argjson entries "$entries_json" --argjson errors "$errors_json" --argjson warnings "$warnings_json" '{
+  rm -f "$elements_tmp" "$entries_tmp" "$errors_tmp" "$warnings_tmp"
+  jq -cn --argjson elements "$elements_json" --argjson entries "$entries_json" --argjson errors "$errors_json" --argjson warnings "$warnings_json" '{
+    elements: $elements,
     entries: $entries,
     errors: $errors,
     warnings: $warnings,

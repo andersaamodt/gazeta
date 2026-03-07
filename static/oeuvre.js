@@ -115,31 +115,88 @@
   }
 
   function nextUid() {
-    return 'entry-' + String(state.uidCounter++);
+    return 'el-' + String(state.uidCounter++);
   }
 
-  function cloneEditableEntries(entries) {
-    return (Array.isArray(entries) ? entries : []).map(function (entry) {
+  function isEntryType(type) {
+    return type === 'entry' || type === 'sub';
+  }
+
+  function normalizeElement(raw) {
+    var type = String(raw && raw.type || 'entry');
+    if (type !== 'group' && type !== 'sub') {
+      type = 'entry';
+    }
+    if (type === 'group') {
       return {
-        _uid: String(entry && entry._uid || nextUid()),
-        event_id: String(entry && entry.event_id || ''),
-        relay_hint: String(entry && entry.relay_hint || ''),
-        marker: String(entry && entry.marker || ''),
-        date: String(entry && entry.date || ''),
-        markdown: String(entry && entry.markdown || '')
+        _uid: String(raw && raw._uid || nextUid()),
+        type: 'group',
+        title: String(raw && raw.title || '')
+      };
+    }
+    return {
+      _uid: String(raw && raw._uid || nextUid()),
+      type: type,
+      event_id: String(raw && raw.event_id || ''),
+      relay_hint: String(raw && raw.relay_hint || ''),
+      marker: String(raw && raw.marker || ''),
+      date: String(raw && raw.date || ''),
+      markdown: String(raw && raw.markdown || ''),
+      year: String(raw && raw.year || ''),
+      post_url: String(raw && raw.post_url || '')
+    };
+  }
+
+  function cloneEditableElements(elements) {
+    return (Array.isArray(elements) ? elements : []).map(normalizeElement);
+  }
+
+  function elementsFromLegacyEntries(entries) {
+    return (Array.isArray(entries) ? entries : []).map(function (entry) {
+      return normalizeElement({
+        type: 'entry',
+        event_id: entry && entry.event_id,
+        relay_hint: entry && entry.relay_hint,
+        marker: entry && entry.marker,
+        date: entry && entry.date,
+        markdown: entry && entry.markdown,
+        year: entry && entry.year,
+        post_url: entry && entry.post_url
+      });
+    });
+  }
+
+  function toEntries(elements) {
+    return (Array.isArray(elements) ? elements : []).filter(function (el) {
+      return isEntryType(String(el && el.type || 'entry'));
+    }).map(function (el) {
+      return {
+        event_id: String(el && el.event_id || ''),
+        relay_hint: String(el && el.relay_hint || ''),
+        marker: String(el && el.marker || ''),
+        date: String(el && el.date || ''),
+        markdown: String(el && el.markdown || '')
       };
     });
   }
 
   function readEditableStateFromPayload() {
     var s = (state.payload && state.payload.state) ? state.payload.state : {};
+    var elements = Array.isArray(s.elements) ? cloneEditableElements(s.elements) : elementsFromLegacyEntries(s.entries);
     return {
       title: String(s.title || root.getAttribute('data-list-title') || 'List'),
       description: String(s.description || ''),
       group_by: String(s.group_by || ''),
       content: String(s.content || ''),
-      entries: cloneEditableEntries(s.entries)
+      elements: elements
     };
+  }
+
+  function hasStructuralElements(elements) {
+    return (Array.isArray(elements) ? elements : []).some(function (el) {
+      var type = String(el && el.type || 'entry');
+      return type === 'group' || type === 'sub';
+    });
   }
 
   function yearFromDate(raw) {
@@ -188,7 +245,7 @@
         title: state.draft.title,
         description: state.draft.description,
         group_by: state.draft.group_by,
-        entries: cloneEditableEntries(state.draft.entries)
+        elements: cloneEditableElements(state.draft.elements)
       };
     }
     var src = (state.payload && state.payload.state) ? state.payload.state : {};
@@ -196,14 +253,14 @@
       title: String(src.title || ''),
       description: String(src.description || ''),
       group_by: String(src.group_by || ''),
-      entries: Array.isArray(src.entries) ? src.entries : []
+      elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
     };
   }
 
-  function findEntryIndex(uid) {
-    var entries = Array.isArray(state.draft && state.draft.entries) ? state.draft.entries : [];
-    for (var i = 0; i < entries.length; i += 1) {
-      if (String(entries[i]._uid || '') === String(uid || '')) {
+  function findElementIndex(uid) {
+    var elements = Array.isArray(state.draft && state.draft.elements) ? state.draft.elements : [];
+    for (var i = 0; i < elements.length; i += 1) {
+      if (String(elements[i]._uid || '') === String(uid || '')) {
         return i;
       }
     }
@@ -215,9 +272,9 @@
     if (!els.content) {
       return map;
     }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid]');
     nodes.forEach(function (node) {
-      var uid = node.getAttribute('data-entry-uid') || '';
+      var uid = node.getAttribute('data-element-uid') || '';
       if (uid) {
         map[uid] = node.getBoundingClientRect();
       }
@@ -229,9 +286,9 @@
     if (!els.content || !beforeRects) {
       return;
     }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid]');
     nodes.forEach(function (node) {
-      var uid = node.getAttribute('data-entry-uid') || '';
+      var uid = node.getAttribute('data-element-uid') || '';
       var first = beforeRects[uid];
       if (!first) {
         return;
@@ -340,13 +397,15 @@
     setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
+      var elements = cloneEditableElements(state.draft.elements || []);
       await apiPost('/cgi/blog-save-list-draft', {
         list_slug: slug,
         title: state.draft.title || '',
         description: state.draft.description || '',
         group_by: state.draft.group_by || '',
         content: state.draft.content || '',
-        entries_json: JSON.stringify(state.draft.entries || []),
+        elements_json: JSON.stringify(elements),
+        entries_json: JSON.stringify(toEntries(elements)),
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -430,77 +489,89 @@
     if (!isAdmin() || state.draft.group_by !== 'year') {
       return;
     }
-    var entries = state.draft.entries;
-    var idx = findEntryIndex(uid);
+    if (hasStructuralElements(state.draft.elements)) {
+      return;
+    }
+    var elements = state.draft.elements;
+    var idx = findElementIndex(uid);
     if (idx < 0) {
       return;
     }
-    var moving = entries[idx];
+    var moving = elements[idx];
+    if (!isEntryType(String(moving.type || 'entry'))) {
+      return;
+    }
     var year = yearFromDate(moving.date) || '';
-    entries.splice(idx, 1);
+    elements.splice(idx, 1);
     var inserted = false;
-    for (var i = 0; i < entries.length; i += 1) {
-      var y = yearFromDate(entries[i].date) || '';
+    for (var i = 0; i < elements.length; i += 1) {
+      var y = yearFromDate(elements[i].date) || '';
       if (year && y && year > y) {
-        entries.splice(i, 0, moving);
+        elements.splice(i, 0, moving);
         inserted = true;
         break;
       }
       if (year === y) {
         var j = i + 1;
-        while (j < entries.length && yearFromDate(entries[j].date) === year) {
+        while (j < elements.length && yearFromDate(elements[j].date) === year) {
           j += 1;
         }
-        entries.splice(j, 0, moving);
+        elements.splice(j, 0, moving);
         inserted = true;
         break;
       }
     }
     if (!inserted) {
-      entries.push(moving);
+      elements.push(moving);
     }
   }
 
-  function addEntry(prefillYear) {
+  function addEntry(prefillYear, type) {
     if (!isAdmin()) {
       return;
     }
+    var kind = String(type || 'entry');
+    if (!isEntryType(kind)) {
+      kind = 'entry';
+    }
     var entry = {
       _uid: nextUid(),
+      type: kind,
       event_id: '',
       relay_hint: '',
       marker: 'oeuvre',
       date: prefillYear ? String(prefillYear) : '',
       markdown: ''
     };
-    if (!prefillYear || state.draft.group_by !== 'year') {
-      state.draft.entries.push(entry);
-    } else {
-      var year = String(prefillYear);
-      var insertAt = state.draft.entries.length;
-      for (var i = 0; i < state.draft.entries.length; i += 1) {
-        var y = yearFromDate(state.draft.entries[i].date);
-        if (y === year) {
-          insertAt = i + 1;
-        }
-      }
-      state.draft.entries.splice(insertAt, 0, entry);
-    }
+    state.draft.elements.push(entry);
     state.activeEntryUid = entry._uid;
+  }
+
+  function addGroup() {
+    if (!isAdmin()) {
+      return;
+    }
+    var group = {
+      _uid: nextUid(),
+      type: 'group',
+      title: 'New group'
+    };
+    state.draft.elements.push(group);
+    state.activeEntryUid = group._uid;
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
     if (!isAdmin() || !dragUid || !targetUid || dragUid === targetUid) {
       return;
     }
-    var entries = state.draft.entries;
-    var from = findEntryIndex(dragUid);
-    var to = findEntryIndex(targetUid);
+    var elements = state.draft.elements;
+    var from = findElementIndex(dragUid);
+    var to = findElementIndex(targetUid);
     if (from < 0 || to < 0) {
       return;
     }
-    var item = entries[from];
-    entries.splice(from, 1);
+    var item = elements[from];
+    elements.splice(from, 1);
     var insertAt = to;
     if (from < to) {
       insertAt = to - 1;
@@ -511,10 +582,10 @@
     if (insertAt < 0) {
       insertAt = 0;
     }
-    if (insertAt > entries.length) {
-      insertAt = entries.length;
+    if (insertAt > elements.length) {
+      insertAt = elements.length;
     }
-    entries.splice(insertAt, 0, item);
+    elements.splice(insertAt, 0, item);
   }
 
   function renderHead() {
@@ -570,33 +641,171 @@
     return '<li class="list-entry-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span></li>';
   }
 
-  function renderEntryInline(entry) {
-    var uid = String(entry && entry._uid || '');
-    var active = uid && uid === state.activeEntryUid;
-    var markdownText = String(entry && entry.markdown || '').trim();
-    var dateText = String(entry && entry.date || '');
-    var eventId = String(entry && entry.event_id || '');
+  function renderStructuredReadOnly(elements) {
+    var html = '<ul class="list-entries">';
+    var groupOpen = false;
+
+    (Array.isArray(elements) ? elements : []).forEach(function (el) {
+      var type = String(el && el.type || 'entry');
+      if (type === 'group') {
+        if (groupOpen) {
+          html += '</ul></li>';
+        }
+        html += '<li class="list-entry-line list-group-line"><span class="list-group-title">' + escapeHtml(String(el && el.title || '')) + '</span><ul class="list-sub-entries">';
+        groupOpen = true;
+        return;
+      }
+
+      if (type === 'sub') {
+        if (groupOpen) {
+          html += renderEntryReadOnly(el);
+        } else {
+          html += '<li class="list-entry-line list-sub-orphan">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '') + '</li>';
+        }
+        return;
+      }
+
+      if (groupOpen) {
+        html += '</ul></li>';
+        groupOpen = false;
+      }
+      html += renderEntryReadOnly(el);
+    });
+
+    if (groupOpen) {
+      html += '</ul></li>';
+    }
+    html += '</ul>';
+    return html;
+  }
+
+  function renderGroupByReadOnly(entries, groupBy) {
     var html = '';
-    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-entry-uid="' + escapeHtml(uid) + '" draggable="true">';
+    var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(groupBy || '')) >= 0;
+    if (grouped) {
+      var currentLabel = '__none__';
+      var groupOpen = false;
+      entries.forEach(function (entry) {
+        var label = groupLabelForEntry(entry, groupBy);
+        if (label !== currentLabel) {
+          if (groupOpen) {
+            html += '</ul></section>';
+          }
+          currentLabel = label;
+          groupOpen = true;
+          html += '<section class="list-year-group">';
+          html += '<div class="list-year-head">';
+          html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
+          html += '</div>';
+          html += '<ul class="list-entries">';
+        }
+        html += renderEntryReadOnly(entry);
+      });
+      if (groupOpen) {
+        html += '</ul></section>';
+      }
+      return html;
+    }
+
+    html += '<ul class="list-entries">';
+    entries.forEach(function (entry) {
+      html += renderEntryReadOnly(entry);
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderElementInline(el) {
+    var uid = String(el && el._uid || '');
+    var active = uid && uid === state.activeEntryUid;
+    var type = String(el && el.type || 'entry');
+    var html = '';
+
+    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" draggable="true">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
+
+    if (type === 'group') {
+      if (active) {
+        html += '<div class="list-inline-cell list-inline-date"><span class="list-inline-type-pill">group</span></div>';
+        html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(String(el && el.title || '')) + '" placeholder="Group title"></div>';
+        html += '<div class="list-inline-cell list-inline-link"></div>';
+        html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
+      } else {
+        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">group</span></button>';
+        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(String(el && el.title || '')) + '</span><span class="list-edit-brace">{edit}</span></button>';
+        html += '<div class="list-inline-cell list-inline-link"></div>';
+        html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
+      }
+
+      html += '</li>';
+      return html;
+    }
+
+    var markdownText = String(el && el.markdown || '').trim();
+    var dateText = String(el && el.date || '');
+    var eventId = String(el && el.event_id || '');
+
     if (active) {
-      html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
-      html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
+      html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
+      html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
       html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
-      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-entry-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
+      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
       html += '<div class="list-inline-eventid">';
       html += '<details class="list-admin-eventid-details"' + (eventId ? ' open' : '') + '>';
       html += '<summary>Add event_id</summary>';
-      html += '<label><span>event_id</span><input type="text" data-inline-field="event_id" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
+      html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
+      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="sub"' + (type === 'sub' ? ' selected' : '') + '>sub</option></select></label>';
       html += '</details>';
       html += '</div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">' + escapeHtml(type) + '</span><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
       html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
-      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-entry-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
+      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
     }
+
     html += '</li>';
+    return html;
+  }
+
+  function renderInlineEditor(elements) {
+    var html = '';
+    html += '<div class="list-inline-edit-shell">';
+    html += '<div class="list-inline-edit-header">';
+    html += '<span class="list-inline-edit-title">Edit List</span>';
+    html += '<div class="list-inline-edit-controls">';
+    html += '<label><span>Group by</span><select id="list-admin-group-by">';
+    html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
+    html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
+    html += '<option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option>';
+    html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
+    html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
+    html += '</select></label>';
+    html += '<button type="button" data-list-action="add-group" title="Add group">+G</button>';
+    html += '<button type="button" data-list-action="add" title="Add entry">+</button>';
+    html += '</div>';
+    html += '</div>';
+
+    if (!elements.length) {
+      html += '<div class="list-inline-empty">No entries yet.</div>';
+      html += '</div>';
+      return html;
+    }
+
+    html += '<div class="list-inline-head">';
+    html += '<span class="list-inline-head-handle"></span>';
+    html += '<span class="list-inline-head-date">Date / Type</span>';
+    html += '<span class="list-inline-head-markdown">Text</span>';
+    html += '<span class="list-inline-head-link">Link</span>';
+    html += '<span class="list-inline-head-actions"></span>';
+    html += '</div>';
+
+    html += '<ul class="list-entries list-entries-inline">';
+    elements.forEach(function (el) {
+      html += renderElementInline(el);
+    });
+    html += '</ul>';
+    html += '</div>';
     return html;
   }
 
@@ -608,12 +817,12 @@
     }
 
     var s = getRenderState();
-    var entries = Array.isArray(s.entries) ? s.entries : [];
+    var elements = Array.isArray(s.elements) ? s.elements : [];
     var inlineMode = isAdmin() && state.editMode;
 
-    if (!entries.length) {
+    if (!elements.length) {
       if (inlineMode) {
-        els.content.innerHTML = '<div class="list-inline-edit-shell"><div class="list-inline-edit-header"><span class="list-inline-edit-title">Edit List</span><div class="list-inline-edit-controls"><label><span>Group by</span><select id="list-admin-group-by"><option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option><option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option><option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option><option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option><option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option></select></label><button type="button" data-list-action="add">+</button></div></div><div class="list-inline-empty">No entries yet.</div></div>';
+        els.content.innerHTML = renderInlineEditor([]);
       } else if (isAdmin()) {
         els.content.innerHTML = '';
       } else {
@@ -622,70 +831,19 @@
       return;
     }
 
-    var html = '';
     if (inlineMode) {
-      html += '<div class="list-inline-edit-shell">';
-      html += '<div class="list-inline-edit-header">';
-      html += '<span class="list-inline-edit-title">Edit List</span>';
-      html += '<div class="list-inline-edit-controls">';
-      html += '<label><span>Group by</span><select id="list-admin-group-by">';
-      html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
-      html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
-      html += '<option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option>';
-      html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
-      html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
-      html += '</select></label>';
-      html += '<button type="button" data-list-action="add">+</button>';
-      html += '</div>';
-      html += '</div>';
-      html += '<div class="list-inline-head">';
-      html += '<span class="list-inline-head-handle"></span>';
-      html += '<span class="list-inline-head-date">Date</span>';
-      html += '<span class="list-inline-head-markdown">Markdown</span>';
-      html += '<span class="list-inline-head-link">Link</span>';
-      html += '<span class="list-inline-head-actions"></span>';
-      html += '</div>';
+      els.content.innerHTML = renderInlineEditor(elements);
+      return;
     }
 
-    var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(s.group_by || '')) >= 0;
-    if (grouped) {
-      var currentLabel = '__none__';
-      var groupOpen = false;
-      entries.forEach(function (entry) {
-        var label = groupLabelForEntry(entry, s.group_by);
-        if (label !== currentLabel) {
-          if (groupOpen) {
-            html += '</ul></section>';
-          }
-          currentLabel = label;
-          groupOpen = true;
-          html += '<section class="list-year-group">';
-          html += '<div class="list-year-head">';
-          html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
-          if (inlineMode && s.group_by === 'year') {
-            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-year="' + escapeHtml(label || '') + '">+</button>';
-          }
-          html += '</div>';
-          html += '<ul class="list-entries' + (inlineMode ? ' list-entries-inline' : '') + '">';
-        }
-        html += inlineMode ? renderEntryInline(entry) : renderEntryReadOnly(entry);
-      });
-      if (groupOpen) {
-        html += '</ul></section>';
-      }
-    } else {
-      html += '<ul class="list-entries' + (inlineMode ? ' list-entries-inline' : '') + '">';
-      entries.forEach(function (entry) {
-        html += inlineMode ? renderEntryInline(entry) : renderEntryReadOnly(entry);
-      });
-      html += '</ul>';
+    if (hasStructuralElements(elements)) {
+      els.content.innerHTML = renderStructuredReadOnly(elements);
+      return;
     }
 
-    if (inlineMode) {
-      html += '</div>';
-    }
-
-    els.content.innerHTML = html;
+    els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
+      return isEntryType(String(el && el.type || 'entry'));
+    }), s.group_by);
   }
 
   function renderValidation() {
@@ -779,8 +937,8 @@
           state.editMode = !state.editMode;
           if (!state.editMode) {
             state.activeEntryUid = '';
-          } else if (!state.activeEntryUid && state.draft.entries.length) {
-            state.activeEntryUid = state.draft.entries[0]._uid;
+          } else if (!state.activeEntryUid && state.draft.elements.length) {
+            state.activeEntryUid = state.draft.elements[0]._uid;
           }
           renderList();
           renderAdmin();
@@ -823,19 +981,15 @@
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
           var before = captureEntryRects();
-          addEntry('');
+          addEntry('', 'entry');
           renderListWithFlip(before);
           queueAutosave(120);
           return;
         }
-        if (action === 'add-year') {
-          var year = String(listAction.getAttribute('data-year') || '').trim();
-          if (!year || year === 'Unknown') {
-            year = '';
-          }
-          var beforeYear = captureEntryRects();
-          addEntry(year);
-          renderListWithFlip(beforeYear);
+        if (action === 'add-group') {
+          var beforeGroup = captureEntryRects();
+          addGroup();
+          renderListWithFlip(beforeGroup);
           queueAutosave(120);
           return;
         }
@@ -848,7 +1002,7 @@
       var inlineAction = target.closest('[data-list-inline-action]');
       if (inlineAction instanceof HTMLElement) {
         var actionType = inlineAction.getAttribute('data-list-inline-action');
-        var uid = String(inlineAction.getAttribute('data-entry-uid') || '');
+        var uid = String(inlineAction.getAttribute('data-element-uid') || '');
         if (!uid) {
           return;
         }
@@ -858,12 +1012,12 @@
           return;
         }
         if (actionType === 'remove') {
-          var idx = findEntryIndex(uid);
+          var idx = findElementIndex(uid);
           if (idx < 0) {
             return;
           }
           var beforeRemove = captureEntryRects();
-          state.draft.entries.splice(idx, 1);
+          state.draft.elements.splice(idx, 1);
           if (state.activeEntryUid === uid) {
             state.activeEntryUid = '';
           }
@@ -936,20 +1090,25 @@
         return;
       }
       var target = event.target;
-      if (!(target instanceof HTMLInputElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
-      var uid = String(target.getAttribute('data-entry-uid') || '');
+      var uid = String(target.getAttribute('data-element-uid') || '');
       var field = String(target.getAttribute('data-inline-field') || '');
       if (!uid || !field) {
         return;
       }
-      var idx = findEntryIndex(uid);
+      var idx = findElementIndex(uid);
       if (idx < 0) {
         return;
       }
       state.activeEntryUid = uid;
-      state.draft.entries[idx][field] = String(target.value || '');
+      if (field === 'type') {
+        var nextType = String(target.value || 'entry');
+        state.draft.elements[idx].type = (nextType === 'sub') ? 'sub' : 'entry';
+      } else {
+        state.draft.elements[idx][field] = String(target.value || '');
+      }
       queueAutosave(500);
     });
 
@@ -963,26 +1122,31 @@
       }
 
       if (target.id === 'list-admin-group-by' && target instanceof HTMLSelectElement) {
-        var beforeGroup = captureEntryRects();
+        var beforeGroupBy = captureEntryRects();
         state.draft.group_by = String(target.value || '').trim();
-        renderListWithFlip(beforeGroup);
+        renderListWithFlip(beforeGroupBy);
         queueAutosave(280);
         return;
       }
 
-      if (!(target instanceof HTMLInputElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
-      var uid = String(target.getAttribute('data-entry-uid') || '');
+      var uid = String(target.getAttribute('data-element-uid') || '');
       var field = String(target.getAttribute('data-inline-field') || '');
       if (!uid || !field) {
         return;
       }
-      var idx = findEntryIndex(uid);
+      var idx = findElementIndex(uid);
       if (idx < 0) {
         return;
       }
-      state.draft.entries[idx][field] = String(target.value || '');
+      if (field === 'type') {
+        var nextType = String(target.value || 'entry');
+        state.draft.elements[idx].type = (nextType === 'sub') ? 'sub' : 'entry';
+      } else {
+        state.draft.elements[idx][field] = String(target.value || '');
+      }
       if (field === 'date') {
         var beforeDate = captureEntryRects();
         moveEntryByYear(uid);
@@ -996,11 +1160,11 @@
         return;
       }
       var target = event.target;
-      var row = target && target.closest ? target.closest('.list-entry-inline[data-entry-uid]') : null;
+      var row = target && target.closest ? target.closest('.list-entry-inline[data-element-uid]') : null;
       if (!(row instanceof HTMLElement)) {
         return;
       }
-      state.dragUid = String(row.getAttribute('data-entry-uid') || '');
+      state.dragUid = String(row.getAttribute('data-element-uid') || '');
       event.dataTransfer.effectAllowed = 'move';
       try {
         event.dataTransfer.setData('text/plain', state.dragUid);
@@ -1011,7 +1175,7 @@
     });
 
     els.content.addEventListener('dragend', function (event) {
-      var row = event.target && event.target.closest ? event.target.closest('.list-entry-inline[data-entry-uid]') : null;
+      var row = event.target && event.target.closest ? event.target.closest('.list-entry-inline[data-element-uid]') : null;
       if (row) {
         row.classList.remove('is-dragging');
       }
@@ -1023,7 +1187,7 @@
         return;
       }
       var target = event.target;
-      var row = target && target.closest ? target.closest('.list-entry-inline[data-entry-uid]') : null;
+      var row = target && target.closest ? target.closest('.list-entry-inline[data-element-uid]') : null;
       if (!(row instanceof HTMLElement)) {
         return;
       }
@@ -1036,12 +1200,12 @@
         return;
       }
       var target = event.target;
-      var row = target && target.closest ? target.closest('.list-entry-inline[data-entry-uid]') : null;
+      var row = target && target.closest ? target.closest('.list-entry-inline[data-element-uid]') : null;
       if (!(row instanceof HTMLElement)) {
         return;
       }
       event.preventDefault();
-      var targetUid = String(row.getAttribute('data-entry-uid') || '');
+      var targetUid = String(row.getAttribute('data-element-uid') || '');
       if (!targetUid || targetUid === state.dragUid) {
         return;
       }
@@ -1065,8 +1229,8 @@
       });
       state.draft = readEditableStateFromPayload();
       state.saveIndicatorVisible = false;
-      if (!state.activeEntryUid && state.draft.entries.length) {
-        state.activeEntryUid = state.draft.entries[0]._uid;
+      if (!state.activeEntryUid && state.draft.elements.length) {
+        state.activeEntryUid = state.draft.elements[0]._uid;
       }
       setSaveStatus('saved');
       renderList();

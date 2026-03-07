@@ -32,7 +32,7 @@ jq -cn \
   '{
     success: true,
     list_slug: $list_slug,
-    state: ($state + {entries: $validation.entries}),
+    state: ($state + {elements: $validation.elements, entries: $validation.entries}),
     validation: {
       errors: $validation.errors,
       warnings: $validation.warnings,

@@ -21,13 +21,21 @@ description=$(blog_param description)
 group_by=$(blog_param group_by)
 content=$(blog_param content)
 entries_json=$(blog_param entries_json)
+elements_json=$(blog_param elements_json)
 
 if [ -z "$list_slug" ]; then
   blog_json_error "list_slug is required" "missing_list_slug"
   exit 0
 fi
+if [ -z "$elements_json" ]; then
+  elements_json='[]'
+fi
 if [ -z "$entries_json" ]; then
   entries_json='[]'
+fi
+if ! printf '%s\n' "$elements_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+  blog_json_error "elements_json must be a JSON array" "invalid_elements"
+  exit 0
 fi
 if ! printf '%s\n' "$entries_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
   blog_json_error "entries_json must be a JSON array" "invalid_entries"
@@ -40,6 +48,7 @@ raw_state=$(jq -cn \
   --arg description "$description" \
   --arg group_by "$group_by" \
   --arg content "$content" \
+  --argjson elements "$elements_json" \
   --argjson entries "$entries_json" \
   '{
     slug: $slug,
@@ -47,6 +56,7 @@ raw_state=$(jq -cn \
     description: $description,
     group_by: $group_by,
     content: $content,
+    elements: (if ($elements | length) > 0 then $elements else ($entries | map(. + {type:"entry"})) end),
     entries: $entries
   }')
 state_json=$(blog_list_normalize_state_json "$list_slug" "$raw_state")
@@ -57,7 +67,7 @@ validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
 jq -cn --arg slug "$list_slug" --argjson state "$state_json" --argjson validation "$validation_json" '{
   success: true,
   list_slug: $slug,
-  state: ($state + {entries: $validation.entries}),
+  state: ($state + {elements: $validation.elements, entries: $validation.entries}),
   validation: {
     errors: $validation.errors,
     warnings: $validation.warnings,

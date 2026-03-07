@@ -74,13 +74,15 @@ next_state=$(printf '%s\n' "$state_json" | jq -c \
   --arg marker "$marker" \
   --arg date "$entry_date" \
   --arg markdown "$entry_markdown" '
-  .entries = ((.entries // []) + [{
+  .elements = ((.elements // []) + [{
+    type: "entry",
     event_id: $event_id,
     relay_hint: $relay_hint,
     marker: $marker,
     date: $date,
     markdown: $markdown
   }])
+  | .entries = (.elements | map(select(.type != "group")))
 ')
 next_state=$(blog_list_normalize_state_json "$list_slug" "$next_state")
 blog_list_save_draft_state_json "$list_slug" "$next_state"
@@ -93,7 +95,7 @@ jq -cn \
   '{
     success: true,
     list_slug: $list_slug,
-    state: ($state + {entries: $validation.entries}),
+    state: ($state + {elements: $validation.elements, entries: $validation.entries}),
     validation: {
       errors: $validation.errors,
       warnings: $validation.warnings,

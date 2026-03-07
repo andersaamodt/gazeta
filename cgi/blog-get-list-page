@@ -85,7 +85,7 @@ jq -cn \
     canonical_exists: $canonical_exists,
     draft_exists: $draft_exists,
     draft_differs: $draft_differs,
-    state: ($state + { entries: $validation.entries }),
+    state: ($state + { elements: $validation.elements, entries: $validation.entries }),
     canonical_state: $canonical_state,
     canonical_event: $canonical_event,
     validation: {
