@@ -1332,9 +1332,8 @@
           renderList();
           return;
         }
-        var sameRow = activeEl.closest('.list-entry-inline[data-element-uid]');
-        var sameUid = sameRow ? String(sameRow.getAttribute('data-element-uid') || '') : '';
-        if (sameUid !== uid) {
+        var nextInlineField = activeEl.closest('[data-inline-field][data-element-uid]');
+        if (!nextInlineField) {
           state.activeEntryUid = '';
           state.activeCellField = '';
           renderList();
@@ -1502,6 +1501,35 @@
       state.activeCellField = '';
       renderList();
     }
+  });
+  document.addEventListener('click', function (event) {
+    if (!state.editMode || !isAdmin() || !state.activeEntryUid || !state.activeCellField) {
+      return;
+    }
+    var target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (!root.contains(target)) {
+      return;
+    }
+    if (target.closest('[data-list-inline-action="edit"]')) {
+      return;
+    }
+    var activeUid = String(state.activeEntryUid || '');
+    var activeFieldSelector = '[data-inline-field="' + String(state.activeCellField || '') + '"][data-element-uid="' + activeUid + '"]';
+    var onActiveField = !!target.closest(activeFieldSelector);
+    if (onActiveField) {
+      return;
+    }
+    var onActiveEventDetails = !!target.closest('.list-inline-eventid') &&
+      !!target.closest('.list-entry-inline[data-element-uid="' + activeUid + '"]');
+    if (onActiveEventDetails) {
+      return;
+    }
+    state.activeEntryUid = '';
+    state.activeCellField = '';
+    renderList();
   });
   window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
   window.addEventListener('storage', function (event) {
