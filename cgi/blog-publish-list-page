@@ -1,0 +1,95 @@
+#!/bin/sh
+# Publish list draft to Nostr kind:30001 (parameterized replaceable).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+if [ -z "$list_slug" ]; then
+  blog_json_error "list_slug is required" "missing_list_slug"
+  exit 0
+fi
+
+state_json=$(blog_list_load_draft_state_json "$list_slug" 2>/dev/null || printf '')
+if [ -z "$state_json" ]; then
+  state_json=$(blog_list_load_canonical_state_json "$list_slug")
+fi
+state_json=$(blog_list_normalize_state_json "$list_slug" "$state_json")
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" true)
+can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
+if [ "$can_publish" != "true" ]; then
+  jq -cn --argjson validation "$validation_json" '{
+    success: false,
+    error: "Validation failed",
+    code: "validation_failed",
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: false
+    }
+  }'
+  printf '\n'
+  exit 0
+fi
+
+content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+tags_json=$(printf '%s\n' "$state_json" | jq -c '.tags // []' 2>/dev/null || printf '[]')
+event_json=$(blog_nostr_sign_list_event "$list_slug" "$content" "$tags_json" 2>/dev/null || printf '')
+if [ -z "$event_json" ]; then
+  reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+  if [ -z "$reason" ]; then
+    reason="Could not sign list event."
+  fi
+  blog_json_error "$reason" "nostr_publish_failed"
+  exit 0
+fi
+
+pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // empty' 2>/dev/null || printf '')
+author_count=$(blog_nostr_list_file_lines "$blog_nostr_authors_file" | wc -l | tr -d ' ')
+if [ "${author_count:-0}" -eq 0 ] && [ -n "$pubkey" ]; then
+  blog_nostr_append_author_if_missing "$pubkey" >/dev/null 2>&1 || true
+fi
+if [ -n "$pubkey" ] && ! blog_nostr_author_allowed "$pubkey"; then
+  blog_json_error "Publisher pubkey is not allowed by site author policy" "nostr_author_not_allowed"
+  exit 0
+fi
+
+if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
+  blog_json_error "Could not store published event" "store_failed"
+  exit 0
+fi
+
+canonical_state_json=$(blog_list_state_from_event_json "$list_slug" "$event_json")
+blog_list_save_draft_state_json "$list_slug" "$canonical_state_json"
+
+event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+jq -cn \
+  --arg list_slug "$list_slug" \
+  --arg event_id "$event_id" \
+  --argjson state "$canonical_state_json" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    list_slug: $list_slug,
+    event_id: $event_id,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: true
+    },
+    message: "Published to Nostr."
+  }'
+printf '\n'

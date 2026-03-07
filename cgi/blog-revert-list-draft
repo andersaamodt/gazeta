@@ -1,0 +1,43 @@
+#!/bin/sh
+# Revert local list draft to canonical Nostr version.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+if [ -z "$list_slug" ]; then
+  blog_json_error "list_slug is required" "missing_list_slug"
+  exit 0
+fi
+
+canonical_state_json=$(blog_list_load_canonical_state_json "$list_slug")
+blog_list_save_draft_state_json "$list_slug" "$canonical_state_json"
+validation_json=$(blog_list_validate_and_enrich_state_json "$canonical_state_json" false)
+
+jq -cn \
+  --arg list_slug "$list_slug" \
+  --argjson state "$canonical_state_json" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    list_slug: $list_slug,
+    state: ($state + {entries: $validation.entries}),
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Draft reverted to canonical Nostr version."
+  }'
+printf '\n'

@@ -1,0 +1,97 @@
+#!/bin/sh
+# Get list page state (canonical for visitors, draft for admins).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+if [ -z "$list_slug" ]; then
+  list_slug="oeuvre"
+fi
+
+is_admin=false
+req_token=$(blog_param session_token)
+req_csrf=$(blog_param csrf_token)
+if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
+  if [ -n "$req_csrf" ] && [ "$req_csrf" = "$BLOG_SESSION_CSRF" ] && blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+    is_admin=true
+    BLOG_SESSION_IS_ADMIN=true
+  fi
+fi
+
+canonical_event_json=$(blog_nostr_list_latest_event_json "$list_slug" 2>/dev/null || printf '')
+if [ -n "$canonical_event_json" ]; then
+  canonical_state_json=$(blog_list_state_from_event_json "$list_slug" "$canonical_event_json")
+  canonical_exists=true
+else
+  canonical_state_json=$(blog_list_default_state_json "$list_slug")
+  canonical_exists=false
+fi
+
+draft_state_json=''
+if draft_candidate=$(blog_list_load_draft_state_json "$list_slug" 2>/dev/null || printf ''); then
+  draft_state_json=$draft_candidate
+fi
+draft_exists=false
+if [ -n "$draft_state_json" ]; then
+  draft_exists=true
+fi
+
+view_mode="canonical"
+view_state_json=$canonical_state_json
+if [ "$is_admin" = "true" ]; then
+  view_mode="draft"
+  if [ -n "$draft_state_json" ]; then
+    view_state_json=$draft_state_json
+  else
+    view_state_json=$canonical_state_json
+  fi
+fi
+
+draft_differs=false
+if [ "$draft_exists" = "true" ]; then
+  draft_sig=$(blog_list_state_signature_json "$draft_state_json")
+  canonical_sig=$(blog_list_state_signature_json "$canonical_state_json")
+  if [ "$draft_sig" != "$canonical_sig" ]; then
+    draft_differs=true
+  fi
+fi
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$view_state_json" false)
+
+jq -cn \
+  --arg slug "$list_slug" \
+  --argjson is_admin "$( [ "$is_admin" = "true" ] && printf true || printf false )" \
+  --arg view_mode "$view_mode" \
+  --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
+  --argjson draft_exists "$( [ "$draft_exists" = "true" ] && printf true || printf false )" \
+  --argjson draft_differs "$( [ "$draft_differs" = "true" ] && printf true || printf false )" \
+  --argjson state "$view_state_json" \
+  --argjson canonical_state "$canonical_state_json" \
+  --argjson canonical_event "$( [ -n "$canonical_event_json" ] && printf '%s' "$canonical_event_json" || printf 'null' )" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    slug: $slug,
+    is_admin: $is_admin,
+    view_mode: $view_mode,
+    canonical_exists: $canonical_exists,
+    draft_exists: $draft_exists,
+    draft_differs: $draft_differs,
+    state: ($state + { entries: $validation.entries }),
+    canonical_state: $canonical_state,
+    canonical_event: $canonical_event,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    }
+  }'
+printf '\n'

@@ -19,6 +19,7 @@ blog_nostr_rate_limits_dir="$blog_auth_dir/rate-limits"
 blog_nostr_delegation_revocations_file="$blog_auth_dir/nostr-delegation-revocations.txt"
 blog_state_dir="$blog_site_data/blog"
 blog_drafts_dir="$blog_state_dir/drafts"
+blog_lists_dir="$blog_state_dir/lists"
 blog_uploads_dir="$blog_site_data/uploads"
 blog_nostr_dir="$blog_site_root/site/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
@@ -71,7 +72,7 @@ blog_ensure_posts_mount() {
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_drafts_dir" "$blog_uploads_dir" "$blog_posts_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_posts_store_dir"
   blog_ensure_posts_mount
   mkdir -p "$blog_nostr_state_dir" "$blog_nostr_events_dir" "$blog_nostr_derived_dir"
   [ -f "$blog_nostr_delegation_revocations_file" ] || : > "$blog_nostr_delegation_revocations_file"
@@ -1867,6 +1868,78 @@ blog_nostr_sign_post_event() {
   printf '%s\n' "$event_json"
 }
 
+blog_nostr_sign_list_event() {
+  # args: list_slug content tags_json
+  list_slug=$(blog_list_normalize_slug "${1-}")
+  content=${2-}
+  tags_json=${3-}
+
+  if [ -z "$list_slug" ] || [ -z "$tags_json" ]; then
+    return 1
+  fi
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+  if ! command -v nostril >/dev/null 2>&1; then
+    return 1
+  fi
+  if ! printf '%s\n' "$tags_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+    return 1
+  fi
+
+  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+  if [ -z "$secret" ]; then
+    return 1
+  fi
+
+  created_at=$(blog_now_epoch)
+  set -- nostril --sec "$secret" --kind 30001 --created-at "$created_at" --content "$content" --tag d "$list_slug"
+
+  tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-tags.XXXXXX")
+  printf '%s\n' "$tags_json" | jq -c '.[] | select(type=="array" and length>=1)' > "$tags_tmp"
+  while IFS= read -r tag_line || [ -n "$tag_line" ]; do
+    [ -n "$tag_line" ] || continue
+    key=$(printf '%s\n' "$tag_line" | jq -r '.[0] // ""' 2>/dev/null || printf '')
+    [ -n "$key" ] || continue
+    if [ "$key" = "d" ]; then
+      continue
+    fi
+    if [ "$key" = "entry" ]; then
+      e1=$(printf '%s\n' "$tag_line" | jq -r '.[1] // ""' 2>/dev/null || printf '')
+      e2=$(printf '%s\n' "$tag_line" | jq -r '.[2] // ""' 2>/dev/null || printf '')
+      e3=$(printf '%s\n' "$tag_line" | jq -r '.[3] // ""' 2>/dev/null || printf '')
+      e4=$(printf '%s\n' "$tag_line" | jq -r '.[4] // ""' 2>/dev/null || printf '')
+      e5=$(printf '%s\n' "$tag_line" | jq -r '.[5] // ""' 2>/dev/null || printf '')
+      set -- "$@" --tagn 6 "entry" "$e1" "$e2" "$e3" "$e4" "$e5"
+      continue
+    fi
+    value=$(printf '%s\n' "$tag_line" | jq -r '.[1] // ""' 2>/dev/null || printf '')
+    set -- "$@" --tag "$key" "$value"
+  done < "$tags_tmp"
+  rm -f "$tags_tmp"
+
+  sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-sign.XXXXXX")
+  set +e
+  "$@" > "$sign_tmp" 2>/dev/null
+  sign_status=$?
+  set -e
+  if [ "$sign_status" -ne 0 ]; then
+    rm -f "$sign_tmp"
+    return 1
+  fi
+
+  event_json=$(cat "$sign_tmp" 2>/dev/null || printf '')
+  rm -f "$sign_tmp"
+  event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+  if [ -z "$event_json" ]; then
+    return 1
+  fi
+  if ! blog_nostr_verify_event_json "$event_json"; then
+    return 1
+  fi
+  printf '%s\n' "$event_json"
+}
+
 blog_nostr_publish_diagnostic() {
   if ! command -v jq >/dev/null 2>&1; then
     printf 'missing dependency: jq.\n'
@@ -2057,6 +2130,64 @@ blog_nostr_post_record_for_path() {
     return 1
   fi
   blog_nostr_post_record_for_slug "$slug"
+}
+
+blog_nostr_post_record_for_event_id() {
+  event_id=${1-}
+  [ -n "$event_id" ] || return 1
+  if [ ! -f "$blog_nostr_posts_index" ]; then
+    blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+  fi
+  if [ ! -f "$blog_nostr_posts_index" ]; then
+    return 1
+  fi
+  jq -c --arg id "$event_id" '.[] | select(.id == $id) | . ' "$blog_nostr_posts_index" 2>/dev/null | head -n 1
+}
+
+blog_list_normalize_slug() {
+  raw=${1-}
+  slug=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
+  if [ -z "$slug" ]; then
+    slug="list"
+  fi
+  printf '%s\n' "$slug"
+}
+
+blog_list_draft_path() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  printf '%s/%s.json\n' "$blog_lists_dir" "$slug"
+}
+
+blog_nostr_list_latest_event_json() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  [ -d "$blog_nostr_events_dir" ] || return 1
+
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-events.XXXXXX")
+  find "$blog_nostr_events_dir" -type f -path '*/30001/*.json' 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    return 1
+  fi
+
+  out=$(jq -c --arg slug "$slug" '
+    [ .[]
+      | select(type=="object" and (.kind|type)=="number" and .kind==30001 and (.tags|type)=="array")
+      | . as $ev
+      | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
+      | select($d == $slug)
+    ]
+    | sort_by((.created_at // 0), (.id // ""))
+    | last // empty
+  ' "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  if [ -z "$out" ] || [ "$out" = "null" ]; then
+    return 1
+  fi
+  printf '%s\n' "$out"
 }
 
 blog_nostr_comments_for_address_json() {

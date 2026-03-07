@@ -1,0 +1,104 @@
+#!/bin/sh
+# Append a post-backed entry to a list draft.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+post_path=$(blog_param post_path)
+entry_date=$(blog_param date)
+entry_markdown=$(blog_param markdown)
+marker=$(blog_param marker)
+relay_hint=$(blog_param relay_hint)
+
+if [ -z "$list_slug" ] || [ -z "$post_path" ]; then
+  blog_json_error "list_slug and post_path are required" "missing_params"
+  exit 0
+fi
+if [ -z "$marker" ]; then
+  marker="oeuvre"
+fi
+
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+case "$post_path" in
+  *'..'*|*'\\'*|*'//'*)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+file="$blog_site_root/site/pages/$post_path"
+case "$file" in
+  "$blog_posts_dir"/*) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+if [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
+event_id=$(blog_read_front_matter_value "$file" nostr_event_id 2>/dev/null || printf '')
+if [ -z "$entry_markdown" ]; then
+  entry_markdown=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+fi
+
+state_json=$(blog_list_load_draft_state_json "$list_slug" 2>/dev/null || printf '')
+if [ -z "$state_json" ]; then
+  state_json=$(blog_list_load_canonical_state_json "$list_slug")
+fi
+state_json=$(blog_list_normalize_state_json "$list_slug" "$state_json")
+
+next_state=$(printf '%s\n' "$state_json" | jq -c \
+  --arg event_id "$event_id" \
+  --arg relay_hint "$relay_hint" \
+  --arg marker "$marker" \
+  --arg date "$entry_date" \
+  --arg markdown "$entry_markdown" '
+  .entries = ((.entries // []) + [{
+    event_id: $event_id,
+    relay_hint: $relay_hint,
+    marker: $marker,
+    date: $date,
+    markdown: $markdown
+  }])
+')
+next_state=$(blog_list_normalize_state_json "$list_slug" "$next_state")
+blog_list_save_draft_state_json "$list_slug" "$next_state"
+validation_json=$(blog_list_validate_and_enrich_state_json "$next_state" false)
+
+jq -cn \
+  --arg list_slug "$list_slug" \
+  --argjson state "$next_state" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    list_slug: $list_slug,
+    state: ($state + {entries: $validation.entries}),
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Entry added to list draft."
+  }'
+printf '\n'

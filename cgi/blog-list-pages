@@ -1,0 +1,60 @@
+#!/bin/sh
+# List available curated list pages.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-slugs.XXXXXX")
+
+find "$blog_lists_dir" -maxdepth 1 -type f -name '*.json' 2>/dev/null | while IFS= read -r file; do
+  base=$(basename "$file" .json)
+  slug=$(blog_list_normalize_slug "$base")
+  [ -n "$slug" ] && printf '%s\n' "$slug"
+done >> "$slugs_tmp"
+
+find "$blog_nostr_events_dir" -type f -path '*/30001/*.json' 2>/dev/null | while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // empty' "$file" 2>/dev/null || true
+done | awk 'NF' | while IFS= read -r slug || [ -n "$slug" ]; do
+  norm=$(blog_list_normalize_slug "$slug")
+  [ -n "$norm" ] && printf '%s\n' "$norm"
+done >> "$slugs_tmp"
+
+if [ ! -s "$slugs_tmp" ]; then
+  printf 'oeuvre\n' > "$slugs_tmp"
+fi
+
+printf '{"success":true,"lists":['
+first=1
+sort -u "$slugs_tmp" | while IFS= read -r slug || [ -n "$slug" ]; do
+  [ -n "$slug" ] || continue
+  draft_state=$(blog_list_load_draft_state_json "$slug" 2>/dev/null || printf '')
+  if [ -n "$draft_state" ]; then
+    title=$(printf '%s\n' "$draft_state" | jq -r '.title // ""' 2>/dev/null || printf '')
+  else
+    event_json=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
+    title=$(printf '%s\n' "$event_json" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+  fi
+  if [ -z "$title" ]; then
+    title=$(printf '%s' "$slug" | sed 's/-/ /g')
+  fi
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+  printf '{"slug":"%s","title":"%s"}' "$(blog_json_escape "$slug")" "$(blog_json_escape "$title")"
+done
+printf ']}\n'
+
+rm -f "$slugs_tmp"

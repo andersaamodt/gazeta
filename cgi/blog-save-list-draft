@@ -1,0 +1,68 @@
+#!/bin/sh
+# Save local draft state for a list page.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+title=$(blog_param title)
+description=$(blog_param description)
+group_by=$(blog_param group_by)
+content=$(blog_param content)
+entries_json=$(blog_param entries_json)
+
+if [ -z "$list_slug" ]; then
+  blog_json_error "list_slug is required" "missing_list_slug"
+  exit 0
+fi
+if [ -z "$entries_json" ]; then
+  entries_json='[]'
+fi
+if ! printf '%s\n' "$entries_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+  blog_json_error "entries_json must be a JSON array" "invalid_entries"
+  exit 0
+fi
+
+raw_state=$(jq -cn \
+  --arg slug "$list_slug" \
+  --arg title "$title" \
+  --arg description "$description" \
+  --arg group_by "$group_by" \
+  --arg content "$content" \
+  --argjson entries "$entries_json" \
+  '{
+    slug: $slug,
+    title: $title,
+    description: $description,
+    group_by: $group_by,
+    content: $content,
+    entries: $entries
+  }')
+state_json=$(blog_list_normalize_state_json "$list_slug" "$raw_state")
+blog_list_save_draft_state_json "$list_slug" "$state_json"
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
+
+jq -cn --arg slug "$list_slug" --argjson state "$state_json" --argjson validation "$validation_json" '{
+  success: true,
+  list_slug: $slug,
+  state: ($state + {entries: $validation.entries}),
+  validation: {
+    errors: $validation.errors,
+    warnings: $validation.warnings,
+    can_publish: $validation.can_publish
+  },
+  message: "Draft saved."
+}'
+printf '\n'

@@ -1,0 +1,65 @@
+#!/bin/sh
+# Create a new draft initialized from a published post.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+post_path=$(blog_param post_path)
+if [ -z "$post_path" ]; then
+  blog_json_error "post_path is required" "missing_post_path"
+  exit 0
+fi
+
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+case "$post_path" in
+  *'..'*|*'\\'*|*'//'*)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+file="$blog_site_root/site/pages/$post_path"
+case "$file" in
+  "$blog_posts_dir"/*) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+if [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
+title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+if [ -z "$author" ]; then
+  author=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+fi
+
+tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
+tags_csv=$(printf '%s' "$tags_raw" | sed 's/^\[//; s/\]$//; s/"//g; s/, */,/g')
+tags=$(blog_normalize_tags "$tags_csv")
+content=$(blog_read_markdown_body "$file")
+
+draft_id=$(blog_new_draft_id)
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft
+
+printf '{"success":true,"draft_id":"%s","message":"Draft created from published post."}\n' "$(blog_json_escape "$draft_id")"
