@@ -525,13 +525,9 @@
     }
   }
 
-  function addEntry(prefillYear, type) {
+  function addEntry(prefillYear) {
     if (!isAdmin()) {
       return;
-    }
-    var kind = String(type || 'entry');
-    if (!isEntryType(kind)) {
-      kind = 'entry';
     }
     var entry = {
       _uid: nextUid(),
@@ -540,21 +536,12 @@
       relay_hint: '',
       marker: 'oeuvre',
       date: prefillYear ? String(prefillYear) : '',
-      depth: (kind === 'subentry') ? 1 : 0,
+      depth: 0,
       markdown: ''
     };
     state.draft.elements.push(entry);
     state.activeEntryUid = entry._uid;
     state.activeCellField = 'markdown';
-  }
-
-  function applyTypeChange(element, nextType) {
-    var targetType = String(nextType || 'entry');
-    if (targetType !== 'entry' && targetType !== 'subentry') {
-      targetType = 'entry';
-    }
-    element.type = 'entry';
-    element.depth = (targetType === 'subentry') ? 1 : 0;
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
@@ -650,68 +637,65 @@
     return '<li class="list-entry-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span></li>';
   }
 
-  function renderTypeSelect(uid, depth) {
-    var t = (Number(depth || 0) > 0) ? 'subentry' : 'entry';
-    return '<select class="list-inline-type-select" data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '">' +
-      '<option value="entry"' + (t === 'entry' ? ' selected' : '') + '>entry</option>' +
-      '<option value="subentry"' + (t === 'subentry' ? ' selected' : '') + '>subentry</option>' +
-      '</select>';
+  function renderEntryInner(entry) {
+    return renderEntryReadOnly(entry).replace(/^<li[^>]*>|<\/li>$/g, '');
   }
 
   function placeholderHtml(label) {
     return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
-  function renderStructuredReadOnly(elements) {
-    var html = '<ul class="list-entries">';
-    var entryOpen = false;
-    var subListOpen = false;
+  function renderStructuredReadOnly(elements, listClass) {
+    var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
+    var openDepth = -1;
+    var started = false;
 
-    (Array.isArray(elements) ? elements : []).forEach(function (el) {
+    (Array.isArray(elements) ? elements : []).forEach(function (el, idx) {
       var depth = Math.max(0, Number(el && el.depth || 0) || 0);
-      if (depth === 0) {
-        if (subListOpen) {
-          html += '</ul>';
-          subListOpen = false;
-        }
-        if (entryOpen) {
-          html += '</li>';
-        }
-        html += '<li class="list-entry-line">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '');
-        entryOpen = true;
+      if (!started && depth > 0) {
+        depth = 0;
+      }
+      if (started && depth > openDepth + 1) {
+        depth = openDepth + 1;
+      }
+
+      if (!started) {
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+        openDepth = depth;
+        started = true;
         return;
       }
 
-      if (depth > 0) {
-        if (entryOpen) {
-          if (!subListOpen) {
-            html += '<ul class="list-sub-entries">';
-            subListOpen = true;
-          }
-          html += renderEntryReadOnly(el);
-        } else {
-          html += '<li class="list-entry-line list-sub-orphan">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '') + '</li>';
-        }
+      if (depth === openDepth) {
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
         return;
       }
 
-      if (entryOpen) {
-        if (subListOpen) {
-          html += '</ul>';
-          subListOpen = false;
+      if (depth > openDepth) {
+        while (openDepth < depth) {
+          html += '<ul class="list-sub-entries">';
+          openDepth += 1;
         }
-        html += '</li>';
-        entryOpen = false;
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+        return;
       }
-      html += '<li class="list-entry-line">' + renderEntryReadOnly(el).replace(/^<li[^>]*>|<\/li>$/g, '') + '</li>';
+
+      html += '</li>';
+      while (openDepth > depth) {
+        html += '</ul></li>';
+        openDepth -= 1;
+      }
+      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
     });
 
-    if (subListOpen) {
-      html += '</ul>';
-    }
-    if (entryOpen) {
+    if (started) {
       html += '</li>';
+      while (openDepth > 0) {
+        html += '</ul></li>';
+        openDepth -= 1;
+      }
     }
+
     html += '</ul>';
     return html;
   }
@@ -721,35 +705,32 @@
     var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(groupBy || '')) >= 0;
     if (grouped) {
       var currentLabel = '__none__';
-      var groupOpen = false;
+      var bucket = [];
+      function flushGroup() {
+        if (!bucket.length) {
+          return;
+        }
+        html += renderStructuredReadOnly(bucket, 'list-entries');
+        html += '</section>';
+        bucket = [];
+      }
       entries.forEach(function (entry) {
         var label = groupLabelForEntry(entry, groupBy);
         if (label !== currentLabel) {
-          if (groupOpen) {
-            html += '</ul></section>';
-          }
+          flushGroup();
           currentLabel = label;
-          groupOpen = true;
           html += '<section class="list-year-group">';
           html += '<div class="list-year-head">';
           html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
           html += '</div>';
-          html += '<ul class="list-entries">';
         }
-        html += renderEntryReadOnly(entry);
+        bucket.push(entry);
       });
-      if (groupOpen) {
-        html += '</ul></section>';
-      }
+      flushGroup();
       return html;
     }
 
-    html += '<ul class="list-entries">';
-    entries.forEach(function (entry) {
-      html += renderEntryReadOnly(entry);
-    });
-    html += '</ul>';
-    return html;
+    return renderStructuredReadOnly(entries, 'list-entries');
   }
 
   function renderElementInline(el) {
@@ -757,21 +738,29 @@
     var rowSelected = uid && uid === state.activeEntryUid;
     var activeField = rowSelected ? String(state.activeCellField || '') : '';
     var active = !!activeField;
-    var type = String(el && el.type || 'entry');
     var depth = Math.max(0, Number(el && el.depth || 0) || 0);
+    var idx = findElementIndex(uid);
+    var prevDepth = idx > 0 ? Math.max(0, Number(state.draft.elements[idx - 1] && state.draft.elements[idx - 1].depth || 0) || 0) : -1;
+    var canIndent = idx > 0 && (depth + 1) <= (prevDepth + 1);
+    var canOutdent = depth > 0;
     var html = '';
 
-    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" draggable="true">';
+    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';" draggable="true">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
     var markdownText = String(el && el.markdown || '').trim();
     var dateText = String(el && el.date || '');
     var eventId = String(el && el.event_id || '');
 
+    html += '<div class="list-inline-cell list-inline-indent-controls">';
+    html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="outdent" data-element-uid="' + escapeHtml(uid) + '" title="Outdent"' + (canOutdent ? '' : ' disabled aria-disabled="true"') + '>←</button>';
+    html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="indent" data-element-uid="' + escapeHtml(uid) + '" title="Indent"' + (canIndent ? '' : ' disabled aria-disabled="true"') + '>→</button>';
+    html += '</div>';
+
     if (active && activeField === 'date') {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, depth) + '<input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
     } else {
-      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, depth) + '<button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
@@ -789,7 +778,6 @@
       html += '<details class="list-admin-eventid-details" open>';
       html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
-      html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (depth > 0 ? '' : ' selected') + '>entry</option><option value="subentry"' + (depth > 0 ? ' selected' : '') + '>subentry</option></select></label>';
       html += '</details>';
       html += '</div>';
     }
@@ -802,7 +790,6 @@
     var html = '';
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
-    var hasStructural = hasStructuralElements(elements);
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
@@ -823,13 +810,14 @@
 
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
-    html += '<span class="list-inline-head-date">Type / Date</span>';
+    html += '<span class="list-inline-head-depth">Depth</span>';
+    html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-link">Link</span>';
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
 
-    if (isGrouped && !hasStructural) {
+    if (isGrouped) {
       var currentLabel = '__none__';
       var groupOpen = false;
       elements.forEach(function (el) {
@@ -888,11 +876,6 @@
 
     if (inlineMode) {
       els.content.innerHTML = renderInlineEditor(elements);
-      return;
-    }
-
-    if (hasStructuralElements(elements)) {
-      els.content.innerHTML = renderStructuredReadOnly(elements);
       return;
     }
 
@@ -1060,7 +1043,7 @@
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
           var before = captureEntryRects();
-          addEntry('', 'entry');
+          addEntry('');
           renderListWithFlip(before);
           queueAutosave(120);
           return;
@@ -1096,6 +1079,29 @@
             state.activeCellField = '';
           }
           renderListWithFlip(beforeRemove);
+          queueAutosave(120);
+          return;
+        }
+        if (actionType === 'indent' || actionType === 'outdent') {
+          if (inlineAction.hasAttribute('disabled')) {
+            return;
+          }
+          var depthIdx = findElementIndex(uid);
+          if (depthIdx < 0) {
+            return;
+          }
+          var beforeDepth = captureEntryRects();
+          var currentDepth = Math.max(0, Number(state.draft.elements[depthIdx].depth || 0) || 0);
+          if (actionType === 'outdent') {
+            state.draft.elements[depthIdx].depth = Math.max(0, currentDepth - 1);
+          } else {
+            var previousDepth = depthIdx > 0 ? Math.max(0, Number(state.draft.elements[depthIdx - 1] && state.draft.elements[depthIdx - 1].depth || 0) || 0) : -1;
+            var targetDepth = currentDepth + 1;
+            if (depthIdx > 0 && targetDepth <= previousDepth + 1) {
+              state.draft.elements[depthIdx].depth = targetDepth;
+            }
+          }
+          renderListWithFlip(beforeDepth);
           queueAutosave(120);
         }
       }
@@ -1189,11 +1195,7 @@
         return;
       }
       state.activeEntryUid = uid;
-      if (field === 'type') {
-        applyTypeChange(state.draft.elements[idx], String(target.value || 'entry'));
-      } else {
-        state.draft.elements[idx][field] = String(target.value || '');
-      }
+      state.draft.elements[idx][field] = String(target.value || '');
       queueAutosave(500);
     });
 
@@ -1226,11 +1228,7 @@
       if (idx < 0) {
         return;
       }
-      if (field === 'type') {
-        applyTypeChange(state.draft.elements[idx], String(target.value || 'entry'));
-      } else {
-        state.draft.elements[idx][field] = String(target.value || '');
-      }
+      state.draft.elements[idx][field] = String(target.value || '');
       if (field === 'date') {
         var beforeDate = captureEntryRects();
         moveEntryByYear(uid);
