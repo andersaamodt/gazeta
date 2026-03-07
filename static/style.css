@@ -1039,6 +1039,10 @@ header h1 {
   font-style: italic;
 }
 
+.list-inline-link .list-inline-placeholder {
+  font-weight: 400;
+}
+
 .list-inline-toolbar {
   display: flex;
   justify-content: space-between;
