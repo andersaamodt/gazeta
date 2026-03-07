@@ -594,8 +594,10 @@
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {
           els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="list-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'List') + '" data-head-input="title"></span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
-        } else {
+        } else if (state.editMode) {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="title">Edit...</button><span id="list-page-title-actions" class="list-page-title-actions"></span>';
+        } else {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
       } else {
         els.title.textContent = s.title || 'List';
@@ -610,8 +612,10 @@
       els.description.hidden = false;
       if (state.activeHeadField === 'description') {
         els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-done="description">Done</button>';
-      } else {
+      } else if (state.editMode) {
         els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+      } else {
+        els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span>';
       }
     } else {
       els.description.textContent = descText;
