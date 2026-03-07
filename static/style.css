@@ -744,6 +744,11 @@ header h1 {
   display: inline-block;
 }
 
+.list-page-description-empty {
+  color: var(--muted-text, #6b7a95);
+  font-style: italic;
+}
+
 .list-inline-edit-shell {
   border: 1px solid var(--border, #c5d0e6);
   border-radius: 10px;

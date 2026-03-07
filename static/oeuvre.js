@@ -610,9 +610,17 @@
       if (state.activeHeadField === 'description') {
         els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-done="description">Done</button>';
       } else if (state.editMode) {
-        els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+        if (descText.trim()) {
+          els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+        } else {
+          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+        }
       } else {
-        els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span>';
+        if (descText.trim()) {
+          els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span>';
+        } else {
+          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
+        }
       }
     } else {
       els.description.textContent = descText;
