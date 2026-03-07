@@ -400,10 +400,9 @@ header h1 {
 }
 
 .list-admin {
-  margin: 1rem 0 1.2rem;
-  border: 1px solid var(--border, #c5d0e6);
-  border-radius: 12px;
-  background: #f8fbff;
+  margin: 0.15rem 0 0.45rem;
+  border: 0;
+  background: transparent;
 }
 
 .list-admin-panel {
@@ -605,7 +604,7 @@ header h1 {
 }
 
 .list-admin-save-status {
-  margin-top: 0.55rem;
+  margin-top: 0.35rem;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -639,12 +638,109 @@ header h1 {
   margin-top: 0.8rem;
 }
 
+.list-page-admin-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.list-page-admin-bar button {
+  width: fit-content;
+  padding: 0.4rem 0.66rem;
+  border-radius: 8px;
+}
+
+.list-page-admin-bar button:disabled {
+  background: #d4dae6;
+  border-color: #c3cada;
+  color: #6d778d;
+  cursor: default;
+  box-shadow: none;
+}
+
+.list-page-admin-bar button:disabled:hover {
+  background: #d4dae6;
+  border-color: #c3cada;
+  color: #6d778d;
+}
+
+.list-inline-edit-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin-left: 0.35rem;
+  font-size: 0.8rem;
+  color: #46619a;
+  text-decoration: underline;
+}
+
+.list-inline-edit-shell {
+  border: 1px solid var(--border, #c5d0e6);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.6rem 0.65rem;
+}
+
+.list-inline-edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.45rem;
+}
+
+.list-inline-edit-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.list-inline-edit-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.list-inline-edit-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted-text, #4f617f);
+}
+
+.list-inline-edit-controls select {
+  min-width: 10.4rem;
+  height: 2.05rem;
+}
+
+.list-inline-edit-controls button {
+  width: 2.1rem;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border-radius: 999px;
+}
+
 .list-year-group {
   margin-bottom: 1.1rem;
 }
 
 .list-year-heading {
   margin: 0.2rem 0 0.5rem;
+}
+
+.list-year-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-year-add {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 999px;
 }
 
 .list-inline-head {
@@ -702,8 +798,8 @@ header h1 {
 }
 
 .list-inline-open:hover {
-  background: #eef4ff;
-  border-radius: 6px;
+  background: transparent;
+  border-radius: 0;
 }
 
 .list-inline-handle {
@@ -729,6 +825,13 @@ header h1 {
 
 .list-inline-eventid {
   grid-column: 2 / 5;
+}
+
+.list-edit-brace {
+  margin-left: 0.35rem;
+  color: #6a7da6;
+  font-size: 0.74rem;
+  white-space: nowrap;
 }
 
 .list-entries {

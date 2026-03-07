@@ -37,6 +37,10 @@
     uidCounter: 1
   };
 
+  function isAdmin() {
+    return !!(state.payload && state.payload.is_admin && state.draft);
+  }
+
   function authSignature() {
     var auth = getAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
@@ -109,8 +113,7 @@
   }
 
   function nextUid() {
-    var uid = 'entry-' + String(state.uidCounter++);
-    return uid;
+    return 'entry-' + String(state.uidCounter++);
   }
 
   function cloneEditableEntries(entries) {
@@ -126,14 +129,6 @@
     });
   }
 
-  function yearFromDate(raw) {
-    var dateRaw = String(raw || '');
-    if (dateRaw.length < 4) {
-      return '';
-    }
-    return dateRaw.slice(0, 4);
-  }
-
   function readEditableStateFromPayload() {
     var s = (state.payload && state.payload.state) ? state.payload.state : {};
     return {
@@ -145,15 +140,53 @@
     };
   }
 
+  function yearFromDate(raw) {
+    var text = String(raw || '');
+    return text.length >= 4 ? text.slice(0, 4) : '';
+  }
+
+  function monthFromDate(raw) {
+    var text = String(raw || '');
+    return text.length >= 7 ? text.slice(0, 7) : 'Unknown';
+  }
+
+  function firstLetter(text) {
+    var src = String(text || '').trim();
+    if (!src) {
+      return '#';
+    }
+    var ch = src.charAt(0).toUpperCase();
+    if (!/[A-Z0-9]/.test(ch)) {
+      return '#';
+    }
+    return ch;
+  }
+
+  function groupLabelForEntry(entry, groupBy) {
+    var mode = String(groupBy || '');
+    if (mode === 'year') {
+      return yearFromDate(entry && entry.date || entry && entry.year || '') || 'Unknown';
+    }
+    if (mode === 'month') {
+      return monthFromDate(entry && entry.date || '');
+    }
+    if (mode === 'first_letter') {
+      return firstLetter(entry && entry.markdown || '');
+    }
+    if (mode === 'marker') {
+      var marker = String(entry && entry.marker || '').trim();
+      return marker || 'Unmarked';
+    }
+    return '';
+  }
+
   function getRenderState() {
-    if (state.payload && state.payload.is_admin && state.draft) {
+    if (isAdmin()) {
       return {
         title: state.draft.title,
         description: state.draft.description,
         group_by: state.draft.group_by,
-        entries: cloneEditableEntries(state.draft.entries).map(function (entry) {
-          return Object.assign({}, entry, { year: yearFromDate(entry.date) });
-        })
+        entries: cloneEditableEntries(state.draft.entries)
       };
     }
     var src = (state.payload && state.payload.state) ? state.payload.state : {};
@@ -165,8 +198,342 @@
     };
   }
 
-  function entryYear(entry) {
-    return yearFromDate(entry && entry.date || entry && entry.year || '');
+  function findEntryIndex(uid) {
+    var entries = Array.isArray(state.draft && state.draft.entries) ? state.draft.entries : [];
+    for (var i = 0; i < entries.length; i += 1) {
+      if (String(entries[i]._uid || '') === String(uid || '')) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function captureEntryRects() {
+    var map = {};
+    if (!els.content) {
+      return map;
+    }
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
+    nodes.forEach(function (node) {
+      var uid = node.getAttribute('data-entry-uid') || '';
+      if (uid) {
+        map[uid] = node.getBoundingClientRect();
+      }
+    });
+    return map;
+  }
+
+  function applyFlip(beforeRects) {
+    if (!els.content || !beforeRects) {
+      return;
+    }
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
+    nodes.forEach(function (node) {
+      var uid = node.getAttribute('data-entry-uid') || '';
+      var first = beforeRects[uid];
+      if (!first) {
+        return;
+      }
+      var last = node.getBoundingClientRect();
+      var dx = first.left - last.left;
+      var dy = first.top - last.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        return;
+      }
+      node.animate([
+        { transform: 'translate(' + dx + 'px,' + dy + 'px)' },
+        { transform: 'translate(0,0)' }
+      ], {
+        duration: 230,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+      });
+    });
+  }
+
+  function renderListWithFlip(beforeRects) {
+    renderList();
+    requestAnimationFrame(function () {
+      applyFlip(beforeRects);
+    });
+  }
+
+  function setSaveStatus(next, errorMessage) {
+    state.saveStatus = next;
+    state.saveError = String(errorMessage || '');
+    var node = document.getElementById('list-admin-save-status');
+    if (!node) {
+      return;
+    }
+    node.classList.toggle('is-error', next === 'error');
+    if (next === 'saving') {
+      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      return;
+    }
+    if (next === 'error') {
+      node.textContent = 'Save failed';
+      return;
+    }
+    node.textContent = 'Saved';
+  }
+
+  function queueAutosave(delayMs) {
+    if (!isAdmin()) {
+      return;
+    }
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+    }
+    state.saveTimer = setTimeout(function () {
+      state.saveTimer = null;
+      persistDraft({ alertOnError: false });
+    }, Number(delayMs) > 0 ? Number(delayMs) : 500);
+  }
+
+  function syncMetaFromInputs() {
+    if (!isAdmin()) {
+      return;
+    }
+    var groupByInput = document.getElementById('list-admin-group-by');
+    if (groupByInput) {
+      state.draft.group_by = String(groupByInput.value || '').trim();
+    }
+  }
+
+  async function refreshValidation() {
+    if (!isAdmin()) {
+      return;
+    }
+    try {
+      var auth = getAuthPayload();
+      var latest = await apiPost('/cgi/blog-get-list-page', {
+        list_slug: slug,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      if (!latest) {
+        return;
+      }
+      state.payload.validation = latest.validation;
+      state.payload.canonical_exists = latest.canonical_exists;
+      state.payload.canonical_event = latest.canonical_event;
+      state.payload.draft_exists = latest.draft_exists;
+      state.payload.draft_differs = latest.draft_differs;
+      renderValidation();
+      renderAdmin();
+    } catch (_err) {
+      // Keep UI responsive if validation refresh fails.
+    }
+  }
+
+  async function persistDraft(options) {
+    if (state.busy || !isAdmin()) {
+      state.autosaveQueued = true;
+      return;
+    }
+    var opts = options || {};
+    state.busy = true;
+    syncMetaFromInputs();
+    setSaveStatus('saving');
+    try {
+      var auth = getAuthPayload();
+      await apiPost('/cgi/blog-save-list-draft', {
+        list_slug: slug,
+        title: state.draft.title || '',
+        description: state.draft.description || '',
+        group_by: state.draft.group_by || '',
+        content: state.draft.content || '',
+        entries_json: JSON.stringify(state.draft.entries || []),
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      state.payload.draft_exists = true;
+      state.payload.draft_differs = false;
+      setSaveStatus('saved');
+      refreshValidation();
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
+      if (opts.alertOnError !== false) {
+        window.alert(err.message || 'Could not save draft');
+      }
+      return false;
+    } finally {
+      state.busy = false;
+      if (state.autosaveQueued) {
+        state.autosaveQueued = false;
+        queueAutosave(250);
+      }
+    }
+    return true;
+  }
+
+  async function publishDraft() {
+    if (state.busy || !isAdmin()) {
+      return;
+    }
+    var saved = await persistDraft({ alertOnError: true });
+    if (!saved) {
+      return;
+    }
+    state.busy = true;
+    setSaveStatus('saving');
+    try {
+      var auth = getAuthPayload();
+      await apiPost('/cgi/blog-publish-list-page', {
+        list_slug: slug,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      await load();
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not publish list');
+      window.alert(err.message || 'Could not publish list');
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  async function revertDraft() {
+    if (state.busy || !isAdmin()) {
+      return;
+    }
+    if (!state.payload.canonical_exists) {
+      return;
+    }
+    if (!window.confirm('Discard local draft changes and restore canonical Nostr version?')) {
+      return;
+    }
+    state.busy = true;
+    setSaveStatus('saving');
+    try {
+      var auth = getAuthPayload();
+      await apiPost('/cgi/blog-revert-list-draft', {
+        list_slug: slug,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      await load();
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not revert draft');
+      window.alert(err.message || 'Could not revert draft');
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  function moveEntryByYear(uid) {
+    if (!isAdmin() || state.draft.group_by !== 'year') {
+      return;
+    }
+    var entries = state.draft.entries;
+    var idx = findEntryIndex(uid);
+    if (idx < 0) {
+      return;
+    }
+    var moving = entries[idx];
+    var year = yearFromDate(moving.date) || '';
+    entries.splice(idx, 1);
+    var inserted = false;
+    for (var i = 0; i < entries.length; i += 1) {
+      var y = yearFromDate(entries[i].date) || '';
+      if (year && y && year > y) {
+        entries.splice(i, 0, moving);
+        inserted = true;
+        break;
+      }
+      if (year === y) {
+        var j = i + 1;
+        while (j < entries.length && yearFromDate(entries[j].date) === year) {
+          j += 1;
+        }
+        entries.splice(j, 0, moving);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) {
+      entries.push(moving);
+    }
+  }
+
+  function addEntry(prefillYear) {
+    if (!isAdmin()) {
+      return;
+    }
+    var entry = {
+      _uid: nextUid(),
+      event_id: '',
+      relay_hint: '',
+      marker: 'oeuvre',
+      date: prefillYear ? String(prefillYear) : '',
+      markdown: ''
+    };
+    if (!prefillYear || state.draft.group_by !== 'year') {
+      state.draft.entries.push(entry);
+    } else {
+      var year = String(prefillYear);
+      var insertAt = state.draft.entries.length;
+      for (var i = 0; i < state.draft.entries.length; i += 1) {
+        var y = yearFromDate(state.draft.entries[i].date);
+        if (y === year) {
+          insertAt = i + 1;
+        }
+      }
+      state.draft.entries.splice(insertAt, 0, entry);
+    }
+    state.activeEntryUid = entry._uid;
+  }
+
+  function reorderByDrag(dragUid, targetUid, placeAfter) {
+    if (!isAdmin() || !dragUid || !targetUid || dragUid === targetUid) {
+      return;
+    }
+    var entries = state.draft.entries;
+    var from = findEntryIndex(dragUid);
+    var to = findEntryIndex(targetUid);
+    if (from < 0 || to < 0) {
+      return;
+    }
+    var item = entries[from];
+    entries.splice(from, 1);
+    var insertAt = to;
+    if (from < to) {
+      insertAt = to - 1;
+    }
+    if (placeAfter) {
+      insertAt += 1;
+    }
+    if (insertAt < 0) {
+      insertAt = 0;
+    }
+    if (insertAt > entries.length) {
+      insertAt = entries.length;
+    }
+    entries.splice(insertAt, 0, item);
+  }
+
+  function renderHead() {
+    var s = getRenderState();
+    if (els.title) {
+      if (isAdmin()) {
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="title">Edit...</button>';
+      } else {
+        els.title.textContent = s.title || 'List';
+      }
+    }
+
+    if (!els.description) {
+      return;
+    }
+    var descText = String(s.description || '');
+    if (isAdmin()) {
+      els.description.hidden = false;
+      els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+    } else {
+      els.description.textContent = descText;
+      els.description.hidden = !descText;
+    }
   }
 
   function renderEntryReadOnly(entry) {
@@ -180,17 +547,17 @@
 
   function renderEntryInline(entry) {
     var uid = String(entry && entry._uid || '');
-    var active = !!(state.activeEntryUid && uid === state.activeEntryUid);
-    var postUrl = String(entry && entry.post_url || '');
-    var line = String(entry && entry.markdown || '').trim();
+    var active = uid && uid === state.activeEntryUid;
+    var markdownText = String(entry && entry.markdown || '').trim();
+    var dateText = String(entry && entry.date || '');
     var eventId = String(entry && entry.event_id || '');
     var html = '';
     html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-entry-uid="' + escapeHtml(uid) + '" draggable="true">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
     if (active) {
-      html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(entry.date || '') + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
-      html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(entry.markdown || '') + '"></div>';
-      html += '<div class="list-inline-cell list-inline-link">' + (postUrl ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>' : '') + '</div>';
+      html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
+      html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
+      html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
       html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-entry-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
       html += '<div class="list-inline-eventid">';
       html += '<details class="list-admin-eventid-details"' + (eventId ? ' open' : '') + '>';
@@ -199,9 +566,9 @@
       html += '</details>';
       html += '</div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-date list-inline-open" data-list-inline-action="edit" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '">' + escapeHtml(entry.date || '') + '</button>';
-      html += '<button type="button" class="list-inline-cell list-inline-markdown list-inline-open" data-list-inline-action="edit" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '">' + markdownInline(line || '') + '</button>';
-      html += '<div class="list-inline-cell list-inline-link">' + (postUrl ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>' : '') + '</div>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="date" data-entry-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-entry-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
       html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-entry-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
     }
     html += '</li>';
@@ -209,26 +576,20 @@
   }
 
   function renderList() {
-    var s = getRenderState();
-    if (els.title) {
-      els.title.textContent = s.title || 'List';
-    }
-    if (els.description) {
-      els.description.textContent = s.description || '';
-      els.description.hidden = !s.description;
-    }
+    renderHead();
+
     if (!els.content) {
       return;
     }
 
+    var s = getRenderState();
     var entries = Array.isArray(s.entries) ? s.entries : [];
-    var isAdmin = !!(state.payload && state.payload.is_admin);
-    var isInlineEdit = isAdmin && state.editMode;
+    var inlineMode = isAdmin() && state.editMode;
 
     if (!entries.length) {
-      if (isInlineEdit) {
-        els.content.innerHTML = '<div class="list-inline-empty">No entries yet.</div>';
-      } else if (isAdmin) {
+      if (inlineMode) {
+        els.content.innerHTML = '<div class="list-inline-edit-shell"><div class="list-inline-edit-header"><span class="list-inline-edit-title">Edit List</span><div class="list-inline-edit-controls"><label><span>Group by</span><select id="list-admin-group-by"><option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option><option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option><option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option><option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option><option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option></select></label><button type="button" data-list-action="add">+</button></div></div><div class="list-inline-empty">No entries yet.</div></div>';
+      } else if (isAdmin()) {
         els.content.innerHTML = '';
       } else {
         els.content.innerHTML = '<p class="placeholder">No entries yet.</p>';
@@ -237,7 +598,21 @@
     }
 
     var html = '';
-    if (isInlineEdit) {
+    if (inlineMode) {
+      html += '<div class="list-inline-edit-shell">';
+      html += '<div class="list-inline-edit-header">';
+      html += '<span class="list-inline-edit-title">Edit List</span>';
+      html += '<div class="list-inline-edit-controls">';
+      html += '<label><span>Group by</span><select id="list-admin-group-by">';
+      html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
+      html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
+      html += '<option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option>';
+      html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
+      html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
+      html += '</select></label>';
+      html += '<button type="button" data-list-action="add">+</button>';
+      html += '</div>';
+      html += '</div>';
       html += '<div class="list-inline-head">';
       html += '<span class="list-inline-head-handle"></span>';
       html += '<span class="list-inline-head-date">Date</span>';
@@ -247,32 +622,42 @@
       html += '</div>';
     }
 
-    if (s.group_by === 'year') {
-      var currentYear = '';
+    var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(s.group_by || '')) >= 0;
+    if (grouped) {
+      var currentLabel = '__none__';
       var groupOpen = false;
       entries.forEach(function (entry) {
-        var year = String(entry && entry.year || '') || entryYear(entry);
-        if (year !== currentYear) {
+        var label = groupLabelForEntry(entry, s.group_by);
+        if (label !== currentLabel) {
           if (groupOpen) {
             html += '</ul></section>';
           }
-          currentYear = year;
+          currentLabel = label;
           groupOpen = true;
           html += '<section class="list-year-group">';
-          html += '<h3 class="list-year-heading">' + escapeHtml(year || 'Unknown') + '</h3>';
-          html += '<ul class="list-entries' + (isInlineEdit ? ' list-entries-inline' : '') + '">';
+          html += '<div class="list-year-head">';
+          html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
+          if (inlineMode && s.group_by === 'year') {
+            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-year="' + escapeHtml(label || '') + '">+</button>';
+          }
+          html += '</div>';
+          html += '<ul class="list-entries' + (inlineMode ? ' list-entries-inline' : '') + '">';
         }
-        html += isInlineEdit ? renderEntryInline(entry) : renderEntryReadOnly(entry);
+        html += inlineMode ? renderEntryInline(entry) : renderEntryReadOnly(entry);
       });
       if (groupOpen) {
         html += '</ul></section>';
       }
     } else {
-      html += '<ul class="list-entries' + (isInlineEdit ? ' list-entries-inline' : '') + '">';
+      html += '<ul class="list-entries' + (inlineMode ? ' list-entries-inline' : '') + '">';
       entries.forEach(function (entry) {
-        html += isInlineEdit ? renderEntryInline(entry) : renderEntryReadOnly(entry);
+        html += inlineMode ? renderEntryInline(entry) : renderEntryReadOnly(entry);
       });
       html += '</ul>';
+    }
+
+    if (inlineMode) {
+      html += '</div>';
     }
 
     els.content.innerHTML = html;
@@ -313,7 +698,7 @@
     if (!els.admin) {
       return;
     }
-    if (!(state.payload && state.payload.is_admin)) {
+    if (!isAdmin()) {
       if (state.saveTimer) {
         clearTimeout(state.saveTimer);
         state.saveTimer = null;
@@ -322,30 +707,15 @@
       els.admin.innerHTML = '';
       return;
     }
-    if (!state.draft) {
-      state.draft = readEditableStateFromPayload();
-    }
-    var canRevert = !!(state.payload && state.payload.canonical_exists);
+
+    var canRevert = !!state.payload.canonical_exists;
     var revertTitle = canRevert ? 'Revert draft to Nostr version' : 'No Nostr version found';
 
     var html = '';
-    html += '<details class="list-admin-panel" open>';
-    html += '<summary class="list-admin-summary">Edit List</summary>';
-    html += '<div class="list-admin-topbar">';
-    html += '<div class="list-admin-actions">';
-    html += '<button type="button" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '<button type="button" data-list-action="add">+ Entry</button>';
+    html += '<div class="list-page-admin-bar">';
     html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     html += '<button type="button" data-list-action="publish">Publish to Nostr...</button>';
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="list-admin-meta">';
-    html += '<label><span>Title</span><input id="list-admin-title" type="text" value="' + escapeHtml(state.draft.title || '') + '"></label>';
-    html += '<label><span>Description</span><input id="list-admin-description" type="text" value="' + escapeHtml(state.draft.description || '') + '"></label>';
-    html += '<label><span>Group by</span><select id="list-admin-group-by">';
-    html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
-    html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
-    html += '</select></label>';
+    html += '<button type="button" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
     html += '</div>';
     html += '<div id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
     if (state.saveStatus === 'saving') {
@@ -356,322 +726,9 @@
       html += 'Saved';
     }
     html += '</div>';
-    html += '</details>';
 
     els.admin.hidden = false;
     els.admin.innerHTML = html;
-  }
-
-  function setSaveStatus(next, errorMessage) {
-    state.saveStatus = next;
-    state.saveError = String(errorMessage || '');
-    var node = document.getElementById('list-admin-save-status');
-    if (!node) {
-      return;
-    }
-    node.classList.toggle('is-error', next === 'error');
-    if (next === 'saving') {
-      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      return;
-    }
-    if (next === 'error') {
-      node.textContent = 'Save failed';
-      return;
-    }
-    node.textContent = 'Saved';
-  }
-
-  function queueAutosave(delayMs) {
-    if (!(state.payload && state.payload.is_admin && state.draft)) {
-      return;
-    }
-    if (state.saveTimer) {
-      clearTimeout(state.saveTimer);
-    }
-    state.saveTimer = setTimeout(function () {
-      state.saveTimer = null;
-      persistDraft({ alertOnError: false });
-    }, Number(delayMs) > 0 ? Number(delayMs) : 500);
-  }
-
-  function syncMetaFromInputs() {
-    if (!(state.payload && state.payload.is_admin && state.draft && els.admin)) {
-      return;
-    }
-    var titleInput = document.getElementById('list-admin-title');
-    var descriptionInput = document.getElementById('list-admin-description');
-    var groupByInput = document.getElementById('list-admin-group-by');
-    state.draft.title = titleInput ? String(titleInput.value || '').trim() : state.draft.title;
-    state.draft.description = descriptionInput ? String(descriptionInput.value || '').trim() : state.draft.description;
-    state.draft.group_by = groupByInput ? String(groupByInput.value || '').trim() : state.draft.group_by;
-  }
-
-  function captureEntryRects() {
-    var map = {};
-    if (!els.content) {
-      return map;
-    }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
-    nodes.forEach(function (node) {
-      var uid = node.getAttribute('data-entry-uid') || '';
-      if (!uid) {
-        return;
-      }
-      map[uid] = node.getBoundingClientRect();
-    });
-    return map;
-  }
-
-  function applyFlip(beforeRects) {
-    if (!els.content || !beforeRects) {
-      return;
-    }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-entry-uid]');
-    nodes.forEach(function (node) {
-      var uid = node.getAttribute('data-entry-uid') || '';
-      var first = beforeRects[uid];
-      if (!first) {
-        return;
-      }
-      var last = node.getBoundingClientRect();
-      var dx = first.left - last.left;
-      var dy = first.top - last.top;
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
-        return;
-      }
-      node.animate([
-        { transform: 'translate(' + dx + 'px,' + dy + 'px)' },
-        { transform: 'translate(0,0)' }
-      ], {
-        duration: 230,
-        easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
-      });
-    });
-  }
-
-  function renderListWithFlip(beforeRects) {
-    renderList();
-    requestAnimationFrame(function () {
-      applyFlip(beforeRects);
-    });
-  }
-
-  function findEntryIndex(uid) {
-    var entries = Array.isArray(state.draft && state.draft.entries) ? state.draft.entries : [];
-    for (var i = 0; i < entries.length; i += 1) {
-      if (String(entries[i]._uid || '') === String(uid || '')) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  function compareYearsDesc(a, b) {
-    var ay = String(a || '');
-    var by = String(b || '');
-    if (!ay && !by) {
-      return 0;
-    }
-    if (!ay) {
-      return 1;
-    }
-    if (!by) {
-      return -1;
-    }
-    if (ay === by) {
-      return 0;
-    }
-    return ay > by ? -1 : 1;
-  }
-
-  function moveEntryByYear(uid) {
-    if (!(state.draft && state.draft.group_by === 'year')) {
-      return;
-    }
-    var entries = state.draft.entries || [];
-    var idx = findEntryIndex(uid);
-    if (idx < 0) {
-      return;
-    }
-    var entry = entries[idx];
-    var targetYear = entryYear(entry);
-    var remaining = entries.slice(0, idx).concat(entries.slice(idx + 1));
-    var insertAt = remaining.length;
-    var lastEqual = -1;
-    for (var i = 0; i < remaining.length; i += 1) {
-      var cmp = compareYearsDesc(targetYear, entryYear(remaining[i]));
-      if (cmp < 0) {
-        continue;
-      }
-      if (cmp === 0) {
-        lastEqual = i;
-        continue;
-      }
-      insertAt = i;
-      break;
-    }
-    if (lastEqual >= 0) {
-      insertAt = lastEqual + 1;
-    }
-    remaining.splice(insertAt, 0, entry);
-    state.draft.entries = remaining;
-  }
-
-  function reorderByDrag(dragUid, targetUid, placeAfter) {
-    if (!state.draft || !dragUid || !targetUid || dragUid === targetUid) {
-      return;
-    }
-    var entries = state.draft.entries || [];
-    var from = findEntryIndex(dragUid);
-    var to = findEntryIndex(targetUid);
-    if (from < 0 || to < 0) {
-      return;
-    }
-    var item = entries[from];
-    entries.splice(from, 1);
-    var insertAt = to;
-    if (from < to) {
-      insertAt = to - 1;
-    }
-    if (placeAfter) {
-      insertAt += 1;
-    }
-    if (insertAt < 0) {
-      insertAt = 0;
-    }
-    if (insertAt > entries.length) {
-      insertAt = entries.length;
-    }
-    entries.splice(insertAt, 0, item);
-  }
-
-  async function refreshValidation() {
-    if (!(state.payload && state.payload.is_admin)) {
-      return;
-    }
-    try {
-      var auth = getAuthPayload();
-      var latest = await apiPost('/cgi/blog-get-list-page', {
-        list_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      if (!latest) {
-        return;
-      }
-      if (!state.payload) {
-        state.payload = latest;
-      } else {
-        state.payload.validation = latest.validation;
-        state.payload.canonical_exists = latest.canonical_exists;
-        state.payload.canonical_event = latest.canonical_event;
-        state.payload.draft_exists = latest.draft_exists;
-        state.payload.draft_differs = latest.draft_differs;
-      }
-      renderValidation();
-    } catch (_err) {
-      // Keep local editing responsive if validation refresh fails.
-    }
-  }
-
-  async function persistDraft(options) {
-    if (state.busy || !(state.payload && state.payload.is_admin && state.draft)) {
-      state.autosaveQueued = true;
-      return;
-    }
-    var opts = options || {};
-    state.busy = true;
-    syncMetaFromInputs();
-    setSaveStatus('saving');
-    try {
-      var auth = getAuthPayload();
-      await apiPost('/cgi/blog-save-list-draft', {
-        list_slug: slug,
-        title: state.draft.title || '',
-        description: state.draft.description || '',
-        group_by: state.draft.group_by || '',
-        content: state.draft.content || '',
-        entries_json: JSON.stringify(state.draft.entries || []),
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      if (state.payload) {
-        state.payload.draft_exists = true;
-        state.payload.draft_differs = false;
-      }
-      setSaveStatus('saved');
-      refreshValidation();
-    } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not save draft');
-      if (opts.alertOnError !== false) {
-        window.alert(err.message || 'Could not save draft');
-      }
-      return false;
-    } finally {
-      state.busy = false;
-      if (state.autosaveQueued) {
-        state.autosaveQueued = false;
-        queueAutosave(250);
-      }
-    }
-    return true;
-  }
-
-  async function publishDraft() {
-    if (state.busy) {
-      return;
-    }
-    syncMetaFromInputs();
-    var saved = await persistDraft({ alertOnError: true });
-    if (!saved) {
-      return;
-    }
-    state.busy = true;
-    setSaveStatus('saving');
-    try {
-      var auth = getAuthPayload();
-      await apiPost('/cgi/blog-publish-list-page', {
-        list_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      await load();
-      setSaveStatus('saved');
-    } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not publish list');
-      window.alert(err.message || 'Could not publish list');
-    } finally {
-      state.busy = false;
-    }
-  }
-
-  async function revertDraft() {
-    if (state.busy) {
-      return;
-    }
-    if (!(state.payload && state.payload.canonical_exists)) {
-      return;
-    }
-    if (!window.confirm('Discard local draft changes and restore canonical Nostr version?')) {
-      return;
-    }
-    state.busy = true;
-    setSaveStatus('saving');
-    try {
-      var auth = getAuthPayload();
-      await apiPost('/cgi/blog-revert-list-draft', {
-        list_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      await load();
-      setSaveStatus('saved');
-    } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not revert draft');
-      window.alert(err.message || 'Could not revert draft');
-    } finally {
-      state.busy = false;
-    }
   }
 
   function bindAdminEvents() {
@@ -685,7 +742,7 @@
         return;
       }
       var actionNode = target.closest('[data-list-action]');
-      if (!(actionNode instanceof HTMLElement)) {
+      if (!(actionNode instanceof HTMLElement) || !isAdmin()) {
         return;
       }
       var action = actionNode.getAttribute('data-list-action');
@@ -693,6 +750,8 @@
         state.editMode = !state.editMode;
         if (!state.editMode) {
           state.activeEntryUid = '';
+        } else if (!state.activeEntryUid && state.draft.entries.length) {
+          state.activeEntryUid = state.draft.entries[0]._uid;
         }
         renderAdmin();
         renderList();
@@ -707,82 +766,99 @@
           return;
         }
         revertDraft();
+      }
+    });
+
+    root.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!(target instanceof Element) || !isAdmin()) {
         return;
       }
-      if (action === 'add') {
-        if (!state.draft) {
+
+      var headEdit = target.closest('[data-list-head-edit]');
+      if (headEdit instanceof HTMLElement) {
+        var field = headEdit.getAttribute('data-list-head-edit');
+        if (field === 'title') {
+          var nextTitle = window.prompt('Edit title:', state.draft.title || '');
+          if (nextTitle !== null) {
+            state.draft.title = String(nextTitle || '').trim();
+            renderList();
+            queueAutosave(120);
+          }
           return;
         }
-        var before = captureEntryRects();
-        state.draft.entries.push({ _uid: nextUid(), event_id: '', relay_hint: '', marker: 'oeuvre', date: '', markdown: '' });
-        state.activeEntryUid = state.draft.entries[state.draft.entries.length - 1]._uid;
-        renderListWithFlip(before);
-        queueAutosave(120);
+        if (field === 'description') {
+          var nextDesc = window.prompt('Edit description:', state.draft.description || '');
+          if (nextDesc !== null) {
+            state.draft.description = String(nextDesc || '').trim();
+            renderList();
+            queueAutosave(120);
+          }
+          return;
+        }
       }
-    });
 
-    els.admin.addEventListener('input', function (event) {
-      var target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      var listAction = target.closest('[data-list-action]');
+      if (listAction instanceof HTMLElement && state.editMode) {
+        var action = listAction.getAttribute('data-list-action');
+        if (action === 'add') {
+          var before = captureEntryRects();
+          addEntry('');
+          renderListWithFlip(before);
+          queueAutosave(120);
+          return;
+        }
+        if (action === 'add-year') {
+          var year = String(listAction.getAttribute('data-year') || '').trim();
+          if (!year || year === 'Unknown') {
+            year = '';
+          }
+          var beforeYear = captureEntryRects();
+          addEntry(year);
+          renderListWithFlip(beforeYear);
+          queueAutosave(120);
+          return;
+        }
+      }
+
+      if (!state.editMode) {
         return;
       }
-      if (target.id === 'list-admin-title' || target.id === 'list-admin-description' || target.id === 'list-admin-group-by') {
-        syncMetaFromInputs();
-        renderList();
-        queueAutosave(500);
-      }
-    });
 
-    els.admin.addEventListener('change', function (event) {
-      var target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (target.id === 'list-admin-group-by') {
-        syncMetaFromInputs();
-        var before = captureEntryRects();
-        renderListWithFlip(before);
-        queueAutosave(300);
-      }
-    });
-
-    els.content.addEventListener('click', function (event) {
-      var target = event.target;
-      if (!(target instanceof Element) || !state.editMode || !state.draft) {
-        return;
-      }
-      var actionNode = target.closest('[data-list-inline-action]');
-      if (actionNode instanceof HTMLElement) {
-        var action = actionNode.getAttribute('data-list-inline-action');
-        var uid = String(actionNode.getAttribute('data-entry-uid') || '');
+      var inlineAction = target.closest('[data-list-inline-action]');
+      if (inlineAction instanceof HTMLElement) {
+        var actionType = inlineAction.getAttribute('data-list-inline-action');
+        var uid = String(inlineAction.getAttribute('data-entry-uid') || '');
         if (!uid) {
           return;
         }
-        if (action === 'edit') {
+        if (actionType === 'edit') {
           state.activeEntryUid = uid;
           renderList();
           return;
         }
-        if (action === 'remove') {
+        if (actionType === 'remove') {
           var idx = findEntryIndex(uid);
           if (idx < 0) {
             return;
           }
-          var before = captureEntryRects();
+          var beforeRemove = captureEntryRects();
           state.draft.entries.splice(idx, 1);
           if (state.activeEntryUid === uid) {
             state.activeEntryUid = '';
           }
-          renderListWithFlip(before);
+          renderListWithFlip(beforeRemove);
           queueAutosave(120);
-          return;
         }
       }
     });
 
     els.content.addEventListener('input', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !state.editMode || !state.draft) {
+      if (!(target instanceof HTMLInputElement)) {
         return;
       }
       var uid = String(target.getAttribute('data-entry-uid') || '');
@@ -800,8 +876,23 @@
     });
 
     els.content.addEventListener('change', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !state.editMode || !state.draft) {
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      if (target.id === 'list-admin-group-by' && target instanceof HTMLSelectElement) {
+        var beforeGroup = captureEntryRects();
+        state.draft.group_by = String(target.value || '').trim();
+        renderListWithFlip(beforeGroup);
+        queueAutosave(280);
+        return;
+      }
+
+      if (!(target instanceof HTMLInputElement)) {
         return;
       }
       var uid = String(target.getAttribute('data-entry-uid') || '');
@@ -815,18 +906,20 @@
       }
       state.draft.entries[idx][field] = String(target.value || '');
       if (field === 'date') {
-        var before = captureEntryRects();
+        var beforeDate = captureEntryRects();
         moveEntryByYear(uid);
-        state.activeEntryUid = uid;
-        renderListWithFlip(before);
+        renderListWithFlip(beforeDate);
       }
       queueAutosave(320);
     });
 
     els.content.addEventListener('dragstart', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
       var target = event.target;
       var row = target && target.closest ? target.closest('.list-entry-inline[data-entry-uid]') : null;
-      if (!(row instanceof HTMLElement) || !state.editMode) {
+      if (!(row instanceof HTMLElement)) {
         return;
       }
       state.dragUid = String(row.getAttribute('data-entry-uid') || '');
@@ -834,7 +927,7 @@
       try {
         event.dataTransfer.setData('text/plain', state.dragUid);
       } catch (_err) {
-        // ignore
+        // Ignore.
       }
       row.classList.add('is-dragging');
     });
@@ -848,7 +941,7 @@
     });
 
     els.content.addEventListener('dragover', function (event) {
-      if (!state.editMode || !state.dragUid) {
+      if (!state.editMode || !isAdmin() || !state.dragUid) {
         return;
       }
       var target = event.target;
@@ -861,7 +954,7 @@
     });
 
     els.content.addEventListener('drop', function (event) {
-      if (!state.editMode || !state.dragUid || !state.draft) {
+      if (!state.editMode || !isAdmin() || !state.dragUid) {
         return;
       }
       var target = event.target;
@@ -876,9 +969,9 @@
       }
       var rect = row.getBoundingClientRect();
       var placeAfter = event.clientY > (rect.top + rect.height / 2);
-      var before = captureEntryRects();
+      var beforeDrop = captureEntryRects();
       reorderByDrag(state.dragUid, targetUid, placeAfter);
-      renderListWithFlip(before);
+      renderListWithFlip(beforeDrop);
       queueAutosave(120);
     });
   }
