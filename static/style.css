@@ -498,6 +498,14 @@ header h1 {
   height: 2.15rem;
 }
 
+.list-inline-empty {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted-text, #4f617f);
+}
+
 .list-admin-entries-wrap {
   position: relative;
   margin-top: 0.2rem;
@@ -637,6 +645,90 @@ header h1 {
 
 .list-year-heading {
   margin: 0.2rem 0 0.5rem;
+}
+
+.list-inline-head {
+  display: grid;
+  grid-template-columns: 2rem minmax(120px, 170px) 1fr 2.2rem 2.1rem;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0 0 0.5rem;
+  padding: 0 0.35rem;
+  font-size: 0.76rem;
+  color: var(--muted-text, #4f617f);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.list-inline-head-handle,
+.list-inline-head-actions {
+  width: 2rem;
+}
+
+.list-entries-inline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-entry-inline {
+  display: grid;
+  grid-template-columns: 2rem minmax(120px, 170px) 1fr 2.2rem 2.1rem;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0 0 0.46rem;
+  padding: 0.3rem 0.35rem;
+  border: 1px solid #d8e1f1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.list-entry-inline.is-active {
+  border-color: #b9c8e8;
+  background: #f8fbff;
+}
+
+.list-inline-cell {
+  min-width: 0;
+}
+
+.list-inline-open {
+  display: inline-block;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.24rem 0.1rem;
+  color: var(--text);
+}
+
+.list-inline-open:hover {
+  background: #eef4ff;
+  border-radius: 6px;
+}
+
+.list-inline-handle {
+  color: #8ca0c7;
+  cursor: move;
+  text-align: center;
+  user-select: none;
+  font-size: 0.92rem;
+}
+
+.list-entry-inline input[type=\"text\"] {
+  width: 100%;
+  min-width: 0;
+  height: 2.05rem;
+}
+
+.list-inline-actions button {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.list-inline-eventid {
+  grid-column: 2 / 5;
 }
 
 .list-entries {
