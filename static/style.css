@@ -894,14 +894,16 @@ header h1 {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--danger, #b42318);
+  color: var(--danger, #b42318) !important;
+  -webkit-text-fill-color: var(--danger, #b42318);
   border-radius: 999px;
 }
 
 .list-inline-actions button:hover,
 .list-inline-actions button:focus-visible {
   background: rgba(180, 35, 24, 0.14);
-  color: var(--danger, #b42318);
+  color: var(--danger, #b42318) !important;
+  -webkit-text-fill-color: var(--danger, #b42318);
 }
 
 .list-inline-eventid {

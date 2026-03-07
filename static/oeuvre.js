@@ -34,6 +34,7 @@
     saveIndicatorVisible: false,
     editMode: false,
     activeEntryUid: '',
+    activeCellField: '',
     activeHeadField: '',
     dragUid: '',
     uidCounter: 1
@@ -721,7 +722,9 @@
 
   function renderElementInline(el) {
     var uid = String(el && el._uid || '');
-    var active = uid && uid === state.activeEntryUid;
+    var rowSelected = uid && uid === state.activeEntryUid;
+    var activeField = rowSelected ? String(state.activeCellField || '') : '';
+    var active = !!activeField;
     var type = String(el && el.type || 'entry');
     var html = '';
 
@@ -729,14 +732,14 @@
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
     if (type === 'group') {
-      if (active) {
+      if (active && activeField === 'title') {
         html += '<div class="list-inline-cell list-inline-date"><span class="list-inline-type-pill">group</span></div>';
         html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(String(el && el.title || '')) + '" placeholder="Group title"></div>';
         html += '<div class="list-inline-cell list-inline-link"></div>';
         html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
       } else {
-        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">group</span></button>';
-        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(String(el && el.title || '')) + '</span><span class="list-edit-brace">{edit}</span></button>';
+        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">group</span></button>';
+        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(String(el && el.title || '')) + '</span><span class="list-edit-brace">{edit}</span></button>';
         html += '<div class="list-inline-cell list-inline-link"></div>';
         html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
       }
@@ -749,23 +752,30 @@
     var dateText = String(el && el.date || '');
     var eventId = String(el && el.event_id || '');
 
-    if (active) {
+    if (active && activeField === 'date') {
       html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
+    } else {
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+    }
+    if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
-      html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
-      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
+    } else {
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">' + escapeHtml(type) + '</span><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+    }
+    if (active && activeField === 'event_id') {
+      html += '<div class="list-inline-cell list-inline-link"><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '" placeholder="EVENT_ID"></div>';
+    } else {
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-link" data-list-inline-action="edit" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '<span class="list-edit-brace">{edit}</span>') + '</button>';
+    }
+    html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
+    if (active && activeField === 'event_id') {
       html += '<div class="list-inline-eventid">';
-      html += '<details class="list-admin-eventid-details"' + (eventId ? ' open' : '') + '>';
+      html += '<details class="list-admin-eventid-details" open>';
       html += '<summary>Add Nostr event_id</summary>';
       html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
       html += '<label><span>Type</span><select data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '"><option value="entry"' + (type === 'entry' ? ' selected' : '') + '>entry</option><option value="sub"' + (type === 'sub' ? ' selected' : '') + '>sub</option></select></label>';
       html += '</details>';
       html += '</div>';
-    } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">' + escapeHtml(type) + '</span><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
-      html += '<div class="list-inline-cell list-inline-link">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '') + '</div>';
-      html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
     }
 
     html += '</li>';
@@ -974,6 +984,7 @@
           state.editMode = !state.editMode;
           if (!state.editMode) {
             state.activeEntryUid = '';
+            state.activeCellField = '';
           }
           renderList();
           renderAdmin();
@@ -1043,6 +1054,7 @@
         }
         if (actionType === 'edit') {
           state.activeEntryUid = uid;
+          state.activeCellField = String(inlineAction.getAttribute('data-inline-field') || '');
           renderList();
           return;
         }
@@ -1055,6 +1067,7 @@
           state.draft.elements.splice(idx, 1);
           if (state.activeEntryUid === uid) {
             state.activeEntryUid = '';
+            state.activeCellField = '';
           }
           renderListWithFlip(beforeRemove);
           queueAutosave(120);
