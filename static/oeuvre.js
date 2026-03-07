@@ -572,13 +572,14 @@
     }
     var entry = state.draft.elements[idx] || {};
     var d = state.pendingNewEntry.defaults || {};
+    var hasRealContent = String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '';
+    if (hasRealContent) {
+      return false;
+    }
     return (
-      String(entry.event_id || '') === String(d.event_id || '') &&
       String(entry.relay_hint || '') === String(d.relay_hint || '') &&
       String(entry.marker || '') === String(d.marker || '') &&
-      String(entry.date || '') === String(d.date || '') &&
-      Math.max(0, Number(entry.depth || 0) || 0) === Math.max(0, Number(d.depth || 0) || 0) &&
-      String(entry.markdown || '') === String(d.markdown || '')
+      Math.max(0, Number(entry.depth || 0) || 0) === Math.max(0, Number(d.depth || 0) || 0)
     );
   }
 
