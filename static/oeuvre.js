@@ -132,7 +132,16 @@
         title: state.draft.title,
         description: state.draft.description,
         group_by: state.draft.group_by,
-        entries: cloneEditableEntries(state.draft.entries)
+        entries: cloneEditableEntries(state.draft.entries).map(function (entry) {
+          var dateRaw = String(entry && entry.date || '');
+          var year = '';
+          if (dateRaw.length >= 4) {
+            year = dateRaw.slice(0, 4);
+          }
+          return Object.assign({}, entry, {
+            year: year
+          });
+        })
       };
     }
     var src = (state.payload && state.payload.state) ? state.payload.state : {};
@@ -171,6 +180,12 @@
       var groupOpen = false;
       entries.forEach(function (entry) {
         var year = String(entry && entry.year || '');
+        if (!year) {
+          var dateRaw = String(entry && entry.date || '');
+          if (dateRaw.length >= 4) {
+            year = dateRaw.slice(0, 4);
+          }
+        }
         if (year !== currentYear) {
           if (groupOpen) {
             html += '</ul></section>';
@@ -286,11 +301,12 @@
         html += '<button type="button" data-list-entry-action="remove" data-entry-index="' + idx + '" aria-label="Remove">✕</button>';
         html += '</div>';
         html += '<div class="list-admin-entry-fields">';
-        html += '<label><span>EVENT_ID</span><input data-field="event_id" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.event_id || '') + '"></label>';
-        html += '<label><span>Relay</span><input data-field="relay_hint" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.relay_hint || '') + '" placeholder="wss://..."></label>';
-        html += '<label><span>Marker</span><input data-field="marker" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.marker || '') + '" placeholder="oeuvre"></label>';
         html += '<label><span>Date</span><input data-field="date" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.date || '') + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></label>';
         html += '<label class="list-admin-field-wide"><span>Markdown</span><input data-field="markdown" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.markdown || '') + '"></label>';
+        html += '<details class="list-admin-eventid-details"' + (entry.event_id ? ' open' : '') + '>';
+        html += '<summary>Add event_id</summary>';
+        html += '<label><span>event_id</span><input data-field="event_id" data-entry-index="' + idx + '" type="text" value="' + escapeHtml(entry.event_id || '') + '"></label>';
+        html += '</details>';
         html += '</div>';
         html += '</div>';
       });
@@ -375,11 +391,10 @@
     if (state.saveTimer) {
       clearTimeout(state.saveTimer);
     }
-    setSaveStatus('saving');
     state.saveTimer = setTimeout(function () {
       state.saveTimer = null;
       persistDraft({ alertOnError: false });
-    }, Number(delayMs) > 0 ? Number(delayMs) : 420);
+    }, Number(delayMs) > 0 ? Number(delayMs) : 500);
   }
 
   async function persistDraft(options) {

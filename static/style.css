@@ -377,6 +377,7 @@ header h1 {
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
   margin: 0 0 0.55rem;
+  color: #f6f8ff;
 }
 
 .list-validation-block ul {
@@ -384,13 +385,18 @@ header h1 {
 }
 
 .list-validation-block.is-error {
-  background: #3b151a;
-  border: 1px solid #7a2a35;
+  background: #641925;
+  border: 1px solid #96394d;
 }
 
 .list-validation-block.is-warn {
-  background: #3a2f17;
-  border: 1px solid #7b6627;
+  background: #5a4516;
+  border: 1px solid #8a6a24;
+}
+
+.list-validation-block strong,
+.list-validation-block li {
+  color: #f6f8ff;
 }
 
 .list-admin {
@@ -553,6 +559,21 @@ header h1 {
 
 .list-admin-field-wide {
   min-width: 19rem !important;
+}
+
+.list-admin-eventid-details {
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+}
+
+.list-admin-eventid-details summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--muted-text, #4f617f);
+}
+
+.list-admin-eventid-details label {
+  margin-top: 0.35rem;
 }
 
 .list-admin-entry-fields input {
