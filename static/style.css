@@ -371,6 +371,10 @@ header h1 {
     0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 
+.list-page-shell.is-editing {
+  max-width: min(1100px, 98vw);
+}
+
 .list-page-head h1 {
   margin: 0 0 0.5rem;
   display: flex;

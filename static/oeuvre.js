@@ -796,7 +796,6 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<label><span>Type</span><select id="list-admin-add-type"><option value="entry" selected>entry</option><option value="subentry">subentry</option></select></label>';
     html += '<button type="button" data-list-action="add" title="Add entry">+</button>';
     html += '</div>';
     html += '</div>';
@@ -856,6 +855,9 @@
     var s = getRenderState();
     var elements = Array.isArray(s.elements) ? s.elements : [];
     var inlineMode = isAdmin() && state.editMode;
+    if (root && root.classList) {
+      root.classList.toggle('is-editing', inlineMode);
+    }
 
     if (!elements.length) {
       if (inlineMode) {
@@ -1027,9 +1029,7 @@
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
           var before = captureEntryRects();
-          var addTypeSelect = document.getElementById('list-admin-add-type');
-          var addType = addTypeSelect ? String(addTypeSelect.value || 'entry') : 'entry';
-          addEntry('', addType);
+          addEntry('', 'entry');
           renderListWithFlip(before);
           queueAutosave(120);
           return;
