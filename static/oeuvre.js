@@ -932,8 +932,8 @@
       html += '</span>';
     }
     html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    html += '<button type="button" data-list-action="publish">Publish to Nostr...</button>';
-    html += '<button type="button" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
+    html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
+    html += '<button type="button" class="list-admin-primary-btn" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
     html += '</span>';
     if (actionsHost) {
       actionsHost.innerHTML = html;

@@ -673,6 +673,11 @@ header h1 {
   color: #fff !important;
 }
 
+.list-page-admin-bar .list-admin-primary-btn {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+}
+
 .list-page-admin-bar button:disabled {
   background: #d4dae6;
   border-color: #c3cada;
