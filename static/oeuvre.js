@@ -1392,6 +1392,11 @@
           renderList();
           return;
         }
+        var sameRow = activeEl.closest('.list-entry-inline[data-element-uid]');
+        var sameUid = sameRow ? String(sameRow.getAttribute('data-element-uid') || '') : '';
+        if (sameUid === uid) {
+          return;
+        }
         var nextInlineField = activeEl.closest('[data-inline-field][data-element-uid]');
         if (!nextInlineField) {
           var removedTransient = pruneTransientEntries();
@@ -1585,6 +1590,10 @@
       return;
     }
     var activeUid = String(state.activeEntryUid || '');
+    var activeRow = target.closest('.list-entry-inline[data-element-uid]');
+    if (activeRow && String(activeRow.getAttribute('data-element-uid') || '') === activeUid) {
+      return;
+    }
     var activeFieldSelector = '[data-inline-field="' + String(state.activeCellField || '') + '"][data-element-uid="' + activeUid + '"]';
     var onActiveField = !!target.closest(activeFieldSelector);
     if (onActiveField) {
