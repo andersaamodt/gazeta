@@ -703,6 +703,7 @@ header h1 {
   margin-left: 0.35rem;
   font-size: 0.8rem;
   color: #46619a;
+  -webkit-text-fill-color: #46619a;
   text-decoration: none;
 }
 
@@ -741,6 +742,8 @@ header h1 {
 #list-page-title .list-inline-edit-link {
   margin-left: 0.8rem;
   line-height: 1;
+  color: #46619a;
+  -webkit-text-fill-color: #46619a;
 }
 
 .list-head-description-input {
