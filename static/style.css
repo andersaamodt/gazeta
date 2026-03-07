@@ -309,14 +309,14 @@ header h1 {
 .nav-compose-icon svg {
   width: 21px;
   height: 21px;
-  transform: translateY(2px);
+  transform: translateY(-1px);
 }
 
 .nav-compose-icon img {
   width: 21px;
   height: 21px;
   object-fit: contain;
-  transform: translateY(2px);
+  transform: translateY(-1px);
   filter: grayscale(1) saturate(0) brightness(0);
 }
 
@@ -521,10 +521,10 @@ header h1 {
   border-radius: 8px;
   background: transparent;
   color: var(--text);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   line-height: 1;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-weight: 600;
+  letter-spacing: 0;
   padding: 0;
   width: 2.1rem;
   min-width: 2.1rem;
@@ -532,6 +532,7 @@ header h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transform: translateY(-1px);
 }
 
 .nav-menu-btn:hover {

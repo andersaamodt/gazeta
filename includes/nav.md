@@ -27,7 +27,7 @@
 </div>
 <span id="nav-user-name" class="nav-username" style="display:none;"></span>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
-  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">...</button>
+  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋯</button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/pages/admin.html" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
