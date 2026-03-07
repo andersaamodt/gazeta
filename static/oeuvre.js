@@ -532,8 +532,18 @@
       return;
     }
     var kind = String(type || 'entry');
-    if (!isEntryType(kind)) {
+    if (kind !== 'group' && !isEntryType(kind)) {
       kind = 'entry';
+    }
+    if (kind === 'group') {
+      state.draft.elements.push({
+        _uid: nextUid(),
+        type: 'group',
+        title: ''
+      });
+      state.activeEntryUid = state.draft.elements[state.draft.elements.length - 1]._uid;
+      state.activeCellField = 'title';
+      return;
     }
     var entry = {
       _uid: nextUid(),
@@ -546,19 +556,35 @@
     };
     state.draft.elements.push(entry);
     state.activeEntryUid = entry._uid;
+    state.activeCellField = 'markdown';
   }
 
-  function addGroup() {
-    if (!isAdmin()) {
+  function applyTypeChange(element, nextType) {
+    var targetType = String(nextType || 'entry');
+    if (targetType !== 'entry' && targetType !== 'sub' && targetType !== 'group') {
+      targetType = 'entry';
+    }
+    if (targetType === 'group') {
+      element.type = 'group';
+      element.title = String(element.title || element.markdown || '');
+      element.event_id = '';
+      element.relay_hint = '';
+      element.marker = '';
+      element.date = '';
+      element.markdown = '';
       return;
     }
-    var group = {
-      _uid: nextUid(),
-      type: 'group',
-      title: 'New group'
-    };
-    state.draft.elements.push(group);
-    state.activeEntryUid = group._uid;
+    if (String(element.type || '') === 'group') {
+      element.type = targetType;
+      element.markdown = String(element.title || '');
+      element.title = '';
+      element.event_id = '';
+      element.relay_hint = '';
+      element.marker = String(element.marker || 'oeuvre');
+      element.date = '';
+      return;
+    }
+    element.type = targetType;
   }
 
   function reorderByDrag(dragUid, targetUid, placeAfter) {
@@ -644,6 +670,19 @@
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
     return '<li class="list-entry-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span></li>';
+  }
+
+  function renderTypeSelect(uid, type) {
+    var t = String(type || 'entry');
+    return '<select class="list-inline-type-select" data-inline-field="type" data-element-uid="' + escapeHtml(uid) + '">' +
+      '<option value="entry"' + (t === 'entry' ? ' selected' : '') + '>entry</option>' +
+      '<option value="sub"' + (t === 'sub' ? ' selected' : '') + '>sub</option>' +
+      '<option value="group"' + (t === 'group' ? ' selected' : '') + '>group</option>' +
+      '</select>';
+  }
+
+  function placeholderHtml(label) {
+    return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
   function renderStructuredReadOnly(elements) {
@@ -732,14 +771,13 @@
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
     if (type === 'group') {
+      html += '<div class="list-inline-cell list-inline-date">' + renderTypeSelect(uid, type) + '</div>';
       if (active && activeField === 'title') {
-        html += '<div class="list-inline-cell list-inline-date"><span class="list-inline-type-pill">group</span></div>';
         html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(String(el && el.title || '')) + '" placeholder="Group title"></div>';
         html += '<div class="list-inline-cell list-inline-link"></div>';
         html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
       } else {
-        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">group</span></button>';
-        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(String(el && el.title || '')) + '</span><span class="list-edit-brace">{edit}</span></button>';
+        html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="title" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (String(el && el.title || '').trim() ? escapeHtml(String(el && el.title || '')) : placeholderHtml('Add text...')) + '</span></button>';
         html += '<div class="list-inline-cell list-inline-link"></div>';
         html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove group">✕</button></div>';
       }
@@ -753,19 +791,19 @@
     var eventId = String(el && el.event_id || '');
 
     if (active && activeField === 'date') {
-      html += '<div class="list-inline-cell list-inline-date"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, type) + '<input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-date" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + escapeHtml(dateText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell">' + renderTypeSelect(uid, type) + '<button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-type-pill">' + escapeHtml(type) + '</span><span class="list-inline-value">' + escapeHtml(markdownText) + '</span><span class="list-edit-brace">{edit}</span></button>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? escapeHtml(markdownText) : placeholderHtml('Add text...')) + '</span></button>';
     }
     if (active && activeField === 'event_id') {
       html += '<div class="list-inline-cell list-inline-link"><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '" placeholder="EVENT_ID"></div>';
     } else {
-      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-link" data-list-inline-action="edit" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : '<span class="list-edit-brace">{edit}</span>') + '</button>';
+      html += '<button type="button" class="list-inline-cell list-inline-open list-inline-link" data-list-inline-action="edit" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '">' + (eventId ? '<span class="list-entry-post-link" aria-hidden="true">↗</span>' : placeholderHtml('Add link...')) + '</button>';
     }
     html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry">✕</button></div>';
     if (active && activeField === 'event_id') {
@@ -796,7 +834,7 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<button type="button" data-list-action="add-group" title="Add group">+G</button>';
+    html += '<label><span>Type</span><select id="list-admin-add-type"><option value="entry" selected>entry</option><option value="sub">sub</option><option value="group">group</option></select></label>';
     html += '<button type="button" data-list-action="add" title="Add entry">+</button>';
     html += '</div>';
     html += '</div>';
@@ -808,7 +846,7 @@
 
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
-    html += '<span class="list-inline-head-date">Date / Type</span>';
+    html += '<span class="list-inline-head-date">Type / Date</span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-link">Link</span>';
     html += '<span class="list-inline-head-actions"></span>';
@@ -1027,15 +1065,10 @@
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
           var before = captureEntryRects();
-          addEntry('', 'entry');
+          var addTypeSelect = document.getElementById('list-admin-add-type');
+          var addType = addTypeSelect ? String(addTypeSelect.value || 'entry') : 'entry';
+          addEntry('', addType);
           renderListWithFlip(before);
-          queueAutosave(120);
-          return;
-        }
-        if (action === 'add-group') {
-          var beforeGroup = captureEntryRects();
-          addGroup();
-          renderListWithFlip(beforeGroup);
           queueAutosave(120);
           return;
         }
@@ -1152,8 +1185,7 @@
       }
       state.activeEntryUid = uid;
       if (field === 'type') {
-        var nextType = String(target.value || 'entry');
-        state.draft.elements[idx].type = (nextType === 'sub') ? 'sub' : 'entry';
+        applyTypeChange(state.draft.elements[idx], String(target.value || 'entry'));
       } else {
         state.draft.elements[idx][field] = String(target.value || '');
       }
@@ -1190,8 +1222,7 @@
         return;
       }
       if (field === 'type') {
-        var nextType = String(target.value || 'entry');
-        state.draft.elements[idx].type = (nextType === 'sub') ? 'sub' : 'entry';
+        applyTypeChange(state.draft.elements[idx], String(target.value || 'entry'));
       } else {
         state.draft.elements[idx][field] = String(target.value || '');
       }

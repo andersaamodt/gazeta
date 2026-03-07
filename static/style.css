@@ -867,10 +867,11 @@ header h1 {
   text-align: left;
   padding: 0.24rem 0.1rem;
   color: var(--text);
+  cursor: text;
 }
 
 .list-inline-open:hover {
-  background: transparent;
+  background: rgba(49, 103, 189, 0.08) !important;
   border-radius: 0;
 }
 
@@ -950,6 +951,29 @@ header h1 {
   background: #e8eefb;
   margin-right: 0.35rem;
   padding: 0 0.45rem;
+}
+
+.list-inline-type-select {
+  height: 1.8rem;
+  width: auto;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.list-inline-date-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.list-inline-date-button {
+  padding: 0.22rem 0.1rem;
+}
+
+.list-inline-placeholder {
+  color: var(--muted-text, #6b7a95);
+  font-style: italic;
 }
 
 .list-inline-toolbar {
