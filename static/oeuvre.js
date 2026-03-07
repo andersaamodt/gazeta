@@ -608,7 +608,7 @@
     if (isAdmin()) {
       els.description.hidden = false;
       if (state.activeHeadField === 'description') {
-        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-done="description">Done</button>';
+        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
       } else if (state.editMode) {
         if (descText.trim()) {
           els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
@@ -1032,6 +1032,21 @@
         }
       }
 
+      var headSave = target.closest('[data-list-head-save]');
+      if (headSave instanceof HTMLElement) {
+        var saveField = String(headSave.getAttribute('data-list-head-save') || '');
+        if (saveField === 'description') {
+          persistDraft({ alertOnError: true }).then(function (ok) {
+            if (ok !== false) {
+              state.activeHeadField = '';
+              renderList();
+              renderAdmin();
+            }
+          });
+          return;
+        }
+      }
+
       var headDone = target.closest('[data-list-head-done]');
       if (headDone instanceof HTMLElement) {
         state.activeHeadField = '';
@@ -1100,7 +1115,6 @@
         queueAutosave(500);
       } else if (headField === 'description') {
         state.draft.description = String(target.value || '');
-        queueAutosave(500);
       }
     });
 
@@ -1115,9 +1129,19 @@
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        state.activeHeadField = '';
-        renderList();
-        renderAdmin();
+        if (headField === 'description') {
+          persistDraft({ alertOnError: true }).then(function (ok) {
+            if (ok !== false) {
+              state.activeHeadField = '';
+              renderList();
+              renderAdmin();
+            }
+          });
+        } else {
+          state.activeHeadField = '';
+          renderList();
+          renderAdmin();
+        }
       } else if (event.key === 'Escape') {
         event.preventDefault();
         state.activeHeadField = '';
@@ -1133,6 +1157,9 @@
       }
       var headField = String(target.getAttribute('data-head-input') || '');
       if (!headField) {
+        return;
+      }
+      if (headField === 'description') {
         return;
       }
       setTimeout(function () {
