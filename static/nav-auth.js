@@ -757,12 +757,26 @@
     var displayName = String(username || '');
     state.isAuthenticated = !!isLoggedIn;
 
+    // Always reset both auth presentations first so they remain mutually exclusive.
+    if (els.loginSplit) {
+      els.loginSplit.style.display = 'none';
+      closeLoginMenu();
+    } else if (els.loginBtn) {
+      els.loginBtn.style.display = 'none';
+    }
+    if (els.userMenu) {
+      els.userMenu.style.display = 'none';
+      closeUserMenu();
+    }
+    if (els.userName) {
+      els.userName.style.display = 'none';
+      els.userName.textContent = '';
+      els.userName.removeAttribute('role');
+      els.userName.removeAttribute('tabindex');
+      els.userName.removeAttribute('aria-label');
+    }
+
     if (isLoggedIn) {
-      if (els.loginSplit) {
-        els.loginSplit.style.display = 'none';
-      } else if (els.loginBtn) {
-        els.loginBtn.style.display = 'none';
-      }
       if (els.composeTools) {
         els.composeTools.style.display = isAdmin ? 'inline-flex' : 'none';
       } else if (els.composeLink) {
@@ -792,7 +806,6 @@
 
     if (els.loginSplit) {
       els.loginSplit.style.display = 'inline-flex';
-      closeLoginMenu();
     } else if (els.loginBtn) {
       els.loginBtn.style.display = 'inline-block';
     }
@@ -800,17 +813,6 @@
       els.composeTools.style.display = 'none';
     } else if (els.composeLink) {
       els.composeLink.style.display = 'none';
-    }
-    if (els.userMenu) {
-      els.userMenu.style.display = 'none';
-      closeUserMenu();
-    }
-    if (els.userName) {
-      els.userName.style.display = 'none';
-      els.userName.textContent = '';
-      els.userName.removeAttribute('role');
-      els.userName.removeAttribute('tabindex');
-      els.userName.removeAttribute('aria-label');
     }
     updateLogoutOtherSessionsUi(0);
   }
@@ -833,8 +835,9 @@
   }
 
   function checkAuth() {
-    var token = getSessionToken();
-    if (!token) {
+    var token = String(getSessionToken() || '').trim();
+    if (!token || token === 'null' || token === 'undefined') {
+      clearLocalStorageAuth();
       applyLoggedInUi(false, false, '');
       return Promise.resolve(false);
     }

@@ -49,15 +49,26 @@
 <script>
 (function () {
   try {
-    var token = localStorage.getItem('session_token') || '';
+    var token = String(localStorage.getItem('session_token') || '').trim();
+    var hasToken = !!token && token !== 'null' && token !== 'undefined';
     var cachedName = localStorage.getItem('last_auth_username') || '';
     var loginSplit = document.getElementById('nav-login-split');
     var userMenu = document.getElementById('nav-user-menu');
     var userName = document.getElementById('nav-user-name');
-    if (token) {
-      if (loginSplit) {
-        loginSplit.style.display = 'none';
-      }
+
+    // Ensure mutually exclusive nav auth state before showing either mode.
+    if (loginSplit) {
+      loginSplit.style.display = 'none';
+    }
+    if (userMenu) {
+      userMenu.style.display = 'none';
+    }
+    if (userName) {
+      userName.style.display = 'none';
+      userName.textContent = '';
+    }
+
+    if (hasToken) {
       if (userMenu) {
         userMenu.style.display = 'inline-flex';
       }
@@ -67,15 +78,9 @@
       }
       return;
     }
+
     if (loginSplit) {
       loginSplit.style.display = 'inline-flex';
-    }
-    if (userMenu) {
-      userMenu.style.display = 'none';
-    }
-    if (userName) {
-      userName.style.display = 'none';
-      userName.textContent = '';
     }
   } catch (_err) {
     // Ignore storage access issues and let nav-auth.js reconcile state.
