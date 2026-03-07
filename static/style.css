@@ -360,9 +360,9 @@ header h1 {
 }
 
 .list-page-shell {
-  max-width: 920px;
-  margin: 1.25rem auto 2.4rem;
-  padding: 0 1rem;
+  max-width: 100%;
+  margin: 1.25rem 0 2.4rem;
+  padding: 0;
 }
 
 .list-page-head h1 {
