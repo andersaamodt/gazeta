@@ -1785,6 +1785,9 @@
         html += postActionButton('Open post', 'open', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
         html += postActionButton('Copy link', 'copy_link', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
       }
+      html += postActionButton('Add to oeuvre...', 'add_to_oeuvre', path, '');
+      html += postActionButton('Add to list...', 'add_to_list', path, '');
+      html += postActionButton('Edit post...', 'edit_post', path, '');
       if (post.can_hide) {
         html += postActionButton('Hide from site...', 'hide', path, 'post-hide');
       }
@@ -1862,6 +1865,79 @@
       const absoluteUrl = new URL(url, window.location.origin).toString();
       const copied = await copyTextToClipboard(absoluteUrl);
       setOutput(els.outputPosts, copied ? 'Post link copied.' : 'Could not copy post link.', copied ? 'ok' : 'warn');
+      return;
+    }
+    if (pickedAction === 'edit_post') {
+      if (state.postsActionInFlight) {
+        return;
+      }
+      state.postsActionInFlight = true;
+      try {
+        const data = await apiPost('/cgi/blog-create-draft-from-post', {
+          post_path: path
+        }, true);
+        if (!data.success || !data.draft_id) {
+          throw new Error(data.error || 'Could not create draft from post');
+        }
+        state.postsMenuOpenFor = '';
+        await loadDraft(data.draft_id);
+        setOutput(els.outputCompose, data.message || 'Draft created from post.', 'ok');
+      } finally {
+        state.postsActionInFlight = false;
+      }
+      return;
+    }
+    if (pickedAction === 'add_to_oeuvre' || pickedAction === 'add_to_list') {
+      if (state.postsActionInFlight) {
+        return;
+      }
+      let targetSlug = 'oeuvre';
+      if (pickedAction === 'add_to_list') {
+        const listsData = await apiPost('/cgi/blog-list-pages', {}, true);
+        if (!listsData.success) {
+          throw new Error(listsData.error || 'Could not load lists');
+        }
+        const lists = Array.isArray(listsData.lists) ? listsData.lists : [];
+        const defaultSlug = lists.length ? String(lists[0].slug || 'oeuvre') : 'oeuvre';
+        const options = lists.map(function (item) { return String(item.slug || '').trim(); }).filter(Boolean);
+        const picked = window.prompt(
+          'Select list slug:\n' + (options.length ? options.join(', ') : 'oeuvre'),
+          defaultSlug
+        );
+        if (picked === null) {
+          return;
+        }
+        targetSlug = String(picked || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+        if (!targetSlug) {
+          setOutput(els.outputPosts, 'List slug is required.', 'warn');
+          return;
+        }
+      }
+      const pickedDate = window.prompt('Optional entry date (YYYY / YYYY-MM / YYYY-MM-DD):', '');
+      if (pickedDate === null) {
+        return;
+      }
+      const pickedMarkdown = window.prompt('Optional markdown line for this entry:', '');
+      if (pickedMarkdown === null) {
+        return;
+      }
+      state.postsActionInFlight = true;
+      try {
+        const addData = await apiPost('/cgi/blog-add-post-to-list', {
+          list_slug: targetSlug,
+          post_path: path,
+          date: String(pickedDate || '').trim(),
+          markdown: String(pickedMarkdown || '').trim(),
+          marker: pickedAction === 'add_to_oeuvre' ? 'oeuvre' : ''
+        }, true);
+        if (!addData.success) {
+          throw new Error(addData.error || 'Could not add post to list');
+        }
+        state.postsMenuOpenFor = '';
+        setOutput(els.outputPosts, addData.message || ('Added to ' + targetSlug + ' draft.'), 'ok');
+      } finally {
+        state.postsActionInFlight = false;
+      }
       return;
     }
 

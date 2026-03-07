@@ -3,6 +3,7 @@
 <div class="nav-center">
 <a href="/pages/index.html" data-page="index">Home</a>
 <a href="/pages/about.html" data-page="about">About</a>
+<a href="/pages/oeuvre.html" data-page="oeuvre">Oeuvre</a>
 <a href="/pages/archive.html" data-page="archive">Archive</a>
 <a href="/pages/tags.html" data-page="tags">Categories</a>
 </div>

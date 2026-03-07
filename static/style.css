@@ -359,6 +359,157 @@ header h1 {
   pointer-events: none;
 }
 
+.list-page-shell {
+  max-width: 920px;
+  margin: 1.25rem auto 2.4rem;
+  padding: 0 1rem;
+}
+
+.list-page-head h1 {
+  margin: 0 0 0.5rem;
+}
+
+.list-validation {
+  margin: 1rem 0 0.9rem;
+}
+
+.list-validation-block {
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin: 0 0 0.55rem;
+}
+
+.list-validation-block ul {
+  margin: 0.45rem 0 0;
+}
+
+.list-validation-block.is-error {
+  background: #3b151a;
+  border: 1px solid #7a2a35;
+}
+
+.list-validation-block.is-warn {
+  background: #3a2f17;
+  border: 1px solid #7b6627;
+}
+
+.list-admin {
+  margin: 1rem 0 1.2rem;
+  padding: 0.9rem;
+  border: 1px solid var(--card-border, #2f3f60);
+  border-radius: 12px;
+  background: var(--card-bg, #121a2b);
+}
+
+.list-admin-banner {
+  font-size: 0.86rem;
+  margin-bottom: 0.6rem;
+  color: var(--muted-text, #9aa8c9);
+}
+
+.list-admin-toolbar {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.list-admin-toolbar button {
+  width: fit-content;
+  padding: 0.42rem 0.65rem;
+  border-radius: 8px;
+}
+
+.list-admin-meta {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.list-admin-meta label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  width: fit-content;
+  min-width: 12rem;
+  font-size: 0.8rem;
+}
+
+.list-admin-meta input,
+.list-admin-meta select {
+  min-width: 12rem;
+}
+
+.list-admin-entry {
+  border: 1px solid var(--card-border, #2f3f60);
+  border-radius: 10px;
+  padding: 0.5rem;
+  margin-bottom: 0.55rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.list-admin-entry-controls {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.list-admin-entry-controls button {
+  width: fit-content;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 0.35rem;
+}
+
+.list-admin-entry-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.list-admin-entry-fields label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: fit-content;
+  min-width: 11.5rem;
+  font-size: 0.78rem;
+}
+
+.list-admin-entry-fields input {
+  min-width: 11.5rem;
+  width: fit-content;
+}
+
+.list-page-content {
+  margin-top: 0.8rem;
+}
+
+.list-year-group {
+  margin-bottom: 1.1rem;
+}
+
+.list-year-heading {
+  margin: 0.2rem 0 0.5rem;
+}
+
+.list-entries {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.list-entry-line {
+  margin: 0 0 0.42rem;
+}
+
+.list-entry-post-link {
+  display: inline-block;
+  margin-right: 0.38rem;
+  text-decoration: none;
+}
+
 .nav-user-menu {
   position: relative;
   display: inline-flex;
