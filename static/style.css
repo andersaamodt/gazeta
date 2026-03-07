@@ -716,6 +716,17 @@ header h1 {
   font-weight: 700;
 }
 
+#list-page-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.38rem;
+}
+
+#list-page-title .list-inline-edit-link {
+  margin-left: 0;
+  line-height: 1;
+}
+
 .list-head-description-input {
   width: min(36rem, 84vw);
   font-size: 0.98rem;
