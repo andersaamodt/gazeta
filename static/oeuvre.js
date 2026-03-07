@@ -1390,6 +1390,7 @@
           state.activeEntryUid = '';
           state.activeCellField = '';
           renderList();
+          renderAdmin();
           return;
         }
         var sameRow = activeEl.closest('.list-entry-inline[data-element-uid]');
@@ -1403,6 +1404,7 @@
           state.activeEntryUid = '';
           state.activeCellField = '';
           renderList();
+          renderAdmin();
           if (removedTransient) {
             queueAutosave(120);
           }
@@ -1570,6 +1572,7 @@
       state.activeEntryUid = '';
       state.activeCellField = '';
       renderList();
+      renderAdmin();
       if (removedTransient) {
         queueAutosave(120);
       }
@@ -1608,6 +1611,7 @@
     state.activeEntryUid = '';
     state.activeCellField = '';
     renderList();
+    renderAdmin();
     if (removedTransient) {
       queueAutosave(120);
     }
