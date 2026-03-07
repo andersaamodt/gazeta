@@ -547,6 +547,16 @@
     return localStorage.getItem('csrf_token') || '';
   }
 
+  function emitAuthChanged() {
+    try {
+      window.dispatchEvent(new CustomEvent('blog-auth-changed', {
+        detail: { session_token: getSessionToken(), csrf_token: getCsrfToken() }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch failures.
+    }
+  }
+
   function rememberAuth(data) {
     localStorage.setItem('session_token', data.session_token || '');
     localStorage.setItem('csrf_token', data.csrf_token || '');
@@ -556,11 +566,13 @@
     if (data.pubkey) {
       localStorage.setItem('last_auth_pubkey', data.pubkey);
     }
+    emitAuthChanged();
   }
 
   function clearLocalStorageAuth() {
     localStorage.removeItem('session_token');
     localStorage.removeItem('csrf_token');
+    emitAuthChanged();
   }
 
   function openAuthDb() {
@@ -837,6 +849,7 @@
         }
         if (data.csrf_token) {
           localStorage.setItem('csrf_token', data.csrf_token);
+          emitAuthChanged();
         }
         if (data.nostr_pubkey) {
           localStorage.setItem('last_auth_pubkey', data.nostr_pubkey);

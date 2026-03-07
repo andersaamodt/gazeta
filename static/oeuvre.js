@@ -24,8 +24,23 @@
   var state = {
     payload: null,
     draft: null,
-    busy: false
+    busy: false,
+    authSignature: ''
   };
+
+  function authSignature() {
+    var auth = getAuthPayload();
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function maybeReloadForAuthChange() {
+    var nextSig = authSignature();
+    if (nextSig === state.authSignature) {
+      return;
+    }
+    state.authSignature = nextSig;
+    load();
+  }
 
   function getAuthPayload() {
     try {
@@ -453,6 +468,7 @@
 
   async function load() {
     try {
+      state.authSignature = authSignature();
       var auth = getAuthPayload();
       state.payload = await apiPost('/cgi/blog-get-list-page', {
         list_slug: slug,
@@ -471,5 +487,20 @@
   }
 
   bindAdminEvents();
+  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
+  window.addEventListener('storage', function (event) {
+    if (!event || !event.key) {
+      return;
+    }
+    if (event.key === 'session_token' || event.key === 'csrf_token') {
+      maybeReloadForAuthChange();
+    }
+  });
+  window.addEventListener('focus', maybeReloadForAuthChange);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      maybeReloadForAuthChange();
+    }
+  });
   load();
 })();
