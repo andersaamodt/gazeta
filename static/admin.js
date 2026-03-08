@@ -94,6 +94,11 @@
     postsList: document.getElementById('posts-list'),
     nostrPagesList: document.getElementById('nostr-pages-list'),
     createNostrPageButton: document.getElementById('btn-create-nostr-page'),
+    nostrPageCreateDialog: document.getElementById('nostr-page-create-dialog'),
+    nostrPageCreateForm: document.getElementById('nostr-page-create-form'),
+    nostrPageCreateCancel: document.getElementById('nostr-page-create-cancel'),
+    nostrPageTypeListbox: document.getElementById('nostr-page-type-listbox'),
+    nostrPageSlugInput: document.getElementById('nostr-page-slug-input'),
     usersList: document.getElementById('users-list'),
     currentDraftLabel: document.getElementById('current-draft-label'),
     accountPlayerName: document.getElementById('account-player-name'),
@@ -1902,32 +1907,23 @@
     }
   }
 
-  function promptCreateNostrPage() {
-    const pickedTypeRaw = window.prompt('Page type: list or contact', 'list');
-    if (pickedTypeRaw === null) {
-      return;
-    }
-    const pickedType = String(pickedTypeRaw || '').trim().toLowerCase();
+  function createNostrPageFromInput(pickedType, rawSlug) {
     if (pickedType !== 'list' && pickedType !== 'contact') {
       setOutput(els.outputNostrPages, 'Invalid page type. Use list or contact.', 'warn');
-      return;
+      return false;
     }
     if (pickedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
       setOutput(els.outputNostrPages, 'Only one contact page is supported.', 'warn');
-      return;
-    }
-    const rawSlug = window.prompt('Page slug/path (example: contact)', pickedType === 'contact' ? 'contact' : '');
-    if (rawSlug === null) {
-      return;
+      return false;
     }
     const slug = normalizeNostrPageSlug(rawSlug);
     if (!slug) {
       setOutput(els.outputNostrPages, 'A valid slug is required.', 'warn');
-      return;
+      return false;
     }
     if (state.nostrPages.some(function (page) { return String(page.slug || '') === slug; })) {
       setOutput(els.outputNostrPages, 'A page with this slug already exists.', 'warn');
-      return;
+      return false;
     }
     const next = state.nostrPages.slice();
     next.push({
@@ -1942,6 +1938,52 @@
     saveNostrPagesConfig().catch(function (err) {
       setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
     });
+    return true;
+  }
+
+  function syncNostrPageCreateDefaults() {
+    if (!els.nostrPageTypeListbox) {
+      return;
+    }
+    const hasContactPage = state.nostrPages.some(function (page) {
+      return String(page.type || '') === 'contact';
+    });
+    Array.from(els.nostrPageTypeListbox.options || []).forEach(function (opt) {
+      if (String(opt.value || '') === 'contact') {
+        opt.disabled = hasContactPage;
+      }
+    });
+    const currentType = String(els.nostrPageTypeListbox.value || '').trim().toLowerCase();
+    if ((currentType === 'contact' && hasContactPage) || !currentType) {
+      els.nostrPageTypeListbox.value = hasContactPage ? 'list' : 'contact';
+    }
+    if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
+      els.nostrPageSlugInput.value = els.nostrPageTypeListbox.value === 'contact' ? 'contact' : '';
+    }
+  }
+
+  function promptCreateNostrPage() {
+    if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
+      const pickedTypeRaw = window.prompt('Page type: list or contact', 'list');
+      if (pickedTypeRaw === null) {
+        return;
+      }
+      const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
+      const fallbackSlug = window.prompt('Page slug/path (example: contact)', fallbackType === 'contact' ? 'contact' : '');
+      if (fallbackSlug === null) {
+        return;
+      }
+      createNostrPageFromInput(fallbackType, fallbackSlug);
+      return;
+    }
+    if (els.nostrPageSlugInput) {
+      els.nostrPageSlugInput.dataset.autoSuggest = '1';
+    }
+    syncNostrPageCreateDefaults();
+    els.nostrPageCreateDialog.showModal();
+    if (els.nostrPageTypeListbox) {
+      els.nostrPageTypeListbox.focus();
+    }
   }
 
   function stopPostsPolling() {
@@ -2723,6 +2765,37 @@
         unqueueDraft(draftId).catch(function (err) {
           setOutput(els.outputQueue, 'Error: ' + err.message, 'error');
         });
+      });
+    }
+    if (els.nostrPageTypeListbox) {
+      els.nostrPageTypeListbox.addEventListener('change', function () {
+        syncNostrPageCreateDefaults();
+      });
+    }
+    if (els.nostrPageSlugInput) {
+      els.nostrPageSlugInput.addEventListener('input', function () {
+        const text = String(els.nostrPageSlugInput.value || '').trim();
+        els.nostrPageSlugInput.dataset.autoSuggest = text ? '0' : '1';
+      });
+    }
+    if (els.nostrPageCreateCancel) {
+      els.nostrPageCreateCancel.addEventListener('click', function () {
+        if (els.nostrPageCreateDialog instanceof HTMLDialogElement) {
+          els.nostrPageCreateDialog.close('cancel');
+        }
+      });
+    }
+    if (els.nostrPageCreateForm) {
+      els.nostrPageCreateForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const pickedType = String((els.nostrPageTypeListbox && els.nostrPageTypeListbox.value) || '').trim().toLowerCase();
+        const rawSlug = String((els.nostrPageSlugInput && els.nostrPageSlugInput.value) || '');
+        if (!createNostrPageFromInput(pickedType, rawSlug)) {
+          return;
+        }
+        if (els.nostrPageCreateDialog instanceof HTMLDialogElement) {
+          els.nostrPageCreateDialog.close('ok');
+        }
       });
     }
     if (els.createNostrPageButton) {

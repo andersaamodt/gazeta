@@ -438,6 +438,27 @@ title: Blog Admin
 </div>
 </div>
 
+<dialog id="nostr-page-create-dialog" class="admin-inline-dialog" aria-labelledby="nostr-page-create-title">
+<form id="nostr-page-create-form" method="dialog" class="admin-inline-dialog-form">
+<h4 id="nostr-page-create-title">Create New Nostr Page</h4>
+<div class="field-row">
+<label for="nostr-page-type-listbox"><strong>Page Type</strong></label>
+<select id="nostr-page-type-listbox" size="2" aria-label="Page type listbox">
+<option value="list">List Page (kind 30001)</option>
+<option value="contact">Contact Page (kind 0)</option>
+</select>
+</div>
+<div class="field-row">
+<label for="nostr-page-slug-input"><strong>Page slug/path</strong></label>
+<input type="text" id="nostr-page-slug-input" placeholder="oeuvre">
+</div>
+<div class="admin-inline-dialog-actions">
+<button id="nostr-page-create-cancel" type="button">Cancel</button>
+<button id="nostr-page-create-confirm" type="submit" class="primary">Create</button>
+</div>
+</form>
+</dialog>
+
 <div id="drop-overlay" class="drop-overlay">Drop images to upload and insert into your draft</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
@@ -2392,6 +2413,45 @@ body {
 
 .drop-overlay.show {
   display: flex;
+}
+
+.admin-inline-dialog {
+  border: 1px solid var(--admin-border, var(--border));
+  border-radius: 12px;
+  background: var(--menu-bg, var(--admin-surface, var(--post-card-bg-single)));
+  color: var(--admin-text, var(--text));
+  box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16));
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 0;
+}
+
+.admin-inline-dialog::backdrop {
+  background: var(--surface-overlay, rgba(15, 23, 42, 0.56));
+}
+
+.admin-inline-dialog-form {
+  margin: 0;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.admin-inline-dialog-form h4 {
+  margin: 0;
+}
+
+.admin-inline-dialog-form .field-row {
+  margin: 0;
+}
+
+#nostr-page-type-listbox {
+  min-height: 5.2rem;
+}
+
+.admin-inline-dialog-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
 }
 
 /* Theme bridge: push admin UI onto the active site theme tokens. */
