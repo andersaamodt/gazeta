@@ -1,0 +1,71 @@
+#!/bin/sh
+# Revert local Nostr page draft to canonical event state.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
+fi
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+if [ -z "$page_type" ]; then
+  blog_json_error "Unknown Nostr page slug" "unknown_page"
+  exit 0
+fi
+
+case "$page_type" in
+  contact)
+    canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$canonical_event")
+    else
+      canonical_state_json=$(blog_contact_default_state_json "$page_slug")
+    fi
+    validation_json=$(blog_contact_validate_and_enrich_state_json "$canonical_state_json" false)
+    enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  *)
+    canonical_state_json=$(blog_list_load_canonical_state_json "$page_slug")
+    validation_json=$(blog_list_validate_and_enrich_state_json "$canonical_state_json" false)
+    enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    ;;
+esac
+
+blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$canonical_state_json"
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg page_type "$page_type" \
+  --argjson state "$enriched" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    slug: $slug,
+    page_type: $page_type,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Draft reverted to canonical Nostr version."
+  }'
+printf '\n'

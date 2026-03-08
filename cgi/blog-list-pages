@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_read_request_body
@@ -33,6 +34,14 @@ done >> "$slugs_tmp"
 
 if [ ! -s "$slugs_tmp" ]; then
   printf 'oeuvre\n' > "$slugs_tmp"
+fi
+
+cfg_json=$(blog_nostr_pages_load_json 2>/dev/null || printf '')
+if [ -n "$cfg_json" ]; then
+  printf '%s\n' "$cfg_json" | jq -r '.pages[]? | select((.type // "list") == "list") | .slug // empty' 2>/dev/null | while IFS= read -r slug || [ -n "$slug" ]; do
+    norm=$(blog_list_normalize_slug "$slug")
+    [ -n "$norm" ] && printf '%s\n' "$norm"
+  done >> "$slugs_tmp"
 fi
 
 printf '{"success":true,"lists":['

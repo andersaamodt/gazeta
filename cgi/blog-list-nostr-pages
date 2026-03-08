@@ -1,0 +1,88 @@
+#!/bin/sh
+# List configured Nostr-backed pages for admin management.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+cfg=$(blog_nostr_pages_load_json)
+rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-pages-rows.XXXXXX")
+printf '%s\n' "$cfg" | jq -c '.pages[]' > "$rows_tmp"
+
+printf '{"success":true,"pages":['
+first=1
+while IFS= read -r row || [ -n "$row" ]; do
+  [ -n "$row" ] || continue
+  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+  kind=$(printf '%s\n' "$row" | jq -r '.kind // 30001' 2>/dev/null || printf '30001')
+  path=$(printf '%s\n' "$row" | jq -r '.path // ("/pages/" + .slug + ".html")' 2>/dev/null || printf "/pages/%s.html" "$slug")
+  show_in_nav=$(printf '%s\n' "$row" | jq -r 'if (.show_in_nav // true) then "true" else "false" end' 2>/dev/null || printf 'true')
+  placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
+
+  canonical_title=''
+  canonical_exists=false
+  case "$page_type" in
+    contact)
+      canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        canonical_exists=true
+        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r 'try (.content | fromjson | .title // "") catch ""' 2>/dev/null || printf '')
+      fi
+      ;;
+    *)
+      canonical_event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        canonical_exists=true
+        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      fi
+      ;;
+  esac
+
+  title=$canonical_title
+  if [ -z "$title" ]; then
+    title=$placeholder_title
+  fi
+  if [ -z "$title" ]; then
+    title=$(blog_nostr_page_titleize_slug "$slug")
+  fi
+
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+  jq -cn \
+    --arg slug "$slug" \
+    --arg page_type "$page_type" \
+    --arg path "$path" \
+    --arg title "$title" \
+    --arg placeholder_title "$placeholder_title" \
+    --argjson kind "$kind" \
+    --argjson show_in_nav "$( [ "$show_in_nav" = "true" ] && printf true || printf false )" \
+    --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
+    '{
+      slug: $slug,
+      type: $page_type,
+      kind: $kind,
+      path: $path,
+      title: $title,
+      placeholder_title: $placeholder_title,
+      show_in_nav: $show_in_nav,
+      canonical_exists: $canonical_exists
+    }'
+done < "$rows_tmp"
+printf ']}'
+printf '\n'
+
+rm -f "$rows_tmp"

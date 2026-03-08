@@ -1,0 +1,131 @@
+#!/bin/sh
+# Save local working state for a Nostr-backed page.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
+fi
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+if [ -z "$page_type" ]; then
+  blog_json_error "Unknown Nostr page slug" "unknown_page"
+  exit 0
+fi
+
+state_json=$(blog_param state_json)
+
+if [ -z "$state_json" ]; then
+  case "$page_type" in
+    contact)
+      title=$(blog_param title)
+      description=$(blog_param description)
+      rows_json=$(blog_param rows_json)
+      if [ -z "$rows_json" ]; then
+        rows_json='[]'
+      fi
+      if ! printf '%s\n' "$rows_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "rows_json must be a JSON array" "invalid_rows"
+        exit 0
+      fi
+      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --argjson rows "$rows_json" '{
+        slug: $slug,
+        type: "contact",
+        title: $title,
+        description: $description,
+        rows: $rows
+      }')
+      ;;
+    *)
+      title=$(blog_param title)
+      description=$(blog_param description)
+      group_by=$(blog_param group_by)
+      content=$(blog_param content)
+      entries_json=$(blog_param entries_json)
+      elements_json=$(blog_param elements_json)
+      if [ -z "$elements_json" ]; then
+        elements_json='[]'
+      fi
+      if [ -z "$entries_json" ]; then
+        entries_json='[]'
+      fi
+      if ! printf '%s\n' "$elements_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "elements_json must be a JSON array" "invalid_elements"
+        exit 0
+      fi
+      if ! printf '%s\n' "$entries_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "entries_json must be a JSON array" "invalid_entries"
+        exit 0
+      fi
+      state_json=$(jq -cn \
+        --arg slug "$page_slug" \
+        --arg title "$title" \
+        --arg description "$description" \
+        --arg group_by "$group_by" \
+        --arg content "$content" \
+        --argjson elements "$elements_json" \
+        --argjson entries "$entries_json" \
+        '{
+          slug: $slug,
+          title: $title,
+          description: $description,
+          group_by: $group_by,
+          content: $content,
+          elements: (if ($elements | length) > 0 then $elements else ($entries | map(. + {type:"entry"})) end),
+          entries: $entries
+        }')
+      ;;
+  esac
+fi
+
+case "$page_type" in
+  contact)
+    normalized=$(blog_contact_normalize_state_json "$page_slug" "$state_json")
+    blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
+    validation_json=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
+    enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  *)
+    normalized=$(blog_list_normalize_state_json "$page_slug" "$state_json")
+    blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
+    validation_json=$(blog_list_validate_and_enrich_state_json "$normalized" false)
+    enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    ;;
+esac
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg page_type "$page_type" \
+  --argjson state "$enriched" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    slug: $slug,
+    page_type: $page_type,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Draft saved."
+  }'
+printf '\n'

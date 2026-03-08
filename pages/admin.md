@@ -14,6 +14,7 @@ title: Blog Admin
 <button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Pages</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Bridge</span></button>
 </div>
@@ -354,6 +355,22 @@ title: Blog Admin
 </div>
 <div id="posts-list" class="posts-list"></div>
 <div id="output-posts" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="nostr-pages" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Nostr Pages</h3>
+<p class="muted">Create and manage locally-routed pages backed by Nostr events. Titles come from event content.</p>
+</div>
+<div class="row-actions">
+<button id="btn-create-nostr-page" type="button" class="primary">Create New Nostr Page</button>
+</div>
+</div>
+<div id="nostr-pages-list" class="nostr-pages-list"></div>
+<div id="output-nostr-pages" class="output"></div>
 </div>
 </section>
 
@@ -1950,6 +1967,81 @@ body {
 
 #admin-panel .draft-row-actions button.draft-delete:hover {
   background: #eef4ff;
+}
+
+.nostr-pages-list {
+  display: block;
+  border-top: 1px solid #d2def3;
+  border-bottom: 1px solid #d2def3;
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.nostr-pages-rows {
+  display: block;
+}
+
+.nostr-page-row {
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  padding: 0.48rem 0.68rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 2.9rem;
+}
+
+.nostr-page-row:nth-child(odd) {
+  background: #f5f8ff;
+}
+
+.nostr-page-main {
+  min-width: 0;
+}
+
+.nostr-page-title a {
+  color: #163161;
+  text-decoration: none;
+}
+
+.nostr-page-title a:hover,
+.nostr-page-title a:focus-visible {
+  text-decoration: underline;
+}
+
+.nostr-page-meta {
+  margin-top: 0.14rem;
+  color: #5c6f91;
+  font-size: 0.84rem;
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nostr-page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+#admin-panel .nostr-page-actions button {
+  width: auto;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#admin-panel .nostr-page-actions .nostr-page-nav-check {
+  margin-right: 0.3rem;
 }
 
 .users-list {

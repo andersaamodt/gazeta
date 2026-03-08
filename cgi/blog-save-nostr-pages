@@ -1,0 +1,58 @@
+#!/bin/sh
+# Save local Nostr page configuration (navbar/order/type/slug references).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+pages_json=$(blog_param pages_json)
+if [ -z "$pages_json" ]; then
+  blog_json_error "pages_json is required" "missing_pages_json"
+  exit 0
+fi
+
+if ! printf '%s\n' "$pages_json" | jq -e 'type=="array" or type=="object"' >/dev/null 2>&1; then
+  blog_json_error "pages_json must be JSON array/object" "invalid_pages_json"
+  exit 0
+fi
+
+raw_cfg=$(jq -cn --argjson pages "$pages_json" '{pages: (if ($pages|type)=="array" then $pages else ($pages.pages // []))}')
+normalized=$(blog_nostr_pages_normalize_json "$raw_cfg")
+
+contact_count=$(printf '%s\n' "$normalized" | jq -r '[.pages[] | select(.type=="contact")] | length' 2>/dev/null || printf '0')
+case "$contact_count" in
+  ''|*[!0-9]*) contact_count=0 ;;
+  *) ;;
+esac
+if [ "$contact_count" -gt 1 ]; then
+  blog_json_error "Only one contact page is supported (kind 0 is replaceable by pubkey)" "contact_page_limit"
+  exit 0
+fi
+
+printf '%s\n' "$normalized" | jq -c '.pages[]' | while IFS= read -r row || [ -n "$row" ]; do
+  [ -n "$row" ] || continue
+  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+  [ -n "$slug" ] || continue
+  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
+done
+
+blog_nostr_pages_save_json "$normalized"
+
+jq -cn --argjson cfg "$normalized" '{
+  success: true,
+  pages: ($cfg.pages // []),
+  message: "Nostr page configuration saved locally."
+}'
+printf '\n'

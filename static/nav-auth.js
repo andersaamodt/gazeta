@@ -1492,6 +1492,57 @@
     window.location.href = '/pages/admin.html#account';
   }
 
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function loadNavbarNostrPages() {
+    var navCenter = document.querySelector('.nav-center');
+    if (!navCenter) {
+      return Promise.resolve();
+    }
+    return fetch('/cgi/blog-list-navbar-pages')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.success || !Array.isArray(data.pages)) {
+          return;
+        }
+        var basePages = [
+          { slug: 'index', title: 'Home', path: '/pages/index.html' },
+          { slug: 'about', title: 'About', path: '/pages/about.html' },
+          { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
+          { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
+        ];
+        var html = '';
+        var seen = {};
+        basePages.forEach(function (page) {
+          seen[page.slug] = true;
+          html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '">' + escapeHtml(page.title) + '</a>';
+        });
+        data.pages.forEach(function (page) {
+          var slug = String(page && page.slug || '').trim();
+          var title = String(page && page.title || '').trim();
+          var path = String(page && page.path || '').trim();
+          if (!slug || !path || seen[slug]) {
+            return;
+          }
+          seen[slug] = true;
+          html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '">' + escapeHtml(title || slug) + '</a>';
+        });
+        if (html) {
+          navCenter.innerHTML = html;
+        }
+      })
+      .catch(function () {
+        // Keep static nav links on fetch failure.
+      });
+  }
+
   function highlightCurrentPage() {
     var currentPath = window.location.pathname;
     var currentHash = window.location.hash || '';
@@ -1814,7 +1865,9 @@
 
   function bootstrap() {
     renderComposeIcon(readComposeIconIndex());
-    highlightCurrentPage();
+    loadNavbarNostrPages().finally(function () {
+      highlightCurrentPage();
+    });
     window.addEventListener('hashchange', highlightCurrentPage);
     bindThemeSelect();
     bindUiEvents();

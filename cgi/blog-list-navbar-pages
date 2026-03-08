@@ -1,0 +1,57 @@
+#!/bin/sh
+# Public list of Nostr-backed pages shown in navbar.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_send_json_headers
+
+cfg=$(blog_nostr_pages_load_json)
+rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-navbar-pages.XXXXXX")
+printf '%s\n' "$cfg" | jq -c '.pages[] | select((.show_in_nav // true) == true)' > "$rows_tmp"
+
+printf '{"success":true,"pages":['
+first=1
+while IFS= read -r row || [ -n "$row" ]; do
+  [ -n "$row" ] || continue
+  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+  kind=$(printf '%s\n' "$row" | jq -r '.kind // 30001' 2>/dev/null || printf '30001')
+  path=$(printf '%s\n' "$row" | jq -r '.path // ("/pages/" + .slug + ".html")' 2>/dev/null || printf "/pages/%s.html" "$slug")
+  placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
+
+  title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')
+  if [ -z "$title" ]; then
+    title=$placeholder_title
+  fi
+  if [ -z "$title" ]; then
+    title=$(blog_nostr_page_titleize_slug "$slug")
+  fi
+
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+  jq -cn \
+    --arg slug "$slug" \
+    --arg title "$title" \
+    --arg path "$path" \
+    --arg page_type "$page_type" \
+    --argjson kind "$kind" \
+    '{
+      slug: $slug,
+      title: $title,
+      path: $path,
+      type: $page_type,
+      kind: $kind
+    }'
+done < "$rows_tmp"
+printf ']}'
+printf '\n'
+
+rm -f "$rows_tmp"

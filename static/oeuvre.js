@@ -8,7 +8,8 @@
 
   var querySlug = '';
   try {
-    querySlug = String((new URLSearchParams(window.location.search)).get('list_slug') || '').trim();
+    var params = new URLSearchParams(window.location.search);
+    querySlug = String(params.get('page_slug') || params.get('list_slug') || '').trim();
   } catch (_err) {
     querySlug = '';
   }
@@ -376,8 +377,8 @@
     }
     try {
       var auth = getAuthPayload();
-      var latest = await apiPost('/cgi/blog-get-list-page', {
-        list_slug: slug,
+      var latest = await apiPost('/cgi/blog-get-nostr-page', {
+        page_slug: slug,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -410,8 +411,8 @@
     try {
       var auth = getAuthPayload();
       var elements = cloneEditableElements(state.draft.elements || []);
-      await apiPost('/cgi/blog-save-list-draft', {
-        list_slug: slug,
+      await apiPost('/cgi/blog-save-nostr-page-draft', {
+        page_slug: slug,
         title: state.draft.title || '',
         description: state.draft.description || '',
         group_by: state.draft.group_by || '',
@@ -477,8 +478,8 @@
     setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
-      await apiPost('/cgi/blog-publish-list-page', {
-        list_slug: slug,
+      await apiPost('/cgi/blog-publish-nostr-page', {
+        page_slug: slug,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -506,8 +507,8 @@
     setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
-      await apiPost('/cgi/blog-revert-list-draft', {
-        list_slug: slug,
+      await apiPost('/cgi/blog-revert-nostr-page-draft', {
+        page_slug: slug,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -1683,8 +1684,8 @@
     try {
       state.authSignature = authSignature();
       var auth = getAuthPayload();
-      state.payload = await apiPost('/cgi/blog-get-list-page', {
-        list_slug: slug,
+      state.payload = await apiPost('/cgi/blog-get-nostr-page', {
+        page_slug: slug,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });

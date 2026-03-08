@@ -42,7 +42,9 @@
     localDripLeader: false,
     localDripEnabled: localStorage.getItem('blog_local_drip_enabled_v1') !== '0',
     localDripTabId: '',
-    localDripLastTickAt: 0
+    localDripLastTickAt: 0,
+    nostrPages: [],
+    nostrPagesSaveBusy: false
   };
 
   const els = {
@@ -53,6 +55,7 @@
     outputCompose: document.getElementById('output-compose'),
     outputQueue: document.getElementById('output-queue'),
     outputPosts: document.getElementById('output-posts'),
+    outputNostrPages: document.getElementById('output-nostr-pages'),
     outputAccount: document.getElementById('output-account'),
     outputUsers: document.getElementById('output-users'),
     siteTitle: document.getElementById('site-title'),
@@ -89,6 +92,8 @@
     queueLocalDripStatusText: document.getElementById('queue-local-drip-status-text'),
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
     postsList: document.getElementById('posts-list'),
+    nostrPagesList: document.getElementById('nostr-pages-list'),
+    createNostrPageButton: document.getElementById('btn-create-nostr-page'),
     usersList: document.getElementById('users-list'),
     currentDraftLabel: document.getElementById('current-draft-label'),
     accountPlayerName: document.getElementById('account-player-name'),
@@ -1161,7 +1166,7 @@
       setAccountOnlyMode(false);
       activateSection(getSectionFromHash(), false);
 
-      await Promise.all([loadConfig(), loadUsers(), loadDrafts(), loadQueue(), loadPosts()]);
+      await Promise.all([loadConfig(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
       els.adminPanel.style.display = 'grid';
       renderPreview();
     } catch (err) {
@@ -1812,6 +1817,131 @@
       els.navPostsCount.textContent = '(' + posts.length + ')';
     }
     renderPostsList(posts);
+  }
+
+  function normalizeNostrPageSlug(raw) {
+    return String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function defaultNostrPageTitleFromSlug(slug) {
+    const text = String(slug || '').replace(/-/g, ' ').trim();
+    if (!text) {
+      return 'Untitled';
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function renderNostrPagesList(pages) {
+    if (!els.nostrPagesList) {
+      return;
+    }
+    const list = Array.isArray(pages) ? pages : [];
+    if (!list.length) {
+      els.nostrPagesList.innerHTML = '<p class="placeholder">No Nostr-backed pages configured yet.</p>';
+      return;
+    }
+
+    let html = '<div class="nostr-pages-rows">';
+    list.forEach(function (page, idx) {
+      const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
+      const slug = String(page.slug || '');
+      const kind = Number(page.kind || (String(page.type || 'list') === 'contact' ? 0 : 30001));
+      const path = String(page.path || ('/pages/' + slug + '.html'));
+      const showInNav = !!page.show_in_nav;
+      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '">';
+      html += '<div class="nostr-page-main">';
+      html += '<div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
+      html += '<div class="nostr-page-meta"><span class="nostr-page-kind">kind ' + String(kind) + '</span> <span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
+      html += '</div>';
+      html += '<div class="nostr-page-actions">';
+      html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
+      html += '<button type="button" class="unobtrusive-icon-button" data-nostr-page-action="move-up" data-index="' + String(idx) + '" aria-label="Move up" title="Move up">↑</button>';
+      html += '<button type="button" class="unobtrusive-icon-button" data-nostr-page-action="move-down" data-index="' + String(idx) + '" aria-label="Move down" title="Move down">↓</button>';
+      html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page" title="Remove local page reference">✕</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    els.nostrPagesList.innerHTML = html;
+  }
+
+  async function loadNostrPages() {
+    if (!state.isAdmin) {
+      return;
+    }
+    const data = await apiPost('/cgi/blog-list-nostr-pages', {}, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load Nostr pages');
+    }
+    state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
+    renderNostrPagesList(state.nostrPages);
+  }
+
+  async function saveNostrPagesConfig() {
+    if (state.nostrPagesSaveBusy) {
+      return;
+    }
+    state.nostrPagesSaveBusy = true;
+    try {
+      const data = await apiPost('/cgi/blog-save-nostr-pages', {
+        pages_json: JSON.stringify(state.nostrPages || [])
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save Nostr pages');
+      }
+      state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
+      renderNostrPagesList(state.nostrPages);
+      setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
+    } finally {
+      state.nostrPagesSaveBusy = false;
+    }
+  }
+
+  function promptCreateNostrPage() {
+    const pickedTypeRaw = window.prompt('Page type: list or contact', 'list');
+    if (pickedTypeRaw === null) {
+      return;
+    }
+    const pickedType = String(pickedTypeRaw || '').trim().toLowerCase();
+    if (pickedType !== 'list' && pickedType !== 'contact') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use list or contact.', 'warn');
+      return;
+    }
+    if (pickedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
+      setOutput(els.outputNostrPages, 'Only one contact page is supported.', 'warn');
+      return;
+    }
+    const rawSlug = window.prompt('Page slug/path (example: contact)', pickedType === 'contact' ? 'contact' : '');
+    if (rawSlug === null) {
+      return;
+    }
+    const slug = normalizeNostrPageSlug(rawSlug);
+    if (!slug) {
+      setOutput(els.outputNostrPages, 'A valid slug is required.', 'warn');
+      return;
+    }
+    if (state.nostrPages.some(function (page) { return String(page.slug || '') === slug; })) {
+      setOutput(els.outputNostrPages, 'A page with this slug already exists.', 'warn');
+      return;
+    }
+    const next = state.nostrPages.slice();
+    next.push({
+      slug: slug,
+      type: pickedType,
+      kind: pickedType === 'contact' ? 0 : 30001,
+      show_in_nav: true,
+      placeholder_title: defaultNostrPageTitleFromSlug(slug),
+      path: '/pages/' + slug + '.html'
+    });
+    state.nostrPages = next;
+    saveNostrPagesConfig().catch(function (err) {
+      setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+    });
   }
 
   function stopPostsPolling() {
@@ -2593,6 +2723,97 @@
         unqueueDraft(draftId).catch(function (err) {
           setOutput(els.outputQueue, 'Error: ' + err.message, 'error');
         });
+      });
+    }
+    if (els.createNostrPageButton) {
+      els.createNostrPageButton.addEventListener('click', function () {
+        promptCreateNostrPage();
+      });
+    }
+    if (els.nostrPagesList) {
+      els.nostrPagesList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+        const action = String(target.getAttribute('data-nostr-page-action') || '');
+        if (action !== 'toggle-nav') {
+          return;
+        }
+        const idx = Number(target.getAttribute('data-index'));
+        if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
+          return;
+        }
+        const next = state.nostrPages.slice();
+        next[idx] = Object.assign({}, next[idx], { show_in_nav: !!target.checked });
+        state.nostrPages = next;
+        saveNostrPagesConfig().catch(function (err) {
+          setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+        });
+      });
+
+      els.nostrPagesList.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionNode = target.closest('[data-nostr-page-action][data-index]');
+        if (!(actionNode instanceof HTMLElement)) {
+          return;
+        }
+        const action = String(actionNode.getAttribute('data-nostr-page-action') || '');
+        if (action === 'toggle-nav') {
+          return;
+        }
+        const idx = Number(actionNode.getAttribute('data-index'));
+        if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
+          return;
+        }
+
+        if (action === 'move-up') {
+          if (idx <= 0) {
+            return;
+          }
+          const next = state.nostrPages.slice();
+          const tmp = next[idx - 1];
+          next[idx - 1] = next[idx];
+          next[idx] = tmp;
+          state.nostrPages = next;
+          saveNostrPagesConfig().catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action === 'move-down') {
+          if (idx >= state.nostrPages.length - 1) {
+            return;
+          }
+          const next = state.nostrPages.slice();
+          const tmp = next[idx + 1];
+          next[idx + 1] = next[idx];
+          next[idx] = tmp;
+          state.nostrPages = next;
+          saveNostrPagesConfig().catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action === 'remove') {
+          const removed = state.nostrPages[idx];
+          if (!window.confirm('Remove this page from local Nostr page config? This does not delete the Nostr event.')) {
+            return;
+          }
+          state.nostrPages = state.nostrPages.filter(function (_page, i) { return i !== idx; });
+          saveNostrPagesConfig().then(function () {
+            setOutput(
+              els.outputNostrPages,
+              'Removed local page reference for ' + String((removed && removed.slug) || 'page') + '.',
+              'ok'
+            );
+          }).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+        }
       });
     }
     if (els.postsList) {
