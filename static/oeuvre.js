@@ -918,7 +918,7 @@
       html += '<div class="list-inline-eventid">';
       html += '<details class="list-admin-eventid-details"' + (activeField === 'event_id' ? ' open' : '') + '>';
       html += '<summary>Add Nostr event_id</summary>';
-      html += '<label><span>EVENT_ID</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
+      html += '<label><span class="list-inline-eventid-label">event_id</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
       html += '</details>';
       html += '</div>';
     }
