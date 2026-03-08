@@ -2616,6 +2616,16 @@ body {
   color: var(--nav-active-text, #fff) !important;
 }
 
+#admin-panel button.primary:disabled,
+#admin-panel button.primary[disabled],
+#admin-panel #btn-create-nostr-page:disabled,
+#admin-panel #btn-create-nostr-page[disabled] {
+  background: var(--admin-surface-alt, var(--post-card-bg)) !important;
+  border-color: var(--admin-border, var(--border)) !important;
+  color: var(--admin-muted, var(--light-text)) !important;
+  opacity: 1 !important;
+}
+
 #admin-panel button.danger {
   background: linear-gradient(180deg, var(--admin-danger, var(--danger)) 0%, color-mix(in srgb, var(--admin-danger, var(--danger)) 78%, #000 22%) 100%) !important;
   border-color: color-mix(in srgb, var(--admin-danger, var(--danger)) 78%, #000 22%) !important;
