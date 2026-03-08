@@ -81,6 +81,14 @@ if [ "$is_admin" = "true" ]; then
   else
     view_state_json=$canonical_state_json
   fi
+else
+  if [ "$canonical_exists" != "true" ] && [ -n "$draft_state_json" ]; then
+    view_mode="draft_readonly"
+    view_state_json=$draft_state_json
+  else
+    view_mode="canonical"
+    view_state_json=$canonical_state_json
+  fi
 fi
 
 draft_differs=false
