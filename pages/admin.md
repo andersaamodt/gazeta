@@ -442,8 +442,8 @@ title: Blog Admin
 <form id="nostr-page-create-form" method="dialog" class="admin-inline-dialog-form">
 <h4 id="nostr-page-create-title">Create New Nostr Page</h4>
 <div class="field-row">
-<label for="nostr-page-type-listbox"><strong>Page Type</strong></label>
-<select id="nostr-page-type-listbox" size="2" aria-label="Page type listbox">
+<label for="nostr-page-type-select"><strong>Page Type</strong></label>
+<select id="nostr-page-type-select" aria-label="Page type">
 <option value="list">List Page (kind 30001)</option>
 <option value="contact">Contact Page (kind 0)</option>
 </select>
@@ -2442,10 +2442,6 @@ body {
 
 .admin-inline-dialog-form .field-row {
   margin: 0;
-}
-
-#nostr-page-type-listbox {
-  min-height: 5.2rem;
 }
 
 .admin-inline-dialog-actions {

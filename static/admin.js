@@ -97,7 +97,7 @@
     nostrPageCreateDialog: document.getElementById('nostr-page-create-dialog'),
     nostrPageCreateForm: document.getElementById('nostr-page-create-form'),
     nostrPageCreateCancel: document.getElementById('nostr-page-create-cancel'),
-    nostrPageTypeListbox: document.getElementById('nostr-page-type-listbox'),
+    nostrPageTypeSelect: document.getElementById('nostr-page-type-select'),
     nostrPageSlugInput: document.getElementById('nostr-page-slug-input'),
     usersList: document.getElementById('users-list'),
     currentDraftLabel: document.getElementById('current-draft-label'),
@@ -1963,23 +1963,23 @@
   }
 
   function syncNostrPageCreateDefaults() {
-    if (!els.nostrPageTypeListbox) {
+    if (!els.nostrPageTypeSelect) {
       return;
     }
     const hasContactPage = state.nostrPages.some(function (page) {
       return String(page.type || '') === 'contact';
     });
-    Array.from(els.nostrPageTypeListbox.options || []).forEach(function (opt) {
+    Array.from(els.nostrPageTypeSelect.options || []).forEach(function (opt) {
       if (String(opt.value || '') === 'contact') {
         opt.disabled = hasContactPage;
       }
     });
-    const currentType = String(els.nostrPageTypeListbox.value || '').trim().toLowerCase();
+    const currentType = String(els.nostrPageTypeSelect.value || '').trim().toLowerCase();
     if ((currentType === 'contact' && hasContactPage) || !currentType) {
-      els.nostrPageTypeListbox.value = hasContactPage ? 'list' : 'contact';
+      els.nostrPageTypeSelect.value = hasContactPage ? 'list' : 'contact';
     }
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
-      els.nostrPageSlugInput.value = els.nostrPageTypeListbox.value === 'contact' ? 'contact' : '';
+      els.nostrPageSlugInput.value = els.nostrPageTypeSelect.value === 'contact' ? 'contact' : '';
     }
   }
 
@@ -2002,8 +2002,8 @@
     }
     syncNostrPageCreateDefaults();
     els.nostrPageCreateDialog.showModal();
-    if (els.nostrPageTypeListbox) {
-      els.nostrPageTypeListbox.focus();
+    if (els.nostrPageTypeSelect) {
+      els.nostrPageTypeSelect.focus();
     }
   }
 
@@ -2817,8 +2817,8 @@
         });
       });
     }
-    if (els.nostrPageTypeListbox) {
-      els.nostrPageTypeListbox.addEventListener('change', function () {
+    if (els.nostrPageTypeSelect) {
+      els.nostrPageTypeSelect.addEventListener('change', function () {
         syncNostrPageCreateDefaults();
       });
     }
@@ -2838,7 +2838,7 @@
     if (els.nostrPageCreateForm) {
       els.nostrPageCreateForm.addEventListener('submit', function (event) {
         event.preventDefault();
-        const pickedType = String((els.nostrPageTypeListbox && els.nostrPageTypeListbox.value) || '').trim().toLowerCase();
+        const pickedType = String((els.nostrPageTypeSelect && els.nostrPageTypeSelect.value) || '').trim().toLowerCase();
         const rawSlug = String((els.nostrPageSlugInput && els.nostrPageSlugInput.value) || '');
         if (!createNostrPageFromInput(pickedType, rawSlug)) {
           return;
