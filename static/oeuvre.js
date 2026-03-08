@@ -1116,6 +1116,24 @@
     els.admin.innerHTML = '';
   }
 
+  function focusInlineField(uid, field) {
+    var targetUid = String(uid || '');
+    var targetField = String(field || '');
+    if (!targetUid || !targetField || !els.content) {
+      return;
+    }
+    requestAnimationFrame(function () {
+      var selector = '[data-inline-field="' + targetField + '"][data-element-uid="' + targetUid + '"]';
+      var nextInput = els.content.querySelector(selector);
+      if (nextInput && typeof nextInput.focus === 'function') {
+        nextInput.focus();
+        if (nextInput instanceof HTMLInputElement && typeof nextInput.select === 'function') {
+          nextInput.select();
+        }
+      }
+    });
+  }
+
   function bindAdminEvents() {
     if (!els.admin || !els.content) {
       return;
@@ -1243,6 +1261,7 @@
           state.activeEntryUid = uid;
           state.activeCellField = String(inlineAction.getAttribute('data-inline-field') || '');
           renderList();
+          focusInlineField(uid, state.activeCellField);
           return;
         }
         if (actionType === 'remove') {
@@ -1555,16 +1574,7 @@
       state.activeCellField = nextField;
       renderList();
       renderAdmin();
-      requestAnimationFrame(function () {
-        var selector = '[data-inline-field="' + nextField + '"][data-element-uid="' + nextUid + '"]';
-        var nextInput = els.content.querySelector(selector);
-        if (nextInput && typeof nextInput.focus === 'function') {
-          nextInput.focus();
-          if (nextInput instanceof HTMLInputElement && typeof nextInput.select === 'function') {
-            nextInput.select();
-          }
-        }
-      });
+      focusInlineField(nextUid, nextField);
     });
 
     els.content.addEventListener('dragstart', function (event) {
