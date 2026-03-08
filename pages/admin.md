@@ -2010,7 +2010,7 @@ body {
   border: 0;
   border-radius: 0;
   background: #fff;
-  padding: 0.48rem 0.68rem;
+  padding: 0.48rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2568,6 +2568,11 @@ body {
 .post-row,
 .nostr-page-row {
   background: var(--admin-surface, var(--post-card-bg-single)) !important;
+}
+
+#admin-panel .nostr-page-row {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .user-row:nth-child(odd),
