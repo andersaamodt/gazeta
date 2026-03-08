@@ -1100,6 +1100,11 @@ header h1 {
   background: transparent !important;
   color: var(--text) !important;
   -webkit-text-fill-color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.2rem;
 }
 
 .list-inline-toolbar-right button:hover:not(:disabled),
