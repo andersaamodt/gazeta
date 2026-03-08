@@ -541,7 +541,7 @@ body {
   margin: 0;
   padding: 0.56rem 0.22rem;
   font-size: 0.93rem;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.25;
   transition: background-color 0.18s ease, color 0.18s ease;
 }
@@ -596,7 +596,7 @@ body {
   background: #e9f1ff;
   color: #153878;
   box-shadow: none;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item {

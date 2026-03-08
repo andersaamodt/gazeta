@@ -197,6 +197,11 @@ textarea,
   font-family: var(--ui-font-family);
 }
 
+b,
+strong {
+  font-weight: 600;
+}
+
 .site-nav {
   border-top: 1px solid rgba(175, 145, 88, 0.32);
   border-bottom: 1px solid rgba(175, 145, 88, 0.32);
@@ -204,6 +209,14 @@ textarea,
 
 .nav-center a.active {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+}
+
+.nav-center a {
+  font-weight: 500;
+}
+
+.nav-center a.active {
+  font-weight: 600;
 }
 
 .post-item,
