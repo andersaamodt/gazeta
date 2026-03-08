@@ -2394,6 +2394,268 @@ body {
   display: flex;
 }
 
+/* Theme bridge: push admin UI onto the active site theme tokens. */
+#admin-panel {
+  color: var(--admin-text, var(--text));
+  background: var(--admin-bg, var(--bg));
+}
+
+#admin-panel a {
+  color: var(--admin-accent-strong, var(--accent-dark));
+}
+
+.admin-access-message {
+  border-color: var(--admin-border, var(--border)) !important;
+  background: var(--admin-surface, var(--post-card-bg-single)) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
+.admin-access-message.is-warn {
+  background: var(--status-warn-bg, #5a4516) !important;
+  border-color: var(--status-warn-border, #8a6a24) !important;
+  color: var(--status-warn-text, #f6f8ff) !important;
+}
+
+.admin-access-message.is-error {
+  background: var(--status-error-bg, #641925) !important;
+  border-color: var(--status-error-border, #96394d) !important;
+  color: var(--status-error-text, #f6f8ff) !important;
+}
+
+.admin-sidebar,
+.admin-nav-list {
+  background: var(--admin-surface, var(--post-card-bg-single)) !important;
+  border-color: var(--admin-border, var(--border)) !important;
+}
+
+.admin-content {
+  background: var(--admin-bg, var(--bg)) !important;
+}
+
+.admin-nav-title {
+  background: var(--admin-surface-alt, var(--post-card-bg)) !important;
+  border-color: var(--admin-border, var(--border)) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
+.admin-nav-item {
+  color: var(--admin-text, var(--text)) !important;
+}
+
+.admin-nav-icon-slot {
+  color: var(--admin-accent, var(--accent)) !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item.is-compose {
+  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 55%, transparent) !important;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item.is-active,
+.admin-nav-item[aria-selected="true"],
+.admin-nav-item[aria-current="page"],
+#admin-panel .admin-nav-list .admin-nav-item:hover,
+#admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
+#admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item.admin-nav-divider-after::after {
+  border-bottom-color: var(--admin-border, var(--border)) !important;
+}
+
+.demo-box h3,
+.demo-box h4,
+.queue-item-title,
+.draft-title,
+.post-title,
+.nostr-page-title a,
+.user-name {
+  color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel .field-row label,
+#admin-panel .setting-label,
+#admin-panel .queue-head,
+#admin-panel .post-row-title,
+#admin-panel .draft-row-line,
+#admin-panel .draft-row-line strong,
+#admin-panel .draft-row-open {
+  color: var(--admin-text, var(--text)) !important;
+}
+
+.demo-box,
+.sub-card,
+.user-menu-panel,
+.post-menu-panel,
+.users-list,
+.drafts-list,
+.posts-list,
+.nostr-pages-list {
+  border-color: var(--admin-border, var(--border)) !important;
+}
+
+#admin-panel .preview-box,
+#admin-panel .output {
+  border-color: var(--admin-border, var(--border)) !important;
+  background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single))) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
+.user-row,
+.draft-row,
+.post-row,
+.nostr-page-row {
+  background: var(--admin-surface, var(--post-card-bg-single)) !important;
+}
+
+.user-row:nth-child(odd),
+.draft-row:nth-child(odd),
+.post-row:nth-child(odd),
+.nostr-page-row:nth-child(odd) {
+  background: var(--admin-surface-alt, var(--post-card-bg)) !important;
+}
+
+#admin-panel input[type="text"],
+#admin-panel input[type="number"],
+#admin-panel input[type="datetime-local"],
+#admin-panel textarea,
+#admin-panel select {
+  border-color: var(--admin-border, var(--border)) !important;
+  background: var(--select-bg, var(--light-bg)) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel input:focus,
+#admin-panel textarea:focus,
+#admin-panel select:focus {
+  border-color: var(--focus-ring-strong, var(--admin-accent, var(--accent))) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+#admin-panel button {
+  border-color: var(--admin-border, var(--border)) !important;
+  background: var(--admin-surface-alt, var(--post-card-bg)) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel button:hover {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+}
+
+#admin-panel button.primary {
+  background: linear-gradient(180deg, var(--admin-accent, var(--accent)) 0%, var(--admin-accent-strong, var(--accent-dark)) 100%);
+  border-color: var(--admin-accent-strong, var(--accent-dark));
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#admin-panel button.primary:hover {
+  background: linear-gradient(180deg, var(--admin-accent-strong, var(--accent-dark)) 0%, var(--admin-accent-strong, var(--accent-dark)) 100%);
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#admin-panel button.danger {
+  background: linear-gradient(180deg, var(--admin-danger, var(--danger)) 0%, color-mix(in srgb, var(--admin-danger, var(--danger)) 78%, #000 22%) 100%) !important;
+  border-color: color-mix(in srgb, var(--admin-danger, var(--danger)) 78%, #000 22%) !important;
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#admin-panel button.danger:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--admin-danger, var(--danger)) 88%, #000 12%) 0%, color-mix(in srgb, var(--admin-danger, var(--danger)) 68%, #000 32%) 100%) !important;
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#admin-panel button.icon-danger {
+  border-color: color-mix(in srgb, var(--admin-danger, var(--danger)) 30%, var(--admin-border, var(--border)) 70%) !important;
+  background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single))) !important;
+}
+
+#admin-panel .icon-danger,
+#admin-panel .post-delete,
+#admin-panel .draft-delete,
+#admin-panel .user-delete,
+#admin-panel [data-user-action="delete"] {
+  color: var(--admin-danger, var(--danger)) !important;
+}
+
+#admin-panel .icon-danger:hover,
+#admin-panel .post-delete:hover,
+#admin-panel .draft-delete:hover,
+#admin-panel .user-delete:hover,
+#admin-panel [data-user-action="delete"]:hover {
+  background: var(--danger-soft, rgba(180, 35, 24, 0.14)) !important;
+  color: var(--admin-danger, var(--danger)) !important;
+}
+
+#admin-panel .post-menu-panel,
+#admin-panel .user-menu-panel {
+  background: var(--menu-bg, var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)))) !important;
+  border-color: var(--menu-border, var(--admin-border, var(--border))) !important;
+  box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16)) !important;
+}
+
+#admin-panel .post-menu-panel button:hover,
+#admin-panel .user-menu-panel button:hover {
+  background: var(--menu-hover-bg, var(--admin-hover, var(--nav-link-hover))) !important;
+}
+
+#admin-panel .post-menu-panel button.post-delete:hover,
+#admin-panel .user-menu-panel button.user-delete:hover {
+  background: var(--menu-danger-hover-bg, var(--danger-soft, rgba(180, 35, 24, 0.14))) !important;
+}
+
+#admin-panel .post-pill {
+  border-color: color-mix(in srgb, var(--admin-accent, var(--accent)) 35%, var(--admin-border, var(--border)) 65%) !important;
+  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 70%, transparent) !important;
+}
+
+#admin-panel .post-pill.is-nostr {
+  border-color: color-mix(in srgb, var(--theme_green, var(--teal)) 42%, var(--admin-border, var(--border)) 58%) !important;
+  color: var(--theme_green_fg, var(--theme_green, var(--teal))) !important;
+  background: var(--theme_green_bg, color-mix(in srgb, var(--theme_green, var(--teal)) 16%, transparent)) !important;
+}
+
+#admin-panel .post-pill.is-author {
+  border-color: color-mix(in srgb, var(--admin-muted, var(--light-text)) 40%, var(--admin-border, var(--border)) 60%) !important;
+  color: var(--admin-muted, var(--light-text)) !important;
+  background: color-mix(in srgb, var(--admin-surface-alt, var(--post-card-bg)) 85%, transparent) !important;
+}
+
+#admin-panel .drip-queue-pill {
+  border-color: color-mix(in srgb, var(--admin-accent, var(--accent)) 36%, var(--admin-border, var(--border)) 64%) !important;
+  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 74%, transparent) !important;
+}
+
+#admin-panel .queue-local-drip-status,
+#admin-panel .draft-row-excerpt,
+#admin-panel .queue-drip-settings .field-unit,
+#admin-panel .user-email,
+#admin-panel .user-last-seen {
+  color: var(--admin-muted, var(--light-text)) !important;
+}
+
+#admin-panel .queue-local-drip-spinner {
+  border-color: var(--admin-accent, var(--accent)) !important;
+  border-right-color: transparent !important;
+}
+
+#admin-panel .muted,
+#admin-panel .field-unit,
+#admin-panel .nostr-page-meta,
+#admin-panel .archive-date,
+#admin-panel .account-note {
+  color: var(--admin-muted, var(--light-text)) !important;
+}
+
+.drop-overlay {
+  background: var(--surface-overlay, rgba(15, 23, 42, 0.72));
+  color: var(--nav-active-text, #fff);
+}
+
 @media (max-width: 1180px) {
   body {
     max-width: none;
