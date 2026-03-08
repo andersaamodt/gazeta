@@ -453,7 +453,7 @@
       state.busy = false;
       if (state.autosaveQueued) {
         state.autosaveQueued = false;
-        queueAutosave(250);
+        queueAutosave(500);
       }
     }
     if (shouldRetryAuth) {
@@ -1452,7 +1452,7 @@
         renderListWithFlip(beforeDate);
       }
       if (shouldAutosaveForUid(uid)) {
-        queueAutosave(320);
+        queueAutosave(500);
       }
     });
 
