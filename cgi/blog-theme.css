@@ -14,7 +14,7 @@ http-end-headers
 
 theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf 'archmage')
 case "$theme" in
-  archmage|wizard|warlock|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|enchanter|illusionist|lich|druid|empath|shaman|geomancer|hermeticist|hierophant|necromancer|conjurer|pyromancer|chronomancer|alchemist|seer|adept)
+  adept|alchemist|archmage|chronomancer|conjurer|druid|empath|enchanter|geomancer|hermeticist|hierophant|illusionist|lapidarist|lich|necromancer|pyromancer|seer|shaman|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|warlock|wizard)
     ;;
   *)
     theme=archmage

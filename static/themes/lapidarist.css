@@ -1,0 +1,215 @@
+:root {
+  --font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Baskerville, "Times New Roman", serif;
+  --ui-font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono-font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --primary: #234a9d;
+  --accent: #2f5fb8;
+  --accent-dark: #1f458d;
+  --teal: #23775e;
+  --green: #2c8b6e;
+  --purple: #6a4fa3;
+  --violet: #bda7de;
+  --danger: #a73b2f;
+
+  --text: #2f2517;
+  --light-text: #62533f;
+  --muted-text: #78644b;
+  --heading-color: #1f2d53;
+  --heading-gradient: linear-gradient(180deg, #263d71 0%, #1f2d53 100%);
+  --heading-fill: transparent;
+  --heading-glow: none;
+
+  --border: #d4c19c;
+  --bg: #f3e9d7;
+  --light-bg: #e8dbc2;
+  --code-bg: #efe2c8;
+  --shadow: rgba(46, 34, 20, 0.14);
+
+  --nav-link-hover: rgba(47, 95, 184, 0.11);
+  --nav-link-active: #2f5fb8;
+  --nav-icon: #2f5fb8;
+  --nav-icon-hover: #1f458d;
+  --nav-button-bg: #ebdfc7;
+  --nav-button-bg-dark: #e2d3b8;
+  --nav-button-hover-bg: #f2e7d2;
+  --nav-button-hover-bg-dark: #e9dcc2;
+  --nav-button-hover-border: #ccb690;
+  --accent-hover-end: #1d3f84;
+  --select-bg: #f5eddf;
+
+  --post-card-bg: #f8efdd;
+  --post-card-bg-single: #f9f2e4;
+
+  --theme_blue: #2f5fb8;
+  --theme_blue_fg: #1f458d;
+  --theme_blue_bg: rgba(47, 95, 184, 0.13);
+  --theme_blue_border: rgba(47, 95, 184, 0.34);
+  --theme_green: #2c8b6e;
+  --theme_green_fg: #1e6f56;
+  --theme_green_bg: rgba(44, 139, 110, 0.12);
+  --theme_green_border: rgba(44, 139, 110, 0.34);
+  --theme_purple: #6a4fa3;
+  --theme_purple_fg: #563f87;
+  --theme_purple_bg: rgba(106, 79, 163, 0.12);
+  --theme_purple_border: rgba(106, 79, 163, 0.34);
+
+  --lapis: #2f5fb8;
+  --malachite: #2c8b6e;
+  --amethyst: #6a4fa3;
+  --vermilion: #a73b2f;
+  --gold-leaf: #b68b35;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1300px 540px at 18% -16%, rgba(190, 152, 67, 0.12) 0%, rgba(190, 152, 67, 0) 56%),
+    radial-gradient(900px 400px at 87% -7%, rgba(47, 95, 184, 0.08) 0%, rgba(47, 95, 184, 0) 60%),
+    linear-gradient(180deg, #f6eddc 0%, #efe3cc 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading-color);
+  letter-spacing: 0.01em;
+}
+
+h1,
+h2 {
+  border-bottom: 1px solid rgba(182, 139, 53, 0.3);
+  padding-bottom: 0.08rem;
+}
+
+h1::after,
+h2::after {
+  content: " *";
+  color: var(--gold-leaf);
+  font-size: 0.92em;
+  font-weight: 500;
+}
+
+p,
+li,
+blockquote {
+  max-width: 72ch;
+}
+
+a {
+  color: var(--lapis);
+  text-decoration-color: rgba(47, 95, 184, 0.6);
+  text-underline-offset: 0.16em;
+}
+
+a:hover,
+a:focus-visible {
+  color: #1f458d;
+  background: rgba(47, 95, 184, 0.09);
+  border-radius: 2px;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid rgba(175, 145, 88, 0.44);
+  margin: 1.45rem 0;
+  position: relative;
+}
+
+hr::after {
+  content: "*";
+  position: absolute;
+  left: 50%;
+  top: -0.73rem;
+  transform: translateX(-50%);
+  color: var(--gold-leaf);
+  background: var(--bg);
+  padding: 0 0.45rem;
+}
+
+blockquote {
+  border-left: 3px solid rgba(44, 139, 110, 0.5);
+  color: #4c3f2e;
+  background: rgba(106, 79, 163, 0.06);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--mono-font-family);
+}
+
+code {
+  color: #3e2f1d;
+}
+
+pre {
+  border: 1px solid #d7c6a5;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+}
+
+button,
+input,
+select,
+textarea,
+.site-nav,
+.site-nav a,
+.btn-login,
+.tag,
+.admin-layout,
+.admin-layout * {
+  font-family: var(--ui-font-family);
+}
+
+.site-nav {
+  border-top: 1px solid rgba(175, 145, 88, 0.32);
+  border-bottom: 1px solid rgba(175, 145, 88, 0.32);
+}
+
+.nav-center a.active {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+}
+
+.post-item,
+.list-page-shell,
+.demo-box {
+  border-color: #cdb893;
+  background: linear-gradient(180deg, rgba(252, 246, 234, 0.9) 0%, rgba(246, 236, 218, 0.92) 100%);
+}
+
+.muted,
+.list-page-description-empty {
+  color: var(--muted-text);
+}
+
+.list-validation-block.is-error {
+  background: #7d2b22;
+  border-color: #ab4538;
+}
+
+.list-validation-block.is-warn {
+  background: #5f4a1b;
+  border-color: #8d6a22;
+}
+
+.list-entry-post-link {
+  color: var(--amethyst);
+}
+
+.list-entry-post-link:hover,
+.list-entry-post-link:focus-visible {
+  color: #553f83;
+}
+
+.footer-feed-link {
+  border-color: rgba(182, 139, 53, 0.5);
+}
+
+::selection {
+  background: rgba(47, 95, 184, 0.22);
+  color: #1a140d;
+}

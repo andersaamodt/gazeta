@@ -48,6 +48,7 @@ title: Blog Admin
 <option value="hermeticist">Hermeticist</option>
 <option value="hierophant">Hierophant</option>
 <option value="illusionist">Illusionist</option>
+<option value="lapidarist">Lapidarist</option>
 <option value="lich">Lich</option>
 <option value="necromancer">Necromancer</option>
 <option value="pyromancer">Pyromancer</option>
