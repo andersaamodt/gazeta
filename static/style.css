@@ -1062,6 +1062,12 @@ header h1 {
 
 .list-inline-date-button {
   padding: 0.22rem 0.1rem;
+  font-weight: 400;
+}
+
+.list-inline-date .list-inline-value,
+.list-inline-date input[type="text"] {
+  font-weight: 400;
 }
 
 .list-inline-placeholder {
