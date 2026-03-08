@@ -873,7 +873,7 @@ header h1 {
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.46rem;
-  margin-left: calc(var(--list-depth, 0) * 2.55rem);
+  margin-left: calc(var(--list-depth, 0) * 2.1rem);
   padding: 0 0.35rem;
   border: 0;
   border-radius: 0;
