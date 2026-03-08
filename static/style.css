@@ -31,6 +31,8 @@
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
   --nav-icon-hover: var(--nav-icon);
+  --nav-bg: var(--bg);
+  --nav-border: var(--border);
   --post-card-bg: #fbfbf7;
   --post-card-bg-single: #fdfdfb;
   --danger: #b42318;
@@ -99,6 +101,16 @@
 
 * {
   box-sizing: border-box;
+}
+
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after,
+body.theme-switching *,
+body.theme-switching *::before,
+body.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 body {
@@ -178,7 +190,9 @@ header h1 {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 2rem;
-  background: var(--bg);
+  background: var(--nav-bg, var(--bg));
+  border-top: 1px solid var(--nav-border, var(--border));
+  border-bottom: 1px solid var(--nav-border, var(--border));
   margin-bottom: 0;
   position: static;
   top: auto;
@@ -591,7 +605,7 @@ header h1 {
   padding: 0.55rem 0.55rem 2.9rem;
   border: 1px solid var(--border, #c5d0e6);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-raised-strong, #fff);
 }
 
 .list-admin-entries-title {
@@ -830,7 +844,7 @@ header h1 {
 .list-inline-edit-shell {
   border: 1px solid var(--border, #c5d0e6);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-raised-strong, #fff);
   padding: 0.6rem 0.65rem;
 }
 
@@ -1649,7 +1663,7 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.55rem 0.7rem;
-  background: #ffffff;
+  background: var(--surface-raised-strong, #fff);
   color: var(--text);
 }
 
@@ -1776,7 +1790,7 @@ header h1 {
   min-height: 196px;
   border: 1px solid #c4d2f1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-raised-strong, #fff);
   padding: 0.32rem;
   display: flex;
   align-items: center;
@@ -1793,7 +1807,7 @@ header h1 {
   margin: 0.2rem 0 0;
   border: 1px solid #d8e1f5;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-raised-strong, #fff);
   padding: 0.46rem 0.56rem;
   color: #334155;
   font-size: 0.78rem;
@@ -2991,7 +3005,7 @@ button.loading::after {
   padding: 1rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface-raised-strong, #fff);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
@@ -3057,7 +3071,7 @@ button.loading::after {
   padding: 1rem 1rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface-raised-strong, #fff);
 }
 
 .archive-month h2 {
@@ -3172,8 +3186,9 @@ nav.site-nav {
   align-items: center;
   gap: 0.9rem;
   padding: 0.22rem 1rem;
-  background: linear-gradient(180deg, #edf3ff 0%, #dde6f8 100%);
-  border-bottom: 0 !important;
+  background: var(--nav-bg, var(--bg));
+  border-top: 1px solid var(--nav-border, var(--border));
+  border-bottom: 1px solid var(--nav-border, var(--border)) !important;
   box-shadow: none !important;
 }
 

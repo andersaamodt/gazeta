@@ -84,6 +84,7 @@
   };
 
   var authModalHideTimer = null;
+  var themeSwitchVisualTimer = null;
 
   function nowEpoch() {
     return Math.floor(Date.now() / 1000);
@@ -1576,7 +1577,31 @@
     }
   }
 
+  function pulseThemeSwitchVisualState() {
+    var root = document.documentElement;
+    var body = document.body;
+    if (root) {
+      root.classList.add('theme-switching');
+    }
+    if (body) {
+      body.classList.add('theme-switching');
+    }
+    if (themeSwitchVisualTimer) {
+      clearTimeout(themeSwitchVisualTimer);
+    }
+    themeSwitchVisualTimer = setTimeout(function () {
+      if (root) {
+        root.classList.remove('theme-switching');
+      }
+      if (body) {
+        body.classList.remove('theme-switching');
+      }
+      themeSwitchVisualTimer = null;
+    }, 90);
+  }
+
   function updateThemeStylesheet(theme) {
+    pulseThemeSwitchVisualState();
     var themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
       themeLink.href = '/static/themes/' + theme + '.css';
@@ -1628,12 +1653,47 @@
       }, 0);
     }
 
-    themeSelect.addEventListener('change', function (event) {
-      var nextTheme = event.target.value;
+    function applySelectedTheme(nextTheme) {
       state.currentTheme = nextTheme;
       updateThemeStylesheet(nextTheme);
       saveTheme(nextTheme);
       preserveFocus();
+    }
+
+    themeSelect.addEventListener('keydown', function (event) {
+      if ((event.key !== 'ArrowDown' && event.key !== 'ArrowUp') || event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      var enabledValues = Array.prototype.slice.call(themeSelect.options || []).filter(function (opt) {
+        return !opt.disabled;
+      }).map(function (opt) {
+        return String(opt.value || '');
+      });
+      if (!enabledValues.length) {
+        return;
+      }
+      var current = String(themeSelect.value || '');
+      var currentIndex = enabledValues.indexOf(current);
+      if (currentIndex < 0) {
+        currentIndex = 0;
+      }
+      var nextIndex = event.key === 'ArrowDown'
+        ? (currentIndex + 1) % enabledValues.length
+        : (currentIndex - 1 + enabledValues.length) % enabledValues.length;
+      var nextTheme = enabledValues[nextIndex];
+      if (!nextTheme || nextTheme === current) {
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      themeSelect.value = nextTheme;
+      applySelectedTheme(nextTheme);
+    });
+
+    themeSelect.addEventListener('change', function (event) {
+      var nextTheme = event.target.value;
+      applySelectedTheme(nextTheme);
     });
   }
 

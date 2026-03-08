@@ -117,6 +117,7 @@
     sectionButtons: Array.from(document.querySelectorAll('[data-admin-nav]')),
     sections: Array.from(document.querySelectorAll('[data-admin-section]'))
   };
+  let themeSwitchVisualTimer = null;
 
   const publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
   const LOCAL_DRIP_LEASE_KEY = 'blog_local_drip_lease_v1';
@@ -507,6 +508,26 @@
 
   function applyThemePreview(theme) {
     const pickedTheme = (theme || '').trim() || 'adept';
+    const root = document.documentElement;
+    const body = document.body;
+    if (root) {
+      root.classList.add('theme-switching');
+    }
+    if (body) {
+      body.classList.add('theme-switching');
+    }
+    if (themeSwitchVisualTimer) {
+      clearTimeout(themeSwitchVisualTimer);
+    }
+    themeSwitchVisualTimer = setTimeout(function () {
+      if (root) {
+        root.classList.remove('theme-switching');
+      }
+      if (body) {
+        body.classList.remove('theme-switching');
+      }
+      themeSwitchVisualTimer = null;
+    }, 90);
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
       themeLink.href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css';
@@ -2669,6 +2690,35 @@
   function bindEvents() {
     bindSettingsAutosave();
     if (els.adminTheme) {
+      els.adminTheme.addEventListener('keydown', function (event) {
+        if ((event.key !== 'ArrowDown' && event.key !== 'ArrowUp') || event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const enabledValues = Array.from(els.adminTheme.options || [])
+          .filter(function (opt) { return !opt.disabled; })
+          .map(function (opt) { return String(opt.value || ''); });
+        if (!enabledValues.length) {
+          return;
+        }
+        const current = String(els.adminTheme.value || '');
+        let idx = enabledValues.indexOf(current);
+        if (idx < 0) {
+          idx = 0;
+        }
+        const nextIdx = event.key === 'ArrowDown'
+          ? (idx + 1) % enabledValues.length
+          : (idx - 1 + enabledValues.length) % enabledValues.length;
+        const nextTheme = enabledValues[nextIdx];
+        if (!nextTheme || nextTheme === current) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        els.adminTheme.value = nextTheme;
+        applyThemePreview(nextTheme);
+        queueConfigSave();
+      });
       els.adminTheme.addEventListener('change', function () {
         applyThemePreview(els.adminTheme.value);
       });
