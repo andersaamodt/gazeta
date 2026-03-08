@@ -72,6 +72,16 @@ if [ -n "$draft_state_json" ]; then
   draft_exists=true
 fi
 
+draft_extras_json='{"extras_before":"","extras_before_format":"markdown","extras_after":"","extras_after_format":"markdown"}'
+if [ -n "$draft_state_json" ]; then
+  draft_extras_json=$(printf '%s\n' "$draft_state_json" | jq -c '{
+    extras_before: (.extras_before // ""),
+    extras_before_format: ((.extras_before_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end),
+    extras_after: (.extras_after // ""),
+    extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end)
+  }' 2>/dev/null || printf '{"extras_before":"","extras_before_format":"markdown","extras_after":"","extras_after_format":"markdown"}')
+fi
+
 view_mode="canonical"
 view_state_json=$canonical_state_json
 if [ "$is_admin" = "true" ]; then
@@ -90,6 +100,9 @@ else
     view_state_json=$canonical_state_json
   fi
 fi
+
+canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson extras "$draft_extras_json" '. + $extras' 2>/dev/null || printf '%s\n' "$canonical_state_json")
+view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson extras "$draft_extras_json" '. + $extras' 2>/dev/null || printf '%s\n' "$view_state_json")
 
 draft_differs=false
 if [ "$draft_exists" = "true" ]; then

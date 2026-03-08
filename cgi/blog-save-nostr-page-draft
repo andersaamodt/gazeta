@@ -38,6 +38,10 @@ if [ -z "$state_json" ]; then
     contact)
       title=$(blog_param title)
       description=$(blog_param description)
+      extras_before=$(blog_param extras_before)
+      extras_before_format=$(blog_param extras_before_format)
+      extras_after=$(blog_param extras_after)
+      extras_after_format=$(blog_param extras_after_format)
       rows_json=$(blog_param rows_json)
       if [ -z "$rows_json" ]; then
         rows_json='[]'
@@ -46,11 +50,15 @@ if [ -z "$state_json" ]; then
         blog_json_error "rows_json must be a JSON array" "invalid_rows"
         exit 0
       fi
-      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --argjson rows "$rows_json" '{
+      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg extras_before "$extras_before" --arg extras_before_format "$extras_before_format" --arg extras_after "$extras_after" --arg extras_after_format "$extras_after_format" --argjson rows "$rows_json" '{
         slug: $slug,
         type: "contact",
         title: $title,
         description: $description,
+        extras_before: $extras_before,
+        extras_before_format: $extras_before_format,
+        extras_after: $extras_after,
+        extras_after_format: $extras_after_format,
         rows: $rows
       }')
       ;;
@@ -59,6 +67,10 @@ if [ -z "$state_json" ]; then
       description=$(blog_param description)
       group_by=$(blog_param group_by)
       content=$(blog_param content)
+      extras_before=$(blog_param extras_before)
+      extras_before_format=$(blog_param extras_before_format)
+      extras_after=$(blog_param extras_after)
+      extras_after_format=$(blog_param extras_after_format)
       entries_json=$(blog_param entries_json)
       elements_json=$(blog_param elements_json)
       if [ -z "$elements_json" ]; then
@@ -81,6 +93,10 @@ if [ -z "$state_json" ]; then
         --arg description "$description" \
         --arg group_by "$group_by" \
         --arg content "$content" \
+        --arg extras_before "$extras_before" \
+        --arg extras_before_format "$extras_before_format" \
+        --arg extras_after "$extras_after" \
+        --arg extras_after_format "$extras_after_format" \
         --argjson elements "$elements_json" \
         --argjson entries "$entries_json" \
         '{
@@ -89,6 +105,10 @@ if [ -z "$state_json" ]; then
           description: $description,
           group_by: $group_by,
           content: $content,
+          extras_before: $extras_before,
+          extras_before_format: $extras_before_format,
+          extras_after: $extras_after,
+          extras_after_format: $extras_after_format,
           elements: (if ($elements | length) > 0 then $elements else ($entries | map(. + {type:"entry"})) end),
           entries: $entries
         }')

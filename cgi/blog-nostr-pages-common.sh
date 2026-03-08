@@ -277,6 +277,10 @@ blog_contact_default_state_json() {
     type: "contact",
     title: $title,
     description: "",
+    extras_before: "",
+    extras_before_format: "markdown",
+    extras_after: "",
+    extras_after_format: "markdown",
     rows: [],
     content_json: {
       title: $title,
@@ -297,6 +301,9 @@ blog_contact_normalize_state_json() {
 
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
     def qualifiers: ["preferred","unpreferred","public","primary","secondary","emergency","archive"];
+    def norm_extra_format($v):
+      (($v // "") | tostring | ascii_downcase) as $f
+      | if $f == "html" then "html" else "markdown" end;
     def norm_transport($v): (($v // "") | tostring | ascii_downcase | gsub("[^a-z0-9]+";""));
     def norm_qual($v):
       (($v // "") | tostring | ascii_downcase) as $q
@@ -330,6 +337,10 @@ blog_contact_normalize_state_json() {
         type: "contact",
         title: (((.title // $content_obj.title // $fallback_title) | tostring)),
         description: (((.description // $content_obj.description // "") | tostring)),
+        extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
+        extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
+        extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
+        extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown"),
         rows: (
           $rows_raw
           | if type=="array" then . else [] end

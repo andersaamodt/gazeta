@@ -19,6 +19,10 @@ blog_list_default_state_json() {
     description: "",
     group_by: "year",
     content: "",
+    extras_before: "",
+    extras_before_format: "markdown",
+    extras_after: "",
+    extras_after_format: "markdown",
     elements: [],
     entries: [],
     tags: [["title", $title], ["group_by", "year"]]
@@ -38,6 +42,9 @@ blog_list_normalize_state_json() {
   fi
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" '
     def first_tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first);
+    def norm_extra_format($v):
+      (($v // "") | tostring | ascii_downcase) as $f
+      | if $f == "html" then "html" else "markdown" end;
     def flex($obj; $idx; $key):
       if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
     def flex_markdown($obj):
@@ -126,6 +133,10 @@ blog_list_normalize_state_json() {
         description: ((.description // first_tag("description") // "") | tostring),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         content: ((.content // "") | tostring),
+        extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
+        extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
+        extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
+        extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown"),
         elements: $elements,
         entries: $elements
       }

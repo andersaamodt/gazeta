@@ -1215,6 +1215,63 @@ header h1 {
   text-decoration: none;
 }
 
+.nostr-page-extras-editor {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+}
+
+.nostr-page-extras-heading {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.nostr-page-extra-edit {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.nostr-page-extra-controls {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.nostr-page-extra-edit > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  color: var(--muted-text, #4f617f);
+  font-size: 0.8rem;
+}
+
+.nostr-page-extra-edit select {
+  width: auto;
+  min-width: 0;
+  height: 2rem;
+}
+
+.nostr-page-extra-edit textarea {
+  width: min(100%, 64rem);
+  min-height: 5.2rem;
+  max-height: 20rem;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 0.45rem 0.58rem;
+}
+
+.nostr-page-extra {
+  margin: 0 0 1rem;
+}
+
+.nostr-page-extra:last-child {
+  margin-bottom: 0;
+}
+
 .contact-inline-toolbar {
   display: flex;
   justify-content: space-between;

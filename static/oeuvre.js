@@ -97,6 +97,22 @@
     return escapeHtml(value);
   }
 
+  function markdownBlock(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function normalizeExtraFormat(value) {
+    var next = String(value || '').trim().toLowerCase();
+    return next === 'html' ? 'html' : 'markdown';
+  }
+
   async function apiPost(path, payload) {
     var params = new URLSearchParams();
     Object.keys(payload || {}).forEach(function (key) {
@@ -199,6 +215,10 @@
       description: String(s.description || ''),
       group_by: String(s.group_by || ''),
       content: String(s.content || ''),
+      extras_before: String(s.extras_before || ''),
+      extras_before_format: normalizeExtraFormat(s.extras_before_format || 'markdown'),
+      extras_after: String(s.extras_after || ''),
+      extras_after_format: normalizeExtraFormat(s.extras_after_format || 'markdown'),
       elements: elements
     };
   }
@@ -256,6 +276,10 @@
         title: state.draft.title,
         description: state.draft.description,
         group_by: state.draft.group_by,
+        extras_before: String(state.draft.extras_before || ''),
+        extras_before_format: normalizeExtraFormat(state.draft.extras_before_format || 'markdown'),
+        extras_after: String(state.draft.extras_after || ''),
+        extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements: cloneEditableElements(state.draft.elements)
       };
     }
@@ -264,6 +288,10 @@
       title: String(src.title || ''),
       description: String(src.description || ''),
       group_by: String(src.group_by || ''),
+      extras_before: String(src.extras_before || ''),
+      extras_before_format: normalizeExtraFormat(src.extras_before_format || 'markdown'),
+      extras_after: String(src.extras_after || ''),
+      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
     };
   }
@@ -417,6 +445,10 @@
         description: state.draft.description || '',
         group_by: state.draft.group_by || '',
         content: state.draft.content || '',
+        extras_before: state.draft.extras_before || '',
+        extras_before_format: normalizeExtraFormat(state.draft.extras_before_format || 'markdown'),
+        extras_after: state.draft.extras_after || '',
+        extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements_json: JSON.stringify(elements),
         entries_json: JSON.stringify(toEntries(elements)),
         session_token: auth.session_token,
@@ -882,6 +914,44 @@
     return renderStructuredReadOnly(entries, 'list-entries');
   }
 
+  function renderExtraContent(text, format, role) {
+    var value = String(text || '');
+    if (!value.trim()) {
+      return '';
+    }
+    var html = normalizeExtraFormat(format) === 'html' ? value : markdownBlock(value);
+    return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
+  }
+
+  function renderExtrasEditor() {
+    var draft = state.draft || {};
+    var html = '';
+    html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
+    html += '<h3 class="nostr-page-extras-heading">Page extras</h3>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>Before Nostr content</span>';
+    html += '<span class="nostr-page-extra-controls">';
+    html += '<select data-list-extra-format="before">';
+    html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_before_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';
+    html += '<option value="html"' + (normalizeExtraFormat(draft.extras_before_format) === 'html' ? ' selected' : '') + '>HTML</option>';
+    html += '</select>';
+    html += '</span>';
+    html += '<textarea data-list-extra="before" rows="4" placeholder="Optional content shown before the Nostr-backed section">' + escapeHtml(draft.extras_before || '') + '</textarea>';
+    html += '</label>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>After Nostr content</span>';
+    html += '<span class="nostr-page-extra-controls">';
+    html += '<select data-list-extra-format="after">';
+    html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_after_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';
+    html += '<option value="html"' + (normalizeExtraFormat(draft.extras_after_format) === 'html' ? ' selected' : '') + '>HTML</option>';
+    html += '</select>';
+    html += '</span>';
+    html += '<textarea data-list-extra="after" rows="4" placeholder="Optional content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
+    html += '</label>';
+    html += '</section>';
+    return html;
+  }
+
   function renderElementInline(el) {
     var uid = String(el && el._uid || '');
     var rowSelected = uid && uid === state.activeEntryUid;
@@ -930,6 +1000,7 @@
 
   function renderInlineEditor(elements) {
     var html = '';
+    html += renderExtrasEditor();
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
     var pendingUnedited = isPendingNewEntryUnedited();
@@ -1005,6 +1076,8 @@
 
     var s = getRenderState();
     var elements = Array.isArray(s.elements) ? s.elements : [];
+    var beforeContent = renderExtraContent(s.extras_before, s.extras_before_format, 'before');
+    var afterContent = renderExtraContent(s.extras_after, s.extras_after_format, 'after');
     var inlineMode = isAdmin() && state.editMode;
     if (root && root.classList) {
       root.classList.toggle('is-editing', inlineMode);
@@ -1012,25 +1085,25 @@
 
     if (!elements.length) {
       if (inlineMode) {
-        els.content.innerHTML = renderInlineEditor([]);
+        els.content.innerHTML = renderInlineEditor([]) + beforeContent + afterContent;
       } else if (isAdmin()) {
-        els.content.innerHTML = '';
+        els.content.innerHTML = beforeContent + afterContent;
       } else {
-        els.content.innerHTML = '<p class="placeholder">No entries yet.</p>';
+        els.content.innerHTML = beforeContent + '<p class="placeholder">No entries yet.</p>' + afterContent;
       }
       renderAdmin();
       return;
     }
 
     if (inlineMode) {
-      els.content.innerHTML = renderInlineEditor(elements);
+      els.content.innerHTML = renderInlineEditor(elements) + beforeContent + afterContent;
       renderAdmin();
       return;
     }
 
-    els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
+    els.content.innerHTML = beforeContent + renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by);
+    }), s.group_by) + afterContent;
     renderAdmin();
   }
 
@@ -1396,6 +1469,14 @@
         return;
       }
       var target = event.target;
+      if (target instanceof HTMLTextAreaElement) {
+        var extraField = String(target.getAttribute('data-list-extra') || '');
+        if (extraField === 'before' || extraField === 'after') {
+          state.draft[extraField === 'before' ? 'extras_before' : 'extras_after'] = String(target.value || '');
+          queueAutosave(500);
+        }
+        return;
+      }
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
@@ -1431,6 +1512,15 @@
         renderListWithFlip(beforeGroupBy);
         queueAutosave(280);
         return;
+      }
+      if (target instanceof HTMLSelectElement) {
+        var extraFormatField = String(target.getAttribute('data-list-extra-format') || '');
+        if (extraFormatField === 'before' || extraFormatField === 'after') {
+          state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+          renderList();
+          queueAutosave(500);
+          return;
+        }
       }
 
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {

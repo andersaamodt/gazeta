@@ -34,6 +34,37 @@
       .replace(/'/g, '&#39;');
   }
 
+  function markdownBlock(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function normalizeExtraFormat(value) {
+    var next = String(value || '').trim().toLowerCase();
+    return next === 'html' ? 'html' : 'markdown';
+  }
+
+  function normalizeDraftState(raw) {
+    var src = raw || {};
+    return {
+      slug: String(src.slug || slug),
+      type: String(src.type || 'contact'),
+      title: String(src.title || ''),
+      description: String(src.description || ''),
+      extras_before: String(src.extras_before || ''),
+      extras_before_format: normalizeExtraFormat(src.extras_before_format || 'markdown'),
+      extras_after: String(src.extras_after || ''),
+      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
+      rows: normalizeRows(src.rows || [])
+    };
+  }
+
   function authPayload() {
     return {
       session_token: String(localStorage.getItem('session_token') || '').trim(),
@@ -78,10 +109,10 @@
 
   function getRenderState() {
     if (isAdmin()) {
-      state.draft.rows = normalizeRows(state.draft.rows || []);
+      state.draft = normalizeDraftState(state.draft);
       return state.draft;
     }
-    return (state.payload && state.payload.state) || { title: 'Contact', description: '', rows: [] };
+    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Contact', description: '', rows: [] });
   }
 
   function qualifierLabel(qualifier) {
@@ -253,6 +284,30 @@
 
   function renderEditor(rows, draft) {
     var html = '';
+    html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
+    html += '<h3 class="nostr-page-extras-heading">Page extras</h3>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>Before Nostr content</span>';
+    html += '<span class="nostr-page-extra-controls">';
+    html += '<select data-contact-extra-format="before">';
+    html += '<option value="markdown"' + (draft.extras_before_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
+    html += '<option value="html"' + (draft.extras_before_format === 'html' ? ' selected' : '') + '>HTML</option>';
+    html += '</select>';
+    html += '</span>';
+    html += '<textarea data-contact-extra="before" rows="4" placeholder="Optional content shown before the Nostr-backed section">' + escapeHtml(draft.extras_before || '') + '</textarea>';
+    html += '</label>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>After Nostr content</span>';
+    html += '<span class="nostr-page-extra-controls">';
+    html += '<select data-contact-extra-format="after">';
+    html += '<option value="markdown"' + (draft.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
+    html += '<option value="html"' + (draft.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option>';
+    html += '</select>';
+    html += '</span>';
+    html += '<textarea data-contact-extra="after" rows="4" placeholder="Optional content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
+    html += '</label>';
+    html += '</section>';
+
     html += '<div class="contact-inline-toolbar">';
     html += '<div class="contact-inline-meta">';
     html += '<label><span>Title</span><input type="text" id="contact-title-input" value="' + escapeHtml(draft.title || '') + '"></label>';
@@ -297,10 +352,22 @@
     }
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
+    var beforeContent = '';
+    var afterContent = '';
+    if (String(s.extras_before || '').trim()) {
+      beforeContent = '<section class="nostr-page-extra nostr-page-extra-before">' +
+        (s.extras_before_format === 'html' ? String(s.extras_before || '') : markdownBlock(s.extras_before || '')) +
+        '</section>';
+    }
+    if (String(s.extras_after || '').trim()) {
+      afterContent = '<section class="nostr-page-extra nostr-page-extra-after">' +
+        (s.extras_after_format === 'html' ? String(s.extras_after || '') : markdownBlock(s.extras_after || '')) +
+        '</section>';
+    }
     if (isAdmin() && state.editMode) {
-      els.content.innerHTML = renderEditor(rows, s);
+      els.content.innerHTML = renderEditor(rows, s) + beforeContent + renderReadOnly(rows) + afterContent;
     } else {
-      els.content.innerHTML = renderReadOnly(rows);
+      els.content.innerHTML = beforeContent + renderReadOnly(rows) + afterContent;
     }
   }
 
@@ -329,7 +396,7 @@
       state.payload.state = data.state || state.payload.state;
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
-      state.draft = data.state || state.draft;
+      state.draft = normalizeDraftState(data.state || state.draft);
       setSaveStatus('saved');
       renderAll();
       return true;
@@ -362,7 +429,7 @@
       state.payload.canonical_exists = true;
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
-      state.draft = data.state;
+      state.draft = normalizeDraftState(data.state);
       setSaveStatus('saved');
       renderAll();
     }).catch(function (err) {
@@ -392,7 +459,7 @@
       state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
-      state.draft = data.state;
+      state.draft = normalizeDraftState(data.state);
       setSaveStatus('saved');
       renderAll();
     }).catch(function (err) {
@@ -431,7 +498,7 @@
         return;
       }
       if (action === 'add-row') {
-        state.draft.rows = normalizeRows(state.draft.rows || []);
+        state.draft = normalizeDraftState(state.draft);
         state.draft.rows.push({ transport: '', value: '', qualifier: '' });
         renderAll();
         queueAutosave(500);
@@ -455,7 +522,26 @@
         return;
       }
       var target = event.target;
+      if (target instanceof HTMLTextAreaElement) {
+        var extraField = String(target.getAttribute('data-contact-extra') || '');
+        if (extraField === 'before' || extraField === 'after') {
+          state.draft = normalizeDraftState(state.draft);
+          state.draft[extraField === 'before' ? 'extras_before' : 'extras_after'] = String(target.value || '');
+          queueAutosave(500);
+        }
+        return;
+      }
+
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      var extraFormatField = String(target.getAttribute('data-contact-extra-format') || '');
+      if (target instanceof HTMLSelectElement && (extraFormatField === 'before' || extraFormatField === 'after')) {
+        state.draft = normalizeDraftState(state.draft);
+        state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+        renderContent();
+        queueAutosave(500);
         return;
       }
 
@@ -470,6 +556,37 @@
         state.draft.description = String(target.value || '');
         renderHead();
         renderAdmin();
+        queueAutosave(500);
+        return;
+      }
+
+      var field = String(target.getAttribute('data-contact-field') || '');
+      var idx = Number(target.getAttribute('data-row-index'));
+      if (!field || !Number.isInteger(idx) || idx < 0) {
+        return;
+      }
+      state.draft.rows = normalizeRows(state.draft.rows || []);
+      if (!state.draft.rows[idx]) {
+        return;
+      }
+      state.draft.rows[idx][field] = String(target.value || '');
+      queueAutosave(500);
+    });
+
+    root.addEventListener('change', function (event) {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLSelectElement)) {
+        return;
+      }
+
+      var extraFormatField = String(target.getAttribute('data-contact-extra-format') || '');
+      if (extraFormatField === 'before' || extraFormatField === 'after') {
+        state.draft = normalizeDraftState(state.draft);
+        state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+        renderContent();
         queueAutosave(500);
         return;
       }
@@ -505,7 +622,7 @@
       csrf_token: auth.csrf_token
     }).then(function (payload) {
       state.payload = payload;
-      state.draft = payload.state || { title: '', description: '', rows: [] };
+      state.draft = normalizeDraftState(payload.state || { title: '', description: '', rows: [] });
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       renderAll();
