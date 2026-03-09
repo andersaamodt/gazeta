@@ -5,7 +5,7 @@
 
   --primary: #234a9d;
   --accent: #2f5fb8;
-  --accent-dark: #1f458d;
+  --accent-dark: #6a4fa3;
   --teal: #23775e;
   --green: #2c8b6e;
   --purple: #6a4fa3;
@@ -27,9 +27,9 @@
   --shadow: rgba(46, 34, 20, 0.14);
 
   --nav-link-hover: rgba(47, 95, 184, 0.11);
-  --nav-link-active: #2f5fb8;
-  --nav-icon: #2f5fb8;
-  --nav-icon-hover: #1f458d;
+  --nav-link-active: #6a4fa3;
+  --nav-icon: #2c8b6e;
+  --nav-icon-hover: #1e6f56;
   --nav-button-bg: #ebdfc7;
   --nav-button-bg-dark: #e2d3b8;
   --nav-button-hover-bg: #f2e7d2;
@@ -39,6 +39,15 @@
   --nav-border: rgba(175, 145, 88, 0.36);
   --accent-hover-end: #1d3f84;
   --select-bg: #f5eddf;
+  --feed-rss-start: #b54b3b;
+  --feed-rss-end: #a73b2f;
+  --feed-rss-border: #8a3127;
+  --feed-atom-start: #6f5aa8;
+  --feed-atom-end: #2f5fb8;
+  --feed-atom-border: #564486;
+  --admin-accent: #2f5fb8;
+  --admin-accent-strong: #6a4fa3;
+  --admin-hover: rgba(47, 95, 184, 0.11);
 
   --post-card-bg: #f8efdd;
   --post-card-bg-single: #f9f2e4;
@@ -226,6 +235,56 @@ strong {
 .demo-box {
   border-color: #cdb893;
   background: linear-gradient(180deg, rgba(252, 246, 234, 0.9) 0%, rgba(246, 236, 218, 0.92) 100%);
+}
+
+.list-page-shell,
+.demo-box {
+  position: relative;
+}
+
+.list-page-shell::before,
+.demo-box::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 0.45rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--lapis) 0%,
+    var(--malachite) 26%,
+    var(--amethyst) 52%,
+    var(--vermilion) 78%,
+    var(--gold-leaf) 100%
+  );
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.btn-login,
+.list-page-admin-bar .list-admin-primary-btn {
+  background: linear-gradient(140deg, var(--lapis) 0%, var(--amethyst) 100%);
+  border-color: color-mix(in srgb, var(--lapis) 65%, var(--amethyst) 35%);
+  color: #fff;
+}
+
+.btn-login:hover,
+.list-page-admin-bar .list-admin-primary-btn:hover {
+  background: linear-gradient(140deg, var(--amethyst) 0%, var(--lapis) 100%);
+}
+
+.inline-tip {
+  border-color: color-mix(in srgb, var(--gold-leaf) 58%, var(--border) 42%);
+  color: var(--malachite);
+}
+
+.icon-danger,
+.post-delete,
+.draft-delete,
+.user-delete {
+  color: var(--vermilion) !important;
 }
 
 .muted,
