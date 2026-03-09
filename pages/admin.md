@@ -2624,8 +2624,14 @@ body {
 #admin-panel select[multiple],
 #admin-panel select[size] {
   background: var(--select-option-bg, var(--select-bg, var(--light-bg))) !important;
-  color: var(--select-option-text, var(--admin-text, var(--text))) !important;
-  -webkit-text-fill-color: var(--select-option-text, var(--admin-text, var(--text))) !important;
+  color: var(--select-text, var(--admin-text, var(--text))) !important;
+  -webkit-text-fill-color: var(--select-text, var(--admin-text, var(--text))) !important;
+}
+
+#admin-panel select[multiple] option,
+#admin-panel select[size] option {
+  color: var(--select-text, var(--admin-text, var(--text))) !important;
+  -webkit-text-fill-color: var(--select-text, var(--admin-text, var(--text))) !important;
 }
 
 #admin-panel input:focus,

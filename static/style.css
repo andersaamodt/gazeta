@@ -1487,8 +1487,14 @@ header h1 {
 .theme-panel select[multiple],
 .theme-panel select[size] {
   background: var(--select-option-bg);
-  color: var(--select-option-text);
-  -webkit-text-fill-color: var(--select-option-text);
+  color: var(--select-text);
+  -webkit-text-fill-color: var(--select-text);
+}
+
+.theme-panel select[multiple] option,
+.theme-panel select[size] option {
+  color: var(--select-text);
+  -webkit-text-fill-color: var(--select-text);
 }
 
 .theme-panel select option {

@@ -16,11 +16,11 @@
   --select-text: #f5f6fa;
   --select-border: #8f93ff;
   --select-option-bg: #222247;
-  --select-option-text: #f5f6fa;
-  --select-option-disabled-text: #b2b0d3;
+  --select-option-text: #171733;
+  --select-option-disabled-text: #686483;
   --select-option-selected-bg: #4d88ff;
   --select-option-selected-text: #ffffff;
-  --select-color-scheme: dark;
+  --select-color-scheme: light;
   --code-bg: #2c2c54;
   --shadow: rgba(108, 159, 255, 0.2);
   --nav-link-hover: #3c3c6c;
