@@ -253,7 +253,20 @@ strong {
 }
 
 .nav-center a.active {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+  background-image:
+    var(--button-primary-overlay),
+    linear-gradient(
+      128deg,
+      color-mix(in srgb, var(--lapis) 90%, var(--amethyst) 10%) 0%,
+      var(--lapis) 32%,
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 72%,
+      color-mix(in srgb, var(--amethyst) 74%, var(--lapis) 26%) 100%
+    );
+  border: 1px solid var(--button-primary-border);
+  color: var(--button-primary-text);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.38) inset,
+    0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
 .nav-center a {
@@ -262,6 +275,19 @@ strong {
 
 .nav-center a.active {
   font-weight: 600;
+}
+
+.nav-center a.active:hover,
+.nav-center a.active:focus-visible {
+  background-image:
+    var(--button-primary-overlay),
+    linear-gradient(
+      128deg,
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 0%,
+      color-mix(in srgb, var(--lapis) 78%, var(--amethyst) 22%) 42%,
+      var(--amethyst) 100%
+    );
+  color: var(--button-primary-text);
 }
 
 .post-item,
