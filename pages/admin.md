@@ -2890,6 +2890,21 @@ body {
   color: var(--admin-nav-selected-text, var(--admin-text, var(--text))) !important;
 }
 
+#admin-panel .admin-nav-list .admin-nav-item {
+  font-weight: 400 !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
+#admin-panel .admin-nav-list .admin-nav-item .admin-nav-count {
+  font-weight: inherit !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item.is-active,
+#admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
+#admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
+  font-weight: 700 !important;
+}
+
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-count {
   color: inherit !important;
