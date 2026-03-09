@@ -38,6 +38,14 @@
   --menu-bg: #000000;
   --menu-border: #00bfff;
   --menu-hover-bg: #0d2b20;
+  --button-primary-start: #07833a;
+  --button-primary-end: #055b29;
+  --button-primary-hover-start: #0aa24a;
+  --button-primary-hover-end: #077338;
+  --button-primary-active-start: #0cc758;
+  --button-primary-active-end: #08803e;
+  --button-primary-text: #d9ffe8;
+  --button-primary-border: #0b8f48;
   --shadow: rgba(14, 165, 233, 0.25);
   --nav-link-hover: #183e2b;
   --nav-link-active: #22c55e;

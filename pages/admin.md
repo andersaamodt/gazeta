@@ -2527,7 +2527,7 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
   background: var(--admin-hover, var(--nav-link-hover)) !important;
-  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+  color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item.admin-nav-divider-after::after {
