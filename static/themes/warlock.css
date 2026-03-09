@@ -31,7 +31,9 @@
   --admin-border: #444f66;
   --admin-text: #f8fafc;
   --admin-muted: #aeb6c7;
-  --admin-hover: #1f2937;
+  --admin-hover: #273245;
+  --admin-nav-selected-bg: #2e3a52;
+  --admin-nav-selected-text: #f8fafc;
   --surface-raised: #171d2b;
   --surface-raised-strong: #1d2435;
   --menu-bg: #171d2b;

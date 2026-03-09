@@ -2878,4 +2878,20 @@ body {
     width: 100%;
   }
 }
+
+/* Final nav contrast override: keep highlighted admin rows legible across themes. */
+#admin-panel .admin-nav-list .admin-nav-item:hover,
+#admin-panel .admin-nav-list .admin-nav-item.is-active,
+#admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
+#admin-panel .admin-nav-list .admin-nav-item[aria-current="page"],
+#admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"]:hover,
+#admin-panel .admin-nav-list .admin-nav-item[aria-current="page"]:hover {
+  background: var(--admin-nav-selected-bg, var(--admin-hover, var(--nav-link-hover))) !important;
+  color: var(--admin-nav-selected-text, var(--admin-text, var(--text))) !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
+#admin-panel .admin-nav-list .admin-nav-item .admin-nav-count {
+  color: inherit !important;
+}
 </style>
