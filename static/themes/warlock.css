@@ -13,6 +13,13 @@
   --border: #374151;
   --bg: #0b0b12;
   --light-bg: #111827;
+  --select-bg: #111523;
+  --select-text: #f8fafc;
+  --select-border: #4b5563;
+  --select-option-bg: #0f1320;
+  --select-option-text: #f8fafc;
+  --select-option-disabled-text: #9ca3af;
+  --select-color-scheme: dark;
   --code-bg: #1f2937;
   --shadow: rgba(0, 0, 0, 0.5);
   --nav-link-hover: #3a1a1f;

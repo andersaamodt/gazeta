@@ -2598,7 +2598,24 @@ body {
 #admin-panel select {
   border-color: var(--admin-border, var(--border)) !important;
   background: var(--select-bg, var(--light-bg)) !important;
-  color: var(--admin-text, var(--text)) !important;
+  color: var(--select-text, var(--admin-text, var(--text))) !important;
+  color-scheme: var(--select-color-scheme, light);
+}
+
+#admin-panel select option,
+#admin-panel select optgroup {
+  background: var(--select-option-bg, var(--select-bg, var(--light-bg))) !important;
+  color: var(--select-option-text, var(--admin-text, var(--text))) !important;
+}
+
+#admin-panel select option:disabled {
+  color: var(--select-option-disabled-text, var(--admin-muted, var(--light-text))) !important;
+}
+
+#admin-panel select[multiple],
+#admin-panel select[size] {
+  background: var(--select-option-bg, var(--select-bg, var(--light-bg))) !important;
+  color: var(--select-option-text, var(--admin-text, var(--text))) !important;
 }
 
 #admin-panel input:focus,

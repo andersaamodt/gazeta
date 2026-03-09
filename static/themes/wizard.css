@@ -12,6 +12,13 @@
   --border: #a8a4fe;
   --bg: #1e1e3f;
   --light-bg: #2c2c54;
+  --select-bg: #2a2a52;
+  --select-text: #f5f6fa;
+  --select-border: #8f93ff;
+  --select-option-bg: #222247;
+  --select-option-text: #f5f6fa;
+  --select-option-disabled-text: #b2b0d3;
+  --select-color-scheme: dark;
   --code-bg: #2c2c54;
   --shadow: rgba(108, 159, 255, 0.2);
   --nav-link-hover: #3c3c6c;
