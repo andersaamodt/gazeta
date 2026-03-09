@@ -141,14 +141,7 @@ h1,
 h2 {
   border-bottom: 2px solid transparent;
   border-image-slice: 1;
-  border-image-source: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--lapis) 76%, transparent) 0%,
-    color-mix(in srgb, var(--malachite) 76%, transparent) 24%,
-    color-mix(in srgb, var(--amethyst) 76%, transparent) 50%,
-    color-mix(in srgb, var(--vermilion) 74%, transparent) 76%,
-    color-mix(in srgb, var(--gold-leaf) 78%, transparent) 100%
-  );
+  border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);
   padding-bottom: 0.08rem;
 }
 
