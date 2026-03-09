@@ -1257,6 +1257,7 @@
 
   async function saveConfig() {
     try {
+      const shouldRefreshQueue = state.activeSection === 'queue';
       const data = await apiPost('/cgi/blog-update-config', {
         site_title: els.siteTitle.value.trim(),
         theme: els.adminTheme ? els.adminTheme.value : '',
@@ -1273,7 +1274,9 @@
       if (els.outputConfig) {
         els.outputConfig.innerHTML = '';
       }
-      await loadQueue();
+      if (shouldRefreshQueue) {
+        await loadQueue();
+      }
     } catch (err) {
       setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
     }
