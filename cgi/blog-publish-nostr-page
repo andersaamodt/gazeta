@@ -32,14 +32,12 @@ if [ -z "$page_type" ]; then
 fi
 
 existing_draft_state=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
-draft_extras_json='{"extras_before":"","extras_before_format":"markdown","extras_after":"","extras_after_format":"markdown"}'
+draft_local_json='{}'
 if [ -n "$existing_draft_state" ]; then
-  draft_extras_json=$(printf '%s\n' "$existing_draft_state" | jq -c '{
-    extras_before: (.extras_before // ""),
-    extras_before_format: ((.extras_before_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end),
+  draft_local_json=$(printf '%s\n' "$existing_draft_state" | jq -c '{
     extras_after: (.extras_after // ""),
     extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end)
-  }' 2>/dev/null || printf '{"extras_before":"","extras_before_format":"markdown","extras_after":"","extras_after_format":"markdown"}')
+  }' 2>/dev/null || printf '{}')
 fi
 
 state_json=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
@@ -51,6 +49,14 @@ if [ -z "$state_json" ]; then
         state_json=$(blog_contact_state_from_event_json "$page_slug" "$canonical_event")
       else
         state_json=$(blog_contact_default_state_json "$page_slug")
+      fi
+      ;;
+    nip23)
+      canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
+      else
+        state_json=$(blog_nip23_default_state_json "$page_slug")
       fi
       ;;
     *)
@@ -89,9 +95,43 @@ case "$page_type" in
       exit 0
     fi
     canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$event_json")
-    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson extras "$draft_extras_json" '. + $extras')
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
     validation_after=$(blog_contact_validate_and_enrich_state_json "$canonical_state_json" false)
     canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  nip23)
+    state_json=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
+    validation_json=$(blog_nip23_validate_and_enrich_state_json "$state_json" true)
+    can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
+    if [ "$can_publish" != "true" ]; then
+      jq -cn --argjson validation "$validation_json" '{
+        success: false,
+        error: "Validation failed",
+        code: "validation_failed",
+        validation: {
+          errors: $validation.errors,
+          warnings: $validation.warnings,
+          can_publish: false
+        }
+      }'
+      printf '\n'
+      exit 0
+    fi
+    title=$(printf '%s\n' "$state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
+    content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+    event_json=$(blog_nostr_sign_nip23_event "$page_slug" "$title" "$content" 2>/dev/null || printf '')
+    if [ -z "$event_json" ]; then
+      reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+      if [ -z "$reason" ]; then
+        reason="Could not sign NIP-23 page event."
+      fi
+      blog_json_error "$reason" "nostr_publish_failed"
+      exit 0
+    fi
+    canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json")
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: $local.extras_after, extras_after_format: $local.extras_after_format}')
+    validation_after=$(blog_nip23_validate_and_enrich_state_json "$canonical_state_json" false)
+    canonical_enriched=$canonical_state_json
     ;;
   *)
     state_json=$(blog_list_normalize_state_json "$page_slug" "$state_json")
@@ -123,7 +163,7 @@ case "$page_type" in
       exit 0
     fi
     canonical_state_json=$(blog_list_state_from_event_json "$page_slug" "$event_json")
-    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson extras "$draft_extras_json" '. + $extras')
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
     validation_after=$(blog_list_validate_and_enrich_state_json "$canonical_state_json" false)
     canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {elements: $validation.elements, entries: $validation.entries}')
     ;;

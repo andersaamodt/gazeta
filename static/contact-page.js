@@ -45,6 +45,17 @@
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
+  function markdownInline(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parseInline === 'function') {
+      return window.marked.parseInline(value);
+    }
+    return escapeHtml(value);
+  }
+
   function normalizeExtraFormat(value) {
     var next = String(value || '').trim().toLowerCase();
     return next === 'html' ? 'html' : 'markdown';
@@ -57,8 +68,7 @@
       type: String(src.type || 'contact'),
       title: String(src.title || ''),
       description: String(src.description || ''),
-      extras_before: String(src.extras_before || ''),
-      extras_before_format: normalizeExtraFormat(src.extras_before_format || 'markdown'),
+      publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       rows: normalizeRows(src.rows || [])
@@ -205,7 +215,7 @@
       var text = String(s.description || '').trim();
       if (text) {
         els.description.hidden = false;
-        els.description.textContent = text;
+        els.description.innerHTML = markdownInline(text);
       } else {
         els.description.hidden = false;
         els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
@@ -285,33 +295,26 @@
   function renderEditor(rows, draft) {
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Page extras</h3>';
+    html += '<h3 class="nostr-page-extras-heading">Intro and outro</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before Nostr content</span>';
-    html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-contact-extra-format="before">';
-    html += '<option value="markdown"' + (draft.extras_before_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
-    html += '<option value="html"' + (draft.extras_before_format === 'html' ? ' selected' : '') + '>HTML</option>';
-    html += '</select>';
-    html += '</span>';
-    html += '<textarea data-contact-extra="before" rows="4" placeholder="Optional content shown before the Nostr-backed section">' + escapeHtml(draft.extras_before || '') + '</textarea>';
+    html += '<span>Intro (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-contact-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish intro to Nostr</span></label></span></span>';
+    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional intro shown before contact entries">' + escapeHtml(draft.description || '') + '</textarea>';
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>After Nostr content</span>';
+    html += '<span>Outro</span>';
     html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-contact-extra-format="after">';
+    html += '<select data-contact-outro-format="after">';
     html += '<option value="markdown"' + (draft.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
     html += '<option value="html"' + (draft.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option>';
     html += '</select>';
     html += '</span>';
-    html += '<textarea data-contact-extra="after" rows="4" placeholder="Optional content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
+    html += '<textarea data-contact-outro="after" rows="4" placeholder="Optional local content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
 
     html += '<div class="contact-inline-toolbar">';
     html += '<div class="contact-inline-meta">';
     html += '<label><span>Title</span><input type="text" id="contact-title-input" value="' + escapeHtml(draft.title || '') + '"></label>';
-    html += '<label><span>Description</span><input type="text" id="contact-description-input" value="' + escapeHtml(draft.description || '') + '"></label>';
     html += '</div>';
     html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add contact row">+</button></div>';
     html += '</div>';
@@ -352,22 +355,16 @@
     }
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
-    var beforeContent = '';
     var afterContent = '';
-    if (String(s.extras_before || '').trim()) {
-      beforeContent = '<section class="nostr-page-extra nostr-page-extra-before">' +
-        (s.extras_before_format === 'html' ? String(s.extras_before || '') : markdownBlock(s.extras_before || '')) +
-        '</section>';
-    }
     if (String(s.extras_after || '').trim()) {
       afterContent = '<section class="nostr-page-extra nostr-page-extra-after">' +
         (s.extras_after_format === 'html' ? String(s.extras_after || '') : markdownBlock(s.extras_after || '')) +
         '</section>';
     }
     if (isAdmin() && state.editMode) {
-      els.content.innerHTML = renderEditor(rows, s) + beforeContent + renderReadOnly(rows) + afterContent;
+      els.content.innerHTML = renderEditor(rows, s) + renderReadOnly(rows) + afterContent;
     } else {
-      els.content.innerHTML = beforeContent + renderReadOnly(rows) + afterContent;
+      els.content.innerHTML = renderReadOnly(rows) + afterContent;
     }
   }
 
@@ -523,10 +520,17 @@
       }
       var target = event.target;
       if (target instanceof HTMLTextAreaElement) {
-        var extraField = String(target.getAttribute('data-contact-extra') || '');
-        if (extraField === 'before' || extraField === 'after') {
+        if (target.hasAttribute('data-contact-intro')) {
           state.draft = normalizeDraftState(state.draft);
-          state.draft[extraField === 'before' ? 'extras_before' : 'extras_after'] = String(target.value || '');
+          state.draft.description = String(target.value || '');
+          renderHead();
+          queueAutosave(500);
+          return;
+        }
+        var outroField = String(target.getAttribute('data-contact-outro') || '');
+        if (outroField === 'after') {
+          state.draft = normalizeDraftState(state.draft);
+          state.draft.extras_after = String(target.value || '');
           queueAutosave(500);
         }
         return;
@@ -536,11 +540,17 @@
         return;
       }
 
-      var extraFormatField = String(target.getAttribute('data-contact-extra-format') || '');
-      if (target instanceof HTMLSelectElement && (extraFormatField === 'before' || extraFormatField === 'after')) {
+      var outroFormatField = String(target.getAttribute('data-contact-outro-format') || '');
+      if (target instanceof HTMLSelectElement && outroFormatField === 'after') {
         state.draft = normalizeDraftState(state.draft);
-        state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+        state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
         renderContent();
+        queueAutosave(500);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-intro-publish')) {
+        state.draft = normalizeDraftState(state.draft);
+        state.draft.publish_intro_to_nostr = !!target.checked;
         queueAutosave(500);
         return;
       }
@@ -552,14 +562,6 @@
         queueAutosave(500);
         return;
       }
-      if (target.id === 'contact-description-input') {
-        state.draft.description = String(target.value || '');
-        renderHead();
-        renderAdmin();
-        queueAutosave(500);
-        return;
-      }
-
       var field = String(target.getAttribute('data-contact-field') || '');
       var idx = Number(target.getAttribute('data-row-index'));
       if (!field || !Number.isInteger(idx) || idx < 0) {
@@ -578,14 +580,20 @@
         return;
       }
       var target = event.target;
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-intro-publish')) {
+        state.draft = normalizeDraftState(state.draft);
+        state.draft.publish_intro_to_nostr = !!target.checked;
+        queueAutosave(500);
+        return;
+      }
       if (!(target instanceof HTMLSelectElement)) {
         return;
       }
 
-      var extraFormatField = String(target.getAttribute('data-contact-extra-format') || '');
-      if (extraFormatField === 'before' || extraFormatField === 'after') {
+      var extraFormatField = String(target.getAttribute('data-contact-outro-format') || '');
+      if (extraFormatField === 'after') {
         state.draft = normalizeDraftState(state.draft);
-        state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+        state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
         renderContent();
         queueAutosave(500);
         return;

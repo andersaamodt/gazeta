@@ -1,0 +1,463 @@
+(function () {
+  'use strict';
+
+  var root = document.getElementById('nip23-page-root');
+  if (!root) {
+    return;
+  }
+
+  var query = new URLSearchParams(window.location.search || '');
+  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-page-slug') || 'index').trim() || 'index';
+
+  var els = {
+    title: document.getElementById('nip23-page-title'),
+    admin: document.getElementById('nip23-page-admin'),
+    validation: document.getElementById('nip23-page-validation'),
+    content: document.getElementById('nip23-page-content')
+  };
+
+  var state = {
+    payload: null,
+    draft: null,
+    editMode: false,
+    busy: false,
+    saveTimer: null,
+    saveStatus: 'saved',
+    saveIndicatorVisible: false,
+    authSignature: ''
+  };
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function markdownBlock(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function normalizeExtraFormat(value) {
+    var next = String(value || '').trim().toLowerCase();
+    return next === 'html' ? 'html' : 'markdown';
+  }
+
+  function normalizeDraftState(raw) {
+    var src = raw || {};
+    return {
+      slug: String(src.slug || slug),
+      type: String(src.type || 'nip23'),
+      title: String(src.title || ''),
+      content: String(src.content || ''),
+      extras_after: String(src.extras_after || ''),
+      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown')
+    };
+  }
+
+  function authPayload() {
+    return {
+      session_token: String(localStorage.getItem('session_token') || '').trim(),
+      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
+    };
+  }
+
+  function isAdmin() {
+    return !!(state.payload && state.payload.is_admin && state.draft);
+  }
+
+  function apiPost(url, payload) {
+    var body = new URLSearchParams(payload || {});
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    }).then(function (res) { return res.text(); }).then(function (text) {
+      var data;
+      try {
+        data = JSON.parse(text);
+      } catch (_err) {
+        throw new Error('Invalid JSON response');
+      }
+      if (!data || data.success === false) {
+        throw new Error((data && data.error) || 'Request failed');
+      }
+      return data;
+    });
+  }
+
+  function getRenderState() {
+    if (isAdmin()) {
+      state.draft = normalizeDraftState(state.draft);
+      return state.draft;
+    }
+    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Home', content: '' });
+  }
+
+  function renderValidation() {
+    if (!els.validation) {
+      return;
+    }
+    var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
+    var errors = Array.isArray(v.errors) ? v.errors : [];
+    var warnings = Array.isArray(v.warnings) ? v.warnings : [];
+    if (!isAdmin() || (!errors.length && !warnings.length)) {
+      els.validation.hidden = true;
+      els.validation.innerHTML = '';
+      return;
+    }
+    var html = '';
+    if (errors.length) {
+      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
+      errors.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    if (warnings.length) {
+      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
+      warnings.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    els.validation.hidden = false;
+    els.validation.innerHTML = html;
+  }
+
+  function setSaveStatus(next) {
+    state.saveStatus = next;
+    var node = document.getElementById('nip23-admin-save-status');
+    if (!node) {
+      return;
+    }
+    node.classList.toggle('is-error', next === 'error');
+    if (next === 'saving') {
+      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      return;
+    }
+    if (next === 'error') {
+      node.textContent = 'Save failed';
+      return;
+    }
+    node.textContent = 'Saved';
+  }
+
+  function queueAutosave(delayMs) {
+    if (!isAdmin()) {
+      return;
+    }
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+    }
+    state.saveIndicatorVisible = true;
+    renderAdmin();
+    state.saveTimer = setTimeout(function () {
+      state.saveTimer = null;
+      persistDraft({ alertOnError: false });
+    }, Number(delayMs) > 0 ? Number(delayMs) : 500);
+  }
+
+  function renderHead() {
+    var s = getRenderState();
+    if (els.title) {
+      if (isAdmin() && state.editMode) {
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
+      } else {
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
+      }
+    }
+  }
+
+  function renderAdmin() {
+    if (!els.admin) {
+      return;
+    }
+    if (!isAdmin()) {
+      els.admin.hidden = true;
+      els.admin.innerHTML = '';
+      return;
+    }
+
+    var hasCanonical = !!state.payload.canonical_exists;
+    var hasDraftChanges = !!state.payload.draft_differs;
+    var showRevert = !!state.editMode;
+    var showPublish = !!state.editMode || hasDraftChanges;
+    var canRevert = hasCanonical && hasDraftChanges;
+    var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
+
+    var actionsHost = document.getElementById('nip23-page-title-actions');
+    var html = '<span class="list-page-admin-bar">';
+    if (state.saveIndicatorVisible) {
+      html += '<span id="nip23-admin-save-status" class="list-admin-save-status" aria-live="polite">';
+      if (state.saveStatus === 'saving') {
+        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      } else if (state.saveStatus === 'error') {
+        html += 'Save failed';
+      } else {
+        html += 'Saved';
+      }
+      html += '</span>';
+    }
+    if (showRevert) {
+      html += '<button type="button" data-nip23-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
+    }
+    if (showPublish) {
+      html += '<button type="button" class="list-admin-primary-btn" data-nip23-action="publish">Publish to Nostr...</button>';
+    }
+    html += '<button type="button" class="list-admin-primary-btn" data-nip23-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
+    html += '</span>';
+
+    if (actionsHost) {
+      actionsHost.innerHTML = html;
+    }
+    els.admin.hidden = true;
+    els.admin.innerHTML = '';
+  }
+
+  function renderContent() {
+    if (!els.content) {
+      return;
+    }
+    var s = getRenderState();
+    var outroHtml = '';
+    if (String(s.extras_after || '').trim()) {
+      outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
+        (s.extras_after_format === 'html' ? String(s.extras_after || '') : markdownBlock(s.extras_after || '')) +
+        '</section>';
+    }
+
+    if (isAdmin() && state.editMode) {
+      var html = '';
+      html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
+      html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
+      html += '<label class="nostr-page-extra-edit"><span>Title</span><input type="text" id="nip23-title-input" value="' + escapeHtml(s.title || '') + '"></label>';
+      html += '<label class="nostr-page-extra-edit"><span>Content (Markdown)</span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
+      html += '<label class="nostr-page-extra-edit"><span>Outro</span><span class="nostr-page-extra-controls"><select id="nip23-outro-format"><option value="markdown"' + (s.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option><option value="html"' + (s.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option></select></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after page content">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
+      html += '</section>';
+      html += '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>';
+      html += outroHtml;
+      els.content.innerHTML = html;
+      return;
+    }
+
+    els.content.innerHTML = '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>' + outroHtml;
+  }
+
+  function renderAll() {
+    renderHead();
+    renderAdmin();
+    renderContent();
+    renderValidation();
+  }
+
+  function persistDraft(opts) {
+    if (state.busy || !isAdmin()) {
+      return Promise.resolve(false);
+    }
+    var options = opts || {};
+    state.busy = true;
+    setSaveStatus('saving');
+    var payload = authPayload();
+    return apiPost('/cgi/blog-save-nostr-page-draft', {
+      page_slug: slug,
+      state_json: JSON.stringify(state.draft || {}),
+      session_token: payload.session_token,
+      csrf_token: payload.csrf_token
+    }).then(function (data) {
+      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      state.payload.state = data.state || state.payload.state;
+      state.payload.draft_exists = true;
+      state.payload.draft_differs = false;
+      state.draft = normalizeDraftState(data.state || state.draft);
+      setSaveStatus('saved');
+      renderAll();
+      return true;
+    }).catch(function (err) {
+      setSaveStatus('error');
+      if (options.alertOnError !== false) {
+        window.alert(err.message || 'Could not save draft');
+      }
+      return false;
+    }).finally(function () {
+      state.busy = false;
+    });
+  }
+
+  function publishDraft() {
+    if (state.busy || !isAdmin()) {
+      return;
+    }
+    var payload = authPayload();
+    state.busy = true;
+    setSaveStatus('saving');
+    apiPost('/cgi/blog-publish-nostr-page', {
+      page_slug: slug,
+      session_token: payload.session_token,
+      csrf_token: payload.csrf_token
+    }).then(function (data) {
+      state.payload.state = data.state;
+      state.payload.canonical_state = data.state;
+      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      state.payload.canonical_exists = true;
+      state.payload.draft_exists = true;
+      state.payload.draft_differs = false;
+      state.draft = normalizeDraftState(data.state);
+      setSaveStatus('saved');
+      renderAll();
+    }).catch(function (err) {
+      setSaveStatus('error');
+      window.alert(err.message || 'Could not publish to Nostr');
+    }).finally(function () {
+      state.busy = false;
+    });
+  }
+
+  function revertDraft() {
+    if (state.busy || !isAdmin()) {
+      return;
+    }
+    if (!window.confirm('Discard local draft changes and restore canonical Nostr version?')) {
+      return;
+    }
+    var payload = authPayload();
+    state.busy = true;
+    setSaveStatus('saving');
+    apiPost('/cgi/blog-revert-nostr-page-draft', {
+      page_slug: slug,
+      session_token: payload.session_token,
+      csrf_token: payload.csrf_token
+    }).then(function (data) {
+      state.payload.state = data.state;
+      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      state.payload.draft_exists = true;
+      state.payload.draft_differs = false;
+      state.draft = normalizeDraftState(data.state);
+      setSaveStatus('saved');
+      renderAll();
+    }).catch(function (err) {
+      setSaveStatus('error');
+      window.alert(err.message || 'Could not revert draft');
+    }).finally(function () {
+      state.busy = false;
+    });
+  }
+
+  function bindEvents() {
+    root.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement) || !isAdmin()) {
+        return;
+      }
+      var actionNode = target.closest('[data-nip23-action]');
+      if (!(actionNode instanceof HTMLElement)) {
+        return;
+      }
+      var action = String(actionNode.getAttribute('data-nip23-action') || '');
+      if (action === 'toggle-edit') {
+        state.editMode = !state.editMode;
+        renderAll();
+        return;
+      }
+      if (action === 'publish') {
+        publishDraft();
+        return;
+      }
+      if (action === 'revert') {
+        if (actionNode.hasAttribute('disabled')) {
+          return;
+        }
+        revertDraft();
+      }
+    });
+
+    root.addEventListener('input', function (event) {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+        return;
+      }
+      state.draft = normalizeDraftState(state.draft);
+      if (target.id === 'nip23-title-input') {
+        state.draft.title = String(target.value || '');
+        renderHead();
+        renderAdmin();
+        queueAutosave(500);
+        return;
+      }
+      if (target.id === 'nip23-content-input') {
+        state.draft.content = String(target.value || '');
+        queueAutosave(500);
+        return;
+      }
+      if (target.id === 'nip23-outro-input') {
+        state.draft.extras_after = String(target.value || '');
+        queueAutosave(500);
+        return;
+      }
+      if (target.id === 'nip23-outro-format' && target instanceof HTMLSelectElement) {
+        state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
+        renderContent();
+        queueAutosave(500);
+      }
+    });
+  }
+
+  function maybeReloadForAuthChange() {
+    var auth = authPayload();
+    var nextSig = auth.session_token + '|' + auth.csrf_token;
+    if (nextSig !== state.authSignature) {
+      load();
+    }
+  }
+
+  function load() {
+    var auth = authPayload();
+    state.authSignature = auth.session_token + '|' + auth.csrf_token;
+    return apiPost('/cgi/blog-get-nostr-page', {
+      page_slug: slug,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (payload) {
+      state.payload = payload;
+      state.draft = normalizeDraftState(payload.state || { title: '', content: '' });
+      state.saveIndicatorVisible = false;
+      setSaveStatus('saved');
+      renderAll();
+    }).catch(function (err) {
+      if (els.content) {
+        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load page') + '</p>';
+      }
+    });
+  }
+
+  bindEvents();
+  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
+  window.addEventListener('storage', function (event) {
+    if (!event || !event.key) {
+      return;
+    }
+    if (event.key === 'session_token' || event.key === 'csrf_token') {
+      maybeReloadForAuthChange();
+    }
+  });
+  window.addEventListener('focus', maybeReloadForAuthChange);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      maybeReloadForAuthChange();
+    }
+  });
+
+  load();
+})();

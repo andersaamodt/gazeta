@@ -29,6 +29,7 @@ blog_nostr_page_kind_for_type() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
     contact) printf '0\n' ;;
+    nip23) printf '30023\n' ;;
     *) printf '30001\n' ;;
   esac
 }
@@ -36,6 +37,14 @@ blog_nostr_page_kind_for_type() {
 blog_nostr_pages_default_json() {
   jq -cn '{
     pages: [
+      {
+        slug: "index",
+        type: "nip23",
+        kind: 30023,
+        show_in_nav: true,
+        placeholder_title: "Home",
+        path: "/"
+      },
       {
         slug: "oeuvre",
         type: "list",
@@ -65,7 +74,10 @@ blog_nostr_pages_normalize_json() {
         | gsub("-+";"-")
         | gsub("(^-+|-+$)";""));
     def norm_type($v):
-      (if (($v // "") | tostring | ascii_downcase) == "contact" then "contact" else "list" end);
+      (($v // "") | tostring | ascii_downcase) as $t
+      | if $t == "contact" then "contact"
+        elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
+        else "list" end;
 
     ((if type=="object" then .pages else . end) // []) as $raw_pages
     | ($raw_pages | if type=="array" then . else [] end
@@ -85,6 +97,14 @@ blog_nostr_pages_normalize_json() {
         pages:
           (if ($unique | length) == 0 then
              [{
+               slug: "index",
+               type: "nip23",
+               kind: 30023,
+               show_in_nav: true,
+               placeholder_title: "Home",
+               path: "/"
+             },
+             {
                slug: "oeuvre",
                type: "list",
                kind: 30001,
@@ -93,12 +113,20 @@ blog_nostr_pages_normalize_json() {
                path: "/pages/oeuvre.html"
              }]
            else
-             ($unique | map(
-               .kind = (if .type == "contact" then 0 else 30001 end)
+             (($unique
+               | if any(.[]; .slug == "index") then . else ([{
+                   slug: "index",
+                   type: "nip23",
+                   show_in_nav: true,
+                   placeholder_title: "Home",
+                   path: "/"
+                 }] + .) end)
+             | map(
+               .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30001 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
-               | .path = (if (.path | length) > 0 then .path else ("/pages/" + .slug + ".html") end)
-             ))
+               | .path = (if (.path | length) > 0 then .path else (if .slug == "index" then "/" else ("/pages/" + .slug + ".html") end) end)
+             )))
            end)
       }
   ' 2>/dev/null || blog_nostr_pages_default_json
@@ -147,6 +175,10 @@ blog_nostr_page_type_for_slug() {
     printf 'list\n'
     return 0
   fi
+  if [ "$slug" = "index" ]; then
+    printf 'nip23\n'
+    return 0
+  fi
   return 1
 }
 
@@ -164,6 +196,7 @@ blog_nostr_page_load_draft_state_json() {
   [ -n "$raw" ] || return 1
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
+    nip23) blog_nip23_normalize_state_json "$slug" "$raw" ;;
     *) blog_list_normalize_state_json "$slug" "$raw" ;;
   esac
 }
@@ -175,6 +208,7 @@ blog_nostr_page_save_draft_state_json() {
   [ -n "$state_json" ] || return 1
   case "$page_type" in
     contact) normalized=$(blog_contact_normalize_state_json "$slug" "$state_json") ;;
+    nip23) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
   path=$(blog_nostr_page_draft_path "$slug")
@@ -269,6 +303,162 @@ blog_nostr_contact_latest_event_json() {
   blog_nostr_kind_latest_event_json 0 "$site_pubkey"
 }
 
+blog_nostr_nip23_latest_event_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  [ -d "$blog_nostr_events_dir" ] || return 1
+  site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nip23-events.XXXXXX")
+  if [ -n "$site_pubkey" ] && [ -d "$blog_nostr_events_dir/$site_pubkey/30023" ]; then
+    find "$blog_nostr_events_dir/$site_pubkey/30023" -type f -name '*.json' 2>/dev/null | while IFS= read -r file; do
+      [ -f "$file" ] || continue
+      jq -c '.' "$file" 2>/dev/null || true
+    done > "$tmp"
+  else
+    find "$blog_nostr_events_dir" -type f -path '*/30023/*.json' 2>/dev/null | while IFS= read -r file; do
+      [ -f "$file" ] || continue
+      jq -c '.' "$file" 2>/dev/null || true
+    done > "$tmp"
+  fi
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    return 1
+  fi
+  out=$(jq -c --arg slug "$slug" '
+    [ .[]
+      | select(type=="object" and (.kind|type)=="number" and .kind==30023 and (.tags|type)=="array")
+      | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
+      | select($d == $slug)
+    ]
+    | sort_by((.created_at // 0), (.id // ""))
+    | last // empty
+  ' "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  if [ -z "$out" ] || [ "$out" = "null" ]; then
+    return 1
+  fi
+  printf '%s\n' "$out"
+}
+
+blog_nip23_default_state_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  title=$(blog_nostr_page_titleize_slug "$slug")
+  if [ "$slug" = "index" ]; then
+    title="Home"
+  fi
+  jq -cn --arg slug "$slug" --arg title "$title" '{
+    slug: $slug,
+    type: "nip23",
+    title: $title,
+    content: "",
+    extras_after: "",
+    extras_after_format: "markdown"
+  }'
+}
+
+blog_nip23_normalize_state_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  raw_json=${2-}
+  fallback_title=$(blog_nostr_page_titleize_slug "$slug")
+  if [ "$slug" = "index" ]; then
+    fallback_title="Home"
+  fi
+  if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
+    blog_nip23_default_state_json "$slug"
+    return 0
+  fi
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
+    def norm_extra_format($v):
+      (($v // "") | tostring | ascii_downcase) as $f
+      | if $f == "html" then "html" else "markdown" end;
+    {
+      slug: $slug,
+      type: "nip23",
+      title: ((.title // $fallback_title) | tostring),
+      content: ((.content // "") | tostring),
+      extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
+      extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown")
+    }
+  ' 2>/dev/null || blog_nip23_default_state_json "$slug"
+}
+
+blog_nip23_state_from_event_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  event_json=${2-}
+  if [ -z "$event_json" ] || ! printf '%s\n' "$event_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
+    blog_nip23_default_state_json "$slug"
+    return 0
+  fi
+  raw=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{
+    slug: $slug,
+    title: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""),
+    content: (.content // "")
+  }' 2>/dev/null || printf '')
+  blog_nip23_normalize_state_json "$slug" "$raw"
+}
+
+blog_nip23_state_signature_json() {
+  state_json=${1-}
+  if [ -z "$state_json" ]; then
+    printf '{}\n'
+    return 0
+  fi
+  printf '%s\n' "$state_json" | jq -c '{
+    title: (.title // ""),
+    content: (.content // "")
+  }' 2>/dev/null || printf '{}\n'
+}
+
+blog_nip23_validate_and_enrich_state_json() {
+  state_json=${1-}
+  if [ -z "$state_json" ]; then
+    printf '{"errors":["Missing page state"],"warnings":[],"can_publish":false}\n'
+    return 0
+  fi
+  printf '%s\n' "$state_json" | jq -c '
+    {
+      errors: [],
+      warnings: [],
+      can_publish: true
+    }
+  ' 2>/dev/null || printf '{"errors":["Could not validate page state"],"warnings":[],"can_publish":false}\n'
+}
+
+blog_nostr_sign_nip23_event() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  title=${2-}
+  content=${3-}
+  [ -n "$slug" ] || return 1
+  if ! command -v nostril >/dev/null 2>&1; then
+    return 1
+  fi
+  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+  [ -n "$secret" ] || return 1
+  created_at=$(blog_now_epoch)
+  set -- nostril --sec "$secret" --kind 30023 --created-at "$created_at" --content "$content" --tag d "$slug"
+  if [ -n "$title" ]; then
+    set -- "$@" --tag title "$title"
+  fi
+  sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nip23-sign.XXXXXX")
+  set +e
+  "$@" > "$sign_tmp" 2>/dev/null
+  sign_status=$?
+  set -e
+  if [ "$sign_status" -ne 0 ]; then
+    rm -f "$sign_tmp"
+    return 1
+  fi
+  event_json=$(cat "$sign_tmp" 2>/dev/null || printf '')
+  rm -f "$sign_tmp"
+  event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+  [ -n "$event_json" ] || return 1
+  if ! blog_nostr_verify_event_json "$event_json"; then
+    return 1
+  fi
+  printf '%s\n' "$event_json"
+}
+
 blog_contact_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   title=$(blog_nostr_page_titleize_slug "$slug")
@@ -277,6 +467,7 @@ blog_contact_default_state_json() {
     type: "contact",
     title: $title,
     description: "",
+    publish_intro_to_nostr: false,
     extras_before: "",
     extras_before_format: "markdown",
     extras_after: "",
@@ -337,6 +528,13 @@ blog_contact_normalize_state_json() {
         type: "contact",
         title: (((.title // $content_obj.title // $fallback_title) | tostring)),
         description: (((.description // $content_obj.description // "") | tostring)),
+        publish_intro_to_nostr: (
+          if (.publish_intro_to_nostr // null) == null then
+            ((($content_obj | has("description")) and (($content_obj.description // "") | tostring | length > 0)))
+          else
+            ((.publish_intro_to_nostr == true) or ((.publish_intro_to_nostr | tostring | ascii_downcase) == "true"))
+          end
+        ),
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
@@ -353,10 +551,10 @@ blog_contact_normalize_state_json() {
         )
       }
     | .content_json = (
-        {
-          title: .title,
-          description: .description
+        ({
+          title: .title
         }
+        + (if .publish_intro_to_nostr then {description: .description} else {} end))
         + (reduce .rows[] as $r ({};
             if (($r.transport | length) > 0 and ($r.value | length) > 0) then
               . + { (($r.transport + (if ($r.qualifier | length) > 0 then ("_" + $r.qualifier) else "" end))): $r.value }
@@ -388,7 +586,8 @@ blog_contact_state_signature_json() {
   fi
   printf '%s\n' "$state_json" | jq -c '{
     title: (.title // ""),
-    description: (.description // ""),
+    description: (if (.publish_intro_to_nostr // false) then (.description // "") else "" end),
+    publish_intro_to_nostr: (.publish_intro_to_nostr // false),
     rows: (.rows // [])
   }' 2>/dev/null || printf '{}\n'
 }
@@ -439,10 +638,10 @@ blog_contact_validate_and_enrich_state_json() {
         warnings: $warnings0,
         can_publish: (($errors | length) == 0),
         content_json: (
-          {
-            title: ((.title // "") | tostring),
-            description: ((.description // "") | tostring)
+          ({
+            title: ((.title // "") | tostring)
           }
+          + (if (.publish_intro_to_nostr // false) then { description: ((.description // "") | tostring) } else {} end))
           + (reduce $rows[] as $r ({};
               if (($r.transport|length) > 0 and ($r.value|length) > 0) then
                 . + { (key_for($r)): $r.value }
@@ -501,6 +700,14 @@ blog_nostr_page_canonical_title() {
         printf '\n'
       fi
       ;;
+    nip23)
+      event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$event" ]; then
+        printf '%s\n' "$event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf ''
+      else
+        printf '\n'
+      fi
+      ;;
     *)
       event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
       if [ -n "$event" ]; then
@@ -548,6 +755,36 @@ license: "CC BY 4.0"
 
 <script src="/static/contact-page.js"></script>
 EOCONTACT
+      ;;
+    nip23)
+      if [ "$slug" = "index" ]; then
+        page_file="$blog_site_root/site/pages/index.md"
+      else
+        page_file="$blog_site_root/site/pages/$slug.md"
+      fi
+      cat > "$page_file" <<EONIP23
+---
+title: "$page_title"
+published_at: "$(blog_now_iso)"
+content_hash: ""
+tags: ["nostr", "nip23"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="nip23-page-root" class="list-page-shell" data-page-slug="$slug" data-page-type="nip23" data-page-title="$page_title">
+<div class="list-page-head">
+<h1 id="nip23-page-title">$page_title</h1>
+</div>
+<div id="nip23-page-admin" class="list-admin" hidden></div>
+<div id="nip23-page-validation" class="list-validation" hidden></div>
+<div id="nip23-page-content" class="list-page-content"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/nip23-page.js"></script>
+EONIP23
       ;;
     *)
       cat > "$page_file" <<EOLIST

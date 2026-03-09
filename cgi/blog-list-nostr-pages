@@ -41,6 +41,13 @@ while IFS= read -r row || [ -n "$row" ]; do
         canonical_title=$(printf '%s\n' "$canonical_event" | jq -r 'try (.content | fromjson | .title // "") catch ""' 2>/dev/null || printf '')
       fi
       ;;
+    nip23)
+      canonical_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        canonical_exists=true
+        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      fi
+      ;;
     *)
       canonical_event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
       if [ -n "$canonical_event" ]; then

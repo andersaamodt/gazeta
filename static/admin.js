@@ -44,7 +44,12 @@
     localDripTabId: '',
     localDripLastTickAt: 0,
     nostrPages: [],
-    nostrPagesSaveBusy: false
+    nostrPagesSaveBusy: false,
+    nostrPagesDragActive: false,
+    nostrPagesDragSlug: '',
+    nostrPagesDragLastTarget: '',
+    nostrPagesDragDropped: false,
+    nostrPagesDragSnapshot: []
   };
 
   const els = {
@@ -1862,10 +1867,93 @@
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  function renderNostrPagesList(pages) {
+  function captureNostrPageRects() {
+    const map = {};
+    if (!els.nostrPagesList) {
+      return map;
+    }
+    const rows = Array.from(els.nostrPagesList.querySelectorAll('.nostr-page-row[data-slug]'));
+    rows.forEach(function (row) {
+      const slug = row.getAttribute('data-slug');
+      if (!slug) {
+        return;
+      }
+      map[slug] = row.getBoundingClientRect();
+    });
+    return map;
+  }
+
+  function animateNostrPagesFlip(previousRects) {
     if (!els.nostrPagesList) {
       return;
     }
+    requestAnimationFrame(function () {
+      const rows = Array.from(els.nostrPagesList.querySelectorAll('.nostr-page-row[data-slug]'));
+      rows.forEach(function (row) {
+        const slug = row.getAttribute('data-slug');
+        if (!slug || !previousRects[slug]) {
+          return;
+        }
+        const oldRect = previousRects[slug];
+        const newRect = row.getBoundingClientRect();
+        const dy = oldRect.top - newRect.top;
+        if (Math.abs(dy) < 1) {
+          return;
+        }
+        row.style.transition = 'none';
+        row.style.transform = 'translateY(' + dy + 'px)';
+        requestAnimationFrame(function () {
+          row.style.transition = 'transform 220ms ease';
+          row.style.transform = 'translateY(0)';
+          setTimeout(function () {
+            row.style.transition = '';
+            row.style.transform = '';
+          }, 240);
+        });
+      });
+    });
+  }
+
+  function reorderNostrPagesBySlug(dragSlug, targetSlug, placeAfter) {
+    if (!dragSlug || !targetSlug || dragSlug === targetSlug) {
+      return false;
+    }
+    const from = state.nostrPages.findIndex(function (page) { return String(page.slug || '') === dragSlug; });
+    const to = state.nostrPages.findIndex(function (page) { return String(page.slug || '') === targetSlug; });
+    if (from < 0 || to < 0) {
+      return false;
+    }
+    const next = state.nostrPages.slice();
+    const item = next[from];
+    next.splice(from, 1);
+    let insertAt = to;
+    if (from < to) {
+      insertAt = to - 1;
+    }
+    if (placeAfter) {
+      insertAt += 1;
+    }
+    if (insertAt < 0) {
+      insertAt = 0;
+    }
+    if (insertAt > next.length) {
+      insertAt = next.length;
+    }
+    next.splice(insertAt, 0, item);
+    const beforeSig = state.nostrPages.map(function (page) { return String(page.slug || ''); }).join('|');
+    const afterSig = next.map(function (page) { return String(page.slug || ''); }).join('|');
+    if (beforeSig === afterSig) {
+      return false;
+    }
+    state.nostrPages = next;
+    return true;
+  }
+
+  function renderNostrPagesList(pages, animate) {
+    if (!els.nostrPagesList) {
+      return;
+    }
+    const previousRects = animate ? captureNostrPageRects() : {};
     const list = Array.isArray(pages) ? pages : [];
     if (!list.length) {
       els.nostrPagesList.innerHTML = '<p class="placeholder">No Nostr-backed pages configured yet.</p>';
@@ -1876,24 +1964,27 @@
     list.forEach(function (page, idx) {
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
       const slug = String(page.slug || '');
-      const kind = Number(page.kind || (String(page.type || 'list') === 'contact' ? 0 : 30001));
+      const pageType = String(page.type || 'list');
+      const kind = Number(page.kind || (pageType === 'contact' ? 0 : (pageType === 'nip23' ? 30023 : 30001)));
       const path = String(page.path || ('/pages/' + slug + '.html'));
       const showInNav = !!page.show_in_nav;
-      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '">';
+      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="true">';
       html += '<div class="nostr-page-main">';
       html += '<div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
       html += '<div class="nostr-page-meta"><span class="nostr-page-kind">kind ' + String(kind) + '</span> <span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
-      html += '<button type="button" class="unobtrusive-icon-button" data-nostr-page-action="move-up" data-index="' + String(idx) + '" aria-label="Move up" title="Move up">↑</button>';
-      html += '<button type="button" class="unobtrusive-icon-button" data-nostr-page-action="move-down" data-index="' + String(idx) + '" aria-label="Move down" title="Move down">↓</button>';
+      html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
       html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page" title="Remove local page reference">✕</button>';
       html += '</div>';
       html += '</div>';
     });
     html += '</div>';
     els.nostrPagesList.innerHTML = html;
+    if (animate) {
+      animateNostrPagesFlip(previousRects);
+    }
   }
 
   async function loadNostrPages() {
@@ -1905,7 +1996,7 @@
       throw new Error(data.error || 'Failed to load Nostr pages');
     }
     state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
-    renderNostrPagesList(state.nostrPages);
+    renderNostrPagesList(state.nostrPages, false);
   }
 
   async function saveNostrPagesConfig() {
@@ -1921,7 +2012,7 @@
         throw new Error(data.error || 'Failed to save Nostr pages');
       }
       state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
-      renderNostrPagesList(state.nostrPages);
+      renderNostrPagesList(state.nostrPages, false);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;
@@ -1929,8 +2020,8 @@
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
-    if (pickedType !== 'list' && pickedType !== 'contact') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use list or contact.', 'warn');
+    if (pickedType !== 'list' && pickedType !== 'contact' && pickedType !== 'nip23') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use list, contact, or nip23.', 'warn');
       return false;
     }
     if (pickedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -1950,10 +2041,10 @@
     next.push({
       slug: slug,
       type: pickedType,
-      kind: pickedType === 'contact' ? 0 : 30001,
+      kind: (pickedType === 'contact' ? 0 : (pickedType === 'nip23' ? 30023 : 30001)),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
-      path: '/pages/' + slug + '.html'
+      path: (slug === 'index' ? '/' : ('/pages/' + slug + '.html'))
     });
     state.nostrPages = next;
     saveNostrPagesConfig().catch(function (err) {
@@ -1979,18 +2070,24 @@
       els.nostrPageTypeSelect.value = hasContactPage ? 'list' : 'contact';
     }
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
-      els.nostrPageSlugInput.value = els.nostrPageTypeSelect.value === 'contact' ? 'contact' : '';
+      if (els.nostrPageTypeSelect.value === 'contact') {
+        els.nostrPageSlugInput.value = 'contact';
+      } else if (els.nostrPageTypeSelect.value === 'nip23') {
+        els.nostrPageSlugInput.value = 'index';
+      } else {
+        els.nostrPageSlugInput.value = '';
+      }
     }
   }
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: list or contact', 'list');
+      const pickedTypeRaw = window.prompt('Page type: list, contact, or nip23', 'list');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: contact)', fallbackType === 'contact' ? 'contact' : '');
+      const fallbackSlug = window.prompt('Page slug/path (example: contact)', fallbackType === 'contact' ? 'contact' : (fallbackType === 'nip23' ? 'index' : ''));
       if (fallbackSlug === null) {
         return;
       }
@@ -2888,37 +2985,11 @@
         if (action === 'toggle-nav') {
           return;
         }
+        if (action === 'drag-handle') {
+          return;
+        }
         const idx = Number(actionNode.getAttribute('data-index'));
         if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
-          return;
-        }
-
-        if (action === 'move-up') {
-          if (idx <= 0) {
-            return;
-          }
-          const next = state.nostrPages.slice();
-          const tmp = next[idx - 1];
-          next[idx - 1] = next[idx];
-          next[idx] = tmp;
-          state.nostrPages = next;
-          saveNostrPagesConfig().catch(function (err) {
-            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-          });
-          return;
-        }
-        if (action === 'move-down') {
-          if (idx >= state.nostrPages.length - 1) {
-            return;
-          }
-          const next = state.nostrPages.slice();
-          const tmp = next[idx + 1];
-          next[idx + 1] = next[idx];
-          next[idx] = tmp;
-          state.nostrPages = next;
-          saveNostrPagesConfig().catch(function (err) {
-            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-          });
           return;
         }
         if (action === 'remove') {
@@ -2937,6 +3008,94 @@
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
         }
+      });
+
+      els.nostrPagesList.addEventListener('dragstart', function (event) {
+        const target = event.target;
+        const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
+        if (!(row instanceof HTMLElement)) {
+          return;
+        }
+        const handle = target && target.closest ? target.closest('.nostr-page-drag-handle') : null;
+        if (!(handle instanceof HTMLElement)) {
+          event.preventDefault();
+          return;
+        }
+        const dragSlug = String(row.getAttribute('data-slug') || '');
+        if (!dragSlug) {
+          event.preventDefault();
+          return;
+        }
+        state.nostrPagesDragActive = true;
+        state.nostrPagesDragSlug = dragSlug;
+        state.nostrPagesDragLastTarget = '';
+        state.nostrPagesDragDropped = false;
+        state.nostrPagesDragSnapshot = state.nostrPages.slice();
+        row.classList.add('is-dragging');
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          try {
+            event.dataTransfer.setData('text/plain', dragSlug);
+          } catch (_err) {
+            // Ignore.
+          }
+        }
+      });
+
+      els.nostrPagesList.addEventListener('dragover', function (event) {
+        if (!state.nostrPagesDragActive || !state.nostrPagesDragSlug) {
+          return;
+        }
+        const target = event.target;
+        const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
+        if (!(row instanceof HTMLElement)) {
+          return;
+        }
+        const targetSlug = String(row.getAttribute('data-slug') || '');
+        if (!targetSlug || targetSlug === state.nostrPagesDragSlug) {
+          return;
+        }
+        event.preventDefault();
+        const rect = row.getBoundingClientRect();
+        const placeAfter = event.clientY > (rect.top + rect.height / 2);
+        const targetKey = targetSlug + ':' + (placeAfter ? 'after' : 'before');
+        if (targetKey === state.nostrPagesDragLastTarget) {
+          return;
+        }
+        const changed = reorderNostrPagesBySlug(state.nostrPagesDragSlug, targetSlug, placeAfter);
+        if (!changed) {
+          return;
+        }
+        state.nostrPagesDragLastTarget = targetKey;
+        renderNostrPagesList(state.nostrPages, true);
+      });
+
+      els.nostrPagesList.addEventListener('drop', function (event) {
+        if (!state.nostrPagesDragActive || !state.nostrPagesDragSlug) {
+          return;
+        }
+        event.preventDefault();
+        state.nostrPagesDragDropped = true;
+        saveNostrPagesConfig().catch(function (err) {
+          setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+        });
+      });
+
+      els.nostrPagesList.addEventListener('dragend', function (event) {
+        const target = event.target;
+        const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
+        if (row) {
+          row.classList.remove('is-dragging');
+        }
+        if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && Array.isArray(state.nostrPagesDragSnapshot)) {
+          state.nostrPages = state.nostrPagesDragSnapshot.slice();
+          renderNostrPagesList(state.nostrPages, true);
+        }
+        state.nostrPagesDragActive = false;
+        state.nostrPagesDragSlug = '';
+        state.nostrPagesDragLastTarget = '';
+        state.nostrPagesDragDropped = false;
+        state.nostrPagesDragSnapshot = [];
       });
     }
     if (els.postsList) {

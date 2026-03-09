@@ -213,10 +213,9 @@
     return {
       title: String(s.title || root.getAttribute('data-list-title') || 'List'),
       description: String(s.description || ''),
+      publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       group_by: String(s.group_by || ''),
       content: String(s.content || ''),
-      extras_before: String(s.extras_before || ''),
-      extras_before_format: normalizeExtraFormat(s.extras_before_format || 'markdown'),
       extras_after: String(s.extras_after || ''),
       extras_after_format: normalizeExtraFormat(s.extras_after_format || 'markdown'),
       elements: elements
@@ -275,9 +274,8 @@
       return {
         title: state.draft.title,
         description: state.draft.description,
+        publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
         group_by: state.draft.group_by,
-        extras_before: String(state.draft.extras_before || ''),
-        extras_before_format: normalizeExtraFormat(state.draft.extras_before_format || 'markdown'),
         extras_after: String(state.draft.extras_after || ''),
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements: cloneEditableElements(state.draft.elements)
@@ -287,9 +285,8 @@
     return {
       title: String(src.title || ''),
       description: String(src.description || ''),
+      publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       group_by: String(src.group_by || ''),
-      extras_before: String(src.extras_before || ''),
-      extras_before_format: normalizeExtraFormat(src.extras_before_format || 'markdown'),
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
@@ -443,10 +440,9 @@
         page_slug: slug,
         title: state.draft.title || '',
         description: state.draft.description || '',
+        publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
         group_by: state.draft.group_by || '',
         content: state.draft.content || '',
-        extras_before: state.draft.extras_before || '',
-        extras_before_format: normalizeExtraFormat(state.draft.extras_before_format || 'markdown'),
         extras_after: state.draft.extras_after || '',
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements_json: JSON.stringify(elements),
@@ -779,13 +775,13 @@
         els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
       } else if (state.editMode) {
         if (descText.trim()) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
         }
       } else {
         if (descText.trim()) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + escapeHtml(descText) + '</span>';
+          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span>';
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
@@ -927,26 +923,20 @@
     var draft = state.draft || {};
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Page extras</h3>';
+    html += '<h3 class="nostr-page-extras-heading">Intro and outro</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before Nostr content</span>';
-    html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-list-extra-format="before">';
-    html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_before_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';
-    html += '<option value="html"' + (normalizeExtraFormat(draft.extras_before_format) === 'html' ? ' selected' : '') + '>HTML</option>';
-    html += '</select>';
-    html += '</span>';
-    html += '<textarea data-list-extra="before" rows="4" placeholder="Optional content shown before the Nostr-backed section">' + escapeHtml(draft.extras_before || '') + '</textarea>';
+    html += '<span>Intro (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish intro to Nostr</span></label></span></span>';
+    html += '<textarea data-list-intro="true" rows="4" placeholder="Optional intro shown before list entries">' + escapeHtml(draft.description || '') + '</textarea>';
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>After Nostr content</span>';
+    html += '<span>Outro</span>';
     html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-list-extra-format="after">';
+    html += '<select data-list-outro-format="after">';
     html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_after_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';
     html += '<option value="html"' + (normalizeExtraFormat(draft.extras_after_format) === 'html' ? ' selected' : '') + '>HTML</option>';
     html += '</select>';
     html += '</span>';
-    html += '<textarea data-list-extra="after" rows="4" placeholder="Optional content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
+    html += '<textarea data-list-outro="after" rows="4" placeholder="Optional local content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
     return html;
@@ -1076,7 +1066,6 @@
 
     var s = getRenderState();
     var elements = Array.isArray(s.elements) ? s.elements : [];
-    var beforeContent = renderExtraContent(s.extras_before, s.extras_before_format, 'before');
     var afterContent = renderExtraContent(s.extras_after, s.extras_after_format, 'after');
     var inlineMode = isAdmin() && state.editMode;
     if (root && root.classList) {
@@ -1085,23 +1074,23 @@
 
     if (!elements.length) {
       if (inlineMode) {
-        els.content.innerHTML = renderInlineEditor([]) + beforeContent + afterContent;
+        els.content.innerHTML = renderInlineEditor([]) + afterContent;
       } else if (isAdmin()) {
-        els.content.innerHTML = beforeContent + afterContent;
+        els.content.innerHTML = afterContent;
       } else {
-        els.content.innerHTML = beforeContent + '<p class="placeholder">No entries yet.</p>' + afterContent;
+        els.content.innerHTML = '<p class="placeholder">No entries yet.</p>' + afterContent;
       }
       renderAdmin();
       return;
     }
 
     if (inlineMode) {
-      els.content.innerHTML = renderInlineEditor(elements) + beforeContent + afterContent;
+      els.content.innerHTML = renderInlineEditor(elements) + afterContent;
       renderAdmin();
       return;
     }
 
-    els.content.innerHTML = beforeContent + renderGroupByReadOnly(elements.filter(function (el) {
+    els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     }), s.group_by) + afterContent;
     renderAdmin();
@@ -1470,9 +1459,15 @@
       }
       var target = event.target;
       if (target instanceof HTMLTextAreaElement) {
-        var extraField = String(target.getAttribute('data-list-extra') || '');
-        if (extraField === 'before' || extraField === 'after') {
-          state.draft[extraField === 'before' ? 'extras_before' : 'extras_after'] = String(target.value || '');
+        if (target.hasAttribute('data-list-intro')) {
+          state.draft.description = String(target.value || '');
+          renderHead();
+          queueAutosave(500);
+          return;
+        }
+        var outroField = String(target.getAttribute('data-list-outro') || '');
+        if (outroField === 'after') {
+          state.draft.extras_after = String(target.value || '');
           queueAutosave(500);
         }
         return;
@@ -1514,13 +1509,18 @@
         return;
       }
       if (target instanceof HTMLSelectElement) {
-        var extraFormatField = String(target.getAttribute('data-list-extra-format') || '');
-        if (extraFormatField === 'before' || extraFormatField === 'after') {
-          state.draft[extraFormatField === 'before' ? 'extras_before_format' : 'extras_after_format'] = normalizeExtraFormat(target.value || '');
+        var outroFormatField = String(target.getAttribute('data-list-outro-format') || '');
+        if (outroFormatField === 'after') {
+          state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
           renderList();
           queueAutosave(500);
           return;
         }
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
+        state.draft.publish_intro_to_nostr = !!target.checked;
+        queueAutosave(500);
+        return;
       }
 
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {

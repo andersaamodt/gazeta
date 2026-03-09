@@ -446,6 +446,7 @@ title: Blog Admin
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="list">List Page (kind 30001)</option>
 <option value="contact">Contact Page (kind 0)</option>
+<option value="nip23">NIP-23 Page (kind 30023)</option>
 </select>
 </div>
 <div class="field-row">
@@ -2050,6 +2051,18 @@ body {
   align-items: center;
   gap: 0.35rem;
   flex: 0 0 auto;
+}
+
+.nostr-page-row.is-dragging {
+  opacity: 0.65;
+}
+
+.nostr-page-drag-handle {
+  cursor: grab;
+}
+
+.nostr-page-drag-handle:active {
+  cursor: grabbing;
 }
 
 #admin-panel .nostr-page-actions button {

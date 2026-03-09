@@ -38,6 +38,7 @@ if [ -z "$state_json" ]; then
     contact)
       title=$(blog_param title)
       description=$(blog_param description)
+      publish_intro_to_nostr=$(blog_param publish_intro_to_nostr)
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
       extras_after=$(blog_param extras_after)
@@ -50,11 +51,12 @@ if [ -z "$state_json" ]; then
         blog_json_error "rows_json must be a JSON array" "invalid_rows"
         exit 0
       fi
-      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg extras_before "$extras_before" --arg extras_before_format "$extras_before_format" --arg extras_after "$extras_after" --arg extras_after_format "$extras_after_format" --argjson rows "$rows_json" '{
+      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg publish_intro_to_nostr "$publish_intro_to_nostr" --arg extras_before "$extras_before" --arg extras_before_format "$extras_before_format" --arg extras_after "$extras_after" --arg extras_after_format "$extras_after_format" --argjson rows "$rows_json" '{
         slug: $slug,
         type: "contact",
         title: $title,
         description: $description,
+        publish_intro_to_nostr: (($publish_intro_to_nostr | ascii_downcase) == "true"),
         extras_before: $extras_before,
         extras_before_format: $extras_before_format,
         extras_after: $extras_after,
@@ -62,9 +64,30 @@ if [ -z "$state_json" ]; then
         rows: $rows
       }')
       ;;
+    nip23)
+      title=$(blog_param title)
+      content=$(blog_param content)
+      extras_after=$(blog_param extras_after)
+      extras_after_format=$(blog_param extras_after_format)
+      state_json=$(jq -cn \
+        --arg slug "$page_slug" \
+        --arg title "$title" \
+        --arg content "$content" \
+        --arg extras_after "$extras_after" \
+        --arg extras_after_format "$extras_after_format" \
+        '{
+          slug: $slug,
+          type: "nip23",
+          title: $title,
+          content: $content,
+          extras_after: $extras_after,
+          extras_after_format: $extras_after_format
+        }')
+      ;;
     *)
       title=$(blog_param title)
       description=$(blog_param description)
+      publish_intro_to_nostr=$(blog_param publish_intro_to_nostr)
       group_by=$(blog_param group_by)
       content=$(blog_param content)
       extras_before=$(blog_param extras_before)
@@ -91,6 +114,7 @@ if [ -z "$state_json" ]; then
         --arg slug "$page_slug" \
         --arg title "$title" \
         --arg description "$description" \
+        --arg publish_intro_to_nostr "$publish_intro_to_nostr" \
         --arg group_by "$group_by" \
         --arg content "$content" \
         --arg extras_before "$extras_before" \
@@ -103,6 +127,7 @@ if [ -z "$state_json" ]; then
           slug: $slug,
           title: $title,
           description: $description,
+          publish_intro_to_nostr: (($publish_intro_to_nostr | ascii_downcase) == "true"),
           group_by: $group_by,
           content: $content,
           extras_before: $extras_before,
@@ -122,6 +147,12 @@ case "$page_type" in
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
     validation_json=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
     enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  nip23)
+    normalized=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
+    blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
+    validation_json=$(blog_nip23_validate_and_enrich_state_json "$normalized" false)
+    enriched=$normalized
     ;;
   *)
     normalized=$(blog_list_normalize_state_json "$page_slug" "$state_json")

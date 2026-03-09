@@ -17,6 +17,7 @@ blog_list_default_state_json() {
     slug: $slug,
     title: $title,
     description: "",
+    publish_intro_to_nostr: false,
     group_by: "year",
     content: "",
     extras_before: "",
@@ -131,6 +132,13 @@ blog_list_normalize_state_json() {
         slug: $slug,
         title: ((.title // first_tag("title") // "List") | tostring),
         description: ((.description // first_tag("description") // "") | tostring),
+        publish_intro_to_nostr: (
+          if (.publish_intro_to_nostr // null) == null then
+            ((first_tag("description") // "") | tostring | length) > 0
+          else
+            ((.publish_intro_to_nostr == true) or ((.publish_intro_to_nostr | tostring | ascii_downcase) == "true"))
+          end
+        ),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         content: ((.content // "") | tostring),
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
@@ -143,7 +151,7 @@ blog_list_normalize_state_json() {
     | .tags = (
         [
           (if (.title | length) > 0 then ["title", .title] else empty end),
-          (if (.description | length) > 0 then ["description", .description] else empty end),
+          (if .publish_intro_to_nostr and (.description | length) > 0 then ["description", .description] else empty end),
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end)
         ]
         + (.elements | map(
@@ -161,7 +169,8 @@ blog_list_state_signature_json() {
   fi
   printf '%s\n' "$state_json" | jq -c '{
     title: (.title // ""),
-    description: (.description // ""),
+    description: (if (.publish_intro_to_nostr // false) then (.description // "") else "" end),
+    publish_intro_to_nostr: (.publish_intro_to_nostr // false),
     group_by: (.group_by // ""),
     content: (.content // ""),
     elements: (.elements // []),
