@@ -2978,6 +2978,53 @@ button:disabled,
   cursor: default;
 }
 
+/* Keep menu/icon/toolbar controls unstyled by default button gradients. */
+.nav-menu-btn,
+.post-page-menu-trigger,
+.nav-search button,
+.toolbar button,
+.list-admin-actions button,
+.list-admin-entry-controls button,
+.list-page-admin-bar button,
+.list-inline-edit-controls button,
+.list-inline-actions button,
+.list-inline-date-button,
+.list-inline-toolbar-right button,
+.contact-inline-toolbar-right button {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  color: inherit;
+  box-shadow: none;
+}
+
+.nav-menu-btn:hover:not(:disabled),
+.nav-menu-btn:active:not(:disabled),
+.post-page-menu-trigger:hover:not(:disabled),
+.post-page-menu-trigger:active:not(:disabled),
+.nav-search button:hover:not(:disabled),
+.nav-search button:active:not(:disabled),
+.toolbar button:hover:not(:disabled),
+.toolbar button:active:not(:disabled),
+.list-admin-actions button:hover:not(:disabled),
+.list-admin-actions button:active:not(:disabled),
+.list-admin-entry-controls button:hover:not(:disabled),
+.list-admin-entry-controls button:active:not(:disabled),
+.list-page-admin-bar button:hover:not(:disabled),
+.list-page-admin-bar button:active:not(:disabled),
+.list-inline-edit-controls button:hover:not(:disabled),
+.list-inline-edit-controls button:active:not(:disabled),
+.list-inline-actions button:hover:not(:disabled),
+.list-inline-actions button:active:not(:disabled),
+.list-inline-date-button:hover:not(:disabled),
+.list-inline-date-button:active:not(:disabled),
+.list-inline-toolbar-right button:hover:not(:disabled),
+.list-inline-toolbar-right button:active:not(:disabled),
+.contact-inline-toolbar-right button:hover:not(:disabled),
+.contact-inline-toolbar-right button:active:not(:disabled) {
+  background-image: none !important;
+}
+
 /* Success Button Variant */
 #btn-register-mud {
   background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
