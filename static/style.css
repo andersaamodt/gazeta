@@ -27,6 +27,12 @@
   --nav-button-bg-dark: var(--light-bg);
   --select-bg: var(--bg);
   --accent-hover-end: #1d4ed8;
+  --button-primary-start: var(--accent);
+  --button-primary-end: var(--accent-dark);
+  --button-primary-hover-start: var(--accent-dark);
+  --button-primary-hover-end: var(--accent-hover-end);
+  --button-primary-active-start: var(--accent-hover-end);
+  --button-primary-active-end: var(--accent-dark);
   --nav-button-hover-bg: var(--nav-button-bg);
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
@@ -1927,16 +1933,16 @@ header h1 {
 .auth-secondary-btn {
   border: 1px solid var(--accent);
   border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
+  background: linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
+  color: var(--nav-active-text, #fff);
   font-size: 0.9rem;
   font-weight: 600;
   padding: 0.45rem 0.8rem;
 }
 
 .auth-secondary-btn {
-  background: #3656bb;
-  border-color: #3656bb;
+  background: linear-gradient(135deg, var(--button-primary-end) 0%, var(--button-primary-start) 100%);
+  border-color: var(--button-primary-end);
 }
 
 .auth-inline-link {
@@ -2774,8 +2780,8 @@ footer {
 
 .search-box button {
   padding: 0.75rem 1.5rem;
-  background: var(--accent);
-  color: white;
+  background: linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
+  color: var(--nav-active-text, #fff);
   border: none;
   border-radius: 3px;
   cursor: pointer;
@@ -2784,7 +2790,7 @@ footer {
 }
 
 .search-box button:hover {
-  background: #2980b9;
+  background: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
 }
 
 /* Search Form (in results page) */
@@ -2811,8 +2817,8 @@ footer {
 
 .search-form button {
   padding: 0.75rem 1.5rem;
-  background: var(--accent);
-  color: white;
+  background: linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
+  color: var(--nav-active-text, #fff);
   border: none;
   border-radius: 3px;
   cursor: pointer;
@@ -2821,7 +2827,7 @@ footer {
 }
 
 .search-form button:hover {
-  background: #2980b9;
+  background: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
 }
 
 /* Search Results */
@@ -2889,8 +2895,8 @@ footer {
 /* Button Styles - Primary Actions */
 button,
 .btn {
-  background: linear-gradient(135deg, var(--accent) 0%, #2980b9 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
+  color: var(--nav-active-text, #fff);
   border: none;
   padding: 0.875rem 1.75rem;
   border-radius: 8px;
@@ -2911,12 +2917,12 @@ input[type="reset"],
 
 button:hover:not(:disabled),
 .btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+  background: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
 }
 
 button:active:not(:disabled),
 .btn:active:not(:disabled) {
-  background: linear-gradient(135deg, #21618c 0%, #1a5276 100%);
+  background: linear-gradient(135deg, var(--button-primary-active-start) 0%, var(--button-primary-active-end) 100%);
 }
 
 button:disabled,

@@ -38,6 +38,12 @@
   --nav-bg: #e7dbc4;
   --nav-border: rgba(175, 145, 88, 0.36);
   --accent-hover-end: #1d3f84;
+  --button-primary-start: var(--lapis);
+  --button-primary-end: var(--amethyst);
+  --button-primary-hover-start: #5d488f;
+  --button-primary-hover-end: #2a569f;
+  --button-primary-active-start: #4f3d7f;
+  --button-primary-active-end: #234b8f;
   --select-bg: #f5eddf;
   --feed-rss-start: #b54b3b;
   --feed-rss-end: #a73b2f;
