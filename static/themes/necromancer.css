@@ -15,12 +15,12 @@
   --select-bg: #1a1010;
   --select-text: #f7eee1;
   --select-border: #5a1d1d;
-  --select-option-bg: #150d0d;
-  --select-option-text: #2b1717;
-  --select-option-disabled-text: #6f5a5a;
+  --select-option-bg: #261515;
+  --select-option-text: #f9f1e7;
+  --select-option-disabled-text: #bdaea0;
   --select-option-selected-bg: #8a2a2a;
   --select-option-selected-text: #ffffff;
-  --select-color-scheme: light;
+  --select-color-scheme: dark;
   --code-bg: #2a1717;
   --shadow: rgba(0, 0, 0, 0.45);
   --nav-link-hover: #3a1f1f;
