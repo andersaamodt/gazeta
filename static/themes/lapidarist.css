@@ -275,6 +275,26 @@ strong {
   background: linear-gradient(140deg, var(--amethyst) 0%, var(--lapis) 100%);
 }
 
+.btn-login:not(.btn-login-main):not(.btn-login-caret),
+.btn-login:not(.btn-login-main):not(.btn-login-caret):hover {
+  border-radius: 6px;
+}
+
+.btn-login-main,
+.btn-login-main:hover {
+  border-radius: 6px 0 0 6px;
+}
+
+.btn-login-caret,
+.btn-login-caret:hover {
+  border-radius: 0 6px 6px 0;
+}
+
+.list-page-admin-bar .list-admin-primary-btn,
+.list-page-admin-bar .list-admin-primary-btn:hover {
+  border-radius: 8px;
+}
+
 .inline-tip {
   border-color: color-mix(in srgb, var(--gold-leaf) 58%, var(--border) 42%);
   color: var(--malachite);
