@@ -310,7 +310,7 @@ header h1 {
   background: linear-gradient(135deg, var(--nav-button-bg) 0%, var(--nav-button-bg-dark) 100%);
   color: var(--nav-icon);
   border: 1px solid var(--border);
-  border-left: 1px solid #cbd5e1;
+  border-left: 1px solid var(--nav-border, var(--border));
   border-radius: 0 20px 20px 0;
   font-size: 0.9rem;
   cursor: pointer;
