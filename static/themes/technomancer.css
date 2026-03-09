@@ -13,12 +13,14 @@
   --border: #00bfff;
   --bg: #0a0f0d;
   --light-bg: #0f1a15;
-  --select-bg: #060a09;
+  --select-bg: #000000;
   --select-text: #00c23d;
   --select-border: #00bfff;
-  --select-option-bg: #040707;
+  --select-option-bg: #000000;
   --select-option-text: #00c23d;
   --select-option-disabled-text: #2f8f64;
+  --select-option-selected-bg: #004d22;
+  --select-option-selected-text: #b7ffcf;
   --select-color-scheme: dark;
   --code-bg: #0f1a15;
   --shadow: rgba(14, 165, 233, 0.25);

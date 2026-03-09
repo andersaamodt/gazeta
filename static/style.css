@@ -31,6 +31,8 @@
   --select-option-bg: var(--select-bg);
   --select-option-text: var(--select-text);
   --select-option-disabled-text: var(--light-text);
+  --select-option-selected-bg: var(--accent);
+  --select-option-selected-text: #fff;
   --select-color-scheme: light;
   --accent-hover-end: #1d4ed8;
   --button-primary-start: var(--accent);
@@ -1475,6 +1477,7 @@ header h1 {
   border: 1px solid var(--select-border);
   background: var(--select-bg);
   color: var(--select-text);
+  -webkit-text-fill-color: var(--select-text);
   color-scheme: var(--select-color-scheme);
   font-family: var(--font-family);
   font-size: 0.95rem;
@@ -1485,15 +1488,24 @@ header h1 {
 .theme-panel select[size] {
   background: var(--select-option-bg);
   color: var(--select-option-text);
+  -webkit-text-fill-color: var(--select-option-text);
 }
 
 .theme-panel select option {
   background: var(--select-option-bg);
   color: var(--select-option-text);
+  -webkit-text-fill-color: var(--select-option-text);
 }
 
 .theme-panel select option:disabled {
   color: var(--select-option-disabled-text);
+  -webkit-text-fill-color: var(--select-option-disabled-text);
+}
+
+.theme-panel select option:checked {
+  background: var(--select-option-selected-bg);
+  color: var(--select-option-selected-text);
+  -webkit-text-fill-color: var(--select-option-selected-text);
 }
 
 .theme-panel select:focus {

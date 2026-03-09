@@ -19,6 +19,8 @@
   --select-option-bg: #0f1320;
   --select-option-text: #f8fafc;
   --select-option-disabled-text: #9ca3af;
+  --select-option-selected-bg: #b91c1c;
+  --select-option-selected-text: #ffffff;
   --select-color-scheme: dark;
   --code-bg: #1f2937;
   --shadow: rgba(0, 0, 0, 0.5);

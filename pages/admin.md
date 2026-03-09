@@ -2599,6 +2599,7 @@ body {
   border-color: var(--admin-border, var(--border)) !important;
   background: var(--select-bg, var(--light-bg)) !important;
   color: var(--select-text, var(--admin-text, var(--text))) !important;
+  -webkit-text-fill-color: var(--select-text, var(--admin-text, var(--text))) !important;
   color-scheme: var(--select-color-scheme, light);
 }
 
@@ -2606,16 +2607,25 @@ body {
 #admin-panel select optgroup {
   background: var(--select-option-bg, var(--select-bg, var(--light-bg))) !important;
   color: var(--select-option-text, var(--admin-text, var(--text))) !important;
+  -webkit-text-fill-color: var(--select-option-text, var(--admin-text, var(--text))) !important;
 }
 
 #admin-panel select option:disabled {
   color: var(--select-option-disabled-text, var(--admin-muted, var(--light-text))) !important;
+  -webkit-text-fill-color: var(--select-option-disabled-text, var(--admin-muted, var(--light-text))) !important;
+}
+
+#admin-panel select option:checked {
+  background: var(--select-option-selected-bg, var(--admin-accent, var(--accent))) !important;
+  color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
 }
 
 #admin-panel select[multiple],
 #admin-panel select[size] {
   background: var(--select-option-bg, var(--select-bg, var(--light-bg))) !important;
   color: var(--select-option-text, var(--admin-text, var(--text))) !important;
+  -webkit-text-fill-color: var(--select-option-text, var(--admin-text, var(--text))) !important;
 }
 
 #admin-panel input:focus,
