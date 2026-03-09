@@ -19,6 +19,8 @@
   --nav-link-hover: #2a5a46;
   --nav-link-active: #9b5de5;
   --nav-icon: #d6c9a6;
+  --nav-search-icon: #8f4fd1;
+  --nav-search-icon-hover: #c4b5fd;
   --nav-bg: #0a332a;
   --nav-border: #2c5a4b;
   --post-card-bg: #123f34;
@@ -41,4 +43,8 @@
   --admin-accent: #a676f0;
   --admin-accent-strong: #c7a4fb;
   --admin-hover: #2a5a46;
+  --nav-compose-icon: #ffffff;
+  --nav-compose-name: #ffffff;
+  --nav-compose-cycle: #e8dfc7;
+  --nav-compose-cycle-hover-text: #c4b5fd;
 }

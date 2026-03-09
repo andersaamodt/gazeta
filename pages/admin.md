@@ -2890,6 +2890,11 @@ body {
   color: var(--admin-nav-selected-text, var(--admin-text, var(--text))) !important;
 }
 
+#admin-panel .admin-nav-list .admin-nav-item:hover:not([aria-selected="true"]):not([aria-current="page"]) {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  color: var(--admin-text, var(--text)) !important;
+}
+
 #admin-panel .admin-nav-list .admin-nav-item {
   font-weight: 400 !important;
 }
@@ -2903,10 +2908,31 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
   font-weight: 700 !important;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--admin-accent, var(--accent)) 70%, #ffffff 30%) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-count {
   color: inherit !important;
+}
+
+#admin-panel button.post-menu-trigger,
+#admin-panel button.user-menu-trigger {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  box-shadow: none !important;
+}
+
+#admin-panel button.post-menu-trigger:hover,
+#admin-panel button.user-menu-trigger:hover,
+#admin-panel button.post-menu-trigger:focus-visible,
+#admin-panel button.user-menu-trigger:focus-visible {
+  border: 0 !important;
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-border, var(--border)) 80%, transparent) !important;
 }
 </style>
