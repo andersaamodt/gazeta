@@ -20,6 +20,7 @@
     draft: null,
     editMode: false,
     busy: false,
+    autosaveQueued: false,
     saveTimer: null,
     saveStatus: 'saved',
     saveIndicatorVisible: false
@@ -377,9 +378,13 @@
 
   function persistDraft(opts) {
     if (state.busy || !isAdmin()) {
+      if (isAdmin()) {
+        state.autosaveQueued = true;
+      }
       return Promise.resolve(false);
     }
     var options = opts || {};
+    var serializedBeforeSave = JSON.stringify(state.draft || {});
     state.busy = true;
     setSaveStatus('saving');
     var payload = authPayload();
@@ -390,10 +395,15 @@
       csrf_token: payload.csrf_token
     }).then(function (data) {
       state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
-      state.payload.state = data.state || state.payload.state;
       state.payload.draft_exists = true;
-      state.payload.draft_differs = false;
-      state.draft = normalizeDraftState(data.state || state.draft);
+      var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
+      state.payload.draft_differs = localChangedDuringSave;
+      if (!localChangedDuringSave) {
+        state.payload.state = data.state || state.payload.state;
+        state.draft = normalizeDraftState(data.state || state.draft);
+      } else {
+        state.payload.state = normalizeDraftState(state.draft || {});
+      }
       setSaveStatus('saved');
       renderAll();
       return true;
@@ -405,6 +415,10 @@
       return false;
     }).finally(function () {
       state.busy = false;
+      if (state.autosaveQueued) {
+        state.autosaveQueued = false;
+        queueAutosave(500);
+      }
     });
   }
 
