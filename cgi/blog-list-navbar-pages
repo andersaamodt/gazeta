@@ -22,7 +22,7 @@ while IFS= read -r row || [ -n "$row" ]; do
   slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
   page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
   kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
-  path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/pages/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/pages/%s" "$slug"; })
+  path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
 
   title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')

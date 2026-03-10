@@ -51,7 +51,7 @@ blog_nostr_pages_default_json() {
         kind: 30004,
         show_in_nav: true,
         placeholder_title: "Oeuvre",
-        path: "/pages/oeuvre"
+        path: "/oeuvre"
       }
     ]
   }'
@@ -78,6 +78,18 @@ blog_nostr_pages_normalize_json() {
       | if $t == "contact" then "contact"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
+    def norm_path($slug; $v):
+      (($v // "") | tostring
+        | sub("^https?://[^/]+";"")
+        | sub("[?#].*$";"")
+        | sub("\\.html?$";"")
+        | if startswith("/") then . else ("/" + .) end
+        | gsub("/+"; "/")
+        | if . != "/" then sub("/+$"; "") else . end
+      ) as $p
+      | if $slug == "index" then "/"
+        elif ($p | length) == 0 or $p == "/" then ("/" + $slug)
+        else $p end;
 
     ((if type=="object" then .pages else . end) // []) as $raw_pages
     | ($raw_pages | if type=="array" then . else [] end
@@ -110,7 +122,7 @@ blog_nostr_pages_normalize_json() {
                kind: 30004,
                show_in_nav: true,
                placeholder_title: "Oeuvre",
-               path: "/pages/oeuvre"
+               path: "/oeuvre"
              }]
            else
              (($unique
@@ -125,8 +137,8 @@ blog_nostr_pages_normalize_json() {
                .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30004 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
-               | .path = (if .slug == "index" then "/" else ("/pages/" + .slug) end)
-             )))
+               | .path = norm_path(.slug; .path)
+             ))
            end)
       }
   ' 2>/dev/null || blog_nostr_pages_default_json

@@ -1915,7 +1915,32 @@
     if (!safeSlug || safeSlug === 'index') {
       return '/';
     }
-    return '/pages/' + safeSlug;
+    return '/' + safeSlug;
+  }
+
+  function normalizeNostrPagePathInput(raw, slug) {
+    const safeSlug = normalizeNostrPageSlug(slug);
+    if (!safeSlug || safeSlug === 'index') {
+      return '/';
+    }
+    let text = String(raw || '').trim();
+    if (!text) {
+      return pathFromNostrPageSlug(safeSlug);
+    }
+    text = text.replace(/^https?:\/\/[^/]+/i, '');
+    text = text.replace(/[?#].*$/, '');
+    if (!/^\//.test(text)) {
+      text = '/' + text;
+    }
+    text = text.replace(/\/+/g, '/');
+    if (text.length > 1) {
+      text = text.replace(/\/+$/, '');
+    }
+    text = text.replace(/\.html?$/i, '');
+    if (!text || text === '/') {
+      return pathFromNostrPageSlug(safeSlug);
+    }
+    return text;
   }
 
   function slugFromPathInput(raw) {
@@ -2131,6 +2156,7 @@
     }
     const page = state.nostrPages[index] || {};
     const prevSlug = String(page.slug || '');
+    const prevPath = String(page.path || pathFromNostrPageSlug(prevSlug));
     let liveValue = state.nostrPagesEditingSlugValue;
     if (els.nostrPagesList) {
       const input = els.nostrPagesList.querySelector('.nostr-page-slug-input[data-index="' + String(index) + '"]');
@@ -2140,6 +2166,7 @@
       }
     }
     const nextSlug = slugFromPathInput(liveValue);
+    const nextPath = normalizeNostrPagePathInput(liveValue, nextSlug);
     if (!nextSlug) {
       setOutput(els.outputNostrPages, 'A valid slug/path is required.', 'warn');
       focusNostrPageSlugInput(index);
@@ -2154,7 +2181,7 @@
     }
     state.nostrPagesEditingSlugIndex = -1;
     state.nostrPagesEditingSlugValue = '';
-    if (nextSlug === prevSlug) {
+    if (nextSlug === prevSlug && nextPath === prevPath) {
       renderNostrPagesList(state.nostrPages, false);
       return;
     }
@@ -2162,7 +2189,7 @@
     const next = state.nostrPages.slice();
     next[index] = Object.assign({}, next[index], {
       slug: nextSlug,
-      path: pathFromNostrPageSlug(nextSlug)
+      path: nextPath
     });
     state.nostrPages = next;
     renderNostrPagesList(state.nostrPages, false);
