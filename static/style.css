@@ -417,7 +417,7 @@ html.app-hydrating body {
   height: 21px;
   object-fit: contain;
   transform: translateY(-1px);
-  filter: grayscale(1) saturate(0) brightness(0);
+  filter: none;
 }
 
 .nav-compose-icon:hover,
