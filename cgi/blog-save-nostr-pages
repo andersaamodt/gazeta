@@ -27,7 +27,7 @@ if ! printf '%s\n' "$pages_json" | jq -e 'type=="array" or type=="object"' >/dev
   exit 0
 fi
 
-raw_cfg=$(jq -cn --argjson pages "$pages_json" '{pages: (if ($pages|type)=="array" then $pages else ($pages.pages // []))}')
+raw_cfg=$(jq -cn --argjson pages "$pages_json" '{pages: (if ($pages|type)=="array" then $pages else ($pages.pages // []) end)}')
 normalized=$(blog_nostr_pages_normalize_json "$raw_cfg")
 
 contact_count=$(printf '%s\n' "$normalized" | jq -r '[.pages[] | select(.type=="contact")] | length' 2>/dev/null || printf '0')
