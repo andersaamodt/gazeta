@@ -251,7 +251,8 @@ html.app-hydrating body {
   text-decoration: none;
 }
 
-.nav-center a.active {
+.nav-center a.active,
+.nav-username.active {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: var(--nav-active-text);
   font-weight: 700;
@@ -1451,9 +1452,20 @@ html.app-hydrating body {
   cursor: pointer;
 }
 
+.nav-username.active {
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+}
+
 .nav-username:hover,
 .nav-username:focus-visible {
   color: var(--nav-username-hover);
+}
+
+.nav-username.active:hover,
+.nav-username.active:focus-visible {
+  color: var(--nav-active-text);
 }
 
 /* Theme settings panel */

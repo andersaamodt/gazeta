@@ -245,7 +245,8 @@ strong {
   border-bottom: 1px solid rgba(175, 145, 88, 0.32);
 }
 
-.nav-center a.active {
+.nav-center a.active,
+.nav-username.active {
   background-image:
     var(--button-primary-overlay),
     linear-gradient(
@@ -266,12 +267,15 @@ strong {
   font-weight: 500;
 }
 
-.nav-center a.active {
+.nav-center a.active,
+.nav-username.active {
   font-weight: 600;
 }
 
 .nav-center a.active:hover,
-.nav-center a.active:focus-visible {
+.nav-center a.active:focus-visible,
+.nav-username.active:hover,
+.nav-username.active:focus-visible {
   background-image:
     var(--button-primary-overlay),
     linear-gradient(

@@ -784,6 +784,8 @@
       els.userName.removeAttribute('role');
       els.userName.removeAttribute('tabindex');
       els.userName.removeAttribute('aria-label');
+      els.userName.classList.remove('active');
+      els.userName.removeAttribute('aria-current');
     }
 
     if (isLoggedIn) {
@@ -810,6 +812,7 @@
         els.userName.setAttribute('role', 'link');
         els.userName.setAttribute('tabindex', '0');
         els.userName.setAttribute('aria-label', 'Open account settings');
+        updateUserNameActiveState();
       }
       return;
     }
@@ -1505,6 +1508,27 @@
     window.location.href = '/pages/admin.html#account';
   }
 
+  function isAccountAreaPath() {
+    var path = String(window.location.pathname || '').replace(/\/+$/, '') || '/';
+    return path === '/pages/admin.html' ||
+      path === '/pages/admin' ||
+      path === '/admin.html' ||
+      path === '/admin';
+  }
+
+  function updateUserNameActiveState() {
+    if (!els.userName) {
+      return;
+    }
+    var active = isAccountAreaPath();
+    els.userName.classList.toggle('active', active);
+    if (active) {
+      els.userName.setAttribute('aria-current', 'page');
+    } else {
+      els.userName.removeAttribute('aria-current');
+    }
+  }
+
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')
@@ -1587,6 +1611,7 @@
         els.composeLink.removeAttribute('tabindex');
       }
     }
+    updateUserNameActiveState();
   }
 
   function updateThemeSelect() {
