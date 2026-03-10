@@ -2028,9 +2028,9 @@
       const path = String(page.path || ('/pages/' + slug + '.html'));
       const showInNav = !!page.show_in_nav;
       const typeLabel = nostrPageTypeLabel(pageType);
-      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="true">';
+      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
       html += '<div class="nostr-page-leading">';
-      html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
+      html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
       html += '</div>';
       html += '<div class="nostr-page-main">';
       html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span></div>';

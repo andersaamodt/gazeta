@@ -2154,8 +2154,6 @@ body {
   cursor: grabbing;
 }
 
-#admin-panel .nostr-page-leading .nostr-page-drag-handle:hover,
-#admin-panel .nostr-page-leading .nostr-page-drag-handle:focus-visible,
 #admin-panel .nostr-page-actions .unobtrusive-icon-button:hover,
 #admin-panel .nostr-page-actions .unobtrusive-icon-button:focus-visible {
   background: var(--admin-hover, rgba(90, 116, 170, 0.2)) !important;
