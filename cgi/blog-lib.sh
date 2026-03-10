@@ -1896,6 +1896,8 @@ blog_nostr_sign_list_event() {
   set -- nostril --sec "$secret" --kind 30004 --created-at "$created_at" --content "$content" --tag d "$list_slug"
 
   tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-tags.XXXXXX")
+  refs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-a-refs.XXXXXX")
+  : > "$refs_tmp"
   printf '%s\n' "$tags_json" | jq -c '.[] | select(type=="array" and length>=1)' > "$tags_tmp"
   while IFS= read -r tag_line || [ -n "$tag_line" ]; do
     [ -n "$tag_line" ] || continue
@@ -1910,13 +1912,35 @@ blog_nostr_sign_list_event() {
       e3=$(printf '%s\n' "$tag_line" | jq -r '.[3] // ""' 2>/dev/null || printf '')
       e4=$(printf '%s\n' "$tag_line" | jq -r '.[4] // ""' 2>/dev/null || printf '')
       e5=$(printf '%s\n' "$tag_line" | jq -r '.[5] // ""' 2>/dev/null || printf '')
-      set -- "$@" --tagn 6 "entry" "$e1" "$e2" "$e3" "$e4" "$e5"
+      e6=$(printf '%s\n' "$tag_line" | jq -r '.[6] // ""' 2>/dev/null || printf '')
+      set -- "$@" --tagn 7 "entry" "$e1" "$e2" "$e3" "$e4" "$e5" "$e6"
+      if [ -n "$e1" ]; then
+        ref_record=$(blog_nostr_post_record_for_event_id "$e1" 2>/dev/null || printf '')
+        if [ -n "$ref_record" ]; then
+          ref_pubkey=$(printf '%s\n' "$ref_record" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+          ref_d=$(printf '%s\n' "$ref_record" | jq -r '.d // ""' 2>/dev/null || printf '')
+          if [ -n "$ref_pubkey" ] && [ -n "$ref_d" ]; then
+            printf '30023:%s:%s\n' "$ref_pubkey" "$ref_d" >> "$refs_tmp"
+          fi
+        fi
+      fi
       continue
     fi
     value=$(printf '%s\n' "$tag_line" | jq -r '.[1] // ""' 2>/dev/null || printf '')
     set -- "$@" --tag "$key" "$value"
   done < "$tags_tmp"
   rm -f "$tags_tmp"
+
+  if [ -s "$refs_tmp" ]; then
+    refs_sorted_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-a-refs-sorted.XXXXXX")
+    sort -u "$refs_tmp" > "$refs_sorted_tmp"
+    while IFS= read -r aref || [ -n "$aref" ]; do
+      [ -n "$aref" ] || continue
+      set -- "$@" --tag a "$aref"
+    done < "$refs_sorted_tmp"
+    rm -f "$refs_sorted_tmp"
+  fi
+  rm -f "$refs_tmp"
 
   sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-sign.XXXXXX")
   set +e
