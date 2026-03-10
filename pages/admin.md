@@ -2132,6 +2132,10 @@ body {
   margin-right: 0.3rem;
 }
 
+#admin-panel .nostr-page-actions .icon-danger {
+  margin-right: 0.2rem;
+}
+
 #admin-panel .nostr-page-leading .nostr-page-drag-handle,
 #admin-panel .nostr-page-actions .unobtrusive-icon-button {
   min-width: 2rem !important;
