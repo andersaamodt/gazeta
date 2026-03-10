@@ -1889,6 +1889,11 @@ body {
   margin-right: calc(-1 * var(--admin-content-pad-right, 0.72rem));
 }
 
+[data-admin-section="nostr-pages"] {
+  margin-left: calc(-1 * var(--admin-content-pad-left, 0.7rem));
+  margin-right: calc(-1 * var(--admin-content-pad-right, 0.72rem));
+}
+
 [data-admin-section="users"] .row-head {
   padding: 0 0.7rem;
 }
