@@ -2165,6 +2165,11 @@ body {
   padding-right: 0;
 }
 
+[data-admin-section="nostr-pages"] .demo-box.admin-card {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 [data-admin-section="nostr-pages"] .row-head {
   padding-left: 0.7rem;
   padding-right: 0.7rem;
@@ -2709,6 +2714,16 @@ body {
 #admin-panel .nostr-page-row {
   padding-left: 0 !important;
   padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+#admin-panel .nostr-pages-list,
+#admin-panel .nostr-pages-rows {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .user-row:nth-child(odd),
