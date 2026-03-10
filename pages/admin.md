@@ -445,7 +445,7 @@ title: Blog Admin
 <label for="nostr-page-type-select"><strong>Page Type</strong></label>
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="list">List Page (kind 30001)</option>
-<option value="contact">Contact Page (kind 0)</option>
+<option value="contact">Profile Page (kind 0)</option>
 <option value="nip23">NIP-23 Page (kind 30023)</option>
 </select>
 </div>

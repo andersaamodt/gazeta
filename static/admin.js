@@ -1916,6 +1916,17 @@
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
+  function nostrPageTypeLabel(pageType) {
+    const type = String(pageType || '').trim().toLowerCase();
+    if (type === 'contact') {
+      return 'Profile page';
+    }
+    if (type === 'nip23') {
+      return 'NIP-23 page';
+    }
+    return 'List page';
+  }
+
   function captureNostrPageRects() {
     const map = {};
     if (!els.nostrPagesList) {
@@ -2014,13 +2025,13 @@
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
       const slug = String(page.slug || '');
       const pageType = String(page.type || 'list');
-      const kind = Number(page.kind || (pageType === 'contact' ? 0 : (pageType === 'nip23' ? 30023 : 30001)));
       const path = String(page.path || ('/pages/' + slug + '.html'));
       const showInNav = !!page.show_in_nav;
+      const typeLabel = nostrPageTypeLabel(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="true">';
       html += '<div class="nostr-page-main">';
       html += '<div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
-      html += '<div class="nostr-page-meta"><span class="nostr-page-kind">kind ' + String(kind) + '</span> <span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
+      html += '<div class="nostr-page-meta"><span class="nostr-page-kind">' + escapeHtml(typeLabel) + '</span> <span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
@@ -2069,12 +2080,13 @@
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
-    if (pickedType !== 'list' && pickedType !== 'contact' && pickedType !== 'nip23') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use list, contact, or nip23.', 'warn');
+    const normalizedType = (pickedType === 'profile') ? 'contact' : pickedType;
+    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use list, profile, or nip23.', 'warn');
       return false;
     }
-    if (pickedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
-      setOutput(els.outputNostrPages, 'Only one contact page is supported.', 'warn');
+    if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
+      setOutput(els.outputNostrPages, 'Only one profile page is supported.', 'warn');
       return false;
     }
     const slug = normalizeNostrPageSlug(rawSlug);
@@ -2089,8 +2101,8 @@
     const next = state.nostrPages.slice();
     next.push({
       slug: slug,
-      type: pickedType,
-      kind: (pickedType === 'contact' ? 0 : (pickedType === 'nip23' ? 30023 : 30001)),
+      type: normalizedType,
+      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'nip23' ? 30023 : 30001)),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
       path: (slug === 'index' ? '/' : ('/pages/' + slug + '.html'))
@@ -2120,7 +2132,7 @@
     }
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
       if (els.nostrPageTypeSelect.value === 'contact') {
-        els.nostrPageSlugInput.value = 'contact';
+        els.nostrPageSlugInput.value = 'profile';
       } else if (els.nostrPageTypeSelect.value === 'nip23') {
         els.nostrPageSlugInput.value = 'index';
       } else {
@@ -2131,12 +2143,12 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: list, contact, or nip23', 'list');
+      const pickedTypeRaw = window.prompt('Page type: list, profile, or nip23', 'list');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: contact)', fallbackType === 'contact' ? 'contact' : (fallbackType === 'nip23' ? 'index' : ''));
+      const fallbackSlug = window.prompt('Page slug/path (example: profile)', (fallbackType === 'contact' || fallbackType === 'profile') ? 'profile' : (fallbackType === 'nip23' ? 'index' : ''));
       if (fallbackSlug === null) {
         return;
       }
@@ -2981,6 +2993,16 @@
         }
       });
     }
+    Array.from(document.querySelectorAll('dialog')).forEach(function (dialogEl) {
+      if (!(dialogEl instanceof HTMLDialogElement)) {
+        return;
+      }
+      dialogEl.addEventListener('click', function (event) {
+        if (event.target === dialogEl) {
+          dialogEl.close('cancel');
+        }
+      });
+    });
     if (els.nostrPageCreateForm) {
       els.nostrPageCreateForm.addEventListener('submit', function (event) {
         event.preventDefault();

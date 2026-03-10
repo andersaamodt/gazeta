@@ -130,7 +130,7 @@
       state.draft = normalizeDraftState(state.draft);
       return state.draft;
     }
-    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Contact', description: '', rows: [] });
+    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Profile', description: '', rows: [] });
   }
 
   function qualifierLabel(qualifier) {
@@ -217,7 +217,7 @@
   function renderHead() {
     var s = getRenderState();
     if (els.title) {
-      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Contact') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
     }
     if (els.description) {
       var text = String(s.description || '').trim();
@@ -279,7 +279,7 @@
 
   function renderReadOnly(rows) {
     if (!rows.length) {
-      return '<p class="placeholder">No contact entries yet.</p>';
+      return '<p class="placeholder">No profile entries yet.</p>';
     }
     var html = '<ul class="list-entries">';
     rows.forEach(function (row) {
@@ -306,7 +306,7 @@
     html += '<h3 class="nostr-page-extras-heading">Intro and outro</h3>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>Intro (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-contact-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish intro to Nostr</span></label></span></span>';
-    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional intro shown before contact entries">' + escapeHtml(draft.description || '') + '</textarea>';
+    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional intro shown before profile entries">' + escapeHtml(draft.description || '') + '</textarea>';
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>Outro</span>';
@@ -324,11 +324,11 @@
     html += '<div class="contact-inline-meta">';
     html += '<label><span>Title</span><input type="text" id="contact-title-input" value="' + escapeHtml(draft.title || '') + '"></label>';
     html += '</div>';
-    html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add contact row">+</button></div>';
+    html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
     html += '</div>';
 
     if (!rows.length) {
-      html += '<div class="list-inline-empty">No contact rows yet.</div>';
+      html += '<div class="list-inline-empty">No profile rows yet.</div>';
       return html;
     }
 
