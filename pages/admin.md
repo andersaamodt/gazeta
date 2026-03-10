@@ -2908,7 +2908,15 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
   font-weight: 700 !important;
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--admin-accent, var(--accent)) 70%, #ffffff 30%) !important;
+  border-left: 0 !important;
+  border-inline-start: 0 !important;
+  box-shadow: none !important;
+}
+
+#admin-panel .admin-nav-list .admin-nav-item:focus,
+#admin-panel .admin-nav-list .admin-nav-item:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
