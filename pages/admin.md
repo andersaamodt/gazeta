@@ -2761,9 +2761,9 @@ body {
 
 #admin-panel .nostr-pages-list,
 #admin-panel .nostr-pages-rows {
-  margin-left: calc(-1 * var(--admin-content-pad-left, 0px)) !important;
-  margin-right: calc(-1 * var(--admin-content-pad-right, 0px)) !important;
-  width: calc(100% + var(--admin-content-pad-left, 0px) + var(--admin-content-pad-right, 0px)) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .user-row:nth-child(odd),
