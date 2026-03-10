@@ -51,7 +51,7 @@ blog_nostr_pages_default_json() {
         kind: 30004,
         show_in_nav: true,
         placeholder_title: "Oeuvre",
-        path: "/pages/oeuvre.html"
+        path: "/pages/oeuvre"
       }
     ]
   }'
@@ -110,7 +110,7 @@ blog_nostr_pages_normalize_json() {
                kind: 30004,
                show_in_nav: true,
                placeholder_title: "Oeuvre",
-               path: "/pages/oeuvre.html"
+               path: "/pages/oeuvre"
              }]
            else
              (($unique
@@ -125,7 +125,7 @@ blog_nostr_pages_normalize_json() {
                .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30004 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
-               | .path = (if (.path | length) > 0 then .path else (if .slug == "index" then "/" else ("/pages/" + .slug + ".html") end) end)
+               | .path = (if .slug == "index" then "/" else ("/pages/" + .slug) end)
              )))
            end)
       }

@@ -1915,7 +1915,7 @@
     if (!safeSlug || safeSlug === 'index') {
       return '/';
     }
-    return '/pages/' + safeSlug + '.html';
+    return '/pages/' + safeSlug;
   }
 
   function slugFromPathInput(raw) {
@@ -2225,7 +2225,7 @@
       kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'nip23' ? 30023 : 30004)),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
-      path: (slug === 'index' ? '/' : ('/pages/' + slug + '.html'))
+      path: pathFromNostrPageSlug(slug)
     });
     state.nostrPages = next;
     saveNostrPagesConfig().catch(function (err) {
