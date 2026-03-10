@@ -89,7 +89,7 @@ case "$page_type" in
     if [ -z "$event_json" ]; then
       reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
       if [ -z "$reason" ]; then
-        reason="Could not sign contact page event."
+        reason="Could not sign user metadata page event."
       fi
       blog_json_error "$reason" "nostr_publish_failed"
       exit 0
@@ -123,7 +123,7 @@ case "$page_type" in
     if [ -z "$event_json" ]; then
       reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
       if [ -z "$reason" ]; then
-        reason="Could not sign NIP-23 page event."
+        reason="Could not sign long-form content page event."
       fi
       blog_json_error "$reason" "nostr_publish_failed"
       exit 0

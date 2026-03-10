@@ -24,7 +24,7 @@ find "$blog_lists_dir" -maxdepth 1 -type f -name '*.json' 2>/dev/null | while IF
   [ -n "$slug" ] && printf '%s\n' "$slug"
 done >> "$slugs_tmp"
 
-find "$blog_nostr_events_dir" -type f -path '*/30001/*.json' 2>/dev/null | while IFS= read -r file; do
+find "$blog_nostr_events_dir" -type f -path '*/30004/*.json' 2>/dev/null | while IFS= read -r file; do
   [ -f "$file" ] || continue
   jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // empty' "$file" 2>/dev/null || true
 done | awk 'NF' | while IFS= read -r slug || [ -n "$slug" ]; do

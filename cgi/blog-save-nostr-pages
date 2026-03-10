@@ -36,7 +36,7 @@ case "$contact_count" in
   *) ;;
 esac
 if [ "$contact_count" -gt 1 ]; then
-  blog_json_error "Only one contact page is supported (kind 0 is replaceable by pubkey)" "contact_page_limit"
+  blog_json_error "Only one user metadata page is supported (kind 0 is replaceable by pubkey)" "contact_page_limit"
   exit 0
 fi
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Publish list draft to Nostr kind:30001 (parameterized replaceable).
+# Publish list draft to Nostr kind:30004 (parameterized replaceable).
 
 set -eu
 

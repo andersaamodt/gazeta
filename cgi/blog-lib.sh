@@ -1893,7 +1893,7 @@ blog_nostr_sign_list_event() {
   fi
 
   created_at=$(blog_now_epoch)
-  set -- nostril --sec "$secret" --kind 30001 --created-at "$created_at" --content "$content" --tag d "$list_slug"
+  set -- nostril --sec "$secret" --kind 30004 --created-at "$created_at" --content "$content" --tag d "$list_slug"
 
   tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-tags.XXXXXX")
   printf '%s\n' "$tags_json" | jq -c '.[] | select(type=="array" and length>=1)' > "$tags_tmp"
@@ -2164,7 +2164,7 @@ blog_nostr_list_latest_event_json() {
   [ -d "$blog_nostr_events_dir" ] || return 1
 
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-events.XXXXXX")
-  find "$blog_nostr_events_dir" -type f -path '*/30001/*.json' 2>/dev/null | while IFS= read -r file; do
+  find "$blog_nostr_events_dir" -type f -path '*/30004/*.json' 2>/dev/null | while IFS= read -r file; do
     [ -f "$file" ] || continue
     jq -c '.' "$file" 2>/dev/null || true
   done > "$tmp"
@@ -2175,7 +2175,7 @@ blog_nostr_list_latest_event_json() {
 
   out=$(jq -c --arg slug "$slug" '
     [ .[]
-      | select(type=="object" and (.kind|type)=="number" and .kind==30001 and (.tags|type)=="array")
+      | select(type=="object" and (.kind|type)=="number" and .kind==30004 and (.tags|type)=="array")
       | . as $ev
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | select($d == $slug)

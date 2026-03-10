@@ -1919,12 +1919,12 @@
   function nostrPageTypeLabel(pageType) {
     const type = String(pageType || '').trim().toLowerCase();
     if (type === 'contact') {
-      return 'Profile page';
+      return 'User Metadata';
     }
     if (type === 'nip23') {
-      return 'NIP-23 page';
+      return 'Long-form Content';
     }
-    return 'List page';
+    return 'List Page';
   }
 
   function captureNostrPageRects() {
@@ -2080,9 +2080,9 @@
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
-    const normalizedType = (pickedType === 'profile') ? 'contact' : pickedType;
+    const normalizedType = (pickedType === 'profile' || pickedType === 'metadata') ? 'contact' : ((pickedType === 'long-form') ? 'nip23' : pickedType);
     if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use list, profile, or nip23.', 'warn');
+      setOutput(els.outputNostrPages, 'Invalid page type. Use list, metadata, or long-form.', 'warn');
       return false;
     }
     if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -2102,7 +2102,7 @@
     next.push({
       slug: slug,
       type: normalizedType,
-      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'nip23' ? 30023 : 30001)),
+      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'nip23' ? 30023 : 30004)),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
       path: (slug === 'index' ? '/' : ('/pages/' + slug + '.html'))
@@ -2143,12 +2143,12 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: list, profile, or nip23', 'list');
+      const pickedTypeRaw = window.prompt('Page type: list, metadata, or long-form', 'list');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: profile)', (fallbackType === 'contact' || fallbackType === 'profile') ? 'profile' : (fallbackType === 'nip23' ? 'index' : ''));
+      const fallbackSlug = window.prompt('Page slug/path (example: profile)', (fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : (fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : '');
       if (fallbackSlug === null) {
         return;
       }
