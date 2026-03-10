@@ -2014,7 +2014,7 @@ body {
   border: 0;
   border-radius: 0;
   background: #fff;
-  padding: 0.56rem 0.7rem;
+  padding: 0.56rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2030,8 +2030,17 @@ body {
   border-top: 1px solid #d2def3;
 }
 
+.nostr-page-leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  flex: 0 0 2rem;
+}
+
 .nostr-page-main {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .nostr-page-title a {
@@ -2058,6 +2067,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   flex: 0 0 auto;
+  margin-right: 0.05rem;
 }
 
 .nostr-page-row.is-dragging {
@@ -2088,8 +2098,41 @@ body {
   transform: none;
 }
 
+#admin-panel .nostr-page-leading button:hover {
+  transform: none;
+}
+
 #admin-panel .nostr-page-actions .nostr-page-nav-check {
   margin-right: 0.3rem;
+}
+
+#admin-panel .nostr-page-leading .nostr-page-drag-handle,
+#admin-panel .nostr-page-actions .unobtrusive-icon-button {
+  min-width: 2rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+#admin-panel .nostr-page-leading .nostr-page-drag-handle {
+  cursor: grab;
+  letter-spacing: 0.08em;
+}
+
+#admin-panel .nostr-page-leading .nostr-page-drag-handle:active {
+  cursor: grabbing;
+}
+
+#admin-panel .nostr-page-leading .nostr-page-drag-handle:hover,
+#admin-panel .nostr-page-leading .nostr-page-drag-handle:focus-visible,
+#admin-panel .nostr-page-actions .unobtrusive-icon-button:hover,
+#admin-panel .nostr-page-actions .unobtrusive-icon-button:focus-visible {
+  background: var(--admin-hover, rgba(90, 116, 170, 0.2)) !important;
 }
 
 [data-admin-section="nostr-pages"] .admin-card {
@@ -2626,8 +2669,8 @@ body {
 }
 
 #admin-panel .nostr-page-row {
-  padding-left: 0.7rem !important;
-  padding-right: 0.7rem !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .user-row:nth-child(odd),
