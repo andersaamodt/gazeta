@@ -206,6 +206,12 @@ header h1 {
 }
 
 /* Site Navigation */
+.app-hydrating .site-nav,
+.app-hydrating main,
+.app-hydrating #main-content {
+  visibility: hidden;
+}
+
 .site-nav {
   display: flex;
   justify-content: space-between;

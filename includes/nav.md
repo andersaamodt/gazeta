@@ -1,11 +1,52 @@
+<script>
+(function () {
+  var docEl = document.documentElement;
+  if (docEl) {
+    docEl.classList.add('app-hydrating');
+  }
+  var navReady = false;
+  var pageReady = false;
+  var revealed = false;
+
+  function reveal() {
+    if (revealed) {
+      return;
+    }
+    revealed = true;
+    if (docEl) {
+      docEl.classList.remove('app-hydrating');
+    }
+  }
+
+  function maybeReveal() {
+    if (navReady && pageReady) {
+      reveal();
+    }
+  }
+
+  window.__wizardryHydration = {
+    markNavReady: function () {
+      navReady = true;
+      maybeReveal();
+    },
+    markPageReady: function () {
+      pageReady = true;
+      maybeReveal();
+    },
+    forceReveal: reveal
+  };
+
+  setTimeout(reveal, 2200);
+})();
+</script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
 <div class="nav-center">
 <a href="/pages/index.html" data-page="index">Home</a>
 <a href="/pages/about.html" data-page="about">About</a>
-<a href="/pages/oeuvre.html" data-page="oeuvre">Oeuvre</a>
 <a href="/pages/archive.html" data-page="archive">Archive</a>
 <a href="/pages/tags.html" data-page="tags">Categories</a>
+<a href="/pages/oeuvre.html" data-page="oeuvre">Oeuvre</a>
 </div>
 <div class="nav-right">
 <form class="nav-search" method="get" action="/cgi/blog-search">
@@ -48,43 +89,20 @@
 </nav>
 <script>
 (function () {
-  try {
-    var token = String(localStorage.getItem('session_token') || '').trim();
-    var hasToken = !!token && token !== 'null' && token !== 'undefined';
-    var cachedName = localStorage.getItem('last_auth_username') || '';
-    var loginSplit = document.getElementById('nav-login-split');
-    var userMenu = document.getElementById('nav-user-menu');
-    var userName = document.getElementById('nav-user-name');
-
-    // Ensure mutually exclusive nav auth state before showing either mode.
-    if (loginSplit) {
-      loginSplit.style.display = 'none';
-    }
-    if (userMenu) {
-      userMenu.style.display = 'none';
-    }
-    if (userName) {
-      userName.style.display = 'none';
-      userName.textContent = '';
-    }
-
-    if (hasToken) {
-      if (userMenu) {
-        userMenu.style.display = 'inline-flex';
-      }
-      if (userName) {
-        userName.style.display = 'inline-block';
-        userName.textContent = cachedName || 'signed-in';
-      }
+  document.addEventListener('DOMContentLoaded', function () {
+    var hasDynamicNostrPage = !!(
+      document.getElementById('nip23-page-root') ||
+      document.getElementById('oeuvre-root') ||
+      document.getElementById('contact-page-root')
+    );
+    if (hasDynamicNostrPage) {
       return;
     }
-
-    if (loginSplit) {
-      loginSplit.style.display = 'inline-flex';
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
     }
-  } catch (_err) {
-    // Ignore storage access issues and let nav-auth.js reconcile state.
-  }
+  });
 })();
 </script>
 

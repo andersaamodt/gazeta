@@ -87,6 +87,13 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function markHydrationPageReady() {
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
+  }
+
   function apiPost(url, payload) {
     var body = new URLSearchParams(payload || {});
     return fetch(url, {
@@ -652,6 +659,8 @@
       if (els.content) {
         els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load page') + '</p>';
       }
+    }).finally(function () {
+      markHydrationPageReady();
     });
   }
 

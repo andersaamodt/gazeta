@@ -52,6 +52,13 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function markHydrationPageReady() {
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
+  }
+
   function authSignature() {
     var auth = getAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
@@ -1793,6 +1800,8 @@
       if (els.content) {
         els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load list page') + '</p>';
       }
+    } finally {
+      markHydrationPageReady();
     }
   }
 
