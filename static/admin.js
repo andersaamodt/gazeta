@@ -3254,7 +3254,7 @@
           cancelNostrPageSlugEdit();
           return;
         }
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' || event.key === 'Return' || event.keyCode === 13) {
           event.preventDefault();
           commitNostrPageSlugEdit(idx).catch(function (err) {
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
