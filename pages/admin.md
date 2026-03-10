@@ -2566,10 +2566,16 @@ body {
 }
 
 #admin-panel .preview-box,
-#admin-panel .output {
+#admin-panel .output:not(:empty) {
   border-color: var(--admin-border, var(--border)) !important;
   background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single))) !important;
   color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel .output:empty {
+  display: none !important;
+  min-height: 0 !important;
+  margin-top: 0 !important;
 }
 
 .user-row,
