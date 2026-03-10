@@ -2090,7 +2090,7 @@ body {
 }
 
 .nostr-page-path {
-  color: #606770;
+  color: #7a808c;
   display: inline-block;
   font-family: "Courier New", Courier, "Liberation Mono", monospace;
   letter-spacing: 0.01em;
