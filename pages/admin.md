@@ -2062,12 +2062,10 @@ body {
 }
 
 .nostr-page-meta {
-  margin-top: 0.14rem;
+  margin-top: 0.22rem;
   color: #606770;
   font-size: 0.84rem;
-  display: inline-flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  display: block;
 }
 
 .nostr-page-kind-badge {
@@ -2085,6 +2083,9 @@ body {
 
 .nostr-page-path {
   color: #606770;
+  display: block;
+  font-family: "Courier New", Courier, "Liberation Mono", monospace;
+  letter-spacing: 0.01em;
 }
 
 .nostr-page-actions {
