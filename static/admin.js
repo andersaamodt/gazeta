@@ -3297,6 +3297,11 @@
           event.dataTransfer.effectAllowed = 'move';
           try {
             event.dataTransfer.setData('text/plain', dragSlug);
+            // Hide the default ghost preview of the drag handle itself.
+            const dragImage = document.createElement('canvas');
+            dragImage.width = 1;
+            dragImage.height = 1;
+            event.dataTransfer.setDragImage(dragImage, 0, 0);
           } catch (_err) {
             // Ignore.
           }
