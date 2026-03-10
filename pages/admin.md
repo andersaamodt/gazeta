@@ -705,6 +705,9 @@ body {
 
 .admin-section.is-active {
   display: block;
+}
+
+.admin-section.is-active.is-switch-animating {
   animation: admin-fade-in 0.2s ease;
 }
 

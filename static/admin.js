@@ -130,6 +130,13 @@
   const LOCAL_DRIP_LEASE_MS = 45000;
   const LOCAL_DRIP_TICK_MS = 15000;
 
+  function markHydrationPageReady() {
+    const gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
+  }
+
   function setAuthMessage(message, type) {
     if (!els.authStatus) {
       return;
@@ -182,6 +189,11 @@
       const active = section.getAttribute('data-admin-section') === sectionName;
       section.classList.toggle('is-active', active);
       section.hidden = !active;
+      section.classList.remove('is-switch-animating');
+      if (active && updateHash) {
+        void section.offsetWidth;
+        section.classList.add('is-switch-animating');
+      }
     });
     if (updateHash) {
       if (window.location.hash !== '#' + sectionName) {
@@ -1149,6 +1161,7 @@
     if (!state.sessionToken) {
       stopLocalDripWorker();
       setAuthMessage('Not logged in. Use the Login button in the top navigation to sign in with Nostr.', 'error');
+      markHydrationPageReady();
       return;
     }
 
@@ -1159,6 +1172,7 @@
         localStorage.removeItem('csrf_token');
         stopLocalDripWorker();
         setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'error');
+        markHydrationPageReady();
         return;
       }
 
@@ -1189,6 +1203,7 @@
         setAccountOnlyMode(true);
         activateSection('account', true);
         els.adminPanel.style.display = 'grid';
+        markHydrationPageReady();
         return;
       }
 
@@ -1200,9 +1215,11 @@
       await Promise.all([loadConfig(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
       els.adminPanel.style.display = 'grid';
       renderPreview();
+      markHydrationPageReady();
     } catch (err) {
       stopLocalDripWorker();
       setAuthMessage('Authentication check failed: ' + err.message, 'error');
+      markHydrationPageReady();
     }
   }
 

@@ -36,9 +36,14 @@
     forceReveal: reveal
   };
 
-  setTimeout(reveal, 2200);
+  setTimeout(reveal, 6000);
 })();
 </script>
+<style>
+html.app-hydrating body {
+  visibility: hidden;
+}
+</style>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
 <div class="nav-center">
@@ -93,7 +98,8 @@
     var hasDynamicNostrPage = !!(
       document.getElementById('nip23-page-root') ||
       document.getElementById('oeuvre-root') ||
-      document.getElementById('contact-page-root')
+      document.getElementById('contact-page-root') ||
+      document.getElementById('admin-panel')
     );
     if (hasDynamicNostrPage) {
       return;

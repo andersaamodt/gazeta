@@ -206,9 +206,7 @@ header h1 {
 }
 
 /* Site Navigation */
-.app-hydrating .site-nav,
-.app-hydrating main,
-.app-hydrating #main-content {
+html.app-hydrating body {
   visibility: hidden;
 }
 
