@@ -640,8 +640,8 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item.admin-nav-divider-after::after {
   content: "";
   position: absolute;
-  left: 0.82rem;
-  right: 0.82rem;
+  left: 0;
+  right: 0;
   bottom: -1px;
   border-bottom: 1px solid #d0dbf2;
   pointer-events: none;
