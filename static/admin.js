@@ -2033,8 +2033,8 @@
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
       html += '</div>';
       html += '<div class="nostr-page-main">';
-      html += '<div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
-      html += '<div class="nostr-page-meta"><span class="nostr-page-kind">' + escapeHtml(typeLabel) + '</span> <span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
+      html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span></div>';
+      html += '<div class="nostr-page-meta"><span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';

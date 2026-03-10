@@ -2043,6 +2043,14 @@ body {
   flex: 1 1 auto;
 }
 
+.nostr-page-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
 .nostr-page-title a {
   color: #163161;
   text-decoration: none;
@@ -2055,11 +2063,28 @@ body {
 
 .nostr-page-meta {
   margin-top: 0.14rem;
-  color: #5c6f91;
+  color: #606770;
   font-size: 0.84rem;
   display: inline-flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.nostr-page-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border, #c7d6f3);
+  background: var(--admin-surface-alt, #f5f8ff);
+  color: var(--admin-text, #3b4a63);
+  font-size: 0.75rem;
+  line-height: 1.1;
+  padding: 0.15rem 0.48rem;
+  white-space: nowrap;
+}
+
+.nostr-page-path {
+  color: #606770;
 }
 
 .nostr-page-actions {
