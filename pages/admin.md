@@ -2130,6 +2130,15 @@ body {
   font-family: "Courier New", Courier, "Liberation Mono", monospace;
 }
 
+#admin-panel .nostr-page-path-ok {
+  min-width: 0;
+  width: auto;
+  height: 2rem;
+  padding: 0.2rem 0.56rem;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
 .nostr-page-actions {
   display: inline-flex;
   align-items: center;

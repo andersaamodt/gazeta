@@ -2069,6 +2069,7 @@
       html += '<div class="nostr-page-meta">';
       if (isEditingSlug) {
         html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
+        html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';
       } else {
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
         html += '<button type="button" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Edit page path">Edit</button>';
@@ -2130,7 +2131,15 @@
     }
     const page = state.nostrPages[index] || {};
     const prevSlug = String(page.slug || '');
-    const nextSlug = slugFromPathInput(state.nostrPagesEditingSlugValue);
+    let liveValue = state.nostrPagesEditingSlugValue;
+    if (els.nostrPagesList) {
+      const input = els.nostrPagesList.querySelector('.nostr-page-slug-input[data-index="' + String(index) + '"]');
+      if (input instanceof HTMLInputElement) {
+        liveValue = input.value;
+        state.nostrPagesEditingSlugValue = input.value;
+      }
+    }
+    const nextSlug = slugFromPathInput(liveValue);
     if (!nextSlug) {
       setOutput(els.outputNostrPages, 'A valid slug/path is required.', 'warn');
       focusNostrPageSlugInput(index);
@@ -3202,6 +3211,12 @@
         }
         if (action === 'edit-slug') {
           beginNostrPageSlugEdit(idx);
+          return;
+        }
+        if (action === 'save-slug') {
+          commitNostrPageSlugEdit(idx).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
         }
       });
 
