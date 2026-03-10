@@ -2149,6 +2149,19 @@ body {
   color: var(--nav-active-text, #fff) !important;
 }
 
+#admin-panel #btn-create-nostr-page:not(:disabled) {
+  background: var(--nav-active-bg, var(--admin-accent, var(--accent))) !important;
+  border-color: var(--nav-active-border, var(--admin-accent-strong, var(--accent-dark))) !important;
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#admin-panel #btn-create-nostr-page:not(:disabled):hover,
+#admin-panel #btn-create-nostr-page:not(:disabled):focus-visible {
+  background: var(--nav-active-bg, var(--admin-accent-strong, var(--accent-dark))) !important;
+  border-color: var(--nav-active-border, var(--admin-accent-strong, var(--accent-dark))) !important;
+  color: var(--nav-active-text, #fff) !important;
+}
+
 #output-nostr-pages {
   display: none !important;
 }
