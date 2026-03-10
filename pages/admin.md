@@ -364,7 +364,7 @@ title: Blog Admin
 <div class="row-head">
 <div>
 <h3>Nostr Pages</h3>
-<p class="muted">Create and manage locally-routed pages backed by Nostr events. Titles come from event content.</p>
+<p class="muted">Manage local pages backed by Nostr. Pages are published to Nostr only when you press Publish.</p>
 </div>
 <div class="row-actions">
 <button id="btn-create-nostr-page" type="button" class="primary">Create New Nostr Page</button>
@@ -1134,7 +1134,7 @@ body {
   padding-right: 2.2rem;
 }
 
-#admin-panel button.unobtrusive-icon-button {
+#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button {
   position: absolute;
   right: 0.34rem;
   top: 50%;
@@ -1150,18 +1150,18 @@ body {
   box-shadow: none;
 }
 
-#admin-panel button.unobtrusive-icon-button:hover {
+#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:hover {
   background: rgba(90, 116, 170, 0.2);
   color: #2f497a;
 }
 
-#admin-panel button.unobtrusive-icon-button:focus-visible {
+#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:focus-visible {
   outline: none;
   background: rgba(90, 116, 170, 0.2);
   box-shadow: 0 0 0 2px rgba(90, 116, 170, 0.22);
 }
 
-#admin-panel button.unobtrusive-icon-button svg {
+#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button svg {
   width: 0.86rem;
   height: 0.86rem;
 }
@@ -1997,24 +1997,24 @@ body {
 
 .nostr-pages-list {
   display: block;
-  border-top: 1px solid #d2def3;
-  border-bottom: 1px solid #d2def3;
-  border-left: 0;
-  border-right: 0;
+  border: 0;
   border-radius: 0;
   overflow: visible;
   background: transparent;
+  margin: 0;
 }
 
 .nostr-pages-rows {
   display: block;
+  margin: 0;
+  padding: 0;
 }
 
 .nostr-page-row {
   border: 0;
   border-radius: 0;
   background: #fff;
-  padding: 0.48rem 0;
+  padding: 0.56rem 0.7rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2024,6 +2024,10 @@ body {
 
 .nostr-page-row:nth-child(odd) {
   background: #f5f8ff;
+}
+
+.nostr-page-row + .nostr-page-row {
+  border-top: 1px solid #d2def3;
 }
 
 .nostr-page-main {
@@ -2076,10 +2080,34 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: static;
+  transform: none;
+}
+
+#admin-panel .nostr-page-actions button:hover {
+  transform: none;
 }
 
 #admin-panel .nostr-page-actions .nostr-page-nav-check {
   margin-right: 0.3rem;
+}
+
+[data-admin-section="nostr-pages"] .admin-card {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-admin-section="nostr-pages"] .row-head {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
+#admin-panel #btn-create-nostr-page {
+  color: var(--nav-active-text, #fff) !important;
+}
+
+#output-nostr-pages {
+  display: none !important;
 }
 
 .users-list {
@@ -2589,8 +2617,8 @@ body {
 }
 
 #admin-panel .nostr-page-row {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  padding-left: 0.7rem !important;
+  padding-right: 0.7rem !important;
 }
 
 .user-row:nth-child(odd),

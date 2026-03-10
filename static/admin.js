@@ -2036,7 +2036,7 @@
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
-      html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page" title="Remove local page reference">✕</button>';
+      html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page from site" title="Remove from this site (keeps Nostr event)">X</button>';
       html += '</div>';
       html += '</div>';
     });
