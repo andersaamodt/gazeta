@@ -94,6 +94,43 @@ html.app-hydrating body {
 </nav>
 <script>
 (function () {
+  try {
+    var token = String(localStorage.getItem('session_token') || '').trim();
+    var hasToken = !!token && token !== 'null' && token !== 'undefined';
+    var cachedPlayerName = String(localStorage.getItem('last_auth_player_name') || '').trim();
+    var loginSplit = document.getElementById('nav-login-split');
+    var userMenu = document.getElementById('nav-user-menu');
+    var userName = document.getElementById('nav-user-name');
+
+    if (loginSplit) {
+      loginSplit.style.display = 'none';
+    }
+    if (userMenu) {
+      userMenu.style.display = 'none';
+    }
+    if (userName) {
+      userName.style.display = 'none';
+      userName.textContent = '';
+    }
+
+    if (hasToken) {
+      if (userMenu) {
+        userMenu.style.display = 'inline-flex';
+      }
+      if (userName) {
+        userName.style.display = 'inline-block';
+        userName.textContent = cachedPlayerName || 'signed-in';
+        userName.setAttribute('role', 'link');
+        userName.setAttribute('tabindex', '0');
+        userName.setAttribute('aria-label', 'Open account settings');
+      }
+    } else if (loginSplit) {
+      loginSplit.style.display = 'inline-flex';
+    }
+  } catch (_err) {
+    // Ignore storage failures and let nav-auth.js reconcile state.
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var hasDynamicNostrPage = !!(
       document.getElementById('nip23-page-root') ||

@@ -567,6 +567,9 @@
   function rememberAuth(data) {
     localStorage.setItem('session_token', data.session_token || '');
     localStorage.setItem('csrf_token', data.csrf_token || '');
+    if (data.player_name) {
+      localStorage.setItem('last_auth_player_name', data.player_name);
+    }
     if (data.username) {
       localStorage.setItem('last_auth_username', data.username);
     }
@@ -864,6 +867,9 @@
         if (data.nostr_pubkey) {
           localStorage.setItem('last_auth_pubkey', data.nostr_pubkey);
         }
+        if (data.player_name) {
+          localStorage.setItem('last_auth_player_name', data.player_name);
+        }
         applyLoggedInUi(true, !!data.is_admin, data.player_name || data.username || '');
         updateLogoutOtherSessionsUi(data.other_sessions_count || 0);
         return true;
@@ -897,7 +903,7 @@
 
   function finalizeLoginUiAfterSuccess(finishData) {
     var data = finishData && typeof finishData === 'object' ? finishData : {};
-    var optimisticName = data.player_name || data.username || localStorage.getItem('last_auth_username') || 'signed-in';
+    var optimisticName = data.player_name || localStorage.getItem('last_auth_player_name') || data.username || localStorage.getItem('last_auth_username') || 'signed-in';
     applyLoggedInUi(true, !!data.is_admin, optimisticName);
     return verifySessionWithRetry(6, 180).then(function (ok) {
       if (!ok) {
@@ -1990,12 +1996,12 @@
   function bootstrap() {
     renderComposeIcon(readComposeIconIndex());
     var navPromise = loadNavbarNostrPages();
-    var authPromise = checkAuth();
-    var themePromise = loadTheme();
-    Promise.allSettled([navPromise, authPromise, themePromise]).finally(function () {
+    Promise.resolve(navPromise).finally(function () {
       highlightCurrentPage();
       markHydrationNavReady();
     });
+    checkAuth();
+    loadTheme();
     window.addEventListener('hashchange', highlightCurrentPage);
     bindThemeSelect();
     bindUiEvents();
