@@ -2044,7 +2044,7 @@ body {
 }
 
 .nostr-page-title-row {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
@@ -2065,8 +2065,8 @@ body {
   margin-top: 0.22rem;
   color: #606770;
   font-size: 0.84rem;
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: baseline;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
