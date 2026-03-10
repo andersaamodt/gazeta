@@ -2609,6 +2609,15 @@ body {
   margin-top: 0 !important;
 }
 
+#admin-panel [id^="output-"].output {
+  display: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
 .user-row,
 .draft-row,
 .post-row,
