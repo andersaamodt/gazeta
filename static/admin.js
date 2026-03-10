@@ -129,6 +129,7 @@
   const LOCAL_DRIP_ENABLED_KEY = 'blog_local_drip_enabled_v1';
   const LOCAL_DRIP_LEASE_MS = 45000;
   const LOCAL_DRIP_TICK_MS = 15000;
+  let themeSwapToken = 0;
 
   function markHydrationPageReady() {
     const gate = window.__wizardryHydration;
@@ -547,7 +548,35 @@
     }, 90);
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      themeLink.href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css';
+      const absoluteHref = new URL(href, window.location.href).href;
+      const currentHref = String(themeLink.href || '');
+      const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
+      if (!(currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref)) {
+        const token = ++themeSwapToken;
+        const preloader = document.createElement('link');
+        preloader.rel = 'stylesheet';
+        preloader.href = href;
+        preloader.media = 'not all';
+        preloader.setAttribute('data-theme-preload', 'true');
+        const commit = function () {
+          if (token !== themeSwapToken) {
+            if (preloader.parentNode) {
+              preloader.parentNode.removeChild(preloader);
+            }
+            return;
+          }
+          themeLink.href = href;
+          themeLink.setAttribute('data-theme-href', href);
+          if (preloader.parentNode) {
+            preloader.parentNode.removeChild(preloader);
+          }
+        };
+        preloader.addEventListener('load', commit, { once: true });
+        preloader.addEventListener('error', commit, { once: true });
+        (themeLink.parentNode || document.head || document.documentElement).appendChild(preloader);
+        setTimeout(commit, 1500);
+      }
     }
     const navThemeSelect = document.getElementById('theme-select');
     if (navThemeSelect && navThemeSelect.value !== pickedTheme) {

@@ -85,6 +85,7 @@
 
   var authModalHideTimer = null;
   var themeSwitchVisualTimer = null;
+  var themeSwapToken = 0;
 
   function nowEpoch() {
     return Math.floor(Date.now() / 1000);
@@ -1612,12 +1613,61 @@
     }, 90);
   }
 
-  function updateThemeStylesheet(theme) {
-    pulseThemeSwitchVisualState();
+  function swapThemeStylesheet(href) {
     var themeLink = document.getElementById('theme-stylesheet');
-    if (themeLink) {
-      themeLink.href = '/static/themes/' + theme + '.css';
+    if (!themeLink || !href) {
+      return Promise.resolve();
     }
+    var absoluteHref = href;
+    try {
+      absoluteHref = new URL(href, window.location.href).href;
+    } catch (_err) {
+      absoluteHref = href;
+    }
+    var currentHref = String(themeLink.href || '');
+    var currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
+    if (currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref) {
+      return Promise.resolve();
+    }
+
+    var token = ++themeSwapToken;
+    return new Promise(function (resolve) {
+      var preloader = document.createElement('link');
+      preloader.rel = 'stylesheet';
+      preloader.href = href;
+      preloader.media = 'not all';
+      preloader.setAttribute('data-theme-preload', 'true');
+
+      function cleanup() {
+        if (preloader.parentNode) {
+          preloader.parentNode.removeChild(preloader);
+        }
+      }
+
+      function commit() {
+        if (token !== themeSwapToken) {
+          cleanup();
+          resolve();
+          return;
+        }
+        themeLink.href = href;
+        themeLink.setAttribute('data-theme-href', href);
+        cleanup();
+        resolve();
+      }
+
+      preloader.addEventListener('load', commit, { once: true });
+      preloader.addEventListener('error', commit, { once: true });
+      (themeLink.parentNode || document.head || document.documentElement).appendChild(preloader);
+      setTimeout(commit, 1500);
+    });
+  }
+
+  function updateThemeStylesheet(theme) {
+    var nextTheme = String(theme || '').trim() || 'adept';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css';
+    pulseThemeSwitchVisualState();
+    return swapThemeStylesheet(href);
   }
 
   function loadTheme() {
@@ -1626,8 +1676,10 @@
       .then(function (data) {
         if (data && data.theme) {
           state.currentTheme = data.theme;
-          updateThemeStylesheet(state.currentTheme);
+          return updateThemeStylesheet(state.currentTheme);
         }
+      })
+      .then(function () {
         updateThemeSelect();
       })
       .catch(function () {
