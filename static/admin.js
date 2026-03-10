@@ -45,6 +45,8 @@
     localDripLastTickAt: 0,
     nostrPages: [],
     nostrPagesSaveBusy: false,
+    nostrPagesEditingSlugIndex: -1,
+    nostrPagesEditingSlugValue: '',
     nostrPagesDragActive: false,
     nostrPagesDragSlug: '',
     nostrPagesDragLastTarget: '',
@@ -1908,6 +1910,35 @@
       .replace(/^-+|-+$/g, '');
   }
 
+  function pathFromNostrPageSlug(slug) {
+    const safeSlug = normalizeNostrPageSlug(slug);
+    if (!safeSlug || safeSlug === 'index') {
+      return '/';
+    }
+    return '/pages/' + safeSlug + '.html';
+  }
+
+  function slugFromPathInput(raw) {
+    let text = String(raw || '').trim();
+    if (!text) {
+      return '';
+    }
+    text = text.replace(/^https?:\/\/[^/]+/i, '');
+    if (text === '/') {
+      return 'index';
+    }
+    text = text.replace(/^\/+/, '');
+    text = text.replace(/^pages\//i, '');
+    text = text.replace(/^\/?pages\//i, '');
+    text = text.replace(/\/+$/, '');
+    text = text.replace(/\.html?$/i, '');
+    const slug = normalizeNostrPageSlug(text);
+    if (slug === '') {
+      return '';
+    }
+    return slug;
+  }
+
   function defaultNostrPageTitleFromSlug(slug) {
     const text = String(slug || '').replace(/-/g, ' ').trim();
     if (!text) {
@@ -2025,7 +2056,8 @@
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
       const slug = String(page.slug || '');
       const pageType = String(page.type || 'list');
-      const path = String(page.path || ('/pages/' + slug + '.html'));
+      const path = String(page.path || pathFromNostrPageSlug(slug));
+      const isEditingSlug = state.nostrPagesEditingSlugIndex === idx;
       const showInNav = !!page.show_in_nav;
       const typeLabel = nostrPageTypeLabel(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
@@ -2034,7 +2066,14 @@
       html += '</div>';
       html += '<div class="nostr-page-main">';
       html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span></div>';
-      html += '<div class="nostr-page-meta"><span class="nostr-page-path">' + escapeHtml(path) + '</span></div>';
+      html += '<div class="nostr-page-meta">';
+      if (isEditingSlug) {
+        html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
+      } else {
+        html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
+        html += '<button type="button" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Edit page path">Edit</button>';
+      }
+      html += '</div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
@@ -2046,6 +2085,85 @@
     els.nostrPagesList.innerHTML = html;
     if (animate) {
       animateNostrPagesFlip(previousRects);
+    }
+  }
+
+  function focusNostrPageSlugInput(index) {
+    if (!els.nostrPagesList) {
+      return;
+    }
+    window.requestAnimationFrame(function () {
+      const input = els.nostrPagesList.querySelector('.nostr-page-slug-input[data-index="' + String(index) + '"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  function beginNostrPageSlugEdit(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
+      return;
+    }
+    const page = state.nostrPages[index] || {};
+    const currentSlug = String(page.slug || '');
+    const currentPath = String(page.path || pathFromNostrPageSlug(currentSlug));
+    state.nostrPagesEditingSlugIndex = index;
+    state.nostrPagesEditingSlugValue = currentPath;
+    renderNostrPagesList(state.nostrPages, false);
+    focusNostrPageSlugInput(index);
+  }
+
+  function cancelNostrPageSlugEdit() {
+    if (state.nostrPagesEditingSlugIndex < 0) {
+      return;
+    }
+    state.nostrPagesEditingSlugIndex = -1;
+    state.nostrPagesEditingSlugValue = '';
+    renderNostrPagesList(state.nostrPages, false);
+  }
+
+  async function commitNostrPageSlugEdit(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
+      cancelNostrPageSlugEdit();
+      return;
+    }
+    const page = state.nostrPages[index] || {};
+    const prevSlug = String(page.slug || '');
+    const nextSlug = slugFromPathInput(state.nostrPagesEditingSlugValue);
+    if (!nextSlug) {
+      setOutput(els.outputNostrPages, 'A valid slug/path is required.', 'warn');
+      focusNostrPageSlugInput(index);
+      return;
+    }
+    if (nextSlug !== prevSlug && state.nostrPages.some(function (row, i) {
+      return i !== index && String(row.slug || '') === nextSlug;
+    })) {
+      setOutput(els.outputNostrPages, 'A page with this slug already exists.', 'warn');
+      focusNostrPageSlugInput(index);
+      return;
+    }
+    state.nostrPagesEditingSlugIndex = -1;
+    state.nostrPagesEditingSlugValue = '';
+    if (nextSlug === prevSlug) {
+      renderNostrPagesList(state.nostrPages, false);
+      return;
+    }
+    const before = state.nostrPages.slice();
+    const next = state.nostrPages.slice();
+    next[index] = Object.assign({}, next[index], {
+      slug: nextSlug,
+      path: pathFromNostrPageSlug(nextSlug)
+    });
+    state.nostrPages = next;
+    renderNostrPagesList(state.nostrPages, false);
+    try {
+      await saveNostrPagesConfig();
+      setOutput(els.outputNostrPages, 'Updated page path to ' + pathFromNostrPageSlug(nextSlug) + '.', 'ok');
+    } catch (err) {
+      state.nostrPages = before;
+      renderNostrPagesList(state.nostrPages, false);
+      setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
     }
   }
 
@@ -3080,7 +3198,77 @@
           }).catch(function (err) {
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
+          return;
         }
+        if (action === 'edit-slug') {
+          beginNostrPageSlugEdit(idx);
+        }
+      });
+
+      els.nostrPagesList.addEventListener('input', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+        const action = String(target.getAttribute('data-nostr-page-action') || '');
+        if (action !== 'edit-slug-input') {
+          return;
+        }
+        const idx = Number(target.getAttribute('data-index'));
+        if (idx !== state.nostrPagesEditingSlugIndex) {
+          return;
+        }
+        state.nostrPagesEditingSlugValue = target.value;
+      });
+
+      els.nostrPagesList.addEventListener('keydown', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+        const action = String(target.getAttribute('data-nostr-page-action') || '');
+        if (action !== 'edit-slug-input') {
+          return;
+        }
+        const idx = Number(target.getAttribute('data-index'));
+        if (!Number.isInteger(idx)) {
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cancelNostrPageSlugEdit();
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitNostrPageSlugEdit(idx).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+        }
+      });
+
+      els.nostrPagesList.addEventListener('focusout', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+        const action = String(target.getAttribute('data-nostr-page-action') || '');
+        if (action !== 'edit-slug-input') {
+          return;
+        }
+        const idx = Number(target.getAttribute('data-index'));
+        if (!Number.isInteger(idx)) {
+          return;
+        }
+        window.setTimeout(function () {
+          const active = document.activeElement;
+          if (active instanceof HTMLElement && active.closest && active.closest('.nostr-page-meta')) {
+            return;
+          }
+          commitNostrPageSlugEdit(idx).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+        }, 0);
       });
 
       els.nostrPagesList.addEventListener('dragstart', function (event) {

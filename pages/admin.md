@@ -2065,7 +2065,10 @@ body {
   margin-top: 0.22rem;
   color: #606770;
   font-size: 0.84rem;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .nostr-page-kind-badge {
@@ -2083,9 +2086,43 @@ body {
 
 .nostr-page-path {
   color: #606770;
-  display: block;
+  display: inline-block;
   font-family: "Courier New", Courier, "Liberation Mono", monospace;
   letter-spacing: 0.01em;
+}
+
+#admin-panel .nostr-page-path-edit {
+  border: 0;
+  background: transparent !important;
+  color: var(--admin-accent-strong, #2d4f8c) !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 !important;
+  min-width: 0;
+  width: auto !important;
+  border-radius: 0;
+}
+
+#admin-panel .nostr-page-path-edit:hover,
+#admin-panel .nostr-page-path-edit:focus-visible {
+  text-decoration: underline;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--admin-accent-strong, #2d4f8c) !important;
+  transform: none !important;
+}
+
+#admin-panel .nostr-page-slug-input {
+  width: min(22rem, 100%);
+  min-width: 12rem;
+  max-width: 100%;
+  height: 2rem !important;
+  padding: 0.26rem 0.55rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.2;
+  font-family: "Courier New", Courier, "Liberation Mono", monospace;
 }
 
 .nostr-page-actions {
