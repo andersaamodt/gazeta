@@ -16,7 +16,6 @@ fi
 
 registration_enabled=$(blog_param registration_enabled)
 site_title=$(blog_param site_title)
-blog_page_title=$(blog_param blog_page_title)
 theme=$(blog_param theme)
 drip_interval_hours=$(blog_param drip_interval_hours)
 drip_interval_minutes_legacy=$(blog_param drip_interval_minutes)
@@ -52,16 +51,6 @@ case "$BLOG_REQUEST_BODY" in
       config-set "$blog_site_conf" site_title "$site_title"
     else
       config-set "$blog_site_conf" site_title "My Blog"
-    fi
-    ;;
-esac
-
-case "$BLOG_REQUEST_BODY" in
-  *blog_page_title=*)
-    if [ -n "$blog_page_title" ]; then
-      config-set "$blog_site_conf" blog_page_title "$blog_page_title"
-    else
-      config-set "$blog_site_conf" blog_page_title "Blog"
     fi
     ;;
 esac

@@ -64,20 +64,21 @@ if [ -z "$state_json" ]; then
         rows: $rows
       }')
       ;;
-    nip23)
+    nip23|blog)
       title=$(blog_param title)
       content=$(blog_param content)
       extras_after=$(blog_param extras_after)
       extras_after_format=$(blog_param extras_after_format)
       state_json=$(jq -cn \
         --arg slug "$page_slug" \
+        --arg page_type "$page_type" \
         --arg title "$title" \
         --arg content "$content" \
         --arg extras_after "$extras_after" \
         --arg extras_after_format "$extras_after_format" \
         '{
           slug: $slug,
-          type: "nip23",
+          type: $page_type,
           title: $title,
           content: $content,
           extras_after: $extras_after,
@@ -148,7 +149,7 @@ case "$page_type" in
     validation_json=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
     enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
     ;;
-  nip23)
+  nip23|blog)
     normalized=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$normalized" false)

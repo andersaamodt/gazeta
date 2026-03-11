@@ -51,7 +51,7 @@ if [ -z "$state_json" ]; then
         state_json=$(blog_contact_default_state_json "$page_slug")
       fi
       ;;
-    nip23)
+    nip23|blog)
       canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
       if [ -n "$canonical_event" ]; then
         state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
@@ -99,7 +99,7 @@ case "$page_type" in
     validation_after=$(blog_contact_validate_and_enrich_state_json "$canonical_state_json" false)
     canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {rows: $validation.rows, content_json: $validation.content_json}')
     ;;
-  nip23)
+  nip23|blog)
     state_json=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$state_json" true)
     can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')

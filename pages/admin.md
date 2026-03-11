@@ -65,10 +65,6 @@ title: Blog Admin
 <option value="wizard">Wizard</option>
 </select>
 </div>
-<div class="field-row">
-<label for="blog-page-title" title="Label shown for the Blog page in navigation."><strong title="Label shown for the Blog page in navigation.">Blog Page Title</strong></label>
-<input type="text" id="blog-page-title" placeholder="Blog" title="Label shown for the Blog page in navigation.">
-</div>
 <div class="field-row checkbox-row">
 <div class="setting-label">
 <strong>Enable User Registration</strong>
@@ -454,6 +450,7 @@ title: Blog Admin
 <div class="field-row">
 <label for="nostr-page-type-select"><strong>Page Type</strong></label>
 <select id="nostr-page-type-select" aria-label="Page type">
+<option value="blog">Blog Index (NIP-23 posts)</option>
 <option value="list">List Page (kind 30004)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>
@@ -2149,6 +2146,22 @@ body {
 #admin-panel .nostr-page-path-edit:focus-visible {
   text-decoration: underline;
   color: var(--accent, #2d4f8c) !important;
+}
+
+.nostr-page-posts-count {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.82rem;
+}
+
+#admin-panel .nostr-page-posts-link {
+  color: var(--admin-accent, var(--accent, #2d4f8c)) !important;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+#admin-panel .nostr-page-posts-link:hover,
+#admin-panel .nostr-page-posts-link:focus-visible {
+  text-decoration: underline;
 }
 
 #admin-panel .nostr-page-slug-input {

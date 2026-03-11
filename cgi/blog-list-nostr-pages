@@ -19,6 +19,13 @@ fi
 cfg=$(blog_nostr_pages_load_json)
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-pages-rows.XXXXXX")
 printf '%s\n' "$cfg" | jq -c '.pages[]' > "$rows_tmp"
+blog_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-posts.XXXXXX")
+blog_collect_public_posts "$blog_posts_tmp"
+connected_posts_total=$(wc -l < "$blog_posts_tmp" | tr -d ' ')
+case "$connected_posts_total" in
+  ''|*[!0-9]*) connected_posts_total=0 ;;
+esac
+rm -f "$blog_posts_tmp"
 
 printf '{"success":true,"pages":['
 first=1
@@ -38,6 +45,7 @@ while IFS= read -r row || [ -n "$row" ]; do
 
   canonical_title=''
   canonical_exists=false
+  connected_posts=0
   case "$page_type" in
     contact)
       canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
@@ -52,6 +60,9 @@ while IFS= read -r row || [ -n "$row" ]; do
         canonical_exists=true
         canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
       fi
+      ;;
+    blog)
+      connected_posts=$connected_posts_total
       ;;
     *)
       canonical_event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
@@ -84,6 +95,7 @@ while IFS= read -r row || [ -n "$row" ]; do
     --arg title "$title" \
     --arg placeholder_title "$placeholder_title" \
     --argjson kind "$kind" \
+    --argjson connected_posts "$connected_posts" \
     --argjson show_in_nav "$( [ "$show_in_nav" = "true" ] && printf true || printf false )" \
     --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
     '{
@@ -93,6 +105,7 @@ while IFS= read -r row || [ -n "$row" ]; do
       path: $path,
       title: $title,
       placeholder_title: $placeholder_title,
+      connected_posts: $connected_posts,
       show_in_nav: $show_in_nav,
       canonical_exists: $canonical_exists
     }'

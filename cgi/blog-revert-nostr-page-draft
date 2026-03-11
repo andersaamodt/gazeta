@@ -52,7 +52,7 @@ case "$page_type" in
     validation_json=$(blog_contact_validate_and_enrich_state_json "$canonical_state_json" false)
     enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
     ;;
-  nip23)
+  nip23|blog)
     canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
     if [ -n "$canonical_event" ]; then
       canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")

@@ -67,7 +67,6 @@
     outputUsers: document.getElementById('output-users'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
-    blogPageTitle: document.getElementById('blog-page-title'),
     registrationEnabled: document.getElementById('registration-enabled'),
     dripInterval: document.getElementById('drip-interval'),
     dripRandomness: document.getElementById('drip-randomness'),
@@ -586,34 +585,9 @@
     }
   }
 
-  function normalizeBlogPageTitle(value) {
-    const text = String(value || '').trim();
-    return text || 'Blog';
-  }
-
   function normalizeSiteTitle(value) {
     const text = String(value || '').trim();
     return text || 'My Blog';
-  }
-
-  function previewBlogPageTitleInNavbar(title) {
-    const blogLabel = normalizeBlogPageTitle(title);
-    const blogLink = document.querySelector('.nav-center a[data-page="blog"]');
-    if (blogLink) {
-      blogLink.textContent = blogLabel;
-    }
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      try {
-        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request', {
-          detail: {
-            blogPageTitle: blogLabel,
-            skipFetch: true
-          }
-        }));
-      } catch (_err) {
-        // Ignore navbar refresh event failures.
-      }
-    }
   }
 
   async function fetchJson(url, options) {
@@ -1292,10 +1266,6 @@
         throw new Error(data.error || 'Failed to load configuration');
       }
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
-      if (els.blogPageTitle) {
-        els.blogPageTitle.value = normalizeBlogPageTitle(data.blog_page_title);
-        previewBlogPageTitleInNavbar(els.blogPageTitle.value);
-      }
       if (els.adminTheme && data.theme) {
         els.adminTheme.value = data.theme;
       }
@@ -1341,17 +1311,11 @@
     try {
       const shouldRefreshQueue = state.activeSection === 'queue';
       const normalizedSiteTitle = normalizeSiteTitle(els.siteTitle ? els.siteTitle.value : '');
-      const normalizedBlogPageTitle = normalizeBlogPageTitle(els.blogPageTitle ? els.blogPageTitle.value : '');
       if (els.siteTitle) {
         els.siteTitle.value = normalizedSiteTitle;
       }
-      if (els.blogPageTitle) {
-        els.blogPageTitle.value = normalizedBlogPageTitle;
-        previewBlogPageTitleInNavbar(normalizedBlogPageTitle);
-      }
       const data = await apiPost('/cgi/blog-update-config', {
         site_title: normalizedSiteTitle,
-        blog_page_title: normalizedBlogPageTitle,
         theme: els.adminTheme ? els.adminTheme.value : '',
         registration_enabled: els.registrationEnabled.checked ? 'true' : 'false',
         drip_interval_hours: els.dripInterval.value.trim(),
@@ -1474,7 +1438,6 @@
   function bindSettingsAutosave() {
     const configFields = [
       els.siteTitle,
-      els.blogPageTitle,
       els.adminTheme,
       els.registrationEnabled,
       els.feedFullText,
@@ -1492,9 +1455,6 @@
         return;
       }
       field.addEventListener('input', function () {
-        if (field === els.blogPageTitle) {
-          previewBlogPageTitleInNavbar(field.value);
-        }
         queueConfigAutosave(500);
       });
       field.addEventListener('change', function () { queueConfigAutosave(220); });
@@ -2024,6 +1984,9 @@
 
   function nostrPageTypeLabel(pageType) {
     const type = String(pageType || '').trim().toLowerCase();
+    if (type === 'blog') {
+      return 'Blog Index (NIP-23 posts)';
+    }
     if (type === 'contact') {
       return 'User Metadata';
     }
@@ -2176,6 +2139,7 @@
       const path = String(page.path || pathFromNostrPageSlug(slug));
       const isEditingSlug = state.nostrPagesEditingSlugIndex === idx;
       const showInNav = !!page.show_in_nav;
+      const connectedPosts = Number(page.connected_posts || 0);
       const typeLabel = nostrPageTypeLabel(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
       html += '<div class="nostr-page-leading">';
@@ -2190,6 +2154,11 @@
       } else {
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
         html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change</a>';
+      }
+      if (pageType === 'blog') {
+        const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
+        html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
+        html += '<a href="/pages/admin.html#posts" class="nostr-page-posts-link" data-nostr-page-action="view-posts" data-index="' + String(idx) + '" aria-label="View posts for this blog page">View posts</a>';
       }
       html += '</div>';
       html += '</div>';
@@ -2313,13 +2282,31 @@
     }
     state.nostrPagesSaveBusy = true;
     try {
+      const connectedPostsBySlug = {};
+      (state.nostrPages || []).forEach(function (page) {
+        const slug = String(page && page.slug || '');
+        if (!slug) {
+          return;
+        }
+        const count = Number(page.connected_posts || 0);
+        if (isFinite(count)) {
+          connectedPostsBySlug[slug] = count;
+        }
+      });
       const data = await apiPost('/cgi/blog-save-nostr-pages', {
         pages_json: JSON.stringify(state.nostrPages || [])
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save Nostr pages');
       }
-      state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
+      state.nostrPages = (Array.isArray(data.pages) ? data.pages.slice() : []).map(function (page) {
+        const row = Object.assign({}, page || {});
+        const slug = String(row.slug || '');
+        if (typeof row.connected_posts === 'undefined' && Object.prototype.hasOwnProperty.call(connectedPostsBySlug, slug)) {
+          row.connected_posts = connectedPostsBySlug[slug];
+        }
+        return row;
+      });
       renderNostrPagesList(state.nostrPages, false);
       dispatchNavbarRefresh(state.nostrPages, false);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
@@ -2329,9 +2316,9 @@
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
-    const normalizedType = (pickedType === 'profile' || pickedType === 'metadata') ? 'contact' : ((pickedType === 'long-form') ? 'nip23' : pickedType);
-    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use list, metadata, or long-form.', 'warn');
+    const normalizedType = (pickedType === 'profile' || pickedType === 'metadata') ? 'contact' : ((pickedType === 'long-form') ? 'nip23' : ((pickedType === 'blog-index' || pickedType === 'blog_page') ? 'blog' : pickedType));
+    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, metadata, or long-form.', 'warn');
       return false;
     }
     if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -2351,7 +2338,7 @@
     next.push({
       slug: slug,
       type: normalizedType,
-      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'nip23' ? 30023 : 30004)),
+      kind: (normalizedType === 'contact' ? 0 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004)),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
       path: pathFromNostrPageSlug(slug)
@@ -2380,7 +2367,9 @@
       els.nostrPageTypeSelect.value = hasContactPage ? 'list' : 'contact';
     }
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
-      if (els.nostrPageTypeSelect.value === 'contact') {
+      if (els.nostrPageTypeSelect.value === 'blog') {
+        els.nostrPageSlugInput.value = 'blog';
+      } else if (els.nostrPageTypeSelect.value === 'contact') {
         els.nostrPageSlugInput.value = 'profile';
       } else if (els.nostrPageTypeSelect.value === 'nip23') {
         els.nostrPageSlugInput.value = 'index';
@@ -2392,12 +2381,12 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: list, metadata, or long-form', 'list');
+      const pickedTypeRaw = window.prompt('Page type: blog, list, metadata, or long-form', 'blog');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: profile)', (fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : (fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : '');
+      const fallbackSlug = window.prompt('Page slug/path (example: blog)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : (fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : (fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : '');
       if (fallbackSlug === null) {
         return;
       }

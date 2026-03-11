@@ -29,7 +29,7 @@ blog_nostr_page_kind_for_type() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
     contact) printf '0\n' ;;
-    nip23) printf '30023\n' ;;
+    nip23|blog) printf '30023\n' ;;
     *) printf '30004\n' ;;
   esac
 }
@@ -37,6 +37,14 @@ blog_nostr_page_kind_for_type() {
 blog_nostr_pages_default_json() {
   jq -cn '{
     pages: [
+      {
+        slug: "blog",
+        type: "blog",
+        kind: 30023,
+        show_in_nav: true,
+        placeholder_title: "Blog",
+        path: "/blog"
+      },
       {
         slug: "index",
         type: "nip23",
@@ -72,7 +80,10 @@ blog_nostr_pages_normalize_json() {
     return 0
   fi
 
-  printf '%s\n' "$raw_json" | jq -c '
+  legacy_blog_title=$(config-get "$blog_site_conf" blog_page_title 2>/dev/null || printf '')
+  [ -n "$legacy_blog_title" ] || legacy_blog_title='Blog'
+
+  printf '%s\n' "$raw_json" | jq -c --arg legacy_blog_title "$legacy_blog_title" '
     def title_from_slug($s):
       (($s // "") | tostring | gsub("-";" ")) as $t
       | if ($t | length) == 0 then "Untitled" else (($t[0:1] | ascii_upcase) + ($t[1:])) end;
@@ -84,15 +95,17 @@ blog_nostr_pages_normalize_json() {
     def norm_type($v):
       (($v // "") | tostring | ascii_downcase) as $t
       | if $t == "contact" then "contact"
+        elif ($t == "blog" or $t == "blog-index" or $t == "blog_index") then "blog"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
-    def norm_path($slug; $v):
+    def norm_path($slug; $type; $v):
       (($v // "") | tostring
         | sub("^https?://[^/]+";"")
         | sub("[?#].*$";"")
         | sub("\\.html?$";"")
         | if startswith("/") then . else ("/" + .) end
         | gsub("/+"; "/")
+        | sub("^/pages/"; "/")
         | if . != "/" then sub("/+$"; "") else . end
       ) as $p
       | if $slug == "index" then "/"
@@ -115,21 +128,41 @@ blog_nostr_pages_normalize_json() {
           path: ((.path // "") | tostring)
         })
       | map(select((.slug | length) > 0))
+      | map(
+          if .slug == "blog" and .type != "contact" then
+            .type = "blog"
+          else
+            .
+          end
+        )
     ) as $pages
     | (reduce $pages[] as $p ([];
         if any(.[]; .slug == $p.slug) then . else . + [$p] end
       )) as $unique
+    | (
+        if any($unique[]?; .type == "blog") then
+          $unique
+        else
+          ([{
+            slug: "blog",
+            type: "blog",
+            show_in_nav: true,
+            placeholder_title: (($legacy_blog_title // "") | tostring),
+            path: "/blog"
+          }] + $unique)
+        end
+      ) as $with_blog
     | {
         pages:
-          (if ($unique | length) == 0 then
+          (if ($with_blog | length) == 0 then
              []
            else
-             ($unique
+             ($with_blog
              | map(
-               .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30004 end)
+               .kind = (if .type == "contact" then 0 elif (.type == "nip23" or .type == "blog") then 30023 else 30004 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
-               | .path = norm_path(.slug; .path)
+               | .path = norm_path(.slug; .type; .path)
              ))
            end)
       }
@@ -139,11 +172,14 @@ blog_nostr_pages_normalize_json() {
 blog_nostr_pages_load_json() {
   path=$(blog_nostr_pages_config_path)
   raw=''
+  raw_norm=''
   if [ -f "$path" ]; then
     raw=$(cat "$path" 2>/dev/null || printf '')
+    raw_norm=$(printf '%s\n' "$raw" | jq -c '.' 2>/dev/null || printf '')
   fi
   normalized=$(blog_nostr_pages_normalize_json "$raw")
-  if [ ! -f "$path" ]; then
+  normalized_norm=$(printf '%s\n' "$normalized" | jq -c '.' 2>/dev/null || printf '')
+  if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
     blog_nostr_pages_save_json "$normalized"
   fi
   printf '%s\n' "$normalized"
@@ -183,6 +219,10 @@ blog_nostr_page_type_for_slug() {
     printf 'nip23\n'
     return 0
   fi
+  if [ "$slug" = "blog" ]; then
+    printf 'blog\n'
+    return 0
+  fi
   return 1
 }
 
@@ -200,7 +240,7 @@ blog_nostr_page_load_draft_state_json() {
   [ -n "$raw" ] || return 1
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
-    nip23) blog_nip23_normalize_state_json "$slug" "$raw" ;;
+    nip23|blog) blog_nip23_normalize_state_json "$slug" "$raw" ;;
     *) blog_list_normalize_state_json "$slug" "$raw" ;;
   esac
 }
@@ -212,7 +252,7 @@ blog_nostr_page_save_draft_state_json() {
   [ -n "$state_json" ] || return 1
   case "$page_type" in
     contact) normalized=$(blog_contact_normalize_state_json "$slug" "$state_json") ;;
-    nip23) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json") ;;
+    nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
   path=$(blog_nostr_page_draft_path "$slug")
@@ -712,6 +752,14 @@ blog_nostr_page_canonical_title() {
         printf '\n'
       fi
       ;;
+    blog)
+      event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$event" ]; then
+        printf '%s\n' "$event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf ''
+      else
+        printf '\n'
+      fi
+      ;;
     *)
       event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
       if [ -n "$event" ]; then
@@ -741,6 +789,10 @@ blog_nostr_page_source_template_type() {
     printf 'list\n'
     return 0
   fi
+  if grep -q 'id="blog-page-root"' "$file" 2>/dev/null; then
+    printf 'blog\n'
+    return 0
+  fi
   printf 'custom\n'
 }
 
@@ -750,7 +802,7 @@ blog_nostr_page_source_template_slug() {
     printf '\n'
     return 0
   }
-  raw_slug=$(sed -n 's/.*data-page-slug="\([^"]*\)".*/\1/p; s/.*data-list-slug="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1)
+  raw_slug=$(sed -n 's/.*data-page-slug="\([^"]*\)".*/\1/p; s/.*data-list-slug="\([^"]*\)".*/\1/p; s/.*data-blog-slug="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1)
   printf '%s\n' "$(blog_nostr_page_slug "$raw_slug")"
 }
 
@@ -765,6 +817,9 @@ blog_nostr_page_ensure_source_page() {
       else
         page_file="$blog_site_root/site/pages/$slug.md"
       fi
+      ;;
+    blog)
+      page_file="$blog_site_root/site/pages/$slug.md"
       ;;
     *)
       page_file="$blog_site_root/site/pages/$slug.md"
@@ -841,6 +896,63 @@ license: "CC BY 4.0"
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nip23-page.js"></script>
 EONIP23
+      ;;
+    blog)
+      cat > "$page_file" <<EOBLOG
+---
+title: "$page_title"
+published_at: "$(blog_now_iso)"
+content_hash: ""
+tags: ["nostr", "blog"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="blog-page-root" class="blog-page" data-blog-slug="$slug" data-page-type="blog" aria-live="polite">
+<div class="blog-layout">
+<div class="blog-filter-rail">
+<button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
+<svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true">
+<line x1="2" y1="3" x2="14" y2="3"></line>
+<circle cx="6" cy="3" r="1.25"></circle>
+<line x1="2" y1="8" x2="14" y2="8"></line>
+<circle cx="10.5" cy="8" r="1.25"></circle>
+<line x1="2" y1="13" x2="14" y2="13"></line>
+<circle cx="4.5" cy="13" r="1.25"></circle>
+</svg>
+</button>
+</div>
+
+<div class="blog-main-column">
+<div id="blog-filter-panel" class="blog-filter-panel" hidden>
+<div class="blog-filter-grid">
+<div class="blog-filter-group">
+<h3>Tags</h3>
+<div id="blog-filter-tags" class="blog-filter-options"></div>
+</div>
+<div class="blog-filter-group">
+<h3>Year</h3>
+<div id="blog-filter-years" class="blog-filter-options"></div>
+</div>
+<div class="blog-filter-group">
+<h3>Type</h3>
+<div id="blog-filter-types" class="blog-filter-options"></div>
+</div>
+</div>
+<div class="blog-filter-footer">
+<button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button>
+</div>
+</div>
+
+<div id="blog-post-list" class="post-list"></div>
+<p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
+</div>
+</div>
+</section>
+
+<script src="/static/blog-page.js"></script>
+EOBLOG
       ;;
     *)
       cat > "$page_file" <<EOLIST

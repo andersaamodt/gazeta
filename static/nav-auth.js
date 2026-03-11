@@ -14,7 +14,6 @@
   var KEY_DEVICE_SESSION = 'nostr_device_session_v1';
   var KEY_NIP46_PAIR = 'nostr_nip46_pair_v1';
   var NAV_TOAST_KEY = 'wizardry_blog_nav_toast_v1';
-  var BLOG_PAGE_TITLE_CACHE_KEY = 'wizardry_blog_page_title_v1';
   var NOSTR_PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
@@ -1734,6 +1733,7 @@
 
   function isDynamicPageRootPresent() {
     return !!(
+      document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
       document.getElementById('oeuvre-root') ||
       document.getElementById('contact-page-root')
@@ -1775,23 +1775,9 @@
     if (!navCenter) {
       return;
     }
-    var cachedBlogTitle = 'Blog';
-    try {
-      cachedBlogTitle = String(localStorage.getItem(BLOG_PAGE_TITLE_CACHE_KEY) || '').trim() || 'Blog';
-    } catch (_blogTitleCacheErr) {
-      cachedBlogTitle = 'Blog';
-    }
-    var basePages = [
-      { slug: 'blog', title: cachedBlogTitle, path: '/pages/blog.html' }
-    ];
     var normalizedCurrent = normalizeNavPath(window.location.pathname);
     var html = '';
     var seen = {};
-    basePages.forEach(function (page) {
-      seen[page.slug] = true;
-      var isActive = normalizeNavPath(page.path) === normalizedCurrent;
-      html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
-    });
     (Array.isArray(pageRows) ? pageRows : []).forEach(function (page) {
       var slug = String(page && page.slug || '').trim();
       var title = String(page && page.title || '').trim();
@@ -1833,14 +1819,6 @@
         if (!data || !data.success || !Array.isArray(data.pages)) {
           return;
         }
-        var fetchedBlogTitle = String(data.blog_page_title || '').trim();
-        if (fetchedBlogTitle) {
-          try {
-            localStorage.setItem(BLOG_PAGE_TITLE_CACHE_KEY, fetchedBlogTitle);
-          } catch (_blogTitleWriteErr) {
-            // Ignore storage failures.
-          }
-        }
         try {
           localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(data.pages));
         } catch (_cacheErr) {
@@ -1855,14 +1833,6 @@
 
   window.addEventListener('wizardry-navbar-refresh-request', function (event) {
     var detail = event && event.detail ? event.detail : null;
-    if (detail && typeof detail.blogPageTitle !== 'undefined') {
-      var optimisticBlogTitle = String(detail.blogPageTitle || '').trim() || 'Blog';
-      try {
-        localStorage.setItem(BLOG_PAGE_TITLE_CACHE_KEY, optimisticBlogTitle);
-      } catch (_blogTitleWriteErr) {
-        // Ignore storage failures.
-      }
-    }
     if (detail && Array.isArray(detail.pages)) {
       try {
         localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(detail.pages));
