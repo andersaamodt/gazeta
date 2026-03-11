@@ -227,10 +227,10 @@ strong {
       #2a569f 72%,
       #234b8f 100%
     );
-  border: 1px solid var(--button-primary-border);
+  border: 0;
   color: var(--button-primary-text);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.38) inset,
+    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
