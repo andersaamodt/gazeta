@@ -2309,6 +2309,8 @@ body {
 [data-admin-section="posts"] .admin-card {
   padding-left: 0;
   padding-right: 0;
+  margin-left: calc(-1 * var(--admin-content-pad-left, 0.7rem));
+  margin-right: calc(-1 * var(--admin-content-pad-right, 0.72rem));
 }
 
 [data-admin-section="posts"] .demo-box.admin-card {
@@ -2390,7 +2392,7 @@ body {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  padding-left: 0.42rem;
+  padding-left: 0;
 }
 
 .post-row-title {
@@ -2459,13 +2461,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.36rem;
-  padding-right: 0.42rem;
+  padding-right: 0;
 }
 
 #admin-panel button.post-row-delete {
-  min-width: 2.2rem;
-  width: 2.2rem;
-  height: 2.2rem;
+  min-width: 2.6rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2476,8 +2478,8 @@ body {
 }
 
 #admin-panel button.post-row-delete .trash-icon-svg {
-  width: 1.24rem;
-  height: 1.24rem;
+  width: 1.55rem;
+  height: 1.55rem;
 }
 
 #admin-panel button.post-row-delete:hover,
