@@ -3127,16 +3127,19 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"]:hover,
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"]:hover {
   background: var(--admin-nav-selected-bg, var(--admin-hover, var(--nav-link-hover))) !important;
+  background-image: none !important;
   color: var(--admin-nav-selected-text, var(--admin-text, var(--text))) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item:hover:not([aria-selected="true"]):not([aria-current="page"]) {
   background: var(--admin-hover, var(--nav-link-hover)) !important;
+  background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item {
   font-weight: 400 !important;
+  background-image: none !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
@@ -3151,6 +3154,7 @@ body {
   border-left: 0 !important;
   border-inline-start: 0 !important;
   box-shadow: none !important;
+  background-image: none !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item:focus,
