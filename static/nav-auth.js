@@ -1775,6 +1775,51 @@
     if (!navCenter) {
       return Promise.resolve();
     }
+    var basePages = [
+      { slug: 'index', title: 'Home', path: '/pages/index.html' },
+      { slug: 'about', title: 'About', path: '/pages/about.html' },
+      { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
+      { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
+    ];
+    var normalizedCurrent = normalizeNavPath(window.location.pathname);
+
+    function renderNavbar(pageRows) {
+      var html = '';
+      var seen = {};
+      basePages.forEach(function (page) {
+        seen[page.slug] = true;
+        var isActive = normalizeNavPath(page.path) === normalizedCurrent;
+        html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
+      });
+      (Array.isArray(pageRows) ? pageRows : []).forEach(function (page) {
+        var slug = String(page && page.slug || '').trim();
+        var title = String(page && page.title || '').trim();
+        var path = String(page && page.path || '').trim();
+        if (!slug || !path || seen[slug]) {
+          return;
+        }
+        seen[slug] = true;
+        var isActive = normalizeNavPath(path) === normalizedCurrent;
+        html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
+      });
+      if (html && navCenter.innerHTML !== html) {
+        navCenter.innerHTML = html;
+      }
+      highlightCurrentPage();
+    }
+
+    try {
+      var cachedRaw = localStorage.getItem('cached_navbar_pages_v1') || '';
+      if (cachedRaw) {
+        var cachedPages = JSON.parse(cachedRaw);
+        if (Array.isArray(cachedPages) && cachedPages.length) {
+          renderNavbar(cachedPages);
+        }
+      }
+    } catch (_cacheReadErr) {
+      // Ignore invalid cache.
+    }
+
     return fetch('/cgi/blog-list-navbar-pages')
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -1786,34 +1831,7 @@
         } catch (_cacheErr) {
           // Ignore storage failures.
         }
-        var basePages = [
-          { slug: 'index', title: 'Home', path: '/pages/index.html' },
-          { slug: 'about', title: 'About', path: '/pages/about.html' },
-          { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
-          { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
-        ];
-        var normalizedCurrent = normalizeNavPath(window.location.pathname);
-        var html = '';
-        var seen = {};
-        basePages.forEach(function (page) {
-          seen[page.slug] = true;
-          var isActive = normalizeNavPath(page.path) === normalizedCurrent;
-          html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
-        });
-        data.pages.forEach(function (page) {
-          var slug = String(page && page.slug || '').trim();
-          var title = String(page && page.title || '').trim();
-          var path = String(page && page.path || '').trim();
-          if (!slug || !path || seen[slug]) {
-            return;
-          }
-          seen[slug] = true;
-          var isActive = normalizeNavPath(path) === normalizedCurrent;
-          html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
-        });
-        if (html && navCenter.innerHTML !== html) {
-          navCenter.innerHTML = html;
-        }
+        renderNavbar(data.pages);
       })
       .catch(function () {
         // Keep static nav links on fetch failure.
@@ -1855,6 +1873,19 @@
     var navLinks = document.querySelectorAll('.nav-center a[data-page]');
     var normalizedCurrent = normalizeNavPath(currentPath);
     var matches = [];
+    var navCenter = document.querySelector('.nav-center');
+
+    function titleizePathLabel(path) {
+      var raw = String(path || '').replace(/^\/+/, '').replace(/\/+$/, '');
+      if (!raw) {
+        return 'Home';
+      }
+      raw = raw.replace(/\.html?$/i, '');
+      raw = raw.replace(/-/g, ' ');
+      return raw.split(' ').filter(Boolean).map(function (word) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }).join(' ');
+    }
 
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
@@ -1862,6 +1893,27 @@
         matches.push(link);
       }
     });
+
+    if (matches.length === 0 && navCenter && normalizedCurrent !== '/' && !isAccountAreaPath()) {
+      var existingTemp = navCenter.querySelector('a[data-temp-nav-current="true"]');
+      if (existingTemp && normalizeNavPath(existingTemp.getAttribute('href') || '') !== normalizedCurrent) {
+        existingTemp.parentNode.removeChild(existingTemp);
+        existingTemp = null;
+      }
+      if (!existingTemp) {
+        existingTemp = document.createElement('a');
+        existingTemp.setAttribute('data-page', 'temp-current');
+        existingTemp.setAttribute('data-temp-nav-current', 'true');
+        existingTemp.setAttribute('href', currentPath || normalizedCurrent);
+        existingTemp.textContent = titleizePathLabel(normalizedCurrent);
+        navCenter.appendChild(existingTemp);
+      } else {
+        existingTemp.setAttribute('href', currentPath || normalizedCurrent);
+        existingTemp.textContent = titleizePathLabel(normalizedCurrent);
+      }
+      matches.push(existingTemp);
+      navLinks = document.querySelectorAll('.nav-center a[data-page]');
+    }
 
     if (matches.length > 0) {
       navLinks.forEach(function (link) {
@@ -2296,6 +2348,7 @@
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');
     prefetchStaticPageHtmlForSlug('tags');
+    highlightCurrentPage();
     var navPromise = loadNavbarNostrPages();
     Promise.resolve(navPromise).finally(function () {
       applyInitialHighlightInSyncWithContent();
