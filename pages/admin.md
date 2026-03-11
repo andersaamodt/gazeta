@@ -126,6 +126,7 @@ title: Blog Admin
 <span title="Turn Nostr bridge on or off for this site.">Enable Nostr Bridge</span>
 </label>
 </div>
+<p class="muted">Nostr Bridge mirrors selected Nostr events into local site content using your configured relays and filters.</p>
 <div class="field-row">
 <label for="nostr-relays" title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line."><strong title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line.">Relay List</strong></label>
 <div class="bridge-textarea-wrap">
