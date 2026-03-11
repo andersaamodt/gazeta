@@ -45,7 +45,8 @@
     pointerDownEntryUid: '',
     pointerDownAt: 0,
     pendingNewEntry: null,
-    uidCounter: 1
+    uidCounter: 1,
+    initialContentPainted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
 
@@ -63,6 +64,21 @@
   function authSignature() {
     var auth = getAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function markInitialContentPainted() {
+    if (state.initialContentPainted) {
+      return;
+    }
+    state.initialContentPainted = true;
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
+        detail: { slug: slug }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch issues.
+    }
   }
 
   function bootstrapCacheKey() {
@@ -119,6 +135,7 @@
     renderList();
     renderAdmin();
     renderValidation();
+    markInitialContentPainted();
     markHydrationPageReady();
     return true;
   }
@@ -1856,6 +1873,7 @@
       renderList();
       renderAdmin();
       renderValidation();
+      markInitialContentPainted();
     } catch (err) {
       if (els.content) {
         els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load list page') + '</p>';

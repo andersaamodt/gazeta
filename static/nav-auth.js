@@ -1694,6 +1694,44 @@
     }
   }
 
+  function isDynamicPageRootPresent() {
+    return !!(
+      document.getElementById('nip23-page-root') ||
+      document.getElementById('oeuvre-root') ||
+      document.getElementById('contact-page-root')
+    );
+  }
+
+  function applyInitialHighlightInSyncWithContent() {
+    var applied = false;
+    function applyOnce() {
+      if (applied) {
+        return;
+      }
+      applied = true;
+      highlightCurrentPage();
+      markHydrationNavReady();
+    }
+
+    if (!isDynamicPageRootPresent()) {
+      applyOnce();
+      return;
+    }
+
+    if (window.__wizardryPageInitialContentReady) {
+      applyOnce();
+      return;
+    }
+
+    window.addEventListener('blog-page-initial-content-ready', function () {
+      applyOnce();
+    }, { once: true });
+
+    setTimeout(function () {
+      applyOnce();
+    }, 1600);
+  }
+
   function loadNavbarNostrPages() {
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter) {
@@ -2176,8 +2214,7 @@
     renderComposeIcon(readComposeIconIndex());
     var navPromise = loadNavbarNostrPages();
     Promise.resolve(navPromise).finally(function () {
-      highlightCurrentPage();
-      markHydrationNavReady();
+      applyInitialHighlightInSyncWithContent();
     });
     checkAuth();
     loadTheme();
