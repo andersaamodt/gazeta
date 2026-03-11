@@ -2799,15 +2799,11 @@ footer {
   padding: 0 0.88rem;
   margin: 0.18rem 0 0.95rem;
   max-height: 0;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: max-height 0.26s ease, opacity 0.2s ease, transform 0.2s ease, padding 0.2s ease;
+  transition: max-height 0.26s ease, padding 0.2s ease;
 }
 
 .blog-filter-panel.is-open {
   max-height: 32rem;
-  opacity: 1;
-  transform: translateY(0);
   padding: 0.88rem;
 }
 
