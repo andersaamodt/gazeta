@@ -2490,7 +2490,17 @@
       }
       const absoluteUrl = new URL(url, window.location.origin).toString();
       const copied = await copyTextToClipboard(absoluteUrl);
-      setOutput(els.outputPosts, copied ? 'Post link copied.' : 'Could not copy post link.', copied ? 'ok' : 'warn');
+      state.postsMenuOpenFor = '';
+      if (els.postsList) {
+        Array.from(els.postsList.querySelectorAll('[data-post-menu-panel]')).forEach(function (panel) {
+          panel.hidden = true;
+        });
+      }
+      setOutput(
+        els.outputPosts,
+        copied ? ('Copied "' + absoluteUrl + '" to clipboard.') : 'Could not copy post link.',
+        copied ? 'ok' : 'warn'
+      );
       return;
     }
     if (pickedAction === 'edit_post') {
