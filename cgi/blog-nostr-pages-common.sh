@@ -96,7 +96,13 @@ blog_nostr_pages_normalize_json() {
       | map({
           slug: norm_slug(.slug // .list_slug // ""),
           type: norm_type(.type // .page_type // "list"),
-          show_in_nav: (if (.show_in_nav // .show_nav // true) == false then false else true end),
+          show_in_nav: (
+            if has("show_in_nav") then
+              (if .show_in_nav == false then false else true end)
+            elif has("show_nav") then
+              (if .show_nav == false then false else true end)
+            else true end
+          ),
           placeholder_title: ((.placeholder_title // .title // "") | tostring),
           path: ((.path // "") | tostring)
         })

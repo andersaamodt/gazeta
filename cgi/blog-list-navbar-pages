@@ -13,7 +13,7 @@ blog_send_json_headers
 
 cfg=$(blog_nostr_pages_load_json)
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-navbar-pages.XXXXXX")
-printf '%s\n' "$cfg" | jq -c '.pages[] | select((.show_in_nav // true) == true)' > "$rows_tmp"
+printf '%s\n' "$cfg" | jq -c '.pages[] | select((if has("show_in_nav") then .show_in_nav else true end) == true)' > "$rows_tmp"
 
 printf '{"success":true,"pages":['
 first=1
