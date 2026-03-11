@@ -2518,8 +2518,8 @@ body {
 }
 
 #admin-panel button.post-menu-trigger .overflow-menu-icon-svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.42rem;
+  height: 1.42rem;
 }
 
 #admin-panel .post-menu-panel {
