@@ -2398,7 +2398,7 @@ body {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  padding-left: 0;
+  padding-left: 0.42rem;
 }
 
 .post-row-title {
