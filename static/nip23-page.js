@@ -335,6 +335,11 @@
         '</section>';
     }
 
+    var hasMainContent = String(s.content || '').trim().length > 0;
+    var readOnlyMain = hasMainContent
+      ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
+      : '<p class="list-page-empty-state">No content yet.</p>';
+
     if (isAdmin() && state.editMode) {
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
@@ -343,13 +348,13 @@
       html += '<label class="nostr-page-extra-edit"><span>Content (Markdown)</span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
       html += '<label class="nostr-page-extra-edit"><span>Outro</span><span class="nostr-page-extra-controls"><select id="nip23-outro-format"><option value="markdown"' + (s.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option><option value="html"' + (s.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option></select></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after page content">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
       html += '</section>';
-      html += '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>';
+      html += readOnlyMain;
       html += outroHtml;
       els.content.innerHTML = html;
       return;
     }
 
-    els.content.innerHTML = '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>' + outroHtml;
+    els.content.innerHTML = readOnlyMain + outroHtml;
   }
 
   function renderAll() {

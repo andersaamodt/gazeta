@@ -370,7 +370,7 @@
 
   function renderReadOnly(rows) {
     if (!rows.length) {
-      return '<p class="placeholder">No profile entries yet.</p>';
+      return '<p class="list-page-empty-state">No content yet.</p>';
     }
     var html = '<ul class="list-entries">';
     rows.forEach(function (row) {

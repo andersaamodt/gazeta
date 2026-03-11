@@ -766,6 +766,13 @@ header h1 {
   margin-top: 0.8rem;
 }
 
+.list-page-empty-state {
+  margin: 1.1rem 0;
+  text-align: center;
+  color: var(--muted-text, #6b7a95);
+  font-style: italic;
+}
+
 .list-page-admin-bar {
   display: flex;
   align-items: center;

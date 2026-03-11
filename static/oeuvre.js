@@ -1171,10 +1171,8 @@
     if (!elements.length) {
       if (inlineMode) {
         els.content.innerHTML = renderInlineEditor([]) + afterContent;
-      } else if (isAdmin()) {
-        els.content.innerHTML = afterContent;
       } else {
-        els.content.innerHTML = '<p class="placeholder">No entries yet.</p>' + afterContent;
+        els.content.innerHTML = '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
       }
       renderAdmin();
       return;
