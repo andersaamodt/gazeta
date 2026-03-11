@@ -478,6 +478,8 @@ header h1 {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
+  font-size: 2.2rem;
+  line-height: 1.16;
 }
 
 .list-validation {
@@ -780,8 +782,34 @@ header h1 {
 }
 
 .list-page-admin-bar .list-admin-primary-btn {
-  color: #fff !important;
-  -webkit-text-fill-color: #fff;
+  padding: 0.36rem 0.74rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent-dark, #223b85) 68%, var(--border, #c7d2fe) 32%);
+  background: color-mix(in srgb, var(--accent, #2f4aa6) 84%, var(--bg, #d9dde6) 16%) !important;
+  background-image: none !important;
+  color: var(--button-primary-text, #fff) !important;
+  -webkit-text-fill-color: var(--button-primary-text, #fff);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.16) inset;
+  font-size: 0.92rem;
+  font-weight: 620;
+  letter-spacing: 0.01em;
+  line-height: 1.22;
+}
+
+.list-page-admin-bar .list-admin-primary-btn:hover:not(:disabled),
+.list-page-admin-bar .list-admin-primary-btn:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-dark, #223b85) 80%, var(--bg, #d9dde6) 20%) !important;
+  border-color: color-mix(in srgb, var(--accent-dark, #223b85) 75%, var(--border, #c7d2fe) 25%);
+  color: var(--button-primary-text, #fff) !important;
+  -webkit-text-fill-color: var(--button-primary-text, #fff);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset;
+}
+
+.list-page-admin-bar .list-admin-primary-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-dark, #223b85) 86%, var(--bg, #d9dde6) 14%) !important;
+  border-color: color-mix(in srgb, var(--accent-dark, #223b85) 82%, var(--border, #c7d2fe) 18%);
+  color: var(--button-primary-text, #fff) !important;
+  -webkit-text-fill-color: var(--button-primary-text, #fff);
 }
 
 .list-page-admin-bar button:disabled {
