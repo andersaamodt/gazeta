@@ -47,6 +47,7 @@
     pendingNewEntry: null,
     uidCounter: 1
   };
+  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -62,6 +63,64 @@
   function authSignature() {
     var auth = getAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function bootstrapCacheKey() {
+    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
+  }
+
+  function readBootstrapCache() {
+    try {
+      var raw = localStorage.getItem(bootstrapCacheKey());
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      if (String(parsed.auth_signature || '') !== authSignature()) {
+        return null;
+      }
+      if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      return parsed.payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeBootstrapCache(payload) {
+    try {
+      if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
+        auth_signature: authSignature(),
+        payload: payload,
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore cache write errors.
+    }
+  }
+
+  function renderFromBootstrapCache() {
+    var cachedPayload = readBootstrapCache();
+    if (!cachedPayload) {
+      return false;
+    }
+    state.payload = cachedPayload;
+    state.draft = readEditableStateFromPayload();
+    state.pendingNewEntry = null;
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+    renderList();
+    renderAdmin();
+    renderValidation();
+    markHydrationPageReady();
+    return true;
   }
 
   function maybeReloadForAuthChange() {
@@ -1793,6 +1852,7 @@
         state.activeEntryUid = state.draft.elements[0]._uid;
       }
       setSaveStatus('saved');
+      writeBootstrapCache(state.payload);
       renderList();
       renderAdmin();
       renderValidation();
@@ -1878,6 +1938,6 @@
       maybeReloadForAuthChange();
     }
   });
-
+  renderFromBootstrapCache();
   load();
 })();

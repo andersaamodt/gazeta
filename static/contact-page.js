@@ -25,6 +25,7 @@
     saveStatus: 'saved',
     saveIndicatorVisible: false
   };
+  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
 
   function escapeHtml(text) {
     return String(text || '')
@@ -81,6 +82,66 @@
       session_token: String(localStorage.getItem('session_token') || '').trim(),
       csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
     };
+  }
+
+  function authSignature() {
+    var auth = authPayload();
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function bootstrapCacheKey() {
+    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
+  }
+
+  function readBootstrapCache() {
+    try {
+      var raw = localStorage.getItem(bootstrapCacheKey());
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      if (String(parsed.auth_signature || '') !== authSignature()) {
+        return null;
+      }
+      if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      return parsed.payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeBootstrapCache(payload) {
+    try {
+      if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
+        auth_signature: authSignature(),
+        payload: payload,
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore cache write failures.
+    }
+  }
+
+  function renderFromBootstrapCache() {
+    var cachedPayload = readBootstrapCache();
+    if (!cachedPayload) {
+      return false;
+    }
+    state.payload = cachedPayload;
+    state.draft = normalizeDraftState((cachedPayload && cachedPayload.state) || { title: '', description: '', rows: [] });
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+    renderAll();
+    markHydrationPageReady();
+    return true;
   }
 
   function isAdmin() {
@@ -654,6 +715,7 @@
       state.draft = normalizeDraftState(payload.state || { title: '', description: '', rows: [] });
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
+      writeBootstrapCache(payload);
       renderAll();
     }).catch(function (err) {
       if (els.content) {
@@ -680,6 +742,6 @@
       maybeReloadForAuthChange();
     }
   });
-
+  renderFromBootstrapCache();
   load();
 })();
