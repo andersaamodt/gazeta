@@ -833,15 +833,18 @@ header h1 {
 .list-page-admin-bar button:disabled {
   background: #d4dae6;
   border-color: #c3cada;
-  color: #6d778d;
+  color: #5b657c;
+  -webkit-text-fill-color: #5b657c;
   cursor: default;
   box-shadow: none;
+  opacity: 1;
 }
 
 .list-page-admin-bar button:disabled:hover {
   background: #d4dae6;
   border-color: #c3cada;
-  color: #6d778d;
+  color: #5b657c;
+  -webkit-text-fill-color: #5b657c;
 }
 
 .list-inline-edit-link {
