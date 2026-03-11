@@ -1912,7 +1912,6 @@
       html += '<button type="button" class="post-menu-trigger" data-post-action="toggle_menu" data-post-path="' + escapeAttr(path) + '" aria-label="Post actions" title="Post actions">' + overflowMenuIconSvg() + '</button>';
       html += '<div class="post-menu-panel" data-post-menu-panel="' + escapeAttr(path) + '" hidden>';
       if (openUrl) {
-        html += postActionButton('Open post', 'open', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
         html += postActionButton('Copy link', 'copy_link', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
       }
       html += postActionButton('Add to oeuvre...', 'add_to_oeuvre', path, '');
