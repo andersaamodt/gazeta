@@ -2431,6 +2431,34 @@ body {
   gap: 0.36rem;
 }
 
+#admin-panel button.post-row-delete {
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#admin-panel button.post-row-delete .trash-icon-svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+#admin-panel button.post-row-delete:hover,
+#admin-panel button.post-row-delete:focus-visible {
+  background: var(--danger-soft, rgba(180, 35, 24, 0.14));
+}
+
+#admin-panel button.post-row-delete:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 #admin-panel .post-menu {
   position: relative;
 }
@@ -3239,5 +3267,22 @@ body {
   background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-border, var(--border)) 80%, transparent) !important;
+}
+
+#admin-panel button.post-row-delete {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--admin-danger, var(--danger)) !important;
+  box-shadow: none !important;
+}
+
+#admin-panel button.post-row-delete:hover,
+#admin-panel button.post-row-delete:focus-visible {
+  border: 0 !important;
+  background: var(--danger-soft, rgba(180, 35, 24, 0.14)) !important;
+  background-image: none !important;
+  color: var(--admin-danger, var(--danger)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-danger, var(--danger)) 30%, transparent) !important;
 }
 </style>

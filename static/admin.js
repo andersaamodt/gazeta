@@ -1880,6 +1880,9 @@
       }
       html += '</div>';
       html += '<div class="post-row-actions">';
+      html += '<button type="button" class="post-row-delete post-delete" data-post-action="delete" data-post-path="' + escapeAttr(path) + '"' +
+        (post.can_delete ? ' aria-label="Delete post" title="Delete post"' : ' aria-label="Cannot delete this post" title="Cannot delete this post" disabled') +
+        '>' + prioritiesTrashIconSvg() + '</button>';
       html += '<div class="post-menu">';
       html += postActionButton('⋯', 'toggle_menu', path, 'post-menu-trigger');
       html += '<div class="post-menu-panel" data-post-menu-panel="' + escapeAttr(path) + '" hidden>';
