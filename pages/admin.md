@@ -2278,6 +2278,21 @@ body {
   padding-right: 0.7rem;
 }
 
+[data-admin-section="posts"] .admin-card {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-admin-section="posts"] .demo-box.admin-card {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+[data-admin-section="posts"] .row-head {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
 #admin-panel #btn-create-nostr-page {
   color: var(--nav-active-text, #fff) !important;
 }
