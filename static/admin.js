@@ -2228,6 +2228,13 @@
       }
       state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
       renderNostrPagesList(state.nostrPages, false);
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try {
+          window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+        } catch (_err) {
+          // Ignore navbar refresh event failures.
+        }
+      }
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;

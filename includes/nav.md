@@ -43,9 +43,6 @@
 <nav class="site-nav">
 <div class="nav-center">
 <a href="/pages/blog.html" data-page="blog">Blog</a>
-<a href="/pages/index.html" data-page="index">Home</a>
-<a href="/pages/about.html" data-page="about">About</a>
-<a href="/pages/oeuvre.html" data-page="oeuvre">Oeuvre</a>
 </div>
 <div class="nav-right">
 <form class="nav-search" method="get" action="/cgi/blog-search">
@@ -139,9 +136,7 @@
         cachedPages = [];
       }
       var basePages = [
-        { slug: 'blog', title: 'Blog', path: '/pages/blog.html' },
-        { slug: 'index', title: 'Home', path: '/pages/index.html' },
-        { slug: 'about', title: 'About', path: '/pages/about.html' }
+        { slug: 'blog', title: 'Blog', path: '/pages/blog.html' }
       ];
       var seen = {};
       var html = '';

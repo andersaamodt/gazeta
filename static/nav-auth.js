@@ -1775,9 +1775,7 @@
       return Promise.resolve();
     }
     var basePages = [
-      { slug: 'blog', title: 'Blog', path: '/pages/blog.html' },
-      { slug: 'index', title: 'Home', path: '/pages/index.html' },
-      { slug: 'about', title: 'About', path: '/pages/about.html' }
+      { slug: 'blog', title: 'Blog', path: '/pages/blog.html' }
     ];
     var normalizedCurrent = normalizeNavPath(window.location.pathname);
 
@@ -1835,6 +1833,12 @@
         // Keep static nav links on fetch failure.
       });
   }
+
+  window.addEventListener('wizardry-navbar-refresh-request', function () {
+    loadNavbarNostrPages().catch(function () {
+      // Keep current navbar when refresh fails.
+    });
+  });
 
   function normalizeNavPath(path) {
     var p = String(path || '').trim();
