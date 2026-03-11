@@ -1823,11 +1823,46 @@
     var navLinks = document.querySelectorAll('.nav-center a[data-page]');
 
     navLinks.forEach(function (link) {
+      link.classList.remove('active');
+      link.removeAttribute('aria-current');
+    });
+
+    function normalizePath(path) {
+      var p = String(path || '').trim();
+      if (!p) {
+        return '/';
+      }
+      if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
+        try {
+          p = new URL(p, window.location.href).pathname || '/';
+        } catch (_err) {
+          p = '/';
+        }
+      }
+      p = p.replace(/\/+$/, '');
+      if (!p) {
+        p = '/';
+      }
+      if (p === '/pages/index' || p === '/pages/index.html') {
+        return '/';
+      }
+      if (p.indexOf('/pages/') === 0) {
+        p = '/' + p.slice('/pages/'.length);
+        p = p.replace(/\.html?$/i, '');
+      }
+      if (!p) {
+        p = '/';
+      }
+      return p;
+    }
+
+    var normalizedCurrent = normalizePath(currentPath);
+    navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
-      if (currentPath.indexOf(href) !== -1 ||
-          (currentPath === '/' && href.indexOf('index.html') !== -1) ||
-          (currentPath.endsWith('/') && href.indexOf('index.html') !== -1)) {
+      var normalizedHref = normalizePath(href);
+      if (normalizedCurrent === normalizedHref) {
         link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
       }
     });
 

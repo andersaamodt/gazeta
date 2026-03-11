@@ -85,6 +85,15 @@
     return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
   }
 
+  function isExpectedPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    var payloadSlug = String(payload.slug || '').trim();
+    var payloadType = String(payload.page_type || '').trim().toLowerCase();
+    return payloadSlug === slug && payloadType === 'list';
+  }
+
   function readBootstrapCache() {
     try {
       var raw = localStorage.getItem(bootstrapCacheKey());
@@ -99,6 +108,10 @@
         return null;
       }
       if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      if (!isExpectedPayload(parsed.payload)) {
+        localStorage.removeItem(bootstrapCacheKey());
         return null;
       }
       return parsed.payload;
@@ -1857,11 +1870,15 @@
     try {
       state.authSignature = authSignature();
       var auth = getAuthPayload();
-      state.payload = await apiPost('/cgi/blog-get-nostr-page', {
+      var payload = await apiPost('/cgi/blog-get-nostr-page', {
         page_slug: slug,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
+      if (!isExpectedPayload(payload)) {
+        throw new Error('Unexpected page payload for list page');
+      }
+      state.payload = payload;
       state.draft = readEditableStateFromPayload();
       state.pendingNewEntry = null;
       state.saveIndicatorVisible = false;

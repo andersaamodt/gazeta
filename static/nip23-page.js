@@ -98,6 +98,15 @@
     return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
   }
 
+  function isExpectedPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    var payloadSlug = String(payload.slug || '').trim();
+    var payloadType = String(payload.page_type || '').trim().toLowerCase();
+    return payloadSlug === slug && payloadType === 'nip23';
+  }
+
   function readBootstrapCache() {
     try {
       var raw = localStorage.getItem(bootstrapCacheKey());
@@ -112,6 +121,10 @@
         return null;
       }
       if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      if (!isExpectedPayload(parsed.payload)) {
+        localStorage.removeItem(bootstrapCacheKey());
         return null;
       }
       return parsed.payload;
@@ -528,6 +541,9 @@
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     }).then(function (payload) {
+      if (!isExpectedPayload(payload)) {
+        throw new Error('Unexpected page payload for long-form page');
+      }
       state.payload = payload;
       state.draft = normalizeDraftState(payload.state || { title: '', content: '' });
       state.saveIndicatorVisible = false;
