@@ -26,6 +26,7 @@
       types: new Set()
     }
   };
+  var panelHideTimer = null;
 
   function escapeHtml(value) {
     return String(value || '')
@@ -217,19 +218,34 @@
     }
     var isOpen = !!open;
     els.toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    if (panelHideTimer) {
+      window.clearTimeout(panelHideTimer);
+      panelHideTimer = null;
+    }
 
     if (isOpen) {
+      var wasHidden = !!els.panel.hidden;
       els.panel.hidden = false;
-      els.panel.classList.add('is-open');
+      if (wasHidden) {
+        // Ensure we animate from the collapsed state whenever opening from hidden.
+        els.panel.classList.remove('is-open');
+        void els.panel.offsetHeight;
+        window.requestAnimationFrame(function () {
+          els.panel.classList.add('is-open');
+        });
+      } else {
+        els.panel.classList.add('is-open');
+      }
       return;
     }
 
     els.panel.classList.remove('is-open');
-    window.setTimeout(function () {
+    panelHideTimer = window.setTimeout(function () {
+      panelHideTimer = null;
       if (!els.panel.classList.contains('is-open')) {
         els.panel.hidden = true;
       }
-    }, 240);
+    }, 320);
   }
 
   function readCache() {
