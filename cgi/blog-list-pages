@@ -17,6 +17,7 @@ if ! blog_require_session true; then
 fi
 
 slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-slugs.XXXXXX")
+non_list_slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-non-list-slugs.XXXXXX")
 
 find "$blog_lists_dir" -maxdepth 1 -type f -name '*.json' 2>/dev/null | while IFS= read -r file; do
   base=$(basename "$file" .json)
@@ -38,6 +39,11 @@ fi
 
 cfg_json=$(blog_nostr_pages_load_json 2>/dev/null || printf '')
 if [ -n "$cfg_json" ]; then
+  printf '%s\n' "$cfg_json" | jq -r '.pages[]? | select((.type // "list") != "list") | .slug // empty' 2>/dev/null | while IFS= read -r slug || [ -n "$slug" ]; do
+    norm=$(blog_list_normalize_slug "$slug")
+    [ -n "$norm" ] && printf '%s\n' "$norm"
+  done >> "$non_list_slugs_tmp"
+
   printf '%s\n' "$cfg_json" | jq -r '.pages[]? | select((.type // "list") == "list") | .slug // empty' 2>/dev/null | while IFS= read -r slug || [ -n "$slug" ]; do
     norm=$(blog_list_normalize_slug "$slug")
     [ -n "$norm" ] && printf '%s\n' "$norm"
@@ -48,6 +54,9 @@ printf '{"success":true,"lists":['
 first=1
 sort -u "$slugs_tmp" | while IFS= read -r slug || [ -n "$slug" ]; do
   [ -n "$slug" ] || continue
+  if [ -s "$non_list_slugs_tmp" ] && grep -Fqx "$slug" "$non_list_slugs_tmp"; then
+    continue
+  fi
   draft_state=$(blog_list_load_draft_state_json "$slug" 2>/dev/null || printf '')
   if [ -n "$draft_state" ]; then
     title=$(printf '%s\n' "$draft_state" | jq -r '.title // ""' 2>/dev/null || printf '')
@@ -67,3 +76,4 @@ done
 printf ']}\n'
 
 rm -f "$slugs_tmp"
+rm -f "$non_list_slugs_tmp"
