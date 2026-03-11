@@ -65,6 +65,10 @@ title: Blog Admin
 <option value="wizard">Wizard</option>
 </select>
 </div>
+<div class="field-row">
+<label for="blog-page-title" title="Label shown for the Blog page in navigation."><strong title="Label shown for the Blog page in navigation.">Blog Page Title</strong></label>
+<input type="text" id="blog-page-title" placeholder="Blog" title="Label shown for the Blog page in navigation.">
+</div>
 <div class="field-row checkbox-row">
 <div class="setting-label" title="Allow new users to register with a Nostr key. Disable for single-author blogs.">
 <strong title="Allow new users to register with a Nostr key. Disable for single-author blogs.">Enable User Registration</strong>

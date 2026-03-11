@@ -67,6 +67,7 @@
     outputUsers: document.getElementById('output-users'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
+    blogPageTitle: document.getElementById('blog-page-title'),
     registrationEnabled: document.getElementById('registration-enabled'),
     dripInterval: document.getElementById('drip-interval'),
     dripRandomness: document.getElementById('drip-randomness'),
@@ -582,6 +583,36 @@
     const navThemeSelect = document.getElementById('theme-select');
     if (navThemeSelect && navThemeSelect.value !== pickedTheme) {
       navThemeSelect.value = pickedTheme;
+    }
+  }
+
+  function normalizeBlogPageTitle(value) {
+    const text = String(value || '').trim();
+    return text || 'Blog';
+  }
+
+  function normalizeSiteTitle(value) {
+    const text = String(value || '').trim();
+    return text || 'My Blog';
+  }
+
+  function previewBlogPageTitleInNavbar(title) {
+    const blogLabel = normalizeBlogPageTitle(title);
+    const blogLink = document.querySelector('.nav-center a[data-page="blog"]');
+    if (blogLink) {
+      blogLink.textContent = blogLabel;
+    }
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      try {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request', {
+          detail: {
+            blogPageTitle: blogLabel,
+            skipFetch: true
+          }
+        }));
+      } catch (_err) {
+        // Ignore navbar refresh event failures.
+      }
     }
   }
 
@@ -1260,7 +1291,11 @@
       if (!data.success) {
         throw new Error(data.error || 'Failed to load configuration');
       }
-      els.siteTitle.value = data.site_title || 'My Blog';
+      els.siteTitle.value = normalizeSiteTitle(data.site_title);
+      if (els.blogPageTitle) {
+        els.blogPageTitle.value = normalizeBlogPageTitle(data.blog_page_title);
+        previewBlogPageTitleInNavbar(els.blogPageTitle.value);
+      }
       if (els.adminTheme && data.theme) {
         els.adminTheme.value = data.theme;
       }
@@ -1305,8 +1340,18 @@
   async function saveConfig() {
     try {
       const shouldRefreshQueue = state.activeSection === 'queue';
+      const normalizedSiteTitle = normalizeSiteTitle(els.siteTitle ? els.siteTitle.value : '');
+      const normalizedBlogPageTitle = normalizeBlogPageTitle(els.blogPageTitle ? els.blogPageTitle.value : '');
+      if (els.siteTitle) {
+        els.siteTitle.value = normalizedSiteTitle;
+      }
+      if (els.blogPageTitle) {
+        els.blogPageTitle.value = normalizedBlogPageTitle;
+        previewBlogPageTitleInNavbar(normalizedBlogPageTitle);
+      }
       const data = await apiPost('/cgi/blog-update-config', {
-        site_title: els.siteTitle.value.trim(),
+        site_title: normalizedSiteTitle,
+        blog_page_title: normalizedBlogPageTitle,
         theme: els.adminTheme ? els.adminTheme.value : '',
         registration_enabled: els.registrationEnabled.checked ? 'true' : 'false',
         drip_interval_hours: els.dripInterval.value.trim(),
@@ -1338,7 +1383,7 @@
     }
     state.configSaveTimer = setTimeout(function () {
       saveConfig().catch(function () {});
-    }, Math.max(150, Number(delayMs || 550)));
+    }, Math.max(150, Number(delayMs || 500)));
   }
 
   function normalizeLineList(text) {
@@ -1429,6 +1474,7 @@
   function bindSettingsAutosave() {
     const configFields = [
       els.siteTitle,
+      els.blogPageTitle,
       els.adminTheme,
       els.registrationEnabled,
       els.feedFullText,
@@ -1445,7 +1491,12 @@
         field.addEventListener('change', function () { queueConfigAutosave(200); });
         return;
       }
-      field.addEventListener('input', function () { queueConfigAutosave(650); });
+      field.addEventListener('input', function () {
+        if (field === els.blogPageTitle) {
+          previewBlogPageTitleInNavbar(field.value);
+        }
+        queueConfigAutosave(500);
+      });
       field.addEventListener('change', function () { queueConfigAutosave(220); });
       field.addEventListener('blur', function () { queueConfigAutosave(180); });
     });

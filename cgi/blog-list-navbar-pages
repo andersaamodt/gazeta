@@ -12,6 +12,8 @@ blog_init
 blog_send_json_headers
 
 cfg=$(blog_nostr_pages_load_json)
+blog_page_title=$(config-get "$blog_site_conf" blog_page_title 2>/dev/null || printf '')
+[ -n "$blog_page_title" ] || blog_page_title='Blog'
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-navbar-pages.XXXXXX")
 printf '%s\n' "$cfg" | jq -c '.pages[] | select((if has("show_in_nav") then .show_in_nav else true end) == true)' > "$rows_tmp"
 
@@ -54,7 +56,7 @@ while IFS= read -r row || [ -n "$row" ]; do
       kind: $kind
     }'
 done < "$rows_tmp"
-printf ']}'
+printf '],"blog_page_title":"%s"}' "$(blog_json_escape "$blog_page_title")"
 printf '\n'
 
 rm -f "$rows_tmp"
