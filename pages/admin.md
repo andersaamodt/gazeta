@@ -2373,6 +2373,27 @@ body {
   white-space: nowrap;
 }
 
+.post-row-open {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+#admin-panel .post-row-open:hover {
+  text-decoration: underline;
+  background: transparent;
+}
+
+#admin-panel .post-row-open:focus-visible {
+  outline: 2px solid #7ea2e6;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 .post-pill {
   display: inline-flex;
   align-items: center;

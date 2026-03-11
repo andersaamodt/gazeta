@@ -1868,7 +1868,11 @@
 
       html += '<div class="post-row">';
       html += '<div class="post-row-main">';
-      html += '<span class="post-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
+      if (openUrl) {
+        html += '<button type="button" class="post-row-open post-row-title" title="' + escapeAttr(title) + '" data-post-open-url="' + escapeAttr(openUrl) + '">' + escapeHtml(title) + '</button>';
+      } else {
+        html += '<span class="post-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
+      }
       html += '<span class="post-pill' + sourceClass + '">' + escapeHtml(sourceLabel) + '</span>';
       html += '<span class="post-pill">' + escapeHtml(dateLabel) + '</span>';
       if (author) {
@@ -3507,6 +3511,14 @@
       els.postsList.addEventListener('click', function (event) {
         const target = event.target;
         if (!(target instanceof Element)) {
+          return;
+        }
+        const openNode = target.closest('[data-post-open-url]');
+        if (openNode instanceof HTMLElement) {
+          const openUrl = String(openNode.getAttribute('data-post-open-url') || '').trim();
+          if (openUrl) {
+            window.location.href = new URL(openUrl, window.location.origin).toString();
+          }
           return;
         }
         const actionNode = target.closest('[data-post-action][data-post-path]');
