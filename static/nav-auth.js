@@ -14,6 +14,16 @@
   var KEY_DEVICE_SESSION = 'nostr_device_session_v1';
   var KEY_NIP46_PAIR = 'nostr_nip46_pair_v1';
   var NAV_TOAST_KEY = 'wizardry_blog_nav_toast_v1';
+  var NOSTR_PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
+  var NOSTR_PAGE_PREFETCH_EXCLUDE = {
+    about: true,
+    archive: true,
+    tags: true,
+    admin: true,
+    compose: true,
+    account: true,
+    users: true
+  };
 
   var state = {
     currentTheme: 'archmage',
@@ -32,7 +42,8 @@
       pending: {},
       pendingTimers: {},
       seenEvents: {}
-    }
+    },
+    prefetchedNostrPageSlugs: {}
   };
 
   var els = {
@@ -173,6 +184,137 @@
 
   function currentOrigin() {
     return window.location.origin;
+  }
+
+  function currentAuthSignatureForCache() {
+    try {
+      var sessionToken = String(localStorage.getItem('session_token') || '').trim();
+      var csrfToken = String(localStorage.getItem('csrf_token') || '').trim();
+      return sessionToken + '|' + csrfToken;
+    } catch (_err) {
+      return '|';
+    }
+  }
+
+  function writeNostrPageBootstrapCache(slug, payload) {
+    var safeSlug = String(slug || '').trim();
+    if (!safeSlug || !payload || typeof payload !== 'object') {
+      return;
+    }
+    try {
+      localStorage.setItem(NOSTR_PAGE_BOOTSTRAP_CACHE_PREFIX + safeSlug, JSON.stringify({
+        auth_signature: currentAuthSignatureForCache(),
+        payload: payload,
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore cache write failures.
+    }
+  }
+
+  function slugFromHref(href) {
+    var raw = String(href || '').trim();
+    if (!raw || raw.indexOf('javascript:') === 0) {
+      return '';
+    }
+    try {
+      var url = new URL(raw, window.location.href);
+      if (url.origin !== window.location.origin) {
+        return '';
+      }
+      var path = String(url.pathname || '').replace(/\/+$/, '');
+      if (!path || path === '/') {
+        return 'index';
+      }
+      var slug = path;
+      if (slug.indexOf('/pages/') === 0) {
+        slug = slug.slice('/pages/'.length);
+      } else if (slug.indexOf('/') === 0) {
+        slug = slug.slice(1);
+      }
+      slug = slug.replace(/\.html?$/i, '');
+      if (!slug) {
+        slug = 'index';
+      }
+      return slug;
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function prefetchNostrPageBootstrap(slug) {
+    var safeSlug = String(slug || '').trim();
+    if (!safeSlug || NOSTR_PAGE_PREFETCH_EXCLUDE[safeSlug] || state.prefetchedNostrPageSlugs[safeSlug]) {
+      return;
+    }
+    state.prefetchedNostrPageSlugs[safeSlug] = true;
+    var sessionToken = '';
+    var csrfToken = '';
+    try {
+      sessionToken = String(localStorage.getItem('session_token') || '').trim();
+      csrfToken = String(localStorage.getItem('csrf_token') || '').trim();
+    } catch (_err) {
+      sessionToken = '';
+      csrfToken = '';
+    }
+    var body = new URLSearchParams({
+      page_slug: safeSlug,
+      session_token: sessionToken,
+      csrf_token: csrfToken
+    });
+    fetch('/cgi/blog-get-nostr-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        var data;
+        try {
+          data = JSON.parse(text);
+        } catch (_parseErr) {
+          return;
+        }
+        if (!data || data.success === false) {
+          return;
+        }
+        writeNostrPageBootstrapCache(safeSlug, data);
+      })
+      .catch(function () {
+        // Ignore prefetch errors.
+      });
+  }
+
+  function bindNavbarNostrPagePrefetch() {
+    var navCenter = document.querySelector('.nav-center');
+    if (!navCenter) {
+      return;
+    }
+
+    function triggerFromTarget(target) {
+      if (!target || !target.closest) {
+        return;
+      }
+      var link = target.closest('a[href]');
+      if (!link) {
+        return;
+      }
+      var slug = slugFromHref(link.getAttribute('href') || '');
+      if (!slug) {
+        return;
+      }
+      prefetchNostrPageBootstrap(slug);
+    }
+
+    navCenter.addEventListener('mouseover', function (event) {
+      triggerFromTarget(event.target);
+    });
+    navCenter.addEventListener('focusin', function (event) {
+      triggerFromTarget(event.target);
+    });
+    navCenter.addEventListener('touchstart', function (event) {
+      triggerFromTarget(event.target);
+    }, { passive: true });
   }
 
   function hasNostrTools() {
@@ -2042,6 +2184,7 @@
     window.addEventListener('hashchange', highlightCurrentPage);
     bindThemeSelect();
     bindUiEvents();
+    bindNavbarNostrPagePrefetch();
     window.blogAuth = window.blogAuth || {};
     window.blogAuth.openLoginModal = showAuthModal;
     window.blogAuth.showToast = showNavToast;
