@@ -731,13 +731,70 @@ blog_nostr_page_canonical_title() {
   esac
 }
 
+blog_nostr_page_source_template_type() {
+  file=${1-}
+  [ -f "$file" ] || {
+    printf 'missing\n'
+    return 0
+  }
+  if grep -q 'id="nip23-page-root"' "$file" 2>/dev/null; then
+    printf 'nip23\n'
+    return 0
+  fi
+  if grep -q 'id="contact-page-root"' "$file" 2>/dev/null; then
+    printf 'contact\n'
+    return 0
+  fi
+  if grep -q 'id="oeuvre-root"' "$file" 2>/dev/null; then
+    printf 'list\n'
+    return 0
+  fi
+  printf 'custom\n'
+}
+
+blog_nostr_page_source_template_slug() {
+  file=${1-}
+  [ -f "$file" ] || {
+    printf '\n'
+    return 0
+  }
+  raw_slug=$(sed -n 's/.*data-page-slug="\([^"]*\)".*/\1/p; s/.*data-list-slug="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1)
+  printf '%s\n' "$(blog_nostr_page_slug "$raw_slug")"
+}
+
 blog_nostr_page_ensure_source_page() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || return 1
-  page_file="$blog_site_root/site/pages/$slug.md"
+  case "$page_type" in
+    nip23)
+      if [ "$slug" = "index" ]; then
+        page_file="$blog_site_root/site/pages/index.md"
+      else
+        page_file="$blog_site_root/site/pages/$slug.md"
+      fi
+      ;;
+    *)
+      page_file="$blog_site_root/site/pages/$slug.md"
+      ;;
+  esac
+
   if [ -f "$page_file" ]; then
-    return 0
+    existing_type=$(blog_nostr_page_source_template_type "$page_file")
+    case "$existing_type" in
+      custom)
+        # Preserve non-managed/custom pages.
+        return 0
+        ;;
+      missing)
+        ;;
+      *)
+        existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
+        if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+          return 0
+        fi
+        ;;
+    esac
   fi
 
   page_title=$(blog_nostr_page_titleize_slug "$slug")
@@ -769,11 +826,6 @@ license: "CC BY 4.0"
 EOCONTACT
       ;;
     nip23)
-      if [ "$slug" = "index" ]; then
-        page_file="$blog_site_root/site/pages/index.md"
-      else
-        page_file="$blog_site_root/site/pages/$slug.md"
-      fi
       cat > "$page_file" <<EONIP23
 ---
 title: "$page_title"

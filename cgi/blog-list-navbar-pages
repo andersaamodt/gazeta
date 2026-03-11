@@ -25,6 +25,9 @@ while IFS= read -r row || [ -n "$row" ]; do
   path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
 
+  # Keep locally-routed Nostr page shells in sync with configured type/slug.
+  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
+
   title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')
   if [ -z "$title" ]; then
     title=$placeholder_title
