@@ -1867,6 +1867,10 @@
     return '<button type="button"' + classes + ' data-post-action="' + escapeAttr(action) + '" data-post-path="' + escapeAttr(postPath) + '"' + attrs + '>' + label + '</button>';
   }
 
+  function overflowMenuIconSvg() {
+    return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="18.5" r="1.8" fill="currentColor"/></svg>';
+  }
+
   function renderPostsList(posts) {
     if (!els.postsList) {
       return;
@@ -1890,7 +1894,7 @@
       html += '<div class="post-row">';
       html += '<div class="post-row-main">';
       if (openUrl) {
-        html += '<button type="button" class="post-row-open post-row-title" title="' + escapeAttr(title) + '" data-post-open-url="' + escapeAttr(openUrl) + '">' + escapeHtml(title) + '</button>';
+        html += '<a class="post-row-open post-row-title" title="' + escapeAttr(title) + '" href="' + escapeAttr(openUrl) + '">' + escapeHtml(title) + '</a>';
       } else {
         html += '<span class="post-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
       }
@@ -1905,7 +1909,7 @@
         (post.can_delete ? ' aria-label="Delete post" title="Delete post"' : ' aria-label="Cannot delete this post" title="Cannot delete this post" disabled') +
         '>' + prioritiesTrashIconSvg() + '</button>';
       html += '<div class="post-menu">';
-      html += postActionButton('⋯', 'toggle_menu', path, 'post-menu-trigger');
+      html += '<button type="button" class="post-menu-trigger" data-post-action="toggle_menu" data-post-path="' + escapeAttr(path) + '" aria-label="Post actions" title="Post actions">' + overflowMenuIconSvg() + '</button>';
       html += '<div class="post-menu-panel" data-post-menu-panel="' + escapeAttr(path) + '" hidden>';
       if (openUrl) {
         html += postActionButton('Open post', 'open', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
@@ -3535,14 +3539,6 @@
       els.postsList.addEventListener('click', function (event) {
         const target = event.target;
         if (!(target instanceof Element)) {
-          return;
-        }
-        const openNode = target.closest('[data-post-open-url]');
-        if (openNode instanceof HTMLElement) {
-          const openUrl = String(openNode.getAttribute('data-post-open-url') || '').trim();
-          if (openUrl) {
-            window.location.href = new URL(openUrl, window.location.origin).toString();
-          }
           return;
         }
         const actionNode = target.closest('[data-post-action][data-post-path]');

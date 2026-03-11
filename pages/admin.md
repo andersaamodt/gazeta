@@ -2344,7 +2344,7 @@ body {
   border: 0;
   border-radius: 0;
   background: #fff;
-  padding: 0.48rem 0.68rem;
+  padding: 0.48rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2362,6 +2362,7 @@ body {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+  padding-left: 0.42rem;
 }
 
 .post-row-title {
@@ -2381,6 +2382,7 @@ body {
   min-width: 0;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
 }
 
 #admin-panel .post-row-open:hover {
@@ -2429,12 +2431,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.36rem;
+  padding-right: 0.42rem;
 }
 
 #admin-panel button.post-row-delete {
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
+  min-width: 2.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2445,8 +2448,8 @@ body {
 }
 
 #admin-panel button.post-row-delete .trash-icon-svg {
-  width: 1rem;
-  height: 1rem;
+  width: 1.24rem;
+  height: 1.24rem;
 }
 
 #admin-panel button.post-row-delete:hover,
@@ -2464,11 +2467,17 @@ body {
 }
 
 #admin-panel button.post-menu-trigger {
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
+  min-width: 2.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border-radius: 8px;
   padding: 0;
+  color: var(--admin-text, var(--text));
+}
+
+#admin-panel button.post-menu-trigger .overflow-menu-icon-svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 #admin-panel .post-menu-panel {
