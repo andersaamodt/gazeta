@@ -389,6 +389,13 @@ title: Blog Admin
 <div class="account-row account-nostr-row">
 <div class="account-pubkey-field">
 <input type="text" id="account-nostr-pubkey" readonly>
+<button id="btn-account-pubkey-toggle" type="button" class="unobtrusive-icon-button account-pubkey-visibility" aria-label="Show Nostr pubkey" title="Show Nostr pubkey">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path class="eye-open" d="M2.2 12C4.5 8.1 8 6 12 6s7.5 2.1 9.8 6c-2.3 3.9-5.8 6-9.8 6s-7.5-2.1-9.8-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+<circle class="eye-open" cx="12" cy="12" r="2.9" stroke="currentColor" stroke-width="1.8"/>
+<path class="eye-closed" d="M3 3l18 18M4.1 12c2.2-3.8 5.7-6 9.9-6 1.6 0 3.1.3 4.5 1M19.9 12c-2.2 3.8-5.7 6-9.9 6-1.6 0-3.1-.3-4.5-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</button>
 <button id="btn-account-pubkey-copy" type="button" class="unobtrusive-icon-button" aria-label="Copy Nostr pubkey" title="Copy Nostr pubkey">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -396,9 +403,8 @@ title: Blog Admin
 </svg>
 </button>
 </div>
-<button id="btn-account-pubkey-toggle" type="button">Show</button>
 </div>
-<p class="muted account-note">This key is account-bound and cannot be edited directly.</p>
+<p class="muted account-note">Your account ID is your Nostr pubkey. It cannot be changed.</p>
 </div>
 
 <div class="field-row">
@@ -1131,7 +1137,41 @@ body {
 
 [data-admin-section="account"] .account-nostr-row #account-nostr-pubkey {
   min-width: min(100%, 32rem);
-  padding-right: 2.2rem;
+  padding-right: 4rem;
+}
+
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button {
+  position: absolute;
+  right: 2.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0;
+  color: #5b6f93;
+  box-shadow: none;
+}
+
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:hover,
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:focus-visible {
+  background: rgba(90, 116, 170, 0.2);
+  color: #2f497a;
+}
+
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button .eye-closed {
+  display: none;
+}
+
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button.is-visible .eye-open {
+  display: none;
+}
+
+#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button.is-visible .eye-closed {
+  display: block;
 }
 
 #admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button {
@@ -1164,10 +1204,6 @@ body {
 #admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button svg {
   width: 0.86rem;
   height: 0.86rem;
-}
-
-#admin-panel #btn-account-pubkey-toggle {
-  min-width: 4.1rem;
 }
 
 .account-ssh-optional {

@@ -478,7 +478,9 @@
     const shown = !!visible;
     els.accountNostrPubkey.classList.toggle('is-visible', shown);
     if (els.accountNostrPubkeyToggleButton) {
-      els.accountNostrPubkeyToggleButton.textContent = shown ? 'Hide' : 'Show';
+      els.accountNostrPubkeyToggleButton.classList.toggle('is-visible', shown);
+      els.accountNostrPubkeyToggleButton.setAttribute('aria-label', shown ? 'Hide Nostr pubkey' : 'Show Nostr pubkey');
+      els.accountNostrPubkeyToggleButton.setAttribute('title', shown ? 'Hide Nostr pubkey' : 'Show Nostr pubkey');
     }
   }
 
@@ -520,9 +522,6 @@
     }
     if (els.accountNostrPubkeyToggleButton) {
       els.accountNostrPubkeyToggleButton.disabled = !hasKey;
-      if (!hasKey) {
-        els.accountNostrPubkeyToggleButton.textContent = 'Show';
-      }
     }
   }
 
