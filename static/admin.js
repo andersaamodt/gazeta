@@ -2096,7 +2096,7 @@
         html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';
       } else {
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
-        html += '<button type="button" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change</button>';
+        html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change</a>';
       }
       html += '</div>';
       html += '</div>';
@@ -3207,6 +3207,7 @@
         if (!(actionNode instanceof HTMLElement)) {
           return;
         }
+        event.preventDefault();
         const action = String(actionNode.getAttribute('data-nostr-page-action') || '');
         if (action === 'toggle-nav') {
           return;

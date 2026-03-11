@@ -2133,25 +2133,17 @@ body {
 }
 
 #admin-panel .nostr-page-path-edit {
-  border: 0;
-  background: transparent !important;
-  color: var(--admin-accent-strong, #2d4f8c) !important;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1;
-  padding: 0 !important;
-  min-width: 0;
-  width: auto !important;
-  border-radius: 0;
+  color: var(--accent, #2d4f8c) !important;
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.15;
+  text-decoration: none;
 }
 
 #admin-panel .nostr-page-path-edit:hover,
 #admin-panel .nostr-page-path-edit:focus-visible {
   text-decoration: underline;
-  background: transparent !important;
-  border-color: transparent !important;
-  color: var(--admin-accent-strong, #2d4f8c) !important;
-  transform: none !important;
+  color: var(--accent, #2d4f8c) !important;
 }
 
 #admin-panel .nostr-page-slug-input {
