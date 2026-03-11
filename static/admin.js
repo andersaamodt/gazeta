@@ -99,6 +99,7 @@
     queueLocalDripStatusText: document.getElementById('queue-local-drip-status-text'),
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
     postsList: document.getElementById('posts-list'),
+    newPostButton: document.getElementById('btn-new-post'),
     nostrPagesList: document.getElementById('nostr-pages-list'),
     createNostrPageButton: document.getElementById('btn-create-nostr-page'),
     nostrPageCreateDialog: document.getElementById('nostr-page-create-dialog'),
@@ -3211,6 +3212,12 @@
         unqueueDraft(draftId).catch(function (err) {
           setOutput(els.outputQueue, 'Error: ' + err.message, 'error');
         });
+      });
+    }
+    if (els.newPostButton) {
+      els.newPostButton.addEventListener('click', function () {
+        resetComposer();
+        activateSection('compose', true);
       });
     }
     if (els.nostrPageTypeSelect) {

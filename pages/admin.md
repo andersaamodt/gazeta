@@ -353,6 +353,9 @@ title: Blog Admin
 <div>
 <h3>Posts</h3>
 </div>
+<div class="row-actions">
+<button id="btn-new-post" type="button" class="primary">New Post</button>
+</div>
 </div>
 <div id="posts-list" class="posts-list"></div>
 <div id="output-posts" class="output"></div>
