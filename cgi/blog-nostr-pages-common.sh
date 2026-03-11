@@ -46,6 +46,14 @@ blog_nostr_pages_default_json() {
         path: "/"
       },
       {
+        slug: "about",
+        type: "nip23",
+        kind: 30023,
+        show_in_nav: true,
+        placeholder_title: "About",
+        path: "/about"
+      },
+      {
         slug: "oeuvre",
         type: "list",
         kind: 30004,
@@ -123,6 +131,14 @@ blog_nostr_pages_normalize_json() {
                path: "/"
              },
              {
+               slug: "about",
+               type: "nip23",
+               kind: 30023,
+               show_in_nav: true,
+               placeholder_title: "About",
+               path: "/about"
+             },
+             {
                slug: "oeuvre",
                type: "list",
                kind: 30004,
@@ -139,6 +155,13 @@ blog_nostr_pages_normalize_json() {
                    placeholder_title: "Home",
                    path: "/"
                  }] + .) end)
+             | if any(.[]; .slug == "about") then . else (. + [{
+                   slug: "about",
+                   type: "nip23",
+                   show_in_nav: true,
+                   placeholder_title: "About",
+                   path: "/about"
+                 }]) end
              | map(
                .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30004 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)

@@ -1,49 +1,21 @@
 ---
-title: About
+title: "About"
+published_at: "2026-03-11T00:00:00Z"
+content_hash: ""
+tags: ["nostr", "nip23"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
 ---
 
-## About This Blog
+<section id="nip23-page-root" class="list-page-shell" data-page-slug="about" data-page-type="nip23" data-page-title="About">
+<div class="list-page-head">
+<h1 id="nip23-page-title">About</h1>
+</div>
+<div id="nip23-page-admin" class="list-admin" hidden></div>
+<div id="nip23-page-validation" class="list-validation" hidden></div>
+<div id="nip23-page-content" class="list-page-content"></div>
+</section>
 
-Welcome to my personal blog. This is a place where I share my thoughts, ideas, and experiences.
-
-## About the Author
-
-Hi, I'm [Your Name]. This blog is where I write about [your topics of interest].
-
-You can find me on:
-- [Your social links]
-- [Your website]
-- [Your email]
-
-## About the Platform
-
-This blog is built with [wizardry web](https://github.com/andersaamodt/wizardry), a unique web platform that:
-
-- Uses POSIX shell scripts for all server-side logic
-- Treats the filesystem as the database
-- Converts Markdown to HTML with Pandoc
-- Provides interactivity through CGI scripts
-
-### Technical Details
-
-- **Posts**: Stored as `.md` files with YAML front-matter
-- **Identity**: Each post identified by content hash (SHA-256)
-- **Versioning**: Edits create new versions linked to prior versions
-- **Tags**: Flat tag system compatible with Nostr
-- **Visibility**: Controlled via UNIX file permissions
-
-### Optional Nostr Bridge
-
-This blog can optionally enable a local-first Nostr bridge:
-- Published posts are signed as kind `30023` events with slug-only `d` identity.
-- Event JSON files are canonical and stored in `site/nostr/events/`.
-- Render projections and indexes are rebuilt from local events.
-- Comments are mirrored locally and never fetched live during page render.
-
-## Content License
-
-Unless otherwise noted, all content on this blog is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-
-## Contact
-
-Feel free to reach out at [your email].
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/nip23-page.js"></script>
