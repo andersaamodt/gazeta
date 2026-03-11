@@ -39,11 +39,6 @@
   setTimeout(reveal, 6000);
 })();
 </script>
-<style>
-html.app-hydrating body {
-  visibility: hidden;
-}
-</style>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
 <div class="nav-center">

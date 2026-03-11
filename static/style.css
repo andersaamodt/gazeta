@@ -206,10 +206,6 @@ header h1 {
 }
 
 /* Site Navigation */
-html.app-hydrating body {
-  visibility: hidden;
-}
-
 .site-nav {
   display: flex;
   justify-content: space-between;
