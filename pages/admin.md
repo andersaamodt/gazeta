@@ -470,6 +470,34 @@ title: Blog Admin
 </form>
 </dialog>
 
+<dialog id="post-add-to-list-dialog" class="admin-inline-dialog" aria-labelledby="post-add-to-list-title">
+<form id="post-add-to-list-form" method="dialog" class="admin-inline-dialog-form">
+<h4 id="post-add-to-list-title">Add Post to List</h4>
+<div class="field-row">
+<label for="post-add-to-list-select"><strong>List</strong></label>
+<select id="post-add-to-list-select" aria-label="List">
+<option value="">Loading lists...</option>
+</select>
+</div>
+<div id="post-add-to-list-new-row" class="field-row" hidden>
+<label for="post-add-to-list-new-slug"><strong>New list slug</strong></label>
+<input type="text" id="post-add-to-list-new-slug" placeholder="new-list">
+</div>
+<div class="field-row">
+<label for="post-add-to-list-date"><strong>Date (optional)</strong></label>
+<input type="text" id="post-add-to-list-date" placeholder="YYYY or YYYY-MM or YYYY-MM-DD">
+</div>
+<div class="field-row">
+<label for="post-add-to-list-markdown"><strong>Text (optional)</strong></label>
+<input type="text" id="post-add-to-list-markdown" placeholder="Markdown line for this entry">
+</div>
+<div class="admin-inline-dialog-actions">
+<button id="post-add-to-list-cancel" type="button">Cancel</button>
+<button id="post-add-to-list-confirm" type="submit" class="primary">Add to list</button>
+</div>
+</form>
+</dialog>
+
 <div id="drop-overlay" class="drop-overlay">Drop images to upload and insert into your draft</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>

@@ -28,6 +28,7 @@
     usersActionInFlight: false,
     postsMenuOpenFor: '',
     postsActionInFlight: false,
+    pendingAddToListPostPath: '',
     dripQueueAhead: 0,
     dripQueueEtaMinutes: 0,
     dripQueueInfoReady: false,
@@ -101,6 +102,14 @@
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
     postsList: document.getElementById('posts-list'),
     newPostButton: document.getElementById('btn-new-post'),
+    postAddToListDialog: document.getElementById('post-add-to-list-dialog'),
+    postAddToListForm: document.getElementById('post-add-to-list-form'),
+    postAddToListSelect: document.getElementById('post-add-to-list-select'),
+    postAddToListNewRow: document.getElementById('post-add-to-list-new-row'),
+    postAddToListNewSlug: document.getElementById('post-add-to-list-new-slug'),
+    postAddToListDate: document.getElementById('post-add-to-list-date'),
+    postAddToListMarkdown: document.getElementById('post-add-to-list-markdown'),
+    postAddToListCancel: document.getElementById('post-add-to-list-cancel'),
     nostrPagesList: document.getElementById('nostr-pages-list'),
     createNostrPageButton: document.getElementById('btn-create-nostr-page'),
     nostrPageCreateDialog: document.getElementById('nostr-page-create-dialog'),
@@ -1914,7 +1923,6 @@
       if (openUrl) {
         html += postActionButton('Copy link', 'copy_link', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
       }
-      html += postActionButton('Add to oeuvre...', 'add_to_oeuvre', path, '');
       html += postActionButton('Add to list...', 'add_to_list', path, '');
       html += postActionButton('Edit post...', 'edit_post', path, '');
       if (post.can_hide) {
@@ -2508,57 +2516,8 @@
       }
       return;
     }
-    if (pickedAction === 'add_to_oeuvre' || pickedAction === 'add_to_list') {
-      if (state.postsActionInFlight) {
-        return;
-      }
-      let targetSlug = 'oeuvre';
-      if (pickedAction === 'add_to_list') {
-        const listsData = await apiPost('/cgi/blog-list-pages', {}, true);
-        if (!listsData.success) {
-          throw new Error(listsData.error || 'Could not load lists');
-        }
-        const lists = Array.isArray(listsData.lists) ? listsData.lists : [];
-        const defaultSlug = lists.length ? String(lists[0].slug || 'oeuvre') : 'oeuvre';
-        const options = lists.map(function (item) { return String(item.slug || '').trim(); }).filter(Boolean);
-        const picked = window.prompt(
-          'Select list slug:\n' + (options.length ? options.join(', ') : 'oeuvre'),
-          defaultSlug
-        );
-        if (picked === null) {
-          return;
-        }
-        targetSlug = String(picked || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
-        if (!targetSlug) {
-          setOutput(els.outputPosts, 'List slug is required.', 'warn');
-          return;
-        }
-      }
-      const pickedDate = window.prompt('Optional entry date (YYYY / YYYY-MM / YYYY-MM-DD):', '');
-      if (pickedDate === null) {
-        return;
-      }
-      const pickedMarkdown = window.prompt('Optional markdown line for this entry:', '');
-      if (pickedMarkdown === null) {
-        return;
-      }
-      state.postsActionInFlight = true;
-      try {
-        const addData = await apiPost('/cgi/blog-add-post-to-list', {
-          list_slug: targetSlug,
-          post_path: path,
-          date: String(pickedDate || '').trim(),
-          markdown: String(pickedMarkdown || '').trim(),
-          marker: pickedAction === 'add_to_oeuvre' ? 'oeuvre' : ''
-        }, true);
-        if (!addData.success) {
-          throw new Error(addData.error || 'Could not add post to list');
-        }
-        state.postsMenuOpenFor = '';
-        setOutput(els.outputPosts, addData.message || ('Added to ' + targetSlug + ' draft.'), 'ok');
-      } finally {
-        state.postsActionInFlight = false;
-      }
+    if (pickedAction === 'add_to_list') {
+      await openAddToListDialog(path);
       return;
     }
 
@@ -2590,6 +2549,97 @@
       setOutput(els.outputPosts, data.message || 'Post updated.', 'ok');
     } finally {
       state.postsActionInFlight = false;
+    }
+  }
+
+  function syncAddToListNewRowVisibility() {
+    if (!els.postAddToListSelect || !els.postAddToListNewRow) {
+      return;
+    }
+    const selected = String(els.postAddToListSelect.value || '').trim();
+    const useNew = selected === '__new__';
+    els.postAddToListNewRow.hidden = !useNew;
+    if (useNew && els.postAddToListNewSlug) {
+      els.postAddToListNewSlug.focus();
+      els.postAddToListNewSlug.select();
+    }
+  }
+
+  async function submitAddPostToList(postPath, slug, dateText, markdownText) {
+    state.postsActionInFlight = true;
+    try {
+      const addData = await apiPost('/cgi/blog-add-post-to-list', {
+        list_slug: slug,
+        post_path: postPath,
+        date: dateText,
+        markdown: markdownText,
+        marker: 'list'
+      }, true);
+      if (!addData.success) {
+        throw new Error(addData.error || 'Could not add post to list');
+      }
+      state.postsMenuOpenFor = '';
+      setOutput(els.outputPosts, addData.message || ('Added to ' + slug + ' draft.'), 'ok');
+    } finally {
+      state.postsActionInFlight = false;
+    }
+  }
+
+  async function openAddToListDialog(postPath) {
+    const path = String(postPath || '').trim();
+    if (!path) {
+      return;
+    }
+    if (!(els.postAddToListDialog instanceof HTMLDialogElement) ||
+        !els.postAddToListSelect ||
+        !els.postAddToListDate ||
+        !els.postAddToListMarkdown) {
+      const fallback = window.prompt('List slug:', 'oeuvre');
+      if (fallback === null) {
+        return;
+      }
+      const fallbackSlug = normalizeNostrPageSlug(fallback);
+      if (!fallbackSlug) {
+        setOutput(els.outputPosts, 'List slug is required.', 'warn');
+        return;
+      }
+      await submitAddPostToList(path, fallbackSlug, '', '');
+      return;
+    }
+
+    const listsData = await apiPost('/cgi/blog-list-pages', {}, true);
+    if (!listsData.success) {
+      throw new Error(listsData.error || 'Could not load lists');
+    }
+    const lists = Array.isArray(listsData.lists) ? listsData.lists : [];
+    const options = lists
+      .map(function (item) {
+        return {
+          slug: normalizeNostrPageSlug(item && item.slug),
+          title: String((item && item.title) || '').trim()
+        };
+      })
+      .filter(function (item) { return !!item.slug; });
+
+    let html = '';
+    options.forEach(function (item) {
+      html += '<option value="' + escapeAttr(item.slug) + '">' + escapeHtml(item.title || item.slug) + '</option>';
+    });
+    html += '<option value="__new__">New list...</option>';
+    els.postAddToListSelect.innerHTML = html;
+    els.postAddToListSelect.value = options.length ? options[0].slug : '__new__';
+    state.pendingAddToListPostPath = path;
+    els.postAddToListDate.value = '';
+    els.postAddToListMarkdown.value = '';
+    if (els.postAddToListNewSlug) {
+      els.postAddToListNewSlug.value = '';
+    }
+    syncAddToListNewRowVisibility();
+    els.postAddToListDialog.showModal();
+    if (els.postAddToListSelect.value === '__new__' && els.postAddToListNewSlug) {
+      els.postAddToListNewSlug.focus();
+    } else {
+      els.postAddToListSelect.focus();
     }
   }
 
@@ -3269,6 +3319,18 @@
         }
       });
     }
+    if (els.postAddToListCancel) {
+      els.postAddToListCancel.addEventListener('click', function () {
+        if (els.postAddToListDialog instanceof HTMLDialogElement) {
+          els.postAddToListDialog.close('cancel');
+        }
+      });
+    }
+    if (els.postAddToListSelect) {
+      els.postAddToListSelect.addEventListener('change', function () {
+        syncAddToListNewRowVisibility();
+      });
+    }
     Array.from(document.querySelectorAll('dialog')).forEach(function (dialogEl) {
       if (!(dialogEl instanceof HTMLDialogElement)) {
         return;
@@ -3278,6 +3340,11 @@
           dialogEl.close('cancel');
         }
       });
+      if (dialogEl === els.postAddToListDialog) {
+        dialogEl.addEventListener('close', function () {
+          state.pendingAddToListPostPath = '';
+        });
+      }
     });
     if (els.nostrPageCreateForm) {
       els.nostrPageCreateForm.addEventListener('submit', function (event) {
@@ -3290,6 +3357,37 @@
         if (els.nostrPageCreateDialog instanceof HTMLDialogElement) {
           els.nostrPageCreateDialog.close('ok');
         }
+      });
+    }
+    if (els.postAddToListForm) {
+      els.postAddToListForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const postPath = String(state.pendingAddToListPostPath || '').trim();
+        if (!postPath) {
+          setOutput(els.outputPosts, 'Post path missing for Add to list.', 'error');
+          return;
+        }
+        const selected = String((els.postAddToListSelect && els.postAddToListSelect.value) || '').trim();
+        const candidateSlug = selected === '__new__'
+          ? String((els.postAddToListNewSlug && els.postAddToListNewSlug.value) || '')
+          : selected;
+        const targetSlug = normalizeNostrPageSlug(candidateSlug);
+        if (!targetSlug) {
+          setOutput(els.outputPosts, 'List slug is required.', 'warn');
+          return;
+        }
+        const dateText = String((els.postAddToListDate && els.postAddToListDate.value) || '').trim();
+        const markdownText = String((els.postAddToListMarkdown && els.postAddToListMarkdown.value) || '').trim();
+        submitAddPostToList(postPath, targetSlug, dateText, markdownText)
+          .then(function () {
+            if (els.postAddToListDialog instanceof HTMLDialogElement) {
+              els.postAddToListDialog.close('ok');
+            }
+            state.pendingAddToListPostPath = '';
+          })
+          .catch(function (err) {
+            setOutput(els.outputPosts, 'Error: ' + err.message, 'error');
+          });
       });
     }
     if (els.createNostrPageButton) {
