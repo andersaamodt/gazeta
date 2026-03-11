@@ -2101,7 +2101,7 @@ body {
 }
 
 .nostr-page-row + .nostr-page-row {
-  border-top: 1px solid #d2def3;
+  border-top: 0;
 }
 
 .nostr-page-leading {
@@ -2274,7 +2274,7 @@ body {
   background: transparent !important;
   border-radius: 8px !important;
   box-shadow: none !important;
-  color: inherit !important;
+  color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .nostr-page-leading .nostr-page-drag-handle {
