@@ -2009,6 +2009,10 @@
       return;
     }
     try {
+      if (!skipFetch) {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+        return;
+      }
       window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request', {
         detail: {
           pages: navbarRowsFromNostrPages(pages),
