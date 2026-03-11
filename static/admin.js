@@ -1442,7 +1442,6 @@
       if (els.mirrorNostrButton) {
         els.mirrorNostrButton.disabled = !state.nostrBridgeEnabled;
       }
-      await loadConfig();
       setNostrBridgeSaveStatus('saved', 'Saved at ' + new Date().toLocaleString());
       if (els.outputNostrBridge) {
         els.outputNostrBridge.innerHTML = '';
