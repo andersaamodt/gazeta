@@ -3040,9 +3040,22 @@ body {
   box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16)) !important;
 }
 
+#admin-panel .post-menu-panel button,
+#admin-panel .user-menu-panel button {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+  box-shadow: none !important;
+}
+
 #admin-panel .post-menu-panel button:hover,
 #admin-panel .user-menu-panel button:hover {
   background: var(--menu-hover-bg, var(--admin-hover, var(--nav-link-hover))) !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .post-menu-panel button.post-delete:hover,
