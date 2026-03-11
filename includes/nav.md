@@ -96,6 +96,8 @@
     var loginSplit = document.getElementById('nav-login-split');
     var userMenu = document.getElementById('nav-user-menu');
     var userName = document.getElementById('nav-user-name');
+    var composeTools = document.getElementById('nav-compose-tools');
+    var cachedIsAdmin = String(localStorage.getItem('last_auth_is_admin') || '') === '1';
 
     if (loginSplit) {
       loginSplit.style.display = 'none';
@@ -109,6 +111,9 @@
     }
 
     if (hasToken) {
+      if (composeTools) {
+        composeTools.style.display = cachedIsAdmin ? 'inline-flex' : 'none';
+      }
       if (userMenu) {
         userMenu.style.display = 'inline-flex';
       }
@@ -124,6 +129,52 @@
     }
   } catch (_err) {
     // Ignore storage failures and let nav-auth.js reconcile state.
+  }
+
+  try {
+    var navCenter = document.querySelector('.nav-center');
+    var cachedRaw = localStorage.getItem('cached_navbar_pages_v1');
+    if (navCenter && cachedRaw) {
+      var cachedPages = JSON.parse(cachedRaw);
+      if (!Array.isArray(cachedPages)) {
+        cachedPages = [];
+      }
+      var basePages = [
+        { slug: 'index', title: 'Home', path: '/pages/index.html' },
+        { slug: 'about', title: 'About', path: '/pages/about.html' },
+        { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
+        { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
+      ];
+      var seen = {};
+      var html = '';
+      function esc(text) {
+        return String(text || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+      basePages.forEach(function (page) {
+        seen[page.slug] = true;
+        html += '<a href="' + esc(page.path) + '" data-page="' + esc(page.slug) + '">' + esc(page.title) + '</a>';
+      });
+      cachedPages.forEach(function (page) {
+        var slug = String(page && page.slug || '').trim();
+        var title = String(page && page.title || '').trim();
+        var path = String(page && page.path || '').trim();
+        if (!slug || !path || seen[slug]) {
+          return;
+        }
+        seen[slug] = true;
+        html += '<a href="' + esc(path) + '" data-page="' + esc(slug) + '">' + esc(title || slug) + '</a>';
+      });
+      if (html) {
+        navCenter.innerHTML = html;
+      }
+    }
+  } catch (_err2) {
+    // Ignore cache parse failures and let runtime fetch reconcile state.
   }
 
   document.addEventListener('DOMContentLoaded', function () {

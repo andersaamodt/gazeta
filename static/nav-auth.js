@@ -873,7 +873,14 @@
         if (data.player_name) {
           localStorage.setItem('last_auth_player_name', data.player_name);
         }
-        applyLoggedInUi(true, !!data.is_admin, data.player_name || data.username || '');
+        if (typeof data.is_admin !== 'undefined') {
+          localStorage.setItem('last_auth_is_admin', data.is_admin ? '1' : '0');
+        }
+        applyLoggedInUi(
+          true,
+          !!data.is_admin,
+          data.player_name || localStorage.getItem('last_auth_player_name') || data.username || ''
+        );
         updateLogoutOtherSessionsUi(data.other_sessions_count || 0);
         return true;
       })
@@ -1555,6 +1562,11 @@
       .then(function (data) {
         if (!data || !data.success || !Array.isArray(data.pages)) {
           return;
+        }
+        try {
+          localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(data.pages));
+        } catch (_cacheErr) {
+          // Ignore storage failures.
         }
         var basePages = [
           { slug: 'index', title: 'Home', path: '/pages/index.html' },
