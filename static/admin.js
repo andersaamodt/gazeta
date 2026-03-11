@@ -3214,8 +3214,10 @@
         if (!(actionNode instanceof HTMLElement)) {
           return;
         }
-        event.preventDefault();
         const action = String(actionNode.getAttribute('data-nostr-page-action') || '');
+        if (action === 'edit-slug') {
+          event.preventDefault();
+        }
         if (action === 'toggle-nav') {
           return;
         }
