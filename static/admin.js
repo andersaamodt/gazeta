@@ -1982,6 +1982,44 @@
     return 'List Page';
   }
 
+  function navbarRowsFromNostrPages(pages) {
+    const rows = [];
+    (Array.isArray(pages) ? pages : []).forEach(function (page) {
+      const showInNav = (typeof page.show_in_nav === 'undefined') ? true : !!page.show_in_nav;
+      if (!showInNav) {
+        return;
+      }
+      const slug = normalizeNostrPageSlug(String(page.slug || ''));
+      if (!slug) {
+        return;
+      }
+      const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
+      const path = String(page.path || pathFromNostrPageSlug(slug));
+      rows.push({
+        slug: slug,
+        title: title,
+        path: path
+      });
+    });
+    return rows;
+  }
+
+  function dispatchNavbarRefresh(pages, skipFetch) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request', {
+        detail: {
+          pages: navbarRowsFromNostrPages(pages),
+          skipFetch: !!skipFetch
+        }
+      }));
+    } catch (_err) {
+      // Ignore navbar refresh event failures.
+    }
+  }
+
   function captureNostrPageRects() {
     const map = {};
     if (!els.nostrPagesList) {
@@ -2228,13 +2266,7 @@
       }
       state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
       renderNostrPagesList(state.nostrPages, false);
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        try {
-          window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
-        } catch (_err) {
-          // Ignore navbar refresh event failures.
-        }
-      }
+      dispatchNavbarRefresh(state.nostrPages, false);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;
@@ -3197,10 +3229,15 @@
         if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
           return;
         }
+        const before = state.nostrPages.slice();
         const next = state.nostrPages.slice();
         next[idx] = Object.assign({}, next[idx], { show_in_nav: !!target.checked });
         state.nostrPages = next;
+        dispatchNavbarRefresh(state.nostrPages, true);
         saveNostrPagesConfig().catch(function (err) {
+          state.nostrPages = before;
+          renderNostrPagesList(state.nostrPages, false);
+          dispatchNavbarRefresh(state.nostrPages, true);
           setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
         });
       });

@@ -1769,39 +1769,43 @@
     }, 1600);
   }
 
-  function loadNavbarNostrPages() {
+  function renderNavbarNostrPages(pageRows) {
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter) {
-      return Promise.resolve();
+      return;
     }
     var basePages = [
       { slug: 'blog', title: 'Blog', path: '/pages/blog.html' }
     ];
     var normalizedCurrent = normalizeNavPath(window.location.pathname);
-
-    function renderNavbar(pageRows) {
-      var html = '';
-      var seen = {};
-      basePages.forEach(function (page) {
-        seen[page.slug] = true;
-        var isActive = normalizeNavPath(page.path) === normalizedCurrent;
-        html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
-      });
-      (Array.isArray(pageRows) ? pageRows : []).forEach(function (page) {
-        var slug = String(page && page.slug || '').trim();
-        var title = String(page && page.title || '').trim();
-        var path = String(page && page.path || '').trim();
-        if (!slug || !path || seen[slug]) {
-          return;
-        }
-        seen[slug] = true;
-        var isActive = normalizeNavPath(path) === normalizedCurrent;
-        html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
-      });
-      if (html && navCenter.innerHTML !== html) {
-        navCenter.innerHTML = html;
+    var html = '';
+    var seen = {};
+    basePages.forEach(function (page) {
+      seen[page.slug] = true;
+      var isActive = normalizeNavPath(page.path) === normalizedCurrent;
+      html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
+    });
+    (Array.isArray(pageRows) ? pageRows : []).forEach(function (page) {
+      var slug = String(page && page.slug || '').trim();
+      var title = String(page && page.title || '').trim();
+      var path = String(page && page.path || '').trim();
+      if (!slug || !path || seen[slug]) {
+        return;
       }
-      highlightCurrentPage();
+      seen[slug] = true;
+      var isActive = normalizeNavPath(path) === normalizedCurrent;
+      html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
+    });
+    if (html && navCenter.innerHTML !== html) {
+      navCenter.innerHTML = html;
+    }
+    highlightCurrentPage();
+  }
+
+  function loadNavbarNostrPages() {
+    var navCenter = document.querySelector('.nav-center');
+    if (!navCenter) {
+      return Promise.resolve();
     }
 
     try {
@@ -1809,7 +1813,7 @@
       if (cachedRaw) {
         var cachedPages = JSON.parse(cachedRaw);
         if (Array.isArray(cachedPages) && cachedPages.length) {
-          renderNavbar(cachedPages);
+          renderNavbarNostrPages(cachedPages);
         }
       }
     } catch (_cacheReadErr) {
@@ -1827,14 +1831,26 @@
         } catch (_cacheErr) {
           // Ignore storage failures.
         }
-        renderNavbar(data.pages);
+        renderNavbarNostrPages(data.pages);
       })
       .catch(function () {
         // Keep static nav links on fetch failure.
       });
   }
 
-  window.addEventListener('wizardry-navbar-refresh-request', function () {
+  window.addEventListener('wizardry-navbar-refresh-request', function (event) {
+    var detail = event && event.detail ? event.detail : null;
+    if (detail && Array.isArray(detail.pages)) {
+      try {
+        localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(detail.pages));
+      } catch (_cacheErr) {
+        // Ignore storage failures.
+      }
+      renderNavbarNostrPages(detail.pages);
+      if (detail.skipFetch === true) {
+        return;
+      }
+    }
     loadNavbarNostrPages().catch(function () {
       // Keep current navbar when refresh fails.
     });
