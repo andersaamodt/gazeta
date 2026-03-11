@@ -15,8 +15,7 @@
     types: document.getElementById('blog-filter-types'),
     clear: document.getElementById('blog-clear-filters'),
     list: document.getElementById('blog-post-list'),
-    empty: document.getElementById('blog-empty'),
-    summary: document.getElementById('blog-result-summary')
+    empty: document.getElementById('blog-empty')
   };
 
   var state = {
@@ -43,21 +42,6 @@
       return 'Post';
     }
     return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
-  }
-
-  function renderSummary(total, shown) {
-    if (!els.summary) {
-      return;
-    }
-    if (total <= 0) {
-      els.summary.textContent = 'No posts yet';
-      return;
-    }
-    if (shown === total) {
-      els.summary.textContent = String(total) + ' posts';
-      return;
-    }
-    els.summary.textContent = String(shown) + ' of ' + String(total) + ' posts';
   }
 
   function matchFacet(set, value) {
@@ -152,7 +136,6 @@
       return;
     }
     var shown = filteredPosts();
-    renderSummary(state.posts.length, shown.length);
 
     if (!shown.length) {
       els.list.innerHTML = '';

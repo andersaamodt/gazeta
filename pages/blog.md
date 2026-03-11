@@ -14,7 +14,6 @@ title: Blog
 <circle cx="4.5" cy="13" r="1.25"></circle>
 </svg>
 </button>
-<div id="blog-result-summary" class="blog-result-summary" aria-live="polite"></div>
 </div>
 
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>

@@ -2816,12 +2816,6 @@ footer {
   transform: translateY(-1px);
 }
 
-.blog-result-summary {
-  color: var(--light-text);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
 .blog-filter-panel {
   overflow: hidden;
   border: 1px solid var(--border);
