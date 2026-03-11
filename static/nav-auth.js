@@ -1792,11 +1792,13 @@
           { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
           { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
         ];
+        var normalizedCurrent = normalizeNavPath(window.location.pathname);
         var html = '';
         var seen = {};
         basePages.forEach(function (page) {
           seen[page.slug] = true;
-          html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '">' + escapeHtml(page.title) + '</a>';
+          var isActive = normalizeNavPath(page.path) === normalizedCurrent;
+          html += '<a href="' + escapeHtml(page.path) + '" data-page="' + escapeHtml(page.slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(page.title) + '</a>';
         });
         data.pages.forEach(function (page) {
           var slug = String(page && page.slug || '').trim();
@@ -1806,7 +1808,8 @@
             return;
           }
           seen[slug] = true;
-          html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '">' + escapeHtml(title || slug) + '</a>';
+          var isActive = normalizeNavPath(path) === normalizedCurrent;
+          html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
         });
         if (html && navCenter.innerHTML !== html) {
           navCenter.innerHTML = html;
@@ -1817,54 +1820,60 @@
       });
   }
 
+  function normalizeNavPath(path) {
+    var p = String(path || '').trim();
+    if (!p) {
+      return '/';
+    }
+    if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
+      try {
+        p = new URL(p, window.location.href).pathname || '/';
+      } catch (_err) {
+        p = '/';
+      }
+    }
+    p = p.replace(/\/+$/, '');
+    if (!p) {
+      p = '/';
+    }
+    if (p === '/pages/index' || p === '/pages/index.html') {
+      return '/';
+    }
+    if (p.indexOf('/pages/') === 0) {
+      p = '/' + p.slice('/pages/'.length);
+      p = p.replace(/\.html?$/i, '');
+    }
+    if (!p) {
+      p = '/';
+    }
+    return p;
+  }
+
   function highlightCurrentPage() {
     var currentPath = window.location.pathname;
     var currentHash = window.location.hash || '';
     var navLinks = document.querySelectorAll('.nav-center a[data-page]');
+    var normalizedCurrent = normalizeNavPath(currentPath);
+    var matches = [];
 
-    navLinks.forEach(function (link) {
-      link.classList.remove('active');
-      link.removeAttribute('aria-current');
-    });
-
-    function normalizePath(path) {
-      var p = String(path || '').trim();
-      if (!p) {
-        return '/';
-      }
-      if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
-        try {
-          p = new URL(p, window.location.href).pathname || '/';
-        } catch (_err) {
-          p = '/';
-        }
-      }
-      p = p.replace(/\/+$/, '');
-      if (!p) {
-        p = '/';
-      }
-      if (p === '/pages/index' || p === '/pages/index.html') {
-        return '/';
-      }
-      if (p.indexOf('/pages/') === 0) {
-        p = '/' + p.slice('/pages/'.length);
-        p = p.replace(/\.html?$/i, '');
-      }
-      if (!p) {
-        p = '/';
-      }
-      return p;
-    }
-
-    var normalizedCurrent = normalizePath(currentPath);
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
-      var normalizedHref = normalizePath(href);
-      if (normalizedCurrent === normalizedHref) {
-        link.classList.add('active');
-        link.setAttribute('aria-current', 'page');
+      if (normalizeNavPath(href) === normalizedCurrent) {
+        matches.push(link);
       }
     });
+
+    if (matches.length > 0) {
+      navLinks.forEach(function (link) {
+        var active = matches.indexOf(link) !== -1;
+        link.classList.toggle('active', active);
+        if (active) {
+          link.setAttribute('aria-current', 'page');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      });
+    }
 
     if (els.composeLink) {
       var onCompose = currentPath.indexOf('/pages/admin.html') !== -1 && currentHash === '#compose';
