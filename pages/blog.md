@@ -24,7 +24,6 @@ title: Blog
 </div>
 </div>
 <div class="blog-filter-footer">
-<p class="blog-filter-hint">Hold <kbd>Command</kbd> (or <kbd>Ctrl</kbd>) to toggle multiple filters in the same group.</p>
 <button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button>
 </div>
 </div>
