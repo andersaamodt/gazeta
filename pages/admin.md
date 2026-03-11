@@ -2796,6 +2796,31 @@ body {
   margin: 0;
 }
 
+.admin-inline-dialog-form input[type="text"],
+.admin-inline-dialog-form input[type="number"],
+.admin-inline-dialog-form input[type="datetime-local"],
+.admin-inline-dialog-form select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.05rem;
+  padding: 0.34rem 0.56rem;
+  border: 1px solid var(--admin-border, var(--border));
+  border-radius: 9px;
+  background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)));
+  color: var(--admin-text, var(--text));
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.admin-inline-dialog-form input[type="text"]:focus,
+.admin-inline-dialog-form input[type="number"]:focus,
+.admin-inline-dialog-form input[type="datetime-local"]:focus,
+.admin-inline-dialog-form select:focus {
+  outline: none;
+  border-color: var(--focus-ring-strong, var(--admin-accent, var(--accent)));
+  box-shadow: 0 0 0 3px var(--focus-ring, color-mix(in srgb, var(--admin-accent, var(--accent)) 20%, transparent));
+}
+
 .admin-inline-dialog-actions {
   display: inline-flex;
   justify-content: flex-end;
