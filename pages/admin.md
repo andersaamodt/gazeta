@@ -1583,7 +1583,7 @@ body {
   color: #8f2f2d;
 }
 
-#admin-panel button:not(.unobtrusive-icon-button) {
+#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item) {
   border: 1px solid #b8c9ea;
   border-radius: 10px;
   background: #fff;
@@ -1595,7 +1595,7 @@ body {
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
 
-#admin-panel button:not(.unobtrusive-icon-button):hover {
+#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):hover {
   background: #eaf2ff;
   border-color: #8ca9e2;
   color: #102c5f;
@@ -2727,7 +2727,8 @@ body {
 }
 
 #admin-panel .admin-nav-list .admin-nav-item.is-compose {
-  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 55%, transparent) !important;
+  background: var(--admin-surface, var(--post-card-bg-single)) !important;
+  background-image: none !important;
 }
 
 .admin-nav-item:hover,
@@ -2877,7 +2878,7 @@ body {
   box-shadow: 0 0 0 3px var(--focus-ring) !important;
 }
 
-#admin-panel button {
+#admin-panel button:not(.admin-nav-item) {
   border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
@@ -2885,7 +2886,7 @@ body {
   -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
-#admin-panel button:hover {
+#admin-panel button:not(.admin-nav-item):hover {
   background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
   color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
@@ -3139,7 +3140,10 @@ body {
 
 #admin-panel .admin-nav-list .admin-nav-item {
   font-weight: 400 !important;
+  background: var(--admin-surface, var(--post-card-bg-single)) !important;
   background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  border-color: transparent !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
