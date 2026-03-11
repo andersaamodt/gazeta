@@ -51,6 +51,7 @@
   --nav-button-hover-bg: var(--nav-button-bg);
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
+  --nav-pill-radius: 8px;
   --nav-icon-hover: var(--nav-icon);
   --nav-bg: var(--bg);
   --nav-border: var(--border);
@@ -236,7 +237,7 @@ header h1 {
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--nav-pill-radius);
   transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
 }
@@ -245,6 +246,7 @@ header h1 {
   background-color: var(--nav-link-hover);
   color: var(--text);
   text-decoration: none;
+  border-radius: var(--nav-pill-radius);
 }
 
 .nav-center a.active,
@@ -253,6 +255,7 @@ header h1 {
   color: var(--nav-active-text);
   font-weight: 700;
   cursor: pointer;
+  border-radius: var(--nav-pill-radius);
 }
 
 .nav-right {
@@ -1487,7 +1490,7 @@ header h1 {
 .nav-username.active {
   text-decoration: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--nav-pill-radius);
 }
 
 .nav-username:hover,
