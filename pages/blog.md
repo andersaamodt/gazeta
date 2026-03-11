@@ -4,7 +4,16 @@ title: Blog
 
 <section id="blog-page-root" class="blog-page" aria-live="polite">
 <div class="blog-toolbar">
-<button id="blog-filter-toggle" type="button" class="blog-filter-toggle" aria-expanded="false" aria-controls="blog-filter-panel">Filter</button>
+<button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
+<svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true">
+<line x1="2" y1="3" x2="14" y2="3"></line>
+<circle cx="6" cy="3" r="1.25"></circle>
+<line x1="2" y1="8" x2="14" y2="8"></line>
+<circle cx="10.5" cy="8" r="1.25"></circle>
+<line x1="2" y1="13" x2="14" y2="13"></line>
+<circle cx="4.5" cy="13" r="1.25"></circle>
+</svg>
+</button>
 <div id="blog-result-summary" class="blog-result-summary" aria-live="polite"></div>
 </div>
 
