@@ -51,7 +51,8 @@
     nostrPagesDragSlug: '',
     nostrPagesDragLastTarget: '',
     nostrPagesDragDropped: false,
-    nostrPagesDragSnapshot: []
+    nostrPagesDragSnapshot: [],
+    initialContentPainted: false
   };
 
   const els = {
@@ -138,6 +139,21 @@
     const gate = window.__wizardryHydration;
     if (gate && typeof gate.markPageReady === 'function') {
       gate.markPageReady();
+    }
+  }
+
+  function markInitialContentPainted() {
+    if (state.initialContentPainted) {
+      return;
+    }
+    state.initialContentPainted = true;
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
+        detail: { slug: 'admin' }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch issues.
     }
   }
 
@@ -1197,6 +1213,7 @@
     if (!state.sessionToken) {
       stopLocalDripWorker();
       setAuthMessage('Not logged in. Use the Login button in the top navigation to sign in with Nostr.', 'error');
+      markInitialContentPainted();
       markHydrationPageReady();
       return;
     }
@@ -1208,6 +1225,7 @@
         localStorage.removeItem('csrf_token');
         stopLocalDripWorker();
         setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'error');
+        markInitialContentPainted();
         markHydrationPageReady();
         return;
       }
@@ -1239,6 +1257,7 @@
         setAccountOnlyMode(true);
         activateSection('account', true);
         els.adminPanel.style.display = 'grid';
+        markInitialContentPainted();
         markHydrationPageReady();
         return;
       }
@@ -1251,10 +1270,12 @@
       await Promise.all([loadConfig(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
       els.adminPanel.style.display = 'grid';
       renderPreview();
+      markInitialContentPainted();
       markHydrationPageReady();
     } catch (err) {
       stopLocalDripWorker();
       setAuthMessage('Authentication check failed: ' + err.message, 'error');
+      markInitialContentPainted();
       markHydrationPageReady();
     }
   }
