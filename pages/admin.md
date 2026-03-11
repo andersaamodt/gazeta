@@ -126,7 +126,14 @@ title: Blog Admin
 <span title="Turn Nostr bridge on or off for this site.">Enable Nostr Bridge</span>
 </label>
 </div>
-<p class="muted">Nostr Bridge mirrors selected Nostr events into local site content using your configured relays and filters.</p>
+<p class="muted">Nostr Bridge is one-way (Nostr → this site): kind 30023 long-form posts from <em>Allowed Authors</em> are mirrored into local posts, and kind 1 replies that reference those posts are mirrored into local comment counts.</p>
+<div class="field-row">
+<label for="nostr-authors" title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line."><strong title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line.">Allowed Authors (pubkeys)</strong></label>
+<div class="bridge-textarea-wrap">
+<textarea id="nostr-authors" class="bridge-textarea" rows="4" placeholder="hexpubkey_author_1&#10;hexpubkey_author_2" title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line."></textarea>
+<div id="nostr-authors-save-status" class="autosave-indicator bridge-save-indicator" hidden></div>
+</div>
+</div>
 <div class="field-row">
 <label for="nostr-relays" title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line."><strong title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line.">Relay List</strong></label>
 <div class="bridge-textarea-wrap">
@@ -144,7 +151,7 @@ title: Blog Admin
 </section>
 </div>
 
-<p class="muted">These settings are stored in <code>&lt;site-name&gt;/nostr/state/</code> as <code>authors</code>, <code>relays</code>, and <code>blocklist</code>.</p>
+<p class="muted">Control which events are mirrored with <strong>Allowed Authors</strong>, <strong>Relay List</strong>, and <strong>Blocked Pubkeys</strong>. Mirrored content lands in local site data only; publishing back to Nostr remains explicit/manual.</p>
 
 <div id="output-nostr-bridge" class="output"></div>
 </div>

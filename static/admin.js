@@ -75,8 +75,10 @@
     feedFullText: document.getElementById('feed-full-text'),
     feedItems: document.getElementById('feed-items'),
     nostrBridgeEnabled: document.getElementById('nostr-bridge-enabled'),
+    nostrAuthors: document.getElementById('nostr-authors'),
     nostrRelays: document.getElementById('nostr-relays'),
     nostrBlocklist: document.getElementById('nostr-blocklist'),
+    nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
     newUsersAreAdmins: document.getElementById('new-users-are-admins'),
@@ -1321,6 +1323,9 @@
       if (els.nostrBridgeEnabled) {
         els.nostrBridgeEnabled.checked = state.nostrBridgeEnabled;
       }
+      if (els.nostrAuthors) {
+        els.nostrAuthors.value = Array.isArray(data.nostr_authors) ? data.nostr_authors.join('\n') : '';
+      }
       if (els.nostrRelays) {
         els.nostrRelays.value = Array.isArray(data.nostr_relays) ? data.nostr_relays.join('\n') : '';
       }
@@ -1390,7 +1395,7 @@
   }
 
   function setNostrBridgeSaveStatus(kind, detail) {
-    const nodes = [els.nostrRelaysSaveStatus, els.nostrBlocklistSaveStatus].filter(Boolean);
+    const nodes = [els.nostrAuthorsSaveStatus, els.nostrRelaysSaveStatus, els.nostrBlocklistSaveStatus].filter(Boolean);
     if (!nodes.length) {
       return;
     }
@@ -1432,6 +1437,7 @@
       const data = await apiPost('/cgi/blog-update-config', {
         nostr_lists_update: 'true',
         nostr_bridge_enabled: (els.nostrBridgeEnabled && els.nostrBridgeEnabled.checked) ? 'true' : 'false',
+        nostr_authors: normalizeLineList(els.nostrAuthors ? els.nostrAuthors.value : ''),
         nostr_relays: normalizeLineList(els.nostrRelays ? els.nostrRelays.value : ''),
         nostr_blocklist: normalizeLineList(els.nostrBlocklist ? els.nostrBlocklist.value : '')
       }, true);
@@ -1495,7 +1501,7 @@
       els.nostrBridgeEnabled.addEventListener('change', function () { queueNostrBridgeAutosave(180); });
     }
 
-    [els.nostrRelays, els.nostrBlocklist].filter(Boolean).forEach(function (field) {
+    [els.nostrAuthors, els.nostrRelays, els.nostrBlocklist].filter(Boolean).forEach(function (field) {
       field.addEventListener('input', function () { queueNostrBridgeAutosave(850); });
       field.addEventListener('change', function () { queueNostrBridgeAutosave(250); });
       field.addEventListener('blur', function () { queueNostrBridgeAutosave(220); });
