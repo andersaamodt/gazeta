@@ -70,23 +70,23 @@ title: Blog Admin
 <input type="text" id="blog-page-title" placeholder="Blog" title="Label shown for the Blog page in navigation.">
 </div>
 <div class="field-row checkbox-row">
-<div class="setting-label" title="Allow new users to register with a Nostr key. Disable for single-author blogs.">
-<strong title="Allow new users to register with a Nostr key. Disable for single-author blogs.">Enable User Registration</strong>
+<div class="setting-label">
+<strong>Enable User Registration</strong>
 <span class="inline-tip" tabindex="0" aria-label="Allow new users to create accounts by signing in with a Nostr key.">?</span>
 </div>
-<label class="checkbox-control" for="registration-enabled" title="Allow new users to register with a Nostr key. Disable for single-author blogs.">
-<input type="checkbox" id="registration-enabled" title="Allow new users to register with a Nostr key. Disable for single-author blogs.">
-<span title="Allow new users to register with a Nostr key. Disable for single-author blogs.">Enabled</span>
+<label class="checkbox-control" for="registration-enabled">
+<input type="checkbox" id="registration-enabled">
+<span>Enabled</span>
 </label>
 </div>
 <div class="field-row checkbox-row">
-<div class="setting-label" title="When enabled, newly registered accounts are granted admin rights automatically.">
-<strong title="When enabled, newly registered accounts are granted admin rights automatically.">Newly Created Accounts Are Admins</strong>
+<div class="setting-label">
+<strong>Newly Created Accounts Are Admins</strong>
 <span class="inline-tip" tabindex="0" aria-label="When enabled, newly registered Nostr accounts are granted admin automatically. Turn this off after bootstrapping your initial admin team.">?</span>
 </div>
-<label class="checkbox-control" for="new-users-are-admins" title="When enabled, newly registered accounts are granted admin rights automatically.">
-<input type="checkbox" id="new-users-are-admins" title="When enabled, newly registered accounts are granted admin rights automatically.">
-<span title="When enabled, newly registered accounts are granted admin rights automatically.">Enabled</span>
+<label class="checkbox-control" for="new-users-are-admins">
+<input type="checkbox" id="new-users-are-admins">
+<span>Enabled</span>
 </label>
 </div>
 </section>
@@ -914,7 +914,8 @@ body {
   padding: 0.35rem 0.45rem;
   border-radius: 7px;
   white-space: normal;
-  max-inline-size: min(20rem, calc(100vw - 1.2rem));
+  inline-size: clamp(14rem, 24vw, 19rem);
+  max-inline-size: min(19rem, calc(100vw - 1.2rem));
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.14s ease;
