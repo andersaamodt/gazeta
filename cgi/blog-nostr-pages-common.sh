@@ -122,46 +122,9 @@ blog_nostr_pages_normalize_json() {
     | {
         pages:
           (if ($unique | length) == 0 then
-             [{
-               slug: "index",
-               type: "nip23",
-               kind: 30023,
-               show_in_nav: true,
-               placeholder_title: "Home",
-               path: "/"
-             },
-             {
-               slug: "about",
-               type: "nip23",
-               kind: 30023,
-               show_in_nav: true,
-               placeholder_title: "About",
-               path: "/about"
-             },
-             {
-               slug: "oeuvre",
-               type: "list",
-               kind: 30004,
-               show_in_nav: true,
-               placeholder_title: "Oeuvre",
-               path: "/oeuvre"
-             }]
+             []
            else
-             (($unique
-               | if any(.[]; .slug == "index") then . else ([{
-                   slug: "index",
-                   type: "nip23",
-                   show_in_nav: true,
-                   placeholder_title: "Home",
-                   path: "/"
-                 }] + .) end)
-             | if any(.[]; .slug == "about") then . else (. + [{
-                   slug: "about",
-                   type: "nip23",
-                   show_in_nav: true,
-                   placeholder_title: "About",
-                   path: "/about"
-                 }]) end
+             ($unique
              | map(
                .kind = (if .type == "contact" then 0 elif .type == "nip23" then 30023 else 30004 end)
                | .show_in_nav = (if .show_in_nav == false then false else true end)
