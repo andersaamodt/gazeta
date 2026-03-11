@@ -1928,9 +1928,6 @@
       if (post.can_hide) {
         html += postActionButton('Hide from site...', 'hide', path, 'post-hide');
       }
-      if (post.can_delete) {
-        html += postActionButton(prioritiesTrashIconSvg() + '<span>Delete post...</span>', 'delete', path, 'post-delete');
-      }
       html += '</div>';
       html += '</div>';
       html += '</div>';
