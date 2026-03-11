@@ -2368,6 +2368,9 @@ body {
   border-radius: 0;
   overflow: visible;
   background: transparent;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .post-row {
@@ -2375,6 +2378,9 @@ body {
   border-radius: 0;
   background: #fff;
   padding: 0.48rem 0;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2468,6 +2474,8 @@ body {
   min-width: 2.6rem;
   width: 2.6rem;
   height: 2.6rem;
+  font-size: 16px;
+  line-height: 1;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2500,14 +2508,18 @@ body {
   min-width: 2.2rem;
   width: 2.2rem;
   height: 2.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   border-radius: 8px;
   padding: 0;
   color: var(--admin-text, var(--text));
 }
 
 #admin-panel button.post-menu-trigger .overflow-menu-icon-svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 #admin-panel .post-menu-panel {
@@ -3318,7 +3330,7 @@ body {
   background: var(--admin-hover, var(--nav-link-hover)) !important;
   background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-border, var(--border)) 80%, transparent) !important;
+  box-shadow: none !important;
 }
 
 #admin-panel button.post-row-delete {
@@ -3335,6 +3347,11 @@ body {
   background: var(--danger-soft, rgba(180, 35, 24, 0.14)) !important;
   background-image: none !important;
   color: var(--admin-danger, var(--danger)) !important;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-danger, var(--danger)) 30%, transparent) !important;
+  box-shadow: none !important;
+}
+
+#admin-panel button.post-menu-trigger,
+#admin-panel button.post-row-delete {
+  transition: none !important;
 }
 </style>
