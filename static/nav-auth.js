@@ -19,8 +19,7 @@
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
-    archive: true,
-    tags: true,
+    blog: true,
     admin: true,
     compose: true,
     account: true,
@@ -1776,10 +1775,9 @@
       return Promise.resolve();
     }
     var basePages = [
+      { slug: 'blog', title: 'Blog', path: '/pages/blog.html' },
       { slug: 'index', title: 'Home', path: '/pages/index.html' },
-      { slug: 'about', title: 'About', path: '/pages/about.html' },
-      { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
-      { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
+      { slug: 'about', title: 'About', path: '/pages/about.html' }
     ];
     var normalizedCurrent = normalizeNavPath(window.location.pathname);
 

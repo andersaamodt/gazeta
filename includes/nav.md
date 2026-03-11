@@ -42,10 +42,9 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
 <div class="nav-center">
+<a href="/pages/blog.html" data-page="blog">Blog</a>
 <a href="/pages/index.html" data-page="index">Home</a>
 <a href="/pages/about.html" data-page="about">About</a>
-<a href="/pages/archive.html" data-page="archive">Archive</a>
-<a href="/pages/tags.html" data-page="tags">Categories</a>
 <a href="/pages/oeuvre.html" data-page="oeuvre">Oeuvre</a>
 </div>
 <div class="nav-right">
@@ -140,10 +139,9 @@
         cachedPages = [];
       }
       var basePages = [
+        { slug: 'blog', title: 'Blog', path: '/pages/blog.html' },
         { slug: 'index', title: 'Home', path: '/pages/index.html' },
-        { slug: 'about', title: 'About', path: '/pages/about.html' },
-        { slug: 'archive', title: 'Archive', path: '/pages/archive.html' },
-        { slug: 'tags', title: 'Categories', path: '/pages/tags.html' }
+        { slug: 'about', title: 'About', path: '/pages/about.html' }
       ];
       var seen = {};
       var html = '';
