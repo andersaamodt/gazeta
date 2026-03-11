@@ -367,7 +367,7 @@ title: Blog Admin
 <p class="muted">Manage local pages backed by Nostr. Pages are published to Nostr only when you press Publish.</p>
 </div>
 <div class="row-actions">
-<button id="btn-create-nostr-page" type="button" class="primary">Create New Nostr Page</button>
+<button id="btn-create-nostr-page" type="button" class="primary">New Nostr Page</button>
 </div>
 </div>
 <div id="nostr-pages-list" class="nostr-pages-list"></div>
