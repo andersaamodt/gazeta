@@ -3,7 +3,8 @@ title: Blog
 ---
 
 <section id="blog-page-root" class="blog-page" aria-live="polite">
-<div class="blog-toolbar">
+<div class="blog-layout">
+<div class="blog-filter-rail">
 <button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
 <svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true">
 <line x1="2" y1="3" x2="14" y2="3"></line>
@@ -16,6 +17,7 @@ title: Blog
 </button>
 </div>
 
+<div class="blog-main-column">
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>
 <div class="blog-filter-grid">
 <div class="blog-filter-group">
@@ -38,6 +40,8 @@ title: Blog
 
 <div id="blog-post-list" class="post-list"></div>
 <p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
+</div>
+</div>
 </section>
 
 <script src="/static/blog-page.js"></script>
