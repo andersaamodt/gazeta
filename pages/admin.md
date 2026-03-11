@@ -13,8 +13,8 @@ title: Blog Admin
 <button type="button" class="admin-nav-item" data-admin-nav="queue" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Queue <span id="admin-nav-queue-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Pages</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Bridge</span></button>
 </div>
@@ -366,7 +366,7 @@ title: Blog Admin
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
-<h3>Nostr Pages</h3>
+<h3>Pages</h3>
 <p class="muted">Manage local pages backed by Nostr. Pages are published to Nostr only when you press Publish.</p>
 </div>
 <div class="row-actions">
