@@ -1583,7 +1583,7 @@ body {
   color: #8f2f2d;
 }
 
-#admin-panel button {
+#admin-panel button:not(.unobtrusive-icon-button) {
   border: 1px solid #b8c9ea;
   border-radius: 10px;
   background: #fff;
@@ -1595,7 +1595,7 @@ body {
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
 
-#admin-panel button:hover {
+#admin-panel button:not(.unobtrusive-icon-button):hover {
   background: #eaf2ff;
   border-color: #8ca9e2;
   color: #102c5f;
@@ -2270,16 +2270,20 @@ body {
 }
 
 #admin-panel #btn-create-nostr-page:not(:disabled) {
-  background: var(--nav-active-bg, var(--admin-accent, var(--accent))) !important;
-  border-color: var(--nav-active-border, var(--admin-accent-strong, var(--accent-dark))) !important;
-  color: var(--nav-active-text, #fff) !important;
+  background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
+  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
+  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
 #admin-panel #btn-create-nostr-page:not(:disabled):hover,
 #admin-panel #btn-create-nostr-page:not(:disabled):focus-visible {
-  background: var(--nav-active-bg, var(--admin-accent-strong, var(--accent-dark))) !important;
-  border-color: var(--nav-active-border, var(--admin-accent-strong, var(--accent-dark))) !important;
-  color: var(--nav-active-text, #fff) !important;
+  background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
+  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
+  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
 #output-nostr-pages {
@@ -2874,14 +2878,18 @@ body {
 }
 
 #admin-panel button {
-  border-color: var(--admin-border, var(--border)) !important;
-  background: var(--admin-surface-alt, var(--post-card-bg)) !important;
-  color: var(--admin-text, var(--text)) !important;
+  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
+  background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
 #admin-panel button:hover {
-  background: var(--admin-hover, var(--nav-link-hover)) !important;
-  color: var(--admin-accent-strong, var(--accent-dark)) !important;
+  background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
 #admin-panel button.primary {

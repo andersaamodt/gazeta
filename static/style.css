@@ -2999,6 +2999,10 @@ footer {
 
 /* Button Styles - Primary Actions */
 button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"],
 .btn {
   background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
   color: var(--button-primary-text);
@@ -3021,33 +3025,37 @@ input[type="reset"],
 }
 
 button:hover:not(:disabled),
+input[type="button"]:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled),
+input[type="reset"]:hover:not(:disabled),
+[role="button"]:hover:not([aria-disabled="true"]),
 .btn:hover:not(:disabled) {
   background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
 }
 
 button:active:not(:disabled),
+input[type="button"]:active:not(:disabled),
+input[type="submit"]:active:not(:disabled),
+input[type="reset"]:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]),
 .btn:active:not(:disabled) {
   background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-active-start) 0%, var(--button-primary-active-end) 100%);
 }
 
 button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+[role="button"][aria-disabled="true"],
 .btn:disabled {
   opacity: 0.6;
   cursor: default;
 }
 
-/* Keep menu/icon/toolbar controls unstyled by default button gradients. */
+/* Keep icon-only controls unobtrusive. */
 .nav-menu-btn,
 .post-page-menu-trigger,
-.toolbar button,
-.list-admin-actions button,
-.list-admin-entry-controls button,
-.list-page-admin-bar button:not(.list-admin-primary-btn),
-.list-inline-edit-controls button,
-.list-inline-actions button,
-.list-inline-date-button,
-.list-inline-toolbar-right button,
-.contact-inline-toolbar-right button {
+.unobtrusive-icon-button {
   background: transparent !important;
   background-image: none !important;
   border: 0 !important;
@@ -3059,34 +3067,9 @@ button:disabled,
 .nav-menu-btn:active:not(:disabled),
 .post-page-menu-trigger:hover:not(:disabled),
 .post-page-menu-trigger:active:not(:disabled),
-.toolbar button:hover:not(:disabled),
-.toolbar button:active:not(:disabled),
-.list-admin-actions button:hover:not(:disabled),
-.list-admin-actions button:active:not(:disabled),
-.list-admin-entry-controls button:hover:not(:disabled),
-.list-admin-entry-controls button:active:not(:disabled),
-.list-page-admin-bar button:not(.list-admin-primary-btn):hover:not(:disabled),
-.list-page-admin-bar button:not(.list-admin-primary-btn):active:not(:disabled),
-.list-inline-edit-controls button:hover:not(:disabled),
-.list-inline-edit-controls button:active:not(:disabled),
-.list-inline-actions button:hover:not(:disabled),
-.list-inline-actions button:active:not(:disabled),
-.list-inline-date-button:hover:not(:disabled),
-.list-inline-date-button:active:not(:disabled),
-.list-inline-toolbar-right button:hover:not(:disabled),
-.list-inline-toolbar-right button:active:not(:disabled),
-.contact-inline-toolbar-right button:hover:not(:disabled),
-.contact-inline-toolbar-right button:active:not(:disabled) {
+.unobtrusive-icon-button:hover:not(:disabled),
+.unobtrusive-icon-button:active:not(:disabled) {
   background-image: none !important;
-}
-
-/* Success Button Variant */
-#btn-register-mud {
-  background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-}
-
-#btn-register-mud:hover {
-  background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
 }
 
 /* Input Fields */
