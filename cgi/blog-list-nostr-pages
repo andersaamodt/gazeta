@@ -30,6 +30,11 @@ while IFS= read -r row || [ -n "$row" ]; do
   path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
   show_in_nav=$(printf '%s\n' "$row" | jq -r 'if (if has("show_in_nav") then .show_in_nav else true end) then "true" else "false" end' 2>/dev/null || printf 'true')
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
+  draft_title=''
+  draft_state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
+  if [ -n "$draft_state_json" ]; then
+    draft_title=$(printf '%s\n' "$draft_state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
+  fi
 
   canonical_title=''
   canonical_exists=false
@@ -57,7 +62,10 @@ while IFS= read -r row || [ -n "$row" ]; do
       ;;
   esac
 
-  title=$canonical_title
+  title=$draft_title
+  if [ -z "$title" ]; then
+    title=$canonical_title
+  fi
   if [ -z "$title" ]; then
     title=$placeholder_title
   fi
