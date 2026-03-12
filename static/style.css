@@ -1347,6 +1347,20 @@ header h1 {
   margin-bottom: 0.5rem;
 }
 
+#public-ranking-title {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: 0;
+}
+
+#public-ranking-title .list-inline-edit-link {
+  margin-left: 0.8rem;
+  line-height: 1;
+  color: #46619a;
+  -webkit-text-fill-color: #46619a;
+}
+
 .public-ranking-controls {
   display: flex;
   flex-wrap: wrap;

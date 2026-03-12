@@ -21,6 +21,7 @@
     payload: null,
     draft: null,
     editMode: false,
+    activeHeadField: '',
     busy: false,
     saveTimer: null,
     saveStatus: 'saved',
@@ -201,17 +202,11 @@
     if (!isAdmin()) {
       return;
     }
-    var title = document.getElementById('public-ranking-edit-title');
-    var description = document.getElementById('public-ranking-edit-description');
-    var content = document.getElementById('public-ranking-edit-content');
     var cooldown = document.getElementById('public-ranking-edit-cooldown');
     var mode = document.getElementById('public-ranking-edit-submission-mode');
     var metric = document.getElementById('public-ranking-edit-default-metric');
     var blacklist = document.getElementById('public-ranking-edit-blacklist');
 
-    state.draft.title = title ? String(title.value || '') : state.draft.title;
-    state.draft.description = description ? String(description.value || '') : state.draft.description;
-    state.draft.content = content ? String(content.value || '') : state.draft.content;
     state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(Number(cooldown && cooldown.value ? cooldown.value : state.draft.vote_cooldown_seconds) || 86400));
     state.draft.submission_mode = normalizeSubmissionMode(mode ? mode.value : state.draft.submission_mode);
     state.draft.default_metric = normalizeMetric(metric ? metric.value : state.draft.default_metric);
@@ -261,17 +256,56 @@
   function renderHead() {
     var s = getRenderState();
     if (els.title) {
-      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+      if (isAdmin()) {
+        if (state.activeHeadField === 'title') {
+          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="public-ranking-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Public Ranking') + '" data-ranking-head-input="title"></span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+        } else if (state.editMode) {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="title">Edit...</button><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+        } else {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+        }
+      } else {
+        els.title.textContent = s.title || 'Public Ranking';
+      }
     }
     if (els.description) {
       var desc = String(s.description || '').trim();
-      if (desc) {
-        els.description.innerHTML = markdownInline(desc);
+      if (isAdmin()) {
         els.description.hidden = false;
+        if (state.activeHeadField === 'description') {
+          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="public-ranking-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(desc) + '" data-ranking-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-ranking-head-save="description">Save</button>';
+        } else if (state.editMode) {
+          if (desc) {
+            els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(desc) + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...</button>';
+          } else {
+            els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...</button>';
+          }
+        } else if (desc) {
+          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(desc) + '</span>';
+        } else {
+          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
+        }
       } else {
-        els.description.innerHTML = '';
-        els.description.hidden = true;
+        if (desc) {
+          els.description.innerHTML = markdownInline(desc);
+          els.description.hidden = false;
+        } else {
+          els.description.innerHTML = '';
+          els.description.hidden = true;
+        }
       }
+    }
+    if (isAdmin() && state.activeHeadField) {
+      requestAnimationFrame(function () {
+        var id = state.activeHeadField === 'title' ? 'public-ranking-head-title-input' : 'public-ranking-head-description-input';
+        var input = document.getElementById(id);
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
     }
   }
 
@@ -464,6 +498,40 @@
       return 'Intensity';
     }
     return 'Momentum';
+  }
+
+  function renderExtraContent(text, format, role) {
+    var value = String(text || '');
+    if (!value.trim()) {
+      return '';
+    }
+    var html = String(format || '').toLowerCase() === 'html' ? value : markdownBlock(value);
+    return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
+  }
+
+  function renderExtrasEditor(renderState) {
+    if (!isAdmin() || !state.editMode) {
+      return '';
+    }
+    var html = '';
+    html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
+    html += '<h3 class="nostr-page-extras-heading">Prefix and local postfix</h3>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>Prefix (Markdown, published to Nostr)</span>';
+    html += '<textarea data-ranking-intro="true" rows="4" placeholder="Optional intro shown before ranking entries">' + escapeHtml(renderState.content || '') + '</textarea>';
+    html += '</label>';
+    html += '<label class="nostr-page-extra-edit">';
+    html += '<span>Local postfix</span>';
+    html += '<span class="nostr-page-extra-controls">';
+    html += '<select data-ranking-outro-format="after">';
+    html += '<option value="markdown"' + (String(renderState.extras_after_format || '').toLowerCase() === 'markdown' ? ' selected' : '') + '>Markdown</option>';
+    html += '<option value="html"' + (String(renderState.extras_after_format || '').toLowerCase() === 'html' ? ' selected' : '') + '>HTML</option>';
+    html += '</select>';
+    html += '</span>';
+    html += '<textarea data-ranking-outro="after" rows="4" placeholder="Optional local content shown after the Nostr-backed section">' + escapeHtml(renderState.extras_after || '') + '</textarea>';
+    html += '</label>';
+    html += '</section>';
+    return html;
   }
 
   function renderSortControls(renderState) {
@@ -680,8 +748,6 @@
     html += '<section class="public-ranking-editor">';
     html += '<h3>Ranking Settings</h3>';
     html += '<div class="public-ranking-editor-grid">';
-    html += '<label><span>Title</span><input type="text" id="public-ranking-edit-title" value="' + escapeHtml(renderState.title || '') + '"></label>';
-    html += '<label><span>Description</span><input type="text" id="public-ranking-edit-description" value="' + escapeHtml(renderState.description || '') + '"></label>';
     html += '<label><span>Vote cooldown (seconds)</span><input type="number" id="public-ranking-edit-cooldown" min="60" step="60" value="' + escapeHtml(String(renderState.vote_cooldown_seconds || 86400)) + '"></label>';
     html += '<label><span>Submission mode</span><select id="public-ranking-edit-submission-mode">';
     html += '<option value="owner_only"' + (normalizeSubmissionMode(renderState.submission_mode) === 'owner_only' ? ' selected' : '') + '>owner_only</option>';
@@ -694,7 +760,6 @@
     html += '<option value="enthusiasm"' + (normalizeMetric(renderState.default_metric) === 'enthusiasm' ? ' selected' : '') + '>enthusiasm</option>';
     html += '<option value="intensity"' + (normalizeMetric(renderState.default_metric) === 'intensity' ? ' selected' : '') + '>intensity</option>';
     html += '</select></label>';
-    html += '<label class="public-ranking-editor-wide"><span>Intro (Markdown)</span><textarea id="public-ranking-edit-content" rows="5">' + escapeHtml(renderState.content || '') + '</textarea></label>';
     html += '<label class="public-ranking-editor-wide"><span>Blacklist pubkeys (one per line)</span><textarea id="public-ranking-edit-blacklist" rows="4" placeholder="hex pubkey">' + escapeHtml(blacklistText) + '</textarea></label>';
     html += '</div>';
     html += '</section>';
@@ -710,17 +775,14 @@
     var nodes = graph.nodes || [];
 
     var html = '';
+    html += renderExtrasEditor(renderState);
     html += renderEditor(renderState);
+    html += renderExtraContent(renderState.content, 'markdown', 'before');
     html += renderSortControls(renderState);
     html += renderPendingToast(nodes);
     html += renderSubmitForm(renderState, graph);
     html += renderTree(graph, renderState);
-
-    if (renderState.extras_after) {
-      html += '<section class="nostr-page-extra nostr-page-extra-after">';
-      html += renderState.extras_after_format === 'html' ? String(renderState.extras_after) : markdownBlock(renderState.extras_after);
-      html += '</section>';
-    }
+    html += renderExtraContent(renderState.extras_after, renderState.extras_after_format, 'after');
 
     els.content.innerHTML = html;
   }
@@ -1014,19 +1076,95 @@
 
   function bindEvents() {
     root.addEventListener('input', function (event) {
-      if (!isAdmin() || !state.editMode) {
-        return;
-      }
       var target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      if (!(target instanceof HTMLElement) || !isAdmin()) {
         return;
       }
-      if (!target.id || target.id.indexOf('public-ranking-edit-') !== 0) {
+
+      if (target instanceof HTMLInputElement) {
+        var headField = String(target.getAttribute('data-ranking-head-input') || '');
+        if (headField === 'title') {
+          state.draft.title = String(target.value || '');
+          queueAutosave(500);
+          return;
+        }
+        if (headField === 'description') {
+          state.draft.description = String(target.value || '');
+          renderHead();
+          return;
+        }
+      }
+
+      if (!state.editMode) {
         return;
       }
-      syncDraftFromEditor();
-      renderHead();
-      queueAutosave(500);
+
+      if (target instanceof HTMLTextAreaElement) {
+        if (target.hasAttribute('data-ranking-intro')) {
+          state.draft.content = String(target.value || '');
+          queueAutosave(500);
+          return;
+        }
+        var outroField = String(target.getAttribute('data-ranking-outro') || '');
+        if (outroField === 'after') {
+          state.draft.extras_after = String(target.value || '');
+          queueAutosave(500);
+          return;
+        }
+      }
+
+      if (target.id && target.id.indexOf('public-ranking-edit-') === 0) {
+        syncDraftFromEditor();
+        queueAutosave(500);
+      }
+    });
+
+    root.addEventListener('keydown', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      var headField = String(target.getAttribute('data-ranking-head-input') || '');
+      if (!headField) {
+        return;
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (headField === 'description') {
+          persistDraft({ alertOnError: true }).then(function (ok) {
+            if (ok !== false) {
+              state.activeHeadField = '';
+              renderAll();
+            }
+          });
+          return;
+        }
+        state.activeHeadField = '';
+        renderAll();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderAll();
+      }
+    });
+
+    root.addEventListener('focusout', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      var headField = String(target.getAttribute('data-ranking-head-input') || '');
+      if (headField !== 'title') {
+        return;
+      }
+      setTimeout(function () {
+        if (!document.activeElement || !document.activeElement.hasAttribute || !document.activeElement.hasAttribute('data-ranking-head-input')) {
+          state.activeHeadField = '';
+          renderAll();
+        }
+      }, 0);
     });
 
     root.addEventListener('change', function (event) {
@@ -1038,6 +1176,15 @@
         state.currentMetric = normalizeMetric(target.value);
         renderContent();
         return;
+      }
+      if (target instanceof HTMLSelectElement) {
+        var outroFormatField = String(target.getAttribute('data-ranking-outro-format') || '');
+        if (outroFormatField === 'after' && isAdmin() && state.editMode) {
+          state.draft.extras_after_format = String(target.value || '').toLowerCase() === 'html' ? 'html' : 'markdown';
+          renderContent();
+          queueAutosave(500);
+          return;
+        }
       }
       if (isAdmin() && state.editMode && target.id && target.id.indexOf('public-ranking-edit-') === 0) {
         syncDraftFromEditor();
@@ -1051,10 +1198,37 @@
         return;
       }
 
+      var headEdit = target.closest('[data-ranking-head-edit]');
+      if (headEdit instanceof HTMLElement && isAdmin() && state.editMode) {
+        var field = String(headEdit.getAttribute('data-ranking-head-edit') || '');
+        if (field === 'title' || field === 'description') {
+          state.activeHeadField = field;
+          renderAll();
+          return;
+        }
+      }
+
+      var headSave = target.closest('[data-ranking-head-save]');
+      if (headSave instanceof HTMLElement && isAdmin()) {
+        var saveField = String(headSave.getAttribute('data-ranking-head-save') || '');
+        if (saveField === 'description') {
+          persistDraft({ alertOnError: true }).then(function (ok) {
+            if (ok !== false) {
+              state.activeHeadField = '';
+              renderAll();
+            }
+          });
+          return;
+        }
+      }
+
       var actionNode = target.closest('[data-ranking-action]');
       if (actionNode instanceof HTMLElement) {
         var action = String(actionNode.getAttribute('data-ranking-action') || '');
         if (action === 'toggle-edit') {
+          if (state.editMode) {
+            state.activeHeadField = '';
+          }
           state.editMode = !state.editMode;
           renderAll();
           return;
@@ -1107,6 +1281,7 @@
       state.payload = payload;
       state.draft = normalizeDraftState(payload.state || {});
       state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
+      state.activeHeadField = '';
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       renderAll();
