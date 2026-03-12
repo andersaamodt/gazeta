@@ -3441,7 +3441,8 @@ body {
   display: inline-flex;
   align-items: flex-end;
   gap: 0.55rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .moderation-filters label {
@@ -3452,8 +3453,9 @@ body {
 }
 
 .moderation-filters select {
-  width: auto;
-  min-width: 7.5rem;
+  width: 6.25rem;
+  min-width: 6.25rem;
+  max-width: 6.25rem;
   height: 2rem;
 }
 
