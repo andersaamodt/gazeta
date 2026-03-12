@@ -245,7 +245,7 @@
       if (!els.panel.classList.contains('is-open')) {
         els.panel.hidden = true;
       }
-    }, 320);
+    }, 420);
   }
 
   function readCache() {

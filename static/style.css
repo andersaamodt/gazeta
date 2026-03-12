@@ -3306,12 +3306,20 @@ footer {
   padding: 0 0.88rem;
   margin: 0.18rem 0 0.95rem;
   max-height: 0;
-  transition: max-height 0.26s ease, padding 0.2s ease;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .blog-filter-panel.is-open {
   max-height: 32rem;
   padding: 0.88rem;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .blog-filter-grid {
