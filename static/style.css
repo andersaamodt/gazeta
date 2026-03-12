@@ -3292,6 +3292,40 @@ input[type="reset"]:disabled,
   background-image: none !important;
 }
 
+/* List inline editor cells use role=button for keyboard support; keep them text-like, not primary buttons. */
+.list-page-shell [role="button"].list-inline-open {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0.24rem 0.1rem !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+  font-size: inherit !important;
+  font-weight: 400 !important;
+  cursor: text !important;
+  display: inline-block !important;
+}
+
+.list-page-shell [role="button"].list-inline-open:hover,
+.list-page-shell [role="button"].list-inline-open:focus-visible,
+.list-page-shell [role="button"].list-inline-open:active {
+  background: rgba(49, 103, 189, 0.04) !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Keep inline list text inputs compact; do not inherit oversized generic field sizing. */
+.list-page-shell .list-entry-inline input[type="text"],
+.list-page-shell .list-inline-eventid input[type="text"] {
+  height: 2rem !important;
+  min-height: 2rem !important;
+  padding: 0.35rem 0.55rem !important;
+  line-height: 1.2 !important;
+}
+
 /* Input Fields */
 input[type="text"],
 input[type="email"],
