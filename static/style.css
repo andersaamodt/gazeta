@@ -783,8 +783,10 @@ header h1 {
 
 .list-page-admin-bar button {
   width: fit-content;
-  padding: 0.4rem 0.66rem;
+  padding: 0.36rem 0.74rem;
   border-radius: 8px;
+  font-size: 0.92rem;
+  line-height: 1.22;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
