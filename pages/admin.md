@@ -1674,8 +1674,8 @@ body {
   color: #183260;
   font-size: 0.86rem;
   font-weight: 520;
-  padding: 0.48rem 0.72rem;
-  line-height: 1.25;
+  padding: 0.34rem 0.72rem;
+  line-height: 1.15;
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
 
@@ -1701,7 +1701,7 @@ body {
 #admin-panel .row-actions button.primary {
   font-size: 0.84rem;
   font-weight: 520;
-  padding: 0.44rem 0.68rem;
+  padding: 0.34rem 0.68rem;
 }
 
 #admin-panel button.danger {

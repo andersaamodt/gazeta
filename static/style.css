@@ -3751,6 +3751,17 @@ input[type="reset"]:disabled,
   cursor: default;
 }
 
+/* Keep content-area buttons no taller than nav controls. */
+main button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item),
+main input[type="button"],
+main input[type="submit"],
+main input[type="reset"],
+main [role="button"]:not(.list-inline-open):not(.admin-nav-item),
+main .btn {
+  padding: 0.34rem 0.82rem;
+  line-height: 1.15;
+}
+
 /* Keep icon-only controls unobtrusive. */
 .nav-menu-btn,
 .post-page-menu-trigger,
