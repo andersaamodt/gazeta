@@ -261,7 +261,7 @@
   function renderHead() {
     var s = getRenderState();
     if (els.title) {
-      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>';
+      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
     }
     if (els.description) {
       var desc = String(s.description || '').trim();
@@ -284,14 +284,23 @@
         clearTimeout(state.saveTimer);
         state.saveTimer = null;
       }
+      var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
+      if (nonAdminActionsHost) {
+        nonAdminActionsHost.innerHTML = '';
+      }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
       return;
     }
     var hasCanonical = !!(state.payload && state.payload.canonical_exists);
     var hasDraftChanges = !!(state.payload && state.payload.draft_differs);
+    var showRevert = !!state.editMode;
+    var showPublish = !!state.editMode || hasDraftChanges;
+    var canRevert = hasCanonical && hasDraftChanges;
+    var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
+    var actionsHost = document.getElementById('public-ranking-page-title-actions');
     var html = '';
-    html += '<div class="list-page-admin-bar">';
+    html += '<span class="list-page-admin-bar">';
     if (state.saveIndicatorVisible) {
       html += '<span id="public-ranking-save-status" class="list-admin-save-status" aria-live="polite">';
       if (state.saveStatus === 'saving') {
@@ -303,12 +312,19 @@
       }
       html += '</span>';
     }
+    if (showRevert) {
+      html += '<button type="button" data-ranking-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
+    }
+    if (showPublish) {
+      html += '<button type="button" data-ranking-action="publish" class="list-admin-primary-btn">Publish to Nostr...</button>';
+    }
     html += '<button type="button" data-ranking-action="toggle-edit" class="list-admin-primary-btn">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '<button type="button" data-ranking-action="publish" class="list-admin-primary-btn">Publish to Nostr...</button>';
-    html += '<button type="button" data-ranking-action="revert" title="Revert draft to canonical Nostr version"' + ((hasCanonical && hasDraftChanges) ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    html += '</div>';
-    els.admin.hidden = false;
-    els.admin.innerHTML = html;
+    html += '</span>';
+    if (actionsHost) {
+      actionsHost.innerHTML = html;
+    }
+    els.admin.hidden = true;
+    els.admin.innerHTML = '';
     setSaveStatus(state.saveStatus, state.saveError);
   }
 
