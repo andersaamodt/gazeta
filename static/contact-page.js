@@ -394,20 +394,20 @@
   function renderEditor(rows, draft) {
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Intro and outro</h3>';
+    html += '<h3 class="nostr-page-extras-heading">Before and after content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Intro (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-contact-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish intro to Nostr</span></label></span></span>';
-    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional intro shown before profile entries">' + escapeHtml(draft.description || '') + '</textarea>';
+    html += '<span>Before content (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-contact-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish before content to Nostr</span></label></span></span>';
+    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(draft.description || '') + '</textarea>';
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Outro</span>';
+    html += '<span>After content</span>';
     html += '<span class="nostr-page-extra-controls">';
     html += '<select data-contact-outro-format="after">';
     html += '<option value="markdown"' + (draft.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
     html += '<option value="html"' + (draft.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option>';
     html += '</select>';
     html += '</span>';
-    html += '<textarea data-contact-outro="after" rows="4" placeholder="Optional local content shown after the Nostr-backed section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
+    html += '<textarea data-contact-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
 

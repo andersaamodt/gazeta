@@ -508,10 +508,10 @@
     }
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Prefix</h3>';
+    html += '<h3 class="nostr-page-extras-heading">Before content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Prefix (Markdown, published to Nostr)</span>';
-    html += '<textarea data-ranking-intro="true" rows="4" placeholder="Optional intro shown before ranking entries">' + escapeHtml(renderState.content || '') + '</textarea>';
+    html += '<span>Before content (Markdown)</span>';
+    html += '<textarea data-ranking-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(renderState.content || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
     return html;
@@ -523,16 +523,16 @@
     }
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Local postfix</h3>';
+    html += '<h3 class="nostr-page-extras-heading">After content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Local postfix</span>';
+    html += '<span>After content</span>';
     html += '<span class="nostr-page-extra-controls">';
     html += '<select data-ranking-outro-format="after">';
     html += '<option value="markdown"' + (String(renderState.extras_after_format || '').toLowerCase() === 'markdown' ? ' selected' : '') + '>Markdown</option>';
     html += '<option value="html"' + (String(renderState.extras_after_format || '').toLowerCase() === 'html' ? ' selected' : '') + '>HTML</option>';
     html += '</select>';
     html += '</span>';
-    html += '<textarea data-ranking-outro="after" rows="4" placeholder="Optional local content shown after the Nostr-backed section">' + escapeHtml(renderState.extras_after || '') + '</textarea>';
+    html += '<textarea data-ranking-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(renderState.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
     return html;
