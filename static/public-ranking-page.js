@@ -510,17 +510,28 @@
     return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
   }
 
-  function renderExtrasEditor(renderState) {
+  function renderPrefixEditor(renderState) {
     if (!isAdmin() || !state.editMode) {
       return '';
     }
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Prefix and local postfix</h3>';
+    html += '<h3 class="nostr-page-extras-heading">Prefix</h3>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>Prefix (Markdown, published to Nostr)</span>';
     html += '<textarea data-ranking-intro="true" rows="4" placeholder="Optional intro shown before ranking entries">' + escapeHtml(renderState.content || '') + '</textarea>';
     html += '</label>';
+    html += '</section>';
+    return html;
+  }
+
+  function renderPostfixEditor(renderState) {
+    if (!isAdmin() || !state.editMode) {
+      return '';
+    }
+    var html = '';
+    html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
+    html += '<h3 class="nostr-page-extras-heading">Local postfix</h3>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>Local postfix</span>';
     html += '<span class="nostr-page-extra-controls">';
@@ -768,13 +779,20 @@
     var nodes = graph.nodes || [];
 
     var html = '';
-    html += renderExtrasEditor(renderState);
     html += renderEditor(renderState);
-    html += renderExtraContent(renderState.content, 'markdown', 'before');
+    if (isAdmin() && state.editMode) {
+      html += renderPrefixEditor(renderState);
+    } else {
+      html += renderExtraContent(renderState.content, 'markdown', 'before');
+    }
     html += renderPendingToast(nodes);
     html += renderSubmitForm(renderState, graph);
     html += renderTree(graph, renderState);
-    html += renderExtraContent(renderState.extras_after, renderState.extras_after_format, 'after');
+    if (isAdmin() && state.editMode) {
+      html += renderPostfixEditor(renderState);
+    } else {
+      html += renderExtraContent(renderState.extras_after, renderState.extras_after_format, 'after');
+    }
 
     els.content.innerHTML = html;
   }
