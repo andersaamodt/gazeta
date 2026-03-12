@@ -486,7 +486,7 @@ blog_public_ranking_view_json() {
       | metric_name($state_metric; $selected_metric) as $metric
       | (($state.vote_cooldown_seconds // 86400) | tonumber? // 86400 | floor | if . < 60 then 60 else . end) as $cooldown
       | (($state.blacklist_pubkeys // []) | map(ascii_downcase)) as $blocked
-      | (events
+      | ($events
           | map(select(type=="object" and (.kind==30040 or .kind==30041) and (.tags|type)=="array"))
           | map(. + {
               coordinate: coord_of(.),
@@ -508,16 +508,20 @@ blog_public_ranking_view_json() {
           | map(last)
         ) as $all_nodes
       | (if ($root_coord | length) > 0 then
-          ((all_tags((events | map(select(is_root(.))) | sort_by((.created_at // 0), (.id // "")) | last | .tags // []); "a") | map(select(is_coord(.))))
+          ((all_tags(($events | map(select(is_root(.))) | sort_by((.created_at // 0), (.id // "")) | last | .tags // []); "a") | map(select(is_coord(.))))
             + ($state.root_refs // []))
         else
           ($state.root_refs // [])
         end
         | unique) as $root_refs
-      | (($all_nodes
-          | map(select((.ranking == $root_coord) or (.parent == $root_coord) or (($root_refs | index(.coordinate)) != null)))
-          | map(.coordinate)
-          | unique) + ($root_refs | map(select(is_coord(.)))) | unique as $seed
+      | (
+          (($all_nodes
+            | map(select((.ranking == $root_coord) or (.parent == $root_coord) or (($root_refs | index(.coordinate)) != null)))
+            | map(.coordinate)
+            | unique)
+          + ($root_refs | map(select(is_coord(.)))))
+          | unique
+        ) as $seed
       | def descendants($set):
           ($set + ($all_nodes | map(select((.parent | length) > 0 and (($set | index(.parent)) != null)) | .coordinate)) | unique) as $next
           | if ($next | length) == ($set | length) then $next else descendants($next) end;
@@ -536,12 +540,12 @@ blog_public_ranking_view_json() {
           coordinate: $coord,
           kind: 30023,
           pubkey: "",
-          created_at: ((posts | map(select(.address == $coord) | .created_at) | first) // 0),
-          title: ((posts | map(select(.address == $coord) | .title) | first) // $coord),
-          summary: ((posts | map(select(.address == $coord) | .summary) | first) // ""),
+          created_at: (($posts | map(select(.address == $coord) | .created_at) | first) // 0),
+          title: (($posts | map(select(.address == $coord) | .title) | first) // $coord),
+          summary: (($posts | map(select(.address == $coord) | .summary) | first) // ""),
           content: "",
           status: "approved",
-          url: ((posts | map(select(.address == $coord and (.html_path // "") != "") | ("/pages/" + .html_path)) | first) // ""),
+          url: (($posts | map(select(.address == $coord and (.html_path // "") != "") | ("/pages/" + .html_path)) | first) // ""),
           post_ref: $coord,
           author: "",
           parent: "",
@@ -558,7 +562,7 @@ blog_public_ranking_view_json() {
       | ($visible_nodes + $virtual_post_nodes) as $score_nodes
       | (($score_nodes | map(.coordinate) + [$root_coord]) | map(select(length > 0)) | unique) as $score_coords
       | (
-          events
+          $events
           | map(select(type=="object" and (.kind // 0) == 7 and (.content // "") == "+" and (.pubkey | type) == "string" and (.tags | type) == "array"))
           | map(select(($blocked | index((.pubkey | ascii_downcase))) == null))
           | map({
@@ -580,7 +584,7 @@ blog_public_ranking_view_json() {
               value: {
                 enthusiasm: length,
                 support: (map(.pubkey) | unique | length),
-                momentum: (map((now_epoch - (.created_at // 0)) / 86400 | if . < 0 then 0 else . end | (1 / (1 + .))) | add // 0)
+                momentum: (map((($now_epoch - (.created_at // 0)) / 86400) | if . < 0 then 0 else . end | (1 / (1 + .))) | add // 0)
               }
             })
           | map(.value.intensity = (if (.value.support // 0) > 0 then ((.value.enthusiasm // 0) / (.value.support // 1)) else 0 end))
@@ -588,7 +592,7 @@ blog_public_ranking_view_json() {
         ) as $metrics_map
       | (
           if ($viewer_pubkey | length) == 64 then
-            (events
+            ($events
               | map(select(type=="object" and (.kind // 0) == 7 and (.content // "") == "+" and (.pubkey // "") == $viewer_pubkey and (.tags | type) == "array"))
               | map({
                   target: ((all_tags(.tags; "a") | map(select(($score_coords | index(.)) != null)) | first) // ""),
@@ -602,7 +606,7 @@ blog_public_ranking_view_json() {
                   value: {
                     last_vote_at: (map(.created_at) | max // 0),
                     next_vote_at: ((map(.created_at) | max // 0) + $cooldown),
-                    can_vote_now: (now_epoch >= ((map(.created_at) | max // 0) + $cooldown))
+                    can_vote_now: ($now_epoch >= ((map(.created_at) | max // 0) + $cooldown))
                   }
                 })
               | from_entries)
