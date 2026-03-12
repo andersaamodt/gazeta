@@ -1629,9 +1629,9 @@ body {
   border-radius: 10px;
   background: #fff;
   color: #183260;
-  font-size: 0.88rem;
-  font-weight: 650;
-  padding: 0.58rem 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 520;
+  padding: 0.48rem 0.72rem;
   line-height: 1.25;
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
@@ -1653,6 +1653,12 @@ body {
   background: linear-gradient(180deg, #2a4ea0 0%, #243f85 100%);
   border-color: #24458f;
   color: #fff;
+}
+
+#admin-panel .row-actions button.primary {
+  font-size: 0.84rem;
+  font-weight: 520;
+  padding: 0.44rem 0.68rem;
 }
 
 #admin-panel button.danger {
