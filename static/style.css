@@ -236,7 +236,8 @@ header h1 {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9rem;
-  padding: 0.5rem 1rem;
+  padding: 0.36rem 0.92rem;
+  line-height: 1.15;
   border-radius: var(--nav-pill-radius);
   transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
@@ -4260,7 +4261,7 @@ nav.site-nav {
   }
 
   .nav-center a {
-    padding: 0.38rem 0.68rem;
+    padding: 0.3rem 0.62rem;
     font-size: 0.84rem;
   }
 
