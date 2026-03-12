@@ -2380,6 +2380,35 @@ body {
   padding-right: 0.7rem;
 }
 
+[data-admin-section="moderation"] .admin-card {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-admin-section="moderation"] .demo-box.admin-card {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+[data-admin-section="moderation"] .row-head {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
+#admin-panel #moderation-list.posts-list {
+  border: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+#admin-panel #moderation-list .post-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
 #admin-panel #btn-create-nostr-page {
   color: var(--nav-active-text, #fff) !important;
 }
