@@ -1166,7 +1166,7 @@ body {
 }
 
 [data-admin-section="account"] #account-player-name {
-  inline-size: clamp(12rem, 22vw, 18rem);
+  inline-size: clamp(4rem, 7.3vw, 6rem);
 }
 
 [data-admin-section="account"] .field-row {
