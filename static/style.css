@@ -787,6 +787,24 @@ header h1 {
   border-radius: 8px;
 }
 
+.list-page-admin-bar button:not(.list-admin-primary-btn) {
+  border: 1px solid var(--border, #c3cada);
+  background: var(--surface-raised-strong, #fff) !important;
+  background-image: none !important;
+  color: var(--text, #243046) !important;
+  -webkit-text-fill-color: var(--text, #243046);
+  box-shadow: none;
+}
+
+.list-page-admin-bar button:not(.list-admin-primary-btn):hover:not(:disabled),
+.list-page-admin-bar button:not(.list-admin-primary-btn):focus-visible:not(:disabled) {
+  background: var(--admin-hover, var(--nav-link-hover, #e9f1ff)) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 36%, var(--border, #c3cada) 64%);
+  color: var(--text, #243046) !important;
+  -webkit-text-fill-color: var(--text, #243046);
+}
+
 .list-page-admin-bar button[data-list-action="publish"],
 .list-page-admin-bar button[data-list-action="toggle-edit"] {
   color: #fff !important;
@@ -882,6 +900,11 @@ header h1 {
   height: 2.2rem;
   font-size: 1.35rem;
   font-weight: 700;
+  color: var(--text, #223047);
+  -webkit-text-fill-color: var(--text, #223047);
+  text-shadow: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
 }
 
 #list-page-title {
