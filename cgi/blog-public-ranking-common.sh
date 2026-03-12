@@ -568,7 +568,7 @@ blog_public_ranking_view_json() {
               target: ((all_tags(.tags; "a") | map(select(($score_coords | index(.)) != null)) | first) // "")
             })
           | map(select((.target | length) > 0))
-          | map(. + { bucket: ((.created_at / $cooldown) | floor) })
+          | map(. + { bucket: ((.created_at / 86400) | floor) })
           | sort_by(.target, .pubkey, .bucket, .created_at, .id)
           | group_by(.target, .pubkey, .bucket)
           | map(first)
