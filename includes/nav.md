@@ -174,6 +174,7 @@
     var hasDynamicNostrPage = !!(
       document.getElementById('nip23-page-root') ||
       document.getElementById('oeuvre-root') ||
+      document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('admin-panel')
     );

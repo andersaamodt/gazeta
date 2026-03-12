@@ -29,6 +29,7 @@ blog_nostr_page_kind_for_type() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
     contact) printf '0\n' ;;
+    public-ranking) printf '30040\n' ;;
     nip23|blog) printf '30023\n' ;;
     *) printf '30004\n' ;;
   esac
@@ -95,6 +96,7 @@ blog_nostr_pages_normalize_json() {
     def norm_type($v):
       (($v // "") | tostring | ascii_downcase) as $t
       | if $t == "contact" then "contact"
+        elif ($t == "public-ranking" or $t == "public_ranking" or $t == "ranking") then "public-ranking"
         elif ($t == "blog" or $t == "blog-index" or $t == "blog_index") then "blog"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
@@ -159,7 +161,13 @@ blog_nostr_pages_normalize_json() {
            else
              ($with_blog
              | map(
-               .kind = (if .type == "contact" then 0 elif (.type == "nip23" or .type == "blog") then 30023 else 30004 end)
+               .kind = (
+                 if .type == "contact" then 0
+                 elif .type == "public-ranking" then 30040
+                 elif (.type == "nip23" or .type == "blog") then 30023
+                 else 30004
+                 end
+               )
                | .show_in_nav = (if .show_in_nav == false then false else true end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
                | .path = norm_path(.slug; .type; .path)
@@ -240,6 +248,7 @@ blog_nostr_page_load_draft_state_json() {
   [ -n "$raw" ] || return 1
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
+    public-ranking) blog_public_ranking_normalize_state_json "$slug" "$raw" ;;
     nip23|blog) blog_nip23_normalize_state_json "$slug" "$raw" ;;
     *) blog_list_normalize_state_json "$slug" "$raw" ;;
   esac
@@ -252,6 +261,7 @@ blog_nostr_page_save_draft_state_json() {
   [ -n "$state_json" ] || return 1
   case "$page_type" in
     contact) normalized=$(blog_contact_normalize_state_json "$slug" "$state_json") ;;
+    public-ranking) normalized=$(blog_public_ranking_normalize_state_json "$slug" "$state_json") ;;
     nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
@@ -752,6 +762,14 @@ blog_nostr_page_canonical_title() {
         printf '\n'
       fi
       ;;
+    public-ranking)
+      event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$event" ]; then
+        printf '%s\n' "$event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf ''
+      else
+        printf '\n'
+      fi
+      ;;
     blog)
       event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
       if [ -n "$event" ]; then
@@ -785,6 +803,10 @@ blog_nostr_page_source_template_type() {
     printf 'contact\n'
     return 0
   fi
+  if grep -q 'id="public-ranking-root"' "$file" 2>/dev/null; then
+    printf 'public-ranking\n'
+    return 0
+  fi
   if grep -q 'id="oeuvre-root"' "$file" 2>/dev/null; then
     printf 'list\n'
     return 0
@@ -802,7 +824,7 @@ blog_nostr_page_source_template_slug() {
     printf '\n'
     return 0
   }
-  raw_slug=$(sed -n 's/.*data-page-slug="\([^"]*\)".*/\1/p; s/.*data-list-slug="\([^"]*\)".*/\1/p; s/.*data-blog-slug="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1)
+  raw_slug=$(sed -n 's/.*data-page-slug="\([^"]*\)".*/\1/p; s/.*data-list-slug="\([^"]*\)".*/\1/p; s/.*data-blog-slug="\([^"]*\)".*/\1/p; s/.*data-ranking-slug="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1)
   printf '%s\n' "$(blog_nostr_page_slug "$raw_slug")"
 }
 
@@ -953,6 +975,32 @@ license: "CC BY 4.0"
 
 <script src="/static/blog-page.js"></script>
 EOBLOG
+      ;;
+    public-ranking)
+      cat > "$page_file" <<EORANKING
+---
+title: "$page_title"
+published_at: "$(blog_now_iso)"
+content_hash: ""
+tags: ["nostr", "public-ranking"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="$slug" data-page-type="public-ranking" data-page-title="$page_title">
+<div class="list-page-head">
+<h1 id="public-ranking-title">$page_title</h1>
+<p id="public-ranking-description" class="muted"></p>
+</div>
+<div id="public-ranking-admin" class="list-admin" hidden></div>
+<div id="public-ranking-validation" class="list-validation" hidden></div>
+<div id="public-ranking-content" class="list-page-content"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/public-ranking-page.js"></script>
+EORANKING
       ;;
     *)
       cat > "$page_file" <<EOLIST

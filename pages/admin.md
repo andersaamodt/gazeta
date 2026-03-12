@@ -14,6 +14,7 @@ title: Blog Admin
 <button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Bridge</span></button>
@@ -386,6 +387,42 @@ title: Blog Admin
 </div>
 </section>
 
+<section class="admin-section" data-admin-section="moderation" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Moderation</h3>
+<p class="muted">Pending ranking submissions across all Public Ranking pages.</p>
+</div>
+<div class="row-actions moderation-filters">
+<label for="moderation-filter-page"><span>Page</span>
+<select id="moderation-filter-page">
+<option value="">All pages</option>
+</select>
+</label>
+<label for="moderation-filter-type"><span>Type</span>
+<select id="moderation-filter-type">
+<option value="all">All</option>
+<option value="group">Group</option>
+<option value="entry">Entry</option>
+</select>
+</label>
+<label for="moderation-filter-age"><span>Age</span>
+<select id="moderation-filter-age">
+<option value="all">All</option>
+<option value="24h">Last 24h</option>
+<option value="7d">Last 7d</option>
+<option value="30d">Last 30d</option>
+<option value="older">Older</option>
+</select>
+</label>
+</div>
+</div>
+<div id="moderation-list" class="posts-list"></div>
+<div id="output-moderation" class="output"></div>
+</div>
+</section>
+
 <section class="admin-section" data-admin-section="account" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
@@ -463,6 +500,7 @@ title: Blog Admin
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="blog">Blog Index (NIP-23 posts)</option>
 <option value="list">List Page (kind 30004)</option>
+<option value="public-ranking">Public Ranking (kind 30040)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>
 </select>
@@ -3392,5 +3430,39 @@ body {
 #admin-panel button.post-menu-trigger,
 #admin-panel button.post-row-delete {
   transition: none !important;
+}
+
+.moderation-filters {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.moderation-filters label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted-text, #4f617f);
+  font-size: 0.8rem;
+}
+
+.moderation-filters select {
+  width: auto;
+  min-width: 7.5rem;
+  height: 2rem;
+}
+
+#moderation-list .post-row {
+  align-items: start;
+}
+
+.moderation-item-meta {
+  margin: 0.18rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted-text, #4f617f);
+}
+
+.moderation-item-path {
+  font-size: 0.8rem;
 }
 </style>

@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
 . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
@@ -36,6 +37,10 @@ if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
     BLOG_SESSION_IS_ADMIN=true
   fi
 fi
+viewer_pubkey=''
+if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
+  viewer_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
+fi
 
 canonical_event_json=''
 canonical_state_json=''
@@ -49,6 +54,15 @@ case "$page_type" in
       canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$canonical_event_json")
     else
       canonical_state_json=$(blog_contact_default_state_json "$page_slug")
+    fi
+    ;;
+  public-ranking)
+    canonical_event_json=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event_json")
+    else
+      canonical_state_json=$(blog_public_ranking_default_state_json "$page_slug")
     fi
     ;;
   nip23|blog)
@@ -123,6 +137,10 @@ if [ "$draft_exists" = "true" ]; then
       draft_sig=$(blog_contact_state_signature_json "$draft_state_json")
       canonical_sig=$(blog_contact_state_signature_json "$canonical_sig_state_json")
       ;;
+    public-ranking)
+      draft_sig=$(blog_public_ranking_state_signature_json "$draft_state_json")
+      canonical_sig=$(blog_public_ranking_state_signature_json "$canonical_sig_state_json")
+      ;;
     nip23|blog)
       draft_sig=$(blog_nip23_state_signature_json "$draft_state_json")
       canonical_sig=$(blog_nip23_state_signature_json "$canonical_sig_state_json")
@@ -141,6 +159,17 @@ case "$page_type" in
   contact)
     validation_json=$(blog_contact_validate_and_enrich_state_json "$view_state_json" false)
     view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  public-ranking)
+    validation_json=$(blog_public_ranking_validate_and_enrich_state_json "$view_state_json" false)
+    include_pending=false
+    if [ "$is_admin" = "true" ]; then
+      include_pending=true
+    fi
+    selected_metric=$(printf '%s' "$(blog_param sort_metric)" | tr '[:upper:]' '[:lower:]')
+    ranking_enriched=$(blog_public_ranking_view_json "$page_slug" "$view_state_json" "$canonical_event_json" "$include_pending" "$selected_metric" "$viewer_pubkey")
+    view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson ranking "$ranking_enriched" '. + $ranking')
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson ranking "$(blog_public_ranking_view_json "$page_slug" "$canonical_state_json" "$canonical_event_json" false "$selected_metric" "$viewer_pubkey")" '. + $ranking')
     ;;
   nip23|blog)
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$view_state_json" false)

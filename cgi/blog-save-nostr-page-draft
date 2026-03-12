@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
 . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
@@ -63,6 +64,54 @@ if [ -z "$state_json" ]; then
         extras_after_format: $extras_after_format,
         rows: $rows
       }')
+      ;;
+    public-ranking)
+      title=$(blog_param title)
+      description=$(blog_param description)
+      content=$(blog_param content)
+      vote_cooldown_seconds=$(blog_param vote_cooldown_seconds)
+      submission_mode=$(blog_param submission_mode)
+      default_metric=$(blog_param default_metric)
+      blacklist_pubkeys_json=$(blog_param blacklist_pubkeys_json)
+      root_refs_json=$(blog_param root_refs_json)
+      extras_after=$(blog_param extras_after)
+      extras_after_format=$(blog_param extras_after_format)
+      [ -n "$blacklist_pubkeys_json" ] || blacklist_pubkeys_json='[]'
+      [ -n "$root_refs_json" ] || root_refs_json='[]'
+      if ! printf '%s\n' "$blacklist_pubkeys_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "blacklist_pubkeys_json must be a JSON array" "invalid_blacklist"
+        exit 0
+      fi
+      if ! printf '%s\n' "$root_refs_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "root_refs_json must be a JSON array" "invalid_root_refs"
+        exit 0
+      fi
+      state_json=$(jq -cn \
+        --arg slug "$page_slug" \
+        --arg title "$title" \
+        --arg description "$description" \
+        --arg content "$content" \
+        --arg vote_cooldown_seconds "$vote_cooldown_seconds" \
+        --arg submission_mode "$submission_mode" \
+        --arg default_metric "$default_metric" \
+        --arg extras_after "$extras_after" \
+        --arg extras_after_format "$extras_after_format" \
+        --argjson blacklist_pubkeys "$blacklist_pubkeys_json" \
+        --argjson root_refs "$root_refs_json" \
+        '{
+          slug: $slug,
+          type: "public-ranking",
+          title: $title,
+          description: $description,
+          content: $content,
+          vote_cooldown_seconds: ($vote_cooldown_seconds | tonumber? // 86400),
+          submission_mode: $submission_mode,
+          default_metric: $default_metric,
+          blacklist_pubkeys: $blacklist_pubkeys,
+          root_refs: $root_refs,
+          extras_after: $extras_after,
+          extras_after_format: $extras_after_format
+        }')
       ;;
     nip23|blog)
       title=$(blog_param title)
@@ -148,6 +197,12 @@ case "$page_type" in
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
     validation_json=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
     enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {rows: $validation.rows, content_json: $validation.content_json}')
+    ;;
+  public-ranking)
+    normalized=$(blog_public_ranking_normalize_state_json "$page_slug" "$state_json")
+    blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
+    validation_json=$(blog_public_ranking_validate_and_enrich_state_json "$normalized" false)
+    enriched=$normalized
     ;;
   nip23|blog)
     normalized=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")

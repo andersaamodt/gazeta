@@ -21,6 +21,7 @@
     draftsPollTimer: null,
     queuePollTimer: null,
     postsPollTimer: null,
+    moderationPollTimer: null,
     userDragActive: false,
     userDragUsername: '',
     userDropAfterUsername: '',
@@ -28,6 +29,7 @@
     usersActionInFlight: false,
     postsMenuOpenFor: '',
     postsActionInFlight: false,
+    moderationActionInFlight: false,
     pendingAddToListPostPath: '',
     dripQueueAhead: 0,
     dripQueueEtaMinutes: 0,
@@ -53,6 +55,7 @@
     nostrPagesDragLastTarget: '',
     nostrPagesDragDropped: false,
     nostrPagesDragSnapshot: [],
+    moderationItems: [],
     initialContentPainted: false
   };
 
@@ -65,6 +68,7 @@
     outputQueue: document.getElementById('output-queue'),
     outputPosts: document.getElementById('output-posts'),
     outputNostrPages: document.getElementById('output-nostr-pages'),
+    outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
     outputUsers: document.getElementById('output-users'),
     siteTitle: document.getElementById('site-title'),
@@ -103,6 +107,10 @@
     queueLocalDripStatusText: document.getElementById('queue-local-drip-status-text'),
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
     postsList: document.getElementById('posts-list'),
+    moderationList: document.getElementById('moderation-list'),
+    moderationFilterPage: document.getElementById('moderation-filter-page'),
+    moderationFilterType: document.getElementById('moderation-filter-type'),
+    moderationFilterAge: document.getElementById('moderation-filter-age'),
     newPostButton: document.getElementById('btn-new-post'),
     postAddToListDialog: document.getElementById('post-add-to-list-dialog'),
     postAddToListForm: document.getElementById('post-add-to-list-form'),
@@ -235,6 +243,7 @@
     syncDraftsAutoRefresh();
     syncQueueAutoRefresh();
     syncPostsAutoRefresh();
+    syncModerationAutoRefresh();
   }
 
   function initSectionNavigation() {
@@ -2029,6 +2038,9 @@
     if (type === 'blog') {
       return 'Blog Index (NIP-23 posts)';
     }
+    if (type === 'public-ranking') {
+      return 'Public Ranking (kind 30040)';
+    }
     if (type === 'contact') {
       return 'User Metadata';
     }
@@ -2316,6 +2328,7 @@
     }
     state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
     renderNostrPagesList(state.nostrPages, false);
+    renderModerationPageFilterOptions();
   }
 
   async function saveNostrPagesConfig() {
@@ -2350,6 +2363,7 @@
         return row;
       });
       renderNostrPagesList(state.nostrPages, false);
+      renderModerationPageFilterOptions();
       dispatchNavbarRefresh(state.nostrPages, false);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
@@ -2358,9 +2372,15 @@
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
-    const normalizedType = (pickedType === 'profile' || pickedType === 'metadata') ? 'contact' : ((pickedType === 'long-form') ? 'nip23' : ((pickedType === 'blog-index' || pickedType === 'blog_page') ? 'blog' : pickedType));
-    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, metadata, or long-form.', 'warn');
+    const normalizedType = (pickedType === 'profile' || pickedType === 'metadata')
+      ? 'contact'
+      : ((pickedType === 'long-form')
+        ? 'nip23'
+        : ((pickedType === 'blog-index' || pickedType === 'blog_page')
+          ? 'blog'
+          : ((pickedType === 'public_ranking' || pickedType === 'ranking') ? 'public-ranking' : pickedType)));
+    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog' && normalizedType !== 'public-ranking') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, public-ranking, metadata, or long-form.', 'warn');
       return false;
     }
     if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -2380,7 +2400,7 @@
     next.push({
       slug: slug,
       type: normalizedType,
-      kind: (normalizedType === 'contact' ? 0 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004)),
+      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'public-ranking' ? 30040 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004))),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
       path: pathFromNostrPageSlug(slug)
@@ -2411,6 +2431,8 @@
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
       if (els.nostrPageTypeSelect.value === 'blog') {
         els.nostrPageSlugInput.value = 'blog';
+      } else if (els.nostrPageTypeSelect.value === 'public-ranking') {
+        els.nostrPageSlugInput.value = 'ranking';
       } else if (els.nostrPageTypeSelect.value === 'contact') {
         els.nostrPageSlugInput.value = 'profile';
       } else if (els.nostrPageTypeSelect.value === 'nip23') {
@@ -2423,12 +2445,12 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: blog, list, metadata, or long-form', 'blog');
+      const pickedTypeRaw = window.prompt('Page type: blog, list, public-ranking, metadata, or long-form', 'blog');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: blog)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : (fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : (fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : '');
+      const fallbackSlug = window.prompt('Page slug/path (example: blog)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : ((fallbackType === 'public-ranking' || fallbackType === 'public_ranking' || fallbackType === 'ranking') ? 'ranking' : ((fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : ((fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : ''))));
       if (fallbackSlug === null) {
         return;
       }
@@ -2473,6 +2495,156 @@
         return;
       }
       loadPosts().catch(function () {});
+    }, 7000);
+  }
+
+  function renderModerationPageFilterOptions() {
+    if (!els.moderationFilterPage) {
+      return;
+    }
+    const previous = String(els.moderationFilterPage.value || '');
+    let html = '<option value=\"\">All pages</option>';
+    (Array.isArray(state.nostrPages) ? state.nostrPages : [])
+      .filter(function (page) { return String(page && page.type || '') === 'public-ranking'; })
+      .forEach(function (page) {
+        const slug = normalizeNostrPageSlug(page && page.slug);
+        if (!slug) {
+          return;
+        }
+        const title = String((page && (page.title || page.placeholder_title)) || defaultNostrPageTitleFromSlug(slug) || slug);
+        html += '<option value=\"' + escapeAttr(slug) + '\">' + escapeHtml(title) + '</option>';
+      });
+    els.moderationFilterPage.innerHTML = html;
+    if (previous && Array.from(els.moderationFilterPage.options).some(function (opt) { return String(opt.value || '') === previous; })) {
+      els.moderationFilterPage.value = previous;
+    }
+  }
+
+  function renderModerationList(items) {
+    if (!els.moderationList) {
+      return;
+    }
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      els.moderationList.innerHTML = '<p class=\"placeholder\">No pending moderation actions.</p>';
+      return;
+    }
+    let html = '';
+    list.forEach(function (item) {
+      const nodeCoord = String(item && item.coordinate || '');
+      const pageSlug = normalizeNostrPageSlug(item && item.page_slug);
+      const pagePath = String(item && item.page_path || (pageSlug === 'index' ? '/' : ('/' + pageSlug)));
+      const title = String(item && item.title || nodeCoord || 'Untitled');
+      const summary = String(item && item.summary || '');
+      const content = String(item && item.content || '');
+      const itemType = String(item && item.item_type || 'entry');
+      const ageSeconds = Number(item && item.age_seconds || 0);
+      const ageHours = Math.max(0, Math.floor(ageSeconds / 3600));
+      html += '<div class=\"post-row\" data-moderation-node=\"' + escapeAttr(nodeCoord) + '\" data-moderation-page=\"' + escapeAttr(pageSlug) + '\">';
+      html += '<div class=\"post-row-main\">';
+      html += '<div class=\"post-row-title\">' + escapeHtml(title) + '</div>';
+      if (summary) {
+        html += '<div class=\"post-row-summary\">' + escapeHtml(summary) + '</div>';
+      }
+      html += '<div class=\"moderation-item-meta\">Type: <strong>' + escapeHtml(itemType) + '</strong> • Age: <strong>' + escapeHtml(String(ageHours)) + 'h</strong></div>';
+      html += '<div class=\"moderation-item-path\"><a href=\"' + escapeAttr(pagePath) + '\" target=\"_blank\" rel=\"noopener noreferrer\">Open page</a></div>';
+      html += '<details class=\"post-menu-panel\" open>';
+      html += '<summary>Edit pending entry</summary>';
+      html += '<label><span>Title</span><input type=\"text\" data-moderation-field=\"title\" value=\"' + escapeAttr(title) + '\"></label>';
+      html += '<label><span>Summary</span><input type=\"text\" data-moderation-field=\"summary\" value=\"' + escapeAttr(summary) + '\"></label>';
+      html += '<label><span>Content</span><textarea rows=\"3\" data-moderation-field=\"content\">' + escapeHtml(content) + '</textarea></label>';
+      html += '</details>';
+      html += '</div>';
+      html += '<div class=\"post-row-actions\">';
+      html += '<button type=\"button\" data-moderation-action=\"approve\" data-node-coord=\"' + escapeAttr(nodeCoord) + '\" data-page-slug=\"' + escapeAttr(pageSlug) + '\">Approve</button>';
+      html += '<button type=\"button\" data-moderation-action=\"reject\" data-node-coord=\"' + escapeAttr(nodeCoord) + '\" data-page-slug=\"' + escapeAttr(pageSlug) + '\" class=\"post-hide\">Reject</button>';
+      html += '<button type=\"button\" data-moderation-action=\"edit\" data-node-coord=\"' + escapeAttr(nodeCoord) + '\" data-page-slug=\"' + escapeAttr(pageSlug) + '\">Save Edit</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    els.moderationList.innerHTML = html;
+  }
+
+  async function loadModeration() {
+    if (!state.isAdmin) {
+      return;
+    }
+    const filterPage = String((els.moderationFilterPage && els.moderationFilterPage.value) || '').trim();
+    const filterType = String((els.moderationFilterType && els.moderationFilterType.value) || 'all').trim();
+    const filterAge = String((els.moderationFilterAge && els.moderationFilterAge.value) || 'all').trim();
+    const data = await apiPost('/cgi/blog-list-public-ranking-moderation', {
+      page_slug: filterPage,
+      item_type: filterType,
+      age: filterAge
+    }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load moderation items');
+    }
+    state.moderationItems = Array.isArray(data.items) ? data.items : [];
+    renderModerationList(state.moderationItems);
+  }
+
+  async function runModerationAction(action, nodeCoord, pageSlug, row) {
+    if (state.moderationActionInFlight) {
+      return;
+    }
+    const pickedAction = String(action || '').trim();
+    const coord = String(nodeCoord || '').trim();
+    const slug = normalizeNostrPageSlug(pageSlug);
+    if (!pickedAction || !coord || !slug) {
+      return;
+    }
+    state.moderationActionInFlight = true;
+    try {
+      const titleField = row ? row.querySelector('[data-moderation-field=\"title\"]') : null;
+      const summaryField = row ? row.querySelector('[data-moderation-field=\"summary\"]') : null;
+      const contentField = row ? row.querySelector('[data-moderation-field=\"content\"]') : null;
+      const data = await apiPost('/cgi/blog-moderate-public-ranking-node', {
+        page_slug: slug,
+        action: pickedAction,
+        node_coord: coord,
+        title: titleField instanceof HTMLInputElement ? String(titleField.value || '') : '',
+        summary: summaryField instanceof HTMLInputElement ? String(summaryField.value || '') : '',
+        content: contentField instanceof HTMLTextAreaElement ? String(contentField.value || '') : ''
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Moderation action failed');
+      }
+      await loadModeration();
+      setOutput(els.outputModeration, data.message || 'Moderation action completed.', 'ok');
+    } finally {
+      state.moderationActionInFlight = false;
+    }
+  }
+
+  function stopModerationPolling() {
+    if (state.moderationPollTimer) {
+      clearInterval(state.moderationPollTimer);
+      state.moderationPollTimer = null;
+    }
+  }
+
+  function syncModerationAutoRefresh() {
+    const visible = state.isAdmin && state.activeSection === 'moderation';
+    if (!visible) {
+      stopModerationPolling();
+      return;
+    }
+    loadModeration().catch(function (err) {
+      setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+    });
+    if (state.moderationPollTimer) {
+      return;
+    }
+    state.moderationPollTimer = setInterval(function () {
+      if (!(state.isAdmin && state.activeSection === 'moderation')) {
+        stopModerationPolling();
+        return;
+      }
+      if (state.moderationActionInFlight) {
+        return;
+      }
+      loadModeration().catch(function () {});
     }, 7000);
   }
 
@@ -3341,6 +3513,46 @@
     if (els.postAddToListSelect) {
       els.postAddToListSelect.addEventListener('change', function () {
         syncAddToListNewRowVisibility();
+      });
+    }
+    if (els.moderationFilterPage) {
+      els.moderationFilterPage.addEventListener('change', function () {
+        loadModeration().catch(function (err) {
+          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.moderationFilterType) {
+      els.moderationFilterType.addEventListener('change', function () {
+        loadModeration().catch(function (err) {
+          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.moderationFilterAge) {
+      els.moderationFilterAge.addEventListener('change', function () {
+        loadModeration().catch(function (err) {
+          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.moderationList) {
+      els.moderationList.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionNode = target.closest('[data-moderation-action][data-node-coord][data-page-slug]');
+        if (!(actionNode instanceof HTMLElement)) {
+          return;
+        }
+        const action = String(actionNode.getAttribute('data-moderation-action') || '');
+        const nodeCoord = String(actionNode.getAttribute('data-node-coord') || '');
+        const pageSlug = String(actionNode.getAttribute('data-page-slug') || '');
+        const row = actionNode.closest('[data-moderation-node]');
+        runModerationAction(action, nodeCoord, pageSlug, row instanceof HTMLElement ? row : null).catch(function (err) {
+          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+        });
       });
     }
     Array.from(document.querySelectorAll('dialog')).forEach(function (dialogEl) {
