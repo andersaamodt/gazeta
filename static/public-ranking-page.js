@@ -229,8 +229,7 @@
     }
     var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
     var errors = Array.isArray(v.errors) ? v.errors : [];
-    var warnings = Array.isArray(v.warnings) ? v.warnings : [];
-    if (!isAdmin() || !state.editMode || (!errors.length && !warnings.length)) {
+    if (!isAdmin() || !state.editMode || !errors.length) {
       els.validation.hidden = true;
       els.validation.innerHTML = '';
       return;
@@ -239,13 +238,6 @@
     if (errors.length) {
       html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
       errors.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    if (warnings.length) {
-      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
-      warnings.forEach(function (msg) {
         html += '<li>' + escapeHtml(msg) + '</li>';
       });
       html += '</ul></div>';
