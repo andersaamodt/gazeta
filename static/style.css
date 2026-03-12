@@ -1969,7 +1969,8 @@ header h1 {
 
 .nav-username.active {
   text-decoration: none;
-  padding: 0.5rem 1rem;
+  padding: 0.36rem 0.92rem;
+  line-height: 1.15;
   border-radius: var(--nav-pill-radius);
 }
 
@@ -4348,6 +4349,11 @@ nav.site-nav {
 
   .nav-username {
     font-size: 0.84rem;
+  }
+
+  .nav-username.active {
+    padding: 0.3rem 0.62rem;
+    line-height: 1.15;
   }
 }
 
