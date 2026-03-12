@@ -230,7 +230,7 @@
     var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
     var errors = Array.isArray(v.errors) ? v.errors : [];
     var warnings = Array.isArray(v.warnings) ? v.warnings : [];
-    if (!isAdmin() || (!errors.length && !warnings.length)) {
+    if (!isAdmin() || !state.editMode || (!errors.length && !warnings.length)) {
       els.validation.hidden = true;
       els.validation.innerHTML = '';
       return;
@@ -535,25 +535,8 @@
     return html;
   }
 
-  function renderSortControls(renderState) {
-    var metric = normalizeMetric(state.currentMetric || renderState.default_metric || 'momentum');
-    var cooldown = Math.max(60, Math.floor(Number(renderState.vote_cooldown_seconds || 86400) || 86400));
-    var mode = normalizeSubmissionMode(renderState.submission_mode || 'owner_only');
-    var html = '';
-    html += '<section class="public-ranking-controls">';
-    html += '<label><span>Sort metric</span><select data-ranking-sort="metric">';
-    html += '<option value="momentum"' + (metric === 'momentum' ? ' selected' : '') + '>Momentum</option>';
-    html += '<option value="support"' + (metric === 'support' ? ' selected' : '') + '>Support</option>';
-    html += '<option value="enthusiasm"' + (metric === 'enthusiasm' ? ' selected' : '') + '>Enthusiasm</option>';
-    html += '<option value="intensity"' + (metric === 'intensity' ? ' selected' : '') + '>Intensity</option>';
-    html += '</select></label>';
-    html += '<p class="public-ranking-meta">Cooldown: <strong>' + escapeHtml(String(cooldown)) + 's</strong> • Submissions: <strong>' + escapeHtml(mode.replace('_', ' ')) + '</strong></p>';
-    html += '</section>';
-    return html;
-  }
-
   function renderPendingToast(nodes) {
-    if (!isAdmin()) {
+    if (!isAdmin() || !state.editMode) {
       return '';
     }
     var pending = (nodes || []).filter(function (node) {
@@ -585,6 +568,9 @@
   }
 
   function renderSubmitForm(renderState, graph) {
+    if (isAdmin() && !state.editMode) {
+      return '';
+    }
     if (!canSubmitByMode(renderState.submission_mode)) {
       return '';
     }
@@ -598,18 +584,9 @@
     });
 
     var open = !!state.submitComposerOpen;
-    var submissionMode = normalizeSubmissionMode(renderState.submission_mode);
-    var submissionHint = submissionMode === 'moderated'
-      ? 'New entries will appear after approval.'
-      : 'New entries appear immediately.';
-
     var html = '';
     html += '<section class="public-ranking-submit">';
     html += '<div class="public-ranking-submit-toolbar">';
-    html += '<div class="public-ranking-submit-toolbar-left">';
-    html += '<strong class="public-ranking-submit-label">Add entry</strong>';
-    html += '<span class="public-ranking-submit-hint">' + escapeHtml(submissionHint) + '</span>';
-    html += '</div>';
     html += '<div class="public-ranking-submit-toolbar-right">';
     html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
     html += '</div>';
@@ -794,7 +771,6 @@
     html += renderExtrasEditor(renderState);
     html += renderEditor(renderState);
     html += renderExtraContent(renderState.content, 'markdown', 'before');
-    html += renderSortControls(renderState);
     html += renderPendingToast(nodes);
     html += renderSubmitForm(renderState, graph);
     html += renderTree(graph, renderState);
