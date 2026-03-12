@@ -1227,18 +1227,20 @@ body {
   min-width: 1.5rem;
   width: 1.5rem;
   height: 1.5rem;
-  border: 0;
-  background: transparent;
+  border: 1px solid transparent;
+  background: transparent !important;
   border-radius: 6px;
   padding: 0;
-  color: #5b6f93;
+  color: var(--muted-text, #4f617f);
   box-shadow: none;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 #admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:hover,
 #admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:focus-visible {
-  background: rgba(90, 116, 170, 0.2);
-  color: #2f497a;
+  background: rgba(247, 245, 238, 0.96) !important;
+  border-color: rgba(160, 146, 116, 0.34);
+  color: var(--admin-text, var(--text));
 }
 
 #admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button .eye-closed {
@@ -1261,23 +1263,26 @@ body {
   min-width: 1.5rem;
   width: 1.5rem;
   height: 1.5rem;
-  border: 0;
-  background: transparent;
+  border: 1px solid transparent;
+  background: transparent !important;
   border-radius: 6px;
   padding: 0;
-  color: #5b6f93;
+  color: var(--muted-text, #4f617f);
   box-shadow: none;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 #admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:hover {
-  background: rgba(90, 116, 170, 0.2);
-  color: #2f497a;
+  background: rgba(247, 245, 238, 0.96) !important;
+  border-color: rgba(160, 146, 116, 0.34);
+  color: var(--admin-text, var(--text));
 }
 
 #admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:focus-visible {
   outline: none;
-  background: rgba(90, 116, 170, 0.2);
-  box-shadow: 0 0 0 2px rgba(90, 116, 170, 0.22);
+  background: rgba(247, 245, 238, 0.96) !important;
+  border-color: rgba(160, 146, 116, 0.4);
+  box-shadow: 0 0 0 2px rgba(198, 181, 145, 0.28);
 }
 
 #admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button svg {
