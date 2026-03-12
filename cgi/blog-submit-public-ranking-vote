@@ -1,0 +1,190 @@
+#!/bin/sh
+# Validate and store a signed kind:7 upvote for a Public Ranking node.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+if ! blog_nostr_verifier_available; then
+  blog_json_error "Nostr signature verification is unavailable on the server" "nostr_verifier_required"
+  exit 0
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  blog_json_error "jq is required for vote processing" "jq_required"
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+if [ "$page_type" != "public-ranking" ]; then
+  blog_json_error "Page is not a public ranking page" "invalid_page_type"
+  exit 0
+fi
+
+canonical_event=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
+if [ -z "$canonical_event" ]; then
+  blog_json_error "Publish this ranking page first" "ranking_not_published"
+  exit 0
+fi
+
+state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event")
+root_coord=$(blog_public_ranking_effective_root_coord "$page_slug" "$canonical_event")
+[ -n "$root_coord" ] || {
+  blog_json_error "Ranking root coordinate is unavailable" "missing_root_coordinate"
+  exit 0
+}
+
+account_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
+if [ -z "$account_pubkey" ]; then
+  blog_json_error "Signed-in account has no bound Nostr pubkey" "nostr_identity_required"
+  exit 0
+fi
+is_admin=false
+if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+  is_admin=true
+fi
+
+event_json=$(blog_param event_json)
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json is required" "missing_event"
+  exit 0
+fi
+
+event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+if [ -z "$event_json" ]; then
+  blog_json_error "event_json must be valid JSON" "invalid_event_json"
+  exit 0
+fi
+
+kind=$(printf '%s\n' "$event_json" | jq -r '.kind // ""' 2>/dev/null || printf '')
+content=$(printf '%s\n' "$event_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+if [ "$kind" != "7" ]; then
+  blog_json_error "Vote event must be kind 7" "invalid_kind"
+  exit 0
+fi
+if [ "$content" != "+" ]; then
+  blog_json_error "Only upvotes (content '+') are supported" "invalid_vote_content"
+  exit 0
+fi
+if [ "$pubkey" != "$account_pubkey" ]; then
+  blog_json_error "Vote pubkey does not match your signed-in account" "pubkey_mismatch"
+  exit 0
+fi
+
+blocked=$(printf '%s\n' "$state_json" | jq -r --arg pk "$pubkey" 'if ((.blacklist_pubkeys // []) | index($pk)) == null then "false" else "true" end' 2>/dev/null || printf 'false')
+if [ "$blocked" = "true" ]; then
+  blog_json_error "This pubkey is blocked for this ranking" "pubkey_blocked"
+  exit 0
+fi
+
+first_target_coord=$(printf '%s\n' "$event_json" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]] | first // ""' 2>/dev/null || printf '')
+target_coord=$(blog_param target_coord)
+if [ -z "$target_coord" ]; then
+  target_coord=$first_target_coord
+fi
+if [ -z "$target_coord" ]; then
+  blog_json_error "Vote event must include an a-tag coordinate target" "missing_target"
+  exit 0
+fi
+if [ -z "$first_target_coord" ]; then
+  blog_json_error "Vote event must include an a-tag coordinate target" "missing_target"
+  exit 0
+fi
+if ! printf '%s' "$target_coord" | grep -Eq '^[0-9]+:[0-9a-f]{64}:[^[:space:]]+$'; then
+  blog_json_error "target_coord must be a valid Nostr coordinate" "invalid_target"
+  exit 0
+fi
+if [ "$first_target_coord" != "$target_coord" ]; then
+  blog_json_error "Vote event target must match the first a-tag coordinate" "target_not_tagged"
+  exit 0
+fi
+if [ "$target_coord" = "$root_coord" ]; then
+  blog_json_error "Voting on the ranking root is not supported" "invalid_target"
+  exit 0
+fi
+include_pending=false
+if [ "$is_admin" = "true" ]; then
+  include_pending=true
+fi
+ranking_before=$(blog_public_ranking_view_json "$page_slug" "$state_json" "$canonical_event" "$include_pending" "" "$pubkey")
+target_state=$(printf '%s\n' "$ranking_before" | jq -r --arg target "$target_coord" '
+  ([.nodes[]? | select(.coordinate == $target)] | first) as $node
+  | if $node == null then
+      "missing"
+    else
+      ((($node.status // "approved") | tostring | ascii_downcase))
+    end
+' 2>/dev/null || printf 'missing')
+if [ "$target_state" = "missing" ]; then
+  blog_json_error "Target coordinate is not part of this ranking" "target_not_found"
+  exit 0
+fi
+if [ "$is_admin" != "true" ] && [ "$target_state" != "approved" ]; then
+  blog_json_error "Target coordinate is not part of this ranking" "target_not_found"
+  exit 0
+fi
+
+can_vote_now=$(printf '%s\n' "$ranking_before" | jq -r --arg target "$target_coord" '(.viewer_vote_window[$target].can_vote_now // true) | if . then "true" else "false" end' 2>/dev/null || printf 'true')
+if [ "$can_vote_now" != "true" ]; then
+  next_vote_at=$(printf '%s\n' "$ranking_before" | jq -r --arg target "$target_coord" '(.viewer_vote_window[$target].next_vote_at // 0)' 2>/dev/null || printf '0')
+  jq -cn --argjson next_vote_at "$next_vote_at" '{
+    success: false,
+    error: "Vote cooldown active for this target",
+    code: "vote_cooldown",
+    next_vote_at: $next_vote_at
+  }'
+  printf '\n'
+  exit 0
+fi
+
+if ! blog_nostr_verify_event_json "$event_json"; then
+  blog_json_error "Vote signature verification failed" "invalid_signature"
+  exit 0
+fi
+
+if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
+  blog_json_error "Could not store vote event" "store_failed"
+  exit 0
+fi
+
+event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+ranking_after=$(blog_public_ranking_view_json "$page_slug" "$state_json" "$canonical_event" "$include_pending" "" "$pubkey")
+metric=$(printf '%s\n' "$ranking_after" | jq -r '.metric // "momentum"' 2>/dev/null || printf 'momentum')
+node_json=$(printf '%s\n' "$ranking_after" | jq -c --arg target "$target_coord" '([.nodes[]? | select(.coordinate == $target)] | first) // null' 2>/dev/null || printf 'null')
+next_vote_at=$(printf '%s\n' "$ranking_after" | jq -r --arg target "$target_coord" '(.viewer_vote_window[$target].next_vote_at // 0)' 2>/dev/null || printf '0')
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg event_id "$event_id" \
+  --arg target_coord "$target_coord" \
+  --arg metric "$metric" \
+  --argjson node "$node_json" \
+  --argjson next_vote_at "$next_vote_at" \
+  '{
+    success: true,
+    slug: $slug,
+    event_id: $event_id,
+    target_coord: $target_coord,
+    metric: $metric,
+    node: $node,
+    next_vote_at: $next_vote_at,
+    message: "Vote stored."
+  }'
+printf '\n'

@@ -1,0 +1,221 @@
+#!/bin/sh
+# Approve/reject/edit a Public Ranking node (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+if [ "$page_type" != "public-ranking" ]; then
+  blog_json_error "Page is not a public ranking page" "invalid_page_type"
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+case "$action" in
+  approve|reject|edit) ;;
+  *)
+    blog_json_error "action must be approve, reject, or edit" "invalid_action"
+    exit 0
+    ;;
+esac
+
+node_coord=$(blog_param node_coord)
+if [ -z "$node_coord" ]; then
+  blog_json_error "node_coord is required" "missing_node_coord"
+  exit 0
+fi
+
+parsed=$(blog_public_ranking_parse_coordinate "$node_coord" 2>/dev/null || printf '')
+if [ -z "$parsed" ]; then
+  blog_json_error "node_coord must be a valid Nostr coordinate" "invalid_node_coord"
+  exit 0
+fi
+
+node_kind=$(printf '%s' "$parsed" | cut -d';' -f1)
+node_pubkey=$(printf '%s' "$parsed" | cut -d';' -f2)
+node_d=$(printf '%s' "$parsed" | cut -d';' -f3-)
+case "$node_kind" in
+  30040|30041) ;;
+  *)
+    blog_json_error "Only kind 30040/30041 nodes can be moderated" "invalid_node_kind"
+    exit 0
+    ;;
+esac
+
+site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+if [ -z "$site_pubkey" ] || [ "$node_pubkey" != "$site_pubkey" ]; then
+  blog_json_error "This node cannot be moderated by the site signer" "node_not_moderatable"
+  exit 0
+fi
+
+canonical_event=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
+if [ -z "$canonical_event" ]; then
+  blog_json_error "Ranking page is not published" "ranking_not_published"
+  exit 0
+fi
+
+state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event")
+root_coord=$(blog_public_ranking_effective_root_coord "$page_slug" "$canonical_event")
+[ -n "$root_coord" ] || {
+  blog_json_error "Ranking root coordinate is unavailable" "missing_root_coordinate"
+  exit 0
+}
+
+existing_event=$(blog_public_ranking_latest_node_event_json "$node_coord" 2>/dev/null || printf '')
+if [ -z "$existing_event" ]; then
+  blog_json_error "Node not found" "node_not_found"
+  exit 0
+fi
+
+belongs=$(printf '%s\n' "$existing_event" | jq -r --arg root "$root_coord" '([.tags[]? | select(type=="array" and length>=2 and .[0]=="ranking") | .[1]] | first // "") == $root' 2>/dev/null || printf 'false')
+if [ "$belongs" != "true" ]; then
+  blog_json_error "Node does not belong to this ranking" "node_not_in_ranking"
+  exit 0
+fi
+
+existing_title=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_summary=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="summary") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_parent=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="parent") | .[1]] | first) // ([.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_status=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="status") | .[1]] | first) // "approved"' 2>/dev/null || printf 'approved')
+existing_author=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="author") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_url=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="url") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_post_ref=$(printf '%s\n' "$existing_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="r") | .[1]] | first) // ""' 2>/dev/null || printf '')
+existing_content=$(printf '%s\n' "$existing_event" | jq -r '.content // ""' 2>/dev/null || printf '')
+
+title=$(blog_param title)
+summary=$(blog_param summary)
+parent_coord=$(blog_param parent_coord)
+status=$(printf '%s' "$(blog_param status)" | tr '[:upper:]' '[:lower:]')
+url=$(blog_param url)
+post_coord=$(blog_param post_coord)
+content=$(blog_param content)
+
+[ -n "$title" ] || title=$existing_title
+[ -n "$summary" ] || summary=$existing_summary
+[ -n "$parent_coord" ] || parent_coord=$existing_parent
+[ -n "$url" ] || url=$existing_url
+[ -n "$post_coord" ] || post_coord=$existing_post_ref
+[ -n "$content" ] || content=$existing_content
+
+if [ -z "$parent_coord" ]; then
+  parent_coord=$root_coord
+fi
+if ! printf '%s' "$parent_coord" | grep -Eq '^[0-9]+:[0-9a-f]{64}:[^[:space:]]+$'; then
+  blog_json_error "parent_coord must be a valid Nostr coordinate" "invalid_parent_coord"
+  exit 0
+fi
+if [ "$parent_coord" = "$node_coord" ]; then
+  blog_json_error "parent_coord cannot reference the node itself" "invalid_parent_coord"
+  exit 0
+fi
+ranking_for_parent=$(blog_public_ranking_view_json "$page_slug" "$state_json" "$canonical_event" true "" "${BLOG_SESSION_USER_PUBKEY-}")
+parent_ok=$(printf '%s\n' "$ranking_for_parent" | jq -r --arg parent "$parent_coord" 'if ($parent == (.root_coord // "")) or ((.nodes // []) | map(.coordinate) | index($parent) != null) then "true" else "false" end' 2>/dev/null || printf 'false')
+if [ "$parent_ok" != "true" ]; then
+  blog_json_error "parent_coord must reference an existing node in this ranking" "parent_not_found"
+  exit 0
+fi
+
+if [ -n "$post_coord" ]; then
+  parsed_post=$(blog_public_ranking_parse_coordinate "$post_coord" 2>/dev/null || printf '')
+  if [ -z "$parsed_post" ]; then
+    blog_json_error "post_coord must be a valid Nostr coordinate" "invalid_post_coord"
+    exit 0
+  fi
+  post_kind=$(printf '%s' "$parsed_post" | cut -d';' -f1)
+  if [ "$post_kind" != "30023" ]; then
+    blog_json_error "post_coord must reference kind 30023 content" "invalid_post_coord_kind"
+    exit 0
+  fi
+fi
+
+case "$action" in
+  approve) status=approved ;;
+  reject) status=rejected ;;
+  edit)
+    case "$status" in
+      approved|pending|rejected) ;;
+      '') status=$(printf '%s' "$existing_status" | tr '[:upper:]' '[:lower:]') ;;
+      *) status=approved ;;
+    esac
+    ;;
+esac
+
+if [ -z "$status" ]; then
+  status=approved
+fi
+
+tags_json=$(jq -cn \
+  --arg root_coord "$root_coord" \
+  --arg parent_coord "$parent_coord" \
+  --arg title "$title" \
+  --arg summary "$summary" \
+  --arg status "$status" \
+  --arg author "$existing_author" \
+  --arg url "$url" \
+  --arg post_coord "$post_coord" \
+  '[
+    ["ranking", $root_coord],
+    ["parent", $parent_coord],
+    ["a", $parent_coord],
+    ["status", $status]
+  ]
+  + (if ($author | length) > 0 then [["author", $author]] else [] end)
+  + (if ($title | length) > 0 then [["title", $title]] else [] end)
+  + (if ($summary | length) > 0 then [["summary", $summary]] else [] end)
+  + (if ($url | length) > 0 then [["url", $url]] else [] end)
+  + (if ($post_coord | length) > 0 then [["r", $post_coord]] else [] end)
+  ')
+
+if ! event_json=$(blog_nostr_sign_public_ranking_node_event "$node_kind" "$node_d" "$content" "$tags_json" 2>/dev/null); then
+  reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+  if [ -z "$reason" ]; then
+    reason="Could not sign node moderation event."
+  fi
+  blog_json_error "$reason" "nostr_publish_failed"
+  exit 0
+fi
+
+if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
+  blog_json_error "Could not store moderated node event" "store_failed"
+  exit 0
+fi
+
+enriched=$(blog_public_ranking_view_json "$page_slug" "$state_json" "$canonical_event" true "" "${BLOG_SESSION_USER_PUBKEY-}")
+event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg action "$action" \
+  --arg event_id "$event_id" \
+  --arg node_coord "$node_coord" \
+  --arg status "$status" \
+  --argjson ranking "$enriched" \
+  '{
+    success: true,
+    slug: $slug,
+    action: $action,
+    event_id: $event_id,
+    node_coord: $node_coord,
+    status: $status,
+    ranking: $ranking,
+    message: (if $status == "approved" then "Submission approved." elif $status == "rejected" then "Submission rejected." else "Submission updated." end)
+  }'
+printf '\n'
