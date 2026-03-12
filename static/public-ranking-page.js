@@ -22,6 +22,7 @@
     draft: null,
     editMode: false,
     activeHeadField: '',
+    submitComposerOpen: false,
     busy: false,
     saveTimer: null,
     saveStatus: 'saved',
@@ -596,31 +597,46 @@
       return compareNodes(a, b, normalizeMetric(state.currentMetric || renderState.default_metric));
     });
 
-    var html = '';
-    html += '<section class="public-ranking-submit">';
-    html += '<h3>Add Entry</h3>';
-    html += '<div class="public-ranking-submit-grid">';
-    html += '<label><span>Type</span><select id="public-ranking-submit-type"><option value="entry">Entry</option><option value="group">Grouping node</option></select></label>';
-    html += '<label><span>Parent</span><select id="public-ranking-submit-parent">';
-    html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
-    groups.forEach(function (group) {
-      html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
-    });
-    html += '</select></label>';
-    html += '<label><span>Title</span><input type="text" id="public-ranking-submit-title" placeholder="Title"></label>';
-    html += '<label><span>Summary</span><input type="text" id="public-ranking-submit-summary" placeholder="Optional summary"></label>';
-    html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
-    html += '<label><span>Nostr post coordinate</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
-    html += '<label class="public-ranking-submit-wide"><span>Markdown</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional Markdown"></textarea></label>';
-    html += '</div>';
-    html += '<div class="public-ranking-submit-actions">';
-    html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn">Submit</button>';
-    html += '<span class="public-ranking-submit-hint">';
-    html += normalizeSubmissionMode(renderState.submission_mode) === 'moderated'
+    var open = !!state.submitComposerOpen;
+    var submissionMode = normalizeSubmissionMode(renderState.submission_mode);
+    var submissionHint = submissionMode === 'moderated'
       ? 'New entries will appear after approval.'
       : 'New entries appear immediately.';
-    html += '</span>';
+
+    var html = '';
+    html += '<section class="public-ranking-submit">';
+    html += '<div class="public-ranking-submit-toolbar">';
+    html += '<div class="public-ranking-submit-toolbar-left">';
+    html += '<strong class="public-ranking-submit-label">Add entry</strong>';
+    html += '<span class="public-ranking-submit-hint">' + escapeHtml(submissionHint) + '</span>';
     html += '</div>';
+    html += '<div class="public-ranking-submit-toolbar-right">';
+    html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
+    html += '</div>';
+    html += '</div>';
+    if (open) {
+      html += '<div class="public-ranking-submit-inline">';
+      html += '<select id="public-ranking-submit-type" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select>';
+      html += '<select id="public-ranking-submit-parent" aria-label="Parent">';
+      html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
+      groups.forEach(function (group) {
+        html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
+      });
+      html += '</select>';
+      html += '<input type="text" id="public-ranking-submit-title" placeholder="Entry title">';
+      html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn">Add</button>';
+      html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
+      html += '</div>';
+      html += '<details class="public-ranking-submit-more">';
+      html += '<summary>More fields</summary>';
+      html += '<div class="public-ranking-submit-grid">';
+      html += '<label><span>Summary</span><input type="text" id="public-ranking-submit-summary" placeholder="Optional summary"></label>';
+      html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
+      html += '<label class="public-ranking-submit-wide"><span>Nostr post coordinate</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
+      html += '<label class="public-ranking-submit-wide"><span>Markdown</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional Markdown"></textarea></label>';
+      html += '</div>';
+      html += '</details>';
+    }
     html += '</section>';
     return html;
   }
@@ -1024,6 +1040,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
+      state.submitComposerOpen = false;
       refreshPayloadStateFromResponse({ state: data.ranking, validation: state.payload.validation });
       maybeSetMetricFromPayload();
       renderAll();
@@ -1225,6 +1242,24 @@
       var actionNode = target.closest('[data-ranking-action]');
       if (actionNode instanceof HTMLElement) {
         var action = String(actionNode.getAttribute('data-ranking-action') || '');
+        if (action === 'toggle-submit') {
+          state.submitComposerOpen = !state.submitComposerOpen;
+          renderContent();
+          if (state.submitComposerOpen) {
+            requestAnimationFrame(function () {
+              var titleInput = document.getElementById('public-ranking-submit-title');
+              if (titleInput && typeof titleInput.focus === 'function') {
+                titleInput.focus();
+              }
+            });
+          }
+          return;
+        }
+        if (action === 'cancel-submit') {
+          state.submitComposerOpen = false;
+          renderContent();
+          return;
+        }
         if (action === 'toggle-edit') {
           if (state.editMode) {
             state.activeHeadField = '';
@@ -1282,6 +1317,7 @@
       state.draft = normalizeDraftState(payload.state || {});
       state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
       state.activeHeadField = '';
+      state.submitComposerOpen = false;
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       renderAll();
