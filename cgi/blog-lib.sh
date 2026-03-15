@@ -21,10 +21,14 @@ blog_state_dir="$blog_site_data/blog"
 blog_drafts_dir="$blog_state_dir/drafts"
 blog_lists_dir="$blog_state_dir/lists"
 blog_uploads_dir="$blog_site_data/uploads"
-blog_nostr_dir="$blog_site_root/site/nostr"
+blog_nostr_dir="$blog_site_data/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
 blog_nostr_events_dir="$blog_nostr_dir/events"
 blog_nostr_derived_dir="$blog_nostr_dir/derived"
+blog_nostr_legacy_dir="$blog_site_root/site/nostr"
+blog_nostr_legacy_state_dir="$blog_nostr_legacy_dir/state"
+blog_nostr_legacy_events_dir="$blog_nostr_legacy_dir/events"
+blog_nostr_legacy_derived_dir="$blog_nostr_legacy_dir/derived"
 blog_nostr_authors_file="$blog_nostr_state_dir/authors"
 blog_nostr_relays_file="$blog_nostr_state_dir/relays"
 blog_nostr_blocklist_file="$blog_nostr_state_dir/blocklist"
@@ -72,10 +76,35 @@ blog_ensure_posts_mount() {
   fi
 }
 
+blog_migrate_dir_contents() {
+  legacy_dir=$1
+  target_dir=$2
+  [ -d "$legacy_dir" ] || return 0
+  mkdir -p "$target_dir"
+  find "$legacy_dir" -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r legacy_item; do
+    [ -n "$legacy_item" ] || continue
+    base_name=$(basename "$legacy_item")
+    target_item="$target_dir/$base_name"
+    if [ -e "$target_item" ]; then
+      continue
+    fi
+    mv "$legacy_item" "$target_item" 2>/dev/null || cp -R "$legacy_item" "$target_item"
+  done
+  rmdir "$legacy_dir" 2>/dev/null || true
+}
+
+blog_migrate_legacy_nostr_storage() {
+  blog_migrate_dir_contents "$blog_nostr_legacy_state_dir" "$blog_nostr_state_dir"
+  blog_migrate_dir_contents "$blog_nostr_legacy_events_dir" "$blog_nostr_events_dir"
+  blog_migrate_dir_contents "$blog_nostr_legacy_derived_dir" "$blog_nostr_derived_dir"
+  rmdir "$blog_nostr_legacy_dir" 2>/dev/null || true
+}
+
 blog_init() {
   mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_posts_store_dir"
   blog_ensure_posts_mount
   mkdir -p "$blog_nostr_state_dir" "$blog_nostr_events_dir" "$blog_nostr_derived_dir"
+  blog_migrate_legacy_nostr_storage
   [ -f "$blog_nostr_delegation_revocations_file" ] || : > "$blog_nostr_delegation_revocations_file"
   if [ ! -f "$blog_nostr_authors_file" ] && [ -f "$blog_nostr_authors_file_legacy" ]; then
     cp "$blog_nostr_authors_file_legacy" "$blog_nostr_authors_file" 2>/dev/null || : > "$blog_nostr_authors_file"

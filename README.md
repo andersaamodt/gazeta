@@ -67,10 +67,6 @@ States are inferred from metadata and filesystem visibility.
 ```
 blog/
 ├── site/
-│   ├── nostr/
-│   │   ├── events/          # Canonical mirrored/signed event JSON files
-│   │   ├── derived/         # Disposable indexes generated from events
-│   │   └── state/           # Authors, relays, blocklist, hidden posts, key
 │   └── pages/
 │       ├── index.md         # Blog homepage
 │       ├── about.md         # About page
@@ -80,7 +76,10 @@ blog/
 │           └── 2024-01-20-second-post.md
 │
 ├── .sitedata/<site>/blog/posts/   # Canonical post storage (survives template recopy)
-└── static/
+├── .sitedata/<site>/nostr/events/ # Canonical mirrored/signed event JSON files
+├── .sitedata/<site>/nostr/derived/# Disposable indexes generated from events
+└── .sitedata/<site>/nostr/state/  # Authors, relays, blocklist, hidden posts, key
+static/
     └── style.css            # Blog styling
 ```
 
@@ -132,7 +131,7 @@ visibility: "public"  # Change from "draft"
 ## Interaction Model
 
 - Blog rendering is deterministic from local files only.
-- When the Nostr bridge is enabled, canonical post state is local Nostr event JSON under `site/nostr/events/`.
+- When the Nostr bridge is enabled, canonical post state is local Nostr event JSON under `.sitedata/<site>/nostr/events/`.
 - Comments are read from locally mirrored events only.
 - “Refresh comments” runs an explicit mirror action; render paths never perform live relay fetches.
 
@@ -143,11 +142,11 @@ visibility: "public"  # Change from "draft"
 - Latest rendered version is selected by newest `created_at` per (`pubkey`, `kind`, `d`) with event-id tie-break.
 - Mirroring uses `nak`; signing/verification require `nostril`.
 - Relay and author allowlist are file-backed:
-  - `site/nostr/state/relays.txt`
-  - `site/nostr/state/authors.txt`
+  - `.sitedata/<site>/nostr/state/relays.txt`
+  - `.sitedata/<site>/nostr/state/authors.txt`
 - Local moderation and hide controls are file-backed:
-  - `site/nostr/state/blocklist.txt`
-  - `site/nostr/state/hidden_posts.txt`
+  - `.sitedata/<site>/nostr/state/blocklist.txt`
+  - `.sitedata/<site>/nostr/state/hidden_posts.txt`
 - Bridge enablement is explicit in `site.conf` via `nostr_bridge_enabled=true|false`.
 
 ## Quick Start
@@ -173,9 +172,9 @@ Visit http://localhost:8080
 
 To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/admin.html#settings`, then configure:
 
-- `site/nostr/state/secret.key` (hex private key for signing)
-- `site/nostr/state/authors.txt`
-- `site/nostr/state/relays.txt`
+- `.sitedata/<site>/nostr/state/secret.key` (hex private key for signing)
+- `.sitedata/<site>/nostr/state/authors.txt`
+- `.sitedata/<site>/nostr/state/relays.txt`
 
 ## Authentication
 
@@ -306,15 +305,6 @@ Access admin panel (if in blog-admin group)
 ~/sites/myblog/
 ├── site.conf                  # Site configuration
 ├── site/
-│   ├── nostr/
-│   │   ├── events/            # Canonical event store
-│   │   ├── derived/           # Rebuildable indexes
-│   │   └── state/
-│   │       ├── authors.txt
-│   │       ├── relays.txt
-│   │       ├── blocklist.txt
-│   │       ├── hidden_posts.txt
-│   │       └── secret.key     # Local signing key (not committed)
 │   └── pages/
 │       └── posts/
 │           ├── slug.md        # Generated/derived render projection
@@ -324,6 +314,15 @@ Access admin panel (if in blog-admin group)
         ├── ssh-auth/
         ├── blog/
         │   └── drafts/
+        └── nostr/
+            ├── events/        # Canonical event store
+            ├── derived/       # Rebuildable indexes
+            └── state/
+                ├── authors.txt
+                ├── relays.txt
+                ├── blocklist.txt
+                ├── hidden_posts.txt
+                └── secret.key # Local signing key (not committed)
         └── uploads/
 ```
 
