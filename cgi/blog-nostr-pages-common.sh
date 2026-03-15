@@ -101,18 +101,9 @@ blog_nostr_pages_normalize_json() {
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
     def norm_path($slug; $type; $v):
-      (($v // "") | tostring
-        | sub("^https?://[^/]+";"")
-        | sub("[?#].*$";"")
-        | sub("\\.html?$";"")
-        | if startswith("/") then . else ("/" + .) end
-        | gsub("/+"; "/")
-        | sub("^/pages/"; "/")
-        | if . != "/" then sub("/+$"; "") else . end
-      ) as $p
-      | if $slug == "index" then "/"
-        elif ($p | length) == 0 or $p == "/" then ("/" + $slug)
-        else $p end;
+      if $slug == "index" then "/"
+      else ("/" + $slug)
+      end;
 
     ((if type=="object" then .pages else . end) // []) as $raw_pages
     | ($raw_pages | if type=="array" then . else [] end
@@ -190,6 +181,7 @@ blog_nostr_pages_load_json() {
   if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
     blog_nostr_pages_save_json "$normalized"
   fi
+  blog_nostr_pages_prune_stale_source_pages "$normalized"
   printf '%s\n' "$normalized"
 }
 
@@ -237,6 +229,24 @@ blog_nostr_page_type_for_slug() {
 blog_nostr_page_draft_path() {
   slug=$(blog_nostr_page_slug "${1-}")
   printf '%s/%s.json\n' "$blog_lists_dir" "$slug"
+}
+
+blog_nostr_page_source_path() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$slug" ] || return 1
+  case "$page_type" in
+    nip23)
+      if [ "$slug" = "index" ]; then
+        printf '%s/site/pages/index.md\n' "$blog_site_root"
+      else
+        printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
+      fi
+      ;;
+    *)
+      printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
+      ;;
+  esac
 }
 
 blog_nostr_page_load_draft_state_json() {
@@ -828,25 +838,44 @@ blog_nostr_page_source_template_slug() {
   printf '%s\n' "$(blog_nostr_page_slug "$raw_slug")"
 }
 
+blog_nostr_pages_prune_stale_source_pages() {
+  cfg_json=${1-}
+  pages_dir=$blog_site_root/site/pages
+  [ -d "$pages_dir" ] || return 0
+
+  find "$pages_dir" -maxdepth 1 -type f -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
+    [ -n "$page_file" ] || continue
+    existing_type=$(blog_nostr_page_source_template_type "$page_file")
+    case "$existing_type" in
+      custom|missing)
+        continue
+        ;;
+      *)
+        ;;
+    esac
+
+    existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
+    [ -n "$existing_slug" ] || continue
+
+    current_row=$(printf '%s\n' "$cfg_json" | jq -c --arg slug "$existing_slug" '.pages[]? | select(.slug == $slug) | .' 2>/dev/null | head -n 1)
+    if [ -z "$current_row" ]; then
+      rm -f "$page_file"
+      continue
+    fi
+
+    current_type=$(printf '%s\n' "$current_row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+    canonical_path=$(blog_nostr_page_source_path "$existing_slug" "$current_type" 2>/dev/null || printf '')
+    if [ -z "$canonical_path" ] || [ "$current_type" != "$existing_type" ] || [ "$page_file" != "$canonical_path" ]; then
+      rm -f "$page_file"
+    fi
+  done
+}
+
 blog_nostr_page_ensure_source_page() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || return 1
-  case "$page_type" in
-    nip23)
-      if [ "$slug" = "index" ]; then
-        page_file="$blog_site_root/site/pages/index.md"
-      else
-        page_file="$blog_site_root/site/pages/$slug.md"
-      fi
-      ;;
-    blog)
-      page_file="$blog_site_root/site/pages/$slug.md"
-      ;;
-    *)
-      page_file="$blog_site_root/site/pages/$slug.md"
-      ;;
-  esac
+  page_file=$(blog_nostr_page_source_path "$slug" "$page_type")
 
   if [ -f "$page_file" ]; then
     existing_type=$(blog_nostr_page_source_template_type "$page_file")

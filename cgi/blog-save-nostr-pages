@@ -41,6 +41,8 @@ if [ "$contact_count" -gt 1 ]; then
   exit 0
 fi
 
+blog_nostr_pages_prune_stale_source_pages "$normalized"
+
 printf '%s\n' "$normalized" | jq -c '.pages[]' | while IFS= read -r row || [ -n "$row" ]; do
   [ -n "$row" ] || continue
   slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')

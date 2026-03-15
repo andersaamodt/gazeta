@@ -2080,28 +2080,7 @@
   }
 
   function normalizeNostrPagePathInput(raw, slug) {
-    const safeSlug = normalizeNostrPageSlug(slug);
-    if (!safeSlug || safeSlug === 'index') {
-      return '/';
-    }
-    let text = String(raw || '').trim();
-    if (!text) {
-      return pathFromNostrPageSlug(safeSlug);
-    }
-    text = text.replace(/^https?:\/\/[^/]+/i, '');
-    text = text.replace(/[?#].*$/, '');
-    if (!/^\//.test(text)) {
-      text = '/' + text;
-    }
-    text = text.replace(/\/+/g, '/');
-    if (text.length > 1) {
-      text = text.replace(/\/+$/, '');
-    }
-    text = text.replace(/\.html?$/i, '');
-    if (!text || text === '/') {
-      return pathFromNostrPageSlug(safeSlug);
-    }
-    return text;
+    return pathFromNostrPageSlug(slug);
   }
 
   function slugFromPathInput(raw) {
@@ -2162,7 +2141,7 @@
         return;
       }
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
-      const path = String(page.path || pathFromNostrPageSlug(slug));
+      const path = pathFromNostrPageSlug(slug);
       rows.push({
         slug: slug,
         title: title,
@@ -2348,7 +2327,7 @@
     }
     const page = state.nostrPages[index] || {};
     const currentSlug = String(page.slug || '');
-    const currentPath = String(page.path || pathFromNostrPageSlug(currentSlug));
+    const currentPath = pathFromNostrPageSlug(currentSlug);
     state.nostrPagesEditingSlugIndex = index;
     state.nostrPagesEditingSlugValue = currentPath;
     renderNostrPagesList(state.nostrPages, false);
@@ -2371,7 +2350,7 @@
     }
     const page = state.nostrPages[index] || {};
     const prevSlug = String(page.slug || '');
-    const prevPath = String(page.path || pathFromNostrPageSlug(prevSlug));
+    const prevPath = pathFromNostrPageSlug(prevSlug);
     let liveValue = state.nostrPagesEditingSlugValue;
     if (els.nostrPagesList) {
       const input = els.nostrPagesList.querySelector('.nostr-page-slug-input[data-index="' + String(index) + '"]');
