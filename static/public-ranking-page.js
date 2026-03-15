@@ -7,7 +7,7 @@
   }
 
   var query = new URLSearchParams(window.location.search || '');
-  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-ranking-slug') || 'ranking').trim() || 'ranking';
+  var slug = String(root.getAttribute('data-ranking-slug') || query.get('page_slug') || query.get('slug') || 'ranking').trim() || 'ranking';
 
   var els = {
     title: document.getElementById('public-ranking-title'),

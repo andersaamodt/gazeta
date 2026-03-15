@@ -7,7 +7,7 @@
   }
 
   var query = new URLSearchParams(window.location.search || '');
-  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-page-slug') || 'index').trim() || 'index';
+  var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'index').trim() || 'index';
 
   var els = {
     title: document.getElementById('nip23-page-title'),

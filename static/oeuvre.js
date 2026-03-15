@@ -14,7 +14,7 @@
     querySlug = '';
   }
 
-  var slug = String(querySlug || root.getAttribute('data-list-slug') || 'oeuvre').trim() || 'oeuvre';
+  var slug = String(root.getAttribute('data-list-slug') || querySlug || 'oeuvre').trim() || 'oeuvre';
   var els = {
     title: document.getElementById('list-page-title'),
     description: document.getElementById('list-page-description'),

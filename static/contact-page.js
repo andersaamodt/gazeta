@@ -5,7 +5,7 @@
   }
 
   var query = new URLSearchParams(window.location.search || '');
-  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-page-slug') || 'contact').trim() || 'contact';
+  var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
 
   var els = {
     title: document.getElementById('contact-page-title'),
