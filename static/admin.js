@@ -56,7 +56,8 @@
     nostrPagesDragDropped: false,
     nostrPagesDragSnapshot: [],
     moderationItems: [],
-    initialContentPainted: false
+    initialContentPainted: false,
+    loadedAdminSections: {}
   };
 
   const els = {
@@ -252,6 +253,84 @@
     syncQueueAutoRefresh();
     syncPostsAutoRefresh();
     syncModerationAutoRefresh();
+    maybeLoadAdminSection(sectionName, true);
+  }
+
+  async function maybeLoadAdminSection(sectionName, silent) {
+    const section = String(sectionName || '').trim();
+    if (!state.isAdmin || !section || section === 'account') {
+      return;
+    }
+    if (state.loadedAdminSections[section]) {
+      return;
+    }
+    state.loadedAdminSections[section] = true;
+    try {
+      if (section === 'settings' || section === 'nostr-bridge') {
+        await loadConfig();
+        return;
+      }
+      if (section === 'zaps') {
+        await loadConfig();
+        await loadZapsRuntime();
+        return;
+      }
+      if (section === 'users') {
+        await loadUsers(false);
+        return;
+      }
+      if (section === 'drafts') {
+        await loadDrafts();
+        return;
+      }
+      if (section === 'queue') {
+        await loadQueue();
+        return;
+      }
+      if (section === 'posts') {
+        await loadPosts();
+        return;
+      }
+      if (section === 'pages') {
+        await loadNostrPages();
+        return;
+      }
+      if (section === 'moderation') {
+        await loadModeration();
+      }
+    } catch (err) {
+      state.loadedAdminSections[section] = false;
+      if (silent) {
+        return;
+      }
+      if (section === 'settings' || section === 'nostr-bridge') {
+        setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'zaps') {
+        setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'users') {
+        setOutput(els.outputUsers, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'drafts' || section === 'queue') {
+        setOutput(els.outputQueue, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'posts') {
+        setOutput(els.outputPosts, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'pages') {
+        setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'moderation') {
+        setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+      }
+    }
   }
 
   function initSectionNavigation() {
@@ -1294,10 +1373,9 @@
       startLocalDripWorker();
       setAccountOnlyMode(false);
       activateSection(getSectionFromHash(), false);
-
-      await Promise.all([loadConfig(), loadZapsRuntime(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
       els.adminPanel.style.display = 'grid';
       renderPreview();
+      await maybeLoadAdminSection(state.activeSection, false);
       markInitialContentPainted();
       markHydrationPageReady();
     } catch (err) {
