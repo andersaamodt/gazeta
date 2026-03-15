@@ -192,6 +192,7 @@ jq -cn \
   --argjson state "$view_state_json" \
   --argjson canonical_state "$canonical_state_json" \
   --argjson canonical_event "$( [ -n "$canonical_event_json" ] && printf '%s' "$canonical_event_json" || printf 'null' )" \
+  --argjson zap_config "$(blog_zaps_config_json)" \
   --argjson validation "$validation_json" \
   '{
     success: true,
@@ -206,6 +207,7 @@ jq -cn \
     state: $state,
     canonical_state: $canonical_state,
     canonical_event: $canonical_event,
+    zap_config: $zap_config,
     validation: {
       errors: $validation.errors,
       warnings: $validation.warnings,

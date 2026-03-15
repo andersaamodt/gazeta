@@ -37,6 +37,7 @@ blog_nostr_posts_index="$blog_nostr_derived_dir/posts.json"
 blog_nostr_comments_index="$blog_nostr_derived_dir/comments.json"
 blog_nostr_rebuild_lock_dir="$blog_nostr_state_dir/rebuild.lock"
 blog_nostr_mirror_lock_dir="$blog_nostr_state_dir/mirror.lock"
+blog_zaps_default_amount_sats=210
 
 BLOG_REQUEST_BODY=${BLOG_REQUEST_BODY-}
 BLOG_SESSION_USERNAME=${BLOG_SESSION_USERNAME-}
@@ -411,6 +412,49 @@ blog_json_error() {
   code=${2-false}
   esc=$(blog_json_escape "$msg")
   printf '{"success":false,"error":"%s","code":"%s"}\n' "$esc" "$code"
+}
+
+blog_zaps_enabled() {
+  enabled=$(config-get "$blog_site_conf" zaps_enabled 2>/dev/null || printf 'false')
+  case "$enabled" in
+    true|false) printf '%s\n' "$enabled" ;;
+    *) printf 'false\n' ;;
+  esac
+}
+
+blog_zap_lud16() {
+  lud16=$(config-get "$blog_site_conf" zap_lud16 2>/dev/null || printf '')
+  lud16=$(printf '%s' "$lud16" | tr -d '\r\n[:space:]')
+  printf '%s\n' "$lud16"
+}
+
+blog_zap_default_amount_sats() {
+  sats=$(config-get "$blog_site_conf" zap_default_amount_sats 2>/dev/null || printf "$blog_zaps_default_amount_sats")
+  case "$sats" in
+    ''|*[!0-9]*) sats=$blog_zaps_default_amount_sats ;;
+  esac
+  if [ "$sats" -lt 1 ]; then
+    sats=1
+  fi
+  printf '%s\n' "$sats"
+}
+
+blog_zaps_config_json() {
+  enabled=$(blog_zaps_enabled)
+  lud16=$(blog_zap_lud16)
+  amount_sats=$(blog_zap_default_amount_sats)
+  relays_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
+
+  if [ -z "$lud16" ]; then
+    enabled=false
+  fi
+
+  printf '{'
+  printf '"enabled":%s,' "$enabled"
+  printf '"lud16":"%s",' "$(blog_json_escape "$lud16")"
+  printf '"default_amount_sats":%s,' "$amount_sats"
+  printf '"relays":%s' "$relays_json"
+  printf '}\n'
 }
 
 blog_nostr_bridge_enabled() {

@@ -18,6 +18,7 @@ title: Blog Admin
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Bridge</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Zaps</span></button>
 </div>
 </aside>
 
@@ -155,6 +156,62 @@ title: Blog Admin
 <p class="muted">Control which events are mirrored with <strong>Allowed Authors</strong>, <strong>Relay List</strong>, and <strong>Blocked Pubkeys</strong>. Mirrored content lands in local site data only; publishing back to Nostr remains explicit/manual.</p>
 
 <div id="output-nostr-bridge" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="zaps" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Zaps</h3>
+<p class="muted">Manage site-level zap settings and install Bitcoin or Lightning on this server through Wizardry.</p>
+</div>
+<div class="row-actions">
+<button id="btn-zaps-refresh" type="button">Refresh status</button>
+</div>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Zap Settings</h4>
+<div class="field-row checkbox-row">
+<div class="setting-label">
+<strong>Enable Zaps</strong>
+</div>
+<label class="checkbox-control" for="zaps-enabled">
+<input type="checkbox" id="zaps-enabled">
+<span>Enabled</span>
+</label>
+</div>
+<div class="grid-two">
+<div class="field-row">
+<label for="zap-lud16"><strong>Lightning Address</strong></label>
+<input type="text" id="zap-lud16" inputmode="email" placeholder="you@example.com">
+</div>
+<div class="field-row">
+<label for="zap-default-amount-sats"><strong>Default Amount</strong></label>
+<input type="number" id="zap-default-amount-sats" min="1" step="1" value="210">
+<span class="field-unit">sats</span>
+</div>
+</div>
+<p class="muted">Public zap buttons use your site signer pubkey and this Lightning address. If you want outside Nostr clients to discover the same address automatically, publish a matching <code>lud16</code> value on your contact page.</p>
+</section>
+
+<section class="sub-card">
+<div class="zaps-runtime-head">
+<h4>Server Runtime</h4>
+<div class="zaps-install-actions">
+<button id="btn-install-bitcoin" type="button">Install Bitcoin</button>
+<button id="btn-install-lightning" type="button">Install Lightning</button>
+</div>
+</div>
+<div id="zaps-runtime" class="zaps-runtime-grid">
+<div class="placeholder">Loading zap runtime...</div>
+</div>
+</section>
+</div>
+
+<div id="output-zaps" class="output"></div>
 </div>
 </section>
 
@@ -878,7 +935,8 @@ body {
   letter-spacing: 0.01em;
 }
 
-[data-admin-section="settings"] .field-row {
+[data-admin-section="settings"] .field-row,
+[data-admin-section="zaps"] .field-row {
   display: grid;
   grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
   align-items: center;
@@ -900,16 +958,20 @@ body {
   flex-wrap: wrap;
 }
 
-[data-admin-section="settings"] .field-row > label {
+[data-admin-section="settings"] .field-row > label,
+[data-admin-section="zaps"] .field-row > label {
   margin-bottom: 0;
 }
 
 [data-admin-section="settings"] .field-row > input,
-[data-admin-section="settings"] .field-row > select {
+[data-admin-section="settings"] .field-row > select,
+[data-admin-section="zaps"] .field-row > input,
+[data-admin-section="zaps"] .field-row > select {
   justify-self: start;
 }
 
-[data-admin-section="settings"] .setting-label {
+[data-admin-section="settings"] .setting-label,
+[data-admin-section="zaps"] .setting-label {
   display: inline-flex;
   align-items: center;
   gap: 0.38rem;
@@ -1064,6 +1126,10 @@ body {
   justify-content: start;
 }
 
+[data-admin-section="zaps"] .grid-two {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, max-content));
+}
+
 [data-admin-section="settings"] #site-title {
   inline-size: clamp(11rem, 23vw, 18rem);
 }
@@ -1157,12 +1223,81 @@ body {
 
 [data-admin-section="settings"] input[type="text"],
 [data-admin-section="settings"] input[type="number"],
+[data-admin-section="zaps"] input[type="text"],
+[data-admin-section="zaps"] input[type="number"],
+[data-admin-section="zaps"] select,
 [data-admin-section="settings"] select {
   font-size: 0.88rem;
   line-height: 1.2;
   padding: 0.34rem 0.56rem;
   min-height: 2.06rem;
   border-radius: 8px;
+}
+
+.zaps-runtime-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.zaps-install-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.zaps-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, max-content));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.zaps-runtime-card {
+  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--table-border, rgba(120, 92, 45, 0.18));
+  background: color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.5));
+  min-width: 10.5rem;
+}
+
+.zaps-runtime-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.zaps-runtime-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.zaps-runtime-value.is-ok {
+  color: color-mix(in srgb, var(--link) 68%, #264f2f);
+}
+
+.zaps-runtime-value.is-warn {
+  color: color-mix(in srgb, #875e12 70%, var(--text));
+}
+
+.zaps-runtime-log {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--table-border, rgba(120, 92, 45, 0.18));
+  background: rgba(64, 45, 18, 0.08);
+  color: var(--text);
+  font: 0.86rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 [data-admin-section="account"] #account-player-name {

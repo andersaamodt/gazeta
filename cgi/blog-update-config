@@ -25,6 +25,9 @@ feed_full_text=$(blog_param feed_full_text)
 feed_items=$(blog_param feed_items)
 nostr_bridge_enabled=$(blog_param nostr_bridge_enabled)
 new_users_are_admins=$(blog_param new_users_are_admins)
+zaps_enabled=$(blog_param zaps_enabled)
+zap_lud16=$(blog_param zap_lud16)
+zap_default_amount_sats=$(blog_param zap_default_amount_sats)
 nostr_lists_update=$(blog_param nostr_lists_update)
 nostr_authors=$(blog_param nostr_authors)
 nostr_relays=$(blog_param nostr_relays)
@@ -138,6 +141,33 @@ if [ -n "$new_users_are_admins" ]; then
     true|false) config-set "$blog_site_conf" new_users_are_admins "$new_users_are_admins" ;;
   esac
 fi
+
+if [ -n "$zaps_enabled" ]; then
+  case "$zaps_enabled" in
+    true|false) config-set "$blog_site_conf" zaps_enabled "$zaps_enabled" ;;
+  esac
+fi
+
+case "$BLOG_REQUEST_BODY" in
+  *zap_lud16=*)
+    clean_lud16=$(printf '%s' "$zap_lud16" | tr -d '\r\n[:space:]')
+    config-set "$blog_site_conf" zap_lud16 "$clean_lud16"
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *zap_default_amount_sats=*)
+    case "$zap_default_amount_sats" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$zap_default_amount_sats" -lt 1 ]; then
+          zap_default_amount_sats=1
+        fi
+        config-set "$blog_site_conf" zap_default_amount_sats "$zap_default_amount_sats"
+        ;;
+    esac
+    ;;
+esac
 
 if [ "$nostr_lists_update" = "true" ]; then
   case "$BLOG_REQUEST_BODY" in

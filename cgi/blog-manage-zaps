@@ -1,0 +1,179 @@
+#!/bin/sh
+# Manage site zap settings runtime and Wizardry-backed Bitcoin/Lightning installs.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+if [ -z "$action" ]; then
+  action=status
+fi
+
+wizardry_dir=${WIZARDRY_DIR:-$HOME/.wizardry}
+wizardry_install_url='https://raw.githubusercontent.com/andersaamodt/wizardry/main/install'
+
+wizardry_installed() {
+  [ -x "$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin" ] && [ -x "$wizardry_dir/spells/.arcana/lightning/install-lightning" ]
+}
+
+bitcoin_installed() {
+  if wizardry_installed && [ -x "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" ]; then
+    WIZARDRY_DIR="$wizardry_dir" HOME="$HOME" "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" >/dev/null 2>&1
+    return $?
+  fi
+  command -v bitcoin-cli >/dev/null 2>&1
+}
+
+lightning_installed() {
+  if wizardry_installed && [ -x "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" ]; then
+    WIZARDRY_DIR="$wizardry_dir" HOME="$HOME" "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" >/dev/null 2>&1
+    return $?
+  fi
+  command -v lightning-cli >/dev/null 2>&1
+}
+
+bool_json() {
+  if "$@"; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+runtime_json() {
+  printf '{'
+  printf '"wizardry_installed":%s,' "$(bool_json wizardry_installed)"
+  printf '"wizardry_path":"%s",' "$(blog_json_escape "$wizardry_dir")"
+  printf '"bitcoin_installed":%s,' "$(bool_json bitcoin_installed)"
+  printf '"lightning_installed":%s' "$(bool_json lightning_installed)"
+  printf '}'
+}
+
+emit_success() {
+  message=${1-OK}
+  log_text=${2-}
+  printf '{"success":true,"message":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+emit_failure() {
+  message=${1-Request failed}
+  code=${2-zaps_failed}
+  log_text=${3-}
+  printf '{"success":false,"error":"%s","code":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(blog_json_escape "$code")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+ensure_wizardry() {
+  if wizardry_installed; then
+    return 0
+  fi
+
+  tmp_installer=$(mktemp "${TMPDIR:-/tmp}/wizardry-install.XXXXXX")
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$wizardry_install_url" -o "$tmp_installer"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$tmp_installer" "$wizardry_install_url"
+  else
+    rm -f "$tmp_installer"
+    printf 'curl or wget is required to bootstrap Wizardry.\n' >&2
+    return 1
+  fi
+
+  sh "$tmp_installer"
+  rm -f "$tmp_installer"
+  wizardry_installed
+}
+
+run_install_spell() {
+  spell_path=$1
+  newline_count=$2
+  log_file=$3
+
+  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-input.XXXXXX")
+  i=0
+  while [ "$i" -lt "$newline_count" ]; do
+    printf '\n' >> "$input_file"
+    i=$((i + 1))
+  done
+
+  if command -v timeout >/dev/null 2>&1; then
+    set +e
+    timeout 1800 sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
+    status=$?
+    set -e
+  else
+    set +e
+    sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
+    status=$?
+    set -e
+  fi
+
+  rm -f "$input_file"
+  return "$status"
+}
+
+case "$action" in
+  status)
+    emit_success "Zap runtime loaded."
+    exit 0
+    ;;
+  install_bitcoin|install_lightning) ;;
+  *)
+    emit_failure "Unknown action" "invalid_action"
+    exit 0
+    ;;
+esac
+
+log_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-log.XXXXXX")
+trap 'rm -f "$log_file"' EXIT HUP INT TERM
+
+printf 'Ensuring Wizardry is installed at %s\n' "$wizardry_dir" >> "$log_file"
+if ! ensure_wizardry >> "$log_file" 2>&1; then
+  emit_failure "Could not install or locate Wizardry." "wizardry_bootstrap_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+  exit 0
+fi
+
+case "$action" in
+  install_bitcoin)
+    spell="$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin"
+    if [ ! -x "$spell" ]; then
+      emit_failure "Wizardry Bitcoin installer was not found." "missing_bitcoin_installer" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    printf 'Running %s\n' "$spell" >> "$log_file"
+    if ! run_install_spell "$spell" 6 "$log_file"; then
+      emit_failure "Bitcoin install failed. Check the log output." "bitcoin_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    emit_success "Bitcoin install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    ;;
+  install_lightning)
+    spell="$wizardry_dir/spells/.arcana/lightning/install-lightning"
+    if [ ! -x "$spell" ]; then
+      emit_failure "Wizardry Lightning installer was not found." "missing_lightning_installer" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    printf 'Running %s\n' "$spell" >> "$log_file"
+    if ! run_install_spell "$spell" 4 "$log_file"; then
+      emit_failure "Lightning install failed. Check the log output." "lightning_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    emit_success "Lightning install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    ;;
+esac

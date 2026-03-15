@@ -70,6 +70,7 @@
     outputNostrPages: document.getElementById('output-nostr-pages'),
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
+    outputZaps: document.getElementById('output-zaps'),
     outputUsers: document.getElementById('output-users'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
@@ -82,6 +83,13 @@
     nostrAuthors: document.getElementById('nostr-authors'),
     nostrRelays: document.getElementById('nostr-relays'),
     nostrBlocklist: document.getElementById('nostr-blocklist'),
+    zapsEnabled: document.getElementById('zaps-enabled'),
+    zapLud16: document.getElementById('zap-lud16'),
+    zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
+    zapsRuntime: document.getElementById('zaps-runtime'),
+    zapsRefreshButton: document.getElementById('btn-zaps-refresh'),
+    installBitcoinButton: document.getElementById('btn-install-bitcoin'),
+    installLightningButton: document.getElementById('btn-install-lightning'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -1287,7 +1295,7 @@
       setAccountOnlyMode(false);
       activateSection(getSectionFromHash(), false);
 
-      await Promise.all([loadConfig(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
+      await Promise.all([loadConfig(), loadZapsRuntime(), loadUsers(), loadDrafts(), loadQueue(), loadPosts(), loadNostrPages()]);
       els.adminPanel.style.display = 'grid';
       renderPreview();
       markInitialContentPainted();
@@ -1344,6 +1352,15 @@
       if (els.newUsersAreAdmins) {
         els.newUsersAreAdmins.checked = !!data.new_users_are_admins;
       }
+      if (els.zapsEnabled) {
+        els.zapsEnabled.checked = !!data.zaps_enabled;
+      }
+      if (els.zapLud16) {
+        els.zapLud16.value = String(data.zap_lud16 || '');
+      }
+      if (els.zapDefaultAmountSats) {
+        els.zapDefaultAmountSats.value = String(data.zap_default_amount_sats || 210);
+      }
       if (els.mirrorNostrButton) {
         els.mirrorNostrButton.disabled = !state.nostrBridgeEnabled;
       }
@@ -1367,7 +1384,10 @@
         drip_randomness_minutes: els.dripRandomness.value.trim(),
         feed_full_text: els.feedFullText.checked ? 'true' : 'false',
         feed_items: els.feedItems.value.trim(),
-        new_users_are_admins: (els.newUsersAreAdmins && els.newUsersAreAdmins.checked) ? 'true' : 'false'
+        new_users_are_admins: (els.newUsersAreAdmins && els.newUsersAreAdmins.checked) ? 'true' : 'false',
+        zaps_enabled: (els.zapsEnabled && els.zapsEnabled.checked) ? 'true' : 'false',
+        zap_lud16: els.zapLud16 ? els.zapLud16.value.trim() : '',
+        zap_default_amount_sats: els.zapDefaultAmountSats ? els.zapDefaultAmountSats.value.trim() : ''
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save config');
@@ -1488,6 +1508,9 @@
       els.feedFullText,
       els.feedItems,
       els.newUsersAreAdmins,
+      els.zapsEnabled,
+      els.zapLud16,
+      els.zapDefaultAmountSats,
       els.dripInterval,
       els.dripRandomness
     ].filter(Boolean);
@@ -1515,6 +1538,83 @@
       field.addEventListener('change', function () { queueNostrBridgeAutosave(250); });
       field.addEventListener('blur', function () { queueNostrBridgeAutosave(220); });
     });
+  }
+
+  function setZapsButtonsBusy(isBusy) {
+    [els.zapsRefreshButton, els.installBitcoinButton, els.installLightningButton].filter(Boolean).forEach(function (button) {
+      button.disabled = !!isBusy;
+    });
+  }
+
+  function renderZapsRuntime(runtime, logText, message) {
+    if (!els.zapsRuntime) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    const wizardryReady = !!info.wizardry_installed;
+    const bitcoinReady = !!info.bitcoin_installed;
+    const lightningReady = !!info.lightning_installed;
+    let html = '';
+    html += '<div class="zaps-runtime-card"><strong>Wizardry</strong><div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + (wizardryReady ? 'Installed' : 'Missing') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Bitcoin</strong><div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + (bitcoinReady ? 'Installed' : 'Not installed') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Lightning</strong><div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + (lightningReady ? 'Installed' : 'Not installed') + '</div></div>';
+    if (info.wizardry_path) {
+      html += '<div class="zaps-runtime-card"><strong>Wizardry Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.wizardry_path)) + '</div></div>';
+    }
+    if (message) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
+    } else if (logText) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(logText)) + '</pre>';
+    }
+    els.zapsRuntime.innerHTML = html;
+  }
+
+  async function loadZapsRuntime() {
+    if (!els.zapsRuntime) {
+      return;
+    }
+    setZapsButtonsBusy(true);
+    try {
+      const data = await apiPost('/cgi/blog-manage-zaps', { action: 'status' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load zap runtime');
+      }
+      renderZapsRuntime(data.runtime || {}, '', data.message || '');
+      if (els.outputZaps) {
+        els.outputZaps.innerHTML = '';
+      }
+    } catch (err) {
+      renderZapsRuntime({}, '', '');
+      setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+    } finally {
+      setZapsButtonsBusy(false);
+    }
+  }
+
+  async function runZapsInstall(action) {
+    const picked = String(action || '').trim();
+    if (!picked) {
+      return;
+    }
+    const label = picked === 'install_bitcoin' ? 'Bitcoin' : 'Lightning';
+    if (!window.confirm('Run the Wizardry ' + label + ' installer on this server now?')) {
+      return;
+    }
+    setZapsButtonsBusy(true);
+    renderZapsRuntime({}, '', 'Running ' + label + ' installer...');
+    try {
+      const data = await apiPost('/cgi/blog-manage-zaps', { action: picked }, true);
+      if (!data.success) {
+        renderZapsRuntime(data.runtime || {}, data.log || '', label + ' installer failed.');
+        throw new Error(data.error || (label + ' install failed'));
+      }
+      renderZapsRuntime(data.runtime || {}, data.log || '', data.message || '');
+      setOutput(els.outputZaps, data.message || (label + ' install completed.'), 'ok');
+    } catch (err) {
+      setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+    } finally {
+      setZapsButtonsBusy(false);
+    }
   }
 
   async function saveAccount() {
@@ -3533,6 +3633,27 @@
       els.moderationFilterAge.addEventListener('change', function () {
         loadModeration().catch(function (err) {
           setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.zapsRefreshButton) {
+      els.zapsRefreshButton.addEventListener('click', function () {
+        loadZapsRuntime().catch(function (err) {
+          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.installBitcoinButton) {
+      els.installBitcoinButton.addEventListener('click', function () {
+        runZapsInstall('install_bitcoin').catch(function (err) {
+          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.installLightningButton) {
+      els.installLightningButton.addEventListener('click', function () {
+        runZapsInstall('install_lightning').catch(function (err) {
+          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
         });
       });
     }

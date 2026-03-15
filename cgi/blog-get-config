@@ -22,6 +22,9 @@ new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/
 nostr_authors=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file")
 nostr_relays=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
 nostr_blocklist=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
+zaps_enabled=$(blog_zaps_enabled)
+zap_lud16=$(blog_zap_lud16)
+zap_default_amount_sats=$(blog_zap_default_amount_sats)
 
 case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; esac
 [ -n "$site_title" ] || site_title='My Blog'
@@ -43,6 +46,9 @@ printf '"feed_full_text":%s,' "$feed_full_text"
 printf '"feed_items":%s,' "$feed_items"
 printf '"nostr_bridge_enabled":%s,' "$nostr_bridge_enabled"
 printf '"new_users_are_admins":%s,' "$new_users_are_admins"
+printf '"zaps_enabled":%s,' "$zaps_enabled"
+printf '"zap_lud16":"%s",' "$(blog_json_escape "$zap_lud16")"
+printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"nostr_authors":%s,' "$nostr_authors"
 printf '"nostr_relays":%s,' "$nostr_relays"
 printf '"nostr_blocklist":%s' "$nostr_blocklist"

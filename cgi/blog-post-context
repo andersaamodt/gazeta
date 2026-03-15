@@ -145,6 +145,7 @@ printf '{"success":true,'
 printf '"current":'
 post_json "$current_file"
 printf ','
+printf '"zap_config":%s,' "$(blog_zaps_config_json)"
 printf '"newer":'
 post_json "$newer"
 printf ','
