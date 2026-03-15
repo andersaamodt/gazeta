@@ -52,10 +52,11 @@ printf '%s\n' "$normalized" | jq -c '.pages[]' | while IFS= read -r row || [ -n 
 done
 
 blog_nostr_pages_save_json "$normalized"
+blog_run_build_async
 
 jq -cn --argjson cfg "$normalized" '{
   success: true,
   pages: ($cfg.pages // []),
-  message: "Nostr page configuration saved locally."
+  message: "Nostr page configuration saved locally. Site rebuild queued."
 }'
 printf '\n'
