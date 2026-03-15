@@ -31,12 +31,90 @@
     currentMetric: 'momentum',
     initialContentPainted: false
   };
+  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
 
   function authPayload() {
     return {
       session_token: String(localStorage.getItem('session_token') || '').trim(),
       csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
     };
+  }
+
+  function authSignature() {
+    var auth = authPayload();
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function bootstrapCacheKey() {
+    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
+  }
+
+  function isExpectedPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    var payloadSlug = String(payload.slug || '').trim();
+    var payloadType = String(payload.page_type || '').trim().toLowerCase();
+    return payloadSlug === slug && payloadType === 'public-ranking';
+  }
+
+  function readBootstrapCache() {
+    try {
+      var raw = localStorage.getItem(bootstrapCacheKey());
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      if (String(parsed.auth_signature || '') !== authSignature()) {
+        return null;
+      }
+      if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      if (!isExpectedPayload(parsed.payload)) {
+        localStorage.removeItem(bootstrapCacheKey());
+        return null;
+      }
+      return parsed.payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeBootstrapCache(payload) {
+    try {
+      if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
+        auth_signature: authSignature(),
+        payload: payload,
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore cache write errors.
+    }
+  }
+
+  function renderFromBootstrapCache() {
+    var cachedPayload = readBootstrapCache();
+    if (!cachedPayload) {
+      return false;
+    }
+    state.payload = cachedPayload;
+    state.draft = normalizeDraftState((cachedPayload && cachedPayload.state) || {});
+    state.currentMetric = normalizeMetric((cachedPayload.state && (cachedPayload.state.metric || cachedPayload.state.default_metric)) || state.draft.default_metric || 'momentum');
+    state.activeHeadField = '';
+    state.submitComposerOpen = false;
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+    renderAll();
+    markInitialContentPainted();
+    markHydrationPageReady();
+    return true;
   }
 
   function isAdmin() {
@@ -1299,6 +1377,7 @@
       if (!payload || String(payload.page_type || '').toLowerCase() !== 'public-ranking') {
         throw new Error('Unexpected page payload for public ranking page');
       }
+      writeBootstrapCache(payload);
       state.payload = payload;
       state.draft = normalizeDraftState(payload.state || {});
       state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
@@ -1319,5 +1398,6 @@
 
   bindEvents();
   window.addEventListener('blog-auth-changed', load);
+  renderFromBootstrapCache();
   load();
 })();
