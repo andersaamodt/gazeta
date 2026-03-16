@@ -43,29 +43,28 @@ if [ -z "$publish_mode" ]; then
 fi
 
 if [ -n "$draft_id" ] && blog_draft_exists "$draft_id"; then
-  meta=$(blog_draft_resolve_meta_path "$draft_id" 2>/dev/null || printf '')
-  body_file=$(blog_draft_resolve_content_path "$draft_id" 2>/dev/null || printf '')
-  if [ -z "$meta" ] || [ -z "$body_file" ]; then
+  draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+  if [ -z "$draft_file" ] || [ ! -f "$draft_file" ]; then
     blog_json_error "Draft not found" "not_found"
     exit 0
   fi
   if [ -z "$title" ]; then
-    title=$(config-get "$meta" title 2>/dev/null || printf '')
+    title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
   fi
   if [ -z "$tags" ]; then
-    tags=$(config-get "$meta" tags 2>/dev/null || printf '')
+    tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
   fi
   if [ -z "$summary" ]; then
-    summary=$(config-get "$meta" summary 2>/dev/null || printf '')
+    summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
   fi
-  if [ -z "$content" ] && [ -f "$body_file" ]; then
-    content=$(cat "$body_file" 2>/dev/null || printf '')
+  if [ -z "$content" ]; then
+    content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
   fi
   if [ -z "$scheduled_at" ]; then
-    scheduled_at=$(config-get "$meta" scheduled_at 2>/dev/null || printf '')
+    scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
   fi
-  existing_publish_mode=$(config-get "$meta" publish_mode 2>/dev/null || printf '')
-  existing_status=$(config-get "$meta" status 2>/dev/null || printf '')
+  existing_publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf '')
+  existing_status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf '')
 fi
 
 if [ -z "$title" ]; then

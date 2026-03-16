@@ -1,0 +1,14 @@
+#!/bin/sh
+# Prepare canonical content mounts before build.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+pages_json=$(blog_nostr_pages_load_json)
+blog_nostr_pages_sync_source_pages "$pages_json"

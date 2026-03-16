@@ -20,15 +20,17 @@ if [ -z "$draft_id" ]; then
   exit 0
 fi
 
-meta=$(blog_draft_resolve_meta_path "$draft_id" 2>/dev/null || printf '')
-if [ -z "$meta" ] || [ ! -f "$meta" ]; then
+draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+if [ -z "$draft_file" ] || [ ! -f "$draft_file" ]; then
   blog_json_error "Draft not found" "not_found"
   exit 0
 fi
 
-config-set "$meta" publish_mode draft
-config-set "$meta" status draft
-config-set "$meta" scheduled_at ""
-config-set "$meta" updated_at "$(blog_now_iso)"
+title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled Draft')
+tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
+content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft
 
 printf '{"success":true,"message":"Draft moved back to drafts","draft_id":"%s"}\n' "$(blog_json_escape "$draft_id")"

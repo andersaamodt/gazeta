@@ -20,25 +20,24 @@ if [ -z "$draft_id" ]; then
   exit 0
 fi
 
-meta=$(blog_draft_resolve_meta_path "$draft_id" 2>/dev/null || printf '')
-body_file=$(blog_draft_resolve_content_path "$draft_id" 2>/dev/null || printf '')
-if [ -z "$meta" ] || [ ! -f "$meta" ] || [ -z "$body_file" ] || [ ! -f "$body_file" ]; then
+draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+if [ -z "$draft_file" ] || [ ! -f "$draft_file" ]; then
   blog_json_error "Draft not found" "not_found"
   exit 0
 fi
 
-title=$(config-get "$meta" title 2>/dev/null || printf 'Untitled')
-tags=$(config-get "$meta" tags 2>/dev/null || printf '')
-summary=$(config-get "$meta" summary 2>/dev/null || printf '')
-publish_mode=$(config-get "$meta" publish_mode 2>/dev/null || printf 'draft')
-status=$(config-get "$meta" status 2>/dev/null || printf 'draft')
-scheduled_at=$(config-get "$meta" scheduled_at 2>/dev/null || printf '')
-created_at=$(config-get "$meta" created_at 2>/dev/null || printf '')
-updated_at=$(config-get "$meta" updated_at 2>/dev/null || printf '')
-content=$(cat "$body_file" 2>/dev/null || printf '')
+title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
+status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
+scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
+created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
+updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '')
+content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
 
 printf '{"success":true,"draft":{'
-resolved_draft_id=$(config-get "$meta" draft_id 2>/dev/null || printf '')
+resolved_draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
 [ -n "$resolved_draft_id" ] || resolved_draft_id="$draft_id"
 printf '"draft_id":"%s",' "$(blog_json_escape "$resolved_draft_id")"
 printf '"title":"%s",' "$(blog_json_escape "$title")"

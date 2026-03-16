@@ -15,34 +15,30 @@ if ! blog_require_session true; then
 fi
 
 tmp=$(mktemp "${TMPDIR:-/tmp}/blog-drafts.XXXXXX")
-blog_find_draft_meta | while IFS= read -r meta; do
-  updated=$(config-get "$meta" updated_at 2>/dev/null || printf '1970-01-01T00:00:00Z')
-  printf '%s\t%s\n' "$updated" "$meta"
+blog_find_draft_files | while IFS= read -r draft_file; do
+  updated=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '1970-01-01T00:00:00Z')
+  printf '%s\t%s\n' "$updated" "$draft_file"
 done | sort -r > "$tmp"
 
 tab=$(printf '\t')
 printf '{"success":true,"drafts":['
 first=1
-while IFS="$tab" read -r _ meta; do
-  [ -f "$meta" ] || continue
-  draft_id=$(config-get "$meta" draft_id 2>/dev/null || printf '')
+while IFS="$tab" read -r _ draft_file; do
+  [ -f "$draft_file" ] || continue
+  draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
   [ -n "$draft_id" ] || continue
-  title=$(config-get "$meta" title 2>/dev/null || printf 'Untitled')
-  tags=$(config-get "$meta" tags 2>/dev/null || printf '')
-  summary=$(config-get "$meta" summary 2>/dev/null || printf '')
-  publish_mode=$(config-get "$meta" publish_mode 2>/dev/null || printf 'draft')
-  status=$(config-get "$meta" status 2>/dev/null || printf 'draft')
-  scheduled_at=$(config-get "$meta" scheduled_at 2>/dev/null || printf '')
-  created_at=$(config-get "$meta" created_at 2>/dev/null || printf '')
-  updated_at=$(config-get "$meta" updated_at 2>/dev/null || printf '')
+  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+  tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+  summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+  publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
+  status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
+  scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
+  created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
+  updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '')
   if [ "$status" != "draft" ] || [ "$publish_mode" != "draft" ]; then
     continue
   fi
-  body_file=$(dirname "$meta")/content.md
-  content_excerpt=""
-  if [ -f "$body_file" ]; then
-    content_excerpt=$(blog_auto_summary_from_content "$(cat "$body_file" 2>/dev/null || printf '')")
-  fi
+  content_excerpt=$(blog_auto_summary_from_content "$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')")
 
   if [ "$first" -eq 0 ]; then
     printf ','

@@ -46,8 +46,8 @@ case "$cleaned" in
     ;;
 esac
 
-draft_dir=$(blog_draft_resolve_dir "$draft_id" 2>/dev/null || printf '')
-if [ -z "$draft_dir" ] || [ ! -d "$draft_dir" ]; then
+draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+if [ -z "$draft_file" ] || [ ! -f "$draft_file" ]; then
   http-status 404 "Not Found"
   http-header "Content-Type" "text/plain; charset=utf-8"
   http-end-headers
@@ -55,6 +55,7 @@ if [ -z "$draft_dir" ] || [ ! -d "$draft_dir" ]; then
   exit 0
 fi
 
+draft_dir=$(dirname "$draft_file")
 file_path="$draft_dir/$cleaned"
 if [ ! -f "$file_path" ] || [ -L "$file_path" ]; then
   http-status 404 "Not Found"

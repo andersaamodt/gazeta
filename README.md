@@ -18,7 +18,7 @@ A single-author Nostr-focused blog for wizardry web with optional bridge support
 
 ## Post Model
 
-Posts are stored as `.md` files in `site/pages/posts/` with YAML front-matter:
+Posts are stored as `.md` files in the canonical content directory under `.sitedata/<site>/blog/content/posts/` with YAML front-matter:
 
 ```markdown
 ---
@@ -68,14 +68,18 @@ States are inferred from metadata and filesystem visibility.
 blog/
 ├── site/
 │   └── pages/
-│       ├── index.md         # Blog homepage
-│       ├── about.md         # About page
-│       ├── tags.md          # Tag index
-│       └── posts/           # Symlink mount to canonical post storage
-│           ├── 2024-01-15-welcome.md
-│           └── 2024-01-20-second-post.md
+│       ├── admin.md              # Application/admin page (template-owned)
+│       ├── login-security.md     # Application/help page (template-owned)
+│       ├── blog.md -> .../blog/content/pages/blog.md
+│       ├── oeuvre.md -> .../blog/content/pages/oeuvre.md
+│       ├── reading-list.md -> .../blog/content/pages/reading-list.md
+│       └── posts -> .../blog/content/posts
 │
-├── .sitedata/<site>/blog/posts/   # Canonical post storage (survives template recopy)
+├── .sitedata/<site>/blog/content/
+│   ├── posts/                    # Canonical post markdown
+│   ├── pages/                    # Canonical public page markdown shells
+│   └── drafts/                   # Canonical draft markdown
+├── .sitedata/<site>/blog/lists/  # Draft JSON state for managed Nostr/list pages
 ├── .sitedata/<site>/nostr/events/ # Canonical mirrored/signed event JSON files
 ├── .sitedata/<site>/nostr/derived/# Disposable indexes generated from events
 └── .sitedata/<site>/nostr/state/  # Authors, relays, blocklist, hidden posts, key
@@ -125,8 +129,8 @@ visibility: "public"  # Change from "draft"
 
 ## Static Pages
 
-- **About**: Required static page (linked from navigation)
-- Additional static pages can be added as `.md` files
+- Public page source lives under `.sitedata/<site>/blog/content/pages/`
+- `site/pages/*.md` mounts are generated from that canonical content directory during build
 
 ## Interaction Model
 
@@ -155,11 +159,13 @@ visibility: "public"  # Change from "draft"
 # Create a blog site
 web-wizardry create myblog blog
 
-# Ensure nostril is present for Nostr auth flows
+# Ensure required server tooling is present
+web-wizardry install-jq
 web-wizardry install-nostril
+web-wizardry install-syncthing   # optional, for content mirroring/backups
 
 # Edit content
-vim ~/sites/myblog/site/pages/posts/2024-01-15-welcome.md
+vim ~/sites/.sitedata/myblog/blog/content/posts/2024-01-15-welcome.md
 
 # Build
 web-wizardry build myblog
@@ -175,6 +181,13 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - `.sitedata/<site>/nostr/state/secret.key` (hex private key for signing)
 - `.sitedata/<site>/nostr/state/authors.txt`
 - `.sitedata/<site>/nostr/state/relays.txt`
+
+## Canonical Content Storage
+
+- Canonical authored content lives under `.sitedata/<site>/blog/content/`, not in the template tree.
+- `site/pages/posts` and managed public page files in `site/pages/*.md` are mounts generated from that content directory.
+- Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/blog/content/`.
+- That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
 
 ## Authentication
 

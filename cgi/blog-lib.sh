@@ -8,8 +8,9 @@ blog_sites_dir=${WIZARDRY_SITES_DIR:-$HOME/sites}
 blog_site_root="$blog_sites_dir/$blog_site_name"
 blog_site_data="$blog_sites_dir/.sitedata/$blog_site_name"
 blog_site_conf="$blog_site_root/site.conf"
+blog_content_root="$blog_site_data/blog/content"
 blog_posts_dir="$blog_site_root/site/pages/posts"
-blog_posts_store_dir="$blog_site_data/blog/posts"
+blog_posts_store_dir="$blog_content_root/posts"
 blog_auth_dir="$blog_site_data/ssh-auth"
 blog_users_dir="$blog_auth_dir/users"
 blog_sessions_dir="$blog_auth_dir/sessions"
@@ -18,8 +19,11 @@ blog_nostr_delegations_dir="$blog_auth_dir/nostr-delegations"
 blog_nostr_rate_limits_dir="$blog_auth_dir/rate-limits"
 blog_nostr_delegation_revocations_file="$blog_auth_dir/nostr-delegation-revocations.txt"
 blog_state_dir="$blog_site_data/blog"
-blog_drafts_dir="$blog_state_dir/drafts"
+blog_pages_store_dir="$blog_content_root/pages"
+blog_drafts_dir="$blog_content_root/drafts"
 blog_lists_dir="$blog_state_dir/lists"
+blog_legacy_posts_store_dir="$blog_state_dir/posts"
+blog_legacy_drafts_dir="$blog_state_dir/drafts"
 blog_uploads_dir="$blog_site_data/uploads"
 blog_nostr_dir="$blog_site_data/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
@@ -69,8 +73,96 @@ blog_ensure_posts_mount() {
   fi
 }
 
+blog_migrate_legacy_posts() {
+  [ -d "$blog_legacy_posts_store_dir" ] || return 0
+  [ "$blog_legacy_posts_store_dir" != "$blog_posts_store_dir" ] || return 0
+  mkdir -p "$blog_posts_store_dir"
+  find "$blog_legacy_posts_store_dir" -mindepth 1 -maxdepth 1 -type f -name '*.md' 2>/dev/null | while IFS= read -r legacy_file; do
+    [ -f "$legacy_file" ] || continue
+    base=${legacy_file##*/}
+    if [ ! -f "$blog_posts_store_dir/$base" ]; then
+      mv "$legacy_file" "$blog_posts_store_dir/$base"
+    fi
+  done
+  rmdir "$blog_legacy_posts_store_dir" 2>/dev/null || true
+}
+
+blog_draft_file_path() {
+  printf '%s/%s.md\n' "$blog_drafts_dir" "$1"
+}
+
+blog_write_draft_markdown() {
+  draft_file=$1
+  draft_id=$2
+  title=$3
+  slug=$4
+  tags=$5
+  summary=$6
+  author=$7
+  publish_mode=$8
+  scheduled_at=$9
+  status=${10}
+  created_at=${11}
+  updated_at=${12}
+  content=${13}
+  tags_yaml=$(blog_tags_to_yaml_array "$tags")
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-draft.XXXXXX")
+  {
+    printf '%s\n' '---'
+    printf 'draft_id: "%s"\n' "$(blog_yaml_escape "$draft_id")"
+    printf 'title: "%s"\n' "$(blog_yaml_escape "$title")"
+    printf 'slug: "%s"\n' "$(blog_yaml_escape "$slug")"
+    printf 'tags: %s\n' "$tags_yaml"
+    printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
+    printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
+    printf 'publish_mode: "%s"\n' "$(blog_yaml_escape "$publish_mode")"
+    printf 'scheduled_at: "%s"\n' "$(blog_yaml_escape "$scheduled_at")"
+    printf 'status: "%s"\n' "$(blog_yaml_escape "$status")"
+    printf 'created_at: "%s"\n' "$(blog_yaml_escape "$created_at")"
+    printf 'updated_at: "%s"\n' "$(blog_yaml_escape "$updated_at")"
+    printf '%s\n\n' '---'
+    printf '%s' "$content"
+  } > "$tmp_file"
+  mv "$tmp_file" "$draft_file"
+  chmod 644 "$draft_file" 2>/dev/null || true
+}
+
+blog_migrate_legacy_drafts() {
+  [ -d "$blog_legacy_drafts_dir" ] || return 0
+  [ "$blog_legacy_drafts_dir" != "$blog_drafts_dir" ] || return 0
+  mkdir -p "$blog_drafts_dir"
+  find "$blog_legacy_drafts_dir" -mindepth 2 -maxdepth 2 -type f -name meta.conf 2>/dev/null | while IFS= read -r meta_file; do
+    [ -f "$meta_file" ] || continue
+    draft_dir=$(dirname "$meta_file")
+    draft_id=$(config-get "$meta_file" draft_id 2>/dev/null || printf '')
+    [ -n "$draft_id" ] || draft_id=${draft_dir##*/}
+    draft_file=$(blog_draft_file_path "$draft_id")
+    if [ -f "$draft_file" ]; then
+      rm -rf "$draft_dir"
+      continue
+    fi
+    body_file=$draft_dir/content.md
+    title=$(config-get "$meta_file" title 2>/dev/null || printf 'Untitled Draft')
+    slug=$(config-get "$meta_file" slug 2>/dev/null || printf '')
+    tags=$(config-get "$meta_file" tags 2>/dev/null || printf '')
+    summary=$(config-get "$meta_file" summary 2>/dev/null || printf '')
+    author=$(config-get "$meta_file" author 2>/dev/null || printf '')
+    publish_mode=$(config-get "$meta_file" publish_mode 2>/dev/null || printf 'draft')
+    scheduled_at=$(config-get "$meta_file" scheduled_at 2>/dev/null || printf '')
+    status=$(config-get "$meta_file" status 2>/dev/null || printf 'draft')
+    created_at=$(config-get "$meta_file" created_at 2>/dev/null || printf '')
+    updated_at=$(config-get "$meta_file" updated_at 2>/dev/null || printf '')
+    content=$(cat "$body_file" 2>/dev/null || printf '')
+    blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created_at" "$updated_at" "$content"
+    rm -rf "$draft_dir"
+  done
+  rmdir "$blog_legacy_drafts_dir" 2>/dev/null || true
+}
+
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_posts_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
+  blog_migrate_legacy_posts
+  blog_migrate_legacy_drafts
   blog_ensure_posts_mount
   mkdir -p "$blog_nostr_state_dir" "$blog_nostr_events_dir" "$blog_nostr_derived_dir"
   [ -f "$blog_nostr_delegation_revocations_file" ] || : > "$blog_nostr_delegation_revocations_file"
@@ -2414,53 +2506,45 @@ blog_new_draft_id() {
   blog_random_token 12
 }
 
-blog_draft_dir() {
-  printf '%s/%s\n' "$blog_drafts_dir" "$1"
-}
-
-blog_draft_meta_path() {
-  printf '%s/meta.conf\n' "$(blog_draft_dir "$1")"
-}
-
-blog_draft_content_path() {
-  printf '%s/content.md\n' "$(blog_draft_dir "$1")"
-}
-
-blog_draft_resolve_meta_path() {
+blog_draft_resolve_file_path() {
   draft_id=${1-}
   [ -n "$draft_id" ] || return 1
-  direct_meta=$(blog_draft_meta_path "$draft_id")
-  if [ -f "$direct_meta" ]; then
-    printf '%s\n' "$direct_meta"
+  direct_file=$(blog_draft_file_path "$draft_id")
+  if [ -f "$direct_file" ]; then
+    printf '%s\n' "$direct_file"
     return 0
   fi
-  for meta in "$blog_drafts_dir"/*/meta.conf; do
-    [ -f "$meta" ] || continue
-    saved_id=$(config-get "$meta" draft_id 2>/dev/null || printf '')
+  for draft_file in "$blog_drafts_dir"/*.md; do
+    [ -f "$draft_file" ] || continue
+    saved_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
     if [ "$saved_id" = "$draft_id" ]; then
-      printf '%s\n' "$meta"
+      printf '%s\n' "$draft_file"
       return 0
     fi
   done
   return 1
 }
 
-blog_draft_resolve_dir() {
+blog_draft_read_field() {
   draft_id=${1-}
-  meta=$(blog_draft_resolve_meta_path "$draft_id" 2>/dev/null || printf '')
-  [ -n "$meta" ] || return 1
-  dirname "$meta"
+  draft_key=${2-}
+  [ -n "$draft_id" ] || return 1
+  [ -n "$draft_key" ] || return 1
+  draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+  [ -n "$draft_file" ] || return 1
+  blog_read_front_matter_value "$draft_file" "$draft_key"
 }
 
-blog_draft_resolve_content_path() {
+blog_draft_read_content() {
   draft_id=${1-}
-  dir=$(blog_draft_resolve_dir "$draft_id" 2>/dev/null || printf '')
-  [ -n "$dir" ] || return 1
-  printf '%s/content.md\n' "$dir"
+  [ -n "$draft_id" ] || return 1
+  draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+  [ -n "$draft_file" ] || return 1
+  blog_read_markdown_body "$draft_file"
 }
 
 blog_draft_exists() {
-  [ -n "$(blog_draft_resolve_meta_path "$1" 2>/dev/null || printf '')" ]
+  [ -n "$(blog_draft_resolve_file_path "$1" 2>/dev/null || printf '')" ]
 }
 
 blog_save_draft() {
@@ -2474,12 +2558,10 @@ blog_save_draft() {
   scheduled_at=$8
   status=$9
 
-  dir=$(blog_draft_dir "$draft_id")
-  meta=$(blog_draft_meta_path "$draft_id")
-  body=$(blog_draft_content_path "$draft_id")
-  mkdir -p "$dir"
+  draft_file=$(blog_draft_file_path "$draft_id")
+  mkdir -p "$blog_drafts_dir"
 
-  created=$(config-get "$meta" created_at 2>/dev/null || printf '')
+  created=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
   if [ -z "$created" ]; then
     created=$(blog_now_iso)
   fi
@@ -2487,33 +2569,21 @@ blog_save_draft() {
   normalized_tags=$(blog_normalize_tags "$tags")
   slug=$(blog_slugify "$title")
   now_iso=$(blog_now_iso)
-
-  config-set "$meta" draft_id "$draft_id"
-  config-set "$meta" title "$title"
-  config-set "$meta" slug "$slug"
-  config-set "$meta" tags "$normalized_tags"
-  config-set "$meta" summary "$summary"
-  config-set "$meta" author "$author"
-  config-set "$meta" publish_mode "$publish_mode"
-  config-set "$meta" scheduled_at "$scheduled_at"
-  config-set "$meta" status "$status"
-  config-set "$meta" created_at "$created"
-  config-set "$meta" updated_at "$now_iso"
-
-  printf '%s' "$content" > "$body"
+  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content"
 }
 
 blog_delete_draft() {
   draft_id=$1
-  dir=$(blog_draft_resolve_dir "$draft_id" 2>/dev/null || printf '')
-  if [ -z "$dir" ]; then
-    dir=$(blog_draft_dir "$draft_id")
+  draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+  if [ -n "$draft_file" ]; then
+    rm -f "$draft_file"
+    return 0
   fi
-  rm -rf "$dir"
+  rm -f "$(blog_draft_file_path "$draft_id")"
 }
 
-blog_find_draft_meta() {
-  find "$blog_drafts_dir" -mindepth 2 -maxdepth 2 -type f -name meta.conf 2>/dev/null
+blog_find_draft_files() {
+  find "$blog_drafts_dir" -mindepth 1 -maxdepth 1 -type f -name '*.md' 2>/dev/null
 }
 
 blog_compute_post_filename() {
@@ -2757,12 +2827,12 @@ blog_run_scheduler() {
   due_file=$(mktemp "${TMPDIR:-/tmp}/blog-due.XXXXXX")
   trap 'rm -f "$due_file"; rm -rf "$lock_dir"' EXIT HUP INT TERM
 
-  blog_find_draft_meta | while IFS= read -r meta; do
-    mode=$(config-get "$meta" publish_mode 2>/dev/null || printf 'draft')
-    status=$(config-get "$meta" status 2>/dev/null || printf 'draft')
-    draft_id=$(config-get "$meta" draft_id 2>/dev/null || printf '')
+  blog_find_draft_files | while IFS= read -r draft_file; do
+    mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
+    status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
+    draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
     if [ "$mode" = "scheduled" ] && [ "$status" = "scheduled" ] && [ -n "$draft_id" ]; then
-      at=$(config-get "$meta" scheduled_at 2>/dev/null || printf '')
+      at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
       at_epoch=$(blog_iso_to_epoch "$at")
       if [ "$at_epoch" -gt 0 ] && [ "$at_epoch" -le "$now_epoch" ]; then
         printf 'scheduled|%s|%s\n' "$at_epoch" "$draft_id"
@@ -2772,20 +2842,18 @@ blog_run_scheduler() {
 
   if [ -s "$due_file" ]; then
     while IFS='|' read -r _ at_epoch draft_id; do
-      meta=$(blog_draft_meta_path "$draft_id")
-      body=$(blog_draft_content_path "$draft_id")
-      [ -f "$meta" ] || continue
-      [ -f "$body" ] || continue
+      draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+      [ -f "$draft_file" ] || continue
 
-      title=$(config-get "$meta" title 2>/dev/null || printf 'Untitled')
-      tags=$(config-get "$meta" tags 2>/dev/null || printf '')
-      summary=$(config-get "$meta" summary 2>/dev/null || printf '')
-      author=$(config-get "$meta" author 2>/dev/null || printf '')
+      title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+      tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+      summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+      author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
       author=$(blog_author_display_name "$author")
       if [ -z "$author" ]; then
         author='author'
       fi
-      content=$(cat "$body" 2>/dev/null || printf '')
+      content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
       if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" scheduled "$now_iso"); then
         continue
       fi
@@ -2803,12 +2871,12 @@ blog_run_scheduler() {
 
   if [ "$now_epoch" -ge "$next_drip" ]; then
     drip_file=$(mktemp "${TMPDIR:-/tmp}/blog-drip.XXXXXX")
-    blog_find_draft_meta | while IFS= read -r meta; do
-      mode=$(config-get "$meta" publish_mode 2>/dev/null || printf 'draft')
-      status=$(config-get "$meta" status 2>/dev/null || printf 'draft')
-      draft_id=$(config-get "$meta" draft_id 2>/dev/null || printf '')
+    blog_find_draft_files | while IFS= read -r draft_file; do
+      mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
+      status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
+      draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
       if [ "$mode" = "drip" ] && [ "$status" = "queued" ] && [ -n "$draft_id" ]; then
-        created=$(config-get "$meta" created_at 2>/dev/null || printf '')
+        created=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
         created_epoch=$(blog_iso_to_epoch "$created")
         printf '%s|%s\n' "$created_epoch" "$draft_id"
       fi
@@ -2817,18 +2885,17 @@ blog_run_scheduler() {
     if [ -s "$drip_file" ]; then
       first=$(head -n 1 "$drip_file")
       draft_id=${first#*|}
-      meta=$(blog_draft_meta_path "$draft_id")
-      body=$(blog_draft_content_path "$draft_id")
-      if [ -f "$meta" ] && [ -f "$body" ]; then
-        title=$(config-get "$meta" title 2>/dev/null || printf 'Untitled')
-        tags=$(config-get "$meta" tags 2>/dev/null || printf '')
-        summary=$(config-get "$meta" summary 2>/dev/null || printf '')
-        author=$(config-get "$meta" author 2>/dev/null || printf '')
+      draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
+      if [ -f "$draft_file" ]; then
+        title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+        tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+        summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+        author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
         author=$(blog_author_display_name "$author")
         if [ -z "$author" ]; then
           author='author'
         fi
-        content=$(cat "$body" 2>/dev/null || printf '')
+        content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
         if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" drip ""); then
           continue
         fi

@@ -231,22 +231,20 @@ blog_nostr_page_draft_path() {
   printf '%s/%s.json\n' "$blog_lists_dir" "$slug"
 }
 
+blog_nostr_page_mount_path() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  if [ "$slug" = "index" ]; then
+    printf '%s/site/pages/index.md\n' "$blog_site_root"
+  else
+    printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
+  fi
+}
+
 blog_nostr_page_source_path() {
   slug=$(blog_nostr_page_slug "${1-}")
-  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || return 1
-  case "$page_type" in
-    nip23)
-      if [ "$slug" = "index" ]; then
-        printf '%s/site/pages/index.md\n' "$blog_site_root"
-      else
-        printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
-      fi
-      ;;
-    *)
-      printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
-      ;;
-  esac
+  printf '%s/%s.md\n' "$blog_pages_store_dir" "$slug"
 }
 
 blog_nostr_page_load_draft_state_json() {
@@ -843,7 +841,7 @@ blog_nostr_pages_prune_stale_source_pages() {
   pages_dir=$blog_site_root/site/pages
   [ -d "$pages_dir" ] || return 0
 
-  find "$pages_dir" -maxdepth 1 -type f -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
+  find "$pages_dir" -maxdepth 1 \( -type f -o -type l \) -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
     [ -n "$page_file" ] || continue
     existing_type=$(blog_nostr_page_source_template_type "$page_file")
     case "$existing_type" in
@@ -864,11 +862,40 @@ blog_nostr_pages_prune_stale_source_pages() {
     fi
 
     current_type=$(printf '%s\n' "$current_row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
-    canonical_path=$(blog_nostr_page_source_path "$existing_slug" "$current_type" 2>/dev/null || printf '')
-    if [ -z "$canonical_path" ] || [ "$current_type" != "$existing_type" ] || [ "$page_file" != "$canonical_path" ]; then
+    mount_path=$(blog_nostr_page_mount_path "$existing_slug" 2>/dev/null || printf '')
+    if [ -z "$mount_path" ] || [ "$current_type" != "$existing_type" ] || [ "$page_file" != "$mount_path" ]; then
       rm -f "$page_file"
     fi
   done
+}
+
+blog_nostr_page_sync_mount() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$slug" ] || return 1
+  source_path=$(blog_nostr_page_source_path "$slug" "$page_type")
+  mount_path=$(blog_nostr_page_mount_path "$slug")
+  pages_dir=$(dirname "$mount_path")
+  mkdir -p "$pages_dir" "$blog_pages_store_dir"
+  [ -f "$source_path" ] || return 1
+
+  if [ -L "$mount_path" ]; then
+    target=$(readlink "$mount_path" 2>/dev/null || printf '')
+    if [ "$target" = "$source_path" ]; then
+      return 0
+    fi
+    rm -f "$mount_path"
+  elif [ -e "$mount_path" ]; then
+    existing_type=$(blog_nostr_page_source_template_type "$mount_path")
+    existing_slug=$(blog_nostr_page_source_template_slug "$mount_path")
+    if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+      rm -f "$mount_path"
+    else
+      return 0
+    fi
+  fi
+
+  ln -s "$source_path" "$mount_path"
 }
 
 blog_nostr_page_ensure_source_page() {
@@ -876,12 +903,24 @@ blog_nostr_page_ensure_source_page() {
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || return 1
   page_file=$(blog_nostr_page_source_path "$slug" "$page_type")
+  mount_path=$(blog_nostr_page_mount_path "$slug")
+  pages_dir=$(dirname "$mount_path")
+  mkdir -p "$pages_dir" "$blog_pages_store_dir"
+
+  if [ ! -f "$page_file" ] && [ ! -L "$page_file" ] && [ -f "$mount_path" ]; then
+    existing_type=$(blog_nostr_page_source_template_type "$mount_path")
+    existing_slug=$(blog_nostr_page_source_template_slug "$mount_path")
+    if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+      mv "$mount_path" "$page_file"
+    fi
+  fi
 
   if [ -f "$page_file" ]; then
     existing_type=$(blog_nostr_page_source_template_type "$page_file")
     case "$existing_type" in
       custom)
         # Preserve non-managed/custom pages.
+        blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
         return 0
         ;;
       missing)
@@ -889,6 +928,7 @@ blog_nostr_page_ensure_source_page() {
       *)
         existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
         if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+          blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
           return 0
         fi
         ;;
@@ -1060,4 +1100,21 @@ EOLIST
   esac
 
   chmod 644 "$page_file" 2>/dev/null || true
+  blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
+}
+
+blog_nostr_pages_sync_source_pages() {
+  cfg_json=${1-}
+  if [ -z "$cfg_json" ]; then
+    cfg_json=$(blog_nostr_pages_load_json)
+  fi
+
+  blog_nostr_pages_prune_stale_source_pages "$cfg_json"
+  printf '%s\n' "$cfg_json" | jq -c '.pages[]' | while IFS= read -r row || [ -n "$row" ]; do
+    [ -n "$row" ] || continue
+    slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+    page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+    [ -n "$slug" ] || continue
+    blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
+  done
 }

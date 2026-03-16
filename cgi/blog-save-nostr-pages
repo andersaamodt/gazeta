@@ -41,15 +41,7 @@ if [ "$contact_count" -gt 1 ]; then
   exit 0
 fi
 
-blog_nostr_pages_prune_stale_source_pages "$normalized"
-
-printf '%s\n' "$normalized" | jq -c '.pages[]' | while IFS= read -r row || [ -n "$row" ]; do
-  [ -n "$row" ] || continue
-  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
-  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
-  [ -n "$slug" ] || continue
-  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
-done
+blog_nostr_pages_sync_source_pages "$normalized"
 
 blog_nostr_pages_save_json "$normalized"
 blog_run_build_async
