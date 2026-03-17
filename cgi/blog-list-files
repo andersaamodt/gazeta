@@ -14,8 +14,6 @@ if ! blog_require_session true true; then
   exit 0
 fi
 
-blog_file_ensure_legacy_records
-
 tmp=$(mktemp "${TMPDIR:-/tmp}/blog-files.XXXXXX")
 find "$blog_file_records_dir" -mindepth 1 -maxdepth 1 -type f -name '*.conf' 2>/dev/null | while IFS= read -r file; do
   [ -f "$file" ] || continue
@@ -37,7 +35,6 @@ while IFS="$(printf '\t')" read -r _created record_path || [ -n "$record_path" ]
   draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
   post_path=$(config-get "$record_path" post_path 2>/dev/null || printf '')
   explicit_public=$(config-get "$record_path" explicit_public 2>/dev/null || printf 'false')
-  legacy_public=$(config-get "$record_path" legacy_public 2>/dev/null || printf 'false')
   url=$(blog_file_public_url_encoded "$file_id" "$safe_name")
   effective_public=false
   if blog_file_is_public_effective "$file_id"; then
@@ -57,7 +54,6 @@ while IFS="$(printf '\t')" read -r _created record_path || [ -n "$record_path" ]
   printf '"draft_id":"%s",' "$(blog_json_escape "$draft_id")"
   printf '"post_path":"%s",' "$(blog_json_escape "$post_path")"
   printf '"explicit_public":%s,' "$explicit_public"
-  printf '"legacy_public":%s,' "$legacy_public"
   printf '"effective_public":%s,' "$effective_public"
   printf '"url":"%s"' "$(blog_json_escape "$url")"
   printf '}'

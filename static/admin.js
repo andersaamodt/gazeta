@@ -2367,9 +2367,8 @@
       const postPath = String(file.post_path || '');
       const explicitPublic = !!file.explicit_public;
       const effectivePublic = !!file.effective_public;
-      const legacyPublic = !!file.legacy_public;
       const url = String(file.url || '');
-      const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : (legacyPublic ? 'Legacy public' : 'Public via post')) : 'Private';
+      const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : 'Private';
       const accessClass = effectivePublic ? ' is-public' : ' is-private';
       html += '<div class="post-row file-row">';
       html += '<div class="post-row-main file-row-main">';
@@ -2385,14 +2384,9 @@
       } else if (draftId) {
         html += '<span class="file-pill">Draft</span>';
       }
-      if (legacyPublic) {
-        html += '<span class="file-pill is-legacy">Legacy</span>';
-      }
       html += '</div>';
       html += '<div class="post-row-actions file-row-actions">';
-      if (!legacyPublic) {
-        html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '">' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
-      }
+      html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '">' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
       html += '<button type="button" class="unobtrusive-icon-button" data-file-action="copy-url" data-file-url="' + escapeAttr(url) + '"' +
         (effectivePublic ? '' : ' disabled') +
         ' aria-label="Copy file URL" title="' + (effectivePublic ? 'Copy file URL' : 'File is private') + '">' +

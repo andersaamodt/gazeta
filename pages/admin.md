@@ -2699,10 +2699,6 @@ body {
   color: #6e4f15;
 }
 
-.file-pill.is-legacy {
-  background: rgba(123, 93, 31, 0.12);
-}
-
 .file-row-actions {
   display: flex;
   align-items: center;

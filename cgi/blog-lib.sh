@@ -24,7 +24,6 @@ blog_drafts_dir="$blog_content_root/drafts"
 blog_lists_dir="$blog_state_dir/lists"
 blog_legacy_posts_store_dir="$blog_state_dir/posts"
 blog_legacy_drafts_dir="$blog_state_dir/drafts"
-blog_uploads_dir="$blog_site_data/uploads"
 blog_private_uploads_dir="$blog_site_data/private-uploads"
 blog_file_records_dir="$blog_site_data/file-records"
 blog_nostr_dir="$blog_site_data/nostr"
@@ -162,7 +161,7 @@ blog_migrate_legacy_drafts() {
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_private_uploads_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_private_uploads_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
   blog_migrate_legacy_posts
   blog_migrate_legacy_drafts
   blog_ensure_posts_mount
@@ -448,10 +447,6 @@ blog_file_is_public_effective() {
   if [ -n "$post_path" ] && [ -f "$blog_site_root/site/pages/$post_path" ]; then
     return 0
   fi
-  legacy_public=$(config-get "$record_path" legacy_public 2>/dev/null || printf 'false')
-  case "$legacy_public" in
-    true|1|yes|on) return 0 ;;
-  esac
   return 1
 }
 
@@ -466,7 +461,6 @@ blog_file_write_record() {
   draft_id=${8-}
   post_path=${9-}
   explicit_public=${10-false}
-  legacy_public=${11-false}
   record_path=$(blog_file_record_path "$file_id")
   [ -n "$created_at" ] || created_at=$(blog_now_iso)
   updated_at=$(blog_now_iso)
@@ -481,7 +475,6 @@ blog_file_write_record() {
   config-set "$record_path" draft_id "$draft_id"
   config-set "$record_path" post_path "$post_path"
   config-set "$record_path" explicit_public "$explicit_public"
-  config-set "$record_path" legacy_public "$legacy_public"
 }
 
 blog_file_create_upload() {
@@ -509,7 +502,7 @@ blog_file_create_upload() {
     mime_type=$(blog_file_content_type "$dest" application/octet-stream)
   fi
   storage_rel="$year/$month/${file_id}--$safe_name"
-  blog_file_write_record "$file_id" "$storage_rel" "$original_name" "$safe_name" "$mime_type" "$size_bytes" "$(blog_now_iso)" "$draft_id" "" false false
+  blog_file_write_record "$file_id" "$storage_rel" "$original_name" "$safe_name" "$mime_type" "$size_bytes" "$(blog_now_iso)" "$draft_id" "" false
   printf '%s\t%s\t%s\n' "$file_id" "$safe_name" "$(blog_file_public_url_encoded "$file_id" "$safe_name")"
 }
 
@@ -578,30 +571,7 @@ blog_file_resolve_disk_path() {
   [ -f "$record_path" ] || return 1
   storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
   [ -n "$storage_rel" ] || return 1
-  case "$storage_rel" in
-    ../uploads/*) printf '%s\n' "$blog_site_data/${storage_rel#../}" ; return 0 ;;
-  esac
   printf '%s/%s\n' "$blog_private_uploads_dir" "$storage_rel"
-}
-
-blog_file_ensure_legacy_records() {
-  [ -d "$blog_uploads_dir" ] || return 0
-  find "$blog_uploads_dir" -type f 2>/dev/null | while IFS= read -r file_path; do
-    [ -f "$file_path" ] || continue
-    rel=${file_path#"$blog_uploads_dir/"}
-    case "$rel" in
-      "$file_path") continue ;;
-    esac
-    file_id=$(printf 'legacy-%s' "$(printf '%s' "$rel" | sed 's#[^A-Za-z0-9._-]#-#g')")
-    if blog_file_record_exists "$file_id"; then
-      continue
-    fi
-    safe_name=$(blog_basename_safe "${file_path##*/}")
-    size_bytes=$(blog_file_size_bytes "$file_path" 2>/dev/null || printf '0')
-    mime_type=$(blog_file_content_type "$file_path" application/octet-stream)
-    created_at=$(blog_now_iso)
-    blog_file_write_record "$file_id" "../uploads/$rel" "$safe_name" "$safe_name" "$mime_type" "$size_bytes" "$created_at" "" "" true true
-  done
 }
 
 blog_to_base64url() {
