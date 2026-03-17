@@ -22,10 +22,12 @@ blog_state_dir="$blog_site_data/blog"
 blog_pages_store_dir="$blog_content_root/pages"
 blog_drafts_dir="$blog_content_root/drafts"
 blog_lists_dir="$blog_state_dir/lists"
+blog_files_dir="$blog_state_dir/files"
+blog_files_inbox_dir="$blog_files_dir/inbox"
+blog_files_private_dir="$blog_files_dir/private"
+blog_file_records_dir="$blog_files_dir/records"
 blog_legacy_posts_store_dir="$blog_state_dir/posts"
 blog_legacy_drafts_dir="$blog_state_dir/drafts"
-blog_private_uploads_dir="$blog_site_data/private-uploads"
-blog_file_records_dir="$blog_site_data/file-records"
 blog_nostr_dir="$blog_site_data/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
 blog_nostr_events_dir="$blog_nostr_dir/events"
@@ -86,6 +88,20 @@ blog_migrate_legacy_posts() {
     fi
   done
   rmdir "$blog_legacy_posts_store_dir" 2>/dev/null || true
+}
+
+blog_file_private_dir_for_id() {
+  file_id=${1-}
+  [ -n "$file_id" ] || return 1
+  printf '%s/%s\n' "$blog_files_private_dir" "$file_id"
+}
+
+blog_file_storage_rel() {
+  file_id=${1-}
+  safe_name=${2-}
+  [ -n "$file_id" ] || return 1
+  [ -n "$safe_name" ] || return 1
+  printf '%s/%s\n' "$file_id" "$safe_name"
 }
 
 blog_draft_file_path() {
@@ -161,7 +177,7 @@ blog_migrate_legacy_drafts() {
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_private_uploads_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_files_dir" "$blog_files_inbox_dir" "$blog_files_private_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
   blog_migrate_legacy_posts
   blog_migrate_legacy_drafts
   blog_ensure_posts_mount
@@ -477,6 +493,30 @@ blog_file_write_record() {
   config-set "$record_path" explicit_public "$explicit_public"
 }
 
+blog_file_import_inbox() {
+  [ -d "$blog_files_inbox_dir" ] || return 0
+  find "$blog_files_inbox_dir" -mindepth 1 -maxdepth 1 -type f 2>/dev/null | while IFS= read -r inbox_path; do
+    [ -f "$inbox_path" ] || continue
+    original_name=${inbox_path##*/}
+    case "$original_name" in
+      .DS_Store) rm -f "$inbox_path"; continue ;;
+    esac
+    safe_name=$(blog_basename_safe "$original_name")
+    file_id=$(blog_random_token 18)
+    new_dir=$(blog_file_private_dir_for_id "$file_id")
+    new_storage_rel=$(blog_file_storage_rel "$file_id" "$safe_name")
+    new_path="$blog_files_private_dir/$new_storage_rel"
+    mkdir -p "$new_dir"
+    if ! mv "$inbox_path" "$new_path"; then
+      continue
+    fi
+    chmod 600 "$new_path" 2>/dev/null || true
+    mime_type=$(blog_file_content_type "$new_path" application/octet-stream)
+    size_bytes=$(blog_file_size_bytes "$new_path" 2>/dev/null || printf '0')
+    blog_file_write_record "$file_id" "$new_storage_rel" "$original_name" "$safe_name" "$mime_type" "$size_bytes" "$(blog_now_iso)" "" "" false
+  done
+}
+
 blog_file_create_upload() {
   original_name=${1-}
   mime_type=${2-}
@@ -487,11 +527,9 @@ blog_file_create_upload() {
 
   safe_name=$(blog_basename_safe "$original_name")
   file_id=$(blog_random_token 18)
-  year=$(date -u +%Y)
-  month=$(date -u +%m)
-  dest_dir="$blog_private_uploads_dir/$year/$month"
+  dest_dir=$(blog_file_private_dir_for_id "$file_id")
   mkdir -p "$dest_dir"
-  dest="$dest_dir/${file_id}--$safe_name"
+  dest="$dest_dir/$safe_name"
   if ! blog_b64_to_file "$data_b64" "$dest"; then
     rm -f "$dest"
     return 1
@@ -501,7 +539,7 @@ blog_file_create_upload() {
   if [ -z "$mime_type" ]; then
     mime_type=$(blog_file_content_type "$dest" application/octet-stream)
   fi
-  storage_rel="$year/$month/${file_id}--$safe_name"
+  storage_rel=$(blog_file_storage_rel "$file_id" "$safe_name")
   blog_file_write_record "$file_id" "$storage_rel" "$original_name" "$safe_name" "$mime_type" "$size_bytes" "$(blog_now_iso)" "$draft_id" "" false
   printf '%s\t%s\t%s\n' "$file_id" "$safe_name" "$(blog_file_public_url_encoded "$file_id" "$safe_name")"
 }
@@ -571,7 +609,7 @@ blog_file_resolve_disk_path() {
   [ -f "$record_path" ] || return 1
   storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
   [ -n "$storage_rel" ] || return 1
-  printf '%s/%s\n' "$blog_private_uploads_dir" "$storage_rel"
+  printf '%s/%s\n' "$blog_files_private_dir" "$storage_rel"
 }
 
 blog_to_base64url() {

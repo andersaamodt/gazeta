@@ -452,6 +452,7 @@ title: Blog Admin
 <div>
 <h3>Files</h3>
 <p class="muted">Attachments are private by default. Public posts can expose attached files automatically, or you can share a file explicitly.</p>
+<p class="muted">Synced drop folder: <code>blog/files/inbox/</code>. Anything you drop there is imported the next time this page loads.</p>
 </div>
 <div class="row-actions files-head-actions">
 <div id="files-upload-summary" class="files-upload-summary" hidden></div>
