@@ -5,7 +5,7 @@
 
   --primary: #234a9d;
   --accent: #2f5fb8;
-  --accent-dark: #244d9c;
+  --accent-dark: #6a4fa3;
   --teal: #23775e;
   --green: #2c8b6e;
   --purple: #6a4fa3;
@@ -27,7 +27,7 @@
   --shadow: rgba(46, 34, 20, 0.14);
 
   --nav-link-hover: rgba(47, 95, 184, 0.11);
-  --nav-link-active: #2f5fb8;
+  --nav-link-active: #6a4fa3;
   --nav-icon: #2c8b6e;
   --nav-icon-hover: #1e6f56;
   --nav-search-icon: #6a4fa3;
@@ -43,11 +43,11 @@
   --nav-border: rgba(175, 145, 88, 0.36);
   --accent-hover-end: #1d3f84;
   --button-primary-start: var(--lapis);
-  --button-primary-end: #234b8f;
-  --button-primary-hover-start: #3a6ec4;
-  --button-primary-hover-end: #1f4382;
-  --button-primary-active-start: #1c3a72;
-  --button-primary-active-end: #16325f;
+  --button-primary-end: var(--amethyst);
+  --button-primary-hover-start: #5d488f;
+  --button-primary-hover-end: #2a569f;
+  --button-primary-active-start: #4f3d7f;
+  --button-primary-active-end: #234b8f;
   --button-primary-border: color-mix(in srgb, var(--gold-leaf) 65%, var(--button-primary-end) 35%);
   --button-primary-overlay:
     radial-gradient(circle at 18% 28%, rgba(198, 163, 82, 0.42) 0 1px, transparent 1.7px),
@@ -222,15 +222,15 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      #3d73cb 0%,
-      var(--lapis) 34%,
-      #2a569f 72%,
-      #234b8f 100%
+      color-mix(in srgb, var(--lapis) 90%, var(--amethyst) 10%) 0%,
+      var(--lapis) 32%,
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 72%,
+      color-mix(in srgb, var(--amethyst) 74%, var(--lapis) 26%) 100%
     );
-  border: 0;
+  border: 1px solid var(--button-primary-border);
   color: var(--button-primary-text);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.38) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
@@ -251,9 +251,9 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      #487fd6 0%,
-      #2f5fb8 42%,
-      #1f4382 100%
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 0%,
+      color-mix(in srgb, var(--lapis) 78%, var(--amethyst) 22%) 42%,
+      var(--amethyst) 100%
     );
   color: var(--button-primary-text);
 }
@@ -267,14 +267,14 @@ strong {
 
 .btn-login,
 .list-page-admin-bar .list-admin-primary-btn {
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, #3d73cb 0%, #234b8f 100%);
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--lapis) 0%, var(--amethyst) 100%);
   border-color: var(--button-primary-border);
   color: var(--button-primary-text);
 }
 
 .btn-login:hover,
 .list-page-admin-bar .list-admin-primary-btn:hover {
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, #487fd6 0%, #1f4382 100%);
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--amethyst) 0%, var(--lapis) 100%);
 }
 
 .btn-login:not(.btn-login-main):not(.btn-login-caret),
