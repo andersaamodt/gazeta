@@ -721,8 +721,15 @@ blog_read_request_body() {
 blog_param_decode_component() {
   value=${1-}
   value=$(printf '%s' "$value" | tr '+' ' ')
+  case "$value" in
+    *%*) ;;
+    *)
+      printf '%s' "$value"
+      return 0
+      ;;
+  esac
   if command -v url-decode >/dev/null 2>&1; then
-    printf '%s' "$value" | url-decode
+    url-decode "$value"
     return 0
   fi
   escaped=$(printf '%s' "$value" | sed 's/%/\\x/g')
@@ -734,14 +741,13 @@ blog_param_lookup() {
   source=${2-}
   [ -n "$key" ] || return 1
   [ -n "$source" ] || return 1
-  if command -v get-query-param >/dev/null 2>&1; then
-    helper_val=$(get-query-param "$key" "$source" 2>/dev/null || printf '')
-    if [ -n "$helper_val" ]; then
-      printf '%s\n' "$helper_val"
-      return 0
-    fi
-  fi
-  encoded=$(printf '&%s' "$source" | sed -n "s/.*&${key}=\\([^&]*\\).*/\\1/p")
+  encoded=$(printf '%s' "$source" | awk -v key="$key" '
+    BEGIN { RS = "&" }
+    index($0, key "=") == 1 {
+      print substr($0, length(key) + 2)
+      exit
+    }
+  ')
   [ -n "$encoded" ] || return 1
   blog_param_decode_component "$encoded"
   printf '\n'
