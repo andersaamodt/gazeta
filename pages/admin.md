@@ -1844,18 +1844,6 @@ body {
   transform: translateY(-1px);
 }
 
-#admin-panel button.primary {
-  background: linear-gradient(180deg, #2f58b1 0%, #29499b 100%);
-  border-color: #2b4ea3;
-  color: #fff;
-}
-
-#admin-panel button.primary:hover {
-  background: linear-gradient(180deg, #2a4ea0 0%, #243f85 100%);
-  border-color: #24458f;
-  color: #fff;
-}
-
 #admin-panel .row-actions button.primary {
   font-size: 0.84rem;
   font-weight: 520;
