@@ -14,7 +14,7 @@ if ! blog_require_session true true; then
   exit 0
 fi
 
-blog_file_import_inbox
+blog_file_index_untracked
 
 tmp=$(mktemp "${TMPDIR:-/tmp}/blog-files.XXXXXX")
 find "$blog_file_records_dir" -mindepth 1 -maxdepth 1 -type f -name '*.conf' 2>/dev/null | while IFS= read -r file; do
