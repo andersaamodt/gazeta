@@ -1,0 +1,69 @@
+#!/bin/sh
+# Serve a private/public attachment.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+
+file_id=$(blog_param file_id)
+req_token=$(blog_param session_token)
+req_csrf=$(blog_param csrf_token)
+record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'File not found\n'
+  exit 0
+fi
+
+is_admin=false
+if [ -n "$req_token" ] && blog_load_session "$req_token"; then
+  if [ -n "$req_csrf" ] && [ "$req_csrf" = "$BLOG_SESSION_CSRF" ] && blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+    is_admin=true
+    blog_extend_session
+  fi
+fi
+
+if [ "$is_admin" != "true" ] && ! blog_file_is_public_effective "$file_id"; then
+  http-status 403 "Forbidden"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'File is private\n'
+  exit 0
+fi
+
+file_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
+if [ -z "$file_path" ] || [ ! -f "$file_path" ]; then
+  http-status 404 "Not Found"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'File not found\n'
+  exit 0
+fi
+
+mime_type=$(config-get "$record_path" mime_type 2>/dev/null || printf '')
+if [ -z "$mime_type" ]; then
+  mime_type=$(blog_file_content_type "$file_path" application/octet-stream)
+fi
+safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf 'download.bin')
+size_bytes=$(blog_file_size_bytes "$file_path" 2>/dev/null || printf '')
+disposition='inline'
+case "$mime_type" in
+  image/*|audio/*|video/*|text/*|application/pdf) disposition='inline' ;;
+  *) disposition='attachment' ;;
+esac
+
+http-status 200 "OK"
+http-header "Content-Type" "$mime_type"
+http-header "Cache-Control" "public, max-age=300"
+http-header "Content-Disposition" "$disposition; filename=\"$safe_name\""
+if [ -n "$size_bytes" ]; then
+  http-header "Content-Length" "$size_bytes"
+fi
+http-end-headers
+cat "$file_path"

@@ -25,6 +25,8 @@ blog_lists_dir="$blog_state_dir/lists"
 blog_legacy_posts_store_dir="$blog_state_dir/posts"
 blog_legacy_drafts_dir="$blog_state_dir/drafts"
 blog_uploads_dir="$blog_site_data/uploads"
+blog_private_uploads_dir="$blog_site_data/private-uploads"
+blog_file_records_dir="$blog_site_data/file-records"
 blog_nostr_dir="$blog_site_data/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
 blog_nostr_events_dir="$blog_nostr_dir/events"
@@ -160,7 +162,7 @@ blog_migrate_legacy_drafts() {
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_uploads_dir" "$blog_private_uploads_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
   blog_migrate_legacy_posts
   blog_migrate_legacy_drafts
   blog_ensure_posts_mount
@@ -365,6 +367,241 @@ blog_b64_to_file() {
   fi
 
   return 1
+}
+
+blog_basename_safe() {
+  raw_name=${1-}
+  safe_name=${raw_name##*/}
+  safe_name=$(printf '%s' "$safe_name" | sed 's/[^A-Za-z0-9._-]/-/g')
+  safe_name=$(printf '%s' "$safe_name" | sed 's/^[.-][.-]*/file/; s/--*/-/g')
+  if [ -z "$safe_name" ]; then
+    safe_name=file
+  fi
+  printf '%s\n' "$safe_name"
+}
+
+blog_file_record_path() {
+  file_id=${1-}
+  [ -n "$file_id" ] || return 1
+  printf '%s/%s.conf\n' "$blog_file_records_dir" "$file_id"
+}
+
+blog_file_now_epoch() {
+  date -u +%s 2>/dev/null || printf '0\n'
+}
+
+blog_file_size_bytes() {
+  file_path=${1-}
+  [ -f "$file_path" ] || return 1
+  wc -c < "$file_path" | tr -d '[:space:]'
+}
+
+blog_file_content_type() {
+  file_path=${1-}
+  fallback=${2-application/octet-stream}
+  if command -v file >/dev/null 2>&1 && [ -f "$file_path" ]; then
+    detected=$(file -b --mime-type "$file_path" 2>/dev/null || printf '')
+    if [ -n "$detected" ]; then
+      printf '%s\n' "$detected"
+      return 0
+    fi
+  fi
+  printf '%s\n' "$fallback"
+}
+
+blog_file_public_url() {
+  file_id=${1-}
+  safe_name=${2-}
+  [ -n "$file_id" ] || return 1
+  printf '/cgi/blog-file?file_id=%s' "$(blog_json_escape "$file_id" | sed 's/\\u0026/\&/g')"
+  if [ -n "$safe_name" ]; then
+    printf '&name=%s' "$(blog_json_escape "$safe_name" | sed 's/\\u0026/\&/g')"
+  fi
+  printf '\n'
+}
+
+blog_file_public_url_encoded() {
+  file_id=${1-}
+  safe_name=${2-}
+  [ -n "$file_id" ] || return 1
+  printf '/cgi/blog-file?file_id=%s' "$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]/-/g')"
+  if [ -n "$safe_name" ]; then
+    printf '&name=%s' "$(printf '%s' "$safe_name" | sed 's/[^A-Za-z0-9._~-]/-/g')"
+  fi
+  printf '\n'
+}
+
+blog_file_record_exists() {
+  record_path=$(blog_file_record_path "${1-}" 2>/dev/null || printf '')
+  [ -n "$record_path" ] && [ -f "$record_path" ]
+}
+
+blog_file_is_public_effective() {
+  file_id=${1-}
+  record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+  [ -f "$record_path" ] || return 1
+  explicit_public=$(config-get "$record_path" explicit_public 2>/dev/null || printf 'false')
+  case "$explicit_public" in
+    true|1|yes|on) return 0 ;;
+  esac
+  post_path=$(config-get "$record_path" post_path 2>/dev/null || printf '')
+  if [ -n "$post_path" ] && [ -f "$blog_site_root/site/pages/$post_path" ]; then
+    return 0
+  fi
+  legacy_public=$(config-get "$record_path" legacy_public 2>/dev/null || printf 'false')
+  case "$legacy_public" in
+    true|1|yes|on) return 0 ;;
+  esac
+  return 1
+}
+
+blog_file_write_record() {
+  file_id=${1-}
+  storage_rel=${2-}
+  original_name=${3-}
+  safe_name=${4-}
+  mime_type=${5-}
+  size_bytes=${6-0}
+  created_at=${7-}
+  draft_id=${8-}
+  post_path=${9-}
+  explicit_public=${10-false}
+  legacy_public=${11-false}
+  record_path=$(blog_file_record_path "$file_id")
+  [ -n "$created_at" ] || created_at=$(blog_now_iso)
+  updated_at=$(blog_now_iso)
+  config-set "$record_path" file_id "$file_id"
+  config-set "$record_path" storage_rel "$storage_rel"
+  config-set "$record_path" original_name "$original_name"
+  config-set "$record_path" safe_name "$safe_name"
+  config-set "$record_path" mime_type "$mime_type"
+  config-set "$record_path" size_bytes "$size_bytes"
+  config-set "$record_path" created_at "$created_at"
+  config-set "$record_path" updated_at "$updated_at"
+  config-set "$record_path" draft_id "$draft_id"
+  config-set "$record_path" post_path "$post_path"
+  config-set "$record_path" explicit_public "$explicit_public"
+  config-set "$record_path" legacy_public "$legacy_public"
+}
+
+blog_file_create_upload() {
+  original_name=${1-}
+  mime_type=${2-}
+  data_b64=${3-}
+  draft_id=${4-}
+  [ -n "$original_name" ] || return 1
+  [ -n "$data_b64" ] || return 1
+
+  safe_name=$(blog_basename_safe "$original_name")
+  file_id=$(blog_random_token 18)
+  year=$(date -u +%Y)
+  month=$(date -u +%m)
+  dest_dir="$blog_private_uploads_dir/$year/$month"
+  mkdir -p "$dest_dir"
+  dest="$dest_dir/${file_id}--$safe_name"
+  if ! blog_b64_to_file "$data_b64" "$dest"; then
+    rm -f "$dest"
+    return 1
+  fi
+  chmod 600 "$dest" 2>/dev/null || true
+  size_bytes=$(blog_file_size_bytes "$dest" 2>/dev/null || printf '0')
+  if [ -z "$mime_type" ]; then
+    mime_type=$(blog_file_content_type "$dest" application/octet-stream)
+  fi
+  storage_rel="$year/$month/${file_id}--$safe_name"
+  blog_file_write_record "$file_id" "$storage_rel" "$original_name" "$safe_name" "$mime_type" "$size_bytes" "$(blog_now_iso)" "$draft_id" "" false false
+  printf '%s\t%s\t%s\n' "$file_id" "$safe_name" "$(blog_file_public_url_encoded "$file_id" "$safe_name")"
+}
+
+blog_file_ids_from_text() {
+  content=${1-}
+  if [ -z "$content" ]; then
+    return 0
+  fi
+  printf '%s\n' "$content" | tr '&' '\n' | sed -n 's/.*file_id=\([A-Za-z0-9._~-][A-Za-z0-9._~-]*\).*/\1/p' | awk '!seen[$0]++'
+}
+
+blog_file_sync_draft_refs() {
+  draft_id=${1-}
+  content=${2-}
+  [ -n "$draft_id" ] || return 0
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    current_draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
+    if [ "$current_draft_id" = "$draft_id" ]; then
+      config-set "$record_path" draft_id ""
+      config-set "$record_path" updated_at "$(blog_now_iso)"
+    fi
+  done
+  blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
+    [ -n "$file_id" ] || continue
+    record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+    [ -f "$record_path" ] || continue
+    config-set "$record_path" draft_id "$draft_id"
+    config-set "$record_path" updated_at "$(blog_now_iso)"
+  done
+}
+
+blog_file_clear_draft_refs() {
+  draft_id=${1-}
+  [ -n "$draft_id" ] || return 0
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    current_draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
+    if [ "$current_draft_id" = "$draft_id" ]; then
+      config-set "$record_path" draft_id ""
+      config-set "$record_path" updated_at "$(blog_now_iso)"
+    fi
+  done
+}
+
+blog_file_promote_refs_to_post() {
+  draft_id=${1-}
+  content=${2-}
+  post_path=${3-}
+  [ -n "$post_path" ] || return 0
+  blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
+    [ -n "$file_id" ] || continue
+    record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+    [ -f "$record_path" ] || continue
+    config-set "$record_path" post_path "$post_path"
+    if [ -n "$draft_id" ]; then
+      config-set "$record_path" draft_id ""
+    fi
+    config-set "$record_path" updated_at "$(blog_now_iso)"
+  done
+}
+
+blog_file_resolve_disk_path() {
+  file_id=${1-}
+  record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+  [ -f "$record_path" ] || return 1
+  storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
+  [ -n "$storage_rel" ] || return 1
+  case "$storage_rel" in
+    ../uploads/*) printf '%s\n' "$blog_site_data/${storage_rel#../}" ; return 0 ;;
+  esac
+  printf '%s/%s\n' "$blog_private_uploads_dir" "$storage_rel"
+}
+
+blog_file_ensure_legacy_records() {
+  [ -d "$blog_uploads_dir" ] || return 0
+  find "$blog_uploads_dir" -type f 2>/dev/null | while IFS= read -r file_path; do
+    [ -f "$file_path" ] || continue
+    rel=${file_path#"$blog_uploads_dir/"}
+    case "$rel" in
+      "$file_path") continue ;;
+    esac
+    file_id=$(printf 'legacy-%s' "$(printf '%s' "$rel" | sed 's#[^A-Za-z0-9._-]#-#g')")
+    if blog_file_record_exists "$file_id"; then
+      continue
+    fi
+    safe_name=$(blog_basename_safe "${file_path##*/}")
+    size_bytes=$(blog_file_size_bytes "$file_path" 2>/dev/null || printf '0')
+    mime_type=$(blog_file_content_type "$file_path" application/octet-stream)
+    created_at=$(blog_now_iso)
+    blog_file_write_record "$file_id" "../uploads/$rel" "$safe_name" "$safe_name" "$mime_type" "$size_bytes" "$created_at" "" "" true true
+  done
 }
 
 blog_to_base64url() {
@@ -2570,10 +2807,12 @@ blog_save_draft() {
   slug=$(blog_slugify "$title")
   now_iso=$(blog_now_iso)
   blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content"
+  blog_file_sync_draft_refs "$draft_id" "$content"
 }
 
 blog_delete_draft() {
   draft_id=$1
+  blog_file_clear_draft_refs "$draft_id"
   draft_file=$(blog_draft_resolve_file_path "$draft_id" 2>/dev/null || printf '')
   if [ -n "$draft_file" ]; then
     rm -f "$draft_file"
@@ -2648,6 +2887,9 @@ blog_publish_content_markdown() {
     printf '%s\n' "$content"
   } > "$post_path"
 
+  rel_post_path=${post_path#"$blog_site_root/site/pages/"}
+  blog_file_promote_refs_to_post "$draft_id" "$content" "$rel_post_path"
+
   printf '%s\n' "$filename"
 }
 
@@ -2658,7 +2900,7 @@ blog_publish_content_nostr() {
   summary=$3
   content=$4
   _author=$5
-  _draft_id=$6
+  draft_id=$6
   _publish_mode=$7
   _scheduled_at=$8
 
@@ -2686,6 +2928,16 @@ blog_publish_content_nostr() {
     return 1
   fi
   blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+  blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
+    [ -n "$file_id" ] || continue
+    record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+    [ -f "$record_path" ] || continue
+    config-set "$record_path" explicit_public true
+    if [ -n "$draft_id" ]; then
+      config-set "$record_path" draft_id ""
+    fi
+    config-set "$record_path" updated_at "$(blog_now_iso)"
+  done
 
   slug=$(blog_slugify "$d_tag")
   printf '%s.md\n' "$slug"

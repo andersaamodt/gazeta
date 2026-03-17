@@ -1,0 +1,67 @@
+#!/bin/sh
+# List uploaded attachments (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+blog_file_ensure_legacy_records
+
+tmp=$(mktemp "${TMPDIR:-/tmp}/blog-files.XXXXXX")
+find "$blog_file_records_dir" -mindepth 1 -maxdepth 1 -type f -name '*.conf' 2>/dev/null | while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  created_at=$(config-get "$file" created_at 2>/dev/null || printf '')
+  printf '%s\t%s\n' "$created_at" "$file"
+done | sort -r > "$tmp"
+
+printf '{"success":true,"files":['
+first=1
+while IFS="$(printf '\t')" read -r _created record_path || [ -n "$record_path" ]; do
+  [ -f "$record_path" ] || continue
+  file_id=$(config-get "$record_path" file_id 2>/dev/null || printf '')
+  [ -n "$file_id" ] || continue
+  original_name=$(config-get "$record_path" original_name 2>/dev/null || printf '')
+  safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf '')
+  mime_type=$(config-get "$record_path" mime_type 2>/dev/null || printf 'application/octet-stream')
+  size_bytes=$(config-get "$record_path" size_bytes 2>/dev/null || printf '0')
+  created_at=$(config-get "$record_path" created_at 2>/dev/null || printf '')
+  draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
+  post_path=$(config-get "$record_path" post_path 2>/dev/null || printf '')
+  explicit_public=$(config-get "$record_path" explicit_public 2>/dev/null || printf 'false')
+  legacy_public=$(config-get "$record_path" legacy_public 2>/dev/null || printf 'false')
+  url=$(blog_file_public_url_encoded "$file_id" "$safe_name")
+  effective_public=false
+  if blog_file_is_public_effective "$file_id"; then
+    effective_public=true
+  fi
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+  printf '{'
+  printf '"file_id":"%s",' "$(blog_json_escape "$file_id")"
+  printf '"original_name":"%s",' "$(blog_json_escape "$original_name")"
+  printf '"safe_name":"%s",' "$(blog_json_escape "$safe_name")"
+  printf '"mime_type":"%s",' "$(blog_json_escape "$mime_type")"
+  printf '"size_bytes":"%s",' "$(blog_json_escape "$size_bytes")"
+  printf '"created_at":"%s",' "$(blog_json_escape "$created_at")"
+  printf '"draft_id":"%s",' "$(blog_json_escape "$draft_id")"
+  printf '"post_path":"%s",' "$(blog_json_escape "$post_path")"
+  printf '"explicit_public":%s,' "$explicit_public"
+  printf '"legacy_public":%s,' "$legacy_public"
+  printf '"effective_public":%s,' "$effective_public"
+  printf '"url":"%s"' "$(blog_json_escape "$url")"
+  printf '}'
+done < "$tmp"
+printf ']}'
+printf '\n'
+rm -f "$tmp"
