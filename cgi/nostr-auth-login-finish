@@ -105,10 +105,13 @@ if [ -z "$ev_pubkey" ]; then
 fi
 
 kind=$(printf '%s\n' "$event_json" | jq -r '.kind // 0' 2>/dev/null || printf '0')
-if [ "$kind" != "22242" ]; then
-  blog_json_error "Login event kind must be 22242" "invalid_kind"
-  exit 0
-fi
+case "$kind" in
+  22242|27235) ;;
+  *)
+    blog_json_error "Login event kind must be 22242 or 27235" "invalid_kind"
+    exit 0
+    ;;
+esac
 
 challenge_ok=$(printf '%s\n' "$event_json" | jq -r --arg c "$req_challenge" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="challenge" and .[1]==$c)] | length' 2>/dev/null || printf '0')
 case "$challenge_ok" in ''|*[!0-9]*) challenge_ok=0 ;; esac
