@@ -692,11 +692,40 @@ blog_read_request_body() {
   BLOG_REQUEST_BODY=$(cat 2>/dev/null || true)
 }
 
+blog_param_decode_component() {
+  value=${1-}
+  value=$(printf '%s' "$value" | tr '+' ' ')
+  if command -v url-decode >/dev/null 2>&1; then
+    printf '%s' "$value" | url-decode
+    return 0
+  fi
+  escaped=$(printf '%s' "$value" | sed 's/%/\\x/g')
+  printf '%b' "$escaped"
+}
+
+blog_param_lookup() {
+  key=${1-}
+  source=${2-}
+  [ -n "$key" ] || return 1
+  [ -n "$source" ] || return 1
+  if command -v get-query-param >/dev/null 2>&1; then
+    helper_val=$(get-query-param "$key" "$source" 2>/dev/null || printf '')
+    if [ -n "$helper_val" ]; then
+      printf '%s\n' "$helper_val"
+      return 0
+    fi
+  fi
+  encoded=$(printf '&%s' "$source" | sed -n "s/.*&${key}=\\([^&]*\\).*/\\1/p")
+  [ -n "$encoded" ] || return 1
+  blog_param_decode_component "$encoded"
+  printf '\n'
+}
+
 blog_param() {
   key=${1-}
-  val=$(get-query-param "$key" "${QUERY_STRING-}" 2>/dev/null || printf '')
+  val=$(blog_param_lookup "$key" "${QUERY_STRING-}" 2>/dev/null || printf '')
   if [ -n "${BLOG_REQUEST_BODY-}" ]; then
-    body_val=$(get-query-param "$key" "$BLOG_REQUEST_BODY" 2>/dev/null || printf '')
+    body_val=$(blog_param_lookup "$key" "$BLOG_REQUEST_BODY" 2>/dev/null || printf '')
     if [ -n "$body_val" ]; then
       val=$body_val
     fi
