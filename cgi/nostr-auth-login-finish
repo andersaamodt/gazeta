@@ -24,6 +24,7 @@ event_json=$(blog_param event_json)
 event_json_b64=$(blog_param event_json_b64)
 delegation_json=$(blog_param delegation_json)
 delegation_json_b64=$(blog_param delegation_json_b64)
+signer_pubkey_hint=$(blog_param signer_pubkey_hint)
 force_interactive=$(blog_param force_interactive)
 username_hint=$(blog_param username_hint)
 case "$force_interactive" in
@@ -31,6 +32,7 @@ case "$force_interactive" in
   *) force_interactive=false ;;
 esac
 username_hint=$(printf '%s' "$username_hint" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+signer_pubkey_hint=$(blog_validate_nostr_pubkey "$signer_pubkey_hint" 2>/dev/null || printf '')
 
 if [ -n "$event_json_b64" ]; then
   event_json=$(blog_b64_decode_text "$event_json_b64" 2>/dev/null || printf '')
@@ -69,13 +71,34 @@ if [ -z "$event_json" ]; then
   blog_json_error "event_json must be valid JSON" "invalid_event_json"
   exit 0
 fi
-if ! blog_nostr_verify_event_json "$event_json"; then
+
+ev_pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+ev_pubkey=$(blog_validate_nostr_pubkey "$ev_pubkey" 2>/dev/null || printf '')
+verified=false
+if blog_nostr_verify_event_json "$event_json"; then
+  verified=true
+fi
+
+if [ "$verified" != "true" ] || [ -z "$ev_pubkey" ]; then
+  repaired_event_json=''
+  for candidate_pubkey in "$signer_pubkey_hint" "$req_pubkey_hint"; do
+    [ -n "$candidate_pubkey" ] || continue
+    repaired_event_json=$(printf '%s\n' "$event_json" | jq -c --arg pubkey "$candidate_pubkey" '.pubkey = $pubkey' 2>/dev/null || printf '')
+    [ -n "$repaired_event_json" ] || continue
+    if blog_nostr_verify_event_json "$repaired_event_json"; then
+      event_json=$repaired_event_json
+      ev_pubkey=$candidate_pubkey
+      verified=true
+      break
+    fi
+  done
+fi
+
+if [ "$verified" != "true" ]; then
   blog_json_error "Invalid Nostr signature" "invalid_signature"
   exit 0
 fi
 
-ev_pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
-ev_pubkey=$(blog_validate_nostr_pubkey "$ev_pubkey" 2>/dev/null || printf '')
 if [ -z "$ev_pubkey" ]; then
   blog_json_error "Signed event is missing a valid pubkey" "invalid_pubkey"
   exit 0

@@ -962,15 +962,19 @@
       });
   }
 
-  function finishLogin(requestId, signedEvent, delegationEvent, forceInteractive, usernameHint) {
+  function finishLogin(requestId, signedEvent, delegationEvent, forceInteractive, usernameHint, signerPubkeyHint) {
     var payload = {
       request_id: requestId,
       event_json_b64: encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(signedEvent))),
       force_interactive: forceInteractive ? 'true' : 'false'
     };
+    var normalizedSignerPubkeyHint = normalizePubkeyHex(signerPubkeyHint);
     var desiredUsername = String(usernameHint || '').trim();
     if (desiredUsername) {
       payload.username_hint = desiredUsername;
+    }
+    if (normalizedSignerPubkeyHint) {
+      payload.signer_pubkey_hint = normalizedSignerPubkeyHint;
     }
     if (delegationEvent) {
       payload.delegation_json_b64 = encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(delegationEvent)));
@@ -1545,7 +1549,8 @@
           payload.signedAuth,
           null,
           false,
-          usernameHint
+          usernameHint,
+          payload.userPubkey
         );
       })
       .then(function (finish) {
