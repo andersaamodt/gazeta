@@ -3436,13 +3436,15 @@ body {
 }
 
 #admin-panel button.primary {
-  background: linear-gradient(180deg, var(--admin-accent, var(--accent)) 0%, var(--admin-accent-strong, var(--accent-dark)) 100%);
-  border-color: var(--admin-accent-strong, var(--accent-dark));
+  background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
+  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
   color: var(--nav-active-text, #fff) !important;
 }
 
 #admin-panel button.primary:hover {
-  background: linear-gradient(180deg, var(--admin-accent-strong, var(--accent-dark)) 0%, var(--admin-accent-strong, var(--accent-dark)) 100%);
+  background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
   color: var(--nav-active-text, #fff) !important;
 }
 
