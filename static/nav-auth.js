@@ -912,8 +912,10 @@
 
   function normalizeSignedEventWithPubkey(result, pubkey) {
     var normalized = normalizeSignedEvent(result);
-    var fallbackPubkey = String(pubkey || '').trim();
-    if (normalized && !String(normalized.pubkey || '').trim() && fallbackPubkey) {
+    var fallbackPubkey = normalizePubkeyHex(pubkey);
+    var rawExistingPubkey = String((normalized && normalized.pubkey) || '').trim();
+    var existingPubkey = normalizePubkeyHex(rawExistingPubkey);
+    if (normalized && fallbackPubkey && (!existingPubkey || rawExistingPubkey.toLowerCase() !== existingPubkey)) {
       normalized = Object.assign({}, normalized, { pubkey: fallbackPubkey });
     }
     return normalized;
@@ -1514,7 +1516,6 @@
           var userPubkey = normalizePubkeyHex(signedEventPubkey(normalizedAuth));
           if (!userPubkey && pubkeyHint) {
             userPubkey = normalizePubkeyHex(pubkeyHint);
-            normalizedAuth = normalizeSignedEventWithPubkey(normalizedAuth, userPubkey);
           }
           if (!userPubkey && getPubkeyFn) {
             return Promise.resolve(getPubkeyFn()).then(function (fallbackPubkey) {
@@ -1526,6 +1527,7 @@
               };
             });
           }
+          normalizedAuth = normalizeSignedEventWithPubkey(normalizedAuth, userPubkey);
           return {
             begin: begin,
             userPubkey: userPubkey,
