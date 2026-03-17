@@ -774,6 +774,7 @@
   }
 
   function buildAuthPayload(data) {
+    syncAuthStateFromStorage();
     return Object.assign({
       session_token: state.sessionToken,
       csrf_token: state.csrfToken
@@ -814,6 +815,7 @@
   }
 
   function fileAccessUrl(url) {
+    syncAuthStateFromStorage();
     const raw = String(url || '').trim();
     if (!raw || raw.indexOf('/cgi/blog-file?') !== 0) {
       return raw;
@@ -1538,6 +1540,7 @@
   }
 
   async function checkAuth() {
+    syncAuthStateFromStorage();
     if (!state.sessionToken) {
       stopLocalDripWorker();
       setAuthMessage('Not logged in. Use the Login button in the top navigation to sign in with Nostr.', 'error');
