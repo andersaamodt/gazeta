@@ -910,6 +910,15 @@
     throw new Error('Signer did not return a valid signed event.');
   }
 
+  function normalizeSignedEventWithPubkey(result, pubkey) {
+    var normalized = normalizeSignedEvent(result);
+    var fallbackPubkey = String(pubkey || '').trim();
+    if (normalized && !String(normalized.pubkey || '').trim() && fallbackPubkey) {
+      normalized = Object.assign({}, normalized, { pubkey: fallbackPubkey });
+    }
+    return normalized;
+  }
+
   function signedEventPubkey(result) {
     var normalized = normalizeSignedEvent(result);
     return String((normalized && normalized.pubkey) || '').trim();
@@ -1466,20 +1475,22 @@
           'Approve login in your signer',
           70000
         ).then(function (signedAuth) {
-          var userPubkey = signedEventPubkey(signedAuth);
+          var normalizedAuth = normalizeSignedEvent(signedAuth);
+          var userPubkey = signedEventPubkey(normalizedAuth);
           if (!userPubkey && getPubkeyFn) {
             return Promise.resolve(getPubkeyFn()).then(function (fallbackPubkey) {
+              var fallback = String(fallbackPubkey || '').trim();
               return {
                 begin: begin,
-                userPubkey: String(fallbackPubkey || '').trim(),
-                signedAuth: signedAuth
+                userPubkey: fallback,
+                signedAuth: normalizeSignedEventWithPubkey(normalizedAuth, fallback)
               };
             });
           }
           return {
             begin: begin,
             userPubkey: userPubkey,
-            signedAuth: signedAuth
+            signedAuth: normalizedAuth
           };
         });
       })
