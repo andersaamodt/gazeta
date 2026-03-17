@@ -924,6 +924,28 @@
     return String((normalized && normalized.pubkey) || '').trim();
   }
 
+  function normalizePubkeyHex(value) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+    var lower = raw.toLowerCase();
+    if (/^[0-9a-f]{64}$/.test(lower)) {
+      return lower;
+    }
+    if (lower.indexOf('npub1') === 0 && window.NostrTools && window.NostrTools.nip19 && typeof window.NostrTools.nip19.decode === 'function') {
+      try {
+        var decoded = window.NostrTools.nip19.decode(lower);
+        if (decoded && decoded.type === 'npub' && typeof decoded.data === 'string' && /^[0-9a-f]{64}$/i.test(decoded.data)) {
+          return String(decoded.data).toLowerCase();
+        }
+      } catch (_err) {
+        return '';
+      }
+    }
+    return '';
+  }
+
   function beginChallenge(pubkeyHint) {
     var payload = {};
     if (pubkeyHint) {
@@ -1461,11 +1483,24 @@
   function signInWithSigner(signEventFn, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var getPubkeyFn = typeof opts.getPubkeyFn === 'function' ? opts.getPubkeyFn : null;
-    var pubkeyHint = String(opts.pubkeyHint || '').trim();
+    var pubkeyHint = normalizePubkeyHex(opts.pubkeyHint || '') || normalizePubkeyHex(localStorage.getItem('last_auth_pubkey') || '');
     var registerAttempt = !!opts.registerAttempt;
     var usernameHint = String(opts.usernameHint || '').trim();
     setAuthMessage('Creating a single-use login challenge...', 'warn');
-    return beginChallenge(pubkeyHint || localStorage.getItem('last_auth_pubkey') || '')
+    var pubkeyReady = pubkeyHint
+      ? Promise.resolve(pubkeyHint)
+      : (getPubkeyFn
+        ? Promise.resolve(getPubkeyFn()).then(function (value) {
+          return normalizePubkeyHex(value);
+        }).catch(function () {
+          return '';
+        })
+        : Promise.resolve(''));
+    return pubkeyReady
+      .then(function (resolvedPubkeyHint) {
+        pubkeyHint = resolvedPubkeyHint || pubkeyHint;
+        return beginChallenge(pubkeyHint || '');
+      })
       .then(function (begin) {
         var authTemplate = authEventTemplate(begin.challenge, 'login', pubkeyHint);
         setAuthMessage('Sign the login challenge event...', 'warn');
@@ -1476,10 +1511,14 @@
           70000
         ).then(function (signedAuth) {
           var normalizedAuth = normalizeSignedEvent(signedAuth);
-          var userPubkey = signedEventPubkey(normalizedAuth);
+          var userPubkey = normalizePubkeyHex(signedEventPubkey(normalizedAuth));
+          if (!userPubkey && pubkeyHint) {
+            userPubkey = normalizePubkeyHex(pubkeyHint);
+            normalizedAuth = normalizeSignedEventWithPubkey(normalizedAuth, userPubkey);
+          }
           if (!userPubkey && getPubkeyFn) {
             return Promise.resolve(getPubkeyFn()).then(function (fallbackPubkey) {
-              var fallback = String(fallbackPubkey || '').trim();
+              var fallback = normalizePubkeyHex(fallbackPubkey);
               return {
                 begin: begin,
                 userPubkey: fallback,
