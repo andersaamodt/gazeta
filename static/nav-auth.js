@@ -725,6 +725,15 @@
     });
   }
 
+  function encodeBase64Utf8(text) {
+    var raw = String(text || '');
+    try {
+      return btoa(unescape(encodeURIComponent(raw)));
+    } catch (_err) {
+      return btoa(raw);
+    }
+  }
+
   function getSessionToken() {
     return localStorage.getItem('session_token') || '';
   }
@@ -923,7 +932,7 @@
   function finishLogin(requestId, signedEvent, delegationEvent, forceInteractive, usernameHint) {
     var payload = {
       request_id: requestId,
-      event_json: JSON.stringify(normalizeSignedEvent(signedEvent)),
+      event_json_b64: encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(signedEvent))),
       force_interactive: forceInteractive ? 'true' : 'false'
     };
     var desiredUsername = String(usernameHint || '').trim();
@@ -931,7 +940,7 @@
       payload.username_hint = desiredUsername;
     }
     if (delegationEvent) {
-      payload.delegation_json = JSON.stringify(normalizeSignedEvent(delegationEvent));
+      payload.delegation_json_b64 = encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(delegationEvent)));
     }
     return postForm('/cgi/nostr-auth-login-finish', payload)
       .then(function (data) {
@@ -1658,7 +1667,7 @@
             session_token: token,
             csrf_token: csrf,
             request_id: begin.request_id,
-            event_json: JSON.stringify(normalizeSignedEvent(signed))
+            event_json_b64: encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(signed)))
           });
         });
     }).then(function (finish) {

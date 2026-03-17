@@ -319,6 +319,32 @@ blog_b64_to_file() {
   return 1
 }
 
+blog_b64_decode_text() {
+  b64=${1-}
+  if [ -z "$b64" ]; then
+    return 1
+  fi
+
+  if command -v base64 >/dev/null 2>&1; then
+    if printf '%s' "$b64" | base64 --decode 2>/dev/null; then
+      return 0
+    fi
+    if printf '%s' "$b64" | base64 -d 2>/dev/null; then
+      return 0
+    fi
+    if printf '%s' "$b64" | base64 -D 2>/dev/null; then
+      return 0
+    fi
+  fi
+
+  if command -v openssl >/dev/null 2>&1; then
+    printf '%s' "$b64" | openssl base64 -d -A 2>/dev/null
+    return $?
+  fi
+
+  return 1
+}
+
 blog_basename_safe() {
   raw_name=${1-}
   safe_name=${raw_name##*/}

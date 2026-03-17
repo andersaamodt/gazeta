@@ -25,6 +25,10 @@ fi
 
 request_id=$(blog_param request_id)
 event_json=$(blog_param event_json)
+event_json_b64=$(blog_param event_json_b64)
+if [ -n "$event_json_b64" ]; then
+  event_json=$(blog_b64_decode_text "$event_json_b64" 2>/dev/null || printf '')
+fi
 if [ -z "$request_id" ] || [ -z "$event_json" ]; then
   blog_json_error "request_id and event_json are required" "invalid_request"
   exit 0
