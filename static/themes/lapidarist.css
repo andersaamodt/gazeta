@@ -222,15 +222,15 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      #3d73cb 0%,
-      var(--lapis) 34%,
-      #2a569f 72%,
-      #234b8f 100%
+      color-mix(in srgb, var(--lapis) 90%, var(--amethyst) 10%) 0%,
+      var(--lapis) 32%,
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 72%,
+      color-mix(in srgb, var(--amethyst) 74%, var(--lapis) 26%) 100%
     );
-  border: 0;
+  border: 1px solid var(--button-primary-border);
   color: var(--button-primary-text);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.38) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
@@ -251,9 +251,9 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      #487fd6 0%,
-      #2f5fb8 42%,
-      #1f4382 100%
+      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 0%,
+      color-mix(in srgb, var(--lapis) 78%, var(--amethyst) 22%) 42%,
+      var(--amethyst) 100%
     );
   color: var(--button-primary-text);
 }
