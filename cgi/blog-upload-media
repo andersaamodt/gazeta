@@ -7,43 +7,86 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 
 blog_init
-blog_read_request_body
-blog_send_json_headers
 
-if ! blog_require_session true true; then
+send_upload_json() {
+  blog_send_json_headers
+  printf '%s\n' "$1"
   exit 0
+}
+
+upload_body_param() {
+  key=${1-}
+  body_file=${2-}
+  [ -n "$key" ] || return 1
+  [ -n "$body_file" ] || return 1
+  [ -f "$body_file" ] || return 1
+  encoded=$(awk -v key="$key" '
+    BEGIN { RS = "&" }
+    index($0, key "=") == 1 {
+      print substr($0, length(key) + 2)
+      exit
+    }
+  ' "$body_file")
+  [ -n "$encoded" ] || return 1
+  blog_param_decode_component "$encoded"
+}
+
+upload_require_session() {
+  token=${1-}
+  csrf=${2-}
+  if ! blog_load_session "$token"; then
+    send_upload_json "$(blog_json_error "Not authenticated" "auth_required")"
+  fi
+  if [ -z "$csrf" ] || [ "$csrf" != "$BLOG_SESSION_CSRF" ]; then
+    send_upload_json "$(blog_json_error "Invalid CSRF token" "csrf_invalid")"
+  fi
+  if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+    BLOG_SESSION_IS_ADMIN=true
+  fi
+  if [ "$BLOG_SESSION_IS_ADMIN" != "true" ]; then
+    send_upload_json "$(blog_json_error "Admin permission required" "admin_required")"
+  fi
+  if [ "$BLOG_SESSION_AUTH_METHOD" = "nostr_delegated" ] && [ "${BLOG_SESSION_FORCE_INTERACTIVE-false}" = "true" ]; then
+    send_upload_json "$(blog_json_error "This action requires direct signer approval. Sign in with Login with Nostr or Use phone signer (QR)." "interactive_signature_required")"
+  fi
+  blog_extend_session
+}
+
+request_body_file=$(mktemp "${TMPDIR:-/tmp}/blog-upload-request.XXXXXX")
+trap 'rm -f "$request_body_file"' EXIT HUP INT TERM
+if ! cat > "$request_body_file"; then
+  send_upload_json "$(blog_json_error "Failed to read upload body" "upload_read_error")"
 fi
 
-filename=$(blog_param filename)
-mime_type=$(blog_param mime_type)
-data_b64=$(blog_param data_base64)
-draft_id=$(blog_param draft_id)
+session_token=$(upload_body_param session_token "$request_body_file" 2>/dev/null || printf '')
+csrf_token=$(upload_body_param csrf_token "$request_body_file" 2>/dev/null || printf '')
+filename=$(upload_body_param filename "$request_body_file" 2>/dev/null || printf '')
+mime_type=$(upload_body_param mime_type "$request_body_file" 2>/dev/null || printf '')
+draft_id=$(upload_body_param draft_id "$request_body_file" 2>/dev/null || printf '')
+data_b64=$(upload_body_param data_base64 "$request_body_file" 2>/dev/null || printf '')
+
+upload_require_session "$session_token" "$csrf_token"
 
 if [ -z "$filename" ] || [ -z "$data_b64" ]; then
-  blog_json_error "filename and data_base64 are required" "invalid_request"
-  exit 0
+  send_upload_json "$(blog_json_error "filename and data_base64 are required" "invalid_request")"
 fi
 
-# Strip optional data URL prefix if sent.
 case "$data_b64" in
   data:*\;base64,*) data_b64=${data_b64#*,} ;;
 esac
 
-# Soft size limit (~20MB raw decoded).
 if [ ${#data_b64} -gt 28000000 ]; then
-  blog_json_error "Upload too large" "file_too_large"
-  exit 0
+  send_upload_json "$(blog_json_error "Upload too large" "file_too_large")"
 fi
 
 created=$(blog_file_create_upload "$filename" "$mime_type" "$data_b64" "$draft_id" 2>/dev/null || printf '')
 if [ -z "$created" ]; then
-  blog_json_error "Failed to decode upload" "decode_error"
-  exit 0
+  send_upload_json "$(blog_json_error "Failed to decode upload" "decode_error")"
 fi
 file_id=$(printf '%s' "$created" | awk -F'\t' '{print $1}')
 safe_name=$(printf '%s' "$created" | awk -F'\t' '{print $2}')
 url=$(printf '%s' "$created" | awk -F'\t' '{print $3}')
-printf '{"success":true,"file_id":"%s","url":"%s","filename":"%s","is_public":false}\n' \
+send_upload_json "$(printf '{"success":true,"file_id":"%s","url":"%s","filename":"%s","is_public":false}' \
   "$(blog_json_escape "$file_id")" \
   "$(blog_json_escape "$url")" \
-  "$(blog_json_escape "$safe_name")"
+  "$(blog_json_escape "$safe_name")")"
