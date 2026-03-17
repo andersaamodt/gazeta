@@ -50,18 +50,13 @@
   --button-primary-active-end: #16325f;
   --button-primary-border: color-mix(in srgb, var(--gold-leaf) 65%, var(--button-primary-end) 35%);
   --button-primary-overlay:
-    radial-gradient(circle at 7% 20%, rgba(233, 203, 122, 0.56) 0 1.45px, transparent 2.35px),
-    radial-gradient(circle at 14% 46%, rgba(215, 183, 98, 0.28) 0 0.82px, transparent 1.48px),
-    radial-gradient(circle at 18% 28%, rgba(205, 171, 87, 0.52) 0 1.18px, transparent 1.95px),
-    radial-gradient(circle at 26% 69%, rgba(236, 207, 128, 0.24) 0 0.72px, transparent 1.28px),
-    radial-gradient(circle at 37% 17%, rgba(226, 194, 112, 0.4) 0 1.02px, transparent 1.74px),
-    radial-gradient(circle at 49% 34%, rgba(236, 207, 128, 0.22) 0 0.66px, transparent 1.18px),
-    radial-gradient(circle at 58% 58%, rgba(223, 191, 109, 0.32) 0 0.92px, transparent 1.56px),
-    radial-gradient(circle at 64% 43%, rgba(205, 171, 87, 0.44) 0 1.08px, transparent 1.86px),
-    radial-gradient(circle at 72% 18%, rgba(236, 207, 128, 0.26) 0 0.76px, transparent 1.32px),
-    radial-gradient(circle at 81% 32%, rgba(227, 196, 113, 0.38) 0 0.98px, transparent 1.68px),
-    radial-gradient(circle at 87% 69%, rgba(205, 171, 87, 0.42) 0 1.12px, transparent 1.92px),
-    radial-gradient(circle at 93% 50%, rgba(235, 206, 125, 0.48) 0 1.26px, transparent 2.08px);
+    radial-gradient(circle at 11% 24%, rgba(219, 186, 104, 0.34) 0 1.05px, transparent 1.82px),
+    radial-gradient(circle at 24% 66%, rgba(237, 208, 128, 0.2) 0 0.7px, transparent 1.24px),
+    radial-gradient(circle at 39% 39%, rgba(206, 171, 89, 0.3) 0 0.92px, transparent 1.58px),
+    radial-gradient(circle at 53% 78%, rgba(228, 197, 116, 0.18) 0 0.64px, transparent 1.16px),
+    radial-gradient(circle at 66% 18%, rgba(233, 204, 124, 0.24) 0 0.82px, transparent 1.38px),
+    radial-gradient(circle at 78% 55%, rgba(211, 177, 95, 0.32) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 91% 73%, rgba(239, 211, 133, 0.24) 0 0.78px, transparent 1.34px);
   --select-bg: #f5eddf;
   --feed-rss-start: #b54b3b;
   --feed-rss-end: #a73b2f;
