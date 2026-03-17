@@ -13,8 +13,25 @@ blog_init
 blog_send_json_headers
 
 cfg=$(blog_nostr_pages_load_json)
+all_rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-pages.XXXXXX")
+printf '%s\n' "$cfg" | jq -c '.pages[]' > "$all_rows_tmp"
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-navbar-pages.XXXXXX")
 printf '%s\n' "$cfg" | jq -c '.pages[] | select((if has("show_in_nav") then .show_in_nav else true end) == true)' > "$rows_tmp"
+
+needs_build=false
+while IFS= read -r row || [ -n "$row" ]; do
+  [ -n "$row" ] || continue
+  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
+  case "$slug" in
+    index) html_file="$blog_site_root/build/pages/index.html" ;;
+    *) html_file="$blog_site_root/build/pages/$slug.html" ;;
+  esac
+  if [ ! -f "$html_file" ]; then
+    needs_build=true
+  fi
+done < "$all_rows_tmp"
 
 printf '{"success":true,"pages":['
 first=1
@@ -24,8 +41,6 @@ while IFS= read -r row || [ -n "$row" ]; do
   page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
   kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
   path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
-  # Keep locally-routed Nostr page shells in sync with configured type/slug.
-  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
 
   title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')
   if [ -z "$title" ]; then
@@ -53,4 +68,9 @@ done < "$rows_tmp"
 printf ']}'
 printf '\n'
 
+if [ "$needs_build" = "true" ]; then
+  blog_run_build_async
+fi
+
+rm -f "$all_rows_tmp"
 rm -f "$rows_tmp"

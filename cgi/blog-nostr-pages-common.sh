@@ -880,22 +880,19 @@ blog_nostr_page_sync_mount() {
   [ -f "$source_path" ] || return 1
 
   if [ -L "$mount_path" ]; then
-    target=$(readlink "$mount_path" 2>/dev/null || printf '')
-    if [ "$target" = "$source_path" ]; then
-      return 0
-    fi
     rm -f "$mount_path"
   elif [ -e "$mount_path" ]; then
     existing_type=$(blog_nostr_page_source_template_type "$mount_path")
     existing_slug=$(blog_nostr_page_source_template_slug "$mount_path")
-    if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
-      rm -f "$mount_path"
-    else
+    if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
       return 0
     fi
   fi
 
-  ln -s "$source_path" "$mount_path"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-page-mount.XXXXXX")
+  cp "$source_path" "$tmp"
+  mv "$tmp" "$mount_path"
+  chmod 644 "$mount_path" 2>/dev/null || true
 }
 
 blog_nostr_page_ensure_source_page() {

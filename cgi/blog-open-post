@@ -61,9 +61,11 @@ fi
 
 rel_html=${rel_md%.md}.html
 html_file="$blog_site_root/build/pages/posts/$rel_html"
+wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
+wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
 
-if [ ! -f "$html_file" ] && [ -n "${WIZARDRY_DIR-}" ] && [ -x "$WIZARDRY_DIR/spells/web/build" ]; then
-  WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$WIZARDRY_DIR" "$WIZARDRY_DIR/spells/web/build" "$blog_site_name" >/dev/null 2>&1 || true
+if [ ! -f "$html_file" ] && [ -n "$wizardry_dir" ]; then
+  env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 || true
 fi
 
 if [ -f "$html_file" ]; then

@@ -3013,16 +3013,69 @@ blog_publish_content() {
   return 0
 }
 
-blog_run_build_async() {
-  if [ -z "${WIZARDRY_DIR-}" ]; then
+blog_resolve_wizardry_dir() {
+  wizardry_dir=${WIZARDRY_DIR-}
+  if [ -n "$wizardry_dir" ] && [ -x "$wizardry_dir/spells/web/build" ]; then
+    printf '%s\n' "$wizardry_dir"
     return 0
   fi
-  if [ ! -x "$WIZARDRY_DIR/spells/web/build" ]; then
+  if [ -n "${HOME-}" ] && [ -x "$HOME/.wizardry/spells/web/build" ]; then
+    printf '%s\n' "$HOME/.wizardry"
+    return 0
+  fi
+  web_wizardry_bin=$(command -v web-wizardry 2>/dev/null || printf '')
+  if [ -n "$web_wizardry_bin" ]; then
+    wizardry_dir=$(CDPATH= cd -- "$(dirname "$web_wizardry_bin")/../.." 2>/dev/null && pwd -P)
+    if [ -n "$wizardry_dir" ] && [ -x "$wizardry_dir/spells/web/build" ]; then
+      printf '%s\n' "$wizardry_dir"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+blog_wizardry_exec_path() {
+  wizardry_dir=${1-}
+  wizardry_path=${PATH-}
+  wizardry_path="$wizardry_path:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  if [ -n "$wizardry_dir" ] && [ -d "$wizardry_dir/spells" ]; then
+    if [ -d "$wizardry_dir/spells/.wizardry" ]; then
+      wizardry_path="$wizardry_dir/spells/.wizardry:$wizardry_path"
+    fi
+    if [ -d "$wizardry_dir/spells/.imps" ]; then
+      for dir in "$wizardry_dir/spells/.imps"/* "$wizardry_dir/spells/.imps"/.*; do
+        [ -d "$dir" ] || continue
+        case "$dir" in
+          */.|*/..) continue ;;
+        esac
+        wizardry_path="$dir:$wizardry_path"
+      done
+    fi
+    for dir in "$wizardry_dir/spells"/* "$wizardry_dir/spells"/.*; do
+      [ -d "$dir" ] || continue
+      case "$dir" in
+        */.|*/..) continue ;;
+      esac
+      wizardry_path="$dir:$wizardry_path"
+    done
+  fi
+  printf '%s\n' "$wizardry_path"
+}
+
+blog_run_build_async() {
+  wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
+  if [ -z "$wizardry_dir" ]; then
+    return 0
+  fi
+  wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
+
+  if command -v nohup >/dev/null 2>&1; then
+    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null &
     return 0
   fi
 
   (
-    WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$WIZARDRY_DIR" "$WIZARDRY_DIR/spells/web/build" "$blog_site_name" >/dev/null 2>&1 || true
+    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
   ) &
 }
 
