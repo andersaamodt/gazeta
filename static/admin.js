@@ -30,6 +30,10 @@
     postsMenuOpenFor: '',
     postsActionInFlight: false,
     moderationActionInFlight: false,
+    files: [],
+    fileUploads: [],
+    activeUploadCount: 0,
+    filesSectionLoadedOnce: false,
     pendingAddToListPostPath: '',
     dripQueueAhead: 0,
     dripQueueEtaMinutes: 0,
@@ -69,6 +73,7 @@
     outputQueue: document.getElementById('output-queue'),
     outputPosts: document.getElementById('output-posts'),
     outputNostrPages: document.getElementById('output-nostr-pages'),
+    outputFiles: document.getElementById('output-files'),
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
     outputZaps: document.getElementById('output-zaps'),
@@ -116,6 +121,11 @@
     queueLocalDripStatusText: document.getElementById('queue-local-drip-status-text'),
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
     postsList: document.getElementById('posts-list'),
+    filesList: document.getElementById('files-list'),
+    filesDropzone: document.getElementById('files-dropzone'),
+    filesUploadJobs: document.getElementById('files-upload-jobs'),
+    filesUploadSummary: document.getElementById('files-upload-summary'),
+    uploadFileButton: document.getElementById('btn-upload-file'),
     moderationList: document.getElementById('moderation-list'),
     moderationFilterPage: document.getElementById('moderation-filter-page'),
     moderationFilterType: document.getElementById('moderation-filter-type'),
@@ -150,7 +160,9 @@
     generateSshButton: document.getElementById('btn-generate-ssh'),
     linkSshButton: document.getElementById('btn-link-ssh'),
     imagePicker: document.getElementById('image-picker'),
+    filePicker: document.getElementById('file-picker'),
     dropOverlay: document.getElementById('drop-overlay'),
+    adminContent: document.querySelector('.admin-content'),
     sectionButtons: Array.from(document.querySelectorAll('[data-admin-nav]')),
     sections: Array.from(document.querySelectorAll('[data-admin-section]'))
   };
@@ -223,6 +235,14 @@
   function activateSection(name, updateHash) {
     const sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
     state.activeSection = sectionName;
+    if (els.dropOverlay) {
+      els.dropOverlay.textContent = sectionName === 'files'
+        ? 'Drop files to upload'
+        : 'Drop images to upload and insert into your draft';
+    }
+    if (els.filesDropzone) {
+      els.filesDropzone.classList.remove('is-drop-active');
+    }
     els.sectionButtons.forEach(function (button) {
       const active = button.getAttribute('data-admin-nav') === sectionName;
       button.classList.toggle('is-active', active);
@@ -253,6 +273,7 @@
     syncQueueAutoRefresh();
     syncPostsAutoRefresh();
     syncModerationAutoRefresh();
+    renderUploadJobs();
     maybeLoadAdminSection(sectionName, true);
   }
 
@@ -291,8 +312,12 @@
         await loadPosts();
         return;
       }
-      if (section === 'pages') {
+      if (section === 'nostr-pages' || section === 'pages') {
         await loadNostrPages();
+        return;
+      }
+      if (section === 'files') {
+        await loadFiles();
         return;
       }
       if (section === 'moderation') {
@@ -313,6 +338,10 @@
       }
       if (section === 'users') {
         setOutput(els.outputUsers, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'files') {
+        setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'drafts' || section === 'queue') {
@@ -772,6 +801,185 @@
     return res;
   }
 
+  function fileAccessUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw || raw.indexOf('/cgi/blog-file?') !== 0) {
+      return raw;
+    }
+    const params = new URLSearchParams(raw.split('?')[1] || '');
+    if (!params.get('session_token') && state.sessionToken) {
+      params.set('session_token', state.sessionToken);
+    }
+    if (!params.get('csrf_token') && state.csrfToken) {
+      params.set('csrf_token', state.csrfToken);
+    }
+    return '/cgi/blog-file?' + params.toString();
+  }
+
+  function rewritePreviewPrivateFileLinks() {
+    if (!els.markdownPreview) {
+      return;
+    }
+    const nodes = els.markdownPreview.querySelectorAll('img[src], source[src], audio[src], video[src], a[href]');
+    nodes.forEach(function (node) {
+      const attr = node.hasAttribute('href') ? 'href' : 'src';
+      const current = node.getAttribute(attr);
+      const next = fileAccessUrl(current);
+      if (next && next !== current) {
+        node.setAttribute(attr, next);
+      }
+    });
+  }
+
+  function formatBytes(bytes) {
+    const value = Math.max(0, Number(bytes || 0));
+    if (value < 1024) {
+      return value + ' B';
+    }
+    if (value < 1024 * 1024) {
+      return (value / 1024).toFixed(value < 10240 ? 1 : 0) + ' KB';
+    }
+    return (value / (1024 * 1024)).toFixed(value < 10485760 ? 1 : 0) + ' MB';
+  }
+
+  function addUploadJob(file, kind) {
+    const job = {
+      id: 'upload-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
+      name: String((file && file.name) || 'upload.bin'),
+      size: Number((file && file.size) || 0),
+      kind: kind || 'file',
+      progress: 0,
+      status: 'Queued',
+      done: false,
+      error: ''
+    };
+    state.fileUploads = state.fileUploads.concat([job]);
+    state.activeUploadCount += 1;
+    renderUploadJobs();
+    return job;
+  }
+
+  function updateUploadJob(jobId, patch) {
+    state.fileUploads = state.fileUploads.map(function (job) {
+      if (job.id !== jobId) {
+        return job;
+      }
+      return Object.assign({}, job, patch || {});
+    });
+    renderUploadJobs();
+  }
+
+  function finishUploadJob(jobId, errorMessage) {
+    state.fileUploads = state.fileUploads.map(function (job) {
+      if (job.id !== jobId) {
+        return job;
+      }
+      return Object.assign({}, job, {
+        done: true,
+        progress: errorMessage ? job.progress : 100,
+        status: errorMessage ? 'Failed' : 'Done',
+        error: errorMessage || ''
+      });
+    });
+    state.activeUploadCount = Math.max(0, state.activeUploadCount - 1);
+    renderUploadJobs();
+  }
+
+  function renderUploadJobs() {
+    if (!els.filesUploadJobs || !els.filesUploadSummary) {
+      return;
+    }
+    const jobs = state.fileUploads.slice(-6);
+    if (!jobs.length) {
+      els.filesUploadJobs.hidden = true;
+      els.filesUploadJobs.innerHTML = '';
+      els.filesUploadSummary.hidden = true;
+      els.filesUploadSummary.textContent = '';
+      return;
+    }
+    els.filesUploadJobs.hidden = false;
+    let active = 0;
+    let html = '';
+    jobs.forEach(function (job) {
+      const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+      if (!job.done) {
+        active += 1;
+      }
+      const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
+      html += '<div class="files-upload-job">';
+      html += '<div class="files-upload-job-head">';
+      html += '<span class="files-upload-job-name">' + escapeHtml(job.name) + '</span>';
+      html += '<span class="files-upload-job-status">' + escapeHtml(status) + ' · ' + escapeHtml(formatBytes(job.size)) + '</span>';
+      html += '</div>';
+      html += '<div class="files-upload-job-bar"><div class="files-upload-job-fill" style="inline-size:' + progress + '%;"></div></div>';
+      html += '</div>';
+    });
+    els.filesUploadJobs.innerHTML = html;
+    if (active > 0) {
+      els.filesUploadSummary.hidden = false;
+      els.filesUploadSummary.textContent = active + ' upload' + (active === 1 ? '' : 's') + ' in progress';
+      return;
+    }
+    els.filesUploadSummary.hidden = false;
+    els.filesUploadSummary.textContent = 'Recent uploads';
+  }
+
+  function uploadFileWithProgress(file, options) {
+    const opts = options || {};
+    const includeAuth = opts.includeAuth !== false;
+    const extraData = Object.assign({}, opts.data || {});
+    const job = addUploadJob(file, opts.kind || 'file');
+
+    return readFileAsDataUrl(file).then(function (dataUrl) {
+      return new Promise(function (resolve, reject) {
+        const payload = includeAuth ? buildAuthPayload(extraData) : extraData;
+        payload.filename = file.name;
+        payload.mime_type = file.type || '';
+        payload.data_base64 = dataUrl;
+        const body = new URLSearchParams(payload).toString();
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/cgi/blog-upload-media', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.upload.addEventListener('progress', function (event) {
+          if (!event.lengthComputable) {
+            return;
+          }
+          updateUploadJob(job.id, {
+            progress: Math.round((event.loaded / event.total) * 100),
+            status: 'Uploading'
+          });
+        });
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4) {
+            return;
+          }
+          let data;
+          try {
+            data = JSON.parse(String(xhr.responseText || ''));
+          } catch (_err) {
+            finishUploadJob(job.id, 'Invalid response');
+            reject(new Error('Invalid JSON response'));
+            return;
+          }
+          maybePromptInteractiveApproval(data);
+          if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
+            const message = data && data.error ? String(data.error) : 'Upload failed';
+            finishUploadJob(job.id, message);
+            reject(new Error(message));
+            return;
+          }
+          finishUploadJob(job.id, '');
+          resolve(data);
+        };
+        xhr.onerror = function () {
+          finishUploadJob(job.id, 'Upload failed');
+          reject(new Error('Upload failed'));
+        };
+        xhr.send(body);
+      });
+    });
+  }
+
   function getPublishMode() {
     const picked = publishModeInputs.find(function (input) { return input.checked; });
     return picked ? picked.value : 'immediate';
@@ -1112,6 +1320,7 @@
     }
     els.markdownPreview.innerHTML = marked.parse(md);
     rewritePreviewRelativeLinks();
+    rewritePreviewPrivateFileLinks();
   }
 
   function isRelativeContentPath(raw) {
@@ -2138,6 +2347,84 @@
       els.navPostsCount.textContent = '(' + posts.length + ')';
     }
     renderPostsList(posts);
+  }
+
+  function renderFilesList(files) {
+    if (!els.filesList) {
+      return;
+    }
+    if (!files.length) {
+      els.filesList.innerHTML = '<p class="placeholder files-list-empty">No attachments uploaded yet.</p>';
+      return;
+    }
+    let html = '';
+    files.forEach(function (file) {
+      const fileId = String(file.file_id || '');
+      const title = String(file.original_name || file.safe_name || 'Attachment');
+      const mimeType = String(file.mime_type || 'application/octet-stream');
+      const createdAt = String(file.created_at || '');
+      const draftId = String(file.draft_id || '');
+      const postPath = String(file.post_path || '');
+      const explicitPublic = !!file.explicit_public;
+      const effectivePublic = !!file.effective_public;
+      const legacyPublic = !!file.legacy_public;
+      const url = String(file.url || '');
+      const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : (legacyPublic ? 'Legacy public' : 'Public via post')) : 'Private';
+      const accessClass = effectivePublic ? ' is-public' : ' is-private';
+      html += '<div class="post-row file-row">';
+      html += '<div class="post-row-main file-row-main">';
+      html += '<span class="file-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
+      html += '<span class="file-pill' + accessClass + '">' + escapeHtml(accessLabel) + '</span>';
+      html += '<span class="file-pill">' + escapeHtml(formatBytes(file.size_bytes)) + '</span>';
+      html += '<span class="file-pill">' + escapeHtml(mimeType) + '</span>';
+      if (createdAt) {
+        html += '<span class="file-pill">' + escapeHtml(formatPostPublishedAt(createdAt)) + '</span>';
+      }
+      if (postPath) {
+        html += '<span class="file-pill">Post: ' + escapeHtml(postPath) + '</span>';
+      } else if (draftId) {
+        html += '<span class="file-pill">Draft</span>';
+      }
+      if (legacyPublic) {
+        html += '<span class="file-pill is-legacy">Legacy</span>';
+      }
+      html += '</div>';
+      html += '<div class="post-row-actions file-row-actions">';
+      if (!legacyPublic) {
+        html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '">' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
+      }
+      html += '<button type="button" class="unobtrusive-icon-button" data-file-action="copy-url" data-file-url="' + escapeAttr(url) + '"' +
+        (effectivePublic ? '' : ' disabled') +
+        ' aria-label="Copy file URL" title="' + (effectivePublic ? 'Copy file URL' : 'File is private') + '">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+        '</svg></button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    els.filesList.innerHTML = html;
+  }
+
+  async function loadFiles() {
+    const data = await apiPost('/cgi/blog-list-files', {}, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load files');
+    }
+    state.files = Array.isArray(data.files) ? data.files : [];
+    renderFilesList(state.files);
+  }
+
+  async function setFilePublicState(fileId, makePublic) {
+    const data = await apiPost('/cgi/blog-set-file-visibility', {
+      file_id: fileId,
+      make_public: makePublic ? 'true' : 'false'
+    }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update file visibility');
+    }
+    await loadFiles();
+    setOutput(els.outputFiles, makePublic ? 'File is now public.' : 'File is private unless exposed by a public post.', 'ok');
   }
 
   function normalizeNostrPageSlug(raw) {
@@ -3456,12 +3743,12 @@
   }
 
   async function uploadImageFile(file) {
-    const dataUrl = await readFileAsDataUrl(file);
-    const data = await apiPost('/cgi/blog-upload-media', {
-      filename: file.name,
-      mime_type: file.type,
-      data_base64: dataUrl
-    }, true);
+    const data = await uploadFileWithProgress(file, {
+      kind: 'image',
+      data: {
+        draft_id: state.currentDraftId || ''
+      }
+    });
     if (!data.success) {
       throw new Error(data.error || 'Upload failed');
     }
@@ -3503,6 +3790,25 @@
       setOutput(els.outputCompose, 'Images inserted into markdown.', 'ok');
     } catch (err) {
       setOutput(els.outputCompose, 'Upload error: ' + err.message, 'error');
+    }
+  }
+
+  async function uploadAdminFiles(files) {
+    const picked = Array.from(files || []).filter(function (file) {
+      return file && file.size >= 0;
+    });
+    if (!picked.length) {
+      return;
+    }
+    setOutput(els.outputFiles, 'Uploading ' + picked.length + ' file(s)...', 'warn');
+    try {
+      for (const file of picked) {
+        await uploadFileWithProgress(file, { kind: 'file' });
+      }
+      await loadFiles();
+      setOutput(els.outputFiles, 'Files uploaded.', 'ok');
+    } catch (err) {
+      setOutput(els.outputFiles, 'Upload error: ' + err.message, 'error');
     }
   }
 
@@ -3797,6 +4103,22 @@
         promptCreateNostrPage();
       });
     }
+    if (els.uploadFileButton) {
+      els.uploadFileButton.addEventListener('click', function () {
+        if (els.filePicker) {
+          els.filePicker.click();
+        }
+      });
+    }
+    if (els.filePicker) {
+      els.filePicker.addEventListener('change', function () {
+        if (els.filePicker.files && els.filePicker.files.length) {
+          uploadAdminFiles(els.filePicker.files).finally(function () {
+            els.filePicker.value = '';
+          });
+        }
+      });
+    }
     if (els.nostrPagesList) {
       els.nostrPagesList.addEventListener('change', function (event) {
         const target = event.target;
@@ -4086,6 +4408,40 @@
         });
       });
     }
+    if (els.filesList) {
+      els.filesList.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionNode = target.closest('[data-file-action]');
+        if (!(actionNode instanceof HTMLElement)) {
+          return;
+        }
+        const action = String(actionNode.getAttribute('data-file-action') || '');
+        if (action === 'copy-url') {
+          const fileUrl = String(actionNode.getAttribute('data-file-url') || '').trim();
+          if (!fileUrl) {
+            return;
+          }
+          const absoluteUrl = new URL(fileUrl, window.location.origin).toString();
+          copyTextToClipboard(absoluteUrl).then(function (ok) {
+            setOutput(els.outputFiles, ok ? 'File URL copied.' : 'Could not copy file URL.', ok ? 'ok' : 'warn');
+          });
+          return;
+        }
+        if (action === 'toggle-public') {
+          const fileId = String(actionNode.getAttribute('data-file-id') || '').trim();
+          const makePublic = String(actionNode.getAttribute('data-make-public') || '') === 'true';
+          if (!fileId) {
+            return;
+          }
+          setFilePublicState(fileId, makePublic).catch(function (err) {
+            setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
+          });
+        }
+      });
+    }
     if (els.usersList) {
       els.usersList.addEventListener('click', function (event) {
         const target = event.target;
@@ -4229,6 +4585,9 @@
       if (state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight) {
         loadPosts().catch(function () {});
       }
+      if (state.isAdmin && state.activeSection === 'files') {
+        loadFiles().catch(function () {});
+      }
       if (state.isAdmin) {
         localDripWorkerTick(true).catch(function () {});
       }
@@ -4242,6 +4601,9 @@
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight) {
         loadPosts().catch(function () {});
+      }
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'files') {
+        loadFiles().catch(function () {});
       }
       if (document.visibilityState === 'visible') {
         localDripWorkerTick(true).catch(function () {});
@@ -4271,7 +4633,12 @@
         setLocalDripLeader(!!(lease && lease.owner === state.localDripTabId));
       }
     });
-    window.addEventListener('beforeunload', function () {
+    window.addEventListener('beforeunload', function (event) {
+      if (state.activeUploadCount > 0) {
+        event.preventDefault();
+        event.returnValue = 'Uploads are still in progress. Leaving now may interrupt them.';
+        return 'Uploads are still in progress. Leaving now may interrupt them.';
+      }
       localDripReleaseLease();
     });
 
@@ -4441,6 +4808,9 @@
       if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('Files')) {
         dragDepth += 1;
         els.dropOverlay.classList.add('show');
+        if (state.activeSection === 'files' && els.filesDropzone) {
+          els.filesDropzone.classList.add('is-drop-active');
+        }
       }
     });
 
@@ -4448,6 +4818,9 @@
       dragDepth = Math.max(0, dragDepth - 1);
       if (dragDepth === 0) {
         els.dropOverlay.classList.remove('show');
+        if (els.filesDropzone) {
+          els.filesDropzone.classList.remove('is-drop-active');
+        }
       }
     });
 
@@ -4462,6 +4835,13 @@
       event.preventDefault();
       dragDepth = 0;
       els.dropOverlay.classList.remove('show');
+      if (els.filesDropzone) {
+        els.filesDropzone.classList.remove('is-drop-active');
+      }
+      if (state.activeSection === 'files') {
+        uploadAdminFiles(event.dataTransfer ? event.dataTransfer.files : []);
+        return;
+      }
       handleDroppedFiles(event.dataTransfer ? event.dataTransfer.files : []);
     });
   }

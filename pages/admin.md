@@ -14,6 +14,7 @@ title: Blog Admin
 <button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="files" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Files</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
@@ -335,6 +336,7 @@ title: Blog Admin
 </div>
 
 <input type="file" id="image-picker" accept="image/*" multiple style="display:none;">
+<input type="file" id="file-picker" multiple style="display:none;">
 </div>
 
 <aside class="preview-panel">
@@ -441,6 +443,26 @@ title: Blog Admin
 </div>
 <div id="nostr-pages-list" class="nostr-pages-list"></div>
 <div id="output-nostr-pages" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="files" hidden>
+<div class="demo-box admin-card files-admin-card">
+<div class="row-head">
+<div>
+<h3>Files</h3>
+<p class="muted">Attachments are private by default. Public posts can expose attached files automatically, or you can share a file explicitly.</p>
+</div>
+<div class="row-actions files-head-actions">
+<div id="files-upload-summary" class="files-upload-summary" hidden></div>
+<button id="btn-upload-file" type="button">Upload Files...</button>
+</div>
+</div>
+<div id="files-dropzone" class="files-dropzone">
+<div id="files-upload-jobs" class="files-upload-jobs" hidden></div>
+<div id="files-list" class="posts-list"></div>
+<div id="output-files" class="output"></div>
+</div>
 </div>
 </section>
 
@@ -601,7 +623,7 @@ title: Blog Admin
 </form>
 </dialog>
 
-<div id="drop-overlay" class="drop-overlay">Drop images to upload and insert into your draft</div>
+<div id="drop-overlay" class="drop-overlay">Drop files to upload</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/admin.js"></script>
@@ -2542,6 +2564,155 @@ body {
   margin-right: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
+}
+
+[data-admin-section="files"] .admin-card {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-admin-section="files"] .row-head {
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+}
+
+.files-head-actions {
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.files-upload-summary {
+  min-height: 1.15rem;
+  color: var(--muted, #6b7280);
+  font-size: 0.92rem;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.files-dropzone {
+  min-height: 16rem;
+  padding: 0 0 0.9rem;
+  border-top: 1px solid transparent;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.files-dropzone.is-drop-active {
+  background: rgba(196, 169, 97, 0.1);
+  border-top-color: rgba(122, 92, 31, 0.18);
+}
+
+.files-upload-jobs {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.4rem 0.9rem 0.75rem;
+  border-bottom: 1px solid rgba(122, 92, 31, 0.12);
+}
+
+.files-upload-job {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.files-upload-job-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+}
+
+.files-upload-job-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-upload-job-status {
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+
+.files-upload-job-bar {
+  block-size: 0.42rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(122, 92, 31, 0.12);
+}
+
+.files-upload-job-fill {
+  block-size: 100%;
+  inline-size: 0%;
+  border-radius: inherit;
+  background: #2f63b7;
+  transition: inline-size 120ms linear;
+}
+
+.files-list-empty {
+  padding: 0.95rem;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.72rem 0.95rem;
+  background: var(--card-bg, rgba(255, 255, 255, 0.55));
+}
+
+.file-row-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.46rem;
+  flex-wrap: wrap;
+}
+
+.file-row-title {
+  min-width: 0;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.file-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(122, 92, 31, 0.08);
+  color: var(--muted, #6b7280);
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.file-pill.is-public {
+  background: rgba(47, 99, 183, 0.12);
+  color: #234e96;
+}
+
+.file-pill.is-private {
+  background: rgba(122, 92, 31, 0.12);
+  color: #6e4f15;
+}
+
+.file-pill.is-legacy {
+  background: rgba(123, 93, 31, 0.12);
+}
+
+.file-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.42rem;
+  flex: 0 0 auto;
+}
+
+.file-row-actions .unobtrusive-icon-button[disabled] {
+  opacity: 0.45;
 }
 
 #admin-panel #btn-create-nostr-page {
