@@ -50,9 +50,15 @@
   --button-primary-active-end: #16325f;
   --button-primary-border: color-mix(in srgb, var(--gold-leaf) 65%, var(--button-primary-end) 35%);
   --button-primary-overlay:
+    radial-gradient(circle at 9% 22%, rgba(214, 179, 92, 0.3) 0 0.82px, transparent 1.42px),
     radial-gradient(circle at 18% 28%, rgba(198, 163, 82, 0.42) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 27% 67%, rgba(214, 179, 92, 0.18) 0 0.68px, transparent 1.22px),
+    radial-gradient(circle at 39% 18%, rgba(214, 179, 92, 0.24) 0 0.78px, transparent 1.38px),
+    radial-gradient(circle at 56% 57%, rgba(214, 179, 92, 0.16) 0 0.62px, transparent 1.14px),
     radial-gradient(circle at 64% 43%, rgba(198, 163, 82, 0.34) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 86% 70%, rgba(198, 163, 82, 0.28) 0 1px, transparent 1.8px);
+    radial-gradient(circle at 76% 24%, rgba(214, 179, 92, 0.21) 0 0.72px, transparent 1.28px),
+    radial-gradient(circle at 86% 70%, rgba(198, 163, 82, 0.28) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 93% 51%, rgba(214, 179, 92, 0.24) 0 0.84px, transparent 1.46px);
   --select-bg: #f5eddf;
   --feed-rss-start: #b54b3b;
   --feed-rss-end: #a73b2f;
@@ -222,15 +228,15 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      color-mix(in srgb, var(--lapis) 90%, var(--amethyst) 10%) 0%,
-      var(--lapis) 32%,
-      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 72%,
-      color-mix(in srgb, var(--amethyst) 74%, var(--lapis) 26%) 100%
+      #3d73cb 0%,
+      var(--lapis) 34%,
+      #2a569f 72%,
+      #234b8f 100%
     );
-  border: 1px solid var(--button-primary-border);
+  border: 0;
   color: var(--button-primary-text);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.38) inset,
+    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
@@ -251,9 +257,9 @@ strong {
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      color-mix(in srgb, var(--amethyst) 86%, var(--lapis) 14%) 0%,
-      color-mix(in srgb, var(--lapis) 78%, var(--amethyst) 22%) 42%,
-      var(--amethyst) 100%
+      #487fd6 0%,
+      #2f5fb8 42%,
+      #1f4382 100%
     );
   color: var(--button-primary-text);
 }
