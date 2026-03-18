@@ -1960,16 +1960,18 @@ header h1 {
   z-index: 40;
 }
 
+.nav-menu-panel .nav-menu-item,
+.nav-login-menu .nav-menu-item,
 .nav-menu-item {
   display: block;
   width: 100%;
-  border: 0;
+  border: 0 !important;
   border-radius: 7px;
-  background: transparent;
-  background-image: none;
-  box-shadow: none;
-  color: var(--text);
-  -webkit-text-fill-color: currentColor;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: currentColor !important;
   text-decoration: none;
   text-align: left;
   padding: 0.44rem 0.58rem;
@@ -1978,7 +1980,9 @@ header h1 {
 }
 
 .nav-menu-panel .nav-menu-item:hover,
-.nav-menu-panel .nav-menu-item:focus-visible {
+.nav-menu-panel .nav-menu-item:focus-visible,
+.nav-login-menu .nav-menu-item:hover,
+.nav-login-menu .nav-menu-item:focus-visible {
   border: 0 !important;
   background: var(--menu-hover-bg) !important;
   background-image: none !important;
