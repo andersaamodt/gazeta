@@ -1977,14 +1977,15 @@ header h1 {
   font-weight: 600;
 }
 
-.nav-menu-item:hover,
-.nav-menu-item:focus-visible {
-  background: var(--menu-hover-bg);
-  background-image: none;
-  color: var(--accent);
-  -webkit-text-fill-color: currentColor;
+.nav-menu-panel .nav-menu-item:hover,
+.nav-menu-panel .nav-menu-item:focus-visible {
+  border: 0 !important;
+  background: var(--menu-hover-bg) !important;
+  background-image: none !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: currentColor !important;
   text-decoration: none;
-  box-shadow: none;
+  box-shadow: none !important;
   outline: 0;
 }
 
@@ -1993,12 +1994,14 @@ header h1 {
   -webkit-text-fill-color: currentColor;
 }
 
-.nav-menu-item-danger:hover,
-.nav-menu-item-danger:focus-visible {
-  background: var(--menu-danger-hover-bg);
-  background-image: none;
-  color: var(--menu-danger-text);
-  -webkit-text-fill-color: currentColor;
+.nav-menu-panel .nav-menu-item-danger:hover,
+.nav-menu-panel .nav-menu-item-danger:focus-visible {
+  border: 0 !important;
+  background: var(--menu-danger-hover-bg) !important;
+  background-image: none !important;
+  color: var(--menu-danger-text) !important;
+  -webkit-text-fill-color: currentColor !important;
+  box-shadow: none !important;
 }
 
 .nav-username {
