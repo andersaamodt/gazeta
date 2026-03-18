@@ -883,8 +883,14 @@
       return;
     }
     var descText = String(s.description || '');
+    var elements = Array.isArray(s.elements) ? s.elements : [];
+    var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
+    var suppressEmptyDescription = !descText.trim() && !hasMainContent && state.activeHeadField !== 'description';
     if (isAdmin()) {
-      els.description.hidden = false;
+      els.description.hidden = suppressEmptyDescription;
+      if (suppressEmptyDescription) {
+        els.description.innerHTML = '';
+      } else
       if (state.activeHeadField === 'description') {
         els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
       } else if (state.editMode) {
@@ -902,7 +908,7 @@
       }
     } else {
       els.description.textContent = descText;
-      els.description.hidden = !descText;
+      els.description.hidden = !descText && !hasMainContent;
     }
 
     if (isAdmin() && state.activeHeadField) {

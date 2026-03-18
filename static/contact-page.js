@@ -330,9 +330,16 @@
     }
     if (els.description) {
       var text = String(s.description || '').trim();
+      var rows = normalizeRows(s.rows || []).filter(function (row) {
+        return String(row.transport || '').trim() && String(row.value || '').trim();
+      });
+      var hasMainContent = rows.length > 0 || String(s.extras_after || '').trim().length > 0;
       if (text) {
         els.description.hidden = false;
         els.description.innerHTML = markdownInline(text);
+      } else if (!hasMainContent) {
+        els.description.hidden = true;
+        els.description.innerHTML = '';
       } else {
         els.description.hidden = false;
         els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
