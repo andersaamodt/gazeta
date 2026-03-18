@@ -630,6 +630,20 @@ title: Blog Admin
 <script src="/static/admin.js"></script>
 
 <style>
+header#title-block-header {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+header#title-block-header h1.title,
+body > h1:first-of-type {
+  margin: 0 !important;
+  padding: 0 0 0.4rem !important;
+  border: 0 !important;
+}
+
 header h1::after,
 body > h1:first-of-type::after {
   content: none !important;
@@ -642,7 +656,7 @@ body {
 }
 
 .admin-access-message {
-  margin: 0.15rem 0 1rem;
+  margin: 0 0 0.75rem;
   padding: 0.72rem 0.9rem;
   border-radius: 12px;
   border: 1px solid #d8deec;
@@ -856,7 +870,7 @@ body {
   --admin-content-pad-right: 0.72rem;
   min-width: 0;
   min-height: calc(100vh - 3.25rem);
-  padding: 0.45rem var(--admin-content-pad-right) 0 var(--admin-content-pad-left);
+  padding: 0 var(--admin-content-pad-right) 0 var(--admin-content-pad-left);
   background: #f4f7fd;
 }
 
