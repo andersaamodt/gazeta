@@ -21,14 +21,31 @@ cfg=$(blog_nostr_pages_load_json)
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-pages-rows.XXXXXX")
 printf '%s\n' "$cfg" | jq -c '.pages[]' > "$rows_tmp"
 blog_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-posts.XXXXXX")
+blog_tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-tags.XXXXXX")
 blog_collect_public_posts "$blog_posts_tmp"
 connected_posts_total=$(wc -l < "$blog_posts_tmp" | tr -d ' ')
 case "$connected_posts_total" in
   ''|*[!0-9]*) connected_posts_total=0 ;;
 esac
-rm -f "$blog_posts_tmp"
+while IFS= read -r file || [ -n "$file" ]; do
+  [ -n "$file" ] || continue
+  [ -f "$file" ] || continue
+  tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
+  tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\\[//;s/\\]$//;s/\\\"//g;s/'//g")
+  tags=$(blog_normalize_tags "$tags_csv")
+  if [ -n "$tags" ]; then
+    printf '%s\n' "$tags" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | awk 'NF { print }' >> "$blog_tags_tmp"
+  fi
+done < "$blog_posts_tmp"
 
-printf '{"success":true,"pages":['
+available_tags_json='[]'
+if [ -s "$blog_tags_tmp" ]; then
+  available_tags_json=$(LC_ALL=C sort -fu "$blog_tags_tmp" | jq -Rcs 'split("\n") | map(select(length > 0))' 2>/dev/null || printf '[]')
+fi
+
+printf '{"success":true,"available_tags":'
+printf '%s' "$available_tags_json"
+printf ',"pages":['
 first=1
 while IFS= read -r row || [ -n "$row" ]; do
   [ -n "$row" ] || continue
@@ -37,6 +54,7 @@ while IFS= read -r row || [ -n "$row" ]; do
   kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
   path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
   show_in_nav=$(printf '%s\n' "$row" | jq -r 'if (if has("show_in_nav") then .show_in_nav else true end) then "true" else "false" end' 2>/dev/null || printf 'true')
+  default_tag=$(printf '%s\n' "$row" | jq -r '.default_tag // ""' 2>/dev/null || printf '')
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
   draft_title=''
   draft_state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
@@ -102,6 +120,7 @@ while IFS= read -r row || [ -n "$row" ]; do
     --arg path "$path" \
     --arg title "$title" \
     --arg placeholder_title "$placeholder_title" \
+    --arg default_tag "$default_tag" \
     --argjson kind "$kind" \
     --argjson connected_posts "$connected_posts" \
     --argjson show_in_nav "$( [ "$show_in_nav" = "true" ] && printf true || printf false )" \
@@ -113,6 +132,7 @@ while IFS= read -r row || [ -n "$row" ]; do
       path: $path,
       title: $title,
       placeholder_title: $placeholder_title,
+      default_tag: $default_tag,
       connected_posts: $connected_posts,
       show_in_nav: $show_in_nav,
       canonical_exists: $canonical_exists
@@ -121,4 +141,4 @@ done < "$rows_tmp"
 printf ']}'
 printf '\n'
 
-rm -f "$rows_tmp"
+rm -f "$rows_tmp" "$blog_posts_tmp" "$blog_tags_tmp"

@@ -125,6 +125,15 @@ fi
 canonical_sig_state_json=$canonical_state_json
 canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}' 2>/dev/null || printf '%s\n' "$canonical_state_json")
 view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}' 2>/dev/null || printf '%s\n' "$view_state_json")
+if [ "$page_type" = "blog" ]; then
+  page_entry_json=$(blog_nostr_page_entry_json "$page_slug" 2>/dev/null || printf '')
+  default_tag=''
+  if [ -n "$page_entry_json" ]; then
+    default_tag=$(printf '%s\n' "$page_entry_json" | jq -r '.default_tag // ""' 2>/dev/null || printf '')
+  fi
+  canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --arg default_tag "$default_tag" '. + {default_tag: $default_tag}' 2>/dev/null || printf '%s\n' "$canonical_state_json")
+  view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --arg default_tag "$default_tag" '. + {default_tag: $default_tag}' 2>/dev/null || printf '%s\n' "$view_state_json")
+fi
 if [ "$page_type" = "nip23" ] || [ "$page_type" = "blog" ]; then
   canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$canonical_state_json")
   view_state_json=$(printf '%s\n' "$view_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$view_state_json")

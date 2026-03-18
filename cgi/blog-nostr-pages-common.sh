@@ -167,6 +167,7 @@ blog_nostr_pages_normalize_json() {
               (if .show_nav == false then false else true end)
             else true end
           ),
+          default_tag: ((.default_tag // "") | tostring | gsub("^\\s+|\\s+$";"")),
           placeholder_title: ((.placeholder_title // .title // "") | tostring),
           path: ((.path // "") | tostring)
         })
@@ -210,6 +211,7 @@ blog_nostr_pages_normalize_json() {
                  end
                )
                | .show_in_nav = (if .show_in_nav == false then false else true end)
+               | .default_tag = (if .type == "blog" then (.default_tag // "") else "" end)
                | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
                | .path = norm_path(.slug; .type; .path)
              ))

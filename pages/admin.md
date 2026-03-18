@@ -2406,6 +2406,28 @@ body {
   font-size: 0.82rem;
 }
 
+.nostr-page-default-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.82rem;
+}
+
+.nostr-page-default-tag > span {
+  white-space: nowrap;
+}
+
+#admin-panel .nostr-page-default-tag select {
+  width: auto;
+  min-width: 0;
+  max-width: 12rem;
+  height: 1.8rem;
+  padding: 0.14rem 1.7rem 0.14rem 0.48rem;
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
 #admin-panel .nostr-page-posts-link {
   color: var(--admin-accent, var(--accent, #2d4f8c)) !important;
   font-size: 0.82rem;

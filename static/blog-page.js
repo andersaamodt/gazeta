@@ -28,6 +28,7 @@
     payload: null,
     posts: [],
     initialContentPainted: false,
+    defaultFiltersApplied: false,
     filters: {
       tags: new Set(),
       years: new Set(),
@@ -119,6 +120,7 @@
       slug: String(src.slug || slug),
       title: String(src.title || ''),
       content: String(src.content || ''),
+      default_tag: String(src.default_tag || '').trim(),
       extras_after: String(src.extras_after || ''),
       extras_after_format: String(src.extras_after_format || 'markdown').trim().toLowerCase() === 'html' ? 'html' : 'markdown'
     };
@@ -435,6 +437,22 @@
     renderList();
   }
 
+  function applyDefaultFilters() {
+    if (state.defaultFiltersApplied) {
+      return;
+    }
+    var page = getRenderState();
+    var defaultTag = String(page.default_tag || '').trim();
+    if (!defaultTag) {
+      state.defaultFiltersApplied = true;
+      return;
+    }
+    if (!state.filters.tags.size && !state.filters.years.size && !state.filters.types.size) {
+      state.filters.tags.add(defaultTag);
+    }
+    state.defaultFiltersApplied = true;
+  }
+
   function setPanelOpen(open) {
     if (!els.panel || !els.toggle) {
       return;
@@ -502,6 +520,7 @@
       csrf_token: auth.csrf_token
     }).then(function (data) {
       state.payload = data;
+      applyDefaultFilters();
       renderAll();
       markInitialContentPainted();
     }).catch(function () {

@@ -51,6 +51,7 @@
     localDripTabId: '',
     localDripLastTickAt: 0,
     nostrPages: [],
+    nostrPagesAvailableTags: [],
     nostrPagesSaveBusy: false,
     nostrPagesSaveQueued: false,
     nostrPagesEditingSlugIndex: -1,
@@ -2504,6 +2505,37 @@
     return 'List Page';
   }
 
+  function uniqueSortedNostrPageTags(tags) {
+    const seen = {};
+    const out = [];
+    (Array.isArray(tags) ? tags : []).forEach(function (tag) {
+      const text = String(tag || '').trim();
+      if (!text || seen[text]) {
+        return;
+      }
+      seen[text] = true;
+      out.push(text);
+    });
+    out.sort(function (a, b) {
+      return a.localeCompare(b);
+    });
+    return out;
+  }
+
+  function renderNostrPageDefaultTagOptions(selectedTag) {
+    const selected = String(selectedTag || '').trim();
+    let tags = uniqueSortedNostrPageTags(state.nostrPagesAvailableTags || []);
+    if (selected && tags.indexOf(selected) < 0) {
+      tags = [selected].concat(tags);
+      tags = uniqueSortedNostrPageTags(tags);
+    }
+    let html = '<option value="">All posts</option>';
+    tags.forEach(function (tag) {
+      html += '<option value="' + escapeAttr(tag) + '"' + (tag === selected ? ' selected' : '') + '>' + escapeHtml(tag) + '</option>';
+    });
+    return html;
+  }
+
   function navbarRowsFromNostrPages(pages) {
     const rows = [];
     (Array.isArray(pages) ? pages : []).forEach(function (page) {
@@ -2665,7 +2697,9 @@
       }
       if (pageType === 'blog') {
         const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
+        const defaultTag = String(page.default_tag || '').trim();
         html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
+        html += '<label class="nostr-page-default-tag"><span>Posts</span><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
         html += '<a href="/pages/admin.html#posts" class="nostr-page-posts-link" data-nostr-page-action="view-posts" data-index="' + String(idx) + '" aria-label="View posts for this blog page">View posts</a>';
       }
       html += '</div>';
@@ -2780,6 +2814,7 @@
     if (!data.success) {
       throw new Error(data.error || 'Failed to load Nostr pages');
     }
+    state.nostrPagesAvailableTags = Array.isArray(data.available_tags) ? data.available_tags.slice() : [];
     state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
     renderNostrPagesList(state.nostrPages, false);
     renderModerationPageFilterOptions();
@@ -4142,6 +4177,21 @@
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
         if (action !== 'toggle-nav') {
+          if (action === 'default-tag') {
+            const idx = Number(target.getAttribute('data-index'));
+            if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
+              return;
+            }
+            const before = state.nostrPages.slice();
+            const next = state.nostrPages.slice();
+            next[idx] = Object.assign({}, next[idx], { default_tag: String(target.value || '').trim() });
+            state.nostrPages = next;
+            saveNostrPagesConfig().catch(function (err) {
+              state.nostrPages = before;
+              renderNostrPagesList(state.nostrPages, false);
+              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+            });
+          }
           return;
         }
         const idx = Number(target.getAttribute('data-index'));
