@@ -95,8 +95,37 @@ if [ "$verified" != "true" ] || [ -z "$ev_pubkey" ]; then
 fi
 
 if [ "$verified" != "true" ]; then
+  repaired_event_json=''
+  for candidate_kind in 22242 27235; do
+    repaired_event_json=$(printf '%s\n' "$event_json" | jq -c --argjson kind "$candidate_kind" '.kind = $kind' 2>/dev/null || printf '')
+    [ -n "$repaired_event_json" ] || continue
+    if blog_nostr_verify_event_json "$repaired_event_json"; then
+      event_json=$repaired_event_json
+      verified=true
+      break
+    fi
+    for candidate_pubkey in "$signer_pubkey_hint" "$req_pubkey_hint"; do
+      [ -n "$candidate_pubkey" ] || continue
+      repaired_event_json=$(printf '%s\n' "$event_json" | jq -c --arg pubkey "$candidate_pubkey" --argjson kind "$candidate_kind" '.pubkey = $pubkey | .kind = $kind' 2>/dev/null || printf '')
+      [ -n "$repaired_event_json" ] || continue
+      if blog_nostr_verify_event_json "$repaired_event_json"; then
+        event_json=$repaired_event_json
+        ev_pubkey=$candidate_pubkey
+        verified=true
+        break 2
+      fi
+    done
+  done
+fi
+
+if [ "$verified" != "true" ]; then
   blog_json_error "Invalid Nostr signature" "invalid_signature"
   exit 0
+fi
+
+if [ -z "$ev_pubkey" ]; then
+  ev_pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+  ev_pubkey=$(blog_validate_nostr_pubkey "$ev_pubkey" 2>/dev/null || printf '')
 fi
 
 if [ -z "$ev_pubkey" ]; then

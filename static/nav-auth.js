@@ -910,15 +910,29 @@
     throw new Error('Signer did not return a valid signed event.');
   }
 
-  function normalizeSignedEventWithPubkey(result, pubkey) {
+  function normalizeSignedEventKind(value) {
+    var num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) {
+      return 0;
+    }
+    return Math.floor(num);
+  }
+
+  function normalizeSignedEventForSubmit(result, pubkey, expectedKind) {
     var normalized = normalizeSignedEvent(result);
     var fallbackPubkey = normalizePubkeyHex(pubkey);
     var rawExistingPubkey = String((normalized && normalized.pubkey) || '').trim();
     var existingPubkey = normalizePubkeyHex(rawExistingPubkey);
+    var desiredKind = normalizeSignedEventKind(expectedKind);
+    var existingKind = normalizeSignedEventKind(normalized && normalized.kind);
+    var patched = normalized;
     if (normalized && fallbackPubkey && (!existingPubkey || rawExistingPubkey.toLowerCase() !== existingPubkey)) {
-      normalized = Object.assign({}, normalized, { pubkey: fallbackPubkey });
+      patched = Object.assign({}, patched, { pubkey: fallbackPubkey });
     }
-    return normalized;
+    if (patched && desiredKind > 0 && existingKind !== desiredKind) {
+      patched = Object.assign({}, patched, { kind: desiredKind });
+    }
+    return patched;
   }
 
   function signedEventPubkey(result) {
@@ -965,7 +979,7 @@
   function finishLogin(requestId, signedEvent, delegationEvent, forceInteractive, usernameHint, signerPubkeyHint) {
     var payload = {
       request_id: requestId,
-      event_json_b64: encodeBase64Utf8(JSON.stringify(normalizeSignedEvent(signedEvent))),
+      event_json_b64: encodeBase64Utf8(JSON.stringify(normalizeSignedEventForSubmit(signedEvent, signerPubkeyHint, AUTH_KIND))),
       force_interactive: forceInteractive ? 'true' : 'false'
     };
     var normalizedSignerPubkeyHint = normalizePubkeyHex(signerPubkeyHint);
@@ -1527,11 +1541,11 @@
               return {
                 begin: begin,
                 userPubkey: fallback,
-                signedAuth: normalizeSignedEventWithPubkey(normalizedAuth, fallback)
+                signedAuth: normalizeSignedEventForSubmit(normalizedAuth, fallback, AUTH_KIND)
               };
             });
           }
-          normalizedAuth = normalizeSignedEventWithPubkey(normalizedAuth, userPubkey);
+          normalizedAuth = normalizeSignedEventForSubmit(normalizedAuth, userPubkey, AUTH_KIND);
           return {
             begin: begin,
             userPubkey: userPubkey,
