@@ -275,16 +275,16 @@ strong {
 }
 
 .nav-search button {
-  background: linear-gradient(135deg, #edf3ea 0%, #e1eadb 100%);
-  border-color: color-mix(in srgb, var(--malachite) 32%, var(--border) 68%);
+  background: linear-gradient(135deg, var(--nav-button-bg) 0%, var(--nav-button-bg-dark) 100%);
+  border-color: color-mix(in srgb, var(--border) 84%, var(--gold-leaf) 16%);
   color: var(--malachite);
 }
 
 .nav-search button:hover,
 .nav-search button:focus-visible {
-  background: linear-gradient(135deg, #f1e8f6 0%, #e8ddf0 100%);
-  border-color: color-mix(in srgb, var(--amethyst) 38%, var(--border) 62%);
-  color: var(--amethyst);
+  background: linear-gradient(135deg, #f4ebdc 0%, #eadfc9 100%);
+  border-color: color-mix(in srgb, var(--border) 72%, var(--gold-leaf) 28%);
+  color: var(--nav-search-icon-hover);
 }
 
 .nav-username:not(.active) {
@@ -383,6 +383,42 @@ strong {
 
 .footer-feed-link {
   border-color: rgba(182, 139, 53, 0.5);
+}
+
+.footer-feed-link[href$="/rss.xml"] {
+  color: var(--amethyst);
+}
+
+.footer-feed-link[href$="/rss.xml"] svg {
+  color: var(--amethyst);
+}
+
+.footer-feed-link[href$="/rss.xml"]:hover,
+.footer-feed-link[href$="/rss.xml"]:focus-visible {
+  color: #553f83;
+}
+
+.footer-feed-link[href$="/rss.xml"]:hover svg,
+.footer-feed-link[href$="/rss.xml"]:focus-visible svg {
+  color: #553f83;
+}
+
+.footer-feed-link[href$="/atom.xml"] {
+  color: var(--malachite);
+}
+
+.footer-feed-link[href$="/atom.xml"] svg {
+  color: var(--malachite);
+}
+
+.footer-feed-link[href$="/atom.xml"]:hover,
+.footer-feed-link[href$="/atom.xml"]:focus-visible {
+  color: #1e6f56;
+}
+
+.footer-feed-link[href$="/atom.xml"]:hover svg,
+.footer-feed-link[href$="/atom.xml"]:focus-visible svg {
+  color: #1e6f56;
 }
 
 ::selection {
