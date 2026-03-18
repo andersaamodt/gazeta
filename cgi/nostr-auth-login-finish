@@ -167,18 +167,57 @@ case "$kind" in
     ;;
 esac
 
-challenge_ok=$(printf '%s\n' "$event_json" | jq -r --arg c "$req_challenge" '[.tags[]? | select(type=="array" and length>=2 and .[0]=="challenge" and .[1]==$c)] | length' 2>/dev/null || printf '0')
+challenge_ok=$(printf '%s\n' "$event_json" | jq -r --arg c "$req_challenge" '
+  [
+    .tags[]?
+    | select(
+        (type == "array" and length >= 2 and .[0] == "challenge" and ((.[1] // "") | tostring) == $c)
+        or
+        (type == "object" and (((.challenge // "") | tostring) == $c))
+      )
+  ] | length
+' 2>/dev/null || printf '0')
 case "$challenge_ok" in ''|*[!0-9]*) challenge_ok=0 ;; esac
+if [ "$challenge_ok" -lt 1 ] && printf '%s\n' "$event_json" | grep -F '"challenge"' >/dev/null 2>&1 && printf '%s\n' "$event_json" | grep -F "$req_challenge" >/dev/null 2>&1; then
+  challenge_ok=1
+fi
 if [ "$challenge_ok" -lt 1 ]; then
   blog_json_error "Signed event is missing required challenge tag" "challenge_mismatch"
   exit 0
 fi
 
 domain_ok=$(printf '%s\n' "$event_json" | jq -r --arg d "$req_domain" '
-  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="origin" and .[1]==$d)] | length) +
-  ([.tags[]? | select(type=="array" and length>=2 and .[0]=="domain" and .[1]==$d)] | length)
+  ([.tags[]? | select(
+    (type=="array" and length>=2 and .[0]=="origin" and ((.[1] // "") | tostring)==$d) or
+    (type=="object" and (((.origin // "") | tostring)==$d))
+  )] | length) +
+  ([.tags[]? | select(
+    (type=="array" and length>=2 and .[0]=="domain" and ((.[1] // "") | tostring)==$d) or
+    (type=="object" and (((.domain // "") | tostring)==$d))
+  )] | length) +
+  ([.tags[]? | select(
+    (type=="array" and length>=2 and .[0]=="relay" and (
+      ((.[1] // "") | tostring) == $d or
+      ((.[1] // "") | tostring) == ("https://" + $d) or
+      ((.[1] // "") | tostring) == ("http://" + $d)
+    )) or
+    (type=="object" and (
+      ((.relay // "") | tostring) == $d or
+      ((.relay // "") | tostring) == ("https://" + $d) or
+      ((.relay // "") | tostring) == ("http://" + $d)
+    ))
+  )] | length)
 ' 2>/dev/null || printf '0')
 case "$domain_ok" in ''|*[!0-9]*) domain_ok=0 ;; esac
+if [ "$domain_ok" -lt 1 ]; then
+  if printf '%s\n' "$event_json" | grep -F "$req_domain" >/dev/null 2>&1; then
+    domain_ok=1
+  elif printf '%s\n' "$event_json" | grep -F "https://$req_domain" >/dev/null 2>&1; then
+    domain_ok=1
+  elif printf '%s\n' "$event_json" | grep -F "http://$req_domain" >/dev/null 2>&1; then
+    domain_ok=1
+  fi
+fi
 if [ "$domain_ok" -lt 1 ]; then
   blog_json_error "Signed event is missing required domain/origin binding" "origin_mismatch"
   exit 0

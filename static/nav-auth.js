@@ -885,7 +885,7 @@
     var signerPubkey = String(pubkey || '').trim();
     var tags = [
       ['challenge', String(challenge || '')],
-      ['relay', currentOrigin()],
+      ['origin', currentOrigin()],
       ['domain', currentHost()]
     ];
     if (eventAction && eventAction !== 'login') {
