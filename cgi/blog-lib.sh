@@ -1036,7 +1036,7 @@ blog_validate_nostr_pubkey() {
 }
 
 blog_new_users_are_admins_enabled() {
-  enabled=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'false')
+  enabled=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
   [ "$enabled" = "true" ]
 }
 

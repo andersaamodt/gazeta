@@ -18,7 +18,7 @@ drip_randomness=$(blog_drip_randomness_minutes)
 feed_full_text=$(config-get "$blog_site_conf" feed_full_text 2>/dev/null || printf 'true')
 feed_items=$(config-get "$blog_site_conf" feed_items 2>/dev/null || printf '50')
 nostr_bridge_enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
-new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'false')
+new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
 nostr_authors=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file")
 nostr_relays=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
 nostr_blocklist=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
@@ -32,7 +32,7 @@ case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; e
 case "$feed_full_text" in true|false) ;; *) feed_full_text=true ;; esac
 case "$feed_items" in ''|*[!0-9]*) feed_items=50 ;; esac
 case "$nostr_bridge_enabled" in true|false) ;; *) nostr_bridge_enabled=false ;; esac
-case "$new_users_are_admins" in true|false) ;; *) new_users_are_admins=false ;; esac
+case "$new_users_are_admins" in true|false) ;; *) new_users_are_admins=true ;; esac
 
 printf '{"success":true,'
 printf '"registration_enabled":%s,' "$registration_enabled"
