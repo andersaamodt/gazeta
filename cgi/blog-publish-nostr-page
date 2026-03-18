@@ -63,7 +63,7 @@ if [ -z "$state_json" ]; then
     nip23|blog)
       canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
       if [ -n "$canonical_event" ]; then
-        state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
+        state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event" "$page_type")
       else
         state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
       fi
@@ -169,7 +169,7 @@ case "$page_type" in
       blog_json_error "$reason" "nostr_publish_failed"
       exit 0
     fi
-    canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json")
+    canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json" "$page_type")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: $local.extras_after, extras_after_format: $local.extras_after_format}')
     validation_after=$(blog_nip23_validate_and_enrich_state_json "$canonical_state_json" false)
     canonical_enriched=$canonical_state_json

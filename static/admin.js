@@ -2451,9 +2451,6 @@
     if (!safeSlug || safeSlug === 'index') {
       return '/';
     }
-    if (String(pageType || '').trim().toLowerCase() === 'nip23') {
-      return '/pages/index.html?page_slug=' + encodeURIComponent(safeSlug);
-    }
     return '/' + safeSlug;
   }
 

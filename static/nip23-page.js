@@ -6,6 +6,21 @@
     return;
   }
 
+  function removeLegacyTitleBlock() {
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
+  removeLegacyTitleBlock();
+
   var query = new URLSearchParams(window.location.search || '');
 
   function slugFromPathname(pathname) {
@@ -298,7 +313,7 @@
     if (s && s.title) {
       document.title = String(s.title);
     }
-    if (els.title) {
+  if (els.title) {
       if (isAdmin() && state.editMode) {
         els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
       } else {
@@ -306,6 +321,8 @@
       }
     }
   }
+
+  removeLegacyTitleBlock();
 
   function renderAdmin() {
     if (!els.admin) {

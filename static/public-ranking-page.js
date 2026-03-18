@@ -6,6 +6,21 @@
     return;
   }
 
+  function removeLegacyTitleBlock() {
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
+  removeLegacyTitleBlock();
+
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-ranking-slug') || query.get('page_slug') || query.get('slug') || 'ranking').trim() || 'ranking';
 
@@ -326,6 +341,9 @@
 
   function renderHead() {
     var s = getRenderState();
+    if (s && s.title) {
+      document.title = String(s.title);
+    }
     if (els.title) {
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {

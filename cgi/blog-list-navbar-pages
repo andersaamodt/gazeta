@@ -40,7 +40,7 @@ while IFS= read -r row || [ -n "$row" ]; do
   slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
   page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
   kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
-  path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
+  path=$(blog_nostr_page_public_path "$slug")
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
 
   title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')
@@ -48,7 +48,7 @@ while IFS= read -r row || [ -n "$row" ]; do
     title=$placeholder_title
   fi
   if [ -z "$title" ]; then
-    title=$(blog_nostr_page_default_title "$slug")
+    title=$(blog_nostr_page_default_title "$slug" "$page_type")
   fi
 
   if [ "$first" -eq 0 ]; then

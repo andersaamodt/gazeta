@@ -6,6 +6,21 @@
     return;
   }
 
+  function removeLegacyTitleBlock() {
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
+  removeLegacyTitleBlock();
+
   var querySlug = '';
   try {
     var params = new URLSearchParams(window.location.search);
@@ -847,6 +862,9 @@
 
   function renderHead() {
     var s = getRenderState();
+    if (s && s.title) {
+      document.title = String(s.title);
+    }
     if (els.title) {
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {

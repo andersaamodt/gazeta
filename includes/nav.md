@@ -42,7 +42,7 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
 <div class="nav-center">
-<a href="/pages/blog.html" data-page="blog">Blog</a>
+<a href="/" data-page="blog">Blog</a>
 </div>
 <div class="nav-right">
 <form class="nav-search" method="get" action="/cgi/blog-search">
@@ -136,7 +136,7 @@
         cachedPages = [];
       }
       var basePages = [
-        { slug: 'blog', title: 'Blog', path: '/pages/blog.html' }
+        { slug: 'blog', title: 'Blog', path: '/' }
       ];
       var seen = {};
       var html = '';

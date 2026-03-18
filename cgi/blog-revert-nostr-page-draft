@@ -67,7 +67,7 @@ case "$page_type" in
   nip23|blog)
     canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
     if [ -n "$canonical_event" ]; then
-      canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
+      canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event" "$page_type")
     else
       canonical_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
     fi

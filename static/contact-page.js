@@ -4,6 +4,21 @@
     return;
   }
 
+  function removeLegacyTitleBlock() {
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
+  removeLegacyTitleBlock();
+
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
 
@@ -307,6 +322,9 @@
 
   function renderHead() {
     var s = getRenderState();
+    if (s && s.title) {
+      document.title = String(s.title);
+    }
     if (els.title) {
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
     }

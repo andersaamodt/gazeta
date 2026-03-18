@@ -7,7 +7,13 @@
     return;
   }
 
+  var slug = String(root.getAttribute('data-blog-slug') || 'blog').trim() || 'blog';
   var els = {
+    title: document.getElementById('blog-page-title'),
+    description: document.getElementById('blog-page-description'),
+    admin: document.getElementById('blog-page-admin'),
+    validation: document.getElementById('blog-page-validation'),
+    content: document.getElementById('blog-page-content'),
     toggle: document.getElementById('blog-filter-toggle'),
     panel: document.getElementById('blog-filter-panel'),
     tags: document.getElementById('blog-filter-tags'),
@@ -19,7 +25,9 @@
   };
 
   var state = {
+    payload: null,
     posts: [],
+    initialContentPainted: false,
     filters: {
       tags: new Set(),
       years: new Set(),
@@ -28,6 +36,42 @@
   };
   var panelHideTimer = null;
 
+  function removeLegacyTitleBlock() {
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
+  function markHydrationPageReady() {
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
+  }
+
+  function markInitialContentPainted() {
+    if (state.initialContentPainted) {
+      return;
+    }
+    state.initialContentPainted = true;
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
+        detail: { slug: slug }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch failures.
+    }
+    markHydrationPageReady();
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -35,6 +79,179 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function markdownInline(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parseInline === 'function') {
+      return window.marked.parseInline(value);
+    }
+    return escapeHtml(value);
+  }
+
+  function markdownBlock(md) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function titleizeSlug(value) {
+    var text = String(value || '').trim().replace(/-/g, ' ');
+    if (!text || text === 'index') {
+      return 'Blog';
+    }
+    return text.split(/\s+/).map(function (word) {
+      return word ? (word.charAt(0).toUpperCase() + word.slice(1)) : '';
+    }).join(' ');
+  }
+
+  function normalizePageState(raw) {
+    var src = raw || {};
+    return {
+      slug: String(src.slug || slug),
+      title: String(src.title || ''),
+      content: String(src.content || ''),
+      extras_after: String(src.extras_after || ''),
+      extras_after_format: String(src.extras_after_format || 'markdown').trim().toLowerCase() === 'html' ? 'html' : 'markdown'
+    };
+  }
+
+  function getRenderState() {
+    if (state.payload && state.payload.state) {
+      return normalizePageState(state.payload.state);
+    }
+    return normalizePageState({ title: titleizeSlug(slug) });
+  }
+
+  function isAdmin() {
+    return !!(state.payload && state.payload.is_admin);
+  }
+
+  function authPayload() {
+    return {
+      session_token: String(localStorage.getItem('session_token') || '').trim(),
+      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
+    };
+  }
+
+  function apiPost(url, payload) {
+    var body = new URLSearchParams(payload || {});
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var data;
+        try {
+          data = JSON.parse(text);
+        } catch (_err) {
+          throw new Error('Invalid JSON response');
+        }
+        if (!res.ok || !data || data.success === false) {
+          throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+        }
+        return data;
+      });
+    });
+  }
+
+  function renderHead() {
+    var page = getRenderState();
+    var title = String(page.title || '').trim() || titleizeSlug(slug);
+    document.title = title;
+    if (els.title) {
+      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
+    }
+    if (!els.description) {
+      return;
+    }
+    var text = String(page.content || '').trim();
+    if (text) {
+      els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span>';
+      els.description.hidden = false;
+    } else {
+      els.description.innerHTML = '';
+      els.description.hidden = true;
+    }
+  }
+
+  function renderValidation() {
+    if (!els.validation) {
+      return;
+    }
+    var validation = (state.payload && state.payload.validation) ? state.payload.validation : {};
+    var errors = Array.isArray(validation.errors) ? validation.errors : [];
+    var warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+    if (!isAdmin() || (!errors.length && !warnings.length)) {
+      els.validation.hidden = true;
+      els.validation.innerHTML = '';
+      return;
+    }
+    var html = '';
+    if (errors.length) {
+      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
+      errors.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    if (warnings.length) {
+      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
+      warnings.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    els.validation.hidden = false;
+    els.validation.innerHTML = html;
+  }
+
+  function openAdminPage() {
+    window.location.href = '/pages/admin.html#nostr-pages';
+  }
+
+  function renderAdmin() {
+    var actionsHost = document.getElementById('blog-page-title-actions');
+    if (actionsHost) {
+      actionsHost.innerHTML = '';
+    }
+    if (!els.admin) {
+      return;
+    }
+    if (!isAdmin()) {
+      els.admin.hidden = true;
+      els.admin.innerHTML = '';
+      return;
+    }
+    if (actionsHost) {
+      actionsHost.innerHTML = '<span class="list-page-admin-bar"><button type="button" class="list-admin-primary-btn" data-blog-action="open-admin">Edit</button></span>';
+    }
+    els.admin.hidden = true;
+    els.admin.innerHTML = '';
+  }
+
+  function renderExtrasAfter() {
+    if (!els.content) {
+      return;
+    }
+    var page = getRenderState();
+    var after = String(page.extras_after || '').trim();
+    if (!after) {
+      els.content.hidden = true;
+      els.content.innerHTML = '';
+      return;
+    }
+    els.content.hidden = false;
+    els.content.innerHTML = page.extras_after_format === 'html' ? after : markdownBlock(after);
   }
 
   function formatType(value) {
@@ -172,7 +389,11 @@
     }).join('');
   }
 
-  function applyRender() {
+  function renderAll() {
+    renderHead();
+    renderAdmin();
+    renderValidation();
+    renderExtrasAfter();
     renderFilters();
     renderList();
   }
@@ -202,14 +423,16 @@
         target.add(normalized);
       }
     }
-    applyRender();
+    renderFilters();
+    renderList();
   }
 
   function clearFilters() {
     state.filters.tags.clear();
     state.filters.years.clear();
     state.filters.types.clear();
-    applyRender();
+    renderFilters();
+    renderList();
   }
 
   function setPanelOpen(open) {
@@ -227,7 +450,6 @@
       var wasHidden = !!els.panel.hidden;
       els.panel.hidden = false;
       if (wasHidden) {
-        // Ensure we animate from the collapsed state whenever opening from hidden.
         els.panel.classList.remove('is-open');
         void els.panel.offsetHeight;
         window.requestAnimationFrame(function () {
@@ -272,6 +494,22 @@
     }
   }
 
+  function loadPageState() {
+    var auth = authPayload();
+    return apiPost('/cgi/blog-get-nostr-page', {
+      page_slug: slug,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      state.payload = data;
+      renderAll();
+      markInitialContentPainted();
+    }).catch(function () {
+      renderAll();
+      markInitialContentPainted();
+    });
+  }
+
   function loadPosts() {
     return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin' })
       .then(function (res) { return res.json(); })
@@ -281,10 +519,12 @@
         }
         state.posts = data.posts;
         writeCache(state.posts);
-        applyRender();
+        renderFilters();
+        renderList();
+        markInitialContentPainted();
       })
       .catch(function () {
-        // Keep cached rendering on fetch failure.
+        markInitialContentPainted();
       });
   }
 
@@ -305,6 +545,15 @@
       event.preventDefault();
       setPanelOpen(true);
       toggleFilter('tags', inlineTag.getAttribute('data-inline-tag'), !!(event.metaKey || event.ctrlKey));
+      return;
+    }
+
+    var action = event.target && event.target.closest('[data-blog-action]');
+    if (action) {
+      event.preventDefault();
+      if (action.getAttribute('data-blog-action') === 'open-admin') {
+        openAdminPage();
+      }
     }
   });
 
@@ -321,11 +570,12 @@
     });
   }
 
+  removeLegacyTitleBlock();
   var cached = readCache();
   if (cached) {
     state.posts = cached;
-    applyRender();
   }
-
+  renderAll();
+  loadPageState();
   loadPosts();
 })();

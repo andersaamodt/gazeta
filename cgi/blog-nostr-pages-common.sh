@@ -62,6 +62,19 @@ blog_nostr_page_default_title() {
   blog_nostr_page_titleize_slug "$slug"
 }
 
+blog_nostr_page_public_path() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || {
+    printf '/\n'
+    return 0
+  }
+  if [ "$slug" = "index" ]; then
+    printf '/\n'
+    return 0
+  fi
+  printf '/%s\n' "$slug"
+}
+
 blog_nostr_page_kind_for_type() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
@@ -138,14 +151,8 @@ blog_nostr_pages_normalize_json() {
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
     def norm_path($slug; $type; $v):
-      if $type == "nip23" then
-        if $slug == "index" then "/"
-        else ("/pages/index.html?page_slug=" + $slug)
-        end
-      else
-        if $slug == "index" then "/"
-        else ("/" + $slug)
-        end
+      if $slug == "index" then "/"
+      else ("/" + $slug)
       end;
 
     ((if type=="object" then .pages else . end) // []) as $raw_pages
@@ -297,6 +304,12 @@ blog_nostr_page_load_draft_state_json() {
   [ -f "$path" ] || return 1
   raw=$(cat "$path" 2>/dev/null || printf '')
   [ -n "$raw" ] || return 1
+  raw_type=$(printf '%s\n' "$raw" | jq -r '.type // ""' 2>/dev/null || printf '')
+  case "$page_type:$raw_type" in
+    blog:nip23|nip23:blog|contact:blog|contact:nip23|contact:list|contact:public-ranking|public-ranking:blog|public-ranking:nip23|public-ranking:list|public-ranking:contact|list:blog|list:nip23|list:contact|list:public-ranking)
+      return 1
+      ;;
+  esac
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
     public-ranking) blog_public_ranking_normalize_state_json "$slug" "$raw" ;;
@@ -449,10 +462,15 @@ blog_nostr_nip23_latest_event_json() {
 blog_nip23_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$page_type" ] || page_type='nip23'
   title=$(blog_nostr_page_default_title "$slug" "$page_type")
-  jq -cn --arg slug "$slug" --arg title "$title" '{
+  state_type='nip23'
+  if [ "$page_type" = 'blog' ]; then
+    state_type='blog'
+  fi
+  jq -cn --arg slug "$slug" --arg title "$title" --arg state_type "$state_type" '{
     slug: $slug,
-    type: "nip23",
+    type: $state_type,
     title: $title,
     content: "",
     extras_after: "",
@@ -464,18 +482,23 @@ blog_nip23_normalize_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   raw_json=${2-}
   page_type=$(printf '%s' "${3-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$page_type" ] || page_type='nip23'
   fallback_title=$(blog_nostr_page_default_title "$slug" "$page_type")
+  state_type='nip23'
+  if [ "$page_type" = 'blog' ]; then
+    state_type='blog'
+  fi
   if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
     blog_nip23_default_state_json "$slug" "$page_type"
     return 0
   fi
-  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg state_type "$state_type" '
     def norm_extra_format($v):
       (($v // "") | tostring | ascii_downcase) as $f
       | if $f == "html" then "html" else "markdown" end;
     {
       slug: $slug,
-      type: "nip23",
+      type: $state_type,
       title: ((.title // $fallback_title) | tostring),
       content: ((.content // "") | tostring),
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
@@ -487,8 +510,10 @@ blog_nip23_normalize_state_json() {
 blog_nip23_state_from_event_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   event_json=${2-}
+  page_type=$(printf '%s' "${3-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$page_type" ] || page_type='nip23'
   if [ -z "$event_json" ] || ! printf '%s\n' "$event_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
-    blog_nip23_default_state_json "$slug"
+    blog_nip23_default_state_json "$slug" "$page_type"
     return 0
   fi
   raw=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{
@@ -496,7 +521,7 @@ blog_nip23_state_from_event_json() {
     title: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""),
     content: (.content // "")
   }' 2>/dev/null || printf '')
-  blog_nip23_normalize_state_json "$slug" "$raw"
+  blog_nip23_normalize_state_json "$slug" "$raw" "$page_type"
 }
 
 blog_nip23_state_signature_json() {
@@ -1040,6 +1065,13 @@ license: "CC BY 4.0"
 ---
 
 <section id="blog-page-root" class="blog-page" data-blog-slug="$slug" data-page-type="blog" aria-live="polite">
+<div class="list-page-head">
+<h1 id="blog-page-title">$page_title</h1>
+<p id="blog-page-description" class="muted" hidden></p>
+</div>
+<div id="blog-page-admin" class="list-admin" hidden></div>
+<div id="blog-page-validation" class="list-validation" hidden></div>
+<div id="blog-page-content" class="list-page-content" hidden></div>
 <div class="blog-layout">
 <div class="blog-filter-rail">
 <button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
