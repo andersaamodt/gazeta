@@ -1102,6 +1102,7 @@ blog_users_reindex() {
 
   for re_profile in "$blog_users_dir"/*/profile.conf; do
     [ -f "$re_profile" ] || continue
+    [ -r "$re_profile" ] || continue
     re_username=$(config-get "$re_profile" username 2>/dev/null || printf '')
     if [ -z "$re_username" ]; then
       re_username=$(basename "$(dirname "$re_profile")")
@@ -1135,6 +1136,7 @@ blog_users_sorted_usernames() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-users-sorted.XXXXXX")
   for sorted_profile in "$blog_users_dir"/*/profile.conf; do
     [ -f "$sorted_profile" ] || continue
+    [ -r "$sorted_profile" ] || continue
     sorted_username=$(config-get "$sorted_profile" username 2>/dev/null || printf '')
     [ -n "$sorted_username" ] || sorted_username=$(basename "$(dirname "$sorted_profile")")
     sorted_rank=$(config-get "$sorted_profile" user_rank 2>/dev/null || printf '0')
@@ -1287,6 +1289,7 @@ blog_find_username_by_nostr_pubkey() {
   fi
   find "$blog_users_dir" -mindepth 2 -maxdepth 2 -type f -name profile.conf 2>/dev/null | while IFS= read -r profile; do
     [ -n "$profile" ] || continue
+    [ -r "$profile" ] || continue
     saved_pubkey=$(config-get "$profile" nostr_pubkey 2>/dev/null || printf '')
     saved_pubkey=$(blog_validate_nostr_pubkey "$saved_pubkey" 2>/dev/null || printf '')
     if [ "$saved_pubkey" = "$pubkey" ]; then
