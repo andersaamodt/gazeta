@@ -101,8 +101,14 @@ blog_nostr_pages_normalize_json() {
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
     def norm_path($slug; $type; $v):
-      if $slug == "index" then "/"
-      else ("/" + $slug)
+      if $type == "nip23" then
+        if $slug == "index" then "/"
+        else ("/pages/index.html?page_slug=" + $slug)
+        end
+      else
+        if $slug == "index" then "/"
+        else ("/" + $slug)
+        end
       end;
 
     ((if type=="object" then .pages else . end) // []) as $raw_pages

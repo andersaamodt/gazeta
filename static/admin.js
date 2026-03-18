@@ -2445,16 +2445,19 @@
       .replace(/^-+|-+$/g, '');
   }
 
-  function pathFromNostrPageSlug(slug) {
+  function pathFromNostrPageSlug(slug, pageType) {
     const safeSlug = normalizeNostrPageSlug(slug);
     if (!safeSlug || safeSlug === 'index') {
       return '/';
     }
+    if (String(pageType || '').trim().toLowerCase() === 'nip23') {
+      return '/pages/index.html?page_slug=' + encodeURIComponent(safeSlug);
+    }
     return '/' + safeSlug;
   }
 
-  function normalizeNostrPagePathInput(raw, slug) {
-    return pathFromNostrPageSlug(slug);
+  function normalizeNostrPagePathInput(raw, slug, pageType) {
+    return pathFromNostrPageSlug(slug, pageType);
   }
 
   function slugFromPathInput(raw) {
@@ -2515,7 +2518,7 @@
         return;
       }
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
-      const path = pathFromNostrPageSlug(slug);
+      const path = pathFromNostrPageSlug(slug, page.type);
       rows.push({
         slug: slug,
         title: title,
@@ -2701,7 +2704,7 @@
     }
     const page = state.nostrPages[index] || {};
     const currentSlug = String(page.slug || '');
-    const currentPath = pathFromNostrPageSlug(currentSlug);
+    const currentPath = pathFromNostrPageSlug(currentSlug, page.type);
     state.nostrPagesEditingSlugIndex = index;
     state.nostrPagesEditingSlugValue = currentPath;
     renderNostrPagesList(state.nostrPages, false);
@@ -2724,7 +2727,7 @@
     }
     const page = state.nostrPages[index] || {};
     const prevSlug = String(page.slug || '');
-    const prevPath = pathFromNostrPageSlug(prevSlug);
+    const prevPath = pathFromNostrPageSlug(prevSlug, page.type);
     let liveValue = state.nostrPagesEditingSlugValue;
     if (els.nostrPagesList) {
       const input = els.nostrPagesList.querySelector('.nostr-page-slug-input[data-index="' + String(index) + '"]');
@@ -2734,7 +2737,7 @@
       }
     }
     const nextSlug = slugFromPathInput(liveValue);
-    const nextPath = normalizeNostrPagePathInput(liveValue, nextSlug);
+    const nextPath = normalizeNostrPagePathInput(liveValue, nextSlug, page.type);
     if (!nextSlug) {
       setOutput(els.outputNostrPages, 'A valid slug/path is required.', 'warn');
       focusNostrPageSlugInput(index);
@@ -2763,7 +2766,7 @@
     renderNostrPagesList(state.nostrPages, false);
     try {
       await saveNostrPagesConfig();
-      setOutput(els.outputNostrPages, 'Updated page path to ' + pathFromNostrPageSlug(nextSlug) + '.', 'ok');
+      setOutput(els.outputNostrPages, 'Updated page path to ' + pathFromNostrPageSlug(nextSlug, page.type) + '.', 'ok');
     } catch (err) {
       state.nostrPages = before;
       renderNostrPagesList(state.nostrPages, false);
@@ -2856,7 +2859,7 @@
       kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'public-ranking' ? 30040 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004))),
       show_in_nav: true,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
-      path: pathFromNostrPageSlug(slug)
+      path: pathFromNostrPageSlug(slug, normalizedType)
     });
     state.nostrPages = next;
     saveNostrPagesConfig().catch(function (err) {
@@ -2889,7 +2892,7 @@
       } else if (els.nostrPageTypeSelect.value === 'contact') {
         els.nostrPageSlugInput.value = 'profile';
       } else if (els.nostrPageTypeSelect.value === 'nip23') {
-        els.nostrPageSlugInput.value = 'index';
+        els.nostrPageSlugInput.value = '';
       } else {
         els.nostrPageSlugInput.value = '';
       }
@@ -2903,7 +2906,7 @@
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: blog)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : ((fallbackType === 'public-ranking' || fallbackType === 'public_ranking' || fallbackType === 'ranking') ? 'ranking' : ((fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : ((fallbackType === 'nip23' || fallbackType === 'long-form') ? 'index' : ''))));
+      const fallbackSlug = window.prompt('Page slug/path (example: essay)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : ((fallbackType === 'public-ranking' || fallbackType === 'public_ranking' || fallbackType === 'ranking') ? 'ranking' : ((fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : '')));
       if (fallbackSlug === null) {
         return;
       }

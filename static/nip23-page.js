@@ -7,7 +7,7 @@
   }
 
   var query = new URLSearchParams(window.location.search || '');
-  var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'index').trim() || 'index';
+  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-page-slug') || 'index').trim() || 'index';
 
   var els = {
     title: document.getElementById('nip23-page-title'),
@@ -268,6 +268,9 @@
 
   function renderHead() {
     var s = getRenderState();
+    if (s && s.title) {
+      document.title = String(s.title);
+    }
     if (els.title) {
       if (isAdmin() && state.editMode) {
         els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
