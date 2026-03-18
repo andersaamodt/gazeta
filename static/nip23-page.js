@@ -44,10 +44,10 @@
   }
 
   var slug = String(
+    root.getAttribute('data-page-slug') ||
+    slugFromPathname(window.location.pathname) ||
     query.get('page_slug') ||
     query.get('slug') ||
-    slugFromPathname(window.location.pathname) ||
-    root.getAttribute('data-page-slug') ||
     'index'
   ).trim() || 'index';
 
@@ -71,6 +71,8 @@
     initialContentPainted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
+  var markedUpgradeTimer = 0;
+  var markedUpgradeAttempts = 0;
 
   function escapeHtml(text) {
     return String(text || '')
@@ -89,6 +91,7 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
+    scheduleMarkedUpgrade();
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
@@ -203,6 +206,30 @@
     markInitialContentPainted();
     markHydrationPageReady();
     return true;
+  }
+
+  function scheduleMarkedUpgrade() {
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return;
+    }
+    if (markedUpgradeTimer) {
+      return;
+    }
+    markedUpgradeAttempts = 0;
+    function pollForMarked() {
+      if (window.marked && typeof window.marked.parse === 'function') {
+        markedUpgradeTimer = 0;
+        renderAll();
+        return;
+      }
+      markedUpgradeAttempts += 1;
+      if (markedUpgradeAttempts >= 50) {
+        markedUpgradeTimer = 0;
+        return;
+      }
+      markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
+    }
+    markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
   }
 
   function isAdmin() {

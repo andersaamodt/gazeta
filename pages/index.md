@@ -11,5 +11,5 @@ title: Home
 <div id="nip23-page-content" class="list-page-content"></div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nip23-page.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>

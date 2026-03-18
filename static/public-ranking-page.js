@@ -47,6 +47,8 @@
     initialContentPainted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
+  var markedUpgradeTimer = 0;
+  var markedUpgradeAttempts = 0;
 
   function authPayload() {
     return {
@@ -153,6 +155,7 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
+    scheduleMarkedUpgrade();
     return escapeHtml(value);
   }
 
@@ -164,7 +167,32 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
+    scheduleMarkedUpgrade();
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function scheduleMarkedUpgrade() {
+    if (window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function') {
+      return;
+    }
+    if (markedUpgradeTimer) {
+      return;
+    }
+    markedUpgradeAttempts = 0;
+    function pollForMarked() {
+      if (window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function') {
+        markedUpgradeTimer = 0;
+        renderAll();
+        return;
+      }
+      markedUpgradeAttempts += 1;
+      if (markedUpgradeAttempts >= 50) {
+        markedUpgradeTimer = 0;
+        return;
+      }
+      markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
+    }
+    markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
   }
 
   function normalizeMetric(raw) {
