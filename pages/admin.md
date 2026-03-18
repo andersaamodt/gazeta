@@ -630,6 +630,11 @@ title: Blog Admin
 <script src="/static/admin.js"></script>
 
 <style>
+header h1::after,
+body > h1:first-of-type::after {
+  content: none !important;
+}
+
 body {
   max-width: none;
   margin: 0;
