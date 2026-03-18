@@ -2796,12 +2796,16 @@
     });
     state.nostrPages = next;
     renderNostrPagesList(state.nostrPages, false);
+    renderModerationPageFilterOptions();
+    dispatchNavbarRefresh(state.nostrPages, true);
     try {
       await saveNostrPagesConfig();
       setOutput(els.outputNostrPages, 'Updated page path to ' + pathFromNostrPageSlug(nextSlug, page.type) + '.', 'ok');
     } catch (err) {
       state.nostrPages = before;
       renderNostrPagesList(state.nostrPages, false);
+      renderModerationPageFilterOptions();
+      dispatchNavbarRefresh(state.nostrPages, true);
       setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
     }
   }
