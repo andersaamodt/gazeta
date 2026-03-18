@@ -52,6 +52,7 @@
     localDripLastTickAt: 0,
     nostrPages: [],
     nostrPagesSaveBusy: false,
+    nostrPagesSaveQueued: false,
     nostrPagesEditingSlugIndex: -1,
     nostrPagesEditingSlugValue: '',
     nostrPagesDragActive: false,
@@ -2789,6 +2790,7 @@
 
   async function saveNostrPagesConfig() {
     if (state.nostrPagesSaveBusy) {
+      state.nostrPagesSaveQueued = true;
       return;
     }
     state.nostrPagesSaveBusy = true;
@@ -2824,6 +2826,10 @@
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;
+      if (state.nostrPagesSaveQueued) {
+        state.nostrPagesSaveQueued = false;
+        return saveNostrPagesConfig();
+      }
     }
   }
 
@@ -4354,10 +4360,21 @@
       els.nostrPagesList.addEventListener('dragend', function (event) {
         const target = event.target;
         const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
+        const beforeSig = Array.isArray(state.nostrPagesDragSnapshot)
+          ? state.nostrPagesDragSnapshot.map(function (page) { return String(page.slug || ''); }).join('|')
+          : '';
+        const afterSig = Array.isArray(state.nostrPages)
+          ? state.nostrPages.map(function (page) { return String(page.slug || ''); }).join('|')
+          : '';
+        const orderChanged = !!beforeSig && !!afterSig && beforeSig !== afterSig;
         if (row) {
           row.classList.remove('is-dragging');
         }
-        if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && Array.isArray(state.nostrPagesDragSnapshot)) {
+        if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && orderChanged) {
+          saveNostrPagesConfig().catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+        } else if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && Array.isArray(state.nostrPagesDragSnapshot)) {
           state.nostrPages = state.nostrPagesDragSnapshot.slice();
           renderNostrPagesList(state.nostrPages, true);
         }
