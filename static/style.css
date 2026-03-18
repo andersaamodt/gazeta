@@ -3831,6 +3831,11 @@ main .btn {
   box-shadow: none;
 }
 
+.nostr-page-drag-handle {
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+}
+
 .nav-menu-btn:hover:not(:disabled),
 .nav-menu-btn:active:not(:disabled),
 .post-page-menu-trigger:hover:not(:disabled),
