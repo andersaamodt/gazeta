@@ -69,7 +69,7 @@ case "$page_type" in
     if [ -n "$canonical_event" ]; then
       canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
     else
-      canonical_state_json=$(blog_nip23_default_state_json "$page_slug")
+      canonical_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
     fi
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: $local.extras_after, extras_after_format: $local.extras_after_format}')
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$canonical_state_json" false)

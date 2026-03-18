@@ -65,7 +65,7 @@ if [ -z "$state_json" ]; then
       if [ -n "$canonical_event" ]; then
         state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event")
       else
-        state_json=$(blog_nip23_default_state_json "$page_slug")
+        state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
       fi
       ;;
     *)
@@ -141,7 +141,7 @@ case "$page_type" in
     canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson ranking "$(blog_public_ranking_view_json "$page_slug" "$canonical_state_json" "$event_json" true \"\" \"${BLOG_SESSION_USER_PUBKEY-}\")" '. + $ranking')
     ;;
   nip23|blog)
-    state_json=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
+    state_json=$(blog_nip23_normalize_state_json "$page_slug" "$state_json" "$page_type")
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$state_json" true)
     can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
     if [ "$can_publish" != "true" ]; then

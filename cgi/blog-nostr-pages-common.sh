@@ -25,6 +25,43 @@ blog_nostr_page_titleize_slug() {
   printf 'Untitled\n'
 }
 
+blog_nostr_page_placeholder_title() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  page=$(blog_nostr_page_entry_json "$slug" 2>/dev/null || printf '')
+  if [ -n "$page" ]; then
+    title=$(printf '%s\n' "$page" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
+    if [ -n "$title" ]; then
+      printf '%s\n' "$title"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+blog_nostr_page_default_title() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$slug" ] || {
+    printf 'Untitled\n'
+    return 0
+  }
+  placeholder_title=$(blog_nostr_page_placeholder_title "$slug" 2>/dev/null || printf '')
+  if [ -n "$placeholder_title" ]; then
+    printf '%s\n' "$placeholder_title"
+    return 0
+  fi
+  if [ "$slug" = "index" ] && [ "$page_type" = "blog" ]; then
+    printf 'Blog\n'
+    return 0
+  fi
+  if [ "$slug" = "index" ]; then
+    printf 'Home\n'
+    return 0
+  fi
+  blog_nostr_page_titleize_slug "$slug"
+}
+
 blog_nostr_page_kind_for_type() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
@@ -263,7 +300,7 @@ blog_nostr_page_load_draft_state_json() {
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
     public-ranking) blog_public_ranking_normalize_state_json "$slug" "$raw" ;;
-    nip23|blog) blog_nip23_normalize_state_json "$slug" "$raw" ;;
+    nip23|blog) blog_nip23_normalize_state_json "$slug" "$raw" "$page_type" ;;
     *) blog_list_normalize_state_json "$slug" "$raw" ;;
   esac
 }
@@ -276,7 +313,7 @@ blog_nostr_page_save_draft_state_json() {
   case "$page_type" in
     contact) normalized=$(blog_contact_normalize_state_json "$slug" "$state_json") ;;
     public-ranking) normalized=$(blog_public_ranking_normalize_state_json "$slug" "$state_json") ;;
-    nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json") ;;
+    nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json" "$page_type") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
   path=$(blog_nostr_page_draft_path "$slug")
@@ -411,10 +448,8 @@ blog_nostr_nip23_latest_event_json() {
 
 blog_nip23_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
-  title=$(blog_nostr_page_titleize_slug "$slug")
-  if [ "$slug" = "index" ]; then
-    title="Home"
-  fi
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  title=$(blog_nostr_page_default_title "$slug" "$page_type")
   jq -cn --arg slug "$slug" --arg title "$title" '{
     slug: $slug,
     type: "nip23",
@@ -428,12 +463,10 @@ blog_nip23_default_state_json() {
 blog_nip23_normalize_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   raw_json=${2-}
-  fallback_title=$(blog_nostr_page_titleize_slug "$slug")
-  if [ "$slug" = "index" ]; then
-    fallback_title="Home"
-  fi
+  page_type=$(printf '%s' "${3-}" | tr '[:upper:]' '[:lower:]')
+  fallback_title=$(blog_nostr_page_default_title "$slug" "$page_type")
   if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
-    blog_nip23_default_state_json "$slug"
+    blog_nip23_default_state_json "$slug" "$page_type"
     return 0
   fi
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
@@ -448,7 +481,7 @@ blog_nip23_normalize_state_json() {
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
       extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown")
     }
-  ' 2>/dev/null || blog_nip23_default_state_json "$slug"
+  ' 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type"
 }
 
 blog_nip23_state_from_event_json() {
@@ -890,8 +923,11 @@ blog_nostr_page_sync_mount() {
   elif [ -e "$mount_path" ]; then
     existing_type=$(blog_nostr_page_source_template_type "$mount_path")
     existing_slug=$(blog_nostr_page_source_template_slug "$mount_path")
-    if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+    if [ "$existing_type" = "custom" ]; then
       return 0
+    fi
+    if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+      rm -f "$mount_path"
     fi
   fi
 
@@ -938,7 +974,7 @@ blog_nostr_page_ensure_source_page() {
     esac
   fi
 
-  page_title=$(blog_nostr_page_titleize_slug "$slug")
+  page_title=$(blog_nostr_page_default_title "$slug" "$page_type")
 
   case "$page_type" in
     contact)

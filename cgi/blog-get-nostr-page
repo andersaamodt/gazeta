@@ -71,7 +71,7 @@ case "$page_type" in
       canonical_exists=true
       canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event_json")
     else
-      canonical_state_json=$(blog_nip23_default_state_json "$page_slug")
+      canonical_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
     fi
     ;;
   *)

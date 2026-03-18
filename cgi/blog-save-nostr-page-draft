@@ -205,7 +205,7 @@ case "$page_type" in
     enriched=$normalized
     ;;
   nip23|blog)
-    normalized=$(blog_nip23_normalize_state_json "$page_slug" "$state_json")
+    normalized=$(blog_nip23_normalize_state_json "$page_slug" "$state_json" "$page_type")
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$normalized" false)
     enriched=$normalized
