@@ -732,8 +732,31 @@ blog_param_decode_component() {
     url-decode "$value"
     return 0
   fi
-  escaped=$(printf '%s' "$value" | sed 's/%/\\x/g')
-  printf '%b' "$escaped"
+  printf '%s' "$value" | awk '
+    function hexval(ch) {
+      ch = toupper(ch)
+      return index("0123456789ABCDEF", ch) - 1
+    }
+    {
+      out = ""
+      i = 1
+      while (i <= length($0)) {
+        ch = substr($0, i, 1)
+        if (ch == "%" && i + 2 <= length($0)) {
+          hi = substr($0, i + 1, 1)
+          lo = substr($0, i + 2, 1)
+          if (hexval(hi) >= 0 && hexval(lo) >= 0) {
+            out = out sprintf("%c", (hexval(hi) * 16) + hexval(lo))
+            i += 3
+            continue
+          }
+        }
+        out = out ch
+        i += 1
+      }
+      printf "%s", out
+    }
+  '
 }
 
 blog_param_lookup() {
