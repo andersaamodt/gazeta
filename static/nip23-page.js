@@ -7,7 +7,34 @@
   }
 
   var query = new URLSearchParams(window.location.search || '');
-  var slug = String(query.get('page_slug') || query.get('slug') || root.getAttribute('data-page-slug') || 'index').trim() || 'index';
+
+  function slugFromPathname(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path || path === '/' || path === '/pages/index' || path === '/pages/index.html') {
+      return '';
+    }
+    path = path.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!path) {
+      return '';
+    }
+    if (path.indexOf('pages/') === 0) {
+      path = path.slice('pages/'.length);
+      path = path.replace(/\.html?$/i, '');
+    }
+    path = path.replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    if (!path || path === 'index') {
+      return '';
+    }
+    return path;
+  }
+
+  var slug = String(
+    query.get('page_slug') ||
+    query.get('slug') ||
+    slugFromPathname(window.location.pathname) ||
+    root.getAttribute('data-page-slug') ||
+    'index'
+  ).trim() || 'index';
 
   var els = {
     title: document.getElementById('nip23-page-title'),

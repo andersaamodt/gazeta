@@ -273,4 +273,4 @@
 
 <script src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-<script src="/static/nav-auth.js?v=20260227-logintabs2"></script>
+<script src="/static/nav-auth.js?v=20260318-pageslug1"></script>

@@ -1933,19 +1933,40 @@
 
   function normalizeNavPath(path) {
     var p = String(path || '').trim();
+    var search = '';
     if (!p) {
       return '/';
     }
     if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
       try {
-        p = new URL(p, window.location.href).pathname || '/';
+        var parsed = new URL(p, window.location.href);
+        p = parsed.pathname || '/';
+        search = parsed.search || '';
       } catch (_err) {
         p = '/';
+        search = '';
       }
+    }
+    if (!search && p.indexOf('?') >= 0) {
+      var split = p.split('?', 2);
+      p = split[0] || '/';
+      search = split[1] ? ('?' + split[1]) : '';
     }
     p = p.replace(/\/+$/, '');
     if (!p) {
       p = '/';
+    }
+    if (p === '/pages/index' || p === '/pages/index.html') {
+      try {
+        var params = new URLSearchParams(search || '');
+        var slug = String(params.get('page_slug') || params.get('slug') || '').trim().toLowerCase();
+        slug = slug.replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+        if (slug && slug !== 'index') {
+          return '/' + slug;
+        }
+      } catch (_err2) {
+        // Ignore malformed page query strings.
+      }
     }
     if (p === '/pages/index' || p === '/pages/index.html') {
       return '/';
@@ -1961,7 +1982,7 @@
   }
 
   function highlightCurrentPage() {
-    var currentPath = window.location.pathname;
+    var currentPath = window.location.href;
     var currentHash = window.location.hash || '';
     var navLinks = document.querySelectorAll('.nav-center a[data-page]');
     var normalizedCurrent = normalizeNavPath(currentPath);
