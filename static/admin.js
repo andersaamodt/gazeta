@@ -2819,7 +2819,7 @@
       });
       renderNostrPagesList(state.nostrPages, false);
       renderModerationPageFilterOptions();
-      dispatchNavbarRefresh(state.nostrPages, false);
+      dispatchNavbarRefresh(state.nostrPages, true);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;
@@ -4341,6 +4341,7 @@
         }
         state.nostrPagesDragLastTarget = targetKey;
         renderNostrPagesList(state.nostrPages, true);
+        dispatchNavbarRefresh(state.nostrPages, true);
       });
 
       els.nostrPagesList.addEventListener('drop', function (event) {
@@ -4369,11 +4370,17 @@
         }
         if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && orderChanged) {
           saveNostrPagesConfig().catch(function (err) {
+            if (Array.isArray(state.nostrPagesDragSnapshot)) {
+              state.nostrPages = state.nostrPagesDragSnapshot.slice();
+              renderNostrPagesList(state.nostrPages, true);
+              dispatchNavbarRefresh(state.nostrPages, true);
+            }
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
         } else if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && Array.isArray(state.nostrPagesDragSnapshot)) {
           state.nostrPages = state.nostrPagesDragSnapshot.slice();
           renderNostrPagesList(state.nostrPages, true);
+          dispatchNavbarRefresh(state.nostrPages, true);
         }
         state.nostrPagesDragActive = false;
         state.nostrPagesDragSlug = '';
