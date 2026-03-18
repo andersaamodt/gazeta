@@ -106,9 +106,8 @@ fi
 
 kind=$(printf '%s\n' "$event_json" | jq -r '.kind // 0' 2>/dev/null || printf '0')
 case "$kind" in
-  22242|27235) ;;
-  *)
-    blog_json_error "Login event kind must be 22242 or 27235" "invalid_kind"
+  ''|*[!0-9]*|0)
+    blog_json_error "Signed login event is missing a valid kind" "invalid_kind"
     exit 0
     ;;
 esac
