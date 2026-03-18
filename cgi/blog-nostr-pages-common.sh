@@ -900,6 +900,42 @@ blog_nostr_page_source_template_slug() {
   printf '%s\n' "$(blog_nostr_page_slug "$raw_slug")"
 }
 
+blog_nostr_page_template_is_current() {
+  file=${1-}
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  [ -f "$file" ] || return 1
+  case "$page_type" in
+    blog)
+      grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
+      grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="blog-page-content"' "$file" 2>/dev/null
+      ;;
+    nip23)
+      grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
+      grep -q 'id="nip23-page-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="nip23-page-content"' "$file" 2>/dev/null
+      ;;
+    public-ranking)
+      grep -q 'id="public-ranking-title"' "$file" 2>/dev/null &&
+      grep -q 'id="public-ranking-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="public-ranking-content"' "$file" 2>/dev/null
+      ;;
+    contact)
+      grep -q 'id="contact-page-title"' "$file" 2>/dev/null &&
+      grep -q 'id="contact-page-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="contact-page-content"' "$file" 2>/dev/null
+      ;;
+    list)
+      grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
+      grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="list-page-content"' "$file" 2>/dev/null
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
 blog_nostr_pages_prune_stale_source_pages() {
   cfg_json=${1-}
   pages_dir=$blog_site_root/site/pages
@@ -951,7 +987,7 @@ blog_nostr_page_sync_mount() {
     if [ "$existing_type" = "custom" ]; then
       return 0
     fi
-    if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+    if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } || ! blog_nostr_page_template_is_current "$mount_path" "$page_type"; then
       rm -f "$mount_path"
     fi
   fi
@@ -991,7 +1027,7 @@ blog_nostr_page_ensure_source_page() {
         ;;
       *)
         existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
-        if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; }; then
+        if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } && blog_nostr_page_template_is_current "$page_file" "$page_type"; then
           blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
           return 0
         fi
