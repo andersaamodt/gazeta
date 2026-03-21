@@ -28,13 +28,25 @@ if [ "$page_type" != "public-ranking" ]; then
   exit 0
 fi
 
+is_admin=false
+if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+  is_admin=true
+fi
+
 canonical_event=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
-if [ -z "$canonical_event" ]; then
+state_json=''
+if [ -n "$canonical_event" ]; then
+  state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event")
+elif [ "$is_admin" = "true" ]; then
+  state_json=$(blog_nostr_page_load_draft_state_json "$page_slug" "public-ranking" 2>/dev/null || printf '')
+  if [ -z "$state_json" ]; then
+    state_json=$(blog_public_ranking_default_state_json "$page_slug")
+  fi
+else
   blog_json_error "Publish this ranking page first" "ranking_not_published"
   exit 0
 fi
 
-state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event")
 root_coord=$(blog_public_ranking_effective_root_coord "$page_slug" "$canonical_event")
 [ -n "$root_coord" ] || {
   blog_json_error "Ranking root coordinate is unavailable" "missing_root_coordinate"
@@ -42,11 +54,6 @@ root_coord=$(blog_public_ranking_effective_root_coord "$page_slug" "$canonical_e
 }
 
 submission_mode=$(printf '%s\n' "$state_json" | jq -r '.submission_mode // "owner_only"' 2>/dev/null || printf 'owner_only')
-is_admin=false
-if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
-  is_admin=true
-fi
-
 if [ "$is_admin" != "true" ] && [ "$submission_mode" = "owner_only" ]; then
   blog_json_error "Only page owners can add entries to this ranking" "owner_only"
   exit 0
