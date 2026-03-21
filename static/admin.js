@@ -874,6 +874,9 @@
     state.fileUploads = state.fileUploads.concat([job]);
     state.activeUploadCount += 1;
     renderUploadJobs();
+    if (job.kind === 'file') {
+      renderFilesList(state.files);
+    }
     return job;
   }
 
@@ -885,6 +888,7 @@
       return Object.assign({}, job, patch || {});
     });
     renderUploadJobs();
+    renderFilesList(state.files);
   }
 
   function finishUploadJob(jobId, errorMessage) {
@@ -901,6 +905,7 @@
     });
     state.activeUploadCount = Math.max(0, state.activeUploadCount - 1);
     renderUploadJobs();
+    renderFilesList(state.files);
   }
 
   function renderUploadJobs() {
@@ -908,34 +913,19 @@
       return;
     }
     const jobs = state.fileUploads.slice(-6);
+    els.filesUploadJobs.hidden = true;
+    els.filesUploadJobs.innerHTML = '';
     if (!jobs.length) {
-      els.filesUploadJobs.hidden = true;
-      els.filesUploadJobs.innerHTML = '';
       els.filesUploadSummary.hidden = true;
       els.filesUploadSummary.textContent = '';
       return;
     }
-    els.filesUploadJobs.hidden = false;
     let active = 0;
-    let html = '';
     jobs.forEach(function (job) {
-      const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
       if (!job.done) {
         active += 1;
       }
-      const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
-      const jobClass = 'files-upload-job' + (job.done ? (job.error ? ' is-failed' : ' is-done') : '');
-      html += '<div class="' + jobClass + '">';
-      html += '<div class="files-upload-job-head">';
-      html += '<span class="files-upload-job-name">' + escapeHtml(job.name) + '</span>';
-      html += '<span class="files-upload-job-status">' + escapeHtml(status) + ' · ' + escapeHtml(formatBytes(job.size)) + '</span>';
-      html += '</div>';
-      if (!job.done || job.error) {
-        html += '<div class="files-upload-job-bar"><div class="files-upload-job-fill" style="inline-size:' + progress + '%;"></div></div>';
-      }
-      html += '</div>';
     });
-    els.filesUploadJobs.innerHTML = html;
     if (active > 0) {
       els.filesUploadSummary.hidden = false;
       els.filesUploadSummary.textContent = active + ' upload' + (active === 1 ? '' : 's') + ' in progress';
@@ -943,6 +933,13 @@
     }
     els.filesUploadSummary.hidden = false;
     els.filesUploadSummary.textContent = 'Recent uploads';
+  }
+
+  function pendingFileRows() {
+    return state.fileUploads
+      .filter(function (job) { return job && job.kind === 'file'; })
+      .slice(-12)
+      .reverse();
   }
 
   function uploadFileWithProgress(file, options) {
@@ -2376,11 +2373,38 @@
     if (!els.filesList) {
       return;
     }
-    if (!files.length) {
+    const pending = pendingFileRows();
+    if (!files.length && !pending.length) {
       els.filesList.innerHTML = '<p class="placeholder files-list-empty">No attachments uploaded yet.</p>';
       return;
     }
     let html = '';
+    pending.forEach(function (job) {
+      const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+      const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
+      const rowClass = 'post-row file-row file-row-uploading' + (job.done ? (job.error ? ' is-failed' : ' is-done') : '');
+      html += '<div class="' + rowClass + '">';
+      html += '<div class="post-row-main file-row-main">';
+      html += '<span class="file-row-title" title="' + escapeAttr(job.name || 'Uploading file') + '">' + escapeHtml(job.name || 'Uploading file') + '</span>';
+      html += '<span class="file-pill is-uploading">' + escapeHtml(status) + '</span>';
+      html += '<span class="file-pill">' + escapeHtml(formatBytes(job.size)) + '</span>';
+      html += '<div class="file-upload-inline">';
+      html += '<div class="file-upload-inline-meta">' + escapeHtml(status) + (job.done ? '' : (' · ' + String(progress) + '%')) + '</div>';
+      if (!job.done || job.error) {
+        html += '<div class="file-upload-inline-bar"><div class="file-upload-inline-fill" style="inline-size:' + String(progress) + '%;"></div></div>';
+      }
+      html += '</div>';
+      html += '</div>';
+      html += '<div class="post-row-actions file-row-actions">';
+      html += '<button type="button" disabled aria-label="Upload in progress" title="Upload in progress">' + (job.error ? 'Upload failed' : 'Uploading...') + '</button>';
+      html += '<button type="button" class="unobtrusive-icon-button" disabled aria-label="Copy file URL" title="File URL available after upload">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+        '</svg></button>';
+      html += '</div>';
+      html += '</div>';
+    });
     files.forEach(function (file) {
       const fileId = String(file.file_id || '');
       const title = String(file.original_name || file.safe_name || 'Attachment');
@@ -2429,7 +2453,11 @@
       throw new Error(data.error || 'Failed to load files');
     }
     state.files = Array.isArray(data.files) ? data.files : [];
+    state.fileUploads = state.fileUploads.filter(function (job) {
+      return !(job && job.kind === 'file' && job.done && !job.error);
+    });
     renderFilesList(state.files);
+    renderUploadJobs();
   }
 
   async function setFilePublicState(fileId, makePublic) {

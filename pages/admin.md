@@ -2875,6 +2875,57 @@ body {
   color: #6e4f15;
 }
 
+.file-pill.is-uploading {
+  background: rgba(47, 99, 183, 0.12);
+  color: #234e96;
+}
+
+.file-row-uploading .file-pill.is-uploading {
+  font-weight: 600;
+}
+
+.file-row-uploading.is-done .file-pill.is-uploading {
+  background: rgba(42, 122, 59, 0.14);
+  color: #1f6930;
+}
+
+.file-row-uploading.is-failed .file-pill.is-uploading {
+  background: rgba(178, 71, 52, 0.16);
+  color: #8f3022;
+}
+
+.file-upload-inline {
+  flex: 1 1 16rem;
+  min-width: min(100%, 14rem);
+  display: grid;
+  gap: 0.22rem;
+}
+
+.file-upload-inline-meta {
+  color: var(--muted, #6b7280);
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
+.file-upload-inline-bar {
+  block-size: 0.34rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(122, 92, 31, 0.12);
+}
+
+.file-upload-inline-fill {
+  block-size: 100%;
+  inline-size: 0%;
+  border-radius: inherit;
+  background: #2f63b7;
+  transition: inline-size 120ms linear;
+}
+
+.file-row-uploading.is-failed .file-upload-inline-fill {
+  background: #b24734;
+}
+
 .file-row-actions {
   display: flex;
   align-items: center;
