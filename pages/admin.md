@@ -2325,6 +2325,20 @@ body {
   flex: 1 1 auto;
 }
 
+.nostr-pages-header-type {
+  width: 11.5rem;
+  min-width: 11.5rem;
+  flex: 0 0 11.5rem;
+}
+
+.nostr-pages-header-type-label {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
 .nostr-pages-header-actions {
   display: inline-flex;
   align-items: center;
@@ -2352,7 +2366,7 @@ body {
   background: #fff;
   padding: 0.56rem 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.6rem;
   min-height: 2.9rem;
@@ -2377,6 +2391,16 @@ body {
 .nostr-page-main {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.nostr-page-type-col {
+  width: 11.5rem;
+  min-width: 11.5rem;
+  flex: 0 0 11.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.32rem;
 }
 
 .nostr-page-title-row {
@@ -2493,6 +2517,12 @@ body {
 .nostr-page-posts-count {
   color: var(--admin-muted, #6a7488);
   font-size: 0.82rem;
+}
+
+.nostr-page-type-blog-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
 }
 
 .nostr-page-default-tag {

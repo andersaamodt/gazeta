@@ -2677,6 +2677,7 @@
     html += '<div class="nostr-pages-header" aria-hidden="true">';
     html += '<div class="nostr-pages-header-leading"></div>';
     html += '<div class="nostr-pages-header-main"></div>';
+    html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-nav">Show in navbar</span><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
@@ -2701,7 +2702,6 @@
       } else {
         html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
       }
-      html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
       html += '</div>';
       html += '<div class="nostr-page-meta">';
       html += '<span class="nostr-page-nav-title-label">Navbar: ' + escapeHtml(navTitle) + '</span>';
@@ -2712,14 +2712,18 @@
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
         html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change</a>';
       }
+      html += '</div>';
+      html += '</div>';
+      html += '<div class="nostr-page-type-col">';
+      html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
       if (pageType === 'blog') {
         const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
         const defaultTag = String(page.default_tag || '').trim();
+        html += '<div class="nostr-page-type-blog-tools">';
         html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
         html += '<label class="nostr-page-default-tag"><span>Posts</span><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
-        html += '<a href="/pages/admin.html#posts" class="nostr-page-posts-link" data-nostr-page-action="view-posts" data-index="' + String(idx) + '" aria-label="View posts for this blog page">View posts</a>';
+        html += '</div>';
       }
-      html += '</div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
@@ -4278,26 +4282,30 @@
     if (els.nostrPagesList) {
       els.nostrPagesList.addEventListener('change', function (event) {
         const target = event.target;
-        if (!(target instanceof HTMLInputElement)) {
+        if (!(target instanceof Element)) {
           return;
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
-        if (action !== 'toggle-nav') {
-          if (action === 'default-tag') {
-            const idx = Number(target.getAttribute('data-index'));
-            if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
-              return;
-            }
-            const before = state.nostrPages.slice();
-            const next = state.nostrPages.slice();
-            next[idx] = Object.assign({}, next[idx], { default_tag: String(target.value || '').trim() });
-            state.nostrPages = next;
-            saveNostrPagesConfig().catch(function (err) {
-              state.nostrPages = before;
-              renderNostrPagesList(state.nostrPages, false);
-              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-            });
+        if (action === 'default-tag') {
+          if (!(target instanceof HTMLSelectElement)) {
+            return;
           }
+          const idx = Number(target.getAttribute('data-index'));
+          if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
+            return;
+          }
+          const before = state.nostrPages.slice();
+          const next = state.nostrPages.slice();
+          next[idx] = Object.assign({}, next[idx], { default_tag: String(target.value || '').trim() });
+          state.nostrPages = next;
+          saveNostrPagesConfig().catch(function (err) {
+            state.nostrPages = before;
+            renderNostrPagesList(state.nostrPages, false);
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action !== 'toggle-nav' || !(target instanceof HTMLInputElement)) {
           return;
         }
         const idx = Number(target.getAttribute('data-index'));
