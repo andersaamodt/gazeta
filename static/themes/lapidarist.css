@@ -404,21 +404,21 @@ strong {
 }
 
 .footer-feed-link[href$="/atom.xml"] {
-  color: var(--malachite);
+  color: var(--amethyst);
 }
 
 .footer-feed-link[href$="/atom.xml"] svg {
-  color: var(--malachite);
+  color: var(--amethyst);
 }
 
 .footer-feed-link[href$="/atom.xml"]:hover,
 .footer-feed-link[href$="/atom.xml"]:focus-visible {
-  color: #1e6f56;
+  color: #553f83;
 }
 
 .footer-feed-link[href$="/atom.xml"]:hover svg,
 .footer-feed-link[href$="/atom.xml"]:focus-visible svg {
-  color: #1e6f56;
+  color: #553f83;
 }
 
 ::selection {

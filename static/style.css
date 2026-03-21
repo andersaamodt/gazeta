@@ -3218,19 +3218,24 @@ footer {
   display: inline-flex;
   gap: 0.35rem;
   align-items: center;
-  color: #394a68;
+  color: #6a4fa3;
   text-decoration: none;
   font-size: 0.86rem;
   font-weight: 600;
 }
 
 .footer-feed-link svg {
-  color: #394a68;
+  color: #6a4fa3;
 }
 
 .footer-feed-link:hover {
-  color: #223b85;
+  color: #553f83;
   text-decoration: none;
+}
+
+.footer-feed-link:hover svg,
+.footer-feed-link:focus-visible svg {
+  color: #553f83;
 }
 
 /* About Page */
