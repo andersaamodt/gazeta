@@ -1,5 +1,5 @@
 ---
-title: Blog Admin
+title: ""
 ---
 
 <div id="admin-access-message" class="admin-access-message" hidden></div>
