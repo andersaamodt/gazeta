@@ -2387,6 +2387,51 @@ body {
   letter-spacing: 0.01em;
 }
 
+.nostr-page-nav-title-label {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.82rem;
+}
+
+#admin-panel .nostr-page-nav-title-edit {
+  color: var(--accent, #2d4f8c) !important;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.15;
+  text-decoration: none;
+}
+
+#admin-panel .nostr-page-nav-title-edit:hover,
+#admin-panel .nostr-page-nav-title-edit:focus-visible {
+  text-decoration: underline;
+  color: var(--accent, #2d4f8c) !important;
+}
+
+.nostr-page-nav-title-edit-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+#admin-panel .nostr-page-nav-title-input {
+  width: min(16rem, 100%);
+  min-width: 8.5rem;
+  max-width: 100%;
+  height: 2rem !important;
+  padding: 0.26rem 0.52rem;
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+#admin-panel .nostr-page-nav-title-ok {
+  min-width: 0;
+  width: auto;
+  height: 2rem;
+  padding: 0.2rem 0.56rem;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
 #admin-panel .nostr-page-path-edit {
   color: var(--accent, #2d4f8c) !important;
   font-size: 0.84rem;

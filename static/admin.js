@@ -56,6 +56,8 @@
     nostrPagesSaveQueued: false,
     nostrPagesEditingSlugIndex: -1,
     nostrPagesEditingSlugValue: '',
+    nostrPagesEditingNavTitleIndex: -1,
+    nostrPagesEditingNavTitleValue: '',
     nostrPagesDragActive: false,
     nostrPagesDragSlug: '',
     nostrPagesDragLastTarget: '',
@@ -2547,7 +2549,7 @@
       if (!slug) {
         return;
       }
-      const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
+      const title = String(page.placeholder_title || page.title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
       const path = pathFromNostrPageSlug(slug, page.type);
       rows.push({
         slug: slug,
@@ -2678,6 +2680,8 @@
       const pageType = String(page.type || 'list');
       const path = String(page.path || pathFromNostrPageSlug(slug));
       const isEditingSlug = state.nostrPagesEditingSlugIndex === idx;
+      const navTitle = String(page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
+      const isEditingNavTitle = state.nostrPagesEditingNavTitleIndex === idx;
       const showInNav = !!page.show_in_nav;
       const connectedPosts = Number(page.connected_posts || 0);
       const typeLabel = nostrPageTypeLabel(pageType);
@@ -2686,7 +2690,13 @@
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
       html += '</div>';
       html += '<div class="nostr-page-main">';
-      html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span></div>';
+      html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
+      if (isEditingNavTitle) {
+        html += '<span class="nostr-page-nav-title-edit-wrap"><input type="text" class="nostr-page-nav-title-input" data-nostr-page-action="edit-nav-title-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingNavTitleValue || navTitle) + '" aria-label="Edit navbar link title"><button type="button" class="nostr-page-nav-title-ok" data-nostr-page-action="save-nav-title" data-index="' + String(idx) + '" aria-label="Apply navbar link title">OK</button></span>';
+      } else {
+        html += '<span class="nostr-page-nav-title-label">Navbar: ' + escapeHtml(navTitle) + '</span><a href="#" class="nostr-page-nav-title-edit" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
+      }
+      html += '</div>';
       html += '<div class="nostr-page-meta">';
       if (isEditingSlug) {
         html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
@@ -2739,6 +2749,8 @@
     const currentPath = pathFromNostrPageSlug(currentSlug, page.type);
     state.nostrPagesEditingSlugIndex = index;
     state.nostrPagesEditingSlugValue = currentPath;
+    state.nostrPagesEditingNavTitleIndex = -1;
+    state.nostrPagesEditingNavTitleValue = '';
     renderNostrPagesList(state.nostrPages, false);
     focusNostrPageSlugInput(index);
   }
@@ -2750,6 +2762,89 @@
     state.nostrPagesEditingSlugIndex = -1;
     state.nostrPagesEditingSlugValue = '';
     renderNostrPagesList(state.nostrPages, false);
+  }
+
+  function focusNostrPageNavTitleInput(index) {
+    if (!els.nostrPagesList) {
+      return;
+    }
+    window.requestAnimationFrame(function () {
+      const input = els.nostrPagesList.querySelector('.nostr-page-nav-title-input[data-index="' + String(index) + '"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  function beginNostrPageNavTitleEdit(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
+      return;
+    }
+    const page = state.nostrPages[index] || {};
+    const currentSlug = String(page.slug || '');
+    const currentNavTitle = String(page.placeholder_title || defaultNostrPageTitleFromSlug(currentSlug) || 'Untitled');
+    state.nostrPagesEditingSlugIndex = -1;
+    state.nostrPagesEditingSlugValue = '';
+    state.nostrPagesEditingNavTitleIndex = index;
+    state.nostrPagesEditingNavTitleValue = currentNavTitle;
+    renderNostrPagesList(state.nostrPages, false);
+    focusNostrPageNavTitleInput(index);
+  }
+
+  function cancelNostrPageNavTitleEdit() {
+    if (state.nostrPagesEditingNavTitleIndex < 0) {
+      return;
+    }
+    state.nostrPagesEditingNavTitleIndex = -1;
+    state.nostrPagesEditingNavTitleValue = '';
+    renderNostrPagesList(state.nostrPages, false);
+  }
+
+  async function commitNostrPageNavTitleEdit(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
+      cancelNostrPageNavTitleEdit();
+      return;
+    }
+    const page = state.nostrPages[index] || {};
+    const prevSlug = String(page.slug || '');
+    const prevNavTitle = String(page.placeholder_title || '').trim();
+    let liveValue = state.nostrPagesEditingNavTitleValue;
+    if (els.nostrPagesList) {
+      const input = els.nostrPagesList.querySelector('.nostr-page-nav-title-input[data-index="' + String(index) + '"]');
+      if (input instanceof HTMLInputElement) {
+        liveValue = input.value;
+        state.nostrPagesEditingNavTitleValue = input.value;
+      }
+    }
+    const nextNavTitle = String(liveValue || '').trim();
+    state.nostrPagesEditingNavTitleIndex = -1;
+    state.nostrPagesEditingNavTitleValue = '';
+    if (nextNavTitle === prevNavTitle) {
+      renderNostrPagesList(state.nostrPages, false);
+      return;
+    }
+    const before = state.nostrPages.slice();
+    const next = state.nostrPages.slice();
+    next[index] = Object.assign({}, next[index], {
+      placeholder_title: nextNavTitle
+    });
+    state.nostrPages = next;
+    renderNostrPagesList(state.nostrPages, false);
+    dispatchNavbarRefresh(state.nostrPages, true);
+    try {
+      await saveNostrPagesConfig();
+      if (nextNavTitle) {
+        setOutput(els.outputNostrPages, 'Updated navbar link title for ' + pathFromNostrPageSlug(prevSlug, page.type) + ' to "' + nextNavTitle + '".', 'ok');
+      } else {
+        setOutput(els.outputNostrPages, 'Cleared custom navbar link title for ' + pathFromNostrPageSlug(prevSlug, page.type) + '.', 'ok');
+      }
+    } catch (err) {
+      state.nostrPages = before;
+      renderNostrPagesList(state.nostrPages, false);
+      dispatchNavbarRefresh(state.nostrPages, true);
+      setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+    }
   }
 
   async function commitNostrPageSlugEdit(index) {
@@ -4225,7 +4320,7 @@
           return;
         }
         const action = String(actionNode.getAttribute('data-nostr-page-action') || '');
-        if (action === 'edit-slug') {
+        if (action === 'edit-slug' || action === 'edit-nav-title') {
           event.preventDefault();
         }
         if (action === 'toggle-nav') {
@@ -4263,6 +4358,16 @@
           commitNostrPageSlugEdit(idx).catch(function (err) {
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
+          return;
+        }
+        if (action === 'edit-nav-title') {
+          beginNostrPageNavTitleEdit(idx);
+          return;
+        }
+        if (action === 'save-nav-title') {
+          commitNostrPageNavTitleEdit(idx).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
         }
       });
 
@@ -4272,14 +4377,22 @@
           return;
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
-        if (action !== 'edit-slug-input') {
+        if (action === 'edit-slug-input') {
+          const idx = Number(target.getAttribute('data-index'));
+          if (idx !== state.nostrPagesEditingSlugIndex) {
+            return;
+          }
+          state.nostrPagesEditingSlugValue = target.value;
           return;
         }
-        const idx = Number(target.getAttribute('data-index'));
-        if (idx !== state.nostrPagesEditingSlugIndex) {
+        if (action === 'edit-nav-title-input') {
+          const idx = Number(target.getAttribute('data-index'));
+          if (idx !== state.nostrPagesEditingNavTitleIndex) {
+            return;
+          }
+          state.nostrPagesEditingNavTitleValue = target.value;
           return;
         }
-        state.nostrPagesEditingSlugValue = target.value;
       });
 
       els.nostrPagesList.addEventListener('keydown', function (event) {
@@ -4288,7 +4401,7 @@
           return;
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
-        if (action !== 'edit-slug-input') {
+        if (action !== 'edit-slug-input' && action !== 'edit-nav-title-input') {
           return;
         }
         const idx = Number(target.getAttribute('data-index'));
@@ -4297,14 +4410,24 @@
         }
         if (event.key === 'Escape') {
           event.preventDefault();
-          cancelNostrPageSlugEdit();
+          if (action === 'edit-nav-title-input') {
+            cancelNostrPageNavTitleEdit();
+          } else {
+            cancelNostrPageSlugEdit();
+          }
           return;
         }
         if (event.key === 'Enter' || event.key === 'Return' || event.keyCode === 13) {
           event.preventDefault();
-          commitNostrPageSlugEdit(idx).catch(function (err) {
-            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-          });
+          if (action === 'edit-nav-title-input') {
+            commitNostrPageNavTitleEdit(idx).catch(function (err) {
+              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+            });
+          } else {
+            commitNostrPageSlugEdit(idx).catch(function (err) {
+              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+            });
+          }
         }
       });
 
@@ -4314,7 +4437,7 @@
           return;
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
-        if (action !== 'edit-slug-input') {
+        if (action !== 'edit-slug-input' && action !== 'edit-nav-title-input') {
           return;
         }
         const idx = Number(target.getAttribute('data-index'));
@@ -4323,12 +4446,21 @@
         }
         window.setTimeout(function () {
           const active = document.activeElement;
-          if (active instanceof HTMLElement && active.closest && active.closest('.nostr-page-meta')) {
+          if (action === 'edit-slug-input' && active instanceof HTMLElement && active.closest && active.closest('.nostr-page-meta')) {
             return;
           }
-          commitNostrPageSlugEdit(idx).catch(function (err) {
-            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-          });
+          if (action === 'edit-nav-title-input' && active instanceof HTMLElement && active.closest && active.closest('.nostr-page-title-row')) {
+            return;
+          }
+          if (action === 'edit-nav-title-input') {
+            commitNostrPageNavTitleEdit(idx).catch(function (err) {
+              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+            });
+          } else {
+            commitNostrPageSlugEdit(idx).catch(function (err) {
+              setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+            });
+          }
         }, 0);
       });
 
