@@ -52,6 +52,14 @@
       .replace(/'/g, '&#39;');
   }
 
+  function escapeAttr(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   function markdownBlock(md) {
     var value = String(md || '');
     if (!value) {
@@ -256,6 +264,96 @@
     return labels[q] || q;
   }
 
+  function isSafeContactHref(href) {
+    var value = String(href || '').trim();
+    return /^(https?:\/\/|mailto:)/i.test(value);
+  }
+
+  function splitTrailingPunctuation(urlText) {
+    var value = String(urlText || '');
+    var trailing = '';
+    while (value && /[.,;!?]$/.test(value)) {
+      trailing = value.slice(-1) + trailing;
+      value = value.slice(0, -1);
+    }
+    while (value && /\)$/.test(value)) {
+      var opens = (value.match(/\(/g) || []).length;
+      var closes = (value.match(/\)/g) || []).length;
+      if (closes <= opens) {
+        break;
+      }
+      trailing = ')' + trailing;
+      value = value.slice(0, -1);
+    }
+    return {
+      url: value,
+      trailing: trailing
+    };
+  }
+
+  function renderContactHref(href, label) {
+    var safeHref = String(href || '').trim();
+    var text = String(label || safeHref || '');
+    if (!isSafeContactHref(safeHref)) {
+      return escapeHtml(text);
+    }
+    var lower = safeHref.toLowerCase();
+    if (lower.indexOf('mailto:') === 0) {
+      return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '">' + escapeHtml(text) + '</a>';
+    }
+    return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(text) + '</a>';
+  }
+
+  function linkifyPlainContactText(text) {
+    var raw = String(text || '');
+    if (!raw) {
+      return '';
+    }
+    var html = '';
+    var pattern = /(https?:\/\/[^\s<>"']+|mailto:[^\s<>"']+)/ig;
+    var lastIndex = 0;
+    var match;
+    while ((match = pattern.exec(raw)) !== null) {
+      html += escapeHtml(raw.slice(lastIndex, match.index)).replace(/\n/g, '<br>');
+      var candidate = splitTrailingPunctuation(match[0]);
+      if (candidate.url && isSafeContactHref(candidate.url)) {
+        html += renderContactHref(candidate.url, candidate.url);
+      } else {
+        html += escapeHtml(match[0]);
+      }
+      if (candidate.trailing) {
+        html += escapeHtml(candidate.trailing);
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    html += escapeHtml(raw.slice(lastIndex)).replace(/\n/g, '<br>');
+    return html;
+  }
+
+  function linkifyContactValue(value) {
+    var raw = String(value || '');
+    if (!raw) {
+      return '';
+    }
+    var html = '';
+    var pattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+    var lastIndex = 0;
+    var match;
+    while ((match = pattern.exec(raw)) !== null) {
+      html += linkifyPlainContactText(raw.slice(lastIndex, match.index));
+      var label = String(match[1] || '').trim();
+      var href = String(match[2] || '').trim();
+      if (isSafeContactHref(href)) {
+        html += renderContactHref(href, label || href);
+      } else {
+        html += escapeHtml(match[0]);
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    html += linkifyPlainContactText(raw.slice(lastIndex));
+    return html;
+  }
+
   function renderValidation() {
     if (!els.validation) {
       return;
@@ -394,25 +492,31 @@
   }
 
   function renderReadOnly(rows) {
-    if (!rows.length) {
+    var list = normalizeRows(rows).filter(function (row) {
+      return String(row.transport || '').trim() && String(row.value || '').trim();
+    });
+    if (!list.length) {
       return '<p class="list-page-empty-state">No content yet.</p>';
     }
-    var html = '<ul class="list-entries">';
-    rows.forEach(function (row) {
+    var html = '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
+    list.forEach(function (row) {
       var transport = String(row.transport || '').trim();
       var value = String(row.value || '').trim();
       if (!transport || !value) {
         return;
       }
       var qLabel = qualifierLabel(row.qualifier || '');
-      html += '<li class="list-entry-line">';
-      html += '<strong>' + escapeHtml(transport) + ':</strong> ' + escapeHtml(value);
+      var qValue = String(row.qualifier || '').trim().toLowerCase();
+      html += '<tr class="contact-profile-row">';
+      html += '<th scope="row" class="contact-platform-cell">' + escapeHtml(transport) + '</th>';
+      html += '<td class="contact-value-cell"><div class="contact-value-main">' + linkifyContactValue(value) + '</div>';
       if (qLabel) {
-        html += ' <span class="muted">(' + escapeHtml(qLabel) + ')</span>';
+        html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
       }
-      html += '</li>';
+      html += '</td>';
+      html += '</tr>';
     });
-    html += '</ul>';
+    html += '</tbody></table></div>';
     return html;
   }
 

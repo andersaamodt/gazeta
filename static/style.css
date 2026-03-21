@@ -1920,6 +1920,95 @@ header h1 {
   padding: 0.35rem 0.55rem;
 }
 
+.contact-profile-table-wrap {
+  margin: 0.38rem 0 0.2rem;
+  border: 1px solid var(--table-border, #d2def3);
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card-bg, #fff) 92%, transparent);
+}
+
+.contact-profile-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.contact-profile-row + .contact-profile-row .contact-platform-cell,
+.contact-profile-row + .contact-profile-row .contact-value-cell {
+  border-top: 1px solid var(--table-border, #d2def3);
+}
+
+.contact-platform-cell {
+  width: 10.8rem;
+  padding: 0.56rem 0.78rem;
+  text-align: left;
+  vertical-align: top;
+  font-weight: 700;
+  color: var(--text, #243046);
+  text-transform: lowercase;
+}
+
+.contact-platform-cell::after {
+  content: ":";
+}
+
+.contact-value-cell {
+  padding: 0.56rem 0.78rem;
+  vertical-align: top;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.62rem;
+}
+
+.contact-value-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.contact-value-link {
+  color: var(--link, #2f4aa6);
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.12em;
+}
+
+.contact-value-link:hover,
+.contact-value-link:focus-visible {
+  color: var(--accent, #2f4aa6);
+}
+
+.contact-qualifier-pill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--table-border, #d2def3) 66%);
+  background: color-mix(in srgb, var(--accent, #2f4aa6) 11%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 76%, var(--accent, #2f4aa6) 24%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.17rem 0.5rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .contact-platform-cell {
+    width: 7.1rem;
+    padding: 0.5rem 0.62rem;
+  }
+
+  .contact-value-cell {
+    padding: 0.5rem 0.62rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+}
+
 .nav-user-menu {
   position: relative;
   display: inline-flex;
