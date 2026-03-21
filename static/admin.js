@@ -924,12 +924,15 @@
         active += 1;
       }
       const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
-      html += '<div class="files-upload-job">';
+      const jobClass = 'files-upload-job' + (job.done ? (job.error ? ' is-failed' : ' is-done') : '');
+      html += '<div class="' + jobClass + '">';
       html += '<div class="files-upload-job-head">';
       html += '<span class="files-upload-job-name">' + escapeHtml(job.name) + '</span>';
       html += '<span class="files-upload-job-status">' + escapeHtml(status) + ' · ' + escapeHtml(formatBytes(job.size)) + '</span>';
       html += '</div>';
-      html += '<div class="files-upload-job-bar"><div class="files-upload-job-fill" style="inline-size:' + progress + '%;"></div></div>';
+      if (!job.done || job.error) {
+        html += '<div class="files-upload-job-bar"><div class="files-upload-job-fill" style="inline-size:' + progress + '%;"></div></div>';
+      }
       html += '</div>';
     });
     els.filesUploadJobs.innerHTML = html;
@@ -962,9 +965,10 @@
           if (!event.lengthComputable) {
             return;
           }
+          const pct = Math.round((event.loaded / event.total) * 100);
           updateUploadJob(job.id, {
-            progress: Math.round((event.loaded / event.total) * 100),
-            status: 'Uploading'
+            progress: pct,
+            status: pct >= 100 ? 'Finalizing' : 'Uploading'
           });
         });
         xhr.onreadystatechange = function () {
@@ -3965,8 +3969,10 @@
       for (const file of picked) {
         await uploadFileWithProgress(file, { kind: 'file' });
       }
-      await loadFiles();
       setOutput(els.outputFiles, 'Files uploaded.', 'ok');
+      loadFiles().catch(function (err) {
+        setOutput(els.outputFiles, 'Files uploaded, but refreshing file list failed: ' + err.message, 'warn');
+      });
     } catch (err) {
       setOutput(els.outputFiles, 'Upload error: ' + err.message, 'error');
     }

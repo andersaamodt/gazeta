@@ -2777,6 +2777,14 @@ body {
   gap: 0.32rem;
 }
 
+.files-upload-job.is-done .files-upload-job-status {
+  color: #2a7a3b;
+}
+
+.files-upload-job.is-failed .files-upload-job-status {
+  color: #9a2a2a;
+}
+
 .files-upload-job-head {
   display: flex;
   align-items: baseline;
@@ -2810,6 +2818,10 @@ body {
   border-radius: inherit;
   background: #2f63b7;
   transition: inline-size 120ms linear;
+}
+
+.files-upload-job.is-failed .files-upload-job-fill {
+  background: #b24734;
 }
 
 .files-list-empty {
