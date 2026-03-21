@@ -2306,6 +2306,46 @@ body {
   padding: 0;
 }
 
+.nostr-pages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.2rem 0 0.38rem;
+  border-bottom: 1px solid var(--admin-border, #c7d6f3);
+}
+
+.nostr-pages-header-leading {
+  width: 2rem;
+  flex: 0 0 2rem;
+}
+
+.nostr-pages-header-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.nostr-pages-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  margin-right: 0.05rem;
+}
+
+.nostr-pages-header-nav {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.nostr-pages-header-spacer {
+  width: 2rem;
+  height: 1px;
+}
+
 .nostr-page-row {
   border: 0;
   border-radius: 0;
@@ -2551,6 +2591,21 @@ body {
 
 #admin-panel .nostr-page-actions .nostr-page-nav-check {
   margin-right: 0.3rem;
+}
+
+#admin-panel .nostr-page-actions .nostr-page-nav-check-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+}
+
+#admin-panel .nostr-page-actions .nostr-page-nav-check-only > span {
+  display: none;
+}
+
+#admin-panel .nostr-page-actions .nostr-page-nav-check-only input[type="checkbox"] {
+  margin: 0;
 }
 
 #admin-panel .nostr-page-actions .icon-danger {

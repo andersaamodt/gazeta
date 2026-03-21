@@ -2674,6 +2674,11 @@
     }
 
     let html = '<div class="nostr-pages-rows">';
+    html += '<div class="nostr-pages-header" aria-hidden="true">';
+    html += '<div class="nostr-pages-header-leading"></div>';
+    html += '<div class="nostr-pages-header-main"></div>';
+    html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-nav">Show in navbar</span><span class="nostr-pages-header-spacer"></span></div>';
+    html += '</div>';
     list.forEach(function (page, idx) {
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
       const slug = String(page.slug || '');
@@ -2717,7 +2722,7 @@
       html += '</div>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
-      html += '<label class="checkbox-control nostr-page-nav-check"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + '> <span>Show in navbar</span></label>';
+      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
       html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page from site" title="Remove from this site (keeps Nostr event)">' + prioritiesTrashIconSvg() + '</button>';
       html += '</div>';
       html += '</div>';
