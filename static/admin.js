@@ -2690,14 +2690,16 @@
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
       html += '</div>';
       html += '<div class="nostr-page-main">';
-      html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div><span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
+      html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
       if (isEditingNavTitle) {
         html += '<span class="nostr-page-nav-title-edit-wrap"><input type="text" class="nostr-page-nav-title-input" data-nostr-page-action="edit-nav-title-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingNavTitleValue || navTitle) + '" aria-label="Edit navbar link title"><button type="button" class="nostr-page-nav-title-ok" data-nostr-page-action="save-nav-title" data-index="' + String(idx) + '" aria-label="Apply navbar link title">OK</button></span>';
       } else {
-        html += '<span class="nostr-page-nav-title-label">Navbar: ' + escapeHtml(navTitle) + '</span><a href="#" class="nostr-page-nav-title-edit" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
+        html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
       }
+      html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
       html += '</div>';
       html += '<div class="nostr-page-meta">';
+      html += '<span class="nostr-page-nav-title-label">Navbar: ' + escapeHtml(navTitle) + '</span>';
       if (isEditingSlug) {
         html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
         html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';

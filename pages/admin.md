@@ -2406,6 +2406,10 @@ body {
   color: var(--accent, #2d4f8c) !important;
 }
 
+.nostr-page-title-change {
+  margin-left: 0.08rem;
+}
+
 .nostr-page-nav-title-edit-wrap {
   display: inline-flex;
   align-items: center;
