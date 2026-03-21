@@ -1173,7 +1173,7 @@ body {
 }
 
 [data-admin-section="settings"] #site-title {
-  inline-size: clamp(11rem, 23vw, 18rem);
+  inline-size: clamp(8.25rem, 17.25vw, 13.5rem);
 }
 
 [data-admin-section="nostr-bridge"] .bridge-textarea {
