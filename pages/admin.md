@@ -2887,6 +2887,27 @@ body {
   opacity: 0.45;
 }
 
+#admin-panel .file-row-actions .unobtrusive-icon-button {
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+  box-shadow: none;
+}
+
+#admin-panel .file-row-actions .unobtrusive-icon-button:hover,
+#admin-panel .file-row-actions .unobtrusive-icon-button:focus-visible {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  border-color: var(--admin-border, var(--border));
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+}
+
 #admin-panel #btn-create-nostr-page {
   color: var(--nav-active-text, #fff) !important;
 }
@@ -3595,7 +3616,7 @@ body {
   box-shadow: 0 0 0 3px var(--focus-ring) !important;
 }
 
-#admin-panel button:not(.admin-nav-item) {
+#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button) {
   border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
@@ -3603,7 +3624,7 @@ body {
   -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
-#admin-panel button:not(.admin-nav-item):hover {
+#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):hover {
   background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
   color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
