@@ -453,7 +453,11 @@
     activateSection(getSectionFromHash(), false);
     els.sectionButtons.forEach(function (button) {
       button.addEventListener('click', function () {
-        activateSection(button.getAttribute('data-admin-nav') || 'settings', true);
+        const targetSection = button.getAttribute('data-admin-nav') || 'settings';
+        if (targetSection === state.activeSection) {
+          return;
+        }
+        activateSection(targetSection, true);
       });
     });
     window.addEventListener('hashchange', function () {
