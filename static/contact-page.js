@@ -590,7 +590,7 @@
 
   function isSafeContactHref(href) {
     var value = String(href || '').trim();
-    return /^(https?:\/\/|mailto:)/i.test(value);
+    return /^(https?:\/\/|mailto:|tel:|sms:|signal:)/i.test(value);
   }
 
   function splitTrailingPunctuation(urlText) {
@@ -625,6 +625,12 @@
     if (lower.indexOf('mailto:') === 0) {
       if (!text || text === safeHref || /^mailto:/i.test(text)) {
         text = safeHref.slice(7);
+      }
+      return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '">' + escapeHtml(text || safeHref) + '</a>';
+    }
+    if (lower.indexOf('tel:') === 0) {
+      if (!text || text === safeHref || /^tel:/i.test(text)) {
+        text = safeHref.slice(4);
       }
       return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '">' + escapeHtml(text || safeHref) + '</a>';
     }
@@ -732,6 +738,14 @@
     }
     if (transportKey === 'facebook' && /^[a-z0-9.]{3,}$/i.test(raw)) {
       return 'https://facebook.com/' + raw;
+    }
+    if (transportKey === 'signal') {
+      if (/^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(raw)) {
+        var signalPhone = raw.replace(/[^\d+]/g, '');
+        if (signalPhone) {
+          return 'https://signal.me/#p/' + signalPhone;
+        }
+      }
     }
     if (transportKey === 'tumblr') {
       if (/^[a-z0-9-]+\.tumblr\.com$/i.test(raw)) {
