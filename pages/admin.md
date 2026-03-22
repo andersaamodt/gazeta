@@ -3938,10 +3938,12 @@ body {
 }
 
 .users-col-role {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .users-col-actions {
@@ -4624,6 +4626,10 @@ body {
     letter-spacing: 0.03em;
     text-transform: uppercase;
     margin-right: 0.45rem;
+  }
+
+  .users-col-role {
+    justify-content: flex-start;
   }
 
   #admin-panel .user-menu-panel {
