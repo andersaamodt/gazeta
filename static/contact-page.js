@@ -51,6 +51,7 @@
     navTitleBusy: false,
     busy: false,
     autosaveQueued: false,
+    pendingToggleEditOff: false,
     saveTimer: null,
     saveStatus: 'saved',
     saveIndicatorVisible: false,
@@ -1296,6 +1297,49 @@
         // drag reorders are durable even if the user refreshes right away.
         persistDraft({ alertOnError: false });
       }
+      maybeFinalizeEditModeExit();
+    });
+  }
+
+  function exitEditModeNow() {
+    state.editMode = false;
+    state.pendingToggleEditOff = false;
+    state.navTitleEditing = false;
+    state.navTitleInput = '';
+    state.activeHeadField = '';
+    state.headFocusPending = false;
+    clearActiveRowField();
+    state.draggingRowUid = '';
+    state.dragOverRowUid = '';
+    renderAll();
+  }
+
+  function maybeFinalizeEditModeExit() {
+    if (!state.pendingToggleEditOff) {
+      return;
+    }
+    if (state.busy || state.autosaveQueued || state.saveTimer) {
+      return;
+    }
+    exitEditModeNow();
+  }
+
+  function requestExitEditModeWithSave() {
+    if (!isAdmin() || !state.editMode) {
+      return;
+    }
+    state.pendingToggleEditOff = true;
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+      state.saveTimer = null;
+    }
+    state.saveIndicatorVisible = true;
+    renderAdmin();
+    if (state.busy) {
+      return;
+    }
+    persistDraft({ alertOnError: false }).then(function () {
+      maybeFinalizeEditModeExit();
     });
   }
 
@@ -1414,17 +1458,12 @@
       }
       var action = String(actionNode.getAttribute('data-contact-action') || '');
       if (action === 'toggle-edit') {
-        state.editMode = !state.editMode;
-        if (!state.editMode) {
-          state.navTitleEditing = false;
-          state.navTitleInput = '';
-          state.activeHeadField = '';
-          state.headFocusPending = false;
-          clearActiveRowField();
-          state.draggingRowUid = '';
-          state.dragOverRowUid = '';
+        if (state.editMode) {
+          requestExitEditModeWithSave();
+        } else {
+          state.editMode = true;
+          renderAll();
         }
-        renderAll();
         return;
       }
       if (action === 'publish') {
