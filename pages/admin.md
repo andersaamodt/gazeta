@@ -2611,8 +2611,8 @@ body {
 }
 
 #admin-panel .nostr-page-nav-title-input {
-  width: min(16rem, 100%);
-  min-width: 8.5rem;
+  width: min(8rem, 100%);
+  min-width: 6rem;
   max-width: 100%;
   height: 2rem !important;
   padding: 0.26rem 0.52rem;
