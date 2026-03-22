@@ -29,6 +29,7 @@
     usersMenuOpenFor: '',
     usersActionInFlight: false,
     postsMenuOpenFor: '',
+    draftsMenuOpenFor: '',
     postsActionInFlight: false,
     moderationActionInFlight: false,
     files: [],
@@ -2636,18 +2637,24 @@
     drafts.forEach(function (draft) {
       const title = String(draft.title || 'Untitled');
       const excerpt = String(draft.content_excerpt || '').trim();
-      const lineText = excerpt ? (title + ' - ' + excerpt) : title;
       const draftId = escapeAttr(draft.draft_id || '');
       html += '<div class="draft-row" data-draft-id="' + draftId + '">';
       html += '<div class="draft-row-main">';
-      html += '<span class="draft-row-line" title="' + escapeAttr(lineText) + '">' +
-        '<button type="button" class="draft-row-open" data-action="open" data-id="' + draftId + '">' + escapeHtml(title) + '</button>' +
-        (excerpt ? '<span class="draft-row-excerpt"> - ' + escapeHtml(excerpt) + '</span>' : '') +
-        '</span>';
+      html += '<div class="draft-row-line" title="' + escapeAttr(title) + '">' +
+        '<a href="#" class="draft-row-open" data-draft-action="open" data-draft-id="' + draftId + '">' + escapeHtml(title) + '</a>' +
+        '</div>';
+      if (excerpt) {
+        html += '<div class="draft-row-excerpt" title="' + escapeAttr(excerpt) + '">' + escapeHtml(excerpt) + '</div>';
+      }
       html += '</div>';
       html += '<div class="draft-row-actions">';
-      html += '<button type="button" data-action="edit" data-id="' + draftId + '">Edit</button>';
-      html += '<button type="button" class="draft-delete" data-action="delete" data-id="' + draftId + '" aria-label="Delete draft" title="Delete draft">' + prioritiesTrashIconSvg() + '</button>';
+      html += '<div class="post-menu draft-menu">';
+      html += '<button type="button" class="unobtrusive-icon-button post-menu-trigger draft-menu-trigger" data-draft-action="toggle_menu" data-draft-id="' + draftId + '" aria-label="Draft actions" title="Draft actions">' + overflowMenuIconSvg() + '</button>';
+      html += '<div class="post-menu-panel draft-menu-panel" data-draft-menu-panel="' + draftId + '" hidden>';
+      html += '<button type="button" data-draft-action="edit" data-draft-id="' + draftId + '">Edit...</button>';
+      html += '<button type="button" class="post-delete draft-delete" data-draft-action="delete" data-draft-id="' + draftId + '">' + prioritiesTrashIconSvg() + '<span>Delete...</span></button>';
+      html += '</div>';
+      html += '</div>';
       html += '</div>';
       html += '</div>';
     });
@@ -5739,22 +5746,52 @@
       if (!(target instanceof Element)) {
         return;
       }
-      const actionNode = target.closest('[data-action][data-id]');
+      const actionNode = target.closest('[data-draft-action][data-draft-id]');
       if (!(actionNode instanceof HTMLElement)) {
         return;
       }
-      const action = actionNode.getAttribute('data-action');
-      const draftId = actionNode.getAttribute('data-id');
+      const action = actionNode.getAttribute('data-draft-action');
+      const draftId = actionNode.getAttribute('data-draft-id');
       if (!action || !draftId) {
+        return;
+      }
+      if (action === 'open' || action === 'edit' || action === 'delete' || action === 'toggle_menu') {
+        event.preventDefault();
+      }
+
+      if (action === 'toggle_menu') {
+        event.stopPropagation();
+        const panels = Array.from(els.draftsList.querySelectorAll('[data-draft-menu-panel]'));
+        let opened = '';
+        panels.forEach(function (panel) {
+          const thisDraftId = panel.getAttribute('data-draft-menu-panel');
+          if (!thisDraftId) {
+            return;
+          }
+          const openThis = thisDraftId === draftId ? panel.hidden : false;
+          panel.hidden = !openThis;
+          if (openThis) {
+            opened = thisDraftId;
+          }
+        });
+        state.draftsMenuOpenFor = opened;
         return;
       }
 
       if (action === 'open' || action === 'edit') {
+        state.draftsMenuOpenFor = '';
+        Array.from(els.draftsList.querySelectorAll('[data-draft-menu-panel]')).forEach(function (panel) {
+          panel.hidden = true;
+        });
         loadDraft(draftId).catch(function (err) {
           setOutput(els.outputCompose, 'Error: ' + err.message, 'error');
         });
       }
       if (action === 'delete') {
+        state.draftsMenuOpenFor = '';
+        Array.from(els.draftsList.querySelectorAll('[data-draft-menu-panel]')).forEach(function (panel) {
+          panel.hidden = true;
+        });
         deleteDraft(draftId).catch(function (err) {
           setOutput(els.outputCompose, 'Error: ' + err.message, 'error');
         });
@@ -5778,6 +5815,19 @@
       }
       loadDraft(draftId).catch(function (err) {
         setOutput(els.outputCompose, 'Error: ' + err.message, 'error');
+      });
+    });
+    document.addEventListener('click', function (event) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      if (target.closest('.draft-menu')) {
+        return;
+      }
+      state.draftsMenuOpenFor = '';
+      Array.from(els.draftsList.querySelectorAll('[data-draft-menu-panel]')).forEach(function (panel) {
+        panel.hidden = true;
       });
     });
 

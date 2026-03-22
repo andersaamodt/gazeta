@@ -2494,7 +2494,7 @@ body {
 
 .draft-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.62rem;
   padding: 0.48rem 0.68rem;
@@ -2511,25 +2511,26 @@ body {
 }
 
 .draft-row-line {
-  display: inline-block;
+  display: block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #1f335f;
-  cursor: default;
 }
 
 .draft-row-open {
-  border: 0;
-  background: transparent;
+  display: inline-block;
   color: #163161;
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.32;
   padding: 0;
   margin: 0;
   min-width: 0;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
 }
 
 #admin-panel .draft-row-open:hover {
@@ -2548,40 +2549,27 @@ body {
 }
 
 .draft-row-excerpt {
-  color: #4a5c78;
+  color: #4f4a40;
+  font-size: 0.98rem;
+  line-height: 1.32;
+  margin-top: 0.12rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: default;
 }
 
 .draft-row-actions {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.4rem;
   flex: 0 0 auto;
+  padding-top: 0.05rem;
 }
 
 #admin-panel .draft-row-actions button {
   width: auto;
-}
-
-#admin-panel .draft-row-actions button.draft-delete {
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #132f5f;
-}
-
-#admin-panel .draft-row-actions button.draft-delete .trash-icon-svg {
-  width: 0.98rem;
-  height: 0.98rem;
-  color: currentColor;
-}
-
-#admin-panel .draft-row-actions button.draft-delete:hover {
-  background: #eef4ff;
 }
 
 .nostr-pages-list {
@@ -4422,14 +4410,16 @@ body {
 }
 
 #admin-panel .post-menu-panel,
-#admin-panel .user-menu-panel {
+#admin-panel .user-menu-panel,
+#admin-panel .draft-menu-panel {
   background: var(--menu-bg, var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)))) !important;
   border-color: var(--menu-border, var(--admin-border, var(--border))) !important;
   box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16)) !important;
 }
 
 #admin-panel .post-menu-panel button,
-#admin-panel .user-menu-panel button {
+#admin-panel .user-menu-panel button,
+#admin-panel .draft-menu-panel button {
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
@@ -4439,7 +4429,8 @@ body {
 }
 
 #admin-panel .post-menu-panel button:hover,
-#admin-panel .user-menu-panel button:hover {
+#admin-panel .user-menu-panel button:hover,
+#admin-panel .draft-menu-panel button:hover {
   background: var(--menu-hover-bg, var(--admin-hover, var(--nav-link-hover))) !important;
   background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
@@ -4743,7 +4734,8 @@ body {
 }
 
 #admin-panel button.post-menu-trigger,
-#admin-panel button.user-menu-trigger {
+#admin-panel button.user-menu-trigger,
+#admin-panel button.draft-menu-trigger {
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
@@ -4753,8 +4745,10 @@ body {
 
 #admin-panel button.post-menu-trigger:hover,
 #admin-panel button.user-menu-trigger:hover,
+#admin-panel button.draft-menu-trigger:hover,
 #admin-panel button.post-menu-trigger:focus-visible,
-#admin-panel button.user-menu-trigger:focus-visible {
+#admin-panel button.user-menu-trigger:focus-visible,
+#admin-panel button.draft-menu-trigger:focus-visible {
   border: 0 !important;
   background: var(--admin-hover, var(--nav-link-hover)) !important;
   background-image: none !important;
@@ -4786,6 +4780,7 @@ body {
 
 #admin-panel .post-menu-panel button,
 #admin-panel .user-menu-panel button,
+#admin-panel .draft-menu-panel button,
 #admin-panel .nostr-page-menu-panel button {
   min-width: 0 !important;
   width: 100% !important;
@@ -4806,6 +4801,8 @@ body {
 #admin-panel .post-menu-panel button:focus-visible,
 #admin-panel .user-menu-panel button:hover,
 #admin-panel .user-menu-panel button:focus-visible,
+#admin-panel .draft-menu-panel button:hover,
+#admin-panel .draft-menu-panel button:focus-visible,
 #admin-panel .nostr-page-menu-panel button:hover,
 #admin-panel .nostr-page-menu-panel button:focus-visible {
   background: var(--menu-hover-bg, var(--admin-hover, var(--nav-link-hover))) !important;
@@ -4817,7 +4814,9 @@ body {
 #admin-panel .post-menu-panel button.post-delete:hover,
 #admin-panel .post-menu-panel button.post-delete:focus-visible,
 #admin-panel .user-menu-panel button.user-delete:hover,
-#admin-panel .user-menu-panel button.user-delete:focus-visible {
+#admin-panel .user-menu-panel button.user-delete:focus-visible,
+#admin-panel .draft-menu-panel button.draft-delete:hover,
+#admin-panel .draft-menu-panel button.draft-delete:focus-visible {
   background: var(--menu-danger-hover-bg, var(--danger-soft, rgba(180, 35, 24, 0.14))) !important;
 }
 
