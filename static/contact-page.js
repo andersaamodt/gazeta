@@ -784,6 +784,10 @@
     return normalized;
   }
 
+  function normalizeContactRowValue(transport, value) {
+    return normalizeContactValue(transport, value);
+  }
+
   function linkifyPlainContactText(text, transport) {
     var raw = String(text || '');
     if (!raw) {
