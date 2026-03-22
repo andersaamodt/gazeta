@@ -2254,7 +2254,6 @@ header h1 {
   justify-content: center;
   justify-self: center;
   gap: 0.3rem;
-  min-width: 8.2rem;
 }
 
 .contact-row-delete {
@@ -2304,7 +2303,6 @@ header h1 {
   justify-content: center;
   justify-self: center;
   width: fit-content;
-  min-width: 7.8rem;
   text-align: center;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--table-border, #d2def3) 66%);
