@@ -575,6 +575,8 @@ assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'list-page-descri
 assert_file_contains "$ROOT_DIR/static/contact-page.js" 'list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...' 'contact edit mode shows italic no-description text before edit action'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Allow signed-in Nostr users to add entries' 'public ranking editor includes friendly open-submission toggle label'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-allow-open"' 'public ranking editor uses boolean open-submission checkbox'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-show-marker-filters"' 'public ranking editor exposes show marker filters checkbox'
+assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'show_marker_filters' 'public ranking state supports show_marker_filters setting'
 assert_file_not_contains "$ROOT_DIR/static/public-ranking-page.js" 'if (isAdmin() && !state.editMode) {' 'public ranking submit composer is not hidden in normal admin view mode'
 assert_file_not_contains "$ROOT_DIR/static/public-ranking-page.js" "var forceInline = normalizeSubmissionMode(renderState.submission_mode) === 'open';" 'public ranking submit composer uses explicit toggle UX'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'data-ranking-action="toggle-submit"' 'public ranking submit composer includes toggle control'

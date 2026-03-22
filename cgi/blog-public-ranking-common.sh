@@ -16,6 +16,7 @@ blog_public_ranking_default_state_json() {
     extras_after_format: "markdown",
     vote_cooldown_seconds: 86400,
     submission_mode: "owner_only",
+    show_marker_filters: false,
     default_metric: "momentum",
     blacklist_pubkeys: [],
     root_refs: []
@@ -57,6 +58,13 @@ blog_public_ranking_normalize_state_json() {
       extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown"),
       vote_cooldown_seconds: ((.vote_cooldown_seconds // .vote_cooldown // 86400) | tonumber? // 86400),
       submission_mode: norm_mode(.submission_mode // .permission_mode // .entry_mode // "owner_only"),
+      show_marker_filters: (
+        if (.show_marker_filters // null) == null then
+          (((.tags // []) | map(select(type=="array" and length>=2 and .[0]=="show_marker_filters") | .[1]) | first // "") | tostring | ascii_downcase) == "true"
+        else
+          ((.show_marker_filters == true) or ((.show_marker_filters | tostring | ascii_downcase) == "true"))
+        end
+      ),
       default_metric: norm_metric(.default_metric // .sort_metric // "momentum"),
       blacklist_pubkeys: (
         if (.blacklist_pubkeys | type) == "array" then .blacklist_pubkeys
@@ -99,6 +107,7 @@ blog_public_ranking_state_from_event_json() {
       content: (.content // ""),
       vote_cooldown_seconds: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="vote_cooldown" or .[0]=="vote_cooldown_seconds")) | .[1]] | first) // "86400"),
       submission_mode: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="submission_mode" or .[0]=="permission_mode")) | .[1]] | first) // "owner_only"),
+      show_marker_filters: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="show_marker_filters") | .[1]] | first) // "false"),
       default_metric: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="sort_metric" or .[0]=="default_metric")) | .[1]] | first) // "momentum"),
       blacklist_pubkeys: ([.tags[]? | select(type=="array" and length>=2 and .[0]=="blacklist") | .[1]]),
       root_refs: ([.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]])
@@ -121,6 +130,7 @@ blog_public_ranking_state_signature_json() {
     content: (.content // ""),
     vote_cooldown_seconds: (.vote_cooldown_seconds // 86400),
     submission_mode: (.submission_mode // "owner_only"),
+    show_marker_filters: (.show_marker_filters // false),
     default_metric: (.default_metric // "momentum"),
     blacklist_pubkeys: (.blacklist_pubkeys // []),
     root_refs: (.root_refs // [])
@@ -271,6 +281,9 @@ blog_nostr_sign_public_ranking_event() {
   [ -n "$title" ] && set -- "$@" --tag title "$title"
   [ -n "$description" ] && set -- "$@" --tag summary "$description"
   set -- "$@" --tag submission_mode "$mode" --tag sort_metric "$metric" --tag vote_cooldown "$cooldown"
+  if [ "$(printf '%s\n' "$state_json" | jq -r '.show_marker_filters // false' 2>/dev/null || printf 'false')" = "true" ]; then
+    set -- "$@" --tag show_marker_filters true
+  fi
 
   refs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-ranking-refs.XXXXXX")
   blacklist_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-ranking-blacklist.XXXXXX")

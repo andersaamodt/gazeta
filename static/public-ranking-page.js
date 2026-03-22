@@ -252,6 +252,7 @@
       extras_after_format: String(src.extras_after_format || 'markdown').toLowerCase() === 'html' ? 'html' : 'markdown',
       vote_cooldown_seconds: Math.max(60, Math.floor(Number(src.vote_cooldown_seconds || 86400) || 86400)),
       submission_mode: normalizeSubmissionMode(src.submission_mode || 'owner_only'),
+      show_marker_filters: !!src.show_marker_filters,
       default_metric: normalizeMetric(src.default_metric || src.metric || 'momentum'),
       blacklist_pubkeys: blacklist.map(function (pk) { return String(pk || '').trim().toLowerCase(); }).filter(Boolean),
       root_refs: refs.map(function (coord) { return String(coord || '').trim(); }).filter(Boolean)
@@ -457,6 +458,7 @@
     var allowOpen = document.getElementById('public-ranking-edit-allow-open');
     var mode = document.getElementById('public-ranking-edit-submission-mode');
     var metric = document.getElementById('public-ranking-edit-default-metric');
+    var showMarkerFilters = document.getElementById('public-ranking-edit-show-marker-filters');
     var blacklist = document.getElementById('public-ranking-edit-blacklist');
 
     state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(Number(cooldown && cooldown.value ? cooldown.value : state.draft.vote_cooldown_seconds) || 86400));
@@ -467,6 +469,7 @@
     }
     state.draft.default_metric = normalizeMetric(metric ? metric.value : state.draft.default_metric);
     state.currentMetric = state.draft.default_metric;
+    state.draft.show_marker_filters = !!(showMarkerFilters && showMarkerFilters.checked);
     state.draft.blacklist_pubkeys = String(blacklist && blacklist.value || '')
       .split(/\n|,/)
       .map(function (pk) { return String(pk || '').trim().toLowerCase(); })
@@ -1053,6 +1056,7 @@
     html += '<div class="public-ranking-editor-grid">';
     html += '<label><span>Vote cooldown (seconds)</span><input type="number" id="public-ranking-edit-cooldown" min="60" step="60" value="' + escapeHtml(String(renderState.vote_cooldown_seconds || 86400)) + '"></label>';
     html += '<label><span>Allow signed-in Nostr users to add entries</span><input type="checkbox" id="public-ranking-edit-allow-open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' checked' : '') + '></label>';
+    html += '<label><span>Show marker filters</span><input type="checkbox" id="public-ranking-edit-show-marker-filters"' + (renderState.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label><span>Default metric</span><select id="public-ranking-edit-default-metric">';
     html += '<option value="momentum"' + (normalizeMetric(renderState.default_metric) === 'momentum' ? ' selected' : '') + '>momentum</option>';
     html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>support</option>';

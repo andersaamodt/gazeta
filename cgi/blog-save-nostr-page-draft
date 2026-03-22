@@ -71,6 +71,7 @@ if [ -z "$state_json" ]; then
       content=$(blog_param content)
       vote_cooldown_seconds=$(blog_param vote_cooldown_seconds)
       submission_mode=$(blog_param submission_mode)
+      show_marker_filters=$(blog_param show_marker_filters)
       default_metric=$(blog_param default_metric)
       blacklist_pubkeys_json=$(blog_param blacklist_pubkeys_json)
       root_refs_json=$(blog_param root_refs_json)
@@ -93,6 +94,7 @@ if [ -z "$state_json" ]; then
         --arg content "$content" \
         --arg vote_cooldown_seconds "$vote_cooldown_seconds" \
         --arg submission_mode "$submission_mode" \
+        --arg show_marker_filters "$show_marker_filters" \
         --arg default_metric "$default_metric" \
         --arg extras_after "$extras_after" \
         --arg extras_after_format "$extras_after_format" \
@@ -106,6 +108,7 @@ if [ -z "$state_json" ]; then
           content: $content,
           vote_cooldown_seconds: ($vote_cooldown_seconds | tonumber? // 86400),
           submission_mode: $submission_mode,
+          show_marker_filters: (($show_marker_filters | ascii_downcase) == "true"),
           default_metric: $default_metric,
           blacklist_pubkeys: $blacklist_pubkeys,
           root_refs: $root_refs,
