@@ -1615,12 +1615,13 @@ body {
 }
 
 [data-admin-section="account"] .account-ssh-row > label {
-  margin-top: 0.12rem;
+  margin-top: 0;
 }
 
 [data-admin-section="account"] .account-ssh-row > .account-ssh-optional {
   grid-column: 2;
   justify-self: start;
+  margin-top: 0;
 }
 
 [data-admin-section="account"] #account-ssh-public-key {
@@ -1638,6 +1639,7 @@ body {
 
 [data-admin-section="account"] .account-ssh-note {
   margin: 0.3rem 0 0.2rem;
+  white-space: nowrap;
 }
 
 [data-admin-section="account"] .account-output-row {
@@ -4309,6 +4311,10 @@ body {
   #admin-panel .user-menu-panel {
     right: auto;
     left: 0;
+  }
+
+  [data-admin-section="account"] .account-ssh-note {
+    white-space: normal;
   }
 }
 
