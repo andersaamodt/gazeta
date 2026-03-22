@@ -183,10 +183,6 @@ title: ""
 <section class="sub-card">
 <div class="zaps-runtime-head">
 <h4>Server Runtime</h4>
-<div class="zaps-install-actions">
-<button id="btn-install-bitcoin" type="button">Install Bitcoin</button>
-<button id="btn-install-lightning" type="button">Install Lightning</button>
-</div>
 </div>
 <div id="zaps-runtime" class="zaps-runtime-grid">
 <div class="placeholder">Loading zap runtime...</div>
@@ -1353,6 +1349,10 @@ body {
   border: 1px solid var(--table-border, rgba(120, 92, 45, 0.18));
   background: color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.5));
   min-width: 10.5rem;
+}
+
+.zaps-runtime-card .zaps-runtime-action {
+  margin-top: 0.55rem;
 }
 
 .zaps-runtime-card strong {

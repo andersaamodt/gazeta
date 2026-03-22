@@ -133,7 +133,7 @@ case "$action" in
     emit_success "Zap runtime loaded."
     exit 0
     ;;
-  install_bitcoin|install_lightning) ;;
+  install_wizardry|install_bitcoin|install_lightning) ;;
   *)
     emit_failure "Unknown action" "invalid_action"
     exit 0
@@ -150,6 +150,9 @@ if ! ensure_wizardry >> "$log_file" 2>&1; then
 fi
 
 case "$action" in
+  install_wizardry)
+    emit_success "Wizardry install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    ;;
   install_bitcoin)
     spell="$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin"
     if [ ! -x "$spell" ]; then

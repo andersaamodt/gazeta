@@ -68,6 +68,8 @@
     moderationItems: [],
     moderationAgeFilter: '30d',
     nosterRuntime: null,
+    zapsRuntimeInfo: null,
+    zapsActionInFlight: false,
     initialContentPainted: false,
     loadedAdminSections: {}
   };
@@ -107,8 +109,6 @@
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
     zapsRefreshButton: document.getElementById('btn-zaps-refresh'),
-    installBitcoinButton: document.getElementById('btn-install-bitcoin'),
-    installLightningButton: document.getElementById('btn-install-lightning'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -2148,7 +2148,8 @@
   }
 
   function setZapsButtonsBusy(isBusy) {
-    [els.zapsRefreshButton, els.installBitcoinButton, els.installLightningButton].filter(Boolean).forEach(function (button) {
+    const cardButtons = els.zapsRuntime ? Array.from(els.zapsRuntime.querySelectorAll('button[data-zaps-action]')) : [];
+    [els.zapsRefreshButton].concat(cardButtons).filter(Boolean).forEach(function (button) {
       button.disabled = !!isBusy;
     });
   }
@@ -2158,14 +2159,16 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
+    state.zapsRuntimeInfo = info;
     setZapsNavStatus(info);
     const wizardryReady = !!info.wizardry_installed;
     const bitcoinReady = !!info.bitcoin_installed;
     const lightningReady = !!info.lightning_installed;
+    const installDisabledAttr = state.zapsActionInFlight ? ' disabled' : '';
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Wizardry</strong><div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + (wizardryReady ? 'Installed' : 'Missing') + '</div></div>';
-    html += '<div class="zaps-runtime-card"><strong>Bitcoin</strong><div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + (bitcoinReady ? 'Installed' : 'Not installed') + '</div></div>';
-    html += '<div class="zaps-runtime-card"><strong>Lightning</strong><div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + (lightningReady ? 'Installed' : 'Not installed') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Wizardry</strong><div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + (wizardryReady ? 'Installed' : 'Not installed') + '</div>' + (wizardryReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install Wizardry</button>')) + '</div>';
+    html += '<div class="zaps-runtime-card"><strong>Bitcoin</strong><div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + (bitcoinReady ? 'Installed' : 'Not installed') + '</div>' + (bitcoinReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install Bitcoin</button>')) + '</div>';
+    html += '<div class="zaps-runtime-card"><strong>Lightning</strong><div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + (lightningReady ? 'Installed' : 'Not installed') + '</div>' + (lightningReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install Lightning</button>')) + '</div>';
     if (info.wizardry_path) {
       html += '<div class="zaps-runtime-card"><strong>Wizardry Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.wizardry_path)) + '</div></div>';
     }
@@ -2204,12 +2207,18 @@
     if (!picked) {
       return;
     }
-    const label = picked === 'install_bitcoin' ? 'Bitcoin' : 'Lightning';
-    if (!window.confirm('Run the Wizardry ' + label + ' installer on this server now?')) {
+    const label = picked === 'install_wizardry'
+      ? 'Wizardry'
+      : (picked === 'install_bitcoin' ? 'Bitcoin' : (picked === 'install_lightning' ? 'Lightning' : ''));
+    if (!label) {
       return;
     }
+    if (!window.confirm('Run the ' + label + ' installer on this server now?')) {
+      return;
+    }
+    state.zapsActionInFlight = true;
     setZapsButtonsBusy(true);
-    renderZapsRuntime({}, '', 'Running ' + label + ' installer...');
+    renderZapsRuntime(state.zapsRuntimeInfo || {}, '', 'Running ' + label + ' installer...');
     try {
       const data = await apiPost('/cgi/blog-manage-zaps', { action: picked }, true);
       if (!data.success) {
@@ -2221,6 +2230,7 @@
     } catch (err) {
       setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
     } finally {
+      state.zapsActionInFlight = false;
       setZapsButtonsBusy(false);
     }
   }
@@ -4571,16 +4581,21 @@
         });
       });
     }
-    if (els.installBitcoinButton) {
-      els.installBitcoinButton.addEventListener('click', function () {
-        runZapsInstall('install_bitcoin').catch(function (err) {
-          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
-    if (els.installLightningButton) {
-      els.installLightningButton.addEventListener('click', function () {
-        runZapsInstall('install_lightning').catch(function (err) {
+    if (els.zapsRuntime) {
+      els.zapsRuntime.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionButton = target.closest('button[data-zaps-action]');
+        if (!actionButton) {
+          return;
+        }
+        const action = String(actionButton.getAttribute('data-zaps-action') || '').trim();
+        if (!action) {
+          return;
+        }
+        runZapsInstall(action).catch(function (err) {
           setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
         });
       });
