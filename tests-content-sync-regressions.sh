@@ -410,6 +410,14 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint throttles rebuild trigger storms'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-pages-cache.json' 'navbar endpoint uses short-lived response cache'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'cache_is_fresh=false' 'navbar endpoint tracks cache freshness without early exit'
+cfg_line=$(grep -n 'cfg=$(blog_nostr_pages_load_json)' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
+cache_cat_line=$(grep -n 'cat "$cache_file"' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
+if [ "${cfg_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -gt "${cfg_line:-0}" ]; then
+  pass
+else
+  fail 'navbar cache response must happen after config/health-check load path'
+fi
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_pages_sync_source_pages "$cfg"' 'navbar rebuild path self-heals missing managed source pages'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"' 'document head sets no-store cache control meta'
 assert_file_contains "$ROOT_DIR/includes/head.html" "var ROUTE_REFRESH_PARAM = '__route_refresh';" 'document head defines stale route refresh sentinel'

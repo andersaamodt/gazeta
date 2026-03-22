@@ -16,12 +16,12 @@ cache_file="$blog_state_dir/navbar-pages-cache.json"
 cache_ttl_seconds=120
 now_epoch=$(date +%s 2>/dev/null || printf '0')
 cache_mtime=0
+cache_is_fresh=false
 if [ -f "$cache_file" ]; then
   cache_mtime=$(stat -f '%m' "$cache_file" 2>/dev/null || stat -c '%Y' "$cache_file" 2>/dev/null || printf '0')
 fi
 if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && [ $((now_epoch - cache_mtime)) -le "$cache_ttl_seconds" ]; then
-  cat "$cache_file"
-  exit 0
+  cache_is_fresh=true
 fi
 
 cfg=$(blog_nostr_pages_load_json)
@@ -42,46 +42,50 @@ while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
   fi
 done < "$all_slugs_tmp"
 
-nav_json=$(printf '%s\n' "$cfg" | jq -c '
-  def title_from_slug($s):
-    (($s // "") | tostring | gsub("-"; " ")) as $t
-    | if ($t | length) == 0 then
-        "Untitled"
-      else
-        (($t[0:1] | ascii_upcase) + ($t[1:]))
-      end;
-  {
-    success: true,
-    pages: [
-      .pages[]?
-      | (.slug // "" | tostring) as $slug
-      | select(($slug | length) > 0)
-      | select((if has("show_in_nav") then .show_in_nav else true end) == true)
-      | {
-          slug: $slug,
-          title: (
-            (.placeholder_title // "" | tostring) as $placeholder
-            | if ($placeholder | length) > 0 then
-                $placeholder
-              elif $slug == "index" then
-                "Home"
-              else
-                title_from_slug($slug)
-              end
-          ),
-          path: (if $slug == "index" then "/" else ("/" + $slug) end),
-          type: (.type // "list" | tostring),
-          kind: ((.kind // 30004) | tonumber? // 30004)
-        }
-    ]
-  }
-' 2>/dev/null || printf '{"success":true,"pages":[]}')
-printf '%s\n' "$nav_json"
+if [ "$cache_is_fresh" = "true" ]; then
+  cat "$cache_file"
+else
+  nav_json=$(printf '%s\n' "$cfg" | jq -c '
+    def title_from_slug($s):
+      (($s // "") | tostring | gsub("-"; " ")) as $t
+      | if ($t | length) == 0 then
+          "Untitled"
+        else
+          (($t[0:1] | ascii_upcase) + ($t[1:]))
+        end;
+    {
+      success: true,
+      pages: [
+        .pages[]?
+        | (.slug // "" | tostring) as $slug
+        | select(($slug | length) > 0)
+        | select((if has("show_in_nav") then .show_in_nav else true end) == true)
+        | {
+            slug: $slug,
+            title: (
+              (.placeholder_title // "" | tostring) as $placeholder
+              | if ($placeholder | length) > 0 then
+                  $placeholder
+                elif $slug == "index" then
+                  "Home"
+                else
+                  title_from_slug($slug)
+                end
+            ),
+            path: (if $slug == "index" then "/" else ("/" + $slug) end),
+            type: (.type // "list" | tostring),
+            kind: ((.kind // 30004) | tonumber? // 30004)
+          }
+      ]
+    }
+  ' 2>/dev/null || printf '{"success":true,"pages":[]}')
+  printf '%s\n' "$nav_json"
 
-cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-cache.XXXXXX")
-printf '%s\n' "$nav_json" > "$cache_tmp"
-mv "$cache_tmp" "$cache_file"
-chmod 644 "$cache_file" 2>/dev/null || true
+  cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-cache.XXXXXX")
+  printf '%s\n' "$nav_json" > "$cache_tmp"
+  mv "$cache_tmp" "$cache_file"
+  chmod 644 "$cache_file" 2>/dev/null || true
+fi
 
 if [ "$needs_build" = "true" ]; then
   trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
