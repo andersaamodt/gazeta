@@ -1877,12 +1877,25 @@ header h1 {
   background: var(--surface-raised-strong, #fff);
 }
 
+.public-ranking-submit-extras {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  align-items: flex-start;
+}
+
+.public-ranking-submit-more-compact {
+  margin-top: 0;
+}
+
 .public-ranking-submit-more > summary {
   cursor: pointer;
   list-style: none;
-  padding: 0.5rem 0.62rem;
+  padding: 0.4rem 0.56rem;
   color: var(--muted-text, #4f617f);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 .public-ranking-submit-more > summary::-webkit-details-marker {
@@ -1895,8 +1908,9 @@ header h1 {
 
 .public-ranking-submit-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(200px, max-content));
+  grid-template-columns: minmax(220px, max-content);
   gap: 0.52rem 0.62rem;
+  padding: 0.52rem;
 }
 
 .public-ranking-submit-grid label {
@@ -1935,6 +1949,11 @@ header h1 {
 @media (max-width: 900px) {
   .public-ranking-submit-inline {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-ranking-submit-extras {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .public-ranking-submit-grid {

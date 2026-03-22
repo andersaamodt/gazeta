@@ -900,15 +900,26 @@
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
       html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
       html += '</div>';
-      html += '<details class="public-ranking-submit-more">';
-      html += '<summary>More fields</summary>';
+      html += '<div class="public-ranking-submit-extras">';
+      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+      html += '<summary>+Link</summary>';
       html += '<div class="public-ranking-submit-grid">';
-      html += '<label><span>Summary</span><input type="text" id="public-ranking-submit-summary" placeholder="Optional summary"></label>';
       html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
-      html += '<label class="public-ranking-submit-wide"><span>Nostr post coordinate</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
+      html += '</div>';
+      html += '</details>';
+      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+      html += '<summary>+Nostr post</summary>';
+      html += '<div class="public-ranking-submit-grid">';
+      html += '<label><span>Nostr post address</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
+      html += '</div>';
+      html += '</details>';
+      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+      html += '<summary>+Body</summary>';
+      html += '<div class="public-ranking-submit-grid">';
       html += '<label class="public-ranking-submit-wide"><span>Body</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional body"></textarea></label>';
       html += '</div>';
       html += '</details>';
+      html += '</div>';
     }
     html += '</section>';
     return html;
@@ -1309,7 +1320,6 @@
     var type = document.getElementById('public-ranking-submit-type');
     var parent = document.getElementById('public-ranking-submit-parent');
     var title = document.getElementById('public-ranking-submit-title');
-    var summary = document.getElementById('public-ranking-submit-summary');
     var url = document.getElementById('public-ranking-submit-url');
     var post = document.getElementById('public-ranking-submit-post');
     var content = document.getElementById('public-ranking-submit-content');
@@ -1317,7 +1327,7 @@
       node_kind: type ? String(type.value || 'entry') : 'entry',
       parent_coord: parent ? String(parent.value || '') : '',
       title: title ? String(title.value || '') : '',
-      summary: summary ? String(summary.value || '') : '',
+      summary: '',
       url: url ? String(url.value || '') : '',
       post_coord: post ? String(post.value || '') : '',
       content: content ? String(content.value || '') : ''
