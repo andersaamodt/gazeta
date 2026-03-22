@@ -1377,7 +1377,7 @@
     if (!value.trim()) {
       return '';
     }
-    var html = normalizeExtraFormat(format) === 'html' ? value : markdownBlock(value);
+    var html = markdownBlock(value);
     return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
   }
 
@@ -1398,12 +1398,6 @@
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
-    html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-list-outro-format="after">';
-    html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_after_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';
-    html += '<option value="html"' + (normalizeExtraFormat(draft.extras_after_format) === 'html' ? ' selected' : '') + '>HTML</option>';
-    html += '</select>';
-    html += '</span>';
     html += '<textarea data-list-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
@@ -2117,15 +2111,6 @@
         renderList();
         queueAutosave(280);
         return;
-      }
-      if (target instanceof HTMLSelectElement) {
-        var outroFormatField = String(target.getAttribute('data-list-outro-format') || '');
-        if (outroFormatField === 'after') {
-          state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
-          renderList();
-          queueAutosave(500);
-          return;
-        }
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
         state.draft.publish_intro_to_nostr = !!target.checked;

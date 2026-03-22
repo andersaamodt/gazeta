@@ -793,7 +793,7 @@
     if (!value.trim()) {
       return '';
     }
-    var html = String(format || '').toLowerCase() === 'html' ? value : markdownBlock(value);
+    var html = markdownBlock(value);
     return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
   }
 
@@ -821,12 +821,6 @@
     html += '<h3 class="nostr-page-extras-heading">After content</h3>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
-    html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-ranking-outro-format="after">';
-    html += '<option value="markdown"' + (String(renderState.extras_after_format || '').toLowerCase() === 'markdown' ? ' selected' : '') + '>Markdown</option>';
-    html += '<option value="html"' + (String(renderState.extras_after_format || '').toLowerCase() === 'html' ? ' selected' : '') + '>HTML</option>';
-    html += '</select>';
-    html += '</span>';
     html += '<textarea data-ranking-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(renderState.extras_after || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
@@ -1535,15 +1529,6 @@
         state.currentMetric = normalizeMetric(target.value);
         renderContent();
         return;
-      }
-      if (target instanceof HTMLSelectElement) {
-        var outroFormatField = String(target.getAttribute('data-ranking-outro-format') || '');
-        if (outroFormatField === 'after' && isAdmin() && state.editMode) {
-          state.draft.extras_after_format = String(target.value || '').toLowerCase() === 'html' ? 'html' : 'markdown';
-          renderContent();
-          queueAutosave(500);
-          return;
-        }
       }
       if (isAdmin() && state.editMode && target.id && target.id.indexOf('public-ranking-edit-') === 0) {
         syncDraftFromEditor();

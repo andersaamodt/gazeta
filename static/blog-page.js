@@ -302,7 +302,7 @@
       return;
     }
     els.content.hidden = false;
-    els.content.innerHTML = page.extras_after_format === 'html' ? after : markdownBlock(after);
+    els.content.innerHTML = markdownBlock(after);
   }
 
   function formatType(value) {

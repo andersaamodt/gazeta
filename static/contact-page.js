@@ -1184,7 +1184,7 @@
     var afterContent = '';
     if (String(s.extras_after || '').trim()) {
       afterContent = '<section class="nostr-page-extra nostr-page-extra-after">' +
-        (s.extras_after_format === 'html' ? String(s.extras_after || '') : markdownBlock(s.extras_after || '')) +
+        markdownBlock(s.extras_after || '') +
         '</section>';
     }
     var inlineMode = isAdmin() && state.editMode;
