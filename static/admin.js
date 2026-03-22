@@ -2960,7 +2960,8 @@
     let html = '<div class="nostr-pages-rows">';
     html += '<div class="nostr-pages-header" aria-hidden="true">';
     html += '<div class="nostr-pages-header-leading"></div>';
-    html += '<div class="nostr-pages-header-main"></div>';
+    html += '<div class="nostr-pages-header-name"><span class="nostr-pages-header-type-label">Navbar Link</span></div>';
+    html += '<div class="nostr-pages-header-path"><span class="nostr-pages-header-type-label">Path</span></div>';
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
@@ -2980,7 +2981,7 @@
       html += '<div class="nostr-page-leading">';
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">' + dragGripIconSvg() + '</button>';
       html += '</div>';
-      html += '<div class="nostr-page-main">';
+      html += '<div class="nostr-page-name-col">';
       html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
       if (isEditingNavTitle) {
         html += '<span class="nostr-page-nav-title-edit-wrap"><input type="text" class="nostr-page-nav-title-input" data-nostr-page-action="edit-nav-title-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingNavTitleValue || navTitle) + '" aria-label="Edit navbar link title"><button type="button" class="nostr-page-nav-title-ok" data-nostr-page-action="save-nav-title" data-index="' + String(idx) + '" aria-label="Apply navbar link title">OK</button></span>';
@@ -2988,7 +2989,8 @@
         html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
       }
       html += '</div>';
-      html += '<div class="nostr-page-meta">';
+      html += '</div>';
+      html += '<div class="nostr-page-path-col">';
       if (isEditingSlug) {
         html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
         html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';
@@ -2996,7 +2998,6 @@
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
         html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change path</a>';
       }
-      html += '</div>';
       html += '</div>';
       html += '<div class="nostr-page-type-col">';
       html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';

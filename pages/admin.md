@@ -2366,9 +2366,15 @@ body {
   flex: 0 0 2rem;
 }
 
-.nostr-pages-header-main {
+.nostr-pages-header-name {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.nostr-pages-header-path {
+  width: 14rem;
+  min-width: 14rem;
+  flex: 0 0 14rem;
 }
 
 .nostr-pages-header-type {
@@ -2444,9 +2450,19 @@ body {
   flex: 0 0 2rem;
 }
 
-.nostr-page-main {
+.nostr-page-name-col {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.nostr-page-path-col {
+  width: 14rem;
+  min-width: 14rem;
+  flex: 0 0 14rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .nostr-page-type-col {
@@ -2461,7 +2477,7 @@ body {
 
 .nostr-page-title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
   max-width: 100%;
@@ -2477,16 +2493,6 @@ body {
 .nostr-page-title a:focus-visible {
   text-decoration: underline;
   background: transparent !important;
-}
-
-.nostr-page-meta {
-  margin-top: 0.22rem;
-  color: #606770;
-  font-size: 0.84rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
-  flex-wrap: wrap;
 }
 
 .nostr-page-kind-badge {
@@ -2619,8 +2625,8 @@ body {
 }
 
 #admin-panel .nostr-page-slug-input {
-  width: min(22rem, 100%);
-  min-width: 12rem;
+  width: min(12rem, 100%);
+  min-width: 8rem;
   max-width: 100%;
   height: 2rem !important;
   padding: 0.26rem 0.55rem;
@@ -3995,6 +4001,13 @@ body {
     width: 9.8rem;
     min-width: 9.8rem;
     flex-basis: 9.8rem;
+  }
+
+  .nostr-pages-header-path,
+  .nostr-page-path-col {
+    width: 11rem;
+    min-width: 11rem;
+    flex-basis: 11rem;
   }
 
   .nostr-pages-header-nav-col,
