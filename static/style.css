@@ -982,6 +982,13 @@ header h1 {
   width: min(18rem, 62vw);
   height: 2rem;
   font-size: 0.92rem;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+}
+
+.list-page-nav-title-input::placeholder {
+  color: #666;
+  -webkit-text-fill-color: #666;
 }
 
 .list-page-title-actions {
