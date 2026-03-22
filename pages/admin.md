@@ -1575,7 +1575,7 @@ body {
 }
 
 .account-passkey-description {
-  margin: 0;
+  margin: 0.2rem 0 0;
 }
 
 .account-row {
@@ -1595,6 +1595,10 @@ body {
 
 [data-admin-section="account"] .account-passkey-row > label {
   margin-bottom: 0;
+}
+
+[data-admin-section="account"] .account-passkey-row > label .inline-tip {
+  margin-left: 0.24rem;
 }
 
 [data-admin-section="account"] .account-passkey-row .account-row {
