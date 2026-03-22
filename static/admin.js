@@ -3150,6 +3150,7 @@
     html += '<div class="nostr-pages-header-name"><span class="nostr-pages-header-type-label">Navbar Link</span></div>';
     html += '<div class="nostr-pages-header-path"><span class="nostr-pages-header-type-label">Path</span></div>';
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
+    html += '<div class="nostr-pages-header-settings"><span class="nostr-pages-header-type-label">Settings</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
@@ -3188,10 +3189,12 @@
       html += '</div>';
       html += '<div class="nostr-page-type-col">';
       html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
+      html += '</div>';
+      html += '<div class="nostr-page-settings-col">';
       if (pageType === 'blog') {
         const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
         const defaultTag = String(page.default_tag || '').trim();
-        html += '<div class="nostr-page-type-blog-tools">';
+        html += '<div class="nostr-page-settings-blog-tools">';
         html += '<label class="nostr-page-default-tag"><span>Posts</span><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
         html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
         html += '</div>';
