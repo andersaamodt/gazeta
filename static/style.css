@@ -899,48 +899,36 @@ header h1 {
   -webkit-text-fill-color: var(--text, #243046);
 }
 
-.list-page-admin-bar button[data-list-action="publish"],
-.list-page-admin-bar button[data-list-action="toggle-edit"] {
-  color: #fff !important;
-}
-
 .list-page-admin-bar .list-admin-primary-btn {
   padding: 0.36rem 0.74rem;
-  border-radius: 9px;
-  border: 1px solid var(--button-primary-border, color-mix(in srgb, var(--accent-dark, #223b85) 68%, var(--border, #c7d2fe) 32%));
-  background-color: var(--button-primary-start, var(--accent, #2f4aa6)) !important;
-  background-image:
-    var(--button-primary-overlay),
-    linear-gradient(140deg, var(--button-primary-start, var(--accent, #2f4aa6)) 0%, var(--button-primary-end, var(--accent-dark, #223b85)) 100%) !important;
-  color: var(--button-primary-text, #fff) !important;
-  -webkit-text-fill-color: var(--button-primary-text, #fff);
+  border-radius: 8px;
+  border: 1px solid var(--border, #c3cada);
+  background: var(--surface-raised-strong, #fff) !important;
+  background-image: none !important;
+  color: var(--text, #243046) !important;
+  -webkit-text-fill-color: var(--text, #243046);
   box-shadow: none;
   font-size: 0.92rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 400;
   line-height: 1.22;
 }
 
 .list-page-admin-bar .list-admin-primary-btn:hover:not(:disabled),
 .list-page-admin-bar .list-admin-primary-btn:focus-visible:not(:disabled) {
-  background-color: var(--button-primary-hover-start, var(--accent-dark, #223b85)) !important;
-  background-image:
-    var(--button-primary-overlay),
-    linear-gradient(140deg, var(--button-primary-hover-start, var(--accent-dark, #223b85)) 0%, var(--button-primary-hover-end, var(--accent-hover-end, #1d4ed8)) 100%) !important;
-  border-color: var(--button-primary-border, color-mix(in srgb, var(--accent-dark, #223b85) 75%, var(--border, #c7d2fe) 25%));
-  color: var(--button-primary-text, #fff) !important;
-  -webkit-text-fill-color: var(--button-primary-text, #fff);
+  background: var(--admin-hover, var(--nav-link-hover, #e9f1ff)) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 36%, var(--border, #c3cada) 64%);
+  color: var(--text, #243046) !important;
+  -webkit-text-fill-color: var(--text, #243046);
   box-shadow: none;
 }
 
 .list-page-admin-bar .list-admin-primary-btn:active:not(:disabled) {
-  background-color: var(--button-primary-active-start, var(--accent-hover-end, #1d4ed8)) !important;
-  background-image:
-    var(--button-primary-overlay),
-    linear-gradient(140deg, var(--button-primary-active-start, var(--accent-hover-end, #1d4ed8)) 0%, var(--button-primary-active-end, var(--accent-dark, #223b85)) 100%) !important;
-  border-color: var(--button-primary-border, color-mix(in srgb, var(--accent-dark, #223b85) 82%, var(--border, #c7d2fe) 18%));
-  color: var(--button-primary-text, #fff) !important;
-  -webkit-text-fill-color: var(--button-primary-text, #fff);
+  background: var(--admin-hover, var(--nav-link-hover, #e9f1ff)) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 42%, var(--border, #c3cada) 58%);
+  color: var(--text, #243046) !important;
+  -webkit-text-fill-color: var(--text, #243046);
 }
 
 .list-page-admin-bar button:disabled {
