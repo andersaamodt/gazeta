@@ -873,13 +873,14 @@
     });
 
     var open = !!state.submitComposerOpen;
-    var showAdvancedToggle = !!(isAdmin() && state.editMode);
-    var advancedOpen = showAdvancedToggle && !!state.submitAdvancedOpen;
+    var canShowAdvanced = true;
+    var advancedOpen = canShowAdvanced && !!state.submitAdvancedOpen;
+    var canConfigureHierarchy = !!(isAdmin() && state.editMode);
     var html = '';
     html += '<section class="public-ranking-submit">';
     html += '<div class="public-ranking-submit-toolbar">';
     html += '<div class="public-ranking-submit-toolbar-right">';
-    html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
+    html += '<button type="button" class="public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'New entry') + '">' + escapeHtml(open ? 'Close' : 'New entry') + '</button>';
     html += '</div>';
     html += '</div>';
     if (open) {
@@ -887,21 +888,23 @@
       html += '<input type="hidden" id="public-ranking-submit-parent" value="' + escapeHtml(graph.rootCoord || '') + '">';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="New entry">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
-      if (showAdvancedToggle) {
+      if (canShowAdvanced) {
         html += '<button type="button" data-ranking-action="toggle-submit-advanced" class="public-ranking-submit-advanced-toggle" aria-expanded="' + (advancedOpen ? 'true' : 'false') + '">' + escapeHtml(advancedOpen ? '-Advanced' : '+Advanced') + '</button>';
       }
       html += '</div>';
       if (advancedOpen) {
         html += '<div class="public-ranking-submit-advanced">';
-        html += '<div class="public-ranking-submit-grid">';
-        html += '<label><span>Entry type</span><select id="public-ranking-submit-type-advanced" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select></label>';
-        html += '<label><span>Parent</span><select id="public-ranking-submit-parent-advanced" aria-label="Parent">';
-        html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
-        groups.forEach(function (group) {
-          html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
-        });
-        html += '</select></label>';
-        html += '</div>';
+        if (canConfigureHierarchy) {
+          html += '<div class="public-ranking-submit-grid">';
+          html += '<label><span>Entry type</span><select id="public-ranking-submit-type-advanced" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select></label>';
+          html += '<label><span>Parent</span><select id="public-ranking-submit-parent-advanced" aria-label="Parent">';
+          html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
+          groups.forEach(function (group) {
+            html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
+          });
+          html += '</select></label>';
+          html += '</div>';
+        }
         html += '<div class="public-ranking-submit-extras">';
         html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
         html += '<summary>+Link</summary>';
