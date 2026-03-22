@@ -4893,6 +4893,16 @@ body {
   align-items: start;
 }
 
+#moderation-list .post-row.moderation-empty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#moderation-list .post-row.moderation-empty-row .placeholder.table-empty {
+  width: 100%;
+}
+
 .moderation-item-meta {
   margin: 0.18rem 0 0;
   font-size: 0.78rem;

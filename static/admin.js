@@ -3757,7 +3757,7 @@
     }
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      els.moderationList.innerHTML = '<p class=\"placeholder table-empty\">No pending moderation actions.</p>';
+      els.moderationList.innerHTML = '<div class=\"post-row moderation-empty-row\"><p class=\"placeholder table-empty\">No pending moderation actions.</p></div>';
       return;
     }
     let html = '';
