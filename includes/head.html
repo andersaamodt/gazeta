@@ -68,6 +68,56 @@
     return '';
   }
 
+  function forceHydrationReveal() {
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.forceReveal === 'function') {
+        gate.forceReveal();
+        return;
+      }
+    } catch (_gateErr) {
+      // Ignore hydration gate issues.
+    }
+    if (document.documentElement) {
+      document.documentElement.classList.remove('app-hydrating');
+    }
+  }
+
+  function showRouteLoadFailure() {
+    var container = document.querySelector('main') || document.body;
+    if (!container) {
+      return;
+    }
+
+    [
+      'blog-page-root',
+      'nip23-page-root',
+      'oeuvre-root',
+      'icon-gallery-root',
+      'public-ranking-root',
+      'contact-page-root',
+      'search-page-root',
+      'admin-panel'
+    ].forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node && node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    });
+
+    var existing = document.getElementById('route-load-failure');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+
+    var panel = document.createElement('section');
+    panel.id = 'route-load-failure';
+    panel.className = 'route-load-failure';
+    panel.innerHTML = '<h1 id="main-content">Page failed to load.</h1><p>Try refreshing.</p>';
+    container.appendChild(panel);
+    forceHydrationReveal();
+  }
+
   if (document.documentElement) {
     document.documentElement.classList.add('app-hydrating');
   }
@@ -99,6 +149,8 @@
           window.location.replace(currentUrl.toString());
           return;
         }
+        showRouteLoadFailure();
+        return;
       } else if (hasRefreshParam && window.history && typeof window.history.replaceState === 'function') {
         currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
         var next = currentUrl.pathname;
