@@ -2497,6 +2497,7 @@ body {
   padding: 0;
   border-top: 1px solid var(--admin-border, #cdbd95);
   border-bottom: 1px solid var(--admin-border, #cdbd95);
+  border-right: 1px solid var(--admin-border, #cdbd95);
 }
 
 .nostr-pages-header {
