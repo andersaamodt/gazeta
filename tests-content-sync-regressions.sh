@@ -420,6 +420,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-autofill-list-macos-icons"
+assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 
 # 11) Managed source-page sync invariants (unit layer).
@@ -532,6 +533,10 @@ assert_file_contains "$ROOT_DIR/static/contact-page.js" 'list-page-description-e
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Allow signed-in Nostr users to add entries' 'public ranking editor includes friendly open-submission toggle label'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-allow-open"' 'public ranking editor uses boolean open-submission checkbox'
 assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking-node" 'submitter_pubkey=${BLOG_SESSION_USER_PUBKEY-}' 'public ranking submission falls back to session pubkey identity'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'apiPostFirstAvailable([' 'public ranking submit uses endpoint fallback helper'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "'/cgi/blog-submit-public-ranking'" 'public ranking submit includes compatibility endpoint fallback'
+assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking" 'exec "$SCRIPT_DIR/blog-submit-public-ranking-node"' 'public ranking compatibility endpoint delegates to node submit handler'
+assert_success test -x "$ROOT_DIR/cgi/blog-submit-public-ranking"
 
 tree_line=$(grep -n 'html += renderTree(graph, renderState);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')
 submit_line=$(grep -n 'html += renderSubmitForm(renderState, graph);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')

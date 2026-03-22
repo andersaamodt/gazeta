@@ -388,6 +388,31 @@
     });
   }
 
+  async function apiPostFirstAvailable(urls, payload) {
+    var list = Array.isArray(urls) ? urls : [];
+    var lastErr = null;
+    var i;
+    for (i = 0; i < list.length; i += 1) {
+      var endpoint = String(list[i] || '');
+      if (!endpoint) {
+        continue;
+      }
+      try {
+        return await apiPost(endpoint, payload);
+      } catch (err) {
+        lastErr = err;
+        var message = String((err && err.message) || '');
+        if (message.indexOf('404') === -1 && message.indexOf('Not Found') === -1) {
+          throw err;
+        }
+      }
+    }
+    if (lastErr) {
+      throw lastErr;
+    }
+    throw new Error('No submission endpoint is configured');
+  }
+
   function setSaveStatus(next, errorMessage) {
     state.saveStatus = next;
     state.saveError = String(errorMessage || '');
@@ -1305,7 +1330,10 @@
     }
     var payload = readSubmissionPayload();
     try {
-      var data = await apiPost('/cgi/blog-submit-public-ranking-node', {
+      var data = await apiPostFirstAvailable([
+        '/cgi/blog-submit-public-ranking-node',
+        '/cgi/blog-submit-public-ranking'
+      ], {
         page_slug: slug,
         node_kind: payload.node_kind,
         parent_coord: payload.parent_coord,
