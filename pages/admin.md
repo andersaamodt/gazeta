@@ -356,13 +356,12 @@ title: ""
 </div>
 <div class="row-actions">
 <div id="queue-local-drip-status" class="queue-local-drip-status" hidden>
-<span class="queue-local-drip-spinner" aria-hidden="true"></span>
 <span id="queue-local-drip-status-text">Local drip running. Keep this tab open.</span>
 </div>
 <button id="btn-local-drip-toggle" type="button" class="unobtrusive-icon-button local-drip-toggle" aria-label="Pause local drip" title="Pause local drip" aria-pressed="true">
 <svg class="local-drip-icon local-drip-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-<path d="M8 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-<path d="M16 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+<rect x="6.5" y="5" width="4" height="14" rx="0.8" fill="currentColor"/>
+<rect x="13.5" y="5" width="4" height="14" rx="0.8" fill="currentColor"/>
 </svg>
 <svg class="local-drip-icon local-drip-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M7 5L19 12L7 19V5Z" fill="currentColor"/>
