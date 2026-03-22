@@ -13,7 +13,7 @@ blog_send_html_headers
 query=$(blog_param q)
 
 printf '<div class="search-form">\n'
-printf '  <form method="get" action="/cgi/blog-search">\n'
+printf '  <form method="get" action="/pages/search.html">\n'
 printf '    <input type="text" name="q" value="%s" placeholder="Search posts..." autofocus />\n' "$(blog_html_escape "$query")"
 printf '    <button type="submit">Search</button>\n'
 printf '  </form>\n'

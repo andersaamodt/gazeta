@@ -45,7 +45,7 @@
 <a href="/" data-page="blog">Blog</a>
 </div>
 <div class="nav-right">
-<form class="nav-search" method="get" action="/cgi/blog-search">
+<form class="nav-search" method="get" action="/pages/search.html">
 <input type="text" name="q" placeholder="Search..." />
 <button type="submit" aria-label="Search">
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
