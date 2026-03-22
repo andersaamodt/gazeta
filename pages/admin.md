@@ -1765,13 +1765,12 @@ body {
   border: 1px solid #b8caeb;
   border-radius: 11px;
   background: #fff;
-  padding: 0.18rem 0.34rem;
+  padding: 0.18rem 0.44rem;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.34rem;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
 }
 
 .tag-editor:focus-within {
@@ -1788,6 +1787,10 @@ body {
   flex: 0 1 auto;
   min-width: max-content;
   white-space: nowrap;
+}
+
+.tag-editor-pills:empty {
+  display: none;
 }
 
 .tag-pill {
@@ -1827,9 +1830,9 @@ body {
   border: 0 !important;
   box-shadow: none !important;
   padding: 0.12rem 0.16rem !important;
-  min-width: 7.4rem;
+  min-width: 0;
   inline-size: auto !important;
-  flex: 1 0 7.4rem;
+  flex: 1 1 auto;
   width: auto !important;
   background: transparent !important;
   text-align: left !important;
@@ -1857,6 +1860,22 @@ body {
   width: auto !important;
   flex: 1 0 7.4rem !important;
   text-align: left !important;
+}
+
+#admin-panel #post-tags-input.tag-editor-input {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  outline: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  padding: 0.12rem 0 !important;
 }
 
 .tag-editor.has-tags .tag-editor-input::placeholder {
