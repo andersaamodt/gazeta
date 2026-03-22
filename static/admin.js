@@ -2361,6 +2361,14 @@
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="2.5" fill="currentColor"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><circle cx="12" cy="18.5" r="2.5" fill="currentColor"/></svg>';
   }
 
+  function dragGripIconSvg() {
+    return '<svg class="drag-grip-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="5" cy="3.5" r="1.1"/><circle cx="11" cy="3.5" r="1.1"/>' +
+      '<circle cx="5" cy="8" r="1.1"/><circle cx="11" cy="8" r="1.1"/>' +
+      '<circle cx="5" cy="12.5" r="1.1"/><circle cx="11" cy="12.5" r="1.1"/>' +
+      '</svg>';
+  }
+
   function renderPostsList(posts) {
     if (!els.postsList) {
       return;
@@ -2770,7 +2778,8 @@
     html += '<div class="nostr-pages-header-leading"></div>';
     html += '<div class="nostr-pages-header-main"></div>';
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
-    html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-nav">Show in navbar</span><span class="nostr-pages-header-spacer"></span></div>';
+    html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
+    html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
       const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
@@ -2785,7 +2794,7 @@
       const typeLabel = nostrPageTypeLabel(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
       html += '<div class="nostr-page-leading">';
-      html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>';
+      html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">' + dragGripIconSvg() + '</button>';
       html += '</div>';
       html += '<div class="nostr-page-main">';
       html += '<div class="nostr-page-title-row"><div class="nostr-page-title"><a href="' + escapeAttr(path) + '">' + escapeHtml(title) + '</a></div>';
@@ -2796,13 +2805,12 @@
       }
       html += '</div>';
       html += '<div class="nostr-page-meta">';
-      html += '<span class="nostr-page-nav-title-label">Navbar: ' + escapeHtml(navTitle) + '</span>';
       if (isEditingSlug) {
         html += '<input type="text" class="nostr-page-slug-input" data-nostr-page-action="edit-slug-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingSlugValue || path) + '" aria-label="Edit page slug/path">';
         html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';
       } else {
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
-        html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change</a>';
+        html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change path</a>';
       }
       html += '</div>';
       html += '</div>';
@@ -2817,8 +2825,10 @@
         html += '</div>';
       }
       html += '</div>';
-      html += '<div class="nostr-page-actions">';
+      html += '<div class="nostr-page-nav-col">';
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
+      html += '</div>';
+      html += '<div class="nostr-page-actions">';
       html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page from site" title="Remove from this site (keeps Nostr event)">' + prioritiesTrashIconSvg() + '</button>';
       html += '</div>';
       html += '</div>';

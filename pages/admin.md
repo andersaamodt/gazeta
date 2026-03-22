@@ -2375,9 +2375,19 @@ body {
 .nostr-pages-header-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  flex: 0 0 auto;
-  margin-right: 0.05rem;
+  justify-content: center;
+  width: 2rem;
+  min-width: 2rem;
+  flex: 0 0 2rem;
+}
+
+.nostr-pages-header-nav-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8.8rem;
+  min-width: 8.8rem;
+  flex: 0 0 8.8rem;
 }
 
 .nostr-pages-header-nav {
@@ -2438,7 +2448,7 @@ body {
 
 .nostr-page-title-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.45rem;
   flex-wrap: wrap;
   max-width: 100%;
@@ -2447,11 +2457,13 @@ body {
 .nostr-page-title a {
   color: #163161;
   text-decoration: none;
+  background: transparent !important;
 }
 
 .nostr-page-title a:hover,
 .nostr-page-title a:focus-visible {
   text-decoration: underline;
+  background: transparent !important;
 }
 
 .nostr-page-meta {
@@ -2505,6 +2517,8 @@ body {
 
 .nostr-page-title-change {
   margin-left: 0.08rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 .nostr-page-nav-title-edit-wrap {
@@ -2615,9 +2629,10 @@ body {
 .nostr-page-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  flex: 0 0 auto;
-  margin-right: 0.05rem;
+  justify-content: center;
+  width: 2rem;
+  min-width: 2rem;
+  flex: 0 0 2rem;
 }
 
 .nostr-page-row.is-dragging {
@@ -2630,6 +2645,25 @@ body {
 
 .nostr-page-drag-handle:active {
   cursor: grabbing;
+}
+
+.nostr-page-drag-handle .drag-grip-icon-svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: currentColor;
+}
+
+.nostr-page-drag-handle .drag-grip-icon-svg circle {
+  fill: currentColor;
+}
+
+.nostr-page-nav-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8.8rem;
+  min-width: 8.8rem;
+  flex: 0 0 8.8rem;
 }
 
 #admin-panel .nostr-page-actions button {
@@ -2653,7 +2687,7 @@ body {
 }
 
 #admin-panel .nostr-page-actions .nostr-page-nav-check {
-  margin-right: 0.3rem;
+  margin-right: 0;
 }
 
 #admin-panel .nostr-page-actions .nostr-page-nav-check-only {
@@ -2672,7 +2706,7 @@ body {
 }
 
 #admin-panel .nostr-page-actions .icon-danger {
-  margin-right: 0.2rem;
+  margin-right: 0;
 }
 
 #admin-panel .nostr-page-leading .nostr-page-drag-handle,
@@ -2690,16 +2724,23 @@ body {
 
 #admin-panel .nostr-page-leading .nostr-page-drag-handle {
   cursor: grab;
-  letter-spacing: 0.08em;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .nostr-page-leading .nostr-page-drag-handle:active {
   cursor: grabbing;
 }
 
+#admin-panel .nostr-page-leading .nostr-page-drag-handle:hover,
+#admin-panel .nostr-page-leading .nostr-page-drag-handle:focus-visible,
 #admin-panel .nostr-page-actions .unobtrusive-icon-button:hover,
 #admin-panel .nostr-page-actions .unobtrusive-icon-button:focus-visible {
   background: var(--admin-hover, rgba(90, 116, 170, 0.2)) !important;
+}
+
+[data-admin-section="nostr-pages"] .row-head .muted {
+  white-space: nowrap;
 }
 
 [data-admin-section="nostr-pages"] .admin-card {
@@ -3916,6 +3957,24 @@ body {
 
   .preview-box {
     max-height: 460px;
+  }
+
+  [data-admin-section="nostr-pages"] .row-head .muted {
+    white-space: normal;
+  }
+
+  .nostr-pages-header-type,
+  .nostr-page-type-col {
+    width: 9.8rem;
+    min-width: 9.8rem;
+    flex-basis: 9.8rem;
+  }
+
+  .nostr-pages-header-nav-col,
+  .nostr-page-nav-col {
+    width: 7.8rem;
+    min-width: 7.8rem;
+    flex-basis: 7.8rem;
   }
 }
 
