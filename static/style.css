@@ -294,8 +294,18 @@ header h1 {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: var(--nav-active-text);
   font-weight: 700;
-  cursor: pointer;
+  cursor: default;
   border-radius: var(--nav-pill-radius);
+  pointer-events: none;
+}
+
+.nav-center a.active:hover,
+.nav-center a.active:focus-visible,
+.nav-username.active:hover,
+.nav-username.active:focus-visible {
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  color: var(--nav-active-text);
 }
 
 .nav-right {

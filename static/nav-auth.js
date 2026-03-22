@@ -2075,8 +2075,12 @@
         link.classList.toggle('active', active);
         if (active) {
           link.setAttribute('aria-current', 'page');
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('tabindex', '-1');
         } else {
           link.removeAttribute('aria-current');
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
         }
       });
     }
