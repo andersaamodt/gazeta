@@ -1355,6 +1355,31 @@ header h1 {
   font-size: 0.8rem;
 }
 
+.nostr-page-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 0.06rem 0.42rem;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: var(--muted-text, #4f617f);
+  background: color-mix(in srgb, var(--card-bg) 78%, transparent);
+}
+
+.nostr-page-scope-pill.is-nostr {
+  border-color: color-mix(in srgb, var(--theme_green, #2f8a5c) 45%, var(--border) 55%);
+  color: color-mix(in srgb, var(--theme_green, #2f8a5c) 82%, #102b1c 18%);
+  background: color-mix(in srgb, var(--theme_green, #2f8a5c) 13%, transparent);
+}
+
+.nostr-page-scope-pill.is-local {
+  border-color: color-mix(in srgb, var(--accent, #2d4f8c) 36%, var(--border) 64%);
+  color: color-mix(in srgb, var(--accent, #2d4f8c) 78%, #12284f 22%);
+  background: color-mix(in srgb, var(--accent, #2d4f8c) 11%, transparent);
+}
+
 .nostr-page-extra-edit select {
   width: auto;
   min-width: 0;

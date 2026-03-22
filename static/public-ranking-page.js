@@ -634,7 +634,7 @@
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
     html += '<h3 class="nostr-page-extras-heading">Before content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before content (Markdown)</span>';
+    html += '<span>Before content (Markdown) <span class="nostr-page-scope-pill is-nostr">Nostr</span></span>';
     html += '<textarea data-ranking-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(renderState.content || '') + '</textarea>';
     html += '</label>';
     html += '</section>';
@@ -649,7 +649,7 @@
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
     html += '<h3 class="nostr-page-extras-heading">After content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>After content</span>';
+    html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
     html += '<span class="nostr-page-extra-controls">';
     html += '<select data-ranking-outro-format="after">';
     html += '<option value="markdown"' + (String(renderState.extras_after_format || '').toLowerCase() === 'markdown' ? ' selected' : '') + '>Markdown</option>';

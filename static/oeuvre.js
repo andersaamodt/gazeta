@@ -1071,15 +1071,17 @@
 
   function renderExtrasEditor() {
     var draft = state.draft || {};
+    var introScope = draft.publish_intro_to_nostr ? 'nostr' : 'local';
+    var introScopeLabel = introScope === 'nostr' ? 'Nostr' : 'Local';
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
     html += '<h3 class="nostr-page-extras-heading">Before and after content</h3>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before content (Markdown)<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Publish before content to Nostr</span></label></span></span>';
+    html += '<span>Before content (Markdown) <span class="nostr-page-scope-pill is-' + introScope + '">' + introScopeLabel + '</span><span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label></span></span>';
     html += '<textarea data-list-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(draft.description || '') + '</textarea>';
     html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
-    html += '<span>After content</span>';
+    html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
     html += '<span class="nostr-page-extra-controls">';
     html += '<select data-list-outro-format="after">';
     html += '<option value="markdown"' + (normalizeExtraFormat(draft.extras_after_format) === 'markdown' ? ' selected' : '') + '>Markdown</option>';

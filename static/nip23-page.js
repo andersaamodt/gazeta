@@ -418,9 +418,9 @@
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
-      html += '<label class="nostr-page-extra-edit"><span>Title</span><input type="text" id="nip23-title-input" value="' + escapeHtml(s.title || '') + '"></label>';
-      html += '<label class="nostr-page-extra-edit"><span>Content (Markdown)</span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
-      html += '<label class="nostr-page-extra-edit"><span>After content</span><span class="nostr-page-extra-controls"><select id="nip23-outro-format"><option value="markdown"' + (s.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option><option value="html"' + (s.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option></select></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after the main content section">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
+      html += '<label class="nostr-page-extra-edit"><span>Title <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><input type="text" id="nip23-title-input" value="' + escapeHtml(s.title || '') + '"></label>';
+      html += '<label class="nostr-page-extra-edit"><span>Content (Markdown) <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
+      html += '<label class="nostr-page-extra-edit"><span>After content <span class="nostr-page-scope-pill is-local">Local</span></span><span class="nostr-page-extra-controls"><select id="nip23-outro-format"><option value="markdown"' + (s.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option><option value="html"' + (s.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option></select></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after the main content section">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
       html += '</section>';
       html += readOnlyMain;
       html += outroHtml;
