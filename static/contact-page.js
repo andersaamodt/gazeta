@@ -1549,7 +1549,9 @@
       if (moved) {
         clearActiveRowField();
         renderContent();
-        queueAutosave(300);
+        state.saveIndicatorVisible = true;
+        renderAdmin();
+        persistDraft({ alertOnError: false });
       } else {
         state.pendingFlipPositions = null;
         renderContent();
@@ -1560,9 +1562,10 @@
       if (!isAdmin() || !state.editMode) {
         return;
       }
-      if (!state.dragDropped && state.dragMoved && Array.isArray(state.dragStartRows)) {
-        state.draft = normalizeDraftState(state.draft);
-        state.draft.rows = normalizeRows(state.dragStartRows);
+      if (!state.dragDropped && state.dragMoved) {
+        state.saveIndicatorVisible = true;
+        renderAdmin();
+        persistDraft({ alertOnError: false });
       }
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
