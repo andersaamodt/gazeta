@@ -1992,10 +1992,10 @@ header h1 {
 
 .contact-profile-table-wrap {
   margin: 0.38rem 0 0.2rem;
-  border: 1px solid var(--table-border, #d2def3);
-  border-radius: 12px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--card-bg, #fff) 92%, transparent);
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
 }
 
 .contact-profile-table {
@@ -2006,7 +2006,7 @@ header h1 {
 
 .contact-profile-row + .contact-profile-row .contact-platform-cell,
 .contact-profile-row + .contact-profile-row .contact-value-cell {
-  border-top: 1px solid var(--table-border, #d2def3);
+  border-top: 0;
 }
 
 .contact-platform-cell {

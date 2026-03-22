@@ -349,6 +349,13 @@
     return labels[q] || q;
   }
 
+  function normalizeTransportKey(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
+  }
+
   function isSafeContactHref(href) {
     var value = String(href || '').trim();
     return /^(https?:\/\/|mailto:)/i.test(value);
@@ -384,12 +391,97 @@
     }
     var lower = safeHref.toLowerCase();
     if (lower.indexOf('mailto:') === 0) {
-      return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '">' + escapeHtml(text) + '</a>';
+      if (!text || text === safeHref || /^mailto:/i.test(text)) {
+        text = safeHref.slice(7);
+      }
+      return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '">' + escapeHtml(text || safeHref) + '</a>';
     }
     return '<a class="contact-value-link" href="' + escapeAttr(safeHref) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(text) + '</a>';
   }
 
-  function linkifyPlainContactText(text) {
+  function linkifyBareEmailText(text) {
+    var raw = String(text || '');
+    if (!raw) {
+      return '';
+    }
+    var html = '';
+    var pattern = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/ig;
+    var lastIndex = 0;
+    var match;
+    while ((match = pattern.exec(raw)) !== null) {
+      html += escapeHtml(raw.slice(lastIndex, match.index)).replace(/\n/g, '<br>');
+      html += renderContactHref('mailto:' + match[1], match[1]);
+      lastIndex = match.index + match[0].length;
+    }
+    html += escapeHtml(raw.slice(lastIndex)).replace(/\n/g, '<br>');
+    return html;
+  }
+
+  function renderPlainContactChunk(text, transport) {
+    var raw = String(text || '');
+    if (!raw) {
+      return '';
+    }
+    var transportKey = normalizeTransportKey(transport);
+    if (transportKey === 'email' || transportKey === 'mail') {
+      return linkifyBareEmailText(raw);
+    }
+    if (transportKey === 'phone' || transportKey === 'tel' || transportKey === 'telephone') {
+      var trimmed = raw.trim();
+      if (trimmed && /^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(trimmed)) {
+        var telTarget = 'tel:' + trimmed.replace(/[^\d+]/g, '');
+        return renderContactHref(telTarget, trimmed);
+      }
+    }
+    return escapeHtml(raw).replace(/\n/g, '<br>');
+  }
+
+  function inferContactLinkFromTransport(value, transport) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+    var transportKey = normalizeTransportKey(transport);
+    var match;
+    if (transportKey === 'email' || transportKey === 'mail') {
+      match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      if (match && match[0]) {
+        return renderContactHref('mailto:' + match[0], raw);
+      }
+    }
+    if (transportKey === 'telegram') {
+      if (/^@?[a-z0-9_]{3,}$/i.test(raw)) {
+        return renderContactHref('https://t.me/' + raw.replace(/^@/, ''), raw);
+      }
+    }
+    if (transportKey === 'twitter' || transportKey === 'x') {
+      if (/^@?[a-z0-9_]{1,15}$/i.test(raw)) {
+        return renderContactHref('https://x.com/' + raw.replace(/^@/, ''), raw);
+      }
+    }
+    if (transportKey === 'reddit') {
+      if (/^\/?u\/[a-z0-9_-]+$/i.test(raw)) {
+        return renderContactHref('https://reddit.com/' + raw.replace(/^\//, ''), raw);
+      }
+      if (/^[a-z0-9_-]+$/i.test(raw)) {
+        return renderContactHref('https://reddit.com/u/' + raw, raw);
+      }
+    }
+    if (transportKey === 'facebook' && /^[a-z0-9.]{3,}$/i.test(raw)) {
+      return renderContactHref('https://facebook.com/' + raw, raw);
+    }
+    if (transportKey === 'tumblr') {
+      if (/^[a-z0-9-]+\.tumblr\.com$/i.test(raw)) {
+        return renderContactHref('https://' + raw, raw);
+      }
+      if (/^[a-z0-9-]+$/i.test(raw)) {
+        return renderContactHref('https://' + raw + '.tumblr.com', raw);
+      }
+    }
+    return '';
+  }
+
+  function linkifyPlainContactText(text, transport) {
     var raw = String(text || '');
     if (!raw) {
       return '';
@@ -399,7 +491,7 @@
     var lastIndex = 0;
     var match;
     while ((match = pattern.exec(raw)) !== null) {
-      html += escapeHtml(raw.slice(lastIndex, match.index)).replace(/\n/g, '<br>');
+      html += renderPlainContactChunk(raw.slice(lastIndex, match.index), transport);
       var candidate = splitTrailingPunctuation(match[0]);
       if (candidate.url && isSafeContactHref(candidate.url)) {
         html += renderContactHref(candidate.url, candidate.url);
@@ -411,11 +503,11 @@
       }
       lastIndex = match.index + match[0].length;
     }
-    html += escapeHtml(raw.slice(lastIndex)).replace(/\n/g, '<br>');
+    html += renderPlainContactChunk(raw.slice(lastIndex), transport);
     return html;
   }
 
-  function linkifyContactValue(value) {
+  function linkifyContactValue(value, transport) {
     var raw = String(value || '');
     if (!raw) {
       return '';
@@ -425,7 +517,7 @@
     var lastIndex = 0;
     var match;
     while ((match = pattern.exec(raw)) !== null) {
-      html += linkifyPlainContactText(raw.slice(lastIndex, match.index));
+      html += linkifyPlainContactText(raw.slice(lastIndex, match.index), transport);
       var label = String(match[1] || '').trim();
       var href = String(match[2] || '').trim();
       if (isSafeContactHref(href)) {
@@ -435,8 +527,11 @@
       }
       lastIndex = match.index + match[0].length;
     }
-    html += linkifyPlainContactText(raw.slice(lastIndex));
-    return html;
+    html += linkifyPlainContactText(raw.slice(lastIndex), transport);
+    if (html.indexOf('<a ') !== -1) {
+      return html;
+    }
+    return inferContactLinkFromTransport(raw, transport) || html;
   }
 
   function renderValidation() {
@@ -595,7 +690,7 @@
       var qValue = String(row.qualifier || '').trim().toLowerCase();
       html += '<tr class="contact-profile-row">';
       html += '<th scope="row" class="contact-platform-cell">' + escapeHtml(transport) + '</th>';
-      html += '<td class="contact-value-cell"><div class="contact-value-main">' + linkifyContactValue(value) + '</div>';
+      html += '<td class="contact-value-cell"><div class="contact-value-main">' + linkifyContactValue(value, transport) + '</div>';
       if (qLabel) {
         html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
       }
