@@ -42,6 +42,7 @@
     navTitleInput: '',
     navTitleBusy: false,
     submitComposerOpen: false,
+    submitAdvancedOpen: false,
     busy: false,
     saveTimer: null,
     saveStatus: 'saved',
@@ -152,6 +153,7 @@
     state.currentMetric = normalizeMetric((cachedPayload.state && (cachedPayload.state.metric || cachedPayload.state.default_metric)) || state.draft.default_metric || 'momentum');
     state.activeHeadField = '';
     state.submitComposerOpen = false;
+    state.submitAdvancedOpen = false;
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
     renderAll();
@@ -862,9 +864,6 @@
   }
 
   function renderSubmitForm(renderState, graph) {
-    if (isAdmin() && state.editMode) {
-      return '';
-    }
     if (!canSubmitByMode(renderState.submission_mode)) {
       return '';
     }
@@ -878,6 +877,8 @@
     });
 
     var open = !!state.submitComposerOpen;
+    var showAdvancedToggle = !!(isAdmin() && state.editMode);
+    var advancedOpen = showAdvancedToggle && !!state.submitAdvancedOpen;
     var html = '';
     html += '<section class="public-ranking-submit">';
     html += '<div class="public-ranking-submit-toolbar">';
@@ -887,39 +888,47 @@
     html += '</div>';
     if (open) {
       html += '<div class="public-ranking-submit-inline">';
-      if (isAdmin()) {
-        html += '<select id="public-ranking-submit-type" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select>';
-      }
-      html += '<select id="public-ranking-submit-parent" aria-label="Parent">';
-      html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
-      groups.forEach(function (group) {
-        html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
-      });
-      html += '</select>';
+      html += '<input type="hidden" id="public-ranking-submit-parent" value="' + escapeHtml(graph.rootCoord || '') + '">';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="Entry title">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
       html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
+      if (showAdvancedToggle) {
+        html += '<button type="button" data-ranking-action="toggle-submit-advanced" class="public-ranking-submit-advanced-toggle" aria-expanded="' + (advancedOpen ? 'true' : 'false') + '">' + escapeHtml(advancedOpen ? '-Advanced' : '+Advanced') + '</button>';
+      }
       html += '</div>';
-      html += '<div class="public-ranking-submit-extras">';
-      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
-      html += '<summary>+Link</summary>';
-      html += '<div class="public-ranking-submit-grid">';
-      html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
-      html += '</div>';
-      html += '</details>';
-      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
-      html += '<summary>+Nostr post</summary>';
-      html += '<div class="public-ranking-submit-grid">';
-      html += '<label><span>Nostr post address</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
-      html += '</div>';
-      html += '</details>';
-      html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
-      html += '<summary>+Body</summary>';
-      html += '<div class="public-ranking-submit-grid">';
-      html += '<label class="public-ranking-submit-wide"><span>Body</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional body"></textarea></label>';
-      html += '</div>';
-      html += '</details>';
-      html += '</div>';
+      if (advancedOpen) {
+        html += '<div class="public-ranking-submit-advanced">';
+        html += '<div class="public-ranking-submit-grid">';
+        html += '<label><span>Entry type</span><select id="public-ranking-submit-type-advanced" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select></label>';
+        html += '<label><span>Parent</span><select id="public-ranking-submit-parent-advanced" aria-label="Parent">';
+        html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
+        groups.forEach(function (group) {
+          html += '<option value="' + escapeHtml(group.coordinate || '') + '">' + escapeHtml(String(group.title || group.coordinate || 'Group')) + '</option>';
+        });
+        html += '</select></label>';
+        html += '</div>';
+        html += '<div class="public-ranking-submit-extras">';
+        html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+        html += '<summary>+Link</summary>';
+        html += '<div class="public-ranking-submit-grid">';
+        html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
+        html += '</div>';
+        html += '</details>';
+        html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+        html += '<summary>+Nostr post</summary>';
+        html += '<div class="public-ranking-submit-grid">';
+        html += '<label><span>Nostr post address</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
+        html += '</div>';
+        html += '</details>';
+        html += '<details class="public-ranking-submit-more public-ranking-submit-more-compact">';
+        html += '<summary>+Body</summary>';
+        html += '<div class="public-ranking-submit-grid">';
+        html += '<label class="public-ranking-submit-wide"><span>Body</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional body"></textarea></label>';
+        html += '</div>';
+        html += '</details>';
+        html += '</div>';
+        html += '</div>';
+      }
     }
     html += '</section>';
     return html;
@@ -1317,15 +1326,16 @@
   }
 
   function readSubmissionPayload() {
-    var type = document.getElementById('public-ranking-submit-type');
+    var type = document.getElementById('public-ranking-submit-type-advanced');
     var parent = document.getElementById('public-ranking-submit-parent');
+    var parentAdvanced = document.getElementById('public-ranking-submit-parent-advanced');
     var title = document.getElementById('public-ranking-submit-title');
     var url = document.getElementById('public-ranking-submit-url');
     var post = document.getElementById('public-ranking-submit-post');
     var content = document.getElementById('public-ranking-submit-content');
     return {
       node_kind: type ? String(type.value || 'entry') : 'entry',
-      parent_coord: parent ? String(parent.value || '') : '',
+      parent_coord: parentAdvanced ? String(parentAdvanced.value || '') : (parent ? String(parent.value || '') : ''),
       title: title ? String(title.value || '') : '',
       summary: '',
       url: url ? String(url.value || '') : '',
@@ -1358,6 +1368,7 @@
         csrf_token: auth.csrf_token
       });
       state.submitComposerOpen = false;
+      state.submitAdvancedOpen = false;
       refreshPayloadStateFromResponse({ state: data.ranking, validation: state.payload.validation });
       maybeSetMetricFromPayload();
       renderAll();
@@ -1589,6 +1600,9 @@
         var action = String(actionNode.getAttribute('data-ranking-action') || '');
         if (action === 'toggle-submit') {
           state.submitComposerOpen = !state.submitComposerOpen;
+          if (!state.submitComposerOpen) {
+            state.submitAdvancedOpen = false;
+          }
           renderContent();
           if (state.submitComposerOpen) {
             requestAnimationFrame(function () {
@@ -1602,6 +1616,12 @@
         }
         if (action === 'cancel-submit') {
           state.submitComposerOpen = false;
+          state.submitAdvancedOpen = false;
+          renderContent();
+          return;
+        }
+        if (action === 'toggle-submit-advanced') {
+          state.submitAdvancedOpen = !state.submitAdvancedOpen;
           renderContent();
           return;
         }
@@ -1672,6 +1692,7 @@
       state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
       state.activeHeadField = '';
       state.submitComposerOpen = false;
+      state.submitAdvancedOpen = false;
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       renderAll();

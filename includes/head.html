@@ -113,8 +113,12 @@
     var panel = document.createElement('section');
     panel.id = 'route-load-failure';
     panel.className = 'route-load-failure';
-    panel.innerHTML = '<h1 id="main-content">Page failed to load.</h1><p>Try refreshing.</p>';
-    container.appendChild(panel);
+    panel.innerHTML = '<h1 id="main-content">Page is still loading.</h1><p>Try refreshing in a moment.</p>';
+    if (container.firstChild) {
+      container.insertBefore(panel, container.firstChild);
+    } else {
+      container.appendChild(panel);
+    }
     forceHydrationReveal();
   }
 
