@@ -173,8 +173,13 @@ blog_nostr_pages_normalize_json() {
         })
       | map(select((.slug | length) > 0))
       | map(
-          if .slug == "blog" and .type != "contact" then
+          if .type == "blog" then
             .type = "blog"
+            | .slug = "blog"
+            | .path = "/blog"
+          elif .slug == "blog" and .type != "contact" then
+            .type = "blog"
+            | .path = "/blog"
           else
             .
           end
@@ -196,12 +201,26 @@ blog_nostr_pages_normalize_json() {
           }] + $unique)
         end
       ) as $with_blog
+    | (
+        if any($with_blog[]?; .slug == "index") then
+          $with_blog
+        else
+          ($with_blog + [{
+            slug: "index",
+            type: "nip23",
+            show_in_nav: false,
+            default_tag: "",
+            placeholder_title: "Home",
+            path: "/"
+          }])
+        end
+      ) as $with_required_pages
     | {
         pages:
-          (if ($with_blog | length) == 0 then
+          (if ($with_required_pages | length) == 0 then
              []
            else
-             ($with_blog
+             ($with_required_pages
              | map(
                .kind = (
                  if .type == "contact" then 0
