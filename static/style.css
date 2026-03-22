@@ -54,6 +54,7 @@
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
   --nav-pill-radius: 8px;
+  --nav-signature-color: color-mix(in srgb, var(--text) 44%, var(--bg) 56%);
   --nav-icon-hover: var(--nav-icon);
   --nav-bg: var(--bg);
   --nav-border: var(--border);
@@ -245,6 +246,18 @@ header h1 {
   margin-left: 0;
 }
 
+.nav-site-signature {
+  flex: 0 0 auto;
+  color: var(--nav-signature-color);
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+  user-select: none;
+  pointer-events: none;
+}
+
 .nav-center {
   display: flex;
   gap: 0.5rem;
@@ -285,6 +298,12 @@ header h1 {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+}
+
+@media (max-width: 900px) {
+  .nav-site-signature {
+    display: none;
+  }
 }
 
 .nav-feeds {

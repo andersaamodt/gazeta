@@ -38,6 +38,7 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
+<span class="nav-site-signature" aria-hidden="true">Anders J. Aamodt</span>
 <div class="nav-center">
 <a href="/" data-page="blog">Blog</a>
 </div>
