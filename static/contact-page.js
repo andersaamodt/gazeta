@@ -996,8 +996,6 @@
         } else if (state.editMode) {
           if (text) {
             els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
-          } else if (hasMainContent) {
-            els.description.innerHTML = '<button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
           } else {
             els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
           }
