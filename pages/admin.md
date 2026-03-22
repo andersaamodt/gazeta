@@ -2731,9 +2731,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 10.5rem;
-  min-width: 7.4rem;
-  flex: 0 1 10.5rem;
+  width: 14.2rem;
+  min-width: 11.8rem;
+  flex: 0 0 14.2rem;
   text-align: center;
 }
 
@@ -2842,16 +2842,19 @@ body {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+  align-content: flex-start;
+  overflow: hidden;
 }
 
 .nostr-page-type-col {
-  width: 10.5rem;
-  min-width: 7.4rem;
-  flex: 0 1 10.5rem;
+  width: 14.2rem;
+  min-width: 11.8rem;
+  flex: 0 0 14.2rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.32rem;
+  overflow: hidden;
 }
 
 .nostr-page-settings-col {
@@ -2897,6 +2900,9 @@ body {
   line-height: 1.1;
   padding: 0.15rem 0.48rem;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nostr-page-kind-badge.is-type-blog {
@@ -2993,6 +2999,7 @@ body {
   font-weight: 500;
   line-height: 1.15;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 #admin-panel .nostr-page-path-edit:hover,
@@ -4609,9 +4616,9 @@ body {
 
   .nostr-pages-header-type,
   .nostr-page-type-col {
-    width: 8.8rem;
-    min-width: 7.2rem;
-    flex-basis: 8.8rem;
+    width: 12.5rem;
+    min-width: 10.4rem;
+    flex-basis: 12.5rem;
   }
 
   .nostr-pages-header-settings,
