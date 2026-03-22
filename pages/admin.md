@@ -2410,27 +2410,36 @@ body {
   align-items: center;
   justify-content: flex-start;
   gap: 0.6rem;
-  padding: 0.2rem 0 0.38rem;
-  border-bottom: 0;
+  padding: 0.24rem 0;
+  border-bottom: 1px solid var(--admin-border, #cdbd95);
+  min-height: 2rem;
 }
 
 .nostr-pages-header-leading {
+  display: inline-flex;
+  align-items: center;
   width: 2rem;
   flex: 0 0 2rem;
 }
 
 .nostr-pages-header-name {
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .nostr-pages-header-path {
+  display: inline-flex;
+  align-items: center;
   width: 14rem;
   min-width: 14rem;
   flex: 0 0 14rem;
 }
 
 .nostr-pages-header-type {
+  display: inline-flex;
+  align-items: center;
   width: 11.5rem;
   min-width: 11.5rem;
   flex: 0 0 11.5rem;
