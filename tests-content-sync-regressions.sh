@@ -576,6 +576,8 @@ assert_file_contains "$ROOT_DIR/static/contact-page.js" 'list-page-description-e
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Allow signed-in Nostr users to add entries' 'public ranking editor includes friendly open-submission toggle label'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-allow-open"' 'public ranking editor uses boolean open-submission checkbox'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-show-marker-filters"' 'public ranking editor exposes show marker filters checkbox'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Upvotes (unique voters)' 'public ranking default metric dropdown uses plain-language upvotes label'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Hotness (recent-weighted)' 'public ranking default metric dropdown uses plain-language hotness label'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'show_marker_filters' 'public ranking state supports show_marker_filters setting'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'BLOG_SESSION_USER_PUBKEY' 'public ranking root coord resolver falls back to signed-in session pubkey when site pubkey is unavailable'
 assert_file_not_contains "$ROOT_DIR/static/public-ranking-page.js" 'if (isAdmin() && !state.editMode) {' 'public ranking submit composer is not hidden in normal admin view mode'

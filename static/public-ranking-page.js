@@ -773,15 +773,15 @@
 
   function metricLabel(metric) {
     if (metric === 'support') {
-      return 'Support';
+      return 'Upvotes (unique voters)';
     }
     if (metric === 'enthusiasm') {
-      return 'Enthusiasm';
+      return 'Popularity (total votes)';
     }
     if (metric === 'intensity') {
-      return 'Intensity';
+      return 'Engagement (votes/voter)';
     }
-    return 'Momentum';
+    return 'Hotness (recent-weighted)';
   }
 
   function renderExtraContent(text, format, role) {
@@ -1052,10 +1052,10 @@
     html += '<label><span>Allow signed-in Nostr users to add entries</span><input type="checkbox" id="public-ranking-edit-allow-open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' checked' : '') + '></label>';
     html += '<label><span>Show marker filters</span><input type="checkbox" id="public-ranking-edit-show-marker-filters"' + (renderState.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label><span>Default metric</span><select id="public-ranking-edit-default-metric">';
-    html += '<option value="momentum"' + (normalizeMetric(renderState.default_metric) === 'momentum' ? ' selected' : '') + '>momentum</option>';
-    html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>support</option>';
-    html += '<option value="enthusiasm"' + (normalizeMetric(renderState.default_metric) === 'enthusiasm' ? ' selected' : '') + '>enthusiasm</option>';
-    html += '<option value="intensity"' + (normalizeMetric(renderState.default_metric) === 'intensity' ? ' selected' : '') + '>intensity</option>';
+    html += '<option value="momentum"' + (normalizeMetric(renderState.default_metric) === 'momentum' ? ' selected' : '') + '>Hotness (recent-weighted)</option>';
+    html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>Upvotes (unique voters)</option>';
+    html += '<option value="enthusiasm"' + (normalizeMetric(renderState.default_metric) === 'enthusiasm' ? ' selected' : '') + '>Popularity (total votes)</option>';
+    html += '<option value="intensity"' + (normalizeMetric(renderState.default_metric) === 'intensity' ? ' selected' : '') + '>Engagement (votes/voter)</option>';
     html += '</select></label>';
     html += '</div>';
     html += '</section>';
