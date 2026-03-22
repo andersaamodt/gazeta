@@ -2686,22 +2686,22 @@ body {
   transform: none;
 }
 
-#admin-panel .nostr-page-actions .nostr-page-nav-check {
+#admin-panel .nostr-page-nav-col .nostr-page-nav-check {
   margin-right: 0;
 }
 
-#admin-panel .nostr-page-actions .nostr-page-nav-check-only {
+#admin-panel .nostr-page-nav-col .nostr-page-nav-check-only {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2rem;
 }
 
-#admin-panel .nostr-page-actions .nostr-page-nav-check-only > span {
+#admin-panel .nostr-page-nav-col .nostr-page-nav-check-only > span {
   display: none;
 }
 
-#admin-panel .nostr-page-actions .nostr-page-nav-check-only input[type="checkbox"] {
+#admin-panel .nostr-page-nav-col .nostr-page-nav-check-only input[type="checkbox"] {
   margin: 0;
 }
 
