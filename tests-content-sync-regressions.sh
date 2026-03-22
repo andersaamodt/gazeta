@@ -214,6 +214,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_run_build_asy
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" '. "$SCRIPT_DIR/blog-nostr-pages-common.sh"' 'publish list imports nostr pages common'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync hook present'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
+assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
+assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_run_build_async' 'save-nostr-pages triggers rebuild'
+assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_nostr_pages_sync_source_pages "$normalized"' 'nav-title update refreshes source mounts'
+assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_run_build_async' 'nav-title update triggers rebuild'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar page maintenance triggers rebuild when config normalizes'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -290,6 +296,23 @@ assert_eq "$ID_3" "$(printf '%s' "$contact_page_json" | jq -r '.id')" 'nip23 tie
 
 # Unknown slug should fail cleanly.
 assert_fails blog_nostr_nip23_latest_event_json 'does-not-exist'
+
+# Helper selectors: kind/list/addressable should return newest matching canonical event.
+kind_latest=$(blog_nostr_kind_latest_event_json 30023)
+assert_eq "$ID_3" "$(printf '%s' "$kind_latest" | jq -r '.id')" 'kind selector returns newest event across kind'
+kind_latest_for_pubkey=$(blog_nostr_kind_latest_event_json 30023 "$KEY_A")
+assert_eq "$ID_2" "$(printf '%s' "$kind_latest_for_pubkey" | jq -r '.id')" 'kind selector supports pubkey filter'
+
+write_event "$KEY_A" 30004 "$ID_5" 2100 '[["d","oeuvre"],["title","Old Oeuvre"]]' 'old oeuvre'
+write_event "$KEY_B" 30004 "$ID_6" 2200 '[["d","oeuvre"],["title","New Oeuvre"]]' 'new oeuvre'
+list_latest=$(blog_nostr_list_latest_event_json 'oeuvre')
+assert_eq "$ID_6" "$(printf '%s' "$list_latest" | jq -r '.id')" 'list selector returns newest event for requested slug'
+
+write_event "$KEY_A" 30042 "$ID_7" 2300 '[["d","node-a"],["t","public-ranking-node"]]' '{}'
+write_event "$KEY_A" 30042 "$ID_8" 2400 '[["d","node-a"],["t","public-ranking-node"]]' '{}'
+addressable_latest=$(blog_nostr_addressable_latest_event_json 30042 "$KEY_A" 'node-a')
+assert_eq "$ID_8" "$(printf '%s' "$addressable_latest" | jq -r '.id')" 'addressable selector returns newest event for pubkey+kind+d'
+assert_fails blog_nostr_addressable_latest_event_json 30042 "$KEY_B" 'missing-node'
 
 # 6) Public ranking canonical selection tests.
 write_event "$KEY_A" 30040 "$ID_4" 1500 '[["d","assignments"],["t","public-ranking"],["title","Assignments Old"]]' '{"v":1}'
