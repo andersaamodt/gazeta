@@ -933,7 +933,13 @@ header h1 {
   background: transparent;
   padding: 0;
   margin-left: 0.35rem;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.2;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: baseline;
+  border-radius: 0;
   color: #46619a;
   -webkit-text-fill-color: #46619a;
   text-decoration: none;
@@ -982,11 +988,8 @@ header h1 {
 }
 
 .list-page-nav-title-row .list-page-nav-title-edit-link {
-  margin-left: 0.12rem;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1.2;
-  font-size: 0.88rem;
+  margin-left: 0.35rem;
+  align-items: baseline;
 }
 
 .list-page-nav-title-input {
@@ -1041,9 +1044,10 @@ header h1 {
 
 #list-page-title .list-inline-edit-link,
 #blog-page-title .list-inline-edit-link,
-#contact-page-title .list-inline-edit-link {
-  margin-left: 0.8rem;
-  line-height: 1;
+#contact-page-title .list-inline-edit-link,
+#public-ranking-title .list-inline-edit-link {
+  margin-left: 0.62rem;
+  align-self: baseline;
   color: #46619a;
   -webkit-text-fill-color: #46619a;
 }
@@ -1583,13 +1587,6 @@ header h1 {
   width: 100%;
   align-items: baseline;
   gap: 0;
-}
-
-#public-ranking-title .list-inline-edit-link {
-  margin-left: 0.8rem;
-  line-height: 1;
-  color: #46619a;
-  -webkit-text-fill-color: #46619a;
 }
 
 .public-ranking-controls {
@@ -4430,6 +4427,43 @@ main [role="button"]:not(.list-inline-open):not(.admin-nav-item),
 main .btn {
   padding: 0.34rem 0.82rem;
   line-height: 1.15;
+}
+
+/* Keep page-head edit links unobtrusive (override global button chrome). */
+button.list-inline-edit-link,
+.list-page-head button.list-inline-edit-link,
+.list-page-head .list-inline-edit-link,
+.list-page-nav-title-row .list-page-nav-title-edit-link {
+  border: 0;
+  background: transparent;
+  background-image: none;
+  padding: 0;
+  min-height: 0;
+  border-radius: 0;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #46619a;
+  -webkit-text-fill-color: #46619a;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+button.list-inline-edit-link:hover:not(:disabled),
+button.list-inline-edit-link:focus-visible:not(:disabled),
+.list-page-head button.list-inline-edit-link:hover:not(:disabled),
+.list-page-head button.list-inline-edit-link:focus-visible:not(:disabled),
+.list-page-head .list-inline-edit-link:hover,
+.list-page-head .list-inline-edit-link:focus-visible,
+.list-page-nav-title-row .list-page-nav-title-edit-link:hover,
+.list-page-nav-title-row .list-page-nav-title-edit-link:focus-visible {
+  border: 0;
+  background: transparent !important;
+  color: #46619a !important;
+  -webkit-text-fill-color: #46619a;
+  text-decoration: underline;
+  box-shadow: none;
 }
 
 /* Keep icon-only controls unobtrusive. */
