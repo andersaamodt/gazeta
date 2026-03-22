@@ -880,6 +880,9 @@ header h1 {
   border-radius: 8px;
   font-size: 0.92rem;
   line-height: 1.22;
+  appearance: none;
+  -webkit-appearance: none;
+  background-clip: padding-box;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
@@ -933,20 +936,20 @@ header h1 {
 }
 
 .list-page-admin-bar button:disabled {
-  background: #d4dae6;
-  border-color: #c3cada;
-  color: #5b657c;
-  -webkit-text-fill-color: #5b657c;
-  cursor: default;
+  background: #cfd5df;
+  border-color: #b6bfce;
+  color: #717c92;
+  -webkit-text-fill-color: #717c92;
+  cursor: not-allowed;
   box-shadow: none;
-  opacity: 1;
+  opacity: 0.78;
 }
 
 .list-page-admin-bar button:disabled:hover {
-  background: #d4dae6;
-  border-color: #c3cada;
-  color: #5b657c;
-  -webkit-text-fill-color: #5b657c;
+  background: #cfd5df;
+  border-color: #b6bfce;
+  color: #717c92;
+  -webkit-text-fill-color: #717c92;
 }
 
 .list-inline-edit-link {
@@ -5501,8 +5504,6 @@ nav.site-nav {
 /* Keep nav/login + primary action hovers in primary color space (never tan fallback). */
 nav.site-nav .btn-login:hover:not(:disabled),
 nav.site-nav .btn-login:focus-visible:not(:disabled),
-#main-content .list-page-admin-bar .list-admin-primary-btn:hover:not(:disabled),
-#main-content .list-page-admin-bar .list-admin-primary-btn:focus-visible:not(:disabled),
 #main-content .auth-primary-btn:hover:not(:disabled),
 #main-content .auth-primary-btn:focus-visible:not(:disabled),
 #main-content .auth-secondary-btn:hover:not(:disabled),
