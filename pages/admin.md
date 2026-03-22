@@ -4769,6 +4769,10 @@ body {
   padding-right: 0.3rem !important;
 }
 
+#admin-panel .admin-nav-list .admin-nav-item[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot {
+  margin-left: -0.2rem !important;
+}
+
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-count {
   font-weight: inherit !important;

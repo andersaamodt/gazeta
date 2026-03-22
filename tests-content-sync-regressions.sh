@@ -58,12 +58,36 @@ assert_file_contains() {
   fi
 }
 
+assert_file_missing() {
+  file=$1
+  label=$2
+  if [ ! -e "$file" ]; then
+    pass
+  else
+    fail "$label (unexpected file: $file)"
+  fi
+}
+
 assert_success() {
   if "$@" >/dev/null 2>&1; then
     pass
   else
     fail "command failed: $*"
   fi
+}
+
+wait_for_file() {
+  file=$1
+  attempts=${2-40}
+  i=0
+  while [ "$i" -lt "$attempts" ]; do
+    if [ -e "$file" ]; then
+      return 0
+    fi
+    sleep 0.05
+    i=$((i + 1))
+  done
+  return 1
 }
 
 assert_fails() {
@@ -387,6 +411,99 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
+
+# 11) Managed source-page sync invariants (unit layer).
+sync_cfg=$(jq -cn '{pages:[
+  {slug:"about", type:"nip23", show_in_nav:true},
+  {slug:"contact", type:"contact", show_in_nav:true},
+  {slug:"oeuvre", type:"list", show_in_nav:true},
+  {slug:"assignments", type:"public-ranking", show_in_nav:false}
+]}')
+blog_nostr_pages_save_json "$sync_cfg"
+blog_nostr_pages_sync_source_pages "$sync_cfg"
+
+about_mount=$(blog_nostr_page_mount_path 'about')
+contact_mount=$(blog_nostr_page_mount_path 'contact')
+oeuvre_mount=$(blog_nostr_page_mount_path 'oeuvre')
+ranking_mount=$(blog_nostr_page_mount_path 'assignments')
+
+assert_success test -f "$about_mount"
+assert_success test -f "$contact_mount"
+assert_success test -f "$oeuvre_mount"
+assert_success test -f "$ranking_mount"
+assert_file_contains "$about_mount" 'id="nip23-page-title"' 'nip23 mount keeps expected template markers'
+assert_file_contains "$contact_mount" 'id="contact-page-title"' 'contact mount keeps expected template markers'
+assert_file_contains "$oeuvre_mount" 'id="list-page-title"' 'list mount keeps expected template markers'
+assert_file_contains "$ranking_mount" 'id="public-ranking-title"' 'public ranking mount keeps expected template markers'
+
+# Prune stale managed mount when slug disappears from config.
+stale_cfg=$(jq -cn '{pages:[{slug:"stale-list", type:"list", show_in_nav:true}]}')
+blog_nostr_pages_save_json "$stale_cfg"
+blog_nostr_pages_sync_source_pages "$stale_cfg"
+stale_mount=$(blog_nostr_page_mount_path 'stale-list')
+assert_success test -f "$stale_mount"
+blog_nostr_pages_save_json "$(jq -cn '{pages:[]}')"
+blog_nostr_pages_sync_source_pages "$(jq -cn '{pages:[]}')"
+assert_file_missing "$stale_mount" 'stale managed mount removed when no longer configured'
+
+# Preserve custom mount files (must not overwrite user-authored page files).
+custom_slug='custom-safe'
+custom_mount=$(blog_nostr_page_mount_path "$custom_slug")
+mkdir -p "$(dirname "$custom_mount")"
+printf '%s\n' 'custom page body' > "$custom_mount"
+blog_nostr_page_sync_mount "$custom_slug" "list" >/dev/null 2>&1 || true
+assert_file_contains "$custom_mount" 'custom page body' 'custom mount remains untouched by managed sync'
+
+# 12) Rebuild trigger invariant for navbar page listing (integration layer).
+wizardry_dir="$TMP_ROOT/wizardry"
+mkdir -p "$wizardry_dir/spells/web"
+build_marker="$TMP_ROOT/build-marker"
+cat > "$wizardry_dir/spells/web/build" <<'EOBUILD'
+#!/bin/sh
+set -eu
+site_name=${1-}
+printf '%s\n' "$site_name" > "${BUILD_MARKER_FILE:?missing marker path}"
+EOBUILD
+chmod +x "$wizardry_dir/spells/web/build"
+
+navbar_cfg=$(jq -cn '{pages:[{slug:"about", type:"nip23", show_in_nav:true}]}')
+blog_nostr_pages_save_json "$navbar_cfg"
+rm -f "$blog_site_root/build/pages/about.html" "$build_marker"
+set +e
+navbar_out=$(WIZARDRY_DIR="$wizardry_dir" BUILD_MARKER_FILE="$build_marker" "$ROOT_DIR/cgi/blog-list-navbar-pages" 2>&1)
+navbar_status=$?
+set -e
+if [ "$navbar_status" -eq 0 ]; then
+  pass
+else
+  fail "navbar listing command failed while testing build queueing (status: $navbar_status, output: $navbar_out)"
+fi
+assert_contains "$navbar_out" '"success":true' 'navbar listing still returns success when build queueing'
+if wait_for_file "$build_marker" 60; then
+  pass
+else
+  fail 'navbar listing triggers async build when mounted html is missing'
+fi
+
+mkdir -p "$blog_site_root/build/pages"
+printf '%s\n' '<!doctype html>' > "$blog_site_root/build/pages/about.html"
+printf '%s\n' '<!doctype html>' > "$blog_site_root/build/pages/blog.html"
+rm -f "$build_marker"
+set +e
+navbar_out_no_build=$(WIZARDRY_DIR="$wizardry_dir" BUILD_MARKER_FILE="$build_marker" "$ROOT_DIR/cgi/blog-list-navbar-pages" 2>&1)
+navbar_no_build_status=$?
+set -e
+if [ "$navbar_no_build_status" -eq 0 ]; then
+  pass
+else
+  fail "navbar listing command failed while testing no-build path (status: $navbar_no_build_status, output: $navbar_out_no_build)"
+fi
+assert_contains "$navbar_out_no_build" '"success":true' 'navbar listing returns success when mounted html exists'
+sleep 0.2
+assert_file_missing "$build_marker" 'navbar listing skips build queue when mounted html already exists'
+
+# 13) UI invariant for Nostr nav icon gutter alignment rule.
+assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
