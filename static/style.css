@@ -1167,7 +1167,7 @@ header h1 {
 
 .list-inline-head {
   display: grid;
-  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) 2.1rem;
+  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) minmax(180px, 260px) 2.1rem;
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.5rem;
@@ -1195,7 +1195,7 @@ header h1 {
 
 .list-entry-inline {
   display: grid;
-  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) 2.1rem;
+  grid-template-columns: 2rem 2.1rem 1fr minmax(120px, 170px) minmax(180px, 260px) 2.1rem;
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.46rem;
@@ -1327,7 +1327,7 @@ header h1 {
 }
 
 .list-inline-eventid {
-  grid-column: 3 / 5;
+  grid-column: 3 / 6;
 }
 
 .list-inline-eventid .list-admin-eventid-details label {
@@ -1389,6 +1389,18 @@ header h1 {
 .list-inline-date .list-inline-value,
 .list-inline-date input[type="text"] {
   font-weight: 400;
+}
+
+.list-inline-image-url .list-inline-value,
+.list-inline-image-url input[type="text"] {
+  font-weight: 400;
+}
+
+.list-inline-image-button {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list-inline-placeholder {
@@ -1486,6 +1498,23 @@ header h1 {
 .list-tile-content {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.list-tile-image-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--post-card-bg-single, #fff) 84%, var(--bg, #fff) 16%);
+  margin-bottom: 0.42rem;
+}
+
+.list-tile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .list-tile-main {

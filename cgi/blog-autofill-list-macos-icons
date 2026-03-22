@@ -1,0 +1,311 @@
+#!/bin/sh
+# Auto-fill missing list entry image URLs using local macOS app icons.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
+if [ -z "$list_slug" ]; then
+  blog_json_error "list_slug is required" "missing_list_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf '')
+case "$page_type" in
+  list|icon-gallery) ;;
+  *)
+    blog_json_error "Auto-fill icons is available only for list/icon-gallery pages" "invalid_page_type"
+    exit 0
+    ;;
+esac
+
+state_json=$(blog_nostr_page_load_draft_state_json "$list_slug" "$page_type" 2>/dev/null || printf '')
+if [ -z "$state_json" ]; then
+  state_json=$(blog_list_load_canonical_state_json "$list_slug")
+fi
+normalized=$(blog_list_normalize_state_json "$list_slug" "$state_json")
+
+lower() {
+  printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]'
+}
+
+trim() {
+  printf '%s' "${1-}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g'
+}
+
+safe_file_stem() {
+  printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//'
+}
+
+guess_app_name_from_markdown() {
+  raw=${1-}
+  text=$(printf '%s' "$raw" \
+    | sed -E 's/\[[[:space:]]*([^]]+)[[:space:]]*\]\([^)]*\)/\1/g' \
+    | sed -E 's/<[^>]+>//g' \
+    | sed -E 's/[*_`~#|]+/ /g' \
+    | sed -E 's/[[:space:]]+/ /g; s/^[[:space:]]+|[[:space:]]+$//g')
+  text=${text%% - *}
+  text=${text%% — *}
+  text=${text%%:*}
+  printf '%s\n' "$text"
+}
+
+find_app_bundle() {
+  app_name=${1-}
+  [ -n "$app_name" ] || return 1
+  app_base=$(printf '%s' "$app_name" | sed 's/\.app$//I')
+  candidate_exact=""
+  for base in "/Applications" "/System/Applications" "${HOME:-}/Applications"; do
+    [ -d "$base" ] || continue
+    if [ -d "$base/$app_base.app" ]; then
+      printf '%s\n' "$base/$app_base.app"
+      return 0
+    fi
+  done
+
+  want=$(lower "$app_base")
+  best=""
+  best_score=999
+  for base in "/Applications" "/System/Applications" "${HOME:-}/Applications"; do
+    [ -d "$base" ] || continue
+    find "$base" -maxdepth 2 -type d -name '*.app' 2>/dev/null | while IFS= read -r app || [ -n "$app" ]; do
+      [ -n "$app" ] || continue
+      bn=${app##*/}
+      bn=${bn%.app}
+      bn_l=$(lower "$bn")
+      score=999
+      if [ "$bn_l" = "$want" ]; then
+        score=0
+      elif printf '%s' "$bn_l" | grep -Fqi "^$want"; then
+        score=1
+      elif printf '%s' "$bn_l" | grep -Fqi "$want"; then
+        score=2
+      elif printf '%s' "$want" | grep -Fqi "$bn_l"; then
+        score=3
+      fi
+      if [ "$score" -lt 999 ]; then
+        printf '%s\t%s\n' "$score" "$app"
+      fi
+    done
+  done | sort -t "$(printf '\t')" -k1,1n -k2,2 | head -n 1 | awk -F'\t' '{print $2}'
+}
+
+resolve_app_icns() {
+  app_bundle=${1-}
+  [ -d "$app_bundle" ] || return 1
+  plist="$app_bundle/Contents/Info.plist"
+  resources="$app_bundle/Contents/Resources"
+  [ -d "$resources" ] || return 1
+
+  icon_file=""
+  if [ -f "$plist" ] && command -v plutil >/dev/null 2>&1; then
+    icon_file=$(plutil -extract CFBundleIconFile raw -o - "$plist" 2>/dev/null || printf '')
+    if [ -z "$icon_file" ]; then
+      icon_candidates_json=$(plutil -extract CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles json -o - "$plist" 2>/dev/null || printf '[]')
+      icon_file=$(printf '%s\n' "$icon_candidates_json" | jq -r 'if type=="array" then (last // "") else "" end' 2>/dev/null || printf '')
+    fi
+  fi
+
+  if [ -n "$icon_file" ]; then
+    case "$icon_file" in
+      *.icns) ;;
+      *) icon_file="${icon_file}.icns" ;;
+    esac
+    if [ -f "$resources/$icon_file" ]; then
+      printf '%s\n' "$resources/$icon_file"
+      return 0
+    fi
+  fi
+
+  fallback=$(find "$resources" -maxdepth 1 -type f -name '*.icns' 2>/dev/null | head -n 1 || printf '')
+  [ -n "$fallback" ] || return 1
+  printf '%s\n' "$fallback"
+}
+
+find_repo_icon_source() {
+  app_name=$(trim "${1-}")
+  [ -n "$app_name" ] || return 1
+  git_root="${HOME:-}/git"
+  [ -d "$git_root" ] || return 1
+
+  lower_name=$(lower "$app_name")
+  case "$lower_name" in
+    stonr) candidates="Stonr" ;;
+    serenity) candidates="Serenity" ;;
+    headquarters) candidates="Headquarters" ;;
+    boycott) candidates="Boycott" ;;
+    "virtual redditor") candidates="Virtual-Redditor" ;;
+    gargoyle) candidates="Gargoyle" ;;
+    wizardry) candidates="wizardry" ;;
+    wizardry-apps) candidates="wizardry-apps" ;;
+    "app forge") candidates="App-Forge wizardry-apps/apps/forge" ;;
+    artificer) candidates="Artificer" ;;
+    sandtrap) candidates="Sandtrap" ;;
+    lapis) candidates="Lapis" ;;
+    priorities) candidates="Priorities" ;;
+    *)
+      slug=$(printf '%s' "$app_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
+      compact=$(printf '%s' "$app_name" | tr -d '[:space:]')
+      candidates="$app_name $slug $compact"
+      ;;
+  esac
+
+  for rel in $candidates; do
+    root="$git_root/$rel"
+    [ -d "$root" ] || continue
+
+    found=$(find "$root" -maxdepth 5 -type f \( -path '*/assets/icons/macos/*.icns' -o -path '*.app/Contents/Resources/*.icns' \) 2>/dev/null | head -n 1 || printf '')
+    if [ -n "$found" ]; then
+      printf '%s\n' "$found"
+      return 0
+    fi
+
+    found=$(find "$root" -maxdepth 4 -type f \( -iname '*icon*.png' -o -iname 'forge-icon.png' -o -iname 'logo*.png' \) 2>/dev/null | head -n 1 || printf '')
+    if [ -n "$found" ]; then
+      printf '%s\n' "$found"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+convert_image_to_png() {
+  src=${1-}
+  out_png=${2-}
+  [ -f "$src" ] || return 1
+  [ -n "$out_png" ] || return 1
+  if ! command -v sips >/dev/null 2>&1; then
+    return 1
+  fi
+  sips -s format png "$src" --out "$out_png" >/dev/null 2>&1 || return 1
+  [ -s "$out_png" ] || return 1
+  sips -Z 512 "$out_png" >/dev/null 2>&1 || true
+  return 0
+}
+
+store_icon_and_get_url() {
+  src_png=${1-}
+  stem=${2-}
+  [ -f "$src_png" ] || return 1
+  safe_stem=$(safe_file_stem "$stem")
+  [ -n "$safe_stem" ] || safe_stem="app-icon"
+  safe_name=$(blog_file_unique_storage_name "icon-${list_slug}-${safe_stem}.png")
+  dest="$blog_files_dir/$safe_name"
+  cp "$src_png" "$dest" || return 1
+  chmod 600 "$dest" 2>/dev/null || true
+  file_id=$(blog_random_token 18)
+  size_bytes=$(blog_file_size_bytes "$dest" 2>/dev/null || printf '0')
+  blog_file_write_record "$file_id" "$safe_name" "$safe_name" "$safe_name" "image/png" "$size_bytes" "$(blog_now_iso)" "" "" true
+  blog_file_public_url_encoded "$file_id" "$safe_name"
+}
+
+count_total=$(printf '%s\n' "$normalized" | jq -r '(.elements // []) | length' 2>/dev/null || printf '0')
+case "$count_total" in
+  ''|*[!0-9]*) count_total=0 ;;
+esac
+
+updated=0
+failed=0
+i=0
+while [ "$i" -lt "$count_total" ]; do
+  image_url=$(printf '%s\n' "$normalized" | jq -r --argjson i "$i" '.elements[$i].image_url // ""' 2>/dev/null || printf '')
+  if [ -n "$image_url" ]; then
+    i=$((i + 1))
+    continue
+  fi
+
+  markdown=$(printf '%s\n' "$normalized" | jq -r --argjson i "$i" '.elements[$i].markdown // ""' 2>/dev/null || printf '')
+  app_name=$(guess_app_name_from_markdown "$markdown")
+  if [ -z "$app_name" ]; then
+    i=$((i + 1))
+    continue
+  fi
+
+  source_icon=""
+  app_bundle=$(find_app_bundle "$app_name" 2>/dev/null || printf '')
+  if [ -n "$app_bundle" ]; then
+    source_icon=$(resolve_app_icns "$app_bundle" 2>/dev/null || printf '')
+  fi
+  if [ -z "$source_icon" ]; then
+    source_icon=$(find_repo_icon_source "$app_name" 2>/dev/null || printf '')
+  fi
+  if [ -z "$source_icon" ]; then
+    failed=$((failed + 1))
+    i=$((i + 1))
+    continue
+  fi
+
+  tmp_png=$(mktemp "${TMPDIR:-/tmp}/blog-app-icon.XXXXXX.png")
+  if ! convert_image_to_png "$source_icon" "$tmp_png"; then
+    rm -f "$tmp_png"
+    failed=$((failed + 1))
+    i=$((i + 1))
+    continue
+  fi
+
+  icon_url=$(store_icon_and_get_url "$tmp_png" "$app_name" 2>/dev/null || printf '')
+  rm -f "$tmp_png"
+  if [ -z "$icon_url" ]; then
+    failed=$((failed + 1))
+    i=$((i + 1))
+    continue
+  fi
+
+  normalized=$(printf '%s\n' "$normalized" | jq -c --argjson i "$i" --arg icon_url "$icon_url" '
+    .elements[$i].image_url = $icon_url
+    | if ((.entries | type) == "array" and ($i < (.entries | length))) then
+        .entries[$i].image_url = $icon_url
+      else
+        .
+      end
+  ' 2>/dev/null || printf '%s\n' "$normalized")
+  updated=$((updated + 1))
+  i=$((i + 1))
+done
+
+normalized=$(blog_list_normalize_state_json "$list_slug" "$normalized")
+blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$normalized"
+validation_json=$(blog_list_validate_and_enrich_state_json "$normalized" false)
+enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+
+jq -cn \
+  --arg slug "$list_slug" \
+  --arg page_type "$page_type" \
+  --argjson updated "$updated" \
+  --argjson failed "$failed" \
+  --argjson state "$enriched" \
+  --argjson validation "$validation_json" \
+  '{
+    success: true,
+    slug: $slug,
+    page_type: $page_type,
+    updated_count: $updated,
+    failed_count: $failed,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: (
+      if $updated > 0 then
+        ("Auto-filled " + ($updated|tostring) + " image URL" + (if $updated == 1 then "" else "s" end) + ".")
+      else
+        "No missing app icons could be auto-filled."
+      end
+    )
+  }'
+printf '\n'

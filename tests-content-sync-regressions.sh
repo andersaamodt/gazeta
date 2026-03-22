@@ -394,6 +394,11 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'http-header "Expires" "0"' 'cg
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_contact_latest_event_json() {' 'contact latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip23_latest_event_json() {' 'nip23 latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
+assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="image_url"' 'oeuvre inline editor supports image_url cell editing'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
+assert_file_contains "$ROOT_DIR/cgi/blog-autofill-list-macos-icons" 'Auto-fill missing list entry image URLs using local macOS app icons.' 'macOS icon autofill endpoint exists'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "cache: 'no-store'" 'nav-auth has no-store directives'
@@ -410,6 +415,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
+assert_success sh -n "$ROOT_DIR/cgi/blog-autofill-list-macos-icons"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 
 # 11) Managed source-page sync invariants (unit layer).

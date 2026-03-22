@@ -112,7 +112,7 @@
     }
     var payloadSlug = String(payload.slug || '').trim();
     var payloadType = String(payload.page_type || '').trim().toLowerCase();
-    return payloadSlug === slug && payloadType === 'list';
+    return payloadSlug === slug && (payloadType === 'list' || payloadType === 'icon-gallery');
   }
 
   function readBootstrapCache() {
@@ -284,6 +284,22 @@
     return next === 'tile' ? 'tile' : 'list';
   }
 
+  function isIconGalleryPage() {
+    var payloadType = String(state.payload && state.payload.page_type || '').trim().toLowerCase();
+    if (payloadType === 'icon-gallery') {
+      return true;
+    }
+    var rootType = String(root.getAttribute('data-page-type') || '').trim().toLowerCase();
+    return rootType === 'icon-gallery';
+  }
+
+  function normalizeViewModeForPage(value) {
+    if (isIconGalleryPage()) {
+      return 'tile';
+    }
+    return normalizeViewMode(value);
+  }
+
   async function apiPost(path, payload) {
     var params = new URLSearchParams();
     Object.keys(payload || {}).forEach(function (key) {
@@ -340,6 +356,7 @@
       date: String(raw && raw.date || ''),
       depth: depth,
       markdown: String(raw && raw.markdown || ''),
+      image_url: String(raw && raw.image_url || ''),
       year: String(raw && raw.year || ''),
       post_url: String(raw && raw.post_url || '')
     };
@@ -358,6 +375,7 @@
         marker: entry && entry.marker,
         date: entry && entry.date,
         markdown: entry && entry.markdown,
+        image_url: entry && entry.image_url,
         year: entry && entry.year,
         post_url: entry && entry.post_url
       });
@@ -374,7 +392,8 @@
         marker: String(el && el.marker || ''),
         date: String(el && el.date || ''),
         depth: Math.max(0, Number(el && el.depth || 0) || 0),
-        markdown: String(el && el.markdown || '')
+        markdown: String(el && el.markdown || ''),
+        image_url: String(el && el.image_url || '')
       };
     });
   }
@@ -387,7 +406,7 @@
       description: String(s.description || ''),
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       group_by: String(s.group_by || ''),
-      view_mode: normalizeViewMode(s.view_mode || ''),
+      view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
       extras_after: String(s.extras_after || ''),
       extras_after_format: normalizeExtraFormat(s.extras_after_format || 'markdown'),
@@ -449,7 +468,7 @@
         description: state.draft.description,
         publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
         group_by: state.draft.group_by,
-        view_mode: normalizeViewMode(state.draft.view_mode || ''),
+        view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements: cloneEditableElements(state.draft.elements)
@@ -461,7 +480,7 @@
       description: String(src.description || ''),
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       group_by: String(src.group_by || ''),
-      view_mode: normalizeViewMode(src.view_mode || ''),
+      view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
@@ -698,7 +717,7 @@
         description: state.draft.description || '',
         publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
         group_by: state.draft.group_by || '',
-        view_mode: normalizeViewMode(state.draft.view_mode || ''),
+        view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         content: state.draft.content || '',
         extras_after: state.draft.extras_after || '',
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
@@ -799,6 +818,43 @@
     } catch (err) {
       setSaveStatus('error', err && err.message ? err.message : 'Could not revert draft');
       window.alert(err.message || 'Could not revert draft');
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  async function autofillMacosIcons() {
+    if (state.busy || !isAdmin()) {
+      return;
+    }
+    if (!window.confirm('Auto-fill missing image URLs from macOS app icons for this list?')) {
+      return;
+    }
+    state.busy = true;
+    setSaveStatus('saving');
+    try {
+      var auth = getAuthPayload();
+      var data = await apiPost('/cgi/blog-autofill-list-macos-icons', {
+        list_slug: slug,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      if (data && data.state) {
+        if (!state.payload || typeof state.payload !== 'object') {
+          state.payload = {};
+        }
+        state.payload.state = data.state;
+        state.payload.validation = data.validation || state.payload.validation;
+        state.payload.draft_exists = true;
+      }
+      state.draft = readEditableStateFromPayload();
+      renderList();
+      renderAdmin();
+      renderValidation();
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not auto-fill icons');
+      window.alert(err && err.message ? err.message : 'Could not auto-fill icons');
     } finally {
       state.busy = false;
     }
@@ -1188,12 +1244,16 @@
       var entry = node && node.entry ? node.entry : {};
       var line = String(entry.markdown || '').trim();
       var dateText = String(entry.date || '').trim();
+      var imageUrl = String(entry.image_url || '').trim();
       var postUrl = String(entry.post_url || '');
       var linked = postUrl
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
         : '';
       html += '<li class="list-tile">';
       html += '<div class="list-tile-content">';
+      if (imageUrl) {
+        html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>';
+      }
       if (dateText) {
         html += '<div class="list-tile-date">' + escapeHtml(dateText) + '</div>';
       }
@@ -1298,6 +1358,7 @@
 
     var markdownText = String(el && el.markdown || '').trim();
     var dateText = String(el && el.date || '');
+    var imageUrl = String(el && el.image_url || '').trim();
     var eventId = String(el && el.event_id || '');
 
     html += '<div class="list-inline-cell list-inline-indent-controls">';
@@ -1313,6 +1374,11 @@
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
     } else {
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
+    }
+    if (active && activeField === 'image_url') {
+      html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/cgi/blog-file?... or https://..."></div>';
+    } else {
+      html += '<div class="list-inline-cell list-inline-image-url"><button type="button" class="list-inline-open list-inline-image-button" data-list-inline-action="edit" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (imageUrl ? escapeHtml(imageUrl) : placeholderHtml('Add image URL...')) + '</span></button></div>';
     }
     html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button></div>';
     if (active) {
@@ -1344,10 +1410,16 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<label><span>View</span><select id="list-admin-view-mode">';
-    html += '<option value="list"' + (normalizeViewMode(state.draft.view_mode || '') === 'list' ? ' selected' : '') + '>List</option>';
-    html += '<option value="tile"' + (normalizeViewMode(state.draft.view_mode || '') === 'tile' ? ' selected' : '') + '>Tile</option>';
-    html += '</select></label>';
+    if (isIconGalleryPage()) {
+      html += '<label><span>View</span><select id="list-admin-view-mode" disabled aria-disabled="true">';
+      html += '<option value="tile" selected>Tile</option>';
+      html += '</select></label>';
+    } else {
+      html += '<label><span>View</span><select id="list-admin-view-mode">';
+      html += '<option value="list"' + (normalizeViewMode(state.draft.view_mode || '') === 'list' ? ' selected' : '') + '>List</option>';
+      html += '<option value="tile"' + (normalizeViewMode(state.draft.view_mode || '') === 'tile' ? ' selected' : '') + '>Tile</option>';
+      html += '</select></label>';
+    }
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
@@ -1362,6 +1434,7 @@
     html += '<span class="list-inline-head-depth" aria-hidden="true"></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-date">Date</span>';
+    html += '<span class="list-inline-head-image">Image URL</span>';
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
 
@@ -1512,6 +1585,9 @@
     if (showPublish) {
       html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
     }
+    if (state.editMode) {
+      html += '<button type="button" data-list-action="autofill-icons" title="Fill missing image URLs by matching macOS app icons">Auto-fill macOS icons</button>';
+    }
     html += '<button type="button" class="list-admin-primary-btn" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
     html += '</span>';
     if (actionsHost) {
@@ -1658,6 +1734,10 @@
         }
         if (topActionName === 'publish') {
           publishDraft();
+          return;
+        }
+        if (topActionName === 'autofill-icons') {
+          autofillMacosIcons();
           return;
         }
         if (topActionName === 'revert') {
@@ -1953,7 +2033,7 @@
         return;
       }
       if (target.id === 'list-admin-view-mode' && target instanceof HTMLSelectElement) {
-        state.draft.view_mode = normalizeViewMode(target.value || '');
+        state.draft.view_mode = normalizeViewModeForPage(target.value || '');
         renderList();
         queueAutosave(280);
         return;

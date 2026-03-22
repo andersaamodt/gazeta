@@ -147,6 +147,7 @@ blog_nostr_pages_normalize_json() {
       (($v // "") | tostring | ascii_downcase) as $t
       | if $t == "contact" then "contact"
         elif ($t == "public-ranking" or $t == "public_ranking" or $t == "ranking") then "public-ranking"
+        elif ($t == "icon-gallery" or $t == "icon_gallery" or $t == "gallery") then "icon-gallery"
         elif ($t == "blog" or $t == "blog-index" or $t == "blog_index") then "blog"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
         else "list" end;
@@ -900,6 +901,10 @@ blog_nostr_page_source_template_type() {
     printf 'list\n'
     return 0
   fi
+  if grep -q 'id="icon-gallery-root"' "$file" 2>/dev/null; then
+    printf 'icon-gallery\n'
+    return 0
+  fi
   if grep -q 'id="blog-page-root"' "$file" 2>/dev/null; then
     printf 'blog\n'
     return 0
@@ -943,6 +948,11 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="contact-page-content"' "$file" 2>/dev/null
       ;;
     list)
+      grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
+      grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
+      grep -q 'id="list-page-content"' "$file" 2>/dev/null
+      ;;
+    icon-gallery)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-content"' "$file" 2>/dev/null
@@ -1196,6 +1206,33 @@ license: "CC BY 4.0"
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/public-ranking-page.js"></script>
 EORANKING
+      ;;
+    icon-gallery)
+      cat > "$page_file" <<EOICONGALLERY
+---
+title: "$page_title"
+published_at: "$(blog_now_iso)"
+content_hash: ""
+tags: ["nostr", "list", "icon-gallery"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="icon-gallery-root" class="list-page-shell icon-gallery-shell" data-list-slug="$slug" data-list-title="$page_title" data-page-type="icon-gallery">
+<div class="list-page-head">
+<h1 id="list-page-title">$page_title</h1>
+<p id="list-page-description" class="muted"></p>
+</div>
+<div id="list-page-admin" class="list-admin" hidden></div>
+<div id="list-page-validation" class="list-validation" hidden></div>
+<div id="list-page-content" class="list-page-content"></div>
+</section>
+
+<script src="/static/nostr-publish-dialog.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/oeuvre.js"></script>
+EOICONGALLERY
       ;;
     *)
       cat > "$page_file" <<EOLIST

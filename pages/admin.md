@@ -560,6 +560,7 @@ title: ""
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="blog">Blog Index (NIP-23 posts)</option>
 <option value="list">List Page (kind 30004)</option>
+<option value="icon-gallery">Icon Gallery (kind 30004)</option>
 <option value="public-ranking">Public Ranking (kind 30040)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>
@@ -2882,6 +2883,12 @@ body {
   border-color: color-mix(in srgb, #4b5563 30%, var(--admin-border, #c7d6f3) 70%);
   background: color-mix(in srgb, #94a3b8 10%, var(--admin-surface-alt, #f5f8ff) 90%);
   color: #495464;
+}
+
+.nostr-page-kind-badge.is-type-icon-gallery {
+  border-color: color-mix(in srgb, #2563eb 34%, var(--admin-border, #c7d6f3) 66%);
+  background: color-mix(in srgb, #3b82f6 12%, var(--admin-surface-alt, #f5f8ff) 88%);
+  color: #1f4b8a;
 }
 
 .nostr-page-path {

@@ -58,6 +58,12 @@ blog_list_normalize_state_json() {
       else
         (($obj.markdown // "") | tostring)
       end;
+    def flex_image_url($obj):
+      if ($obj | type) == "array" then
+        (($obj[7] // "") | tostring)
+      else
+        (($obj.image_url // "") | tostring)
+      end;
     def flex_depth($obj):
       if ($obj | type) == "array" then
         ($obj[5] // 0)
@@ -91,7 +97,8 @@ blog_list_normalize_state_json() {
         marker: (flex(.; 3; "marker") | tostring),
         date: (flex(.; 4; "date") | tostring),
         depth: (if $depth < 0 then 0 else $depth end),
-        markdown: ($dm.markdown | tostring)
+        markdown: ($dm.markdown | tostring),
+        image_url: (flex_image_url(.))
       };
     def elements_from_tags:
       [ .tags[]?
@@ -130,7 +137,8 @@ blog_list_normalize_state_json() {
         marker: (flex(.; 3; "marker") | tostring),
         date: (flex(.; 4; "date") | tostring),
         depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
-        markdown: (flex_markdown(.))
+        markdown: (flex_markdown(.)),
+        image_url: (flex_image_url(.))
       })) as $elements
     | {
         slug: $slug,
@@ -161,7 +169,7 @@ blog_list_normalize_state_json() {
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
         + (.elements | map(
-            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // "")]
+            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // "")]
           ))
       )
   '
@@ -305,6 +313,7 @@ blog_list_validate_and_enrich_state_json() {
     marker=$(printf '%s\n' "$element" | jq -r '.marker // ""' 2>/dev/null || printf '')
     date_raw=$(printf '%s\n' "$element" | jq -r '.date // ""' 2>/dev/null || printf '')
     markdown=$(printf '%s\n' "$element" | jq -r '.markdown // .[6] // .[5] // ""' 2>/dev/null || printf '')
+    image_url=$(printf '%s\n' "$element" | jq -r '.image_url // .[7] // ""' 2>/dev/null || printf '')
 
     resolved=false
     post_url=""
@@ -379,6 +388,7 @@ blog_list_validate_and_enrich_state_json() {
       --arg marker "$marker" \
       --arg date "$date_raw" \
       --arg markdown "$markdown" \
+      --arg image_url "$image_url" \
       --arg type "$element_type" \
       --argjson depth "$depth_int" \
       --arg year "$year" \
@@ -394,6 +404,7 @@ blog_list_validate_and_enrich_state_json() {
         date: $date,
         depth: $depth,
         markdown: $markdown,
+        image_url: $image_url,
         year: $year,
         resolved: $resolved,
         post_url: $post_url,

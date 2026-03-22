@@ -3260,6 +3260,9 @@
     if (type === 'blog') {
       return 'Blog Index (kind 30023)';
     }
+    if (type === 'icon-gallery') {
+      return 'Icon Gallery (kind 30004)';
+    }
     if (type === 'public-ranking') {
       return 'Public Ranking (kind 30040)';
     }
@@ -3276,6 +3279,9 @@
     const type = String(pageType || '').trim().toLowerCase();
     if (type === 'blog') {
       return 'is-type-blog';
+    }
+    if (type === 'icon-gallery') {
+      return 'is-type-icon-gallery';
     }
     if (type === 'public-ranking') {
       return 'is-type-public-ranking';
