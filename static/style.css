@@ -3597,6 +3597,32 @@ footer {
   color: var(--amethyst-dark, #553f83);
 }
 
+.site-footer a[href$="/rss.xml"],
+.site-footer a[href$="/rss.xml"]:visited,
+.site-footer a[href$="/atom.xml"],
+.site-footer a[href$="/atom.xml"]:visited {
+  color: var(--amethyst, #6a4fa3) !important;
+}
+
+.site-footer a[href$="/rss.xml"] svg,
+.site-footer a[href$="/atom.xml"] svg {
+  color: var(--amethyst, #6a4fa3) !important;
+}
+
+.site-footer a[href$="/rss.xml"]:hover,
+.site-footer a[href$="/rss.xml"]:focus-visible,
+.site-footer a[href$="/atom.xml"]:hover,
+.site-footer a[href$="/atom.xml"]:focus-visible {
+  color: var(--amethyst-dark, #553f83) !important;
+}
+
+.site-footer a[href$="/rss.xml"]:hover svg,
+.site-footer a[href$="/rss.xml"]:focus-visible svg,
+.site-footer a[href$="/atom.xml"]:hover svg,
+.site-footer a[href$="/atom.xml"]:focus-visible svg {
+  color: var(--amethyst-dark, #553f83) !important;
+}
+
 /* About Page */
 .about-content {
   margin-top: 2rem;
