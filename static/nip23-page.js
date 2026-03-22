@@ -171,7 +171,13 @@
     }
     var payloadSlug = String(payload.slug || '').trim();
     var payloadType = String(payload.page_type || '').trim().toLowerCase();
-    return payloadSlug === slug && payloadType === 'nip23';
+    if (payloadSlug === slug && (payloadType === 'nip23' || payloadType === 'blog')) {
+      return true;
+    }
+    if (slug === 'index' && payloadSlug === 'blog' && (payloadType === 'nip23' || payloadType === 'blog')) {
+      return true;
+    }
+    return false;
   }
 
   function readBootstrapCache() {
@@ -789,6 +795,10 @@
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     }).then(function (payload) {
+      if (payload && payload.success === false && slug === 'index' && String(payload.code || '') === 'unknown_page') {
+        window.location.replace('/pages/blog.html');
+        return;
+      }
       if (!isExpectedPayload(payload)) {
         throw new Error('Unexpected page payload for long-form page');
       }
