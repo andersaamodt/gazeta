@@ -361,7 +361,7 @@ blog_nostr_kind_latest_event_json() {
     return 1
   fi
 
-  out=$(jq -c --argjson kind "$kind" '
+  out=$(jq -cs --argjson kind "$kind" '
     [ .[] | select(type=="object" and (.kind|type)=="number" and .kind==$kind) ]
     | sort_by((.created_at // 0), (.id // ""))
     | last // empty
@@ -421,10 +421,11 @@ blog_nostr_contact_latest_event_json() {
     rm -f "$tmp"
     return 1
   fi
-  out=$(jq -c --argjson authors "$authors_json" '
+  out=$(jq -cs --argjson authors "$authors_json" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and .kind==0 and (.pubkey|type)=="string")
-      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
+      | .pubkey as $pk
+      | select((($authors | length) == 0) or (($authors | index($pk)) != null))
     ]
     | sort_by((.created_at // 0), (.id // ""))
     | last // empty
@@ -450,10 +451,11 @@ blog_nostr_nip23_latest_event_json() {
     rm -f "$tmp"
     return 1
   fi
-  out=$(jq -c --arg slug "$slug" --argjson authors "$authors_json" '
+  out=$(jq -cs --arg slug "$slug" --argjson authors "$authors_json" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and .kind==30023 and (.tags|type)=="array" and (.pubkey|type)=="string")
-      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
+      | .pubkey as $pk
+      | select((($authors | length) == 0) or (($authors | index($pk)) != null))
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | select($d == $slug)
     ]

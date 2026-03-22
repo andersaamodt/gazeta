@@ -186,7 +186,7 @@ blog_nostr_addressable_latest_event_json() {
     return 1
   fi
 
-  out=$(jq -c --arg d "$d_raw" --argjson kind "$kind_raw" '
+  out=$(jq -cs --arg d "$d_raw" --argjson kind "$kind_raw" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and .kind==$kind and (.tags|type)=="array")
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $ev_d
@@ -221,10 +221,11 @@ blog_nostr_public_ranking_latest_event_json() {
     return 1
   fi
 
-  out=$(jq -c --arg slug "$slug" --argjson authors "$authors_json" '
+  out=$(jq -cs --arg slug "$slug" --argjson authors "$authors_json" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and .kind==30040 and (.tags|type)=="array" and (.pubkey|type)=="string")
-      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
+      | .pubkey as $pk
+      | select((($authors | length) == 0) or (($authors | index($pk)) != null))
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="t") | .[1]] | map(ascii_downcase)) // []) as $topics
       | select($d == $slug and (($topics | index("public-ranking")) != null))

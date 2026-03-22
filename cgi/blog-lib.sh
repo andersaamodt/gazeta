@@ -2638,7 +2638,7 @@ blog_nostr_list_latest_event_json() {
     return 1
   fi
 
-  out=$(jq -c --arg slug "$slug" '
+  out=$(jq -cs --arg slug "$slug" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and .kind==30004 and (.tags|type)=="array")
       | . as $ev
