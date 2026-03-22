@@ -3247,7 +3247,7 @@
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-settings"><span class="nostr-pages-header-type-label">Settings</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
-    html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish to Nostr</span></div>';
+    html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
