@@ -2661,19 +2661,19 @@ body {
 .nostr-pages-header-name {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 0;
-  flex: 1 1 auto;
-  text-align: center;
+  justify-content: flex-start;
+  min-width: 13rem;
+  flex: 2 1 18rem;
+  text-align: left;
 }
 
 .nostr-pages-header-path {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14rem;
-  min-width: 14rem;
-  flex: 0 0 14rem;
+  width: 13rem;
+  min-width: 8.6rem;
+  flex: 0 1 13rem;
   text-align: center;
 }
 
@@ -2681,9 +2681,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 11.5rem;
-  min-width: 11.5rem;
-  flex: 0 0 11.5rem;
+  width: 10.5rem;
+  min-width: 7.4rem;
+  flex: 0 1 10.5rem;
   text-align: center;
 }
 
@@ -2691,9 +2691,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 11.5rem;
-  min-width: 11.5rem;
-  flex: 0 0 11.5rem;
+  width: 9.8rem;
+  min-width: 6.3rem;
+  flex: 0 1 9.8rem;
   text-align: center;
 }
 
@@ -2720,9 +2720,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 8.8rem;
-  min-width: 8.8rem;
-  flex: 0 0 8.8rem;
+  width: 7.1rem;
+  min-width: 4.8rem;
+  flex: 0 1 7.1rem;
   text-align: center;
 }
 
@@ -2730,9 +2730,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 10rem;
-  min-width: 10rem;
-  flex: 0 0 10rem;
+  width: 8.4rem;
+  min-width: 5.8rem;
+  flex: 0 1 8.4rem;
   text-align: center;
 }
 
@@ -2780,14 +2780,14 @@ body {
 }
 
 .nostr-page-name-col {
-  min-width: 0;
-  flex: 1 1 auto;
+  min-width: 13rem;
+  flex: 2 1 18rem;
 }
 
 .nostr-page-path-col {
-  width: 14rem;
-  min-width: 14rem;
-  flex: 0 0 14rem;
+  width: 13rem;
+  min-width: 8.6rem;
+  flex: 0 1 13rem;
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -2795,9 +2795,9 @@ body {
 }
 
 .nostr-page-type-col {
-  width: 11.5rem;
-  min-width: 11.5rem;
-  flex: 0 0 11.5rem;
+  width: 10.5rem;
+  min-width: 7.4rem;
+  flex: 0 1 10.5rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2805,9 +2805,9 @@ body {
 }
 
 .nostr-page-settings-col {
-  width: 11.5rem;
-  min-width: 11.5rem;
-  flex: 0 0 11.5rem;
+  width: 9.8rem;
+  min-width: 6.3rem;
+  flex: 0 1 9.8rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3059,18 +3059,18 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 8.8rem;
-  min-width: 8.8rem;
-  flex: 0 0 8.8rem;
+  width: 7.1rem;
+  min-width: 4.8rem;
+  flex: 0 1 7.1rem;
 }
 
 .nostr-page-publish-col {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 10rem;
-  min-width: 10rem;
-  flex: 0 0 10rem;
+  width: 8.4rem;
+  min-width: 5.8rem;
+  flex: 0 1 8.4rem;
 }
 
 .nostr-page-publish-empty {
@@ -3083,7 +3083,7 @@ body {
   min-width: 0;
   width: auto;
   height: 1.85rem;
-  padding: 0.14rem 0.5rem;
+  padding: 0.14rem 0.44rem;
   font-size: 0.78rem;
   line-height: 1.1;
 }
@@ -4578,37 +4578,43 @@ body {
 
   .nostr-pages-header-type,
   .nostr-page-type-col {
-    width: 9.8rem;
-    min-width: 9.8rem;
-    flex-basis: 9.8rem;
+    width: 8.8rem;
+    min-width: 7.2rem;
+    flex-basis: 8.8rem;
   }
 
   .nostr-pages-header-settings,
   .nostr-page-settings-col {
-    width: 9.8rem;
-    min-width: 9.8rem;
-    flex-basis: 9.8rem;
+    width: 8.6rem;
+    min-width: 6rem;
+    flex-basis: 8.6rem;
   }
 
   .nostr-pages-header-path,
   .nostr-page-path-col {
-    width: 11rem;
-    min-width: 11rem;
-    flex-basis: 11rem;
+    width: 10rem;
+    min-width: 8rem;
+    flex-basis: 10rem;
+  }
+
+  .nostr-pages-header-name,
+  .nostr-page-name-col {
+    min-width: 12rem;
+    flex: 2 1 14rem;
   }
 
   .nostr-pages-header-nav-col,
   .nostr-page-nav-col {
-    width: 7.8rem;
-    min-width: 7.8rem;
-    flex-basis: 7.8rem;
+    width: 6.7rem;
+    min-width: 4.6rem;
+    flex-basis: 6.7rem;
   }
 
   .nostr-pages-header-publish-col,
   .nostr-page-publish-col {
-    width: 9.8rem;
-    min-width: 9.8rem;
-    flex-basis: 9.8rem;
+    width: 8.2rem;
+    min-width: 5.6rem;
+    flex-basis: 8.2rem;
   }
 }
 

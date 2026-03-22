@@ -3259,7 +3259,6 @@
       const navTitle = String(page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
       const isEditingNavTitle = state.nostrPagesEditingNavTitleIndex === idx;
       const showInNav = !!page.show_in_nav;
-      const connectedPosts = Number(page.connected_posts || 0);
       const draftDiffers = !!page.draft_differs;
       const typeLabel = nostrPageTypeLabel(pageType);
       const typePillClass = nostrPageTypePillClass(pageType);
@@ -3290,11 +3289,9 @@
       html += '</div>';
       html += '<div class="nostr-page-settings-col">';
       if (pageType === 'blog') {
-        const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
         const defaultTag = String(page.default_tag || '').trim();
         html += '<div class="nostr-page-settings-blog-tools">';
-        html += '<label class="nostr-page-default-tag"><span>Posts</span><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
-        html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
+        html += '<label class="nostr-page-default-tag"><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
         html += '</div>';
       }
       html += '</div>';
@@ -3303,7 +3300,7 @@
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
       if (draftDiffers) {
-        html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish to Nostr...</button>';
+        html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish...</button>';
       } else {
         html += '<span class="nostr-page-publish-empty" aria-hidden="true"></span>';
       }
