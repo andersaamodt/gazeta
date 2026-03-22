@@ -234,47 +234,47 @@ title: ""
 <label for="post-content"><strong>Content</strong></label>
 <div class="editor-shell">
 <div class="toolbar" aria-label="Markdown toolbar">
-<button type="button" data-toolbar="bold" aria-label="Bold" title="Bold">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="bold" aria-label="Bold" title="Bold">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M8 5H13.2C15.3 5 17 6.7 17 8.8C17 10.9 15.3 12.6 13.2 12.6H8V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 12.4H14.1C16.3 12.4 18 14.1 18 16.3C18 18.4 16.3 20 14.1 20H8V12.4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
 <span class="sr-only">Bold</span>
 </button>
-<button type="button" data-toolbar="italic" aria-label="Italic" title="Italic">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="italic" aria-label="Italic" title="Italic">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M14 4H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 20H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 <span class="sr-only">Italic</span>
 </button>
-<button type="button" data-toolbar="h2" aria-label="Heading 2" title="Heading 2">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="h2" aria-label="Heading 2" title="Heading 2">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M3 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="14.2" y="16.4" font-size="9.5" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">2</text></svg>
 <span class="sr-only">Heading 2</span>
 </button>
-<button type="button" data-toolbar="h3" aria-label="Heading 3" title="Heading 3">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="h3" aria-label="Heading 3" title="Heading 3">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M3 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="14.2" y="16.4" font-size="9.5" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">3</text></svg>
 <span class="sr-only">Heading 3</span>
 </button>
-<button type="button" data-toolbar="code" aria-label="Inline code" title="Inline code">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="code" aria-label="Inline code" title="Inline code">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M9 7L4 12L9 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7L20 12L15 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Inline code</span>
 </button>
-<button type="button" data-toolbar="code_block" aria-label="Code block" title="Code block">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="code_block" aria-label="Code block" title="Code block">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M8 6L5 12L8 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 6L19 12L16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 <span class="sr-only">Code block</span>
 </button>
-<button type="button" data-toolbar="link" aria-label="Insert link" title="Insert link">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="link" aria-label="Insert link" title="Insert link">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M10 8L8 10C6.9 11.1 6.9 12.9 8 14C9.1 15.1 10.9 15.1 12 14L14 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 8L16 6C17.1 4.9 18.9 4.9 20 6C21.1 7.1 21.1 8.9 20 10L18 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" transform="translate(-4 4)"/><path d="M9 12H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 <span class="sr-only">Insert link</span>
 </button>
-<button type="button" data-toolbar="quote" aria-label="Quote" title="Quote">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="quote" aria-label="Quote" title="Quote">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M7 10H11V14H8.6C8.7 15 9.2 15.7 10.1 16.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 10H18V14H15.6C15.7 15 16.2 15.7 17.1 16.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Quote</span>
 </button>
-<button type="button" data-toolbar="ul" aria-label="Bullet list" title="Bullet list">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="ul" aria-label="Bullet list" title="Bullet list">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="7" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="5" cy="17" r="1.5" fill="currentColor"/><path d="M10 7H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 <span class="sr-only">Bullet list</span>
 </button>
-<button type="button" data-toolbar="ol" aria-label="Numbered list" title="Numbered list">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="ol" aria-label="Numbered list" title="Numbered list">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><text x="2.4" y="9.2" font-size="7.3" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">1</text><text x="2.2" y="18.2" font-size="7.3" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">2</text><path d="M10 7H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 <span class="sr-only">Numbered list</span>
 </button>
-<button type="button" data-toolbar="image" aria-label="Insert image" title="Insert image">
+<button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="image" aria-label="Insert image" title="Insert image">
 <svg class="tb-icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M5.5 17L11.5 11L14.5 14L17.5 11L20.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Insert image</span>
 </button>
