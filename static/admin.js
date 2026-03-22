@@ -2056,8 +2056,20 @@
 
   function setNosterButtonsBusy(isBusy) {
     const cardButtons = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('button[data-noster-action]')) : [];
+    const runtimeInfo = state.nosterRuntime && typeof state.nosterRuntime === 'object' ? state.nosterRuntime : {};
+    const stonerInstalled = !!runtimeInfo.stoner_installed;
     cardButtons.forEach(function (button) {
-      button.disabled = !!isBusy;
+      const action = String(button.getAttribute('data-noster-action') || '').toLowerCase();
+      const requiresInstalled = action === 'start' || action === 'stop';
+      if (isBusy) {
+        button.disabled = true;
+        return;
+      }
+      if (requiresInstalled && !stonerInstalled) {
+        button.disabled = true;
+        return;
+      }
+      button.disabled = false;
     });
   }
 
