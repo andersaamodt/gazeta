@@ -3251,7 +3251,7 @@
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
-      const title = String(page.title || page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
+      const title = String(page.placeholder_title || defaultNostrPageTitleFromSlug(page.slug || '') || 'Untitled');
       const slug = String(page.slug || '');
       const pageType = String(page.type || 'list');
       const path = String(page.path || pathFromNostrPageSlug(slug));
