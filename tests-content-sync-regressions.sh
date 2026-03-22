@@ -425,6 +425,7 @@ assert_file_contains "$ROOT_DIR/includes/head.html" "if (expectedSlug && rootSlu
 assert_file_contains "$ROOT_DIR/includes/head.html" 'showRouteLoadFailure();' 'document head shows explicit route load failure after retry mismatch'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'Page is still loading.' 'document head exposes clear mismatch fallback copy'
 assert_file_contains "$ROOT_DIR/static/style.css" '.route-load-failure {' 'route load failure panel style exists'
+assert_file_contains "$ROOT_DIR/static/style.css" 'html.app-hydrating nav.site-nav,' 'hydration gate hides navbar until page is ready'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'

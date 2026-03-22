@@ -162,6 +162,13 @@ html.app-hydrating #admin-panel {
   visibility: hidden;
 }
 
+/* Reveal nav + page together once hydration gate opens. */
+html.app-hydrating nav.site-nav,
+html.app-hydrating .skip-link,
+html.app-hydrating #nav-top-toast-host {
+  visibility: hidden;
+}
+
 .route-load-failure {
   margin: 1.1rem 0 0.95rem;
   padding: 0.8rem 0.9rem;
