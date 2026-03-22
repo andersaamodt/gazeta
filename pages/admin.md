@@ -3093,7 +3093,11 @@ body {
 }
 
 #admin-panel #moderation-list.posts-list {
-  border: 0 !important;
+  border-top: 1px solid var(--admin-border, #cdbd95) !important;
+  border-bottom: 1px solid var(--admin-border, #cdbd95) !important;
+  border-left: 0 !important;
+  border-right: 1px solid var(--admin-border, #cdbd95) !important;
+  box-shadow: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
   width: 100% !important;
