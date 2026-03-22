@@ -868,6 +868,7 @@
     if (!canSubmitByMode(renderState.submission_mode)) {
       return '';
     }
+    var forceInline = normalizeSubmissionMode(renderState.submission_mode) === 'open';
     var groups = Object.keys(graph.nodeMap).map(function (coord) {
       return graph.nodeMap[coord];
     }).filter(function (node) {
@@ -877,14 +878,16 @@
       return compareNodes(a, b, normalizeMetric(state.currentMetric || renderState.default_metric));
     });
 
-    var open = !!state.submitComposerOpen;
+    var open = forceInline || !!state.submitComposerOpen;
     var html = '';
     html += '<section class="public-ranking-submit">';
-    html += '<div class="public-ranking-submit-toolbar">';
-    html += '<div class="public-ranking-submit-toolbar-right">';
-    html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
-    html += '</div>';
-    html += '</div>';
+    if (!forceInline) {
+      html += '<div class="public-ranking-submit-toolbar">';
+      html += '<div class="public-ranking-submit-toolbar-right">';
+      html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
+      html += '</div>';
+      html += '</div>';
+    }
     if (open) {
       html += '<div class="public-ranking-submit-inline">';
       html += '<select id="public-ranking-submit-type" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select>';
@@ -896,7 +899,9 @@
       html += '</select>';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="Entry title">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn">Add</button>';
-      html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
+      if (!forceInline) {
+        html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
+      }
       html += '</div>';
       html += '<details class="public-ranking-submit-more">';
       html += '<summary>More fields</summary>';
