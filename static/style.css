@@ -1238,7 +1238,7 @@ header h1 {
 
 .list-page-shell[data-page-type="list"] .list-inline-head,
 .list-page-shell[data-page-type="list"] .list-entry-inline {
-  grid-template-columns: 2rem 2.1rem minmax(220px, 1fr) minmax(180px, 1fr) minmax(130px, 180px) minmax(130px, 190px) 2.1rem;
+  grid-template-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(130px, 190px) 2.1rem;
 }
 
 .list-entry-inline.is-active {
