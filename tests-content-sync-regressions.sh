@@ -520,6 +520,7 @@ if rg -q 'is-switch-animating|admin-fade-in' "$ROOT_DIR/pages/admin.md" "$ROOT_D
 else
   pass
 fi
+assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel #posts-list > .placeholder.table-empty {' 'posts empty-state placeholder remains centered'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"

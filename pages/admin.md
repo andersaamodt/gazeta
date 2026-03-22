@@ -3603,6 +3603,12 @@ body {
   color: var(--admin-muted, var(--light-text));
 }
 
+#admin-panel #posts-list > .placeholder.table-empty {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
 #admin-panel #files-list.posts-list,
 #admin-panel #moderation-list.posts-list {
   margin-left: 0 !important;
