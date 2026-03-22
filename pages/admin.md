@@ -161,9 +161,6 @@ title: ""
 <h3>Zaps</h3>
 <p class="muted">Manage site-level zap settings and install Bitcoin or Lightning on this server through Wizardry.</p>
 </div>
-<div class="row-actions">
-<button id="btn-zaps-refresh" type="button">Refresh status</button>
-</div>
 </div>
 
 <div class="settings-stack">
@@ -1183,6 +1180,24 @@ body {
   font-size: 0.82rem;
   font-weight: 600;
   justify-self: start;
+}
+
+#admin-panel .checkbox-control input[type="checkbox"]:disabled {
+  opacity: 0.42;
+  filter: saturate(0.35);
+  cursor: not-allowed;
+}
+
+#admin-panel .checkbox-control input[type="checkbox"]:disabled + span {
+  color: var(--admin-muted, var(--light-text));
+  opacity: 0.78;
+  cursor: not-allowed;
+}
+
+[data-admin-section="zaps"] .field-row.is-control-disabled .setting-label,
+[data-admin-section="zaps"] .field-row.is-control-disabled .setting-label strong {
+  color: var(--admin-muted, var(--light-text));
+  opacity: 0.78;
 }
 
 [data-admin-section="nostr-bridge"] .checkbox-row .checkbox-control {

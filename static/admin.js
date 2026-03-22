@@ -22,6 +22,7 @@
     queuePollTimer: null,
     postsPollTimer: null,
     nosterPollTimer: null,
+    zapsPollTimer: null,
     moderationPollTimer: null,
     userDragActive: false,
     userDragUsername: '',
@@ -110,7 +111,6 @@
     zapLud16: document.getElementById('zap-lud16'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
-    zapsRefreshButton: document.getElementById('btn-zaps-refresh'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -291,6 +291,7 @@
     syncQueueAutoRefresh();
     syncPostsAutoRefresh();
     syncNosterAutoRefresh();
+    syncZapsAutoRefresh();
     syncModerationAutoRefresh();
     renderUploadJobs();
     maybeLoadAdminSection(sectionName, true);
@@ -2282,7 +2283,7 @@
 
   function setZapsButtonsBusy(isBusy) {
     const cardButtons = els.zapsRuntime ? Array.from(els.zapsRuntime.querySelectorAll('button[data-zaps-action]')) : [];
-    [els.zapsRefreshButton].concat(cardButtons).filter(Boolean).forEach(function (button) {
+    cardButtons.filter(Boolean).forEach(function (button) {
       button.disabled = !!isBusy;
     });
   }
@@ -2296,11 +2297,46 @@
       : {};
     const canEnable = !!info.bitcoin_installed && !!info.lightning_installed;
     els.zapsEnabled.disabled = !canEnable;
+    const row = els.zapsEnabled.closest('.field-row');
+    if (row) {
+      row.classList.toggle('is-control-disabled', !canEnable);
+    }
     if (canEnable) {
       els.zapsEnabled.removeAttribute('title');
       return;
     }
     els.zapsEnabled.setAttribute('title', 'Install both Bitcoin and Lightning to enable zaps.');
+  }
+
+  function stopZapsPolling() {
+    if (state.zapsPollTimer) {
+      clearInterval(state.zapsPollTimer);
+      state.zapsPollTimer = null;
+    }
+  }
+
+  function syncZapsAutoRefresh() {
+    const zapsVisible = state.isAdmin && state.activeSection === 'zaps';
+    if (!zapsVisible) {
+      stopZapsPolling();
+      return;
+    }
+    loadZapsRuntime().catch(function (err) {
+      setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
+    });
+    if (state.zapsPollTimer) {
+      return;
+    }
+    state.zapsPollTimer = setInterval(function () {
+      if (!(state.isAdmin && state.activeSection === 'zaps')) {
+        stopZapsPolling();
+        return;
+      }
+      if (document.visibilityState !== 'visible' || state.zapsActionInFlight) {
+        return;
+      }
+      loadZapsRuntime().catch(function () {});
+    }, 10000);
   }
 
   function renderZapsRuntime(runtime, logText, message) {
@@ -4837,13 +4873,6 @@
         });
       });
     }
-    if (els.zapsRefreshButton) {
-      els.zapsRefreshButton.addEventListener('click', function () {
-        loadZapsRuntime().catch(function (err) {
-          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
     if (els.zapsRuntime) {
       els.zapsRuntime.addEventListener('click', function (event) {
         const target = event.target;
@@ -5540,6 +5569,9 @@
       if (state.isAdmin && state.activeSection === 'nostr-bridge') {
         loadNosterRuntime().catch(function () {});
       }
+      if (state.isAdmin && state.activeSection === 'zaps') {
+        loadZapsRuntime().catch(function () {});
+      }
       if (state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
       }
@@ -5559,6 +5591,9 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'nostr-bridge') {
         loadNosterRuntime().catch(function () {});
+      }
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'zaps') {
+        loadZapsRuntime().catch(function () {});
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
