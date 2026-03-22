@@ -266,9 +266,9 @@ header h1 {
 }
 
 .nav-center a:hover {
-  background-color: var(--nav-link-hover);
+  background-color: transparent;
   color: var(--text);
-  text-decoration: none;
+  text-decoration: underline;
   border-radius: var(--nav-pill-radius);
 }
 
@@ -3512,7 +3512,7 @@ button.tag,
 }
 
 .pagination a:hover {
-  background: var(--light-bg);
+  background: transparent;
   text-decoration: none;
 }
 
@@ -4115,7 +4115,7 @@ footer {
 }
 
 .page-link:hover:not(.disabled) {
-  background: var(--light-bg);
+  background: transparent;
   text-decoration: none;
 }
 

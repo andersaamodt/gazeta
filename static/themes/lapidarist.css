@@ -168,8 +168,7 @@ a {
 a:hover,
 a:focus-visible {
   color: #1f458d;
-  background: rgba(47, 95, 184, 0.09);
-  border-radius: 2px;
+  background: transparent;
 }
 
 hr {
@@ -298,7 +297,7 @@ strong {
 .nav-username:not(.active):hover,
 .nav-username:not(.active):focus-visible {
   color: var(--malachite);
-  background: rgba(44, 139, 110, 0.08);
+  background: transparent;
 }
 
 .nav-compose-icon {
