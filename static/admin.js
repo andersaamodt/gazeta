@@ -325,11 +325,6 @@
       const active = section.getAttribute('data-admin-section') === sectionName;
       section.classList.toggle('is-active', active);
       section.hidden = !active;
-      section.classList.remove('is-switch-animating');
-      if (active && updateHash) {
-        void section.offsetWidth;
-        section.classList.add('is-switch-animating');
-      }
     });
     if (updateHash) {
       if (window.location.hash !== '#' + sectionName) {

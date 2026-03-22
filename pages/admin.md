@@ -987,21 +987,6 @@ body {
   display: block;
 }
 
-.admin-section.is-active.is-switch-animating {
-  animation: admin-fade-in 0.2s ease;
-}
-
-@keyframes admin-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .demo-box {
   margin: 0;
   padding: 0.62rem 0.7rem 0.8rem;

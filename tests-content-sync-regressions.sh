@@ -514,6 +514,12 @@ assert_file_missing "$build_marker" 'navbar listing skips build queue when mount
 # 13) UI invariant for Nostr nav icon gutter alignment rule.
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel.sidebar-collapsed .admin-content {' 'collapsed admin keeps a left gutter for reveal icon'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'section.hidden = !active;' 'admin section toggling remains direct visibility toggle'
+if rg -q 'is-switch-animating|admin-fade-in' "$ROOT_DIR/pages/admin.md" "$ROOT_DIR/static/admin.js"; then
+  fail 'admin section switch animation hooks should not exist'
+else
+  pass
+fi
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
