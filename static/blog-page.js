@@ -28,6 +28,8 @@
     payload: null,
     posts: [],
     initialContentPainted: false,
+    initialPageStateLoaded: false,
+    initialPostsLoaded: false,
     defaultFiltersApplied: false,
     filters: {
       tags: new Set(),
@@ -71,6 +73,12 @@
       // Ignore event dispatch failures.
     }
     markHydrationPageReady();
+  }
+
+  function maybeMarkInitialContentPainted() {
+    if (state.initialPageStateLoaded && state.initialPostsLoaded) {
+      markInitialContentPainted();
+    }
   }
 
   function escapeHtml(value) {
@@ -522,10 +530,11 @@
       state.payload = data;
       applyDefaultFilters();
       renderAll();
-      markInitialContentPainted();
     }).catch(function () {
       renderAll();
-      markInitialContentPainted();
+    }).finally(function () {
+      state.initialPageStateLoaded = true;
+      maybeMarkInitialContentPainted();
     });
   }
 
@@ -540,10 +549,13 @@
         writeCache(state.posts);
         renderFilters();
         renderList();
-        markInitialContentPainted();
       })
       .catch(function () {
-        markInitialContentPainted();
+        // Keep cached posts if fetch fails.
+      })
+      .finally(function () {
+        state.initialPostsLoaded = true;
+        maybeMarkInitialContentPainted();
       });
   }
 

@@ -1932,10 +1932,18 @@
       activateSection(getSectionFromHash(), false);
       els.adminPanel.style.display = 'grid';
       renderPreview();
+      try {
+        await preloadAdminFirstPaint();
+      } catch (_preloadErr) {
+        // Keep first paint resilient; section-specific loaders surface errors.
+      }
+      try {
+        await maybeLoadAdminSection(state.activeSection, false);
+      } catch (_sectionErr) {
+        // Section loader already writes actionable status output.
+      }
       markInitialContentPainted();
       markHydrationPageReady();
-      preloadAdminFirstPaint().catch(function () {});
-      maybeLoadAdminSection(state.activeSection, false).catch(function () {});
     } catch (err) {
       const msg = String((err && err.message) || '');
       if (/\bnot authenticated\b/i.test(msg) || /\bauth(?:entication)?\s+required\b/i.test(msg)) {

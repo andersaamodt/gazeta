@@ -1885,6 +1885,7 @@
       document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
+      document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
     );
   }

@@ -5,6 +5,18 @@
   var pageReady = false;
   var revealed = false;
 
+  function hasDynamicPageRoot() {
+    return !!(
+      document.getElementById('blog-page-root') ||
+      document.getElementById('nip23-page-root') ||
+      document.getElementById('oeuvre-root') ||
+      document.getElementById('public-ranking-root') ||
+      document.getElementById('contact-page-root') ||
+      document.getElementById('search-page-root') ||
+      document.getElementById('admin-panel')
+    );
+  }
+
   function reveal() {
     if (revealed) {
       return;
@@ -33,7 +45,11 @@
     forceReveal: reveal
   };
 
-  setTimeout(reveal, 6000);
+  setTimeout(function () {
+    if (!hasDynamicPageRoot() || pageReady) {
+      reveal();
+    }
+  }, 6000);
 })();
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -190,10 +206,12 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     var hasDynamicNostrPage = !!(
+      document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
       document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
+      document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
     );
     if (hasDynamicNostrPage) {

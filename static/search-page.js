@@ -29,6 +29,10 @@
     } catch (_err) {
       // Ignore event dispatch failures.
     }
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
   }
 
   function rewriteEmbeddedSearchForms() {
