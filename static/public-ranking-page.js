@@ -889,7 +889,7 @@
     if (open) {
       html += '<div class="public-ranking-submit-inline">';
       html += '<input type="hidden" id="public-ranking-submit-parent" value="' + escapeHtml(graph.rootCoord || '') + '">';
-      html += '<input type="text" id="public-ranking-submit-title" placeholder="Entry title">';
+      html += '<input type="text" id="public-ranking-submit-title" placeholder="New entry">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
       html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
       if (showAdvancedToggle) {
