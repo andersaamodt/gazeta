@@ -4131,7 +4131,7 @@
     html += '<div class="users-col users-col-name"><span class="users-col-head">Name</span></div>';
     html += '<div class="users-col users-col-created"><span class="users-col-head">Created</span></div>';
     html += '<div class="users-col users-col-role"><span class="users-col-head">Role</span></div>';
-    html += '<div class="users-col users-col-actions"><span class="users-col-head">Actions</span></div>';
+    html += '<div class="users-col users-col-actions"><span class="users-col-head" aria-hidden="true"></span></div>';
     html += '</div>';
     const actorName = state.username || '';
     const actorRank = Number(state.actorRank || 0);

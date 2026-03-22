@@ -2664,9 +2664,10 @@ body {
 .nostr-pages-header-type-label {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1.1;
+  text-align: center;
 }
 
 .nostr-pages-header-actions {
@@ -2702,9 +2703,10 @@ body {
 .nostr-pages-header-nav {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1.1;
+  text-align: center;
 }
 
 .nostr-pages-header-spacer {
@@ -3340,8 +3342,8 @@ body {
 .file-col-head {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1.1;
   text-align: center;
 }
@@ -3923,9 +3925,11 @@ body {
 .users-col-head {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1.1;
+  display: block;
+  text-align: center;
 }
 
 .users-col-created {
