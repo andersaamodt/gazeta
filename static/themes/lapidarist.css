@@ -385,41 +385,20 @@ strong {
 
 .footer-feed-link {
   border-color: rgba(182, 139, 53, 0.5);
-}
-
-.footer-feed-link[href$="/rss.xml"] {
   color: var(--amethyst);
 }
 
-.footer-feed-link[href$="/rss.xml"] svg {
+.footer-feed-link svg {
   color: var(--amethyst);
 }
 
-.footer-feed-link[href$="/rss.xml"]:hover,
-.footer-feed-link[href$="/rss.xml"]:focus-visible {
+.footer-feed-link:hover,
+.footer-feed-link:focus-visible {
   color: #553f83;
 }
 
-.footer-feed-link[href$="/rss.xml"]:hover svg,
-.footer-feed-link[href$="/rss.xml"]:focus-visible svg {
-  color: #553f83;
-}
-
-.footer-feed-link[href$="/atom.xml"] {
-  color: var(--amethyst);
-}
-
-.footer-feed-link[href$="/atom.xml"] svg {
-  color: var(--amethyst);
-}
-
-.footer-feed-link[href$="/atom.xml"]:hover,
-.footer-feed-link[href$="/atom.xml"]:focus-visible {
-  color: #553f83;
-}
-
-.footer-feed-link[href$="/atom.xml"]:hover svg,
-.footer-feed-link[href$="/atom.xml"]:focus-visible svg {
+.footer-feed-link:hover svg,
+.footer-feed-link:focus-visible svg {
   color: #553f83;
 }
 

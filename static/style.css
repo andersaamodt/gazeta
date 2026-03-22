@@ -9,6 +9,8 @@
   --green: #60a5fa;
   --purple: #4338ca;
   --violet: #a5b4fc;
+  --amethyst: #6a4fa3;
+  --amethyst-dark: #553f83;
   --text: #0b132b;
   --light-text: #475569;
   --heading-color: var(--text);
@@ -3504,24 +3506,24 @@ footer {
   display: inline-flex;
   gap: 0.35rem;
   align-items: center;
-  color: #6a4fa3;
+  color: var(--amethyst, #6a4fa3);
   text-decoration: none;
   font-size: 0.86rem;
   font-weight: 600;
 }
 
 .footer-feed-link svg {
-  color: #6a4fa3;
+  color: var(--amethyst, #6a4fa3);
 }
 
 .footer-feed-link:hover {
-  color: #553f83;
+  color: var(--amethyst-dark, #553f83);
   text-decoration: none;
 }
 
 .footer-feed-link:hover svg,
 .footer-feed-link:focus-visible svg {
-  color: #553f83;
+  color: var(--amethyst-dark, #553f83);
 }
 
 /* About Page */
