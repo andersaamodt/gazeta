@@ -823,16 +823,50 @@
     return text || 'My Blog';
   }
 
-  async function fetchJson(url, options) {
-    const res = await fetch(url, options);
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (_) {
-      throw new Error('Invalid JSON response');
+  function parsePossiblyWrappedJson(text) {
+    let raw = String(text || '');
+    if (raw.charCodeAt(0) === 0xfeff) {
+      raw = raw.slice(1);
     }
-    return data;
+    try {
+      return { ok: true, data: JSON.parse(raw) };
+    } catch (_) {}
+    const objectStart = raw.indexOf('{');
+    const arrayStart = raw.indexOf('[');
+    let start = -1;
+    if (objectStart >= 0 && arrayStart >= 0) {
+      start = Math.min(objectStart, arrayStart);
+    } else if (objectStart >= 0) {
+      start = objectStart;
+    } else if (arrayStart >= 0) {
+      start = arrayStart;
+    }
+    if (start > 0) {
+      const trimmed = raw.slice(start);
+      try {
+        return { ok: true, data: JSON.parse(trimmed) };
+      } catch (_) {}
+    }
+    return { ok: false, preview: raw.slice(0, 180).replace(/\s+/g, ' ').trim() };
+  }
+
+  async function fetchJson(url, options) {
+    const request = options || {};
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const res = await fetch(url, request);
+      const text = await res.text();
+      const parsed = parsePossiblyWrappedJson(text);
+      if (parsed.ok) {
+        return parsed.data;
+      }
+      if (attempt === 0) {
+        await new Promise(function (resolve) { setTimeout(resolve, 120); });
+        continue;
+      }
+      const detail = parsed.preview ? (': ' + parsed.preview) : '';
+      throw new Error('Invalid JSON response' + detail);
+    }
+    throw new Error('Invalid JSON response');
   }
 
   function arrayBufferToBase64(buffer) {

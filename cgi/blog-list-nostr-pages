@@ -18,11 +18,16 @@ if ! blog_require_session true; then
 fi
 
 cfg=$(blog_nostr_pages_load_json)
+if ! printf '%s\n' "$cfg" | jq -e '.pages | type=="array"' >/dev/null 2>&1; then
+  cfg=$(blog_nostr_pages_default_json 2>/dev/null || printf '{"pages":[]}')
+fi
 rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-pages-rows.XXXXXX")
-printf '%s\n' "$cfg" | jq -c '.pages[]' > "$rows_tmp"
+if ! printf '%s\n' "$cfg" | jq -c '.pages[]?' > "$rows_tmp" 2>/dev/null; then
+  : > "$rows_tmp"
+fi
 blog_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-posts.XXXXXX")
 blog_tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-tags.XXXXXX")
-blog_collect_public_posts "$blog_posts_tmp"
+blog_collect_public_posts "$blog_posts_tmp" 2>/dev/null || : > "$blog_posts_tmp"
 connected_posts_total=$(wc -l < "$blog_posts_tmp" | tr -d ' ')
 case "$connected_posts_total" in
   ''|*[!0-9]*) connected_posts_total=0 ;;
@@ -114,29 +119,39 @@ while IFS= read -r row || [ -n "$row" ]; do
     printf ','
   fi
   first=0
-  jq -cn \
+  row_json=$(jq -cn \
     --arg slug "$slug" \
     --arg page_type "$page_type" \
     --arg path "$path" \
     --arg title "$title" \
     --arg placeholder_title "$placeholder_title" \
     --arg default_tag "$default_tag" \
-    --argjson kind "$kind" \
-    --argjson connected_posts "$connected_posts" \
-    --argjson show_in_nav "$( [ "$show_in_nav" = "true" ] && printf true || printf false )" \
-    --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
+    --arg kind "$kind" \
+    --arg connected_posts "$connected_posts" \
+    --arg show_in_nav "$show_in_nav" \
+    --arg canonical_exists "$canonical_exists" \
     '{
       slug: $slug,
       type: $page_type,
-      kind: $kind,
+      kind: ($kind | tonumber? // 30004),
       path: $path,
       title: $title,
       placeholder_title: $placeholder_title,
       default_tag: $default_tag,
-      connected_posts: $connected_posts,
-      show_in_nav: $show_in_nav,
-      canonical_exists: $canonical_exists
-    }'
+      connected_posts: ($connected_posts | tonumber? // 0),
+      show_in_nav: ($show_in_nav == "true"),
+      canonical_exists: ($canonical_exists == "true")
+    }' 2>/dev/null || printf '')
+  if [ -z "$row_json" ]; then
+    row_json=$(printf '{"slug":"%s","type":"%s","kind":30004,"path":"%s","title":"%s","placeholder_title":"%s","default_tag":"%s","connected_posts":0,"show_in_nav":true,"canonical_exists":false}' \
+      "$(blog_json_escape "$slug")" \
+      "$(blog_json_escape "$page_type")" \
+      "$(blog_json_escape "$path")" \
+      "$(blog_json_escape "$title")" \
+      "$(blog_json_escape "$placeholder_title")" \
+      "$(blog_json_escape "$default_tag")")
+  fi
+  printf '%s' "$row_json"
 done < "$rows_tmp"
 printf ']}'
 printf '\n'
