@@ -508,7 +508,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Account</h3>
-<p class="muted">Your account is Nostr-based. You can bind a passkey and link an SSH key for MUD compatibility.</p>
+<p class="muted">Your account is Nostr-based.</p>
 </div>
 </div>
 
