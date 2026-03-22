@@ -1329,6 +1329,7 @@
     var markdownText = String(el && el.markdown || '').trim();
     var tileDescription = String(el && el.description || '').trim();
     var dateText = String(el && el.date || '');
+    var markerText = String(el && el.marker || '');
     var imageUrl = String(el && el.image_url || '').trim();
     var eventId = String(el && el.event_id || '');
 
@@ -1351,6 +1352,7 @@
     } else {
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
+    html += '<div class="list-inline-cell list-inline-marker"><input type="text" data-inline-field="marker" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markerText) + '" placeholder="Marker..."></div>';
     if (active && activeField === 'image_url') {
       html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/cgi/blog-file?... or https://..."></div>';
     } else {
@@ -1411,6 +1413,7 @@
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
+    html += '<span class="list-inline-head-marker">Marker</span>';
     html += '<span class="list-inline-head-image">Image URL</span>';
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
@@ -2180,11 +2183,17 @@
         if (backward) {
           nextField = 'description';
         } else {
+          nextField = 'marker';
+        }
+      } else if (field === 'marker') {
+        if (backward) {
+          nextField = 'date';
+        } else {
           nextField = 'image_url';
         }
       } else if (field === 'image_url') {
         if (backward) {
-          nextField = 'date';
+          nextField = 'marker';
         } else {
           nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
           nextField = 'markdown';
