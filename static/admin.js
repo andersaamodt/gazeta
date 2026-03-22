@@ -3073,7 +3073,7 @@
       if (isEditingNavTitle) {
         html += '<span class="nostr-page-nav-title-edit-wrap"><input type="text" class="nostr-page-nav-title-input" data-nostr-page-action="edit-nav-title-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingNavTitleValue || navTitle) + '" aria-label="Edit navbar link title"><button type="button" class="nostr-page-nav-title-ok" data-nostr-page-action="save-nav-title" data-index="' + String(idx) + '" aria-label="Apply navbar link title">OK</button></span>';
       } else {
-        html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change</a>';
+        html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change...</a>';
       }
       html += '</div>';
       html += '</div>';
@@ -3083,7 +3083,7 @@
         html += '<button type="button" class="nostr-page-path-ok" data-nostr-page-action="save-slug" data-index="' + String(idx) + '" aria-label="Apply page path">OK</button>';
       } else {
         html += '<span class="nostr-page-path">' + escapeHtml(path) + '</span>';
-        html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change path</a>';
+        html += '<a href="#" class="nostr-page-path-edit" data-nostr-page-action="edit-slug" data-index="' + String(idx) + '" aria-label="Change page path">Change...</a>';
       }
       html += '</div>';
       html += '<div class="nostr-page-type-col">';
