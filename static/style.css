@@ -1926,6 +1926,7 @@ header h1 {
   flex-wrap: wrap;
   gap: 0.42rem;
   align-items: flex-start;
+  justify-content: flex-end;
 }
 
 .public-ranking-submit-more-compact {
@@ -1943,9 +1944,9 @@ header h1 {
 .public-ranking-submit-more > summary {
   cursor: pointer;
   list-style: none;
-  padding: 0.4rem 0.56rem;
+  padding: 0.3rem 0.46rem;
   color: var(--muted-text, #4f617f);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   line-height: 1.2;
 }
 
