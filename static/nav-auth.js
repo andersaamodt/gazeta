@@ -2463,9 +2463,16 @@
     prefetchStaticPageHtmlForSlug('archive');
     prefetchStaticPageHtmlForSlug('tags');
     highlightCurrentPage();
-    var navPromise = loadNavbarNostrPages();
-    Promise.resolve(navPromise).finally(function () {
-      applyInitialHighlightInSyncWithContent();
+    applyInitialHighlightInSyncWithContent();
+    loadNavbarNostrPages()
+      .then(function () {
+        highlightCurrentPage();
+      })
+      .catch(function () {
+        // Keep startup resilient; cached nav remains usable.
+      })
+      .finally(function () {
+        markHydrationNavReady();
     });
     checkAuth();
     loadTheme();

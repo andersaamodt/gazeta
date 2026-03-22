@@ -3,6 +3,7 @@
   var docEl = document.documentElement;
   if (docEl) {
     docEl.classList.add('app-hydrating');
+    docEl.style.visibility = 'hidden';
   }
   var navReady = false;
   var pageReady = false;
@@ -15,6 +16,7 @@
     revealed = true;
     if (docEl) {
       docEl.classList.remove('app-hydrating');
+      docEl.style.visibility = '';
     }
   }
 
