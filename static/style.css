@@ -2262,7 +2262,11 @@ header h1 {
 .btn-login-main {
   border-radius: 6px 0 0 6px;
   height: 2.05rem;
-  padding: 0.45rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0.27rem 1rem 0.63rem;
 }
 
 .btn-login-caret {
@@ -2271,7 +2275,7 @@ header h1 {
   width: 1.48rem;
   height: 2.05rem;
   padding: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-left: 1px solid var(--button-primary-border);
   font-size: 0.69rem;
   font-weight: 700;
   line-height: 1;
