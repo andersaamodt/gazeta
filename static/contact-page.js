@@ -1041,22 +1041,9 @@
     els.admin.innerHTML = '';
   }
 
-  function renderReadOnly(rows, editable) {
-    var normalized = normalizeRows(rows || []);
-    var list = editable ? normalized : normalized.filter(function (row) {
-      return String(row.transport || '').trim() && String(row.value || '').trim();
-    });
-    var html = '';
-    if (editable) {
-      html += '<div class="contact-inline-toolbar">';
-      html += '<div class="contact-inline-toolbar-spacer"></div>';
-      html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
-      html += '</div>';
-    }
-    if (!list.length) {
-      return html + '<p class="list-page-empty-state">No content yet.</p>';
-    }
-    html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table' + (editable ? ' is-editing' : '') + '"><tbody>';
+  function renderProfileTable(rows, editable) {
+    var list = Array.isArray(rows) ? rows : [];
+    var html = '<div class="contact-profile-table-wrap"><table class="contact-profile-table' + (editable ? ' is-editing' : '') + '"><tbody>';
     list.forEach(function (row, idx) {
       var transport = String(row.transport || '').trim();
       var value = String(row.value || '');
@@ -1116,6 +1103,43 @@
       html += '</tr>';
     });
     html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderReadOnly(rows, editable) {
+    var normalized = normalizeRows(rows || []);
+    var filtered = editable ? normalized : normalized.filter(function (row) {
+      return String(row.transport || '').trim() && String(row.value || '').trim();
+    });
+    var html = '';
+    if (editable) {
+      html += '<div class="contact-inline-toolbar">';
+      html += '<div class="contact-inline-toolbar-spacer"></div>';
+      html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
+      html += '</div>';
+    }
+    if (!filtered.length) {
+      return html + '<p class="list-page-empty-state">No content yet.</p>';
+    }
+    if (editable) {
+      html += renderProfileTable(filtered, true);
+      return html;
+    }
+    var archivedRows = filtered.filter(function (row) {
+      return String(row.qualifier || '').trim().toLowerCase() === 'archive';
+    });
+    var visibleRows = filtered.filter(function (row) {
+      return String(row.qualifier || '').trim().toLowerCase() !== 'archive';
+    });
+    if (visibleRows.length) {
+      html += renderProfileTable(visibleRows, false);
+    }
+    if (archivedRows.length) {
+      html += '<details class="contact-archived-group">';
+      html += '<summary class="contact-archived-toggle"><span class="contact-archived-toggle-label">Archived</span></summary>';
+      html += renderProfileTable(archivedRows, false);
+      html += '</details>';
+    }
     return html;
   }
 
