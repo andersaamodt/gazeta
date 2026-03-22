@@ -663,9 +663,9 @@ body {
 .admin-sidebar {
   position: static;
   border: 0;
-  border-right: 1px solid #c7d6f3;
+  border-right: 1px solid var(--admin-border, var(--border, #d4c19c));
   border-radius: 0;
-  background: #ffffff;
+  background: var(--admin-surface, var(--post-card-bg-single, #f9f2e4));
   box-shadow: none;
   padding: 0;
   display: flex;
@@ -683,8 +683,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.34rem;
-  border-bottom: 1px solid #d7e1f4;
-  background: #f4f6fa;
+  border-bottom: 1px solid var(--admin-border, var(--border, #d4c19c));
+  background: var(--admin-surface-alt, var(--post-card-bg, #f8efdd));
   padding: 0.36rem 0.2rem 0.32rem;
 }
 
@@ -697,7 +697,7 @@ body {
   border: 0;
   border-radius: 0;
   overflow: visible;
-  background: #ffffff;
+  background: var(--admin-surface, var(--post-card-bg-single, #f9f2e4));
   width: 100%;
   box-sizing: border-box;
 }
@@ -707,7 +707,7 @@ body {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2a3650;
+  color: var(--admin-text, var(--text, #2f2517));
   font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.2;
@@ -852,29 +852,29 @@ body {
 }
 
 .admin-nav-item.is-compose {
-  background: #f2f7ff;
+  background: var(--admin-surface, var(--post-card-bg-single, #f9f2e4));
 }
 
 .admin-nav-item.is-compose:hover {
-  background: #e9f1ff;
+  background: var(--admin-hover, rgba(47, 95, 184, 0.11));
 }
 
 .admin-nav-item:hover {
-  background: #e9f1ff;
-  color: #153878;
+  background: var(--admin-hover, rgba(47, 95, 184, 0.11));
+  color: var(--admin-text, var(--text, #2f2517));
 }
 
 .admin-nav-item.is-active {
-  background: #e9f1ff;
-  color: #153878;
+  background: var(--admin-hover, rgba(47, 95, 184, 0.11));
+  color: var(--admin-text, var(--text, #2f2517));
   box-shadow: none;
   cursor: default;
 }
 
 .admin-nav-item[aria-selected="true"],
 .admin-nav-item[aria-current="page"] {
-  background: #e9f1ff;
-  color: #153878;
+  background: var(--admin-nav-selected-bg, var(--admin-hover, rgba(47, 95, 184, 0.11)));
+  color: var(--admin-nav-selected-text, var(--admin-text, var(--text, #2f2517)));
   box-shadow: none;
   font-weight: 500;
 }
@@ -901,14 +901,14 @@ body {
   left: 0;
   right: 0;
   bottom: -1px;
-  border-bottom: 1px solid #d0dbf2;
+  border-bottom: 1px solid var(--admin-border, var(--border, #d4c19c));
   pointer-events: none;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item:hover {
   border: 0 !important;
-  background: #e9f1ff !important;
-  color: #153878 !important;
+  background: var(--admin-hover, rgba(47, 95, 184, 0.11)) !important;
+  color: var(--admin-text, var(--text, #2f2517)) !important;
   transform: none !important;
 }
 
@@ -919,8 +919,8 @@ body {
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"],
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"] {
   border: 0 !important;
-  background: #e9f1ff !important;
-  color: #153878 !important;
+  background: var(--admin-nav-selected-bg, var(--admin-hover, rgba(47, 95, 184, 0.11))) !important;
+  color: var(--admin-nav-selected-text, var(--admin-text, var(--text, #2f2517))) !important;
   box-shadow: none !important;
   transform: none !important;
   cursor: default !important;
@@ -928,16 +928,16 @@ body {
 
 #admin-panel .admin-nav-list .admin-nav-item[aria-selected="true"]:hover,
 #admin-panel .admin-nav-list .admin-nav-item[aria-current="page"]:hover {
-  background: #e9f1ff !important;
-  color: #153878 !important;
+  background: var(--admin-nav-selected-bg, var(--admin-hover, rgba(47, 95, 184, 0.11))) !important;
+  color: var(--admin-nav-selected-text, var(--admin-text, var(--text, #2f2517))) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item.is-compose {
-  background: #f2f7ff !important;
+  background: var(--admin-surface, var(--post-card-bg-single, #f9f2e4)) !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item.is-compose:hover {
-  background: #e9f1ff !important;
+  background: var(--admin-hover, rgba(47, 95, 184, 0.11)) !important;
 }
 
 .admin-content {
@@ -946,7 +946,7 @@ body {
   min-width: 0;
   min-height: calc(100vh - 3.25rem);
   padding: 0 var(--admin-content-pad-right) 0 var(--admin-content-pad-left);
-  background: #f4f7fd;
+  background: var(--admin-bg, var(--bg, #f3e9d7));
 }
 
 #admin-panel.account-only {
