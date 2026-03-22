@@ -1332,6 +1332,7 @@
     var dateText = String(el && el.date || '');
     var markerText = String(el && el.marker || '');
     var imageUrl = String(el && el.image_url || '').trim();
+    var showImageField = isIconGalleryPage();
     var eventId = String(el && el.event_id || '');
 
     html += '<div class="list-inline-cell list-inline-indent-controls">';
@@ -1354,10 +1355,12 @@
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><button type="button" class="list-inline-open list-inline-date-button" data-list-inline-action="edit" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (dateText ? escapeHtml(dateText) : placeholderHtml('Add date...')) + '</span></button></div></div>';
     }
     html += '<div class="list-inline-cell list-inline-marker"><input type="text" data-inline-field="marker" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markerText) + '" placeholder="Marker..."></div>';
-    if (active && activeField === 'image_url') {
-      html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/cgi/blog-file?... or https://..."></div>';
-    } else {
-      html += '<div class="list-inline-cell list-inline-image-url"><button type="button" class="list-inline-open list-inline-image-button" data-list-inline-action="edit" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (imageUrl ? escapeHtml(imageUrl) : placeholderHtml('Add image URL...')) + '</span></button></div>';
+    if (showImageField) {
+      if (active && activeField === 'image_url') {
+        html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/cgi/blog-file?... or https://..."></div>';
+      } else {
+        html += '<div class="list-inline-cell list-inline-image-url"><button type="button" class="list-inline-open list-inline-image-button" data-list-inline-action="edit" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (imageUrl ? escapeHtml(imageUrl) : placeholderHtml('Add image URL...')) + '</span></button></div>';
+      }
     }
     html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button></div>';
     if (active) {
@@ -1393,11 +1396,6 @@
       html += '<label><span>View</span><select id="list-admin-view-mode" disabled aria-disabled="true">';
       html += '<option value="tile" selected>Tile</option>';
       html += '</select></label>';
-    } else {
-      html += '<label><span>View</span><select id="list-admin-view-mode">';
-      html += '<option value="list"' + (normalizeViewMode(state.draft.view_mode || '') === 'list' ? ' selected' : '') + '>List</option>';
-      html += '<option value="tile"' + (normalizeViewMode(state.draft.view_mode || '') === 'tile' ? ' selected' : '') + '>Tile</option>';
-      html += '</select></label>';
     }
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
@@ -1415,7 +1413,9 @@
     html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-marker">Marker</span>';
-    html += '<span class="list-inline-head-image">Image URL</span>';
+    if (isIconGalleryPage()) {
+      html += '<span class="list-inline-head-image">Image URL</span>';
+    }
     html += '<span class="list-inline-head-actions"></span>';
     html += '</div>';
 
@@ -2162,8 +2162,9 @@
       var nextField = field;
       var backward = !!event.shiftKey;
 
+      var hasImageField = isIconGalleryPage();
       if (field === 'event_id') {
-        nextField = backward ? 'image_url' : 'markdown';
+        nextField = backward ? (hasImageField ? 'image_url' : 'marker') : 'markdown';
         if (!backward) {
           nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
         }
@@ -2190,7 +2191,12 @@
         if (backward) {
           nextField = 'date';
         } else {
-          nextField = 'image_url';
+          if (hasImageField) {
+            nextField = 'image_url';
+          } else {
+            nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
+            nextField = 'markdown';
+          }
         }
       } else if (field === 'image_url') {
         if (backward) {
