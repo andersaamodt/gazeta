@@ -34,6 +34,9 @@
     payload: null,
     draft: null,
     editMode: false,
+    activeHeadField: '',
+    activeRowIndex: -1,
+    activeRowField: '',
     navTitle: '',
     navTitleEditing: false,
     navTitleInput: '',
@@ -197,6 +200,9 @@
     state.navTitleEditing = false;
     state.navTitleInput = '';
     state.navTitleBusy = false;
+    state.activeHeadField = '';
+    state.activeRowIndex = -1;
+    state.activeRowField = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
     renderAll();
@@ -347,6 +353,82 @@
       archive: 'Archived'
     };
     return labels[q] || q;
+  }
+
+  function renderQualifierSelectOptions(selected) {
+    var current = String(selected || '').trim().toLowerCase();
+    var html = '';
+    html += '<option value=""' + (!current ? ' selected' : '') + '>(none)</option>';
+    html += '<option value="preferred"' + (current === 'preferred' ? ' selected' : '') + '>preferred</option>';
+    html += '<option value="unpreferred"' + (current === 'unpreferred' ? ' selected' : '') + '>unpreferred</option>';
+    html += '<option value="public"' + (current === 'public' ? ' selected' : '') + '>public</option>';
+    html += '<option value="primary"' + (current === 'primary' ? ' selected' : '') + '>primary</option>';
+    html += '<option value="secondary"' + (current === 'secondary' ? ' selected' : '') + '>secondary</option>';
+    html += '<option value="emergency"' + (current === 'emergency' ? ' selected' : '') + '>emergency</option>';
+    html += '<option value="archive"' + (current === 'archive' ? ' selected' : '') + '>archive</option>';
+    return html;
+  }
+
+  function hasVisibleMainContent(rows, extrasAfter) {
+    if (String(extrasAfter || '').trim()) {
+      return true;
+    }
+    return normalizeRows(rows || []).some(function (row) {
+      return String(row.transport || '').trim() && String(row.value || '').trim();
+    });
+  }
+
+  function setActiveRowField(idx, field) {
+    if (!Number.isInteger(idx) || idx < 0 || !field) {
+      state.activeRowIndex = -1;
+      state.activeRowField = '';
+      return;
+    }
+    state.activeRowIndex = idx;
+    state.activeRowField = String(field || '').trim().toLowerCase();
+  }
+
+  function clearActiveRowField() {
+    state.activeRowIndex = -1;
+    state.activeRowField = '';
+  }
+
+  function isActiveRowField(idx, field) {
+    return Number(state.activeRowIndex) === Number(idx) && String(state.activeRowField || '') === String(field || '');
+  }
+
+  function syncDraftRowField(idx, field, value) {
+    if (!Number.isInteger(idx) || idx < 0) {
+      return false;
+    }
+    var key = String(field || '').trim();
+    if (key !== 'transport' && key !== 'value' && key !== 'qualifier') {
+      return false;
+    }
+    state.draft = normalizeDraftState(state.draft);
+    state.draft.rows = normalizeRows(state.draft.rows || []);
+    if (!state.draft.rows[idx]) {
+      return false;
+    }
+    state.draft.rows[idx][key] = String(value || '');
+    return true;
+  }
+
+  function focusActiveInlineFieldSoon() {
+    if (!isAdmin() || !state.editMode || !Number.isInteger(state.activeRowIndex) || state.activeRowIndex < 0 || !state.activeRowField) {
+      return;
+    }
+    requestAnimationFrame(function () {
+      var selector = '[data-contact-inline-field="' + String(state.activeRowField) + '"][data-row-index="' + String(state.activeRowIndex) + '"]';
+      var node = root.querySelector(selector);
+      if (!(node instanceof HTMLElement) || typeof node.focus !== 'function') {
+        return;
+      }
+      node.focus();
+      if (node instanceof HTMLInputElement && typeof node.select === 'function') {
+        node.select();
+      }
+    });
   }
 
   function normalizeTransportKey(value) {
@@ -604,16 +686,46 @@
       document.title = String(s.title);
     }
     if (els.title) {
-      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+      if (isAdmin()) {
+        if (state.activeHeadField === 'title') {
+          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="contact-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Profile') + '" data-contact-head-input="title"></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="title">Save</button><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+        } else if (state.editMode) {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="title">Edit...</button><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+        } else {
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+        }
+      } else {
+        els.title.textContent = s.title || 'Profile';
+      }
     }
     renderNavbarTitleRow(s);
     if (els.description) {
       var text = String(s.description || '').trim();
-      var rows = normalizeRows(s.rows || []).filter(function (row) {
-        return String(row.transport || '').trim() && String(row.value || '').trim();
-      });
-      var hasMainContent = rows.length > 0 || String(s.extras_after || '').trim().length > 0;
-      if (text) {
+      var hasMainContent = hasVisibleMainContent(s.rows || [], s.extras_after || '');
+      if (isAdmin()) {
+        var suppressEmptyDescription = !text && !hasMainContent && state.activeHeadField !== 'description';
+        els.description.hidden = suppressEmptyDescription;
+        if (suppressEmptyDescription) {
+          els.description.innerHTML = '';
+        } else if (state.activeHeadField === 'description') {
+          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="contact-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(text) + '" data-contact-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="description">Save</button> <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>';
+        } else if (state.editMode) {
+          if (text) {
+            els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
+          } else {
+            els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
+          }
+        } else if (text) {
+          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span>';
+          els.description.hidden = false;
+        } else if (!hasMainContent) {
+          els.description.hidden = true;
+          els.description.innerHTML = '';
+        } else {
+          els.description.hidden = false;
+          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
+        }
+      } else if (text) {
         els.description.hidden = false;
         els.description.innerHTML = markdownInline(text);
       } else if (!hasMainContent) {
@@ -623,6 +735,18 @@
         els.description.hidden = false;
         els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
       }
+    }
+    if (isAdmin() && state.activeHeadField) {
+      requestAnimationFrame(function () {
+        var id = state.activeHeadField === 'title' ? 'contact-head-title-input' : 'contact-head-description-input';
+        var input = document.getElementById(id);
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
     }
   }
 
@@ -672,91 +796,70 @@
     els.admin.innerHTML = '';
   }
 
-  function renderReadOnly(rows) {
-    var list = normalizeRows(rows).filter(function (row) {
+  function renderReadOnly(rows, editable) {
+    var normalized = normalizeRows(rows || []);
+    var list = editable ? normalized : normalized.filter(function (row) {
       return String(row.transport || '').trim() && String(row.value || '').trim();
     });
-    if (!list.length) {
-      return '<p class="list-page-empty-state">No content yet.</p>';
+    var html = '';
+    if (editable) {
+      html += '<div class="contact-inline-toolbar">';
+      html += '<div class="contact-inline-toolbar-spacer"></div>';
+      html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
+      html += '</div>';
     }
-    var html = '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
-    list.forEach(function (row) {
+    if (!list.length) {
+      return html + '<p class="list-page-empty-state">No content yet.</p>';
+    }
+    html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
+    list.forEach(function (row, idx) {
       var transport = String(row.transport || '').trim();
-      var value = String(row.value || '').trim();
-      if (!transport || !value) {
-        return;
-      }
-      var qLabel = qualifierLabel(row.qualifier || '');
+      var value = String(row.value || '');
       var qValue = String(row.qualifier || '').trim().toLowerCase();
+      var qLabel = qualifierLabel(qValue);
+
       html += '<tr class="contact-profile-row">';
-      html += '<th scope="row" class="contact-platform-cell">' + escapeHtml(transport) + '</th>';
-      html += '<td class="contact-value-cell"><div class="contact-value-main">' + linkifyContactValue(value, transport) + '</div>';
-      if (qLabel) {
+      html += '<th scope="row" class="contact-platform-cell">';
+      if (editable && isActiveRowField(idx, 'transport')) {
+        html += '<input type="text" class="contact-inline-input" data-contact-inline-field="transport" data-row-index="' + String(idx) + '" value="' + escapeHtml(transport) + '" placeholder="transport">';
+      } else if (editable) {
+        html += '<button type="button" class="contact-inline-open contact-platform-open" data-contact-inline-action="edit-cell" data-contact-inline-field="transport" data-row-index="' + String(idx) + '"><span class="contact-inline-open-value">' + (transport ? escapeHtml(transport) : '<span class="list-inline-placeholder">Add transport...</span>') + '</span></button>';
+      } else {
+        html += escapeHtml(transport);
+      }
+      html += '</th>';
+
+      html += '<td class="contact-value-cell">';
+      if (editable && isActiveRowField(idx, 'value')) {
+        html += '<input type="text" class="contact-inline-input contact-value-inline-input" data-contact-inline-field="value" data-row-index="' + String(idx) + '" value="' + escapeHtml(value) + '" placeholder="value">';
+      } else if (editable) {
+        html += '<button type="button" class="contact-inline-open contact-value-open" data-contact-inline-action="edit-cell" data-contact-inline-field="value" data-row-index="' + String(idx) + '"><span class="contact-inline-open-value">' + (String(value || '').trim() ? escapeHtml(value).replace(/\n/g, '<br>') : '<span class="list-inline-placeholder">Add value...</span>') + '</span></button>';
+      } else {
+        html += '<div class="contact-value-main">' + linkifyContactValue(value, transport) + '</div>';
+      }
+
+      html += '<span class="contact-qualifier-wrap">';
+      if (editable && isActiveRowField(idx, 'qualifier')) {
+        html += '<select class="contact-inline-select" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
+        html += renderQualifierSelectOptions(qValue);
+        html += '</select>';
+      } else if (editable) {
+        html += '<button type="button" class="contact-inline-open contact-qualifier-open" data-contact-inline-action="edit-cell" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
+        if (qLabel) {
+          html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
+        } else {
+          html += '<span class="list-inline-placeholder">Set qualifier...</span>';
+        }
+        html += '</button>';
+        html += '<button type="button" class="icon-danger unobtrusive-icon-button contact-row-delete" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry">✕</button>';
+      } else if (qLabel) {
         html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
       }
+      html += '</span>';
       html += '</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
-    return html;
-  }
-
-  function renderEditor(rows, draft) {
-    var introScope = draft.publish_intro_to_nostr ? 'nostr' : 'local';
-    var introScopeLabel = introScope === 'nostr' ? 'Nostr' : 'Local';
-    var html = '';
-    html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Before and after content</h3>';
-    html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before content (Markdown) <span class="nostr-page-scope-pill is-' + introScope + '">' + introScopeLabel + '</span><span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-contact-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label></span></span>';
-    html += '<textarea data-contact-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(draft.description || '') + '</textarea>';
-    html += '</label>';
-    html += '<label class="nostr-page-extra-edit">';
-    html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
-    html += '<span class="nostr-page-extra-controls">';
-    html += '<select data-contact-outro-format="after">';
-    html += '<option value="markdown"' + (draft.extras_after_format === 'markdown' ? ' selected' : '') + '>Markdown</option>';
-    html += '<option value="html"' + (draft.extras_after_format === 'html' ? ' selected' : '') + '>HTML</option>';
-    html += '</select>';
-    html += '</span>';
-    html += '<textarea data-contact-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
-    html += '</label>';
-    html += '</section>';
-
-    html += '<div class="contact-inline-toolbar">';
-    html += '<div class="contact-inline-meta">';
-    html += '<label><span>Title <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><input type="text" id="contact-title-input" value="' + escapeHtml(draft.title || '') + '"></label>';
-    html += '</div>';
-    html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
-    html += '</div>';
-
-    if (!rows.length) {
-      html += '<div class="list-inline-empty">No profile rows yet.</div>';
-      return html;
-    }
-
-    html += '<div class="contact-inline-head">';
-    html += '<span>Transport</span><span>Value</span><span>Qualifier</span><span></span>';
-    html += '</div>';
-    html += '<div class="contact-inline-rows">';
-    rows.forEach(function (row, idx) {
-      html += '<div class="contact-inline-row" data-row-index="' + String(idx) + '">';
-      html += '<input type="text" data-contact-field="transport" data-row-index="' + String(idx) + '" value="' + escapeHtml(row.transport || '') + '" placeholder="signal">';
-      html += '<input type="text" data-contact-field="value" data-row-index="' + String(idx) + '" value="' + escapeHtml(row.value || '') + '" placeholder="value">';
-      html += '<select data-contact-field="qualifier" data-row-index="' + String(idx) + '">';
-      html += '<option value=""' + (!row.qualifier ? ' selected' : '') + '>(none)</option>';
-      html += '<option value="preferred"' + (row.qualifier === 'preferred' ? ' selected' : '') + '>preferred</option>';
-      html += '<option value="unpreferred"' + (row.qualifier === 'unpreferred' ? ' selected' : '') + '>unpreferred</option>';
-      html += '<option value="public"' + (row.qualifier === 'public' ? ' selected' : '') + '>public</option>';
-      html += '<option value="primary"' + (row.qualifier === 'primary' ? ' selected' : '') + '>primary</option>';
-      html += '<option value="secondary"' + (row.qualifier === 'secondary' ? ' selected' : '') + '>secondary</option>';
-      html += '<option value="emergency"' + (row.qualifier === 'emergency' ? ' selected' : '') + '>emergency</option>';
-      html += '<option value="archive"' + (row.qualifier === 'archive' ? ' selected' : '') + '>archive</option>';
-      html += '</select>';
-      html += '<button type="button" class="icon-danger unobtrusive-icon-button" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry">✕</button>';
-      html += '</div>';
-    });
-    html += '</div>';
     return html;
   }
 
@@ -772,10 +875,10 @@
         (s.extras_after_format === 'html' ? String(s.extras_after || '') : markdownBlock(s.extras_after || '')) +
         '</section>';
     }
-    if (isAdmin() && state.editMode) {
-      els.content.innerHTML = renderEditor(rows, s) + renderReadOnly(rows) + afterContent;
-    } else {
-      els.content.innerHTML = renderReadOnly(rows) + afterContent;
+    var inlineMode = isAdmin() && state.editMode;
+    els.content.innerHTML = renderReadOnly(rows, inlineMode) + afterContent;
+    if (inlineMode) {
+      focusActiveInlineFieldSoon();
     }
   }
 
@@ -953,6 +1056,36 @@
             return;
           }
         }
+        var headEditNode = target.closest('[data-contact-head-edit]');
+        if (headEditNode instanceof HTMLElement) {
+          event.preventDefault();
+          state.activeHeadField = String(headEditNode.getAttribute('data-contact-head-edit') || '').trim().toLowerCase();
+          renderHead();
+          return;
+        }
+        var headSaveNode = target.closest('[data-contact-head-save]');
+        if (headSaveNode instanceof HTMLElement) {
+          event.preventDefault();
+          state.activeHeadField = '';
+          renderHead();
+          renderAdmin();
+          queueAutosave(250);
+          return;
+        }
+        var inlineActionNode = target.closest('[data-contact-inline-action]');
+        if (inlineActionNode instanceof HTMLElement) {
+          event.preventDefault();
+          var inlineAction = String(inlineActionNode.getAttribute('data-contact-inline-action') || '');
+          if (inlineAction === 'edit-cell') {
+            var inlineIdx = Number(inlineActionNode.getAttribute('data-row-index'));
+            var inlineField = String(inlineActionNode.getAttribute('data-contact-inline-field') || '').trim().toLowerCase();
+            if (Number.isInteger(inlineIdx) && inlineIdx >= 0 && (inlineField === 'transport' || inlineField === 'value' || inlineField === 'qualifier')) {
+              setActiveRowField(inlineIdx, inlineField);
+              renderContent();
+            }
+            return;
+          }
+        }
       }
       var actionNode = target.closest('[data-contact-action]');
       if (!(actionNode instanceof HTMLElement) || !isAdmin()) {
@@ -964,6 +1097,8 @@
         if (!state.editMode) {
           state.navTitleEditing = false;
           state.navTitleInput = '';
+          state.activeHeadField = '';
+          clearActiveRowField();
         }
         renderAll();
         return;
@@ -982,6 +1117,7 @@
       if (action === 'add-row') {
         state.draft = normalizeDraftState(state.draft);
         state.draft.rows.push({ transport: '', value: '', qualifier: '' });
+        setActiveRowField(state.draft.rows.length - 1, 'transport');
         renderAll();
         queueAutosave(500);
         return;
@@ -994,6 +1130,11 @@
         state.draft.rows = normalizeRows(state.draft.rows || []).filter(function (_row, i) {
           return i !== idx;
         });
+        if (state.activeRowIndex === idx) {
+          clearActiveRowField();
+        } else if (state.activeRowIndex > idx) {
+          state.activeRowIndex -= 1;
+        }
         renderAll();
         queueAutosave(500);
       }
@@ -1004,37 +1145,11 @@
         return;
       }
       var target = event.target;
-      if (target instanceof HTMLTextAreaElement) {
-        if (target.hasAttribute('data-contact-intro')) {
-          state.draft = normalizeDraftState(state.draft);
-          state.draft.description = String(target.value || '');
-          renderHead();
-          queueAutosave(500);
-          return;
-        }
-        var outroField = String(target.getAttribute('data-contact-outro') || '');
-        if (outroField === 'after') {
-          state.draft = normalizeDraftState(state.draft);
-          state.draft.extras_after = String(target.value || '');
-          queueAutosave(500);
-        }
-        return;
-      }
-
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input')) {
         state.navTitleInput = String(target.value || '');
-        return;
-      }
-
-      var outroFormatField = String(target.getAttribute('data-contact-outro-format') || '');
-      if (target instanceof HTMLSelectElement && outroFormatField === 'after') {
-        state.draft = normalizeDraftState(state.draft);
-        state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
-        renderContent();
-        queueAutosave(500);
         return;
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-intro-publish')) {
@@ -1043,24 +1158,28 @@
         queueAutosave(500);
         return;
       }
-
-      if (target.id === 'contact-title-input') {
-        state.draft.title = String(target.value || '');
-        renderHead();
-        renderAdmin();
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input')) {
+        var headField = String(target.getAttribute('data-contact-head-input') || '').trim().toLowerCase();
+        state.draft = normalizeDraftState(state.draft);
+        if (headField === 'title') {
+          state.draft.title = String(target.value || '');
+        } else if (headField === 'description') {
+          state.draft.description = String(target.value || '');
+        } else {
+          return;
+        }
         queueAutosave(500);
         return;
       }
-      var field = String(target.getAttribute('data-contact-field') || '');
+
+      var field = String(target.getAttribute('data-contact-inline-field') || '').trim().toLowerCase();
       var idx = Number(target.getAttribute('data-row-index'));
-      if (!field || !Number.isInteger(idx) || idx < 0) {
+      if (!Number.isInteger(idx) || idx < 0 || (field !== 'transport' && field !== 'value' && field !== 'qualifier')) {
         return;
       }
-      state.draft.rows = normalizeRows(state.draft.rows || []);
-      if (!state.draft.rows[idx]) {
+      if (!syncDraftRowField(idx, field, target.value || '')) {
         return;
       }
-      state.draft.rows[idx][field] = String(target.value || '');
       queueAutosave(500);
     });
 
@@ -1073,42 +1192,112 @@
         state.draft = normalizeDraftState(state.draft);
         state.draft.publish_intro_to_nostr = !!target.checked;
         queueAutosave(500);
+        renderHead();
         return;
       }
-      if (!(target instanceof HTMLSelectElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
-
-      var extraFormatField = String(target.getAttribute('data-contact-outro-format') || '');
-      if (extraFormatField === 'after') {
-        state.draft = normalizeDraftState(state.draft);
-        state.draft.extras_after_format = normalizeExtraFormat(target.value || '');
-        renderContent();
-        queueAutosave(500);
-        return;
-      }
-
-      var field = String(target.getAttribute('data-contact-field') || '');
+      var field = String(target.getAttribute('data-contact-inline-field') || '').trim().toLowerCase();
       var idx = Number(target.getAttribute('data-row-index'));
-      if (!field || !Number.isInteger(idx) || idx < 0) {
+      if (!Number.isInteger(idx) || idx < 0 || (field !== 'transport' && field !== 'value' && field !== 'qualifier')) {
         return;
       }
-      state.draft.rows = normalizeRows(state.draft.rows || []);
-      if (!state.draft.rows[idx]) {
+      if (!syncDraftRowField(idx, field, target.value || '')) {
         return;
       }
-      state.draft.rows[idx][field] = String(target.value || '');
       queueAutosave(500);
+      if (field === 'qualifier') {
+        clearActiveRowField();
+        renderContent();
+      }
+    });
+
+    root.addEventListener('focusin', function (event) {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.hasAttribute('data-contact-inline-field')) {
+        var field = String(target.getAttribute('data-contact-inline-field') || '').trim().toLowerCase();
+        var idx = Number(target.getAttribute('data-row-index'));
+        if (Number.isInteger(idx) && idx >= 0 && (field === 'transport' || field === 'value' || field === 'qualifier')) {
+          setActiveRowField(idx, field);
+        }
+        return;
+      }
+      if (target.hasAttribute('data-contact-head-input')) {
+        state.activeHeadField = String(target.getAttribute('data-contact-head-input') || '').trim().toLowerCase();
+      }
+    });
+
+    root.addEventListener('focusout', function (event) {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var leavingInline = target.hasAttribute('data-contact-inline-field');
+      var leavingHead = target.hasAttribute('data-contact-head-input');
+      if (!leavingInline && !leavingHead) {
+        return;
+      }
+      window.setTimeout(function () {
+        var active = document.activeElement;
+        if (active instanceof HTMLElement && root.contains(active) && (active.hasAttribute('data-contact-inline-field') || active.hasAttribute('data-contact-head-input') || active.hasAttribute('data-page-nav-title-input'))) {
+          return;
+        }
+        if (leavingInline && state.activeRowIndex >= 0) {
+          clearActiveRowField();
+          renderContent();
+          return;
+        }
+        if (leavingHead && state.activeHeadField) {
+          state.activeHeadField = '';
+          renderHead();
+        }
+      }, 0);
     });
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !target.hasAttribute('data-page-nav-title-input')) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
-      if (event.key === 'Enter') {
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input') && event.key === 'Enter') {
         event.preventDefault();
         saveNavbarTitle();
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Enter') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderHead();
+        queueAutosave(250);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Escape') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderHead();
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-inline-field') && event.key === 'Enter') {
+        event.preventDefault();
+        clearActiveRowField();
+        renderContent();
+        queueAutosave(250);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-inline-field') && event.key === 'Escape') {
+        event.preventDefault();
+        clearActiveRowField();
+        renderContent();
       }
     });
   }
@@ -1138,6 +1327,9 @@
       state.navTitleEditing = false;
       state.navTitleInput = '';
       state.navTitleBusy = false;
+      state.activeHeadField = '';
+      state.activeRowIndex = -1;
+      state.activeRowField = '';
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       writeBootstrapCache(payload);

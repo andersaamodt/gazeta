@@ -1925,6 +1925,10 @@ header h1 {
   margin-bottom: 0.55rem;
 }
 
+.contact-inline-toolbar-spacer {
+  min-height: 1px;
+}
+
 .contact-inline-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(180px, max-content));
@@ -2023,6 +2027,11 @@ header h1 {
   content: ":";
 }
 
+.contact-platform-cell .contact-inline-open,
+.contact-platform-cell .contact-inline-input {
+  margin-right: 0.1rem;
+}
+
 .contact-value-cell {
   padding: 0.56rem 0.78rem;
   vertical-align: top;
@@ -2033,10 +2042,70 @@ header h1 {
 }
 
 .contact-value-main {
-  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
   line-height: 1.5;
+}
+
+.contact-inline-open {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  line-height: 1.45;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.contact-platform-open,
+.contact-value-open {
+  width: 100%;
+}
+
+.contact-inline-open-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.contact-inline-open:hover .contact-inline-open-value,
+.contact-inline-open:focus-visible .contact-inline-open-value {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.contact-inline-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 2rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.contact-inline-select {
+  width: fit-content;
+  min-width: 8.2rem;
+  max-width: 100%;
+  height: 2rem;
+}
+
+.contact-qualifier-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: 0.3rem;
+  min-width: 8.2rem;
+}
+
+.contact-row-delete {
+  width: 1.6rem;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .contact-value-link {
@@ -2069,6 +2138,12 @@ header h1 {
   line-height: 1.2;
   padding: 0.17rem 0.5rem;
   white-space: nowrap;
+}
+
+.contact-qualifier-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .contact-qualifier-pill[data-qualifier="preferred"],
@@ -2113,6 +2188,10 @@ header h1 {
     padding: 0.5rem 0.62rem;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem;
+  }
+
+  .contact-qualifier-wrap {
+    justify-self: start;
   }
 
   .contact-qualifier-pill {
