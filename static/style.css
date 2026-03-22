@@ -3328,6 +3328,12 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Ordinary text links should not get hover background fills. */
+a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.nav-menu-item):not(.nav-link-button):hover,
+a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.nav-menu-item):not(.nav-link-button):focus-visible {
+  background: transparent !important;
+}
+
 /* Post Listing */
 .post-list {
   list-style: none;
