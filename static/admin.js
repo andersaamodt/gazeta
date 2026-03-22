@@ -5966,23 +5966,30 @@
       if (!(row instanceof HTMLElement)) {
         return;
       }
-      row.style.display = 'grid';
-      row.style.gridTemplateColumns = labelColumn + ' minmax(0, 1fr)';
+      row.style.display = 'flex';
       row.style.alignItems = 'center';
-      row.style.columnGap = '0.72rem';
-      row.style.rowGap = '0.04rem';
+      row.style.flexWrap = 'nowrap';
+      row.style.gap = '0.72rem';
+      row.style.gridTemplateColumns = '';
+      row.style.columnGap = '';
+      row.style.rowGap = '';
 
       const label = row.querySelector('label');
       if (label instanceof HTMLElement) {
+        label.style.flex = '0 0 ' + labelColumn;
+        label.style.width = labelColumn;
+        label.style.maxWidth = labelColumn;
         label.style.marginBottom = '0';
         label.style.display = 'inline-flex';
         label.style.alignItems = 'center';
-        label.style.gridColumn = '1';
+        label.style.gridColumn = '';
       }
 
-      control.style.gridColumn = '2';
-      control.style.justifySelf = 'start';
+      control.style.flex = '0 0 auto';
+      control.style.gridColumn = '';
+      control.style.justifySelf = '';
       control.style.alignSelf = 'center';
+      control.style.margin = '0';
     });
   }
 
