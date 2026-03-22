@@ -1963,7 +1963,7 @@
     const stonerRunning = !!info.stoner_running;
     const relayConnected = !!info.relay_connected;
     if (els.nosterToggleButton) {
-      els.nosterToggleButton.textContent = stonerRunning ? 'Stop Stoner' : 'Start Stoner';
+      els.nosterToggleButton.textContent = stonerRunning ? 'Stop Stonr' : 'Start Stonr';
       els.nosterToggleButton.disabled = !stonerInstalled;
     }
     if (els.nosterInstallButton) {
@@ -1971,11 +1971,11 @@
     }
 
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Stoner</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div></div>';
     html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonerRunning ? 'is-ok' : 'is-warn') + '">' + (stonerRunning ? 'Online' : 'Stopped') + '</div></div>';
     html += '<div class="zaps-runtime-card"><strong>Relay</strong><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
     if (info.stoner_path) {
-      html += '<div class="zaps-runtime-card"><strong>Stoner Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.stoner_path)) + '</div></div>';
+      html += '<div class="zaps-runtime-card"><strong>Stonr Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.stoner_path)) + '</div></div>';
     }
     if (info.pid) {
       html += '<div class="zaps-runtime-card"><strong>PID</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.pid)) + '</div></div>';
@@ -1996,7 +1996,7 @@
     try {
       const data = await apiPost('/cgi/blog-manage-noster', { action: 'status' }, true);
       if (!data.success) {
-        throw new Error(data.error || 'Failed to load Noster runtime');
+        throw new Error(data.error || 'Failed to load Nostr runtime');
       }
       renderNosterRuntime(data.runtime || {}, '', data.message || '');
       if (els.outputNostrBridge) {
@@ -2024,11 +2024,11 @@
     }
     let message = '';
     if (picked === 'install') {
-      message = 'Install Stoner on this server now?';
+      message = 'Install Stonr on this server now?';
     } else if (picked === 'start') {
-      message = 'Start Stoner now?';
+      message = 'Start Stonr now?';
     } else if (picked === 'stop') {
-      message = 'Stop Stoner now?';
+      message = 'Stop Stonr now?';
     }
     if (message && !window.confirm(message)) {
       return;
@@ -2038,11 +2038,11 @@
     try {
       const data = await apiPost('/cgi/blog-manage-noster', { action: picked }, true);
       if (!data.success) {
-        renderNosterRuntime(data.runtime || {}, data.log || '', 'Noster action failed.');
-        throw new Error(data.error || 'Noster action failed');
+        renderNosterRuntime(data.runtime || {}, data.log || '', 'Nostr action failed.');
+        throw new Error(data.error || 'Nostr action failed');
       }
       renderNosterRuntime(data.runtime || {}, data.log || '', data.message || '');
-      setOutput(els.outputNostrBridge, data.message || 'Noster updated.', 'ok');
+      setOutput(els.outputNostrBridge, data.message || 'Nostr updated.', 'ok');
     } catch (err) {
       setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
     } finally {

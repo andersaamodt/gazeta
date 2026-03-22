@@ -18,7 +18,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Noster <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Offline</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Offline</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Zaps</span></button>
 </div>
 </aside>
@@ -118,8 +118,8 @@ title: ""
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
-<h3>Noster</h3>
-<p class="muted">Install and control Stoner on this server.</p>
+<h3>Nostr</h3>
+<p class="muted">Install and control Stonr on this server.</p>
 </div>
 <div class="row-actions">
 <button id="btn-noster-refresh" type="button">Refresh status</button>
@@ -129,14 +129,14 @@ title: ""
 <div class="settings-stack">
 <section class="sub-card">
 <div class="zaps-runtime-head">
-<h4>Stoner</h4>
+<h4>Stonr</h4>
 <div class="zaps-install-actions">
-<button id="btn-noster-install" type="button">Install Stoner</button>
-<button id="btn-noster-toggle" type="button">Start Stoner</button>
+<button id="btn-noster-install" type="button">Install Stonr</button>
+<button id="btn-noster-toggle" type="button">Start Stonr</button>
 </div>
 </div>
 <div id="noster-runtime" class="zaps-runtime-grid">
-<div class="placeholder">Loading Noster runtime...</div>
+<div class="placeholder">Loading Nostr runtime...</div>
 </div>
 </section>
 </div>

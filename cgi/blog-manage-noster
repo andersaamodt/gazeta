@@ -1,5 +1,5 @@
 #!/bin/sh
-# Manage Noster runtime and Stoner install/start/stop actions.
+# Manage Nostr runtime and Stonr install/start/stop actions.
 
 set -eu
 
@@ -190,7 +190,7 @@ install_stoner() {
     return 0
   fi
 
-  printf 'No supported Stoner installer was found.\n' >> "$action_log"
+  printf 'No supported Stonr installer was found.\n' >> "$action_log"
   return 1
 }
 
@@ -200,7 +200,7 @@ start_stoner() {
     return 0
   fi
   if ! stoner_installed; then
-    printf 'Stoner is not installed.\n' >> "$action_log"
+    printf 'Stonr is not installed.\n' >> "$action_log"
     return 1
   fi
 
@@ -294,7 +294,7 @@ stop_stoner() {
     [ "$status" -eq 0 ] && return 0
   fi
 
-  printf 'Stoner was not running.\n' >> "$action_log"
+  printf 'Stonr was not running.\n' >> "$action_log"
   return 0
 }
 
@@ -307,7 +307,7 @@ case "$action" in
 esac
 
 if [ "$action" = "status" ]; then
-  emit_success "Noster runtime loaded."
+  emit_success "Nostr runtime loaded."
   exit 0
 fi
 
@@ -319,22 +319,22 @@ case "$action" in
   install)
     install_stoner "$action_log"
     action_status=$?
-    action_message='Stoner install completed.'
-    action_error='Stoner install failed.'
+    action_message='Stonr install completed.'
+    action_error='Stonr install failed.'
     action_code='stoner_install_failed'
     ;;
   start)
     start_stoner "$action_log"
     action_status=$?
-    action_message='Stoner started.'
-    action_error='Could not start Stoner.'
+    action_message='Stonr started.'
+    action_error='Could not start Stonr.'
     action_code='stoner_start_failed'
     ;;
   stop)
     stop_stoner "$action_log"
     action_status=$?
-    action_message='Stoner stopped.'
-    action_error='Could not stop Stoner.'
+    action_message='Stonr stopped.'
+    action_error='Could not stop Stonr.'
     action_code='stoner_stop_failed'
     ;;
 esac
