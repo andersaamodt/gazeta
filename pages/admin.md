@@ -771,6 +771,10 @@ body {
   transform: translateX(0);
 }
 
+#admin-panel.sidebar-collapsed .admin-content {
+  --admin-content-pad-left: 2.45rem;
+}
+
 .admin-nav-item {
   display: flex;
   align-items: center;
@@ -5073,7 +5077,7 @@ body {
 
   #admin-panel.sidebar-collapsed .admin-sidebar-reveal {
     top: 0.22rem;
-    left: 0.22rem;
+    left: 0.08rem;
   }
 
   #admin-panel:not(.sidebar-collapsed) .admin-sidebar-reveal {

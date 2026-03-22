@@ -513,6 +513,7 @@ assert_file_missing "$build_marker" 'navbar listing skips build queue when mount
 
 # 13) UI invariant for Nostr nav icon gutter alignment rule.
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel.sidebar-collapsed .admin-content {' 'collapsed admin keeps a left gutter for reveal icon'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
