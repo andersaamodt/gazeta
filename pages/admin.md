@@ -459,7 +459,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Moderation</h3>
-<p class="muted">Pending ranking submissions across all Public Ranking pages.</p>
+<p class="muted">Moderate user-submitted content shown on this site. Nostr content remains globally available, but you control what this website and this relay choose to host and display.</p>
 </div>
 <div class="row-actions moderation-filters">
 <div class="moderation-age-group" role="group" aria-label="Moderation age filter">
