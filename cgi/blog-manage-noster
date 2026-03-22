@@ -26,6 +26,8 @@ stonr_pid_file="$noster_state_dir/stonr.pid"
 stonr_log_file="$noster_state_dir/stonr.log"
 stonr_config_file="$noster_state_dir/stonr-config.json"
 legacy_pid_file="$noster_state_dir/stoner.pid"
+stonr_control_pref_dir="${XDG_CONFIG_HOME:-$home_dir/.config}/stonr-control"
+stonr_control_prefs_file="$stonr_control_pref_dir/ui-prefs.env"
 
 mkdir -p "$noster_state_dir"
 
@@ -42,6 +44,40 @@ bool_or_default() {
       esac
       ;;
   esac
+}
+
+stonr_control_pref_get() {
+  key=${1-}
+  [ -n "$key" ] || return 1
+  [ -f "$stonr_control_prefs_file" ] || return 1
+  awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); found = 1 } END { exit found ? 0 : 1 }' "$stonr_control_prefs_file"
+}
+
+stonr_control_pref_set() {
+  key=${1-}
+  value=${2-}
+  [ -n "$key" ] || return 1
+  mkdir -p "$stonr_control_pref_dir"
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/stonr-control-pref.XXXXXX")
+  if [ -f "$stonr_control_prefs_file" ]; then
+    awk -v key="$key" -v value="$value" '
+      BEGIN { done = 0 }
+      $0 ~ ("^" key "=") {
+        print key "=" value
+        done = 1
+        next
+      }
+      { print }
+      END {
+        if (!done) {
+          print key "=" value
+        }
+      }
+    ' "$stonr_control_prefs_file" > "$tmp_file"
+  else
+    printf '%s=%s\n' "$key" "$value" > "$tmp_file"
+  fi
+  mv "$tmp_file" "$stonr_control_prefs_file"
 }
 
 setting_bool() {
@@ -64,6 +100,11 @@ setting_mirror_comments() {
 }
 
 setting_auto_start() {
+  relay_auto_start=$(stonr_control_pref_get relay_auto_start 2>/dev/null || printf '')
+  if [ -n "$relay_auto_start" ]; then
+    bool_or_default "$relay_auto_start" false
+    return 0
+  fi
   setting_bool nostr_stonr_auto_start false
 }
 
@@ -305,6 +346,7 @@ save_settings_from_request() {
   config-set "$blog_site_conf" nostr_stonr_mirror_posts "$mirror_posts"
   config-set "$blog_site_conf" nostr_stonr_mirror_comments "$mirror_comments"
   config-set "$blog_site_conf" nostr_stonr_auto_start "$auto_start"
+  stonr_control_pref_set relay_auto_start "$( [ "$auto_start" = "true" ] && printf '1' || printf '0' )"
 
   if [ "$mirror_posts" = "true" ] || [ "$mirror_comments" = "true" ]; then
     config-set "$blog_site_conf" nostr_bridge_enabled true
