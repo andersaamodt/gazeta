@@ -1929,7 +1929,15 @@ header h1 {
 }
 
 .public-ranking-submit-more-compact {
+  order: 1;
+  flex: 0 0 auto;
   margin-top: 0;
+}
+
+.public-ranking-submit-more-compact[open] {
+  order: 2;
+  flex: 1 1 100%;
+  width: 100%;
 }
 
 .public-ranking-submit-more > summary {
