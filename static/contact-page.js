@@ -746,6 +746,10 @@
           return 'https://signal.me/#p/' + signalPhone;
         }
       }
+      if (/^@?[a-z0-9_]{3,32}\.[0-9]{2,}$/i.test(raw)) {
+        var signalUsername = raw.replace(/^@/, '');
+        return 'https://signal.me/#eu/' + signalUsername;
+      }
     }
     if (transportKey === 'tumblr') {
       if (/^[a-z0-9-]+\.tumblr\.com$/i.test(raw)) {
