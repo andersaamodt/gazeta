@@ -2,7 +2,7 @@
 title: Blog
 ---
 
-<section id="blog-page-root" class="blog-page" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
+<section id="blog-page-root" class="blog-page" data-page-slug="index" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
 <div class="blog-layout">
 <div class="blog-filter-column">
 <button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">

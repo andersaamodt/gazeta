@@ -46,9 +46,7 @@
   };
 
   setTimeout(function () {
-    if (!hasDynamicPageRoot() || pageReady) {
-      reveal();
-    }
+    reveal();
   }, 6000);
 })();
 </script>

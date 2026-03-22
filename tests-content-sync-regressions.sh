@@ -58,6 +58,17 @@ assert_file_contains() {
   fi
 }
 
+assert_file_not_contains() {
+  file=$1
+  needle=$2
+  label=$3
+  if grep -Fq "$needle" "$file"; then
+    fail "$label (unexpected: $needle in $file)"
+  else
+    pass
+  fi
+}
+
 assert_file_missing() {
   file=$1
   label=$2
@@ -403,6 +414,7 @@ assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="marker"' '
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'oeuvre inline dragstart ignores form controls so text selection works'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" "var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';" 'new list entries default marker only on oeuvre page'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
+assert_file_contains "$ROOT_DIR/pages/index.md" 'data-page-slug="index"' 'index shell includes explicit source slug marker for sync'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
@@ -414,6 +426,7 @@ assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'con
 assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" "cache: 'no-store'" 'oeuvre has no-store directives'
+assert_file_not_contains "$ROOT_DIR/includes/nav.md" 'if (!hasDynamicPageRoot() || pageReady)' 'hydration timeout fallback always unlocks the page'
 
 # 10) Ensure scripts are syntactically valid after changes.
 assert_success sh -n "$ROOT_DIR/cgi/blog-lib.sh"
