@@ -295,6 +295,7 @@
     });
     var response = await fetch(path, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: params.toString()
     });

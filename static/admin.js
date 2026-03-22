@@ -983,7 +983,7 @@
   }
 
   async function fetchJson(url, options) {
-    const request = options || {};
+    const request = Object.assign({ cache: 'no-store' }, options || {});
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const res = await fetch(url, request);
       const text = await res.text();

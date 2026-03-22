@@ -791,6 +791,9 @@ blog_param() {
 blog_send_json_headers() {
   http-status 200 "OK"
   http-header "Content-Type" "application/json"
+  http-header "Cache-Control" "no-store, no-cache, must-revalidate, max-age=0"
+  http-header "Pragma" "no-cache"
+  http-header "Expires" "0"
   http-end-headers
 }
 

@@ -291,6 +291,7 @@
     });
     fetch('/cgi/blog-get-nostr-page', {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     })
@@ -770,7 +771,8 @@
   }
 
   function fetchJson(url, options) {
-    return fetch(url, options)
+    var request = Object.assign({ cache: 'no-store' }, options || {});
+    return fetch(url, request)
       .then(function (res) {
         return res.text().then(function (text) {
           return parseJsonResponse(text);
@@ -1162,7 +1164,7 @@
       return Promise.resolve(false);
     }
 
-    return fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token))
+    return fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token), { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data || !data.authenticated) {
@@ -1313,6 +1315,7 @@
 
     return fetch('/cgi/ssh-auth-logout', {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     }).catch(function () {
@@ -1964,7 +1967,7 @@
       // Ignore invalid cache.
     }
 
-    return fetch('/cgi/blog-list-navbar-pages')
+    return fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data || !data.success || !Array.isArray(data.pages)) {
@@ -2244,7 +2247,7 @@
   }
 
   function loadTheme() {
-    return fetch('/cgi/blog-get-config')
+    return fetch('/cgi/blog-get-config', { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (data && data.site_title) {

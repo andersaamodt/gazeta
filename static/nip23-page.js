@@ -278,6 +278,7 @@
     var body = new URLSearchParams(payload || {});
     return fetch(url, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     }).then(function (res) { return res.text(); }).then(function (text) {

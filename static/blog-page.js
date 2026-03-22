@@ -156,6 +156,7 @@
     var body = new URLSearchParams(payload || {});
     return fetch(url, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     }).then(function (res) {
@@ -539,7 +540,7 @@
   }
 
   function loadPosts() {
-    return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin' })
+    return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data || !data.success || !Array.isArray(data.posts)) {
