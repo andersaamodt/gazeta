@@ -8,6 +8,10 @@
 <meta name="twitter:card" content="summary_large_image" />
 <script>
 (function () {
+  if (document.documentElement) {
+    document.documentElement.classList.add('app-hydrating');
+  }
+
   var canonical = document.createElement('link');
   canonical.rel = 'canonical';
   canonical.href = window.location.origin + window.location.pathname;
