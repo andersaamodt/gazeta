@@ -101,6 +101,10 @@ stonr_bin_path() {
 
   local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
   for candidate in \
+    "/Applications/Stonr.app/Contents/MacOS/stonr" \
+    "/Applications/Stonr & Relay.app/Contents/MacOS/stonr" \
+    "$home_dir/Applications/Stonr.app/Contents/MacOS/stonr" \
+    "$home_dir/Applications/Stonr & Relay.app/Contents/MacOS/stonr" \
     "$home_dir/.local/bin/stonr" \
     "$local_root/stonr" \
     "$local_root/bin/stonr" \
@@ -380,19 +384,130 @@ install_stonr_from_local_copy() {
   return 1
 }
 
+is_macos() {
+  [ "$(uname -s 2>/dev/null || printf '')" = "Darwin" ]
+}
+
+macos_stonr_app_target() {
+  if ! is_macos; then
+    return 1
+  fi
+  if [ -d "/Applications" ] && [ -w "/Applications" ]; then
+    printf '/Applications/Stonr.app\n'
+    return 0
+  fi
+  if [ -n "$home_dir" ]; then
+    mkdir -p "$home_dir/Applications"
+    printf '%s\n' "$home_dir/Applications/Stonr.app"
+    return 0
+  fi
+  return 1
+}
+
+install_macos_stonr_app() {
+  action_log=$1
+  app_target=$(macos_stonr_app_target 2>/dev/null || printf '')
+  if [ -z "$app_target" ]; then
+    printf 'macOS app install target unavailable.\n' >> "$action_log"
+    return 1
+  fi
+
+  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
+  app_source=''
+  for candidate in \
+    "$local_root/dist/Stonr.app" \
+    "$local_root/dist/Stonr & Relay.app" \
+    "$local_root/target/release/bundle/macos/Stonr.app" \
+    "$local_root/target/release/bundle/macos/Stonr & Relay.app"; do
+    if [ -d "$candidate/Contents/MacOS" ]; then
+      app_source=$candidate
+      break
+    fi
+  done
+
+  rm -rf "$app_target"
+  if [ -n "$app_source" ]; then
+    cp -R "$app_source" "$app_target"
+    printf 'Installed Stonr app bundle: %s -> %s\n' "$app_source" "$app_target" >> "$action_log"
+  else
+    bin=$(stonr_bin_path)
+    if [ -z "$bin" ] || [ ! -x "$bin" ]; then
+      printf 'Cannot create Stonr.app because no stonr binary is available.\n' >> "$action_log"
+      return 1
+    fi
+    mkdir -p "$app_target/Contents/MacOS" "$app_target/Contents/Resources"
+    cat > "$app_target/Contents/MacOS/stonr" <<'SH'
+#!/bin/sh
+set -eu
+exec "${STONR_BIN:-stonr}" "$@"
+SH
+    chmod +x "$app_target/Contents/MacOS/stonr"
+    cat > "$app_target/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>stonr</string>
+  <key>CFBundleIdentifier</key>
+  <string>dev.stonr.relay</string>
+  <key>CFBundleName</key>
+  <string>Stonr</string>
+  <key>CFBundleDisplayName</key>
+  <string>Stonr</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+</dict>
+</plist>
+PLIST
+    printf 'Created Stonr app bundle at %s using existing stonr binary.\n' "$app_target" >> "$action_log"
+  fi
+
+  if [ -n "$home_dir" ] && [ -x "$app_target/Contents/MacOS/stonr" ]; then
+    mkdir -p "$home_dir/.local/bin"
+    ln -sf "$app_target/Contents/MacOS/stonr" "$home_dir/.local/bin/stonr"
+    chmod +x "$home_dir/.local/bin/stonr" 2>/dev/null || true
+    printf 'Linked ~/.local/bin/stonr -> %s\n' "$app_target/Contents/MacOS/stonr" >> "$action_log"
+  fi
+  printf 'Stonr macOS app install location: %s\n' "$app_target" >> "$action_log"
+  [ -d "$app_target" ]
+}
+
+finalize_stonr_install() {
+  action_log=$1
+  if ! stonr_installed; then
+    return 1
+  fi
+  if is_macos; then
+    install_macos_stonr_app "$action_log" || return 1
+  fi
+  return 0
+}
+
 install_stonr() {
   action_log=$1
   if stonr_installed; then
-    return 0
+    finalize_stonr_install "$action_log"
+    return $?
   fi
 
   if web_wizardry_has_cmd install-stonr; then
-    web_wizardry_run_cmd install-stonr "$action_log"
-    return $?
+    if web_wizardry_run_cmd install-stonr "$action_log"; then
+      finalize_stonr_install "$action_log"
+      return $?
+    fi
+    return 1
   fi
   if web_wizardry_has_cmd install-stoner; then
-    web_wizardry_run_cmd install-stoner "$action_log"
-    return $?
+    if web_wizardry_run_cmd install-stoner "$action_log"; then
+      finalize_stonr_install "$action_log"
+      return $?
+    fi
+    return 1
   fi
 
   for spell in \
@@ -401,13 +516,17 @@ install_stonr() {
     "$wizardry_dir/spells/.arcana/stonr/install-stonr" \
     "$wizardry_dir/spells/.arcana/stoner/install-stoner"; do
     if [ -x "$spell" ]; then
-      run_wizardry_spell "$spell" "$action_log"
-      return $?
+      if run_wizardry_spell "$spell" "$action_log"; then
+        finalize_stonr_install "$action_log"
+        return $?
+      fi
+      return 1
     fi
   done
 
   if install_stonr_from_local_copy "$action_log"; then
-    return 0
+    finalize_stonr_install "$action_log"
+    return $?
   fi
 
   if command -v brew >/dev/null 2>&1; then
@@ -416,7 +535,8 @@ install_stonr() {
     status=$?
     set -e
     if [ "$status" -eq 0 ]; then
-      return 0
+      finalize_stonr_install "$action_log"
+      return $?
     fi
 
     set +e
@@ -424,7 +544,8 @@ install_stonr() {
     status=$?
     set -e
     if [ "$status" -eq 0 ]; then
-      return 0
+      finalize_stonr_install "$action_log"
+      return $?
     fi
   fi
 
