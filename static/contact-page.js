@@ -1083,7 +1083,7 @@
       html += '<thead><tr class="contact-profile-head-row">';
       html += '<th class="contact-profile-head-cell contact-profile-head-cell-handle" scope="col"></th>';
       html += '<th class="contact-profile-head-cell contact-profile-head-cell-platform" scope="col">Protocol</th>';
-      html += '<th class="contact-profile-head-cell contact-profile-head-cell-value" scope="col"><span class="contact-profile-head-grid"><span>Contact</span><span>Qualifier</span><button type="button" class="unobtrusive-icon-button contact-head-add-row" data-contact-action="add-row" title="Add profile row" aria-label="Add profile row">+</button></span></th>';
+      html += '<th class="contact-profile-head-cell contact-profile-head-cell-value" scope="col"><span class="contact-profile-head-grid"><span class="contact-profile-head-contact">Contact</span><span class="contact-profile-head-qualifier">Qualifier</span><button type="button" class="unobtrusive-icon-button contact-head-add-row" data-contact-action="add-row" title="Add profile row" aria-label="Add profile row">+</button></span></th>';
       html += '</tr></thead>';
     }
     html += '<tbody>';
