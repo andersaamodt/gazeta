@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('list-page-root') || document.getElementById('oeuvre-root');
+  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('oeuvre-root');
   if (!root) {
     return;
   }
@@ -1468,6 +1468,10 @@
     var inlineMode = isAdmin() && state.editMode;
     if (root && root.classList) {
       root.classList.toggle('is-editing', inlineMode);
+    }
+    if (document.body && document.body.classList) {
+      document.body.classList.add('list-page-width-anim');
+      document.body.classList.toggle('list-page-wide', inlineMode);
     }
 
     if (!elements.length) {
