@@ -60,7 +60,7 @@
 </svg>
 </a>
 </div>
-<span id="nav-user-name" class="nav-username" style="display:none;"></span>
+<a id="nav-user-name" class="nav-username" href="/pages/admin.html#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋯</button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
@@ -102,6 +102,7 @@
     if (userName) {
       userName.style.display = 'none';
       userName.textContent = '';
+      userName.setAttribute('href', '/pages/admin.html#account');
     }
 
     if (hasToken) {
@@ -114,9 +115,8 @@
       if (userName) {
         userName.style.display = 'inline-block';
         userName.textContent = cachedPlayerName || 'signed-in';
-        userName.setAttribute('role', 'link');
-        userName.setAttribute('tabindex', '0');
         userName.setAttribute('aria-label', 'Open account settings');
+        userName.setAttribute('href', '/pages/admin.html#account');
       }
     } else if (loginSplit) {
       loginSplit.style.display = 'inline-flex';

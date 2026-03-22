@@ -1061,9 +1061,8 @@
     if (els.userName) {
       els.userName.style.display = 'none';
       els.userName.textContent = '';
-      els.userName.removeAttribute('role');
-      els.userName.removeAttribute('tabindex');
       els.userName.removeAttribute('aria-label');
+      els.userName.setAttribute('href', '/pages/admin.html#account');
       els.userName.classList.remove('active');
       els.userName.removeAttribute('aria-current');
     }
@@ -1089,9 +1088,8 @@
       if (els.userName) {
         els.userName.style.display = 'inline-block';
         els.userName.textContent = displayName || 'signed-in';
-        els.userName.setAttribute('role', 'link');
-        els.userName.setAttribute('tabindex', '0');
         els.userName.setAttribute('aria-label', 'Open account settings');
+        els.userName.setAttribute('href', '/pages/admin.html#account');
         updateUserNameActiveState();
       }
       return;
@@ -1814,10 +1812,6 @@
     return Promise.reject(new Error('Fresh signer approval is required. Use Login or the phone signer flow first.'));
   }
 
-  function goToAccountSettings() {
-    window.location.href = '/pages/admin.html#account';
-  }
-
   function isAccountAreaPath() {
     var path = String(window.location.pathname || '').replace(/\/+$/, '') || '/';
     return path === '/pages/admin.html' ||
@@ -2378,26 +2372,6 @@
           setAuthMessage(err.message || 'Log out other sessions failed.', 'error');
           showAuthModal('register');
         });
-      });
-    }
-
-    if (els.userName) {
-      els.userName.addEventListener('click', function () {
-        if (state.isAuthenticated) {
-          closeUserMenu();
-          goToAccountSettings();
-        }
-      });
-
-      els.userName.addEventListener('keydown', function (event) {
-        if (!state.isAuthenticated) {
-          return;
-        }
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          closeUserMenu();
-          goToAccountSettings();
-        }
       });
     }
 
