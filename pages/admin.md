@@ -2138,6 +2138,10 @@ body {
   margin-bottom: 0.92rem;
 }
 
+#admin-panel .row-head .muted {
+  white-space: nowrap;
+}
+
 .composer-head-actions {
   display: inline-flex;
   align-items: center;
@@ -4240,10 +4244,6 @@ body {
 
   .preview-box {
     max-height: 460px;
-  }
-
-  [data-admin-section="nostr-pages"] .row-head .muted {
-    white-space: normal;
   }
 
   .nostr-pages-header-type,
