@@ -39,6 +39,7 @@
     dripQueueAhead: 0,
     dripQueueEtaMinutes: 0,
     dripQueueInfoReady: false,
+    dripQueueItemCount: 0,
     nextDripTitle: '',
     nextDripExcerpt: '',
     configSaveTimer: null,
@@ -132,6 +133,7 @@
     queueLocalDripStatus: document.getElementById('queue-local-drip-status'),
     queueLocalDripStatusText: document.getElementById('queue-local-drip-status-text'),
     localDripToggleButton: document.getElementById('btn-local-drip-toggle'),
+    runSchedulerButton: document.getElementById('btn-run-scheduler'),
     postsList: document.getElementById('posts-list'),
     filesList: document.getElementById('files-list'),
     filesDropzone: document.getElementById('files-dropzone'),
@@ -536,6 +538,16 @@
         ? 'Local drip running. Keep this tab open.'
         : 'Queue active. Keep one admin tab open for local drip.');
     }
+  }
+
+  function syncRunSchedulerButtonUi() {
+    if (!els.runSchedulerButton) {
+      return;
+    }
+    const hasDripItems = Number(state.dripQueueItemCount || 0) > 0;
+    els.runSchedulerButton.disabled = !hasDripItems;
+    els.runSchedulerButton.setAttribute('aria-disabled', hasDripItems ? 'false' : 'true');
+    els.runSchedulerButton.title = hasDripItems ? 'Run drip now' : 'No drip queue items yet';
   }
 
   function syncLocalDripToggleUi() {
@@ -2624,6 +2636,8 @@
     const dripQueue = queue.filter(function (item) {
       return item && item.publish_mode === 'drip' && item.status === 'queued';
     });
+    state.dripQueueItemCount = dripQueue.length;
+    syncRunSchedulerButtonUi();
     state.nextDripTitle = dripQueue.length ? String(dripQueue[0].title || 'Untitled') : '';
     state.nextDripExcerpt = dripQueue.length ? String(dripQueue[0].content_excerpt || '').trim() : '';
     let ahead = dripQueue.length;
@@ -4332,6 +4346,11 @@
   }
 
   async function runSchedulerNow() {
+    if (Number(state.dripQueueItemCount || 0) <= 0) {
+      syncRunSchedulerButtonUi();
+      setOutput(els.outputQueue, 'No content in drip queue yet.', 'warn');
+      return;
+    }
     const nextTitle = String(state.nextDripTitle || '').trim();
     const nextExcerpt = String(state.nextDripExcerpt || '').trim();
     const prompt = nextTitle
@@ -5431,7 +5450,10 @@
       });
       syncLocalDripToggleUi();
     }
-    document.getElementById('btn-run-scheduler').addEventListener('click', runSchedulerNow);
+    if (els.runSchedulerButton) {
+      els.runSchedulerButton.addEventListener('click', runSchedulerNow);
+      syncRunSchedulerButtonUi();
+    }
     if (els.mirrorNostrButton) {
       els.mirrorNostrButton.addEventListener('click', runNostrMirror);
     }
