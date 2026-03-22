@@ -54,7 +54,7 @@
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
   --nav-pill-radius: 8px;
-  --nav-signature-color: color-mix(in srgb, var(--text) 44%, var(--bg) 56%);
+  --nav-signature-color: color-mix(in srgb, var(--text) 52%, var(--bg) 48%);
   --nav-icon-hover: var(--nav-icon);
   --nav-bg: var(--bg);
   --nav-border: var(--border);
@@ -249,11 +249,13 @@ header h1 {
 .nav-site-signature {
   flex: 0 0 auto;
   color: var(--nav-signature-color);
-  font-size: 0.86rem;
-  font-weight: 500;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+  font-size: 0.97rem;
+  font-weight: 400;
+  line-height: 1.1;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  margin-right: 0.5rem;
+  margin-right: 0.35rem;
   user-select: none;
   pointer-events: none;
 }
@@ -4712,7 +4714,7 @@ nav.site-nav {
   margin-right: calc(50% - 50vw);
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.9rem;
   padding: 0.22rem 1rem;
