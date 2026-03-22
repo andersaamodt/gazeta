@@ -40,11 +40,11 @@ title: ""
 
 <div class="settings-stack">
 <section class="sub-card">
-<div class="field-row settings-inline-control-row">
+<div id="settings-row-site-title" class="field-row settings-inline-control-row">
 <label for="site-title" title="Public title shown in your blog header and feeds."><strong title="Public title shown in your blog header and feeds.">Site Title</strong></label>
 <input type="text" id="site-title" placeholder="My Blog" title="Public title shown in your blog header and feeds.">
 </div>
-<div class="field-row settings-inline-control-row">
+<div id="settings-row-theme" class="field-row settings-inline-control-row">
 <label for="admin-theme" title="Visual theme for your public site and admin interface accents."><strong title="Visual theme for your public site and admin interface accents.">Theme</strong></label>
 <select id="admin-theme" title="Visual theme for your public site and admin interface accents.">
 <option value="adept">Adept</option>
@@ -111,7 +111,7 @@ title: ""
 <span title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">Enabled</span>
 </label>
 </div>
-<div class="field-row settings-inline-control-row">
+<div id="settings-row-feed-items" class="field-row settings-inline-control-row">
 <label for="feed-items" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100."><strong title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">Feed Item Count (min 1; typical 20-100)</strong></label>
 <input type="number" id="feed-items" min="1" step="1" value="50" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">
 </div>
@@ -4785,6 +4785,43 @@ body {
   background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
   box-shadow: none !important;
+}
+
+/* Site settings: keep these controls on the same row as their labels, right column. */
+#admin-panel [data-admin-section="settings"] #settings-row-site-title,
+#admin-panel [data-admin-section="settings"] #settings-row-theme,
+#admin-panel [data-admin-section="settings"] #settings-row-feed-items {
+  display: grid !important;
+  grid-template-columns: 13.5rem minmax(0, 1fr) !important;
+  align-items: center !important;
+  column-gap: 0.72rem !important;
+  row-gap: 0 !important;
+}
+
+#admin-panel [data-admin-section="settings"] #settings-row-site-title > label,
+#admin-panel [data-admin-section="settings"] #settings-row-theme > label,
+#admin-panel [data-admin-section="settings"] #settings-row-feed-items > label {
+  grid-column: 1 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+#admin-panel [data-admin-section="settings"] #site-title,
+#admin-panel [data-admin-section="settings"] #admin-theme,
+#admin-panel [data-admin-section="settings"] #feed-items {
+  grid-column: 2 !important;
+  justify-self: start !important;
+  align-self: center !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 520px) {
+  #admin-panel [data-admin-section="settings"] #settings-row-site-title,
+  #admin-panel [data-admin-section="settings"] #settings-row-theme,
+  #admin-panel [data-admin-section="settings"] #settings-row-feed-items {
+    grid-template-columns: 9.5rem minmax(0, 1fr) !important;
+  }
 }
 
 #admin-panel button.post-menu-trigger:hover,
