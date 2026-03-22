@@ -711,6 +711,8 @@ body {
 }
 
 .admin-nav-title {
+  display: block;
+  width: 100%;
   margin: 0;
   padding: 0;
   border: 0;
@@ -4220,10 +4222,13 @@ body {
 .admin-nav-title-row {
   background: var(--admin-surface-alt, var(--post-card-bg)) !important;
   border-color: var(--admin-border, var(--border)) !important;
+  justify-content: center !important;
 }
 
 .admin-nav-title {
   color: var(--admin-text, var(--text)) !important;
+  text-align: center !important;
+  width: 100%;
 }
 
 #admin-panel .admin-sidebar-toggle,
