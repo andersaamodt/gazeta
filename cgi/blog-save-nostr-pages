@@ -13,7 +13,7 @@ blog_init
 blog_read_request_body
 blog_send_json_headers
 
-if ! blog_require_session true true; then
+if ! blog_require_session true; then
   exit 0
 fi
 
