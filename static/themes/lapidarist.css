@@ -325,7 +325,7 @@ strong {
 
 .btn-login:hover,
 .list-page-admin-bar .list-admin-primary-btn:hover {
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, #487fd6 0%, #1f4382 100%);
+  background-image: linear-gradient(140deg, #487fd6 0%, #1f4382 100%);
 }
 
 .btn-login:not(.btn-login-main):not(.btn-login-caret),
