@@ -58,6 +58,8 @@
     radial-gradient(circle at 78% 55%, rgba(213, 179, 97, 0.38) 0 1.02px, transparent 1.74px),
     radial-gradient(circle at 91% 73%, rgba(241, 214, 137, 0.28) 0 0.82px, transparent 1.4px);
   --select-bg: #f5eddf;
+  --select-option-selected-bg: rgba(106, 79, 163, 0.26);
+  --select-option-selected-text: #2f2517;
   --feed-rss-start: #b54b3b;
   --feed-rss-end: #a73b2f;
   --feed-rss-border: #8a3127;
