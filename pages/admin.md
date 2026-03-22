@@ -2694,6 +2694,7 @@ body {
 .nostr-page-kind-badge {
   display: inline-flex;
   align-items: center;
+  align-self: center;
   border-radius: 999px;
   border: 1px solid var(--admin-border, #c7d6f3);
   background: var(--admin-surface-alt, #f5f8ff);
