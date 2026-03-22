@@ -250,9 +250,56 @@
     return name;
   }
 
+  function adminSectionDisplayTitle(sectionName) {
+    const key = String(sectionName || '').trim().toLowerCase();
+    if (key === 'settings') {
+      return 'Site Settings';
+    }
+    if (key === 'compose') {
+      return 'Compose';
+    }
+    if (key === 'drafts') {
+      return 'Drafts';
+    }
+    if (key === 'queue') {
+      return 'Queue';
+    }
+    if (key === 'posts') {
+      return 'Posts';
+    }
+    if (key === 'account') {
+      return 'Account';
+    }
+    if (key === 'nostr-pages' || key === 'pages') {
+      return 'Pages';
+    }
+    if (key === 'files') {
+      return 'Files';
+    }
+    if (key === 'moderation') {
+      return 'Moderation';
+    }
+    if (key === 'users') {
+      return 'Users';
+    }
+    if (key === 'nostr-bridge') {
+      return 'Nostr';
+    }
+    if (key === 'zaps') {
+      return 'Zaps';
+    }
+    return 'Admin';
+  }
+
+  function syncAdminDocumentTitle(sectionName) {
+    const sectionTitle = adminSectionDisplayTitle(sectionName);
+    document.title = sectionTitle === 'Admin' ? 'Admin' : (sectionTitle + ' · Admin');
+  }
+
   function activateSection(name, updateHash) {
     const sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
     state.activeSection = sectionName;
+    syncAdminDocumentTitle(sectionName);
     if (els.dropOverlay) {
       els.dropOverlay.textContent = sectionName === 'files'
         ? 'Drop files to upload'
