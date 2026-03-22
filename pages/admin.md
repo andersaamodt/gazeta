@@ -323,7 +323,7 @@ title: ""
 
 <div class="compose-footer">
 <div class="compose-actions">
-<button id="btn-delete-current" type="button" class="icon-danger" aria-label="Delete draft" title="Delete draft">
+<button id="btn-delete-current" type="button" class="icon-danger unobtrusive-icon-button" aria-label="Delete draft" title="Delete draft">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
 </svg>
@@ -1961,6 +1961,29 @@ body {
   border: 1px solid #d7b6b6;
   background: #fff;
   color: #111;
+}
+
+#admin-panel #btn-delete-current.unobtrusive-icon-button {
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--admin-danger, var(--danger)) !important;
+  -webkit-text-fill-color: var(--admin-danger, var(--danger)) !important;
+}
+
+#admin-panel #btn-delete-current.unobtrusive-icon-button:hover,
+#admin-panel #btn-delete-current.unobtrusive-icon-button:focus-visible {
+  border: 0 !important;
+  background: var(--danger-soft, rgba(180, 35, 24, 0.14)) !important;
+  background-image: none !important;
+  color: var(--admin-danger, var(--danger)) !important;
+  -webkit-text-fill-color: var(--admin-danger, var(--danger)) !important;
+  box-shadow: none !important;
 }
 
 #admin-panel button.icon-danger:hover {
@@ -3986,18 +4009,19 @@ body {
 }
 
 #admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):not(.moderation-age-option) {
-  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
-  background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
-  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  border-color: var(--admin-border, var(--border)) !important;
+  background-color: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single))) !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):not(.moderation-age-option):hover:not(:disabled) {
-  background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
-  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  border-color: color-mix(in srgb, var(--admin-border, var(--border)) 65%, var(--admin-accent, var(--accent)) 35%) !important;
+  background-color: var(--admin-hover, var(--nav-link-hover)) !important;
+  background-image: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel button.primary {

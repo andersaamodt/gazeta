@@ -3911,22 +3911,23 @@ footer {
   margin-bottom: 1rem;
 }
 
-/* Button Styles - Primary Actions */
+/* Button Styles - Default Unobtrusive */
 button,
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
 [role="button"],
 .btn {
-  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
-  color: var(--button-primary-text);
-  border: 1px solid var(--button-primary-border);
+  background: transparent;
+  background-image: none;
+  color: var(--text);
+  border: 1px solid var(--border);
   padding: 0.875rem 1.75rem;
   border-radius: 8px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 520;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   text-decoration: none;
   display: inline-block;
 }
@@ -3944,7 +3945,10 @@ input[type="submit"]:hover:not(:disabled),
 input[type="reset"]:hover:not(:disabled),
 [role="button"]:hover:not([aria-disabled="true"]),
 .btn:hover:not(:disabled) {
-  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
+  background: var(--nav-link-hover);
+  background-image: none;
+  border-color: color-mix(in srgb, var(--border) 65%, var(--accent) 35%);
+  color: var(--text);
 }
 
 button:active:not(:disabled),
@@ -3953,7 +3957,10 @@ input[type="submit"]:active:not(:disabled),
 input[type="reset"]:active:not(:disabled),
 [role="button"]:active:not([aria-disabled="true"]),
 .btn:active:not(:disabled) {
-  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-active-start) 0%, var(--button-primary-active-end) 100%);
+  background: color-mix(in srgb, var(--nav-link-hover) 80%, var(--bg) 20%);
+  background-image: none;
+  border-color: color-mix(in srgb, var(--border) 58%, var(--accent) 42%);
+  color: var(--text);
 }
 
 button:disabled,
