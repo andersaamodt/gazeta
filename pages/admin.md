@@ -1702,7 +1702,7 @@ body {
   flex: 0 0 auto;
 }
 
-.toolbar .sr-only {
+.sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2084,6 +2084,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  line-height: 1;
 }
 
 #admin-panel button.quiet-toggle:hover {
