@@ -1124,16 +1124,14 @@
         html += '<div class="contact-value-main">' + linkifyContactValue(value, transport) + '</div>';
       }
 
-      html += '<span class="contact-qualifier-wrap">';
       if (editable) {
-        html += '<select class="contact-inline-select" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
+        html += '<select class="contact-inline-select contact-qualifier-select" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
         html += renderQualifierSelectOptions(qValue);
         html += '</select>';
         html += '<button type="button" class="icon-danger unobtrusive-icon-button contact-row-delete" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry" aria-label="Delete this entry">' + deleteIconSvg() + '</button>';
       } else if (qLabel) {
-        html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
+        html += '<span class="contact-qualifier-pill contact-qualifier-open" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
       }
-      html += '</span>';
       html += '</td>';
       html += '</tr>';
     });
