@@ -432,6 +432,11 @@ blog_public_ranking_effective_root_coord() {
     printf '30040:%s:%s\n' "$site_pubkey" "$slug"
     return 0
   fi
+  session_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
+  if [ -n "$session_pubkey" ]; then
+    printf '30040:%s:%s\n' "$session_pubkey" "$slug"
+    return 0
+  fi
   printf '\n'
 }
 
