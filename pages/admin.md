@@ -511,11 +511,12 @@ title: ""
 </div>
 </div>
 
-<details class="account-ssh-optional">
-<summary>SSH key for MUD and terminal login</summary>
-<p class="muted account-ssh-description">Link an SSH public key for server terminal access (if allowed).</p>
-<div class="field-row">
+<div class="field-row account-ssh-row">
 <label for="account-ssh-public-key"><strong>SSH Public Key</strong></label>
+<details class="account-ssh-optional">
+<summary class="account-ssh-toggle"><strong>SSH key for MUD and terminal login</strong></summary>
+<div class="account-ssh-body">
+<p class="muted account-ssh-description">Link an SSH public key for server terminal access (if allowed).</p>
 <textarea id="account-ssh-public-key" rows="6" placeholder="ssh-ed25519 AAAA..."></textarea>
 <p class="muted account-ssh-note">When generated in-browser, private key download starts locally. Keep it secret and back it up.</p>
 <div class="account-row account-ssh-actions">
@@ -524,6 +525,7 @@ title: ""
 </div>
 </div>
 </details>
+</div>
 
 <div class="field-row account-output-row">
 <div id="output-account" class="output"></div>
@@ -1545,11 +1547,26 @@ body {
 }
 
 .account-ssh-optional {
-  margin-top: 1.06rem;
+  margin: 0;
+  inline-size: min(100%, 42rem);
+  max-inline-size: 100%;
 }
 
 .account-ssh-description {
-  margin: 0.32rem 0 0.42rem;
+  margin: 0;
+}
+
+.account-ssh-toggle {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1f335f;
+  line-height: 1.25;
+}
+
+.account-ssh-body {
+  margin-top: 0.28rem;
+  display: grid;
+  gap: 0.22rem;
 }
 
 .account-passkey-wrap {
@@ -1589,13 +1606,29 @@ body {
   justify-self: start;
 }
 
+[data-admin-section="account"] .account-ssh-row {
+  align-items: start;
+}
+
+[data-admin-section="account"] .account-ssh-row > label {
+  margin-top: 0.12rem;
+}
+
+[data-admin-section="account"] .account-ssh-row > .account-ssh-optional {
+  grid-column: 2;
+  justify-self: start;
+}
+
 [data-admin-section="account"] #account-ssh-public-key {
   min-height: 7.2rem;
+  inline-size: 100%;
+  width: 100%;
+  max-inline-size: 100%;
 }
 
 [data-admin-section="account"] .account-ssh-note,
 [data-admin-section="account"] .account-ssh-actions {
-  grid-column: 2;
+  grid-column: auto;
   justify-self: start;
 }
 
@@ -4275,6 +4308,10 @@ body {
   [data-admin-section="account"] .field-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  [data-admin-section="account"] .account-ssh-row > .account-ssh-optional {
+    grid-column: 1;
   }
 
   .account-note {
