@@ -3493,11 +3493,6 @@
       focusNostrPageSlugInput(index);
       return;
     }
-    if (String(page.type || '') === 'blog' && nextSlug === 'index') {
-      setOutput(els.outputNostrPages, 'Blog path cannot be "/". Use "/blog" for the blog index.', 'warn');
-      focusNostrPageSlugInput(index);
-      return;
-    }
     if (nextSlug !== prevSlug && state.nostrPages.some(function (row, i) {
       return i !== index && String(row.slug || '') === nextSlug;
     })) {

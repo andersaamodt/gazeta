@@ -172,18 +172,6 @@ blog_nostr_pages_normalize_json() {
           path: ((.path // "") | tostring)
         })
       | map(select((.slug | length) > 0))
-      | map(
-          if .type == "blog" then
-            .type = "blog"
-            | .slug = "blog"
-            | .path = "/blog"
-          elif .slug == "blog" and .type != "contact" then
-            .type = "blog"
-            | .path = "/blog"
-          else
-            .
-          end
-        )
     ) as $pages
     | (reduce $pages[] as $p ([];
         if any(.[]; .slug == $p.slug) then . else . + [$p] end
