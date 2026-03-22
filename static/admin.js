@@ -65,6 +65,7 @@
     nostrPagesDragSnapshot: [],
     moderationItems: [],
     moderationAgeFilter: '30d',
+    nosterRuntime: null,
     initialContentPainted: false,
     loadedAdminSections: {}
   };
@@ -83,6 +84,11 @@
     outputAccount: document.getElementById('output-account'),
     outputZaps: document.getElementById('output-zaps'),
     outputUsers: document.getElementById('output-users'),
+    nosterRuntime: document.getElementById('noster-runtime'),
+    nosterInstallButton: document.getElementById('btn-noster-install'),
+    nosterToggleButton: document.getElementById('btn-noster-toggle'),
+    nosterRefreshButton: document.getElementById('btn-noster-refresh'),
+    navNosterStatus: document.getElementById('admin-nav-noster-status'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
     registrationEnabled: document.getElementById('registration-enabled'),
@@ -290,8 +296,12 @@
     }
     state.loadedAdminSections[section] = true;
     try {
-      if (section === 'settings' || section === 'nostr-bridge') {
+      if (section === 'settings') {
         await loadConfig();
+        return;
+      }
+      if (section === 'nostr-bridge') {
+        await loadNosterRuntime();
         return;
       }
       if (section === 'zaps') {
@@ -331,8 +341,12 @@
       if (silent) {
         return;
       }
-      if (section === 'settings' || section === 'nostr-bridge') {
+      if (section === 'settings') {
         setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'nostr-bridge') {
+        setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'zaps') {
@@ -373,8 +387,12 @@
     const configTask = loadConfig();
     const jobs = [
       {
-        sections: ['settings', 'nostr-bridge'],
+        sections: ['settings'],
         task: configTask
+      },
+      {
+        sections: ['nostr-bridge'],
+        task: loadNosterRuntime()
       },
       {
         sections: ['zaps'],
@@ -1904,6 +1922,139 @@
       field.addEventListener('change', function () { queueNostrBridgeAutosave(250); });
       field.addEventListener('blur', function () { queueNostrBridgeAutosave(220); });
     });
+  }
+
+  function setNosterNavStatus(runtime) {
+    if (!els.navNosterStatus) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    let label = 'Offline';
+    let statusClass = 'is-offline';
+    if (info.relay_connected) {
+      label = 'Connected';
+      statusClass = 'is-connected';
+    } else if (info.stoner_running) {
+      label = 'Online';
+      statusClass = 'is-online';
+    } else if (info.stoner_installed) {
+      label = 'Installed';
+      statusClass = 'is-installed';
+    }
+    els.navNosterStatus.textContent = label;
+    els.navNosterStatus.className = 'admin-nav-status-pill ' + statusClass;
+  }
+
+  function setNosterButtonsBusy(isBusy) {
+    [els.nosterRefreshButton, els.nosterInstallButton, els.nosterToggleButton].filter(Boolean).forEach(function (button) {
+      button.disabled = !!isBusy;
+    });
+  }
+
+  function renderNosterRuntime(runtime, logText, message) {
+    if (!els.nosterRuntime) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    state.nosterRuntime = info;
+    setNosterNavStatus(info);
+
+    const stonerInstalled = !!info.stoner_installed;
+    const stonerRunning = !!info.stoner_running;
+    const relayConnected = !!info.relay_connected;
+    if (els.nosterToggleButton) {
+      els.nosterToggleButton.textContent = stonerRunning ? 'Stop Stoner' : 'Start Stoner';
+      els.nosterToggleButton.disabled = !stonerInstalled;
+    }
+    if (els.nosterInstallButton) {
+      els.nosterInstallButton.disabled = stonerInstalled;
+    }
+
+    let html = '';
+    html += '<div class="zaps-runtime-card"><strong>Stoner</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonerRunning ? 'is-ok' : 'is-warn') + '">' + (stonerRunning ? 'Online' : 'Stopped') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Relay</strong><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
+    if (info.stoner_path) {
+      html += '<div class="zaps-runtime-card"><strong>Stoner Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.stoner_path)) + '</div></div>';
+    }
+    if (info.pid) {
+      html += '<div class="zaps-runtime-card"><strong>PID</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.pid)) + '</div></div>';
+    }
+    if (message) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
+    } else if (logText) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(logText)) + '</pre>';
+    }
+    els.nosterRuntime.innerHTML = html;
+  }
+
+  async function loadNosterRuntime() {
+    if (!els.nosterRuntime) {
+      return;
+    }
+    setNosterButtonsBusy(true);
+    try {
+      const data = await apiPost('/cgi/blog-manage-noster', { action: 'status' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load Noster runtime');
+      }
+      renderNosterRuntime(data.runtime || {}, '', data.message || '');
+      if (els.outputNostrBridge) {
+        els.outputNostrBridge.innerHTML = '';
+      }
+    } catch (err) {
+      renderNosterRuntime({}, '', '');
+      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+    } finally {
+      setNosterButtonsBusy(false);
+      const runtime = state.nosterRuntime || {};
+      if (els.nosterToggleButton) {
+        els.nosterToggleButton.disabled = !runtime.stoner_installed;
+      }
+      if (els.nosterInstallButton) {
+        els.nosterInstallButton.disabled = !!runtime.stoner_installed;
+      }
+    }
+  }
+
+  async function runNosterAction(action) {
+    const picked = String(action || '').trim();
+    if (!picked) {
+      return;
+    }
+    let message = '';
+    if (picked === 'install') {
+      message = 'Install Stoner on this server now?';
+    } else if (picked === 'start') {
+      message = 'Start Stoner now?';
+    } else if (picked === 'stop') {
+      message = 'Stop Stoner now?';
+    }
+    if (message && !window.confirm(message)) {
+      return;
+    }
+    setNosterButtonsBusy(true);
+    renderNosterRuntime(state.nosterRuntime || {}, '', 'Running ' + picked + '...');
+    try {
+      const data = await apiPost('/cgi/blog-manage-noster', { action: picked }, true);
+      if (!data.success) {
+        renderNosterRuntime(data.runtime || {}, data.log || '', 'Noster action failed.');
+        throw new Error(data.error || 'Noster action failed');
+      }
+      renderNosterRuntime(data.runtime || {}, data.log || '', data.message || '');
+      setOutput(els.outputNostrBridge, data.message || 'Noster updated.', 'ok');
+    } catch (err) {
+      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+    } finally {
+      setNosterButtonsBusy(false);
+      const runtime = state.nosterRuntime || {};
+      if (els.nosterToggleButton) {
+        els.nosterToggleButton.disabled = !runtime.stoner_installed;
+      }
+      if (els.nosterInstallButton) {
+        els.nosterInstallButton.disabled = !!runtime.stoner_installed;
+      }
+    }
   }
 
   function setZapsButtonsBusy(isBusy) {
@@ -4268,6 +4419,28 @@
       });
     });
     syncModerationAgeFilterUi();
+    if (els.nosterRefreshButton) {
+      els.nosterRefreshButton.addEventListener('click', function () {
+        loadNosterRuntime().catch(function (err) {
+          setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.nosterInstallButton) {
+      els.nosterInstallButton.addEventListener('click', function () {
+        runNosterAction('install').catch(function (err) {
+          setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
+    if (els.nosterToggleButton) {
+      els.nosterToggleButton.addEventListener('click', function () {
+        const runtime = state.nosterRuntime || {};
+        runNosterAction(runtime.stoner_running ? 'stop' : 'start').catch(function (err) {
+          setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
     if (els.zapsRefreshButton) {
       els.zapsRefreshButton.addEventListener('click', function () {
         loadZapsRuntime().catch(function (err) {

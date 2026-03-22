@@ -18,7 +18,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Nostr Bridge</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Noster <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Offline</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Zaps</span></button>
 </div>
 </aside>
@@ -116,45 +116,30 @@ title: ""
 
 <section class="admin-section" data-admin-section="nostr-bridge" hidden>
 <div class="demo-box admin-card">
-<div class="section-head">
-<h3>Nostr Bridge</h3>
+<div class="row-head">
+<div>
+<h3>Noster</h3>
+<p class="muted">Install and control Stoner on this server.</p>
+</div>
+<div class="row-actions">
+<button id="btn-noster-refresh" type="button">Refresh status</button>
+</div>
 </div>
 
 <div class="settings-stack">
 <section class="sub-card">
-<h4>Bridge</h4>
-<div class="field-row checkbox-row">
-<label class="checkbox-control checkbox-control-plain" for="nostr-bridge-enabled" title="Turn Nostr bridge on or off for this site.">
-<input type="checkbox" id="nostr-bridge-enabled" title="Turn Nostr bridge on or off for this site.">
-<span title="Turn Nostr bridge on or off for this site.">Enable Nostr Bridge</span>
-</label>
-</div>
-<p class="muted">Nostr Bridge is one-way (Nostr → this site): kind 30023 long-form posts from <em>Allowed Authors</em> are mirrored into local posts, and kind 1 replies that reference those posts are mirrored into local comment counts.</p>
-<div class="field-row">
-<label for="nostr-authors" title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line."><strong title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line.">Allowed Authors (pubkeys)</strong></label>
-<div class="bridge-textarea-wrap">
-<textarea id="nostr-authors" class="bridge-textarea" rows="4" placeholder="hexpubkey_author_1&#10;hexpubkey_author_2" title="Only these pubkeys are mirrored for long-form post events (kind 30023). Use one pubkey per line."></textarea>
-<div id="nostr-authors-save-status" class="autosave-indicator bridge-save-indicator" hidden></div>
+<div class="zaps-runtime-head">
+<h4>Stoner</h4>
+<div class="zaps-install-actions">
+<button id="btn-noster-install" type="button">Install Stoner</button>
+<button id="btn-noster-toggle" type="button">Start Stoner</button>
 </div>
 </div>
-<div class="field-row">
-<label for="nostr-relays" title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line."><strong title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line.">Relay List</strong></label>
-<div class="bridge-textarea-wrap">
-<textarea id="nostr-relays" class="bridge-textarea" rows="4" placeholder="wss://relay.damus.io&#10;wss://relay.primal.net" title="Relays used for mirror fetch and Nostr bridge transport. Use one relay URL per line."></textarea>
-<div id="nostr-relays-save-status" class="autosave-indicator bridge-save-indicator" hidden></div>
-</div>
-</div>
-<div class="field-row">
-<label for="nostr-blocklist" title="Blocked pubkeys excluded from mirrored comments and derived content. Use one pubkey per line."><strong title="Blocked pubkeys excluded from mirrored comments and derived content. Use one pubkey per line.">Blocked Pubkeys</strong></label>
-<div class="bridge-textarea-wrap">
-<textarea id="nostr-blocklist" class="bridge-textarea" rows="4" placeholder="hexpubkey_to_block" title="Blocked pubkeys excluded from mirrored comments and derived content. Use one pubkey per line."></textarea>
-<div id="nostr-blocklist-save-status" class="autosave-indicator bridge-save-indicator" hidden></div>
-</div>
+<div id="noster-runtime" class="zaps-runtime-grid">
+<div class="placeholder">Loading Noster runtime...</div>
 </div>
 </section>
 </div>
-
-<p class="muted">Control which events are mirrored with <strong>Allowed Authors</strong>, <strong>Relay List</strong>, and <strong>Blocked Pubkeys</strong>. Mirrored content lands in local site data only; publishing back to Nostr remains explicit/manual.</p>
 
 <div id="output-nostr-bridge" class="output"></div>
 </div>
@@ -752,6 +737,50 @@ body {
 
 .admin-nav-label {
   display: inline-block;
+}
+
+.admin-nav-label-with-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.admin-nav-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  font-weight: 700;
+  border: 1px solid #d0d9eb;
+  color: #5e6d86;
+  background: #f4f7fc;
+}
+
+.admin-nav-status-pill.is-connected {
+  border-color: #98d6a6;
+  color: #1f7d41;
+  background: #e8f8ee;
+}
+
+.admin-nav-status-pill.is-online {
+  border-color: #95b2ea;
+  color: #1f3f7d;
+  background: #e8f0ff;
+}
+
+.admin-nav-status-pill.is-installed {
+  border-color: #d0d9eb;
+  color: #5e6d86;
+  background: #f4f7fc;
+}
+
+.admin-nav-status-pill.is-offline {
+  border-color: #d0d9eb;
+  color: #5e6d86;
+  background: #f4f7fc;
 }
 
 .admin-nav-item.admin-nav-divider-after {

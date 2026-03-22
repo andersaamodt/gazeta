@@ -1,0 +1,348 @@
+#!/bin/sh
+# Manage Noster runtime and Stoner install/start/stop actions.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+if [ -z "$action" ]; then
+  action=status
+fi
+
+wizardry_dir=${WIZARDRY_DIR:-$HOME/.wizardry}
+noster_state_dir="$blog_state_dir/noster"
+stoner_pid_file="$noster_state_dir/stoner.pid"
+stoner_log_file="$noster_state_dir/stoner.log"
+
+mkdir -p "$noster_state_dir"
+
+stoner_bin_path() {
+  command -v stoner 2>/dev/null || printf ''
+}
+
+stoner_installed() {
+  [ -n "$(stoner_bin_path)" ]
+}
+
+web_wizardry_has_cmd() {
+  cmd_name=$1
+  if ! command -v web-wizardry >/dev/null 2>&1; then
+    return 1
+  fi
+  web-wizardry --help 2>/dev/null | grep -Eq "^[[:space:]]+$cmd_name([[:space:]]|$)"
+}
+
+stoner_pid() {
+  if [ -f "$stoner_pid_file" ]; then
+    pid=$(tr -cd '0-9' < "$stoner_pid_file" 2>/dev/null || printf '')
+    if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+  fi
+
+  if command -v pgrep >/dev/null 2>&1; then
+    pid=$(pgrep -f '[ /]stoner([[:space:]]|$)' 2>/dev/null | head -n 1 || printf '')
+    if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+  fi
+
+  printf '\n'
+}
+
+stoner_running() {
+  [ -n "$(stoner_pid)" ]
+}
+
+relay_connected() {
+  if ! stoner_running; then
+    return 1
+  fi
+
+  bin=$(stoner_bin_path)
+  if [ -z "$bin" ]; then
+    return 1
+  fi
+
+  set +e
+  status_json=$("$bin" status --json 2>/dev/null)
+  status_code=$?
+  set -e
+  if [ "$status_code" -eq 0 ] && [ -n "$status_json" ]; then
+    if printf '%s' "$status_json" | grep -Eiq '"(relay_)?connected"[[:space:]]*:[[:space:]]*true'; then
+      return 0
+    fi
+  fi
+
+  set +e
+  status_text=$("$bin" status 2>/dev/null)
+  status_code=$?
+  set -e
+  if [ "$status_code" -eq 0 ] && printf '%s' "$status_text" | grep -Eiq 'connected|relay connected'; then
+    return 0
+  fi
+
+  return 1
+}
+
+bool_json() {
+  if "$@"; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+runtime_json() {
+  pid=$(stoner_pid)
+  path=$(stoner_bin_path)
+  printf '{'
+  printf '"stoner_installed":%s,' "$(bool_json stoner_installed)"
+  printf '"stoner_running":%s,' "$(bool_json stoner_running)"
+  printf '"relay_connected":%s,' "$(bool_json relay_connected)"
+  printf '"stoner_path":"%s",' "$(blog_json_escape "$path")"
+  printf '"pid":"%s"' "$(blog_json_escape "$pid")"
+  printf '}'
+}
+
+emit_success() {
+  message=${1-OK}
+  log_text=${2-}
+  printf '{"success":true,"message":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+emit_failure() {
+  message=${1-Request failed}
+  code=${2-noster_failed}
+  log_text=${3-}
+  printf '{"success":false,"error":"%s","code":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(blog_json_escape "$code")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+run_wizardry_spell() {
+  spell_path=$1
+  action_log=$2
+  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-noster-input.XXXXXX")
+  i=0
+  while [ "$i" -lt 8 ]; do
+    printf '\n' >> "$input_file"
+    i=$((i + 1))
+  done
+  set +e
+  sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$action_log" 2>&1
+  status=$?
+  set -e
+  rm -f "$input_file"
+  return "$status"
+}
+
+install_stoner() {
+  action_log=$1
+  if stoner_installed; then
+    return 0
+  fi
+
+  if web_wizardry_has_cmd install-stoner; then
+    set +e
+    web-wizardry install-stoner >> "$action_log" 2>&1
+    status=$?
+    set -e
+    [ "$status" -eq 0 ] || return 1
+    return 0
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/nostr/install-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log"
+    return $?
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/stoner/install-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log"
+    return $?
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    set +e
+    brew install stoner >> "$action_log" 2>&1
+    status=$?
+    set -e
+    [ "$status" -eq 0 ] || return 1
+    return 0
+  fi
+
+  printf 'No supported Stoner installer was found.\n' >> "$action_log"
+  return 1
+}
+
+start_stoner() {
+  action_log=$1
+  if stoner_running; then
+    return 0
+  fi
+  if ! stoner_installed; then
+    printf 'Stoner is not installed.\n' >> "$action_log"
+    return 1
+  fi
+
+  if web_wizardry_has_cmd start-stoner; then
+    set +e
+    web-wizardry start-stoner >> "$action_log" 2>&1
+    status=$?
+    set -e
+    [ "$status" -eq 0 ] || return 1
+    return 0
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/nostr/start-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log"
+    return $?
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/stoner/start-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log"
+    return $?
+  fi
+
+  bin=$(stoner_bin_path)
+  if [ -z "$bin" ]; then
+    printf 'stoner executable not found.\n' >> "$action_log"
+    return 1
+  fi
+  set +e
+  nohup "$bin" >> "$stoner_log_file" 2>&1 </dev/null &
+  pid=$!
+  sleep 1
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    printf '%s\n' "$pid" > "$stoner_pid_file"
+    printf 'Started stoner (pid %s)\n' "$pid" >> "$action_log"
+    status=0
+  else
+    status=1
+  fi
+  set -e
+  return "$status"
+}
+
+stop_stoner() {
+  action_log=$1
+  if web_wizardry_has_cmd stop-stoner; then
+    set +e
+    web-wizardry stop-stoner >> "$action_log" 2>&1
+    status=$?
+    set -e
+    if [ "$status" -eq 0 ]; then
+      rm -f "$stoner_pid_file"
+      return 0
+    fi
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/nostr/stop-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log" || return 1
+    rm -f "$stoner_pid_file"
+    return 0
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/stoner/stop-stoner"
+  if [ -x "$spell" ]; then
+    run_wizardry_spell "$spell" "$action_log" || return 1
+    rm -f "$stoner_pid_file"
+    return 0
+  fi
+
+  pid=$(stoner_pid)
+  if [ -n "$pid" ]; then
+    set +e
+    kill "$pid" >/dev/null 2>&1
+    status=$?
+    set -e
+    if [ "$status" -eq 0 ]; then
+      rm -f "$stoner_pid_file"
+      printf 'Stopped stoner (pid %s)\n' "$pid" >> "$action_log"
+      return 0
+    fi
+  fi
+
+  if command -v pkill >/dev/null 2>&1; then
+    set +e
+    pkill -f '[ /]stoner([[:space:]]|$)' >/dev/null 2>&1
+    status=$?
+    set -e
+    rm -f "$stoner_pid_file"
+    [ "$status" -eq 0 ] && return 0
+  fi
+
+  printf 'Stoner was not running.\n' >> "$action_log"
+  return 0
+}
+
+case "$action" in
+  status|install|start|stop) ;;
+  *)
+    emit_failure "Unknown action" "invalid_action"
+    exit 0
+    ;;
+esac
+
+if [ "$action" = "status" ]; then
+  emit_success "Noster runtime loaded."
+  exit 0
+fi
+
+action_log=$(mktemp "${TMPDIR:-/tmp}/blog-noster-log.XXXXXX")
+trap 'rm -f "$action_log"' EXIT HUP INT TERM
+
+set +e
+case "$action" in
+  install)
+    install_stoner "$action_log"
+    action_status=$?
+    action_message='Stoner install completed.'
+    action_error='Stoner install failed.'
+    action_code='stoner_install_failed'
+    ;;
+  start)
+    start_stoner "$action_log"
+    action_status=$?
+    action_message='Stoner started.'
+    action_error='Could not start Stoner.'
+    action_code='stoner_start_failed'
+    ;;
+  stop)
+    stop_stoner "$action_log"
+    action_status=$?
+    action_message='Stoner stopped.'
+    action_error='Could not stop Stoner.'
+    action_code='stoner_stop_failed'
+    ;;
+esac
+set -e
+
+log_tail=$(tail -n 120 "$action_log" 2>/dev/null || printf '')
+if [ "$action_status" -eq 0 ]; then
+  emit_success "$action_message" "$log_tail"
+else
+  emit_failure "$action_error" "$action_code" "$log_tail"
+fi
