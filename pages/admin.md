@@ -2916,14 +2916,17 @@ body {
 .nostr-page-posts-count {
   color: var(--admin-muted, #6a7488);
   font-size: 0.82rem;
-  text-align: center;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .nostr-page-settings-blog-tools {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.22rem;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .nostr-page-default-tag {
