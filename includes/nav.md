@@ -38,7 +38,7 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<span class="nav-site-signature" aria-hidden="true">Anders J. Aamodt</span>
+<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">My Blog</span>
 <div class="nav-center">
 <a href="/" data-page="blog">Blog</a>
 </div>
@@ -84,6 +84,26 @@
 <script>
 (function () {
   try {
+    var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+    var siteSignature = document.getElementById('nav-site-signature');
+    function normalizeSiteTitle(value) {
+      var text = String(value || '').replace(/\s+/g, ' ').trim();
+      return text || 'My Blog';
+    }
+    function applySiteTitleSignature(value) {
+      if (!siteSignature) {
+        return;
+      }
+      var title = normalizeSiteTitle(value);
+      siteSignature.textContent = title;
+      siteSignature.setAttribute('title', title);
+    }
+    try {
+      applySiteTitleSignature(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
+    } catch (_siteTitleErr) {
+      applySiteTitleSignature('My Blog');
+    }
+
     var token = String(localStorage.getItem('session_token') || '').trim();
     var hasToken = !!token && token !== 'null' && token !== 'undefined';
     var cachedPlayerName = String(localStorage.getItem('last_auth_player_name') || '').trim();

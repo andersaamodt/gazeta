@@ -1,4 +1,6 @@
 (function () {
+  const SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+
   const state = {
     sessionToken: localStorage.getItem('session_token') || '',
     csrfToken: localStorage.getItem('csrf_token') || '',
@@ -936,6 +938,20 @@
   function normalizeSiteTitle(value) {
     const text = String(value || '').trim();
     return text || 'My Blog';
+  }
+
+  function applyNavSiteTitle(value) {
+    const title = normalizeSiteTitle(value);
+    const node = document.getElementById('nav-site-signature');
+    if (node) {
+      node.textContent = title;
+      node.setAttribute('title', title);
+    }
+    try {
+      localStorage.setItem(SITE_TITLE_CACHE_KEY, title);
+    } catch (_err) {
+      // Ignore storage failures.
+    }
   }
 
   function parsePossiblyWrappedJson(text) {
@@ -1918,6 +1934,7 @@
         throw new Error(data.error || 'Failed to load configuration');
       }
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
+      applyNavSiteTitle(els.siteTitle.value);
       if (els.adminTheme && data.theme) {
         els.adminTheme.value = data.theme;
       }
@@ -1976,6 +1993,7 @@
       if (els.siteTitle) {
         els.siteTitle.value = normalizedSiteTitle;
       }
+      applyNavSiteTitle(normalizedSiteTitle);
       const data = await apiPost('/cgi/blog-update-config', {
         site_title: normalizedSiteTitle,
         theme: els.adminTheme ? els.adminTheme.value : '',

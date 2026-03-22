@@ -17,6 +17,7 @@
   var NOSTR_PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
+  var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
     blog: true,
@@ -130,6 +131,31 @@
 
   function compact(text) {
     return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeSiteTitle(value) {
+    var text = compact(value);
+    return text || 'My Blog';
+  }
+
+  function updateNavSiteSignature(title) {
+    var node = document.getElementById('nav-site-signature');
+    if (!node) {
+      return;
+    }
+    var next = normalizeSiteTitle(title);
+    if (node.textContent !== next) {
+      node.textContent = next;
+    }
+    node.setAttribute('title', next);
+  }
+
+  function cacheSiteTitle(title) {
+    try {
+      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizeSiteTitle(title));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
   }
 
   function composeIconSvgPaths() {
@@ -2217,6 +2243,10 @@
     return fetch('/cgi/blog-get-config')
       .then(function (res) { return res.json(); })
       .then(function (data) {
+        if (data && data.site_title) {
+          updateNavSiteSignature(data.site_title);
+          cacheSiteTitle(data.site_title);
+        }
         if (data && data.theme) {
           state.currentTheme = data.theme;
           var themeLink = document.getElementById('theme-stylesheet');
@@ -2517,15 +2547,19 @@
     var optimisticIsLoggedIn = false;
     var optimisticIsAdmin = false;
     var optimisticName = '';
+    var optimisticSiteTitle = '';
     try {
       optimisticIsLoggedIn = hasStoredSessionToken();
       optimisticIsAdmin = String(localStorage.getItem('last_auth_is_admin') || '') === '1';
       optimisticName = String(localStorage.getItem('last_auth_player_name') || localStorage.getItem('last_auth_username') || '').trim();
+      optimisticSiteTitle = String(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '').trim();
     } catch (_err) {
       optimisticIsLoggedIn = false;
       optimisticIsAdmin = false;
       optimisticName = '';
+      optimisticSiteTitle = '';
     }
+    updateNavSiteSignature(optimisticSiteTitle);
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
 
