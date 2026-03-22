@@ -62,47 +62,95 @@ while IFS= read -r row || [ -n "$row" ]; do
   default_tag=$(printf '%s\n' "$row" | jq -r '.default_tag // ""' 2>/dev/null || printf '')
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
   draft_title=''
+  draft_differs=false
   draft_state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
   if [ -n "$draft_state_json" ]; then
     draft_title=$(printf '%s\n' "$draft_state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
   fi
 
+  canonical_state_json=''
   canonical_title=''
   canonical_exists=false
   connected_posts=0
   case "$page_type" in
-    contact)
-      canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
-      if [ -n "$canonical_event" ]; then
-        canonical_exists=true
-        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r 'try (.content | fromjson | .title // "") catch ""' 2>/dev/null || printf '')
-      fi
-      ;;
-    nip23)
-      canonical_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
-      if [ -n "$canonical_event" ]; then
-        canonical_exists=true
-        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
-      fi
-      ;;
-    public-ranking)
-      canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
-      if [ -n "$canonical_event" ]; then
-        canonical_exists=true
-        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
-      fi
-      ;;
-    blog)
-      connected_posts=$connected_posts_total
-      ;;
-    *)
-      canonical_event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
-      if [ -n "$canonical_event" ]; then
-        canonical_exists=true
-        canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
-      fi
-      ;;
+  contact)
+    canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      canonical_title=$(printf '%s\n' "$canonical_event" | jq -r 'try (.content | fromjson | .title // "") catch ""' 2>/dev/null || printf '')
+      canonical_state_json=$(blog_contact_state_from_event_json "$slug" "$canonical_event")
+    else
+      canonical_state_json=$(blog_contact_default_state_json "$slug")
+    fi
+    ;;
+  nip23)
+    canonical_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      canonical_state_json=$(blog_nip23_state_from_event_json "$slug" "$canonical_event" "$page_type")
+    else
+      canonical_state_json=$(blog_nip23_default_state_json "$slug" "$page_type")
+    fi
+    ;;
+  public-ranking)
+    canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      canonical_state_json=$(blog_public_ranking_state_from_event_json "$slug" "$canonical_event")
+    else
+      canonical_state_json=$(blog_public_ranking_default_state_json "$slug")
+    fi
+    ;;
+  blog)
+    connected_posts=$connected_posts_total
+    canonical_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      canonical_state_json=$(blog_nip23_state_from_event_json "$slug" "$canonical_event" "$page_type")
+    else
+      canonical_state_json=$(blog_nip23_default_state_json "$slug" "$page_type")
+    fi
+    ;;
+  *)
+    canonical_event=$(blog_nostr_list_latest_event_json "$slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      canonical_title=$(printf '%s\n' "$canonical_event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf '')
+      canonical_state_json=$(blog_list_state_from_event_json "$slug" "$canonical_event")
+    else
+      canonical_state_json=$(blog_list_default_state_json "$slug")
+    fi
+    ;;
   esac
+
+  if [ -n "$draft_state_json" ]; then
+    draft_sig=''
+    canonical_sig=''
+    case "$page_type" in
+      contact)
+        draft_sig=$(blog_contact_state_signature_json "$draft_state_json" 2>/dev/null || printf '')
+        canonical_sig=$(blog_contact_state_signature_json "$canonical_state_json" 2>/dev/null || printf '')
+        ;;
+      public-ranking)
+        draft_sig=$(blog_public_ranking_state_signature_json "$draft_state_json" 2>/dev/null || printf '')
+        canonical_sig=$(blog_public_ranking_state_signature_json "$canonical_state_json" 2>/dev/null || printf '')
+        ;;
+      nip23|blog)
+        draft_sig=$(blog_nip23_state_signature_json "$draft_state_json" 2>/dev/null || printf '')
+        canonical_sig=$(blog_nip23_state_signature_json "$canonical_state_json" 2>/dev/null || printf '')
+        ;;
+      *)
+        draft_sig=$(blog_list_state_signature_json "$draft_state_json" 2>/dev/null || printf '')
+        canonical_sig=$(blog_list_state_signature_json "$canonical_state_json" 2>/dev/null || printf '')
+        ;;
+    esac
+    if [ -n "$draft_sig" ] && [ "$draft_sig" != "$canonical_sig" ]; then
+      draft_differs=true
+    fi
+  fi
 
   title=$draft_title
   if [ -z "$title" ]; then
@@ -130,6 +178,7 @@ while IFS= read -r row || [ -n "$row" ]; do
     --arg connected_posts "$connected_posts" \
     --arg show_in_nav "$show_in_nav" \
     --arg canonical_exists "$canonical_exists" \
+    --arg draft_differs "$draft_differs" \
     '{
       slug: $slug,
       type: $page_type,
@@ -140,10 +189,11 @@ while IFS= read -r row || [ -n "$row" ]; do
       default_tag: $default_tag,
       connected_posts: ($connected_posts | tonumber? // 0),
       show_in_nav: ($show_in_nav == "true"),
-      canonical_exists: ($canonical_exists == "true")
+      canonical_exists: ($canonical_exists == "true"),
+      draft_differs: ($draft_differs == "true")
     }' 2>/dev/null || printf '')
   if [ -z "$row_json" ]; then
-    row_json=$(printf '{"slug":"%s","type":"%s","kind":30004,"path":"%s","title":"%s","placeholder_title":"%s","default_tag":"%s","connected_posts":0,"show_in_nav":true,"canonical_exists":false}' \
+    row_json=$(printf '{"slug":"%s","type":"%s","kind":30004,"path":"%s","title":"%s","placeholder_title":"%s","default_tag":"%s","connected_posts":0,"show_in_nav":true,"canonical_exists":false,"draft_differs":false}' \
       "$(blog_json_escape "$slug")" \
       "$(blog_json_escape "$page_type")" \
       "$(blog_json_escape "$path")" \

@@ -3152,6 +3152,7 @@
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-settings"><span class="nostr-pages-header-type-label">Settings</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
+    html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
@@ -3164,6 +3165,7 @@
       const isEditingNavTitle = state.nostrPagesEditingNavTitleIndex === idx;
       const showInNav = !!page.show_in_nav;
       const connectedPosts = Number(page.connected_posts || 0);
+      const draftDiffers = !!page.draft_differs;
       const typeLabel = nostrPageTypeLabel(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
       html += '<div class="nostr-page-leading">';
@@ -3202,6 +3204,13 @@
       html += '</div>';
       html += '<div class="nostr-page-nav-col">';
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
+      html += '</div>';
+      html += '<div class="nostr-page-publish-col">';
+      if (draftDiffers) {
+        html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish...</button>';
+      } else {
+        html += '<span class="nostr-page-publish-empty" aria-hidden="true"></span>';
+      }
       html += '</div>';
       html += '<div class="nostr-page-actions">';
       html += '<div class="post-menu nostr-page-menu">';
@@ -3268,6 +3277,29 @@
         input.select();
       }
     });
+  }
+
+  async function publishNostrPageFromList(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
+      return;
+    }
+    const page = state.nostrPages[index] || {};
+    const slug = normalizeNostrPageSlug(page.slug || '');
+    if (!slug) {
+      throw new Error('Page slug missing');
+    }
+    const label = String(page.title || page.placeholder_title || slug || 'page').trim();
+    if (!window.confirm('Publish "' + label + '" to Nostr now?')) {
+      return;
+    }
+    const result = await apiPost('/cgi/blog-publish-nostr-page', {
+      page_slug: slug
+    }, true);
+    if (!result.success) {
+      throw new Error(result.error || 'Publish failed');
+    }
+    setOutput(els.outputNostrPages, 'Published ' + label + ' to Nostr.', 'ok');
+    await loadNostrPages();
   }
 
   function beginNostrPageNavTitleEdit(index) {
@@ -4906,6 +4938,12 @@
               'ok'
             );
           }).catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action === 'publish') {
+          publishNostrPageFromList(idx).catch(function (err) {
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
           return;

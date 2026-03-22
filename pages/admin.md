@@ -2585,6 +2585,15 @@ body {
   flex: 0 0 8.8rem;
 }
 
+.nostr-pages-header-publish-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 7.2rem;
+  min-width: 7.2rem;
+  flex: 0 0 7.2rem;
+}
+
 .nostr-pages-header-nav {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
@@ -2872,6 +2881,30 @@ body {
   width: 8.8rem;
   min-width: 8.8rem;
   flex: 0 0 8.8rem;
+}
+
+.nostr-page-publish-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 7.2rem;
+  min-width: 7.2rem;
+  flex: 0 0 7.2rem;
+}
+
+.nostr-page-publish-empty {
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+}
+
+#admin-panel .nostr-page-publish-btn {
+  min-width: 0;
+  width: auto;
+  height: 1.85rem;
+  padding: 0.14rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.1;
 }
 
 #admin-panel .nostr-page-actions > button,
@@ -4304,6 +4337,13 @@ body {
     width: 7.8rem;
     min-width: 7.8rem;
     flex-basis: 7.8rem;
+  }
+
+  .nostr-pages-header-publish-col,
+  .nostr-page-publish-col {
+    width: 6.8rem;
+    min-width: 6.8rem;
+    flex-basis: 6.8rem;
   }
 }
 
