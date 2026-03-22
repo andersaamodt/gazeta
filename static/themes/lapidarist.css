@@ -68,8 +68,8 @@
   --feed-atom-border: #564486;
   --admin-accent: #2f5fb8;
   --admin-accent-strong: #6a4fa3;
-  --admin-hover: rgba(47, 95, 184, 0.11);
-  --admin-nav-selected-bg: color-mix(in srgb, var(--lapis) 20%, var(--amethyst) 28%, var(--bg) 52%);
+  --admin-hover: color-mix(in srgb, var(--lapis) 22%, var(--amethyst) 12%, var(--bg) 66%);
+  --admin-nav-selected-bg: color-mix(in srgb, var(--lapis) 32%, var(--amethyst) 26%, var(--bg) 42%);
   --admin-nav-selected-text: #2f2517;
 
   --post-card-bg: #f8efdd;
