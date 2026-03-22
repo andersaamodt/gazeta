@@ -54,7 +54,7 @@
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
   --nav-pill-radius: 8px;
-  --nav-signature-color: color-mix(in srgb, var(--text) 58%, var(--bg) 42%);
+  --nav-signature-color: color-mix(in srgb, var(--text) 62%, var(--bg) 38%);
   --nav-icon-hover: var(--nav-icon);
   --nav-bg: var(--bg);
   --nav-border: var(--border);
