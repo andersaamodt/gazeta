@@ -1082,16 +1082,17 @@ body {
 
 [data-admin-section="nostr-bridge"] .field-row {
   display: grid;
-  gap: 0.24rem;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.04rem 0.44rem;
   margin-bottom: 0.08rem;
 }
 
 [data-admin-section="nostr-bridge"] .checkbox-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  flex-wrap: wrap;
+  gap: 0.04rem 0.44rem;
 }
 
 [data-admin-section="settings"] .field-row > label,
@@ -1467,11 +1468,13 @@ body {
 
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .setting-label {
   margin-bottom: 0;
+  grid-column: 1;
 }
 
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .zaps-runtime-value,
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > button,
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .checkbox-control {
+  grid-column: 2;
   justify-self: start;
 }
 
