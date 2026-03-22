@@ -410,9 +410,9 @@ title: ""
 <h3>Pages</h3>
 <p class="muted">Manage local pages backed by Nostr. Pages are published to Nostr only when you press Publish.</p>
 </div>
-<div class="row-actions">
-<button id="btn-create-nostr-page" type="button" class="primary">New Page...</button>
 </div>
+<div class="nostr-pages-table-toolbar">
+<button id="btn-create-nostr-page" type="button" class="primary">New Page...</button>
 </div>
 <div id="nostr-pages-list" class="nostr-pages-list"></div>
 <div id="output-nostr-pages" class="output"></div>
@@ -3053,6 +3053,13 @@ body {
   padding-right: 0.7rem;
 }
 
+.nostr-pages-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0 0.7rem 0.42rem;
+}
+
 [data-admin-section="posts"] .admin-card {
   padding-left: 0;
   padding-right: 0;
@@ -4730,6 +4737,11 @@ body {
     margin-left: 0.5rem !important;
     margin-right: 0.5rem !important;
     max-width: calc(100% - 1rem) !important;
+  }
+
+  .nostr-pages-table-toolbar {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
 }
 </style>
