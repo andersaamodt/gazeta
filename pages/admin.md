@@ -3731,10 +3731,10 @@ body {
   border-radius: 0;
   background: var(--admin-surface, var(--post-card-bg-single));
   padding: 0.5rem 0.68rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.4fr) minmax(7.2rem, 0.72fr) minmax(8.2rem, 0.9fr) minmax(3.2rem, auto);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.6rem;
   min-height: 3rem;
   width: 100%;
   max-width: 100%;
@@ -3758,7 +3758,7 @@ body {
 }
 
 .user-card-main {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   display: grid;
   gap: 0.08rem;
@@ -3810,9 +3810,47 @@ body {
   color: #5e6d86;
 }
 
+.users-table-header {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.4fr) minmax(7.2rem, 0.72fr) minmax(8.2rem, 0.9fr) minmax(3.2rem, auto);
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.35rem 0.68rem 0.42rem;
+  border-bottom: 1px solid var(--admin-border, #d2def3);
+}
+
+.users-col {
+  min-width: 0;
+}
+
+.users-col-head {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.users-col-created {
+  display: flex;
+  align-items: center;
+}
+
+.users-col-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.users-col-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
 .user-card-actions {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
   gap: 0.38rem;
@@ -4439,13 +4477,36 @@ body {
   }
 
   .user-card {
-    flex-wrap: wrap;
-    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.38rem;
   }
 
   .user-card-actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .users-table-header {
+    display: none;
+  }
+
+  .users-col-created::before {
+    content: "Created";
+    color: var(--admin-muted, #6a7488);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-right: 0.45rem;
+  }
+
+  .users-col-role::before {
+    content: "Role";
+    color: var(--admin-muted, #6a7488);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-right: 0.45rem;
   }
 
   #admin-panel .user-menu-panel {

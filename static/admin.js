@@ -4077,6 +4077,12 @@
       return;
     }
     let html = '';
+    html += '<div class="users-table-header" aria-hidden="true">';
+    html += '<div class="users-col users-col-name"><span class="users-col-head">Name</span></div>';
+    html += '<div class="users-col users-col-created"><span class="users-col-head">Created</span></div>';
+    html += '<div class="users-col users-col-role"><span class="users-col-head">Role</span></div>';
+    html += '<div class="users-col users-col-actions"><span class="users-col-head">Actions</span></div>';
+    html += '</div>';
     const actorName = state.username || '';
     const actorRank = Number(state.actorRank || 0);
     let seenBelow = false;
@@ -4085,6 +4091,8 @@
       const rank = Number(user.rank || 0);
       const isSelf = !!user.is_self || username === actorName;
       const isAdmin = !!user.is_admin;
+      const createdAtRaw = String(user.created_at || '');
+      const createdLabel = createdAtRaw ? formatPostPublishedAt(createdAtRaw) : '-';
       const isBelow = actorRank > 0 && rank > actorRank;
       const canDrag = !isSelf && isBelow;
       const dragAttrs = canDrag ? ' draggable="true" data-can-drag="true"' : ' data-can-drag="false"';
@@ -4094,20 +4102,26 @@
       }
 
       html += '<div class="user-card' + (canDrag ? ' is-draggable' : '') + ((idx % 2) === 1 ? ' user-row-alt' : '') + '"' + dragAttrs + ' data-username="' + escapeAttr(username) + '" data-rank="' + escapeAttr(String(rank)) + '">';
-      html += '<div class="user-card-main">';
+      html += '<div class="user-card-main users-col users-col-name">';
       html += '<div class="user-card-name">' + escapeHtml(user.player_name || username);
       if (isSelf) {
         html += ' <strong class="user-self-label">You</strong>';
       }
+      html += '</div>';
+      html += '</div>';
+      html += '<div class="user-card-created users-col users-col-created"><span class="user-card-meta">' + escapeHtml(createdLabel) + '</span></div>';
+      html += '<div class="user-card-role users-col users-col-role">';
       if (isAdmin) {
-        html += ' <span class="user-pill is-admin">Admin</span>';
+        html += '<span class="user-pill is-admin">Admin</span>';
       }
       if (user.is_author) {
-        html += ' <span class="user-pill is-author">Author</span>';
+        html += '<span class="user-pill is-author">Author</span>';
+      }
+      if (!isAdmin && !user.is_author) {
+        html += '<span class="user-pill">Member</span>';
       }
       html += '</div>';
-      html += '</div>';
-      html += '<div class="user-card-actions">';
+      html += '<div class="user-card-actions users-col users-col-actions">';
       if (!isSelf && (isBelow || !isAdmin)) {
         html += '<div class="user-menu">';
         html += userCardActionButton(
