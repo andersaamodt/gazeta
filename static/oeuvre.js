@@ -842,7 +842,7 @@
 
   function addEntry(prefillYear) {
     if (!isAdmin()) {
-      return;
+      return '';
     }
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
@@ -869,6 +869,7 @@
         markdown: ''
       }
     };
+    return entry._uid;
   }
 
   function isPendingNewEntryUnedited() {
@@ -1571,6 +1572,35 @@
     });
   }
 
+  function closeActiveInlineEditor(options) {
+    if (!state.editMode || !isAdmin()) {
+      return false;
+    }
+    var opts = options || {};
+    var activeUid = String(state.activeEntryUid || '');
+    var activeField = String(state.activeCellField || '');
+    if (!activeUid && !activeField) {
+      return false;
+    }
+    updatePendingNewEntryState();
+    var shouldSave = !!opts.forceAutosave;
+    if (activeUid && shouldAutosaveForUid(activeUid)) {
+      shouldSave = true;
+    }
+    var removedTransient = pruneTransientEntries();
+    if (removedTransient) {
+      shouldSave = true;
+    }
+    state.activeEntryUid = '';
+    state.activeCellField = '';
+    renderList();
+    renderAdmin();
+    if (shouldSave) {
+      queueAutosave(Number(opts.delayMs) > 0 ? Number(opts.delayMs) : 120);
+    }
+    return true;
+  }
+
   function bindAdminEvents() {
     if (!els.admin || !els.content) {
       return;
@@ -1683,8 +1713,9 @@
             return;
           }
           var before = captureEntryRects();
-          addEntry('');
+          var newUid = addEntry('');
           renderListWithFlip(before);
+          focusInlineField(newUid, 'markdown');
           return;
         }
         if (action === 'add-year') {
@@ -1693,8 +1724,9 @@
           }
           var prefill = String(listAction.getAttribute('data-prefill-year') || '').trim();
           var beforeYear = captureEntryRects();
-          addEntry(prefill);
+          var yearUid = addEntry(prefill);
           renderListWithFlip(beforeYear);
+          focusInlineField(yearUid, 'markdown');
           return;
         }
       }
@@ -1976,10 +2008,7 @@
       setTimeout(function () {
         var activeEl = document.activeElement;
         if (!(activeEl instanceof HTMLElement)) {
-          state.activeEntryUid = '';
-          state.activeCellField = '';
-          renderList();
-          renderAdmin();
+          closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
           return;
         }
         var pointerIsSameRow = state.pointerDownEntryUid === uid && (Date.now() - Number(state.pointerDownAt || 0)) < 600;
@@ -1993,12 +2022,36 @@
         }
         var nextInlineField = activeEl.closest('[data-inline-field][data-element-uid]');
         if (!nextInlineField) {
-          state.activeEntryUid = '';
-          state.activeCellField = '';
-          renderList();
-          renderAdmin();
+          closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
         }
       }, 0);
+    });
+
+    els.content.addEventListener('keydown', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+        return;
+      }
+      var uid = String(target.getAttribute('data-element-uid') || '');
+      var field = String(target.getAttribute('data-inline-field') || '');
+      if (!uid || !field) {
+        return;
+      }
+      if (event.key === 'Enter') {
+        if (target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        event.preventDefault();
+        closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeActiveInlineEditor({ forceAutosave: false, delayMs: 120 });
+      }
     });
 
     els.content.addEventListener('keydown', function (event) {
@@ -2229,14 +2282,7 @@
       return;
     }
     if (!root.contains(target)) {
-      var removedTransient = pruneTransientEntries();
-      state.activeEntryUid = '';
-      state.activeCellField = '';
-      renderList();
-      renderAdmin();
-      if (removedTransient) {
-        queueAutosave(120);
-      }
+      closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
     }
   });
   document.addEventListener('click', function (event) {
@@ -2268,14 +2314,7 @@
     if (onActiveEventDetails) {
       return;
     }
-    var removedTransient = pruneTransientEntries();
-    state.activeEntryUid = '';
-    state.activeCellField = '';
-    renderList();
-    renderAdmin();
-    if (removedTransient) {
-      queueAutosave(120);
-    }
+    closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
   });
   window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
   window.addEventListener('storage', function (event) {
