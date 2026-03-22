@@ -2563,7 +2563,7 @@
       if (!data.success) {
         throw new Error(data.error || 'Failed to load zap runtime');
       }
-      renderZapsRuntime(data.runtime || {}, '', data.message || '');
+      renderZapsRuntime(data.runtime || {}, '', '');
       if (els.outputZaps) {
         els.outputZaps.innerHTML = '';
       }
