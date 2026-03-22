@@ -526,8 +526,8 @@
 
   function deleteIconSvg() {
     return '' +
-      '<svg class="contact-delete-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-      '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8" d="M6 6l12 12M18 6L6 18"/>' +
+      '<svg class="contact-delete-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2" d="M6 6l12 12M18 6L6 18"/>' +
       '</svg>';
   }
 

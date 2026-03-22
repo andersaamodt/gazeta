@@ -2112,11 +2112,16 @@ header h1 {
   line-height: 1.45;
   width: fit-content;
   max-width: 100%;
+  font-weight: 400;
 }
 
 .contact-platform-open,
 .contact-value-open {
   width: 100%;
+}
+
+.contact-platform-open {
+  font-weight: 700;
 }
 
 .contact-inline-open-value {
@@ -2156,17 +2161,18 @@ header h1 {
 }
 
 .contact-row-delete {
-  width: 1.6rem;
-  min-width: 1.6rem;
-  height: 1.6rem;
+  width: 1.78rem;
+  min-width: 1.78rem;
+  height: 1.78rem;
   transform: translateY(-2px);
   padding: 0;
+  margin-left: 0.24rem;
 }
 
 .contact-delete-icon {
   display: block;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 1.02rem;
+  height: 1.02rem;
   line-height: 1;
 }
 
