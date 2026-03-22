@@ -2558,7 +2558,7 @@
 
   function renderDraftList(drafts) {
     if (!drafts.length) {
-      els.draftsList.innerHTML = '<p class="placeholder">No drafts yet.</p>';
+      els.draftsList.innerHTML = '<div class="draft-rows"><p class="placeholder table-empty">No drafts yet.</p></div>';
       return;
     }
 
@@ -2588,7 +2588,7 @@
   function renderQueue(data) {
     const queue = data.queue || [];
     if (!queue.length) {
-      els.queueList.innerHTML = '<p class="placeholder">Queue is empty.</p>';
+      els.queueList.innerHTML = '<div class="queue-rows"><p class="placeholder table-empty">Queue is empty.</p></div>';
       return;
     }
     let html = '<div class="queue-rows">';
@@ -2706,7 +2706,7 @@
       return;
     }
     if (!posts.length) {
-      els.postsList.innerHTML = '<p class="placeholder">No published posts yet.</p>';
+      els.postsList.innerHTML = '<p class="placeholder table-empty">No published posts yet.</p>';
       return;
     }
 
@@ -2775,7 +2775,7 @@
     }
     const pending = pendingFileRows();
     if (!files.length && !pending.length) {
-      els.filesList.innerHTML = '<p class="placeholder files-list-empty">No attachments uploaded yet.</p>';
+      els.filesList.innerHTML = '<p class="placeholder files-list-empty table-empty">No attachments uploaded yet.</p>';
       return;
     }
     let html = '<div class="files-table">';
@@ -3136,7 +3136,7 @@
     const previousRects = animate ? captureNostrPageRects() : {};
     const list = Array.isArray(pages) ? pages : [];
     if (!list.length) {
-      els.nostrPagesList.innerHTML = '<p class="placeholder">No Nostr-backed pages configured yet.</p>';
+      els.nostrPagesList.innerHTML = '<div class="nostr-pages-rows"><p class="placeholder table-empty">No Nostr-backed pages configured yet.</p></div>';
       return;
     }
 
@@ -3625,7 +3625,7 @@
     }
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      els.moderationList.innerHTML = '<p class=\"placeholder\">No pending moderation actions.</p>';
+      els.moderationList.innerHTML = '<p class=\"placeholder table-empty\">No pending moderation actions.</p>';
       return;
     }
     let html = '';
@@ -3991,7 +3991,7 @@
     }
     const previousRects = animate ? captureUserCardRects() : {};
     if (!state.users.length) {
-      els.usersList.innerHTML = '<p class="placeholder">No users found yet.</p>';
+      els.usersList.innerHTML = '<p class="placeholder table-empty">No users found yet.</p>';
       return;
     }
     let html = '';

@@ -3289,6 +3289,7 @@ body {
 }
 
 #admin-panel #drafts-list > .placeholder,
+#admin-panel #queue-list > .placeholder,
 #admin-panel #posts-list > .placeholder,
 #admin-panel #files-list > .placeholder,
 #admin-panel #moderation-list > .placeholder,
@@ -3296,6 +3297,18 @@ body {
 #admin-panel #nostr-pages-list > .placeholder {
   margin: 0;
   padding: 0.58rem 0.7rem 0.74rem;
+}
+
+#admin-panel .placeholder.table-empty {
+  margin: 0;
+  min-height: 3rem;
+  padding: 0.72rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-style: italic;
+  color: var(--admin-muted, var(--light-text));
 }
 
 #admin-panel #files-list.posts-list,
