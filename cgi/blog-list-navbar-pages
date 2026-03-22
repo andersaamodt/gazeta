@@ -22,8 +22,6 @@ needs_build=false
 while IFS= read -r row || [ -n "$row" ]; do
   [ -n "$row" ] || continue
   slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
-  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
-  blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
   case "$slug" in
     index) html_file="$blog_site_root/build/pages/index.html" ;;
     *) html_file="$blog_site_root/build/pages/$slug.html" ;;
@@ -73,7 +71,17 @@ printf ']}'
 printf '\n'
 
 if [ "$needs_build" = "true" ]; then
-  blog_run_build_async
+  trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
+  now_epoch=$(date +%s 2>/dev/null || printf '0')
+  last_epoch=$(sed -n '1p' "$trigger_stamp" 2>/dev/null | tr -cd '0-9' || printf '0')
+  if [ -z "$last_epoch" ]; then
+    last_epoch=0
+  fi
+  # Avoid hot-loop build spawning from public traffic when output is temporarily missing.
+  if [ $((now_epoch - last_epoch)) -ge 30 ]; then
+    printf '%s\n' "$now_epoch" > "$trigger_stamp" 2>/dev/null || true
+    blog_run_build_async
+  fi
 fi
 
 rm -f "$all_rows_tmp"

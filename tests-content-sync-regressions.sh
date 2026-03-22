@@ -406,6 +406,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'http-header "Expires" "0"' 'cg
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_contact_latest_event_json() {' 'contact latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip23_latest_event_json() {' 'nip23 latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint throttles rebuild trigger storms'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'
@@ -427,6 +429,9 @@ assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" "cache: 'no-store'" 'oeuvre has no-store directives'
 assert_file_not_contains "$ROOT_DIR/includes/nav.md" 'if (!hasDynamicPageRoot() || pageReady)' 'hydration timeout fallback always unlocks the page'
+
+prune_hook_count=$(grep -Fc 'blog_nostr_pages_prune_stale_source_pages "$normalized"' "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" || printf '0')
+assert_eq "1" "$prune_hook_count" 'nostr page prune hook only runs on save path'
 
 # 10) Ensure scripts are syntactically valid after changes.
 assert_success sh -n "$ROOT_DIR/cgi/blog-lib.sh"

@@ -228,7 +228,6 @@ blog_nostr_pages_load_json() {
   if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
     blog_nostr_pages_save_json "$normalized"
   fi
-  blog_nostr_pages_prune_stale_source_pages "$normalized"
   printf '%s\n' "$normalized"
 }
 
@@ -241,6 +240,7 @@ blog_nostr_pages_save_json() {
   printf '%s\n' "$normalized" > "$tmp"
   mv "$tmp" "$path"
   chmod 644 "$path" 2>/dev/null || true
+  blog_nostr_pages_prune_stale_source_pages "$normalized"
 }
 
 blog_nostr_page_entry_json() {
