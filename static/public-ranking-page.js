@@ -460,7 +460,11 @@
     var metric = document.getElementById('public-ranking-edit-default-metric');
     var showMarkerFilters = document.getElementById('public-ranking-edit-show-marker-filters');
 
-    state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(Number(cooldown && cooldown.value ? cooldown.value : state.draft.vote_cooldown_seconds) || 86400));
+    var cooldownMinutes = Number(cooldown && cooldown.value ? cooldown.value : Math.ceil((Number(state.draft.vote_cooldown_seconds || 86400) || 86400) / 60));
+    if (!isFinite(cooldownMinutes) || cooldownMinutes <= 0) {
+      cooldownMinutes = 1;
+    }
+    state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(cooldownMinutes * 60));
     if (allowOpen instanceof HTMLInputElement && allowOpen.type === 'checkbox') {
       state.draft.submission_mode = allowOpen.checked ? 'open' : 'owner_only';
     } else {
@@ -1045,10 +1049,11 @@
       return '';
     }
     var html = '';
+    var cooldownMinutes = Math.max(1, Math.ceil((Number(renderState.vote_cooldown_seconds || 86400) || 86400) / 60));
     html += '<section class="public-ranking-editor">';
     html += '<h3>Ranking Settings</h3>';
     html += '<div class="public-ranking-editor-grid">';
-    html += '<label><span>Vote cooldown (seconds)</span><input type="number" id="public-ranking-edit-cooldown" min="60" step="60" value="' + escapeHtml(String(renderState.vote_cooldown_seconds || 86400)) + '"></label>';
+    html += '<label><span>Vote cooldown (minutes)</span><input type="number" id="public-ranking-edit-cooldown" min="1" step="1" value="' + escapeHtml(String(cooldownMinutes)) + '"></label>';
     html += '<label><span>Allow signed-in Nostr users to add entries</span><input type="checkbox" id="public-ranking-edit-allow-open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' checked' : '') + '></label>';
     html += '<label><span>Show marker filters</span><input type="checkbox" id="public-ranking-edit-show-marker-filters"' + (renderState.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label><span>Default metric</span><select id="public-ranking-edit-default-metric">';

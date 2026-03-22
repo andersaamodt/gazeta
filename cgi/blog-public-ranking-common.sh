@@ -152,7 +152,7 @@ blog_public_ranking_validate_and_enrich_state_json() {
     . as $s
     | ([
         (if (($s.title // "") | tostring | gsub("\\s+";" ") | length) == 0 then "Title is required" else empty end),
-        (if (($s.vote_cooldown_seconds // 0) | tonumber? // 0) < 60 then "Vote cooldown must be at least 60 seconds" else empty end),
+        (if (($s.vote_cooldown_seconds // 0) | tonumber? // 0) < 60 then "Vote cooldown must be at least 1 minute" else empty end),
         (if (((($s.submission_mode // "") | tostring | ascii_downcase) as $m | ($m == "owner_only" or $m == "open" or $m == "moderated")) | not) then "Submission mode must be owner_only, open, or moderated" else empty end),
         (if (((($s.default_metric // "") | tostring | ascii_downcase) as $m | ($m == "momentum" or $m == "support" or $m == "enthusiasm" or $m == "intensity")) | not) then "Default metric must be momentum, support, enthusiasm, or intensity" else empty end)
       ]
