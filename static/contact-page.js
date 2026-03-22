@@ -34,6 +34,10 @@
     payload: null,
     draft: null,
     editMode: false,
+    navTitle: '',
+    navTitleEditing: false,
+    navTitleInput: '',
+    navTitleBusy: false,
     busy: false,
     autosaveQueued: false,
     saveTimer: null,
@@ -189,6 +193,10 @@
     }
     state.payload = cachedPayload;
     state.draft = normalizeDraftState((cachedPayload && cachedPayload.state) || { title: '', description: '', rows: [] });
+    state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
+    state.navTitleEditing = false;
+    state.navTitleInput = '';
+    state.navTitleBusy = false;
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
     renderAll();
@@ -245,6 +253,83 @@
       return state.draft;
     }
     return normalizeDraftState((state.payload && state.payload.state) || { title: 'Profile', description: '', rows: [] });
+  }
+
+  function defaultNavbarTitle(renderState) {
+    var s = renderState || getRenderState();
+    var fallback = String(root.getAttribute('data-page-title') || '').trim();
+    var title = String((s && s.title) || fallback || 'Untitled').trim();
+    return title || 'Untitled';
+  }
+
+  function currentNavbarTitle(renderState) {
+    var configured = String(state.navTitle || '').trim();
+    if (configured) {
+      return configured;
+    }
+    return defaultNavbarTitle(renderState);
+  }
+
+  function navbarTitleHost() {
+    var head = root.querySelector('.list-page-head');
+    if (!head || !els.title) {
+      return null;
+    }
+    var host = head.querySelector('[data-page-nav-title-host="true"]');
+    if (host instanceof HTMLElement) {
+      return host;
+    }
+    host = document.createElement('div');
+    host.setAttribute('data-page-nav-title-host', 'true');
+    host.className = 'list-page-nav-title-row-wrap';
+    if (els.description && els.description.parentNode === head) {
+      head.insertBefore(host, els.description);
+    } else if (els.title.nextSibling) {
+      head.insertBefore(host, els.title.nextSibling);
+    } else {
+      head.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderNavbarTitleRow(renderState) {
+    var host = navbarTitleHost();
+    if (!host) {
+      return;
+    }
+    if (!isAdmin() || !state.editMode) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    var current = currentNavbarTitle(renderState);
+    var editing = !!state.navTitleEditing;
+    var html = '<div class="list-page-nav-title-row">';
+    html += '<span class="list-page-nav-title-label">Navbar title</span>';
+    if (editing) {
+      var value = state.navTitleInput || current;
+      html += '<span class="list-page-nav-title-edit-wrap">';
+      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Navbar title">';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '</span>';
+    } else {
+      html += '<span class="list-page-nav-title-value">' + escapeHtml(current) + '</span>';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="edit">Edit...</button>';
+    }
+    html += '</div>';
+    host.hidden = false;
+    host.innerHTML = html;
+    if (editing) {
+      requestAnimationFrame(function () {
+        var input = host.querySelector('[data-page-nav-title-input="true"]');
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
+    }
   }
 
   function qualifierLabel(qualifier) {
@@ -426,6 +511,7 @@
     if (els.title) {
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
     }
+    renderNavbarTitleRow(s);
     if (els.description) {
       var text = String(s.description || '').trim();
       var rows = normalizeRows(s.rows || []).filter(function (row) {
@@ -605,6 +691,46 @@
     renderValidation();
   }
 
+  function saveNavbarTitle() {
+    if (!isAdmin() || state.navTitleBusy) {
+      return Promise.resolve(false);
+    }
+    var input = root.querySelector('[data-page-nav-title-input="true"]');
+    if (input instanceof HTMLInputElement) {
+      state.navTitleInput = String(input.value || '');
+    }
+    var nextTitle = String(state.navTitleInput || '').trim();
+    state.navTitleBusy = true;
+    var auth = authPayload();
+    return apiPost('/cgi/blog-update-nostr-page-nav-title', {
+      page_slug: slug,
+      nav_title: nextTitle,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      var updated = String((data && data.nav_title) || nextTitle || defaultNavbarTitle()).trim();
+      state.navTitle = updated;
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      if (state.payload && typeof state.payload === 'object') {
+        state.payload.nav_title = updated;
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+      } catch (_err) {
+        // Ignore navbar refresh dispatch failures.
+      }
+      renderHead();
+      return true;
+    }).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not save navbar title');
+      return false;
+    }).finally(function () {
+      state.navTitleBusy = false;
+      renderHead();
+    });
+  }
+
   function persistDraft(opts) {
     if (state.busy || !isAdmin()) {
       if (isAdmin()) {
@@ -716,6 +842,23 @@
       if (!(target instanceof HTMLElement)) {
         return;
       }
+      if (isAdmin() && state.editMode) {
+        var navTitleActionNode = target.closest('[data-page-nav-title-action]');
+        if (navTitleActionNode instanceof HTMLElement) {
+          event.preventDefault();
+          var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
+          if (navTitleAction === 'edit') {
+            state.navTitleEditing = true;
+            state.navTitleInput = currentNavbarTitle();
+            renderHead();
+            return;
+          }
+          if (navTitleAction === 'save') {
+            saveNavbarTitle();
+            return;
+          }
+        }
+      }
       var actionNode = target.closest('[data-contact-action]');
       if (!(actionNode instanceof HTMLElement) || !isAdmin()) {
         return;
@@ -723,6 +866,10 @@
       var action = String(actionNode.getAttribute('data-contact-action') || '');
       if (action === 'toggle-edit') {
         state.editMode = !state.editMode;
+        if (!state.editMode) {
+          state.navTitleEditing = false;
+          state.navTitleInput = '';
+        }
         renderAll();
         return;
       }
@@ -780,6 +927,10 @@
       }
 
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input')) {
+        state.navTitleInput = String(target.value || '');
         return;
       }
 
@@ -854,6 +1005,17 @@
       state.draft.rows[idx][field] = String(target.value || '');
       queueAutosave(500);
     });
+
+    root.addEventListener('keydown', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.hasAttribute('data-page-nav-title-input')) {
+        return;
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveNavbarTitle();
+      }
+    });
   }
 
   function maybeReloadForAuthChange() {
@@ -877,6 +1039,10 @@
       }
       state.payload = payload;
       state.draft = normalizeDraftState(payload.state || { title: '', description: '', rows: [] });
+      state.navTitle = String(payload.nav_title || '').trim();
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      state.navTitleBusy = false;
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       writeBootstrapCache(payload);

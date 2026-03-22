@@ -41,6 +41,10 @@
   var state = {
     payload: null,
     draft: null,
+    navTitle: '',
+    navTitleEditing: false,
+    navTitleInput: '',
+    navTitleBusy: false,
     busy: false,
     authSignature: '',
     saveTimer: null,
@@ -159,6 +163,10 @@
     }
     state.payload = cachedPayload;
     state.draft = readEditableStateFromPayload();
+    state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
+    state.navTitleEditing = false;
+    state.navTitleInput = '';
+    state.navTitleBusy = false;
     state.pendingNewEntry = null;
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
@@ -432,6 +440,83 @@
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
     };
+  }
+
+  function defaultNavbarTitle(renderState) {
+    var s = renderState || getRenderState();
+    var fallback = String(root.getAttribute('data-list-title') || root.getAttribute('data-page-title') || '').trim();
+    var title = String((s && s.title) || fallback || 'List').trim();
+    return title || 'List';
+  }
+
+  function currentNavbarTitle(renderState) {
+    var configured = String(state.navTitle || '').trim();
+    if (configured) {
+      return configured;
+    }
+    return defaultNavbarTitle(renderState);
+  }
+
+  function navbarTitleHost() {
+    var head = root.querySelector('.list-page-head');
+    if (!head || !els.title) {
+      return null;
+    }
+    var host = head.querySelector('[data-page-nav-title-host="true"]');
+    if (host instanceof HTMLElement) {
+      return host;
+    }
+    host = document.createElement('div');
+    host.setAttribute('data-page-nav-title-host', 'true');
+    host.className = 'list-page-nav-title-row-wrap';
+    if (els.description && els.description.parentNode === head) {
+      head.insertBefore(host, els.description);
+    } else if (els.title.nextSibling) {
+      head.insertBefore(host, els.title.nextSibling);
+    } else {
+      head.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderNavbarTitleRow(renderState) {
+    var host = navbarTitleHost();
+    if (!host) {
+      return;
+    }
+    if (!isAdmin() || !state.editMode) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    var current = currentNavbarTitle(renderState);
+    var editing = !!state.navTitleEditing;
+    var html = '<div class="list-page-nav-title-row">';
+    html += '<span class="list-page-nav-title-label">Navbar title</span>';
+    if (editing) {
+      var value = state.navTitleInput || current;
+      html += '<span class="list-page-nav-title-edit-wrap">';
+      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Navbar title">';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '</span>';
+    } else {
+      html += '<span class="list-page-nav-title-value">' + escapeHtml(current) + '</span>';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="edit">Edit...</button>';
+    }
+    html += '</div>';
+    host.hidden = false;
+    host.innerHTML = html;
+    if (editing) {
+      requestAnimationFrame(function () {
+        var input = host.querySelector('[data-page-nav-title-input="true"]');
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
+    }
   }
 
   function findElementIndex(uid) {
@@ -908,6 +993,7 @@
         els.title.textContent = s.title || 'List';
       }
     }
+    renderNavbarTitleRow(s);
 
     if (!els.description) {
       return;
@@ -1329,6 +1415,46 @@
     els.admin.innerHTML = '';
   }
 
+  function saveNavbarTitle() {
+    if (!isAdmin() || state.navTitleBusy) {
+      return Promise.resolve(false);
+    }
+    var input = root.querySelector('[data-page-nav-title-input="true"]');
+    if (input instanceof HTMLInputElement) {
+      state.navTitleInput = String(input.value || '');
+    }
+    var nextTitle = String(state.navTitleInput || '').trim();
+    state.navTitleBusy = true;
+    var auth = getAuthPayload();
+    return apiPost('/cgi/blog-update-nostr-page-nav-title', {
+      page_slug: slug,
+      nav_title: nextTitle,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      var updated = String((data && data.nav_title) || nextTitle || defaultNavbarTitle()).trim();
+      state.navTitle = updated;
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      if (state.payload && typeof state.payload === 'object') {
+        state.payload.nav_title = updated;
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+      } catch (_err) {
+        // Ignore navbar refresh dispatch failures.
+      }
+      renderHead();
+      return true;
+    }).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not save navbar title');
+      return false;
+    }).finally(function () {
+      state.navTitleBusy = false;
+      renderHead();
+    });
+  }
+
   function focusInlineField(uid, field) {
     var targetUid = String(uid || '');
     var targetField = String(field || '');
@@ -1357,6 +1483,21 @@
       if (!(target instanceof Element) || !isAdmin()) {
         return;
       }
+      var navTitleActionNode = target.closest('[data-page-nav-title-action]');
+      if (navTitleActionNode instanceof HTMLElement && state.editMode) {
+        event.preventDefault();
+        var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
+        if (navTitleAction === 'edit') {
+          state.navTitleEditing = true;
+          state.navTitleInput = currentNavbarTitle();
+          renderHead();
+          return;
+        }
+        if (navTitleAction === 'save') {
+          saveNavbarTitle();
+          return;
+        }
+      }
 
       var topAction = target.closest('[data-list-action]');
       if (topAction instanceof HTMLElement) {
@@ -1370,6 +1511,8 @@
           if (!state.editMode) {
             state.activeEntryUid = '';
             state.activeCellField = '';
+            state.navTitleEditing = false;
+            state.navTitleInput = '';
           }
           renderList();
           renderAdmin();
@@ -1538,6 +1681,10 @@
       if (!(target instanceof HTMLInputElement) || !isAdmin()) {
         return;
       }
+      if (target.hasAttribute('data-page-nav-title-input') && state.editMode) {
+        state.navTitleInput = String(target.value || '');
+        return;
+      }
       var headField = String(target.getAttribute('data-head-input') || '');
       if (!headField) {
         return;
@@ -1553,6 +1700,13 @@
     root.addEventListener('keydown', function (event) {
       var target = event.target;
       if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+        return;
+      }
+      if (target.hasAttribute('data-page-nav-title-input')) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          saveNavbarTitle();
+        }
         return;
       }
       var headField = String(target.getAttribute('data-head-input') || '');
@@ -1934,6 +2088,10 @@
       }
       state.payload = payload;
       state.draft = readEditableStateFromPayload();
+      state.navTitle = String(payload.nav_title || '').trim();
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      state.navTitleBusy = false;
       state.pendingNewEntry = null;
       state.saveIndicatorVisible = false;
       if (!state.activeEntryUid && state.draft.elements.length) {

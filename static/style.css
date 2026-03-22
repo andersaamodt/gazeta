@@ -888,6 +888,40 @@ header h1 {
   box-shadow: none;
 }
 
+.list-page-nav-title-row-wrap {
+  margin: 0 0 0.42rem;
+}
+
+.list-page-nav-title-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted-text, #4f617f);
+}
+
+.list-page-nav-title-label {
+  font-weight: 600;
+}
+
+.list-page-nav-title-value {
+  font-weight: 500;
+  color: var(--text, #243046);
+}
+
+.list-page-nav-title-edit-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.list-page-nav-title-input {
+  width: min(18rem, 62vw);
+  height: 2rem;
+  font-size: 0.92rem;
+}
+
 .list-page-title-actions {
   display: inline-flex;
   align-items: center;

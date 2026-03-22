@@ -1,0 +1,65 @@
+#!/bin/sh
+# Update navbar link title (placeholder_title) for one Nostr-backed page.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+if [ -z "$page_type" ]; then
+  blog_json_error "Unknown Nostr page slug" "unknown_page"
+  exit 0
+fi
+
+raw_nav_title=$(blog_param nav_title)
+nav_title=$(printf '%s' "$raw_nav_title" | sed 's/^[[:space:]]\+//; s/[[:space:]]\+$//')
+if [ -z "$nav_title" ]; then
+  nav_title=$(blog_nostr_page_default_title "$page_slug" "$page_type")
+fi
+
+cfg=$(blog_nostr_pages_load_json)
+updated=$(printf '%s\n' "$cfg" | jq -c --arg slug "$page_slug" --arg nav_title "$nav_title" '
+  .pages = ((.pages // []) | map(
+    if ((.slug // "") == $slug) then
+      .placeholder_title = $nav_title
+    else
+      .
+    end
+  ))
+')
+normalized=$(blog_nostr_pages_normalize_json "$updated")
+
+blog_nostr_pages_sync_source_pages "$normalized"
+blog_nostr_pages_save_json "$normalized"
+blog_run_build_async
+
+jq -cn \
+  --arg page_slug "$page_slug" \
+  --arg nav_title "$nav_title" \
+  --argjson pages "$(printf '%s\n' "$normalized" | jq -c '.pages // []')" \
+  '{
+    success: true,
+    page_slug: $page_slug,
+    nav_title: $nav_title,
+    pages: $pages,
+    message: "Navbar title updated."
+  }'
+printf '\n'

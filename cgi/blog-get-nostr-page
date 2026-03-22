@@ -27,6 +27,10 @@ if [ -z "$page_type" ]; then
   exit 0
 fi
 kind=$(blog_nostr_page_kind_for_type "$page_type")
+nav_title=$(blog_nostr_page_placeholder_title "$page_slug" 2>/dev/null || printf '')
+if [ -z "$nav_title" ]; then
+  nav_title=$(blog_nostr_page_default_title "$page_slug" "$page_type")
+fi
 
 is_admin=false
 req_token=$(blog_param session_token)
@@ -192,6 +196,7 @@ esac
 jq -cn \
   --arg slug "$page_slug" \
   --arg page_type "$page_type" \
+  --arg nav_title "$nav_title" \
   --argjson kind "$kind" \
   --argjson is_admin "$( [ "$is_admin" = "true" ] && printf true || printf false )" \
   --arg view_mode "$view_mode" \
@@ -207,6 +212,7 @@ jq -cn \
     success: true,
     slug: $slug,
     page_type: $page_type,
+    nav_title: $nav_title,
     kind: $kind,
     is_admin: $is_admin,
     view_mode: $view_mode,
