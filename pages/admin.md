@@ -3182,6 +3182,7 @@ body {
 .file-col-date {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .file-row-title {
@@ -3280,7 +3281,7 @@ body {
 .file-col-visibility {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.46rem;
   flex-wrap: wrap;
 }
@@ -3387,6 +3388,8 @@ body {
 
 #admin-panel #files-list.posts-list {
   border-top: 1px solid var(--admin-border, #cdbd95) !important;
+  border-top-width: 1px !important;
+  border-top-style: solid !important;
   border-right: 1px solid var(--admin-border, #cdbd95) !important;
   border-bottom: 1px solid var(--admin-border, #cdbd95) !important;
   border-left: 0 !important;
