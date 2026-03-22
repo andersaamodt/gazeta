@@ -90,6 +90,7 @@
     nosterInstallButton: document.getElementById('btn-noster-install'),
     nosterToggleButton: document.getElementById('btn-noster-toggle'),
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
+    navZapsStatus: document.getElementById('admin-nav-zaps-status'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
     registrationEnabled: document.getElementById('registration-enabled'),
@@ -1966,7 +1967,7 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
-    let label = 'Offline';
+    let label = 'Not Installed';
     let statusClass = 'is-offline';
     if (info.relay_connected) {
       label = 'Connected';
@@ -1980,6 +1981,27 @@
     }
     els.navNosterStatus.textContent = label;
     els.navNosterStatus.className = 'admin-nav-status-pill ' + statusClass;
+  }
+
+  function setZapsNavStatus(runtime) {
+    if (!els.navZapsStatus) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    const wizardryReady = !!info.wizardry_installed;
+    const bitcoinReady = !!info.bitcoin_installed;
+    const lightningReady = !!info.lightning_installed;
+    let label = 'Not Installed';
+    let statusClass = 'is-offline';
+    if (lightningReady) {
+      label = 'Ready';
+      statusClass = 'is-connected';
+    } else if (wizardryReady || bitcoinReady) {
+      label = 'Partial';
+      statusClass = 'is-installed';
+    }
+    els.navZapsStatus.textContent = label;
+    els.navZapsStatus.className = 'admin-nav-status-pill ' + statusClass;
   }
 
   function setNosterButtonsBusy(isBusy) {
@@ -2136,6 +2158,7 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
+    setZapsNavStatus(info);
     const wizardryReady = !!info.wizardry_installed;
     const bitcoinReady = !!info.bitcoin_installed;
     const lightningReady = !!info.lightning_installed;

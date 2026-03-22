@@ -18,8 +18,8 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Offline</span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Zaps</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 </div>
 </aside>
 
@@ -739,6 +739,9 @@ body {
 .admin-nav-label-with-pill {
   display: inline-flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 0.42rem;
 }
 
@@ -746,6 +749,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-left: auto;
   padding: 0.06rem 0.42rem;
   border-radius: 999px;
   font-size: 0.68rem;
