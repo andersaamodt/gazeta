@@ -99,7 +99,28 @@ setting_mirror_comments() {
   setting_bool nostr_stonr_mirror_comments true
 }
 
+setting_auto_start_from_config() {
+  for candidate in \
+    "$stonr_config_file" \
+    "$home_dir/.config/stonr/config.json" \
+    "$home_dir/.stonr/config.json"; do
+    [ -f "$candidate" ] || continue
+    raw=$(jq -r 'if (.runtime // null) != null then (.runtime.auto_start // "") else (.auto_start // "") end' "$candidate" 2>/dev/null || printf '')
+    if [ -n "$raw" ] && [ "$raw" != "null" ]; then
+      bool_or_default "$raw" false
+      return 0
+    fi
+  done
+  return 1
+}
+
 setting_auto_start() {
+  config_auto_start=$(setting_auto_start_from_config 2>/dev/null || printf '')
+  if [ -n "$config_auto_start" ]; then
+    printf '%s\n' "$config_auto_start"
+    return 0
+  fi
+
   relay_auto_start=$(stonr_control_pref_get relay_auto_start 2>/dev/null || printf '')
   if [ -n "$relay_auto_start" ]; then
     bool_or_default "$relay_auto_start" false
