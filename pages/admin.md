@@ -1683,6 +1683,19 @@ body {
   justify-self: start;
 }
 
+[data-admin-section="account"] #btn-save-account,
+[data-admin-section="account"] #btn-bind-passkey,
+[data-admin-section="account"] #btn-generate-ssh,
+[data-admin-section="account"] #btn-link-ssh {
+  width: auto;
+  min-width: 0;
+  min-height: 2rem;
+  height: 2rem;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.86rem;
+  line-height: 1.1;
+}
+
 [data-admin-section="account"] .account-ssh-row {
   align-items: start;
 }
