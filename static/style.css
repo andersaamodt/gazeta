@@ -3924,10 +3924,13 @@ footer {
 }
 
 .blog-layout {
+  --blog-filter-gutter: 2.2rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.66rem;
   align-items: start;
+  margin-left: calc(-1 * var(--blog-filter-gutter));
+  padding-left: var(--blog-filter-gutter);
 }
 
 .blog-filter-column {
@@ -3935,6 +3938,7 @@ footer {
   align-items: flex-start;
   justify-content: center;
   padding-top: 0.14rem;
+  width: 1.9rem;
 }
 
 .blog-main-column {
@@ -4129,6 +4133,8 @@ footer {
 
 @media (max-width: 900px) {
   .blog-layout {
+    margin-left: 0;
+    padding-left: 0;
     column-gap: 0.5rem;
   }
 
@@ -5329,6 +5335,22 @@ nav.site-nav {
   -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
   box-shadow: none !important;
   transform: none !important;
+}
+
+/* Keep nav/login + primary action hovers in primary color space (never tan fallback). */
+nav.site-nav .btn-login:hover:not(:disabled),
+nav.site-nav .btn-login:focus-visible:not(:disabled),
+#main-content .list-page-admin-bar .list-admin-primary-btn:hover:not(:disabled),
+#main-content .list-page-admin-bar .list-admin-primary-btn:focus-visible:not(:disabled),
+#main-content .auth-primary-btn:hover:not(:disabled),
+#main-content .auth-primary-btn:focus-visible:not(:disabled),
+#main-content .auth-secondary-btn:hover:not(:disabled),
+#main-content .auth-secondary-btn:focus-visible:not(:disabled) {
+  background-image: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%) !important;
+  background-color: var(--button-primary-hover-start) !important;
+  border-color: var(--button-primary-border) !important;
+  color: var(--button-primary-text) !important;
+  -webkit-text-fill-color: var(--button-primary-text) !important;
 }
 
 body.nostr-publish-dialog-open {

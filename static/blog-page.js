@@ -195,6 +195,46 @@
     }
   }
 
+  function ensureFilterGutterLayout() {
+    if (!root || !els.toggle) {
+      return;
+    }
+
+    var layout = root.querySelector('.blog-layout');
+    if (!layout) {
+      layout = document.createElement('div');
+      layout.className = 'blog-layout';
+      while (root.firstChild) {
+        layout.appendChild(root.firstChild);
+      }
+      root.appendChild(layout);
+    }
+
+    var filterCol = layout.querySelector('.blog-filter-column');
+    if (!filterCol) {
+      filterCol = document.createElement('div');
+      filterCol.className = 'blog-filter-column';
+      layout.insertBefore(filterCol, layout.firstChild);
+    }
+
+    var mainCol = layout.querySelector('.blog-main-column');
+    if (!mainCol) {
+      mainCol = document.createElement('div');
+      mainCol.className = 'blog-main-column';
+      var cursor = filterCol.nextSibling;
+      while (cursor) {
+        var next = cursor.nextSibling;
+        mainCol.appendChild(cursor);
+        cursor = next;
+      }
+      layout.appendChild(mainCol);
+    }
+
+    if (els.toggle.parentNode !== filterCol) {
+      filterCol.appendChild(els.toggle);
+    }
+  }
+
   function renderValidation() {
     if (!els.validation) {
       return;
@@ -603,6 +643,7 @@
   }
 
   removeLegacyTitleBlock();
+  ensureFilterGutterLayout();
   var cached = readCache();
   if (cached) {
     state.posts = cached;
