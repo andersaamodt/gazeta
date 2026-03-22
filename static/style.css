@@ -1466,8 +1466,8 @@ header h1 {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
 }
 
 .list-tile {
@@ -1476,6 +1476,11 @@ header h1 {
   padding: 0.65rem 0.72rem;
   background: var(--card-bg);
   box-shadow: 0 1px 1px color-mix(in srgb, var(--theme_dark, #172553) 9%, transparent);
+  aspect-ratio: 3 / 4;
+  min-height: 16rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .list-tile-main {
@@ -1506,6 +1511,18 @@ header h1 {
 
 .list-tile-child-text {
   min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .list-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .list-tiles {
+    grid-template-columns: 1fr;
+  }
 }
 
 .nostr-page-extras-editor {
