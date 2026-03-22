@@ -2178,9 +2178,37 @@
     });
   }
 
+  function isThemeHrefAlreadyActive(themeLink, href) {
+    if (!themeLink || !href) {
+      return true;
+    }
+    var absoluteHref = href;
+    try {
+      absoluteHref = new URL(href, window.location.href).href;
+    } catch (_err) {
+      absoluteHref = href;
+    }
+    var currentHref = String(themeLink.href || '');
+    var currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
+    return currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref;
+  }
+
+  function isServerThemeHrefActive(themeLink) {
+    if (!themeLink) {
+      return false;
+    }
+    var attrHref = String(themeLink.getAttribute('href') || '');
+    var resolvedHref = String(themeLink.href || '');
+    return attrHref.indexOf('/cgi/blog-theme.css') === 0 || resolvedHref.indexOf('/cgi/blog-theme.css') !== -1;
+  }
+
   function updateThemeStylesheet(theme) {
     var nextTheme = String(theme || '').trim() || 'adept';
     var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css';
+    var themeLink = document.getElementById('theme-stylesheet');
+    if (isThemeHrefAlreadyActive(themeLink, href)) {
+      return Promise.resolve();
+    }
     pulseThemeSwitchVisualState();
     return swapThemeStylesheet(href);
   }
@@ -2191,7 +2219,10 @@
       .then(function (data) {
         if (data && data.theme) {
           state.currentTheme = data.theme;
-          return updateThemeStylesheet(state.currentTheme);
+          var themeLink = document.getElementById('theme-stylesheet');
+          if (!isServerThemeHrefActive(themeLink)) {
+            return updateThemeStylesheet(state.currentTheme);
+          }
         }
       })
       .then(function () {

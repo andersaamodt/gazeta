@@ -875,26 +875,6 @@
 
   function applyThemePreview(theme) {
     const pickedTheme = (theme || '').trim() || 'adept';
-    const root = document.documentElement;
-    const body = document.body;
-    if (root) {
-      root.classList.add('theme-switching');
-    }
-    if (body) {
-      body.classList.add('theme-switching');
-    }
-    if (themeSwitchVisualTimer) {
-      clearTimeout(themeSwitchVisualTimer);
-    }
-    themeSwitchVisualTimer = setTimeout(function () {
-      if (root) {
-        root.classList.remove('theme-switching');
-      }
-      if (body) {
-        body.classList.remove('theme-switching');
-      }
-      themeSwitchVisualTimer = null;
-    }, 90);
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
       const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css';
@@ -902,6 +882,26 @@
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
       if (!(currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref)) {
+        const root = document.documentElement;
+        const body = document.body;
+        if (root) {
+          root.classList.add('theme-switching');
+        }
+        if (body) {
+          body.classList.add('theme-switching');
+        }
+        if (themeSwitchVisualTimer) {
+          clearTimeout(themeSwitchVisualTimer);
+        }
+        themeSwitchVisualTimer = setTimeout(function () {
+          if (root) {
+            root.classList.remove('theme-switching');
+          }
+          if (body) {
+            body.classList.remove('theme-switching');
+          }
+          themeSwitchVisualTimer = null;
+        }, 90);
         const token = ++themeSwapToken;
         const preloader = document.createElement('link');
         preloader.rel = 'stylesheet';
@@ -1920,9 +1920,6 @@
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
       if (els.adminTheme && data.theme) {
         els.adminTheme.value = data.theme;
-      }
-      if (els.adminTheme) {
-        applyThemePreview(els.adminTheme.value);
       }
       els.registrationEnabled.checked = data.registration_enabled !== false;
       if (typeof data.drip_interval_hours !== 'undefined') {
