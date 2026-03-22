@@ -39,6 +39,9 @@
     activeRowField: '',
     draggingRowUid: '',
     dragOverRowUid: '',
+    dragMoved: false,
+    dragDropped: false,
+    dragStartRows: null,
     pendingFlipPositions: null,
     rowUidSeq: 0,
     navTitle: '',
@@ -1062,7 +1065,14 @@
       var qLabel = qualifierLabel(qValue);
       var uid = String(row._uid || '').trim();
 
-      html += '<tr class="contact-profile-row' + (editable && state.dragOverRowUid && state.dragOverRowUid === uid ? ' is-drag-over' : '') + '" data-row-index="' + String(idx) + '" data-row-uid="' + escapeAttr(uid) + '">';
+      var rowClasses = 'contact-profile-row';
+      if (editable && state.dragOverRowUid && state.dragOverRowUid === uid) {
+        rowClasses += ' is-drag-over';
+      }
+      if (editable && state.draggingRowUid && state.draggingRowUid === uid) {
+        rowClasses += ' is-dragging';
+      }
+      html += '<tr class="' + rowClasses + '" data-row-index="' + String(idx) + '" data-row-uid="' + escapeAttr(uid) + '">';
       if (editable) {
         html += '<td class="contact-handle-cell"><button type="button" class="unobtrusive-icon-button contact-drag-handle" data-contact-drag-handle="true" data-row-uid="' + escapeAttr(uid) + '" title="Drag to reorder" aria-label="Drag to reorder" draggable="true">' + dragGripIconSvg() + '</button></td>';
       }
@@ -1406,6 +1416,9 @@
       }
       state.draggingRowUid = uid;
       state.dragOverRowUid = uid;
+      state.dragMoved = false;
+      state.dragDropped = false;
+      state.dragStartRows = normalizeRows((state.draft && state.draft.rows) || []);
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
         try {
@@ -1442,6 +1455,15 @@
       }
       if (state.dragOverRowUid !== uid) {
         state.dragOverRowUid = uid;
+        var sourceUid = String(state.draggingRowUid || '').trim();
+        if (sourceUid && uid !== sourceUid) {
+          var before = captureRowFlipPositions();
+          var changed = reorderDraftRowsByUid(sourceUid, uid);
+          if (changed) {
+            state.pendingFlipPositions = before;
+            state.dragMoved = true;
+          }
+        }
         renderContent();
       }
     });
@@ -1461,16 +1483,28 @@
       event.preventDefault();
       var targetUid = String(row.getAttribute('data-row-uid') || '').trim();
       var sourceUid = String(state.draggingRowUid || '').trim();
+      state.dragDropped = true;
       if (!sourceUid || !targetUid || sourceUid === targetUid) {
         state.draggingRowUid = '';
         state.dragOverRowUid = '';
+        state.dragMoved = false;
+        state.dragDropped = false;
+        state.dragStartRows = null;
         renderContent();
         return;
       }
-      state.pendingFlipPositions = captureRowFlipPositions();
-      var moved = reorderDraftRowsByUid(sourceUid, targetUid);
+      var moved = false;
+      if (state.dragMoved) {
+        moved = true;
+      } else {
+        state.pendingFlipPositions = captureRowFlipPositions();
+        moved = reorderDraftRowsByUid(sourceUid, targetUid);
+      }
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
+      state.dragMoved = false;
+      state.dragDropped = false;
+      state.dragStartRows = null;
       if (moved) {
         clearActiveRowField();
         renderContent();
@@ -1485,8 +1519,15 @@
       if (!isAdmin() || !state.editMode) {
         return;
       }
+      if (!state.dragDropped && state.dragMoved && Array.isArray(state.dragStartRows)) {
+        state.draft = normalizeDraftState(state.draft);
+        state.draft.rows = normalizeRows(state.dragStartRows);
+      }
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
+      state.dragMoved = false;
+      state.dragDropped = false;
+      state.dragStartRows = null;
       renderContent();
     });
 
