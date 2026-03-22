@@ -212,7 +212,6 @@
     setSaveStatus('saved');
     renderAll();
     markInitialContentPainted();
-    markHydrationPageReady();
     return true;
   }
 
