@@ -2993,6 +2993,8 @@ body {
   border-radius: 0;
   overflow: visible;
   background: transparent;
+  width: 100%;
+  max-width: 100%;
 }
 
 .posts-list {
@@ -3221,6 +3223,9 @@ body {
   justify-content: space-between;
   gap: 0.5rem;
   min-height: 3rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .user-card.user-row-alt {
@@ -3240,6 +3245,7 @@ body {
 }
 
 .user-card-main {
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   gap: 0.08rem;
@@ -3248,9 +3254,12 @@ body {
 .user-card-name {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.42rem;
   font-weight: 700;
   color: #163161;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .user-self-label {
@@ -3294,6 +3303,9 @@ body {
   justify-content: flex-end;
   align-items: center;
   gap: 0.38rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 #admin-panel button.user-menu-trigger {
@@ -3855,6 +3867,21 @@ body {
     --admin-content-pad-right: 0.5rem;
     min-height: 0;
     padding: 0.4rem 0.5rem 0.75rem;
+  }
+
+  .user-card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .user-card-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  #admin-panel .user-menu-panel {
+    right: auto;
+    left: 0;
   }
 }
 
