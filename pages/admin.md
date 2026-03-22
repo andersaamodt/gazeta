@@ -3316,7 +3316,7 @@ body {
   border-top: 1px solid var(--admin-border, #cdbd95);
   border-bottom: 1px solid var(--admin-border, #cdbd95);
   border-left: 0;
-  border-right: 0;
+  border-right: 1px solid var(--admin-border, #cdbd95);
   border-radius: 0;
   overflow: visible;
   background: transparent;
@@ -3324,6 +3324,11 @@ body {
   max-width: 100%;
   margin: 0;
   padding: 0;
+}
+
+#admin-panel #users-list.users-list {
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 #admin-panel #drafts-list > .placeholder,
