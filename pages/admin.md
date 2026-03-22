@@ -746,7 +746,7 @@ body {
   border-radius: 999px;
   font-size: 0.68rem;
   line-height: 1.1;
-  font-weight: 700;
+  font-weight: 400;
   border: 1px solid #d0d9eb;
   color: #5e6d86;
   background: #f4f7fc;
