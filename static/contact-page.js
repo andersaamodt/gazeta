@@ -364,11 +364,11 @@
       var value = state.navTitleInput || current;
       html += '<span class="list-page-nav-title-edit-wrap">';
       html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Link title">';
-      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '<button type="button" class="list-inline-edit-link list-page-nav-title-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
       html += '</span>';
     } else {
       html += '<span class="list-page-nav-title-value">' + escapeHtml(current) + '</span>';
-      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="edit">Edit...</button>';
+      html += '<button type="button" class="list-inline-edit-link list-page-nav-title-edit-link" data-page-nav-title-action="edit">Edit...</button>';
     }
     html += '</div>';
     host.hidden = false;
