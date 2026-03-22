@@ -907,6 +907,5 @@
       maybeReloadForAuthChange();
     }
   });
-  renderFromBootstrapCache();
   load();
 })();
