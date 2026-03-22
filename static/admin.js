@@ -1055,6 +1055,27 @@
       .reverse();
   }
 
+  function normalizeUploadDataBase64(dataUrl) {
+    const raw = String(dataUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+    const commaIdx = raw.indexOf(',');
+    if (commaIdx > 0 && /^data:/i.test(raw.slice(0, commaIdx))) {
+      return raw.slice(commaIdx + 1);
+    }
+    return raw;
+  }
+
+  function isMissingUploadPayloadError(data, statusCode) {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    const code = String(data.code || '').toLowerCase();
+    const message = String(data.error || '').toLowerCase();
+    return statusCode >= 400 && code === 'invalid_request' && message.indexOf('filename and data_base64 are required') >= 0;
+  }
+
   function uploadFileWithProgress(file, options) {
     const opts = options || {};
     const includeAuth = opts.includeAuth !== false;
@@ -1062,52 +1083,81 @@
     const job = addUploadJob(file, opts.kind || 'file');
 
     return readFileAsDataUrl(file).then(function (dataUrl) {
+      const rawDataUrl = String(dataUrl || '').trim();
+      const bareDataBase64 = normalizeUploadDataBase64(rawDataUrl);
+      const safeFilename = String((file && file.name) || job.name || 'upload.bin').trim() || 'upload.bin';
+      const safeMimeType = String((file && file.type) || '');
+      if (!rawDataUrl) {
+        finishUploadJob(job.id, 'Could not read file data');
+        return Promise.reject(new Error('Failed to read file'));
+      }
       return new Promise(function (resolve, reject) {
-        const payload = includeAuth ? buildAuthPayload(extraData) : extraData;
-        payload.filename = file.name;
-        payload.mime_type = file.type || '';
-        payload.data_base64 = dataUrl;
-        const body = new URLSearchParams(payload).toString();
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/cgi/blog-upload-media', true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.upload.addEventListener('progress', function (event) {
-          if (!event.lengthComputable) {
-            return;
-          }
-          const pct = Math.round((event.loaded / event.total) * 100);
-          updateUploadJob(job.id, {
-            progress: pct,
-            status: pct >= 100 ? 'Finalizing' : 'Uploading'
+        let fallbackAttempted = false;
+
+        function buildPayload(useBareData) {
+          const payload = includeAuth ? buildAuthPayload(extraData) : Object.assign({}, extraData);
+          payload.filename = safeFilename;
+          payload.mime_type = safeMimeType;
+          payload.data_base64 = useBareData ? bareDataBase64 : rawDataUrl;
+          return payload;
+        }
+
+        function sendAttempt(useBareData) {
+          const body = new URLSearchParams(buildPayload(useBareData)).toString();
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/cgi/blog-upload-media', true);
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+          xhr.upload.addEventListener('progress', function (event) {
+            if (!event.lengthComputable) {
+              return;
+            }
+            const pct = Math.round((event.loaded / event.total) * 100);
+            updateUploadJob(job.id, {
+              progress: pct,
+              status: pct >= 100 ? 'Finalizing' : 'Uploading',
+              error: ''
+            });
           });
-        });
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState !== 4) {
-            return;
-          }
-          let data;
-          try {
-            data = JSON.parse(String(xhr.responseText || ''));
-          } catch (_err) {
-            finishUploadJob(job.id, 'Invalid response');
-            reject(new Error('Invalid JSON response'));
-            return;
-          }
-          maybePromptInteractiveApproval(data);
-          if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
-            const message = data && data.error ? String(data.error) : 'Upload failed';
-            finishUploadJob(job.id, message);
-            reject(new Error(message));
-            return;
-          }
-          finishUploadJob(job.id, '');
-          resolve(data);
-        };
-        xhr.onerror = function () {
-          finishUploadJob(job.id, 'Upload failed');
-          reject(new Error('Upload failed'));
-        };
-        xhr.send(body);
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) {
+              return;
+            }
+            let data;
+            try {
+              data = JSON.parse(String(xhr.responseText || ''));
+            } catch (_err) {
+              finishUploadJob(job.id, 'Invalid response');
+              reject(new Error('Invalid JSON response'));
+              return;
+            }
+            maybePromptInteractiveApproval(data);
+            if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
+              if (!useBareData && !fallbackAttempted && isMissingUploadPayloadError(data, xhr.status)) {
+                fallbackAttempted = true;
+                updateUploadJob(job.id, {
+                  status: 'Retrying',
+                  error: '',
+                  progress: Math.max(5, Number(job.progress || 0))
+                });
+                sendAttempt(true);
+                return;
+              }
+              const message = data && data.error ? String(data.error) : 'Upload failed';
+              finishUploadJob(job.id, message);
+              reject(new Error(message));
+              return;
+            }
+            finishUploadJob(job.id, '');
+            resolve(data);
+          };
+          xhr.onerror = function () {
+            finishUploadJob(job.id, 'Upload failed');
+            reject(new Error('Upload failed'));
+          };
+          xhr.send(body);
+        }
+
+        sendAttempt(false);
       });
     });
   }
@@ -2730,14 +2780,16 @@
       html += '</div>';
       html += '<div class="file-col file-col-visibility">';
       html += '<span class="file-pill is-uploading">' + escapeHtml(status) + '</span>';
-      html += '<div class="file-upload-inline">';
-      html += '<div class="file-upload-inline-meta">' + escapeHtml(status) + (job.done ? '' : (' · ' + String(progress) + '%')) + '</div>';
-      if (!job.done || job.error) {
+      if (!job.done) {
+        html += '<div class="file-upload-inline">';
+        html += '<div class="file-upload-inline-meta">' + escapeHtml(status) + ' · ' + String(progress) + '%</div>';
         html += '<div class="file-upload-inline-bar"><div class="file-upload-inline-fill" style="inline-size:' + String(progress) + '%;"></div></div>';
+        html += '</div>';
       }
-      html += '</div>';
       html += '<div class="file-row-actions">';
-      html += '<button type="button" disabled aria-label="Upload in progress" title="Upload in progress">' + (job.error ? 'Upload failed' : 'Uploading...') + '</button>';
+      if (!job.done) {
+        html += '<button type="button" disabled aria-label="Upload in progress" title="Upload in progress">Uploading...</button>';
+      }
       html += '<button type="button" class="unobtrusive-icon-button" disabled aria-label="Copy file URL" title="File URL available after upload">' +
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
         '<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +

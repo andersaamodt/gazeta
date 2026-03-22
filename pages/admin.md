@@ -3016,12 +3016,19 @@ body {
   border-bottom: 1px solid var(--admin-border, #d2def3);
 }
 
+.file-table-header .file-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .file-col-head {
   color: var(--admin-muted, #6a7488);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.1;
+  text-align: center;
 }
 
 #admin-panel .post-row.file-row {
@@ -3104,8 +3111,8 @@ body {
 }
 
 .file-row-uploading.is-failed .file-pill.is-uploading {
-  background: rgba(178, 71, 52, 0.16);
-  color: #8f3022;
+  background: rgba(122, 92, 31, 0.12);
+  color: #6e4f15;
 }
 
 .file-upload-inline {
@@ -3136,7 +3143,7 @@ body {
 }
 
 .file-row-uploading.is-failed .file-upload-inline-fill {
-  background: #b24734;
+  background: #2f63b7;
 }
 
 .file-row-actions {
