@@ -2530,32 +2530,40 @@ body {
 .nostr-pages-header-name {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-width: 0;
   flex: 1 1 auto;
+  text-align: center;
 }
 
 .nostr-pages-header-path {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: 14rem;
   min-width: 14rem;
   flex: 0 0 14rem;
+  text-align: center;
 }
 
 .nostr-pages-header-type {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: 11.5rem;
   min-width: 11.5rem;
   flex: 0 0 11.5rem;
+  text-align: center;
 }
 
 .nostr-pages-header-settings {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: 11.5rem;
   min-width: 11.5rem;
   flex: 0 0 11.5rem;
+  text-align: center;
 }
 
 .nostr-pages-header-type-label {
@@ -2583,6 +2591,7 @@ body {
   width: 8.8rem;
   min-width: 8.8rem;
   flex: 0 0 8.8rem;
+  text-align: center;
 }
 
 .nostr-pages-header-publish-col {
@@ -2592,6 +2601,7 @@ body {
   width: 7.2rem;
   min-width: 7.2rem;
   flex: 0 0 7.2rem;
+  text-align: center;
 }
 
 .nostr-pages-header-nav {
