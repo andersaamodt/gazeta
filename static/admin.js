@@ -3092,8 +3092,8 @@
         const postsLabel = connectedPosts === 1 ? '1 post' : (String(connectedPosts) + ' posts');
         const defaultTag = String(page.default_tag || '').trim();
         html += '<div class="nostr-page-type-blog-tools">';
-        html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
         html += '<label class="nostr-page-default-tag"><span>Posts</span><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
+        html += '<span class="nostr-page-posts-count">' + escapeHtml(postsLabel) + '</span>';
         html += '</div>';
       }
       html += '</div>';
