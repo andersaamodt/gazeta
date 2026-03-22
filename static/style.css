@@ -2010,6 +2010,10 @@ header h1 {
   table-layout: fixed;
 }
 
+.contact-profile-table.is-editing {
+  table-layout: fixed;
+}
+
 .contact-profile-row + .contact-profile-row .contact-platform-cell,
 .contact-profile-row + .contact-profile-row .contact-value-cell {
   border-top: 0;
@@ -2023,15 +2027,44 @@ header h1 {
   font-weight: 700;
   color: var(--text, #243046);
   text-transform: lowercase;
+  white-space: nowrap;
 }
 
 .contact-platform-cell::after {
-  content: ":";
+  content: "";
 }
 
 .contact-platform-cell .contact-inline-open,
 .contact-platform-cell .contact-inline-input {
   margin-right: 0.1rem;
+}
+
+.contact-handle-cell {
+  width: 1.9rem;
+  padding: 0.56rem 0 0.56rem 0.12rem;
+  vertical-align: top;
+}
+
+.contact-drag-handle {
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  color: color-mix(in srgb, var(--text, #243046) 72%, transparent);
+  cursor: grab;
+}
+
+.contact-drag-handle:active {
+  cursor: grabbing;
+}
+
+.contact-drag-handle:hover,
+.contact-drag-handle:focus-visible {
+  color: var(--text, #243046);
+}
+
+.contact-drag-handle-icon {
+  display: block;
 }
 
 .contact-value-cell {
@@ -2106,8 +2139,27 @@ header h1 {
   width: 1.6rem;
   min-width: 1.6rem;
   height: 1.6rem;
-  font-size: 0.9rem;
+  transform: translateY(-2px);
+  padding: 0;
+}
+
+.contact-delete-icon {
+  display: block;
+  width: 0.9rem;
+  height: 0.9rem;
   line-height: 1;
+}
+
+.contact-profile-row {
+  transition: background-color 0.15s ease;
+}
+
+.contact-profile-row.is-drag-over {
+  background: color-mix(in srgb, var(--light-bg, #eef3ff) 68%, transparent);
+}
+
+.contact-profile-row.is-dragging {
+  opacity: 0.7;
 }
 
 .contact-value-link {
@@ -2184,6 +2236,10 @@ header h1 {
   .contact-platform-cell {
     width: 7.1rem;
     padding: 0.5rem 0.62rem;
+  }
+
+  .contact-handle-cell {
+    padding: 0.5rem 0 0.5rem 0.08rem;
   }
 
   .contact-value-cell {

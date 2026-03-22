@@ -37,6 +37,10 @@
     activeHeadField: '',
     activeRowIndex: -1,
     activeRowField: '',
+    draggingRowUid: '',
+    dragOverRowUid: '',
+    pendingFlipPositions: null,
+    rowUidSeq: 0,
     navTitle: '',
     navTitleEditing: false,
     navTitleInput: '',
@@ -49,6 +53,19 @@
     initialContentPainted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
+
+  function nextRowUid() {
+    state.rowUidSeq = Number(state.rowUidSeq || 0) + 1;
+    return 'contact-row-' + String(state.rowUidSeq);
+  }
+
+  function normalizeRowUid(value) {
+    var raw = String(value || '').trim();
+    if (raw) {
+      return raw;
+    }
+    return nextRowUid();
+  }
 
   function escapeHtml(text) {
     return String(text || '')
@@ -246,7 +263,12 @@
     var list = Array.isArray(rows) ? rows : [];
     return list.map(function (row) {
       var transport = String(row && row.transport || '').trim().toLowerCase();
+      var uid = normalizeRowUid(row && row._uid);
+      if (row && typeof row === 'object' && !row._uid) {
+        row._uid = uid;
+      }
       return {
+        _uid: uid,
         transport: transport,
         value: normalizeContactRowValue(transport, String(row && row.value || '')),
         qualifier: String(row && row.qualifier || '').trim().toLowerCase()
@@ -412,6 +434,108 @@
       return false;
     }
     state.draft.rows[idx][key] = String(value || '');
+    return true;
+  }
+
+  function captureRowFlipPositions() {
+    var map = {};
+    if (!els.content) {
+      return map;
+    }
+    var nodes = els.content.querySelectorAll('.contact-profile-row[data-row-uid]');
+    Array.prototype.forEach.call(nodes, function (node) {
+      if (!(node instanceof HTMLElement)) {
+        return;
+      }
+      var uid = String(node.getAttribute('data-row-uid') || '').trim();
+      if (!uid) {
+        return;
+      }
+      map[uid] = node.getBoundingClientRect().top;
+    });
+    return map;
+  }
+
+  function playRowFlipAnimation(previous) {
+    if (!els.content || !previous || typeof previous !== 'object') {
+      return;
+    }
+    var nodes = els.content.querySelectorAll('.contact-profile-row[data-row-uid]');
+    Array.prototype.forEach.call(nodes, function (node) {
+      if (!(node instanceof HTMLElement)) {
+        return;
+      }
+      var uid = String(node.getAttribute('data-row-uid') || '').trim();
+      if (!uid || !Object.prototype.hasOwnProperty.call(previous, uid)) {
+        return;
+      }
+      var nextTop = node.getBoundingClientRect().top;
+      var delta = Number(previous[uid]) - nextTop;
+      if (!isFinite(delta) || Math.abs(delta) < 0.5) {
+        return;
+      }
+      node.style.transition = 'none';
+      node.style.transform = 'translateY(' + String(delta) + 'px)';
+      node.getBoundingClientRect();
+      node.style.transition = 'transform 240ms cubic-bezier(0.2, 0, 0, 1)';
+      node.style.transform = '';
+      var clear = function () {
+        node.style.transition = '';
+        node.style.transform = '';
+      };
+      node.addEventListener('transitionend', clear, { once: true });
+      window.setTimeout(clear, 280);
+    });
+  }
+
+  function dragGripIconSvg() {
+    return '' +
+      '<svg class="contact-drag-handle-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="5" cy="3" r="1.1" fill="currentColor"/>' +
+      '<circle cx="11" cy="3" r="1.1" fill="currentColor"/>' +
+      '<circle cx="5" cy="8" r="1.1" fill="currentColor"/>' +
+      '<circle cx="11" cy="8" r="1.1" fill="currentColor"/>' +
+      '<circle cx="5" cy="13" r="1.1" fill="currentColor"/>' +
+      '<circle cx="11" cy="13" r="1.1" fill="currentColor"/>' +
+      '</svg>';
+  }
+
+  function deleteIconSvg() {
+    return '' +
+      '<svg class="contact-delete-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8" d="M6 6l12 12M18 6L6 18"/>' +
+      '</svg>';
+  }
+
+  function reorderDraftRowsByUid(fromUid, toUid) {
+    var sourceUid = String(fromUid || '').trim();
+    var targetUid = String(toUid || '').trim();
+    if (!sourceUid || !targetUid || sourceUid === targetUid) {
+      return false;
+    }
+    state.draft = normalizeDraftState(state.draft);
+    var rows = normalizeRows(state.draft.rows || []);
+    var fromIdx = -1;
+    var toIdx = -1;
+    for (var i = 0; i < rows.length; i += 1) {
+      var uid = String(rows[i] && rows[i]._uid || '').trim();
+      if (uid === sourceUid) {
+        fromIdx = i;
+      }
+      if (uid === targetUid) {
+        toIdx = i;
+      }
+    }
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) {
+      return false;
+    }
+    var moving = rows.splice(fromIdx, 1)[0];
+    if (fromIdx < toIdx) {
+      toIdx -= 1;
+    }
+    rows.splice(toIdx, 0, moving);
+    state.draft.rows = rows;
+    state.payload.state = normalizeDraftState(state.draft);
     return true;
   }
 
@@ -905,14 +1029,18 @@
     if (!list.length) {
       return html + '<p class="list-page-empty-state">No content yet.</p>';
     }
-    html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
+    html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table' + (editable ? ' is-editing' : '') + '"><tbody>';
     list.forEach(function (row, idx) {
       var transport = String(row.transport || '').trim();
       var value = String(row.value || '');
       var qValue = String(row.qualifier || '').trim().toLowerCase();
       var qLabel = qualifierLabel(qValue);
+      var uid = String(row._uid || '').trim();
 
-      html += '<tr class="contact-profile-row">';
+      html += '<tr class="contact-profile-row' + (editable && state.dragOverRowUid && state.dragOverRowUid === uid ? ' is-drag-over' : '') + '" data-row-index="' + String(idx) + '" data-row-uid="' + escapeAttr(uid) + '">';
+      if (editable) {
+        html += '<td class="contact-handle-cell"><button type="button" class="unobtrusive-icon-button contact-drag-handle" data-contact-drag-handle="true" data-row-uid="' + escapeAttr(uid) + '" title="Drag to reorder" aria-label="Drag to reorder" draggable="true">' + dragGripIconSvg() + '</button></td>';
+      }
       html += '<th scope="row" class="contact-platform-cell">';
       if (editable && isActiveRowField(idx, 'transport')) {
         html += '<input type="text" class="contact-inline-input" data-contact-inline-field="transport" data-row-index="' + String(idx) + '" value="' + escapeHtml(transport) + '" placeholder="transport">';
@@ -945,7 +1073,7 @@
           html += '<span class="list-inline-placeholder">Set qualifier...</span>';
         }
         html += '</button>';
-        html += '<button type="button" class="icon-danger unobtrusive-icon-button contact-row-delete" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry">✕</button>';
+        html += '<button type="button" class="icon-danger unobtrusive-icon-button contact-row-delete" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry" aria-label="Delete this entry">' + deleteIconSvg() + '</button>';
       } else if (qLabel) {
         html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
       }
@@ -971,6 +1099,10 @@
     }
     var inlineMode = isAdmin() && state.editMode;
     els.content.innerHTML = renderReadOnly(rows, inlineMode) + afterContent;
+    if (state.pendingFlipPositions) {
+      playRowFlipAnimation(state.pendingFlipPositions);
+      state.pendingFlipPositions = null;
+    }
     if (inlineMode) {
       focusActiveInlineFieldSoon();
     }
@@ -1193,6 +1325,8 @@
           state.navTitleInput = '';
           state.activeHeadField = '';
           clearActiveRowField();
+          state.draggingRowUid = '';
+          state.dragOverRowUid = '';
         }
         renderAll();
         return;
@@ -1210,7 +1344,7 @@
       }
       if (action === 'add-row') {
         state.draft = normalizeDraftState(state.draft);
-        state.draft.rows.push({ transport: '', value: '', qualifier: '' });
+        state.draft.rows.push({ _uid: nextRowUid(), transport: '', value: '', qualifier: '' });
         setActiveRowField(state.draft.rows.length - 1, 'transport');
         renderAll();
         queueAutosave(500);
@@ -1232,6 +1366,108 @@
         renderAll();
         queueAutosave(500);
       }
+    });
+
+    root.addEventListener('dragstart', function (event) {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var handle = target.closest('[data-contact-drag-handle]');
+      if (!(handle instanceof HTMLElement)) {
+        return;
+      }
+      var uid = String(handle.getAttribute('data-row-uid') || '').trim();
+      if (!uid) {
+        return;
+      }
+      state.draggingRowUid = uid;
+      state.dragOverRowUid = uid;
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        try {
+          event.dataTransfer.setData('text/plain', uid);
+        } catch (_err) {
+          // Ignore dataTransfer restrictions.
+        }
+      }
+      var row = handle.closest('.contact-profile-row[data-row-uid]');
+      if (row instanceof HTMLElement) {
+        row.classList.add('is-dragging');
+      }
+    });
+
+    root.addEventListener('dragover', function (event) {
+      if (!isAdmin() || !state.editMode || !state.draggingRowUid) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var row = target.closest('.contact-profile-row[data-row-uid]');
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+      var uid = String(row.getAttribute('data-row-uid') || '').trim();
+      if (!uid) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+      if (state.dragOverRowUid !== uid) {
+        state.dragOverRowUid = uid;
+        renderContent();
+      }
+    });
+
+    root.addEventListener('drop', function (event) {
+      if (!isAdmin() || !state.editMode || !state.draggingRowUid) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var row = target.closest('.contact-profile-row[data-row-uid]');
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+      event.preventDefault();
+      var targetUid = String(row.getAttribute('data-row-uid') || '').trim();
+      var sourceUid = String(state.draggingRowUid || '').trim();
+      if (!sourceUid || !targetUid || sourceUid === targetUid) {
+        state.draggingRowUid = '';
+        state.dragOverRowUid = '';
+        renderContent();
+        return;
+      }
+      state.pendingFlipPositions = captureRowFlipPositions();
+      var moved = reorderDraftRowsByUid(sourceUid, targetUid);
+      state.draggingRowUid = '';
+      state.dragOverRowUid = '';
+      if (moved) {
+        clearActiveRowField();
+        renderContent();
+        queueAutosave(300);
+      } else {
+        state.pendingFlipPositions = null;
+        renderContent();
+      }
+    });
+
+    root.addEventListener('dragend', function () {
+      if (!isAdmin() || !state.editMode) {
+        return;
+      }
+      state.draggingRowUid = '';
+      state.dragOverRowUid = '';
+      renderContent();
     });
 
     root.addEventListener('input', function (event) {
