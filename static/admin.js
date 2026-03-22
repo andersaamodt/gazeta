@@ -1044,8 +1044,8 @@
       els.filesUploadSummary.textContent = active + ' upload' + (active === 1 ? '' : 's') + ' in progress';
       return;
     }
-    els.filesUploadSummary.hidden = false;
-    els.filesUploadSummary.textContent = 'Recent uploads';
+    els.filesUploadSummary.hidden = true;
+    els.filesUploadSummary.textContent = '';
   }
 
   function pendingFileRows() {
