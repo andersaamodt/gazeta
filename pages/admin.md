@@ -2965,11 +2965,33 @@ body {
   padding: 0.95rem;
 }
 
-.file-row {
-  display: flex;
+.files-table {
+  display: block;
+  width: 100%;
+}
+
+.file-table-header {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.65fr) minmax(6rem, 0.5fr) minmax(8rem, 0.75fr) minmax(8rem, 0.72fr) minmax(14rem, 1.08fr);
+  gap: 0.7rem;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.9rem;
+  padding: 0.35rem 0.95rem 0.4rem;
+  border-bottom: 1px solid var(--admin-border, #d2def3);
+}
+
+.file-col-head {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+#admin-panel .post-row.file-row {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.65fr) minmax(6rem, 0.5fr) minmax(8rem, 0.75fr) minmax(8rem, 0.72fr) minmax(14rem, 1.08fr);
+  align-items: center;
+  gap: 0.7rem;
   padding: 0.72rem 0.95rem;
   background: var(--card-bg, rgba(255, 255, 255, 0.55));
   margin-left: 0 !important;
@@ -2978,21 +3000,35 @@ body {
   box-sizing: border-box;
 }
 
-.file-row-main {
+.file-col {
   min-width: 0;
+}
+
+.file-col-name {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.file-col-size,
+.file-col-type,
+.file-col-date {
   display: flex;
   align-items: center;
-  gap: 0.46rem;
-  flex-wrap: wrap;
 }
 
 .file-row-title {
   min-width: 0;
-  max-width: 18rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.file-row-submeta {
+  color: var(--muted, #6b7280);
+  font-size: 0.8rem;
+  line-height: 1.15;
 }
 
 .file-pill {
@@ -3036,8 +3072,7 @@ body {
 }
 
 .file-upload-inline {
-  flex: 1 1 16rem;
-  min-width: min(100%, 14rem);
+  min-width: min(100%, 13.5rem);
   display: grid;
   gap: 0.22rem;
 }
@@ -3073,6 +3108,14 @@ body {
   justify-content: flex-end;
   gap: 0.42rem;
   flex: 0 0 auto;
+}
+
+.file-col-visibility {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.46rem;
+  flex-wrap: wrap;
 }
 
 .file-row-actions .unobtrusive-icon-button[disabled] {

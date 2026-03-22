@@ -976,6 +976,7 @@
       id: 'upload-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
       name: String((file && file.name) || 'upload.bin'),
       size: Number((file && file.size) || 0),
+      mime_type: String((file && file.type) || ''),
       kind: kind || 'file',
       progress: 0,
       status: 'Queued',
@@ -2631,24 +2632,41 @@
       els.filesList.innerHTML = '<p class="placeholder files-list-empty">No attachments uploaded yet.</p>';
       return;
     }
-    let html = '';
+    let html = '<div class="files-table">';
+    html += '<div class="file-table-header" aria-hidden="true">';
+    html += '<div class="file-col file-col-name"><span class="file-col-head">Name</span></div>';
+    html += '<div class="file-col file-col-size"><span class="file-col-head">Size</span></div>';
+    html += '<div class="file-col file-col-type"><span class="file-col-head">Type</span></div>';
+    html += '<div class="file-col file-col-date"><span class="file-col-head">Date</span></div>';
+    html += '<div class="file-col file-col-visibility"><span class="file-col-head">Visibility</span></div>';
+    html += '</div>';
     pending.forEach(function (job) {
       const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
       const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
+      const mimeType = String(job.mime_type || 'application/octet-stream');
       const rowClass = 'post-row file-row file-row-uploading' + (job.done ? (job.error ? ' is-failed' : ' is-done') : '');
       html += '<div class="' + rowClass + '">';
-      html += '<div class="post-row-main file-row-main">';
+      html += '<div class="file-col file-col-name">';
       html += '<span class="file-row-title" title="' + escapeAttr(job.name || 'Uploading file') + '">' + escapeHtml(job.name || 'Uploading file') + '</span>';
-      html += '<span class="file-pill is-uploading">' + escapeHtml(status) + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-size">';
       html += '<span class="file-pill">' + escapeHtml(formatBytes(job.size)) + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-type">';
+      html += '<span class="file-pill">' + escapeHtml(mimeType) + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-date">';
+      html += '<span class="file-pill">-</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-visibility">';
+      html += '<span class="file-pill is-uploading">' + escapeHtml(status) + '</span>';
       html += '<div class="file-upload-inline">';
       html += '<div class="file-upload-inline-meta">' + escapeHtml(status) + (job.done ? '' : (' · ' + String(progress) + '%')) + '</div>';
       if (!job.done || job.error) {
         html += '<div class="file-upload-inline-bar"><div class="file-upload-inline-fill" style="inline-size:' + String(progress) + '%;"></div></div>';
       }
       html += '</div>';
-      html += '</div>';
-      html += '<div class="post-row-actions file-row-actions">';
+      html += '<div class="file-row-actions">';
       html += '<button type="button" disabled aria-label="Upload in progress" title="Upload in progress">' + (job.error ? 'Upload failed' : 'Uploading...') + '</button>';
       html += '<button type="button" class="unobtrusive-icon-button" disabled aria-label="Copy file URL" title="File URL available after upload">' +
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
@@ -2671,21 +2689,26 @@
       const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : 'Private';
       const accessClass = effectivePublic ? ' is-public' : ' is-private';
       html += '<div class="post-row file-row">';
-      html += '<div class="post-row-main file-row-main">';
+      html += '<div class="file-col file-col-name">';
       html += '<span class="file-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
-      html += '<span class="file-pill' + accessClass + '">' + escapeHtml(accessLabel) + '</span>';
-      html += '<span class="file-pill">' + escapeHtml(formatBytes(file.size_bytes)) + '</span>';
-      html += '<span class="file-pill">' + escapeHtml(mimeType) + '</span>';
-      if (createdAt) {
-        html += '<span class="file-pill">' + escapeHtml(formatPostPublishedAt(createdAt)) + '</span>';
-      }
       if (postPath) {
-        html += '<span class="file-pill">Post: ' + escapeHtml(postPath) + '</span>';
+        html += '<span class="file-row-submeta">Post: ' + escapeHtml(postPath) + '</span>';
       } else if (draftId) {
-        html += '<span class="file-pill">Draft</span>';
+        html += '<span class="file-row-submeta">Draft</span>';
       }
       html += '</div>';
-      html += '<div class="post-row-actions file-row-actions">';
+      html += '<div class="file-col file-col-size">';
+      html += '<span class="file-pill">' + escapeHtml(formatBytes(file.size_bytes)) + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-type">';
+      html += '<span class="file-pill">' + escapeHtml(mimeType) + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-date">';
+      html += '<span class="file-pill">' + escapeHtml(createdAt ? formatPostPublishedAt(createdAt) : '-') + '</span>';
+      html += '</div>';
+      html += '<div class="file-col file-col-visibility">';
+      html += '<span class="file-pill' + accessClass + '">' + escapeHtml(accessLabel) + '</span>';
+      html += '<div class="file-row-actions">';
       html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '">' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
       html += '<button type="button" class="unobtrusive-icon-button" data-file-action="copy-url" data-file-url="' + escapeAttr(url) + '"' +
         (effectivePublic ? '' : ' disabled') +
@@ -2697,6 +2720,7 @@
       html += '</div>';
       html += '</div>';
     });
+    html += '</div>';
     els.filesList.innerHTML = html;
   }
 
