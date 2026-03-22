@@ -61,6 +61,9 @@ fi
 
 submitter_pubkey=$(blog_get_nostr_pubkey "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '')
 if [ -z "$submitter_pubkey" ]; then
+  submitter_pubkey=${BLOG_SESSION_USER_PUBKEY-}
+fi
+if [ -z "$submitter_pubkey" ]; then
   blog_json_error "Signed-in account has no bound Nostr pubkey" "nostr_identity_required"
   exit 0
 fi

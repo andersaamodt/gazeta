@@ -529,6 +529,17 @@ assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="nostr-brid
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...' 'list edit mode shows italic no-description text before edit action'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...' 'public ranking edit mode shows italic no-description text before edit action'
 assert_file_contains "$ROOT_DIR/static/contact-page.js" 'list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...' 'contact edit mode shows italic no-description text before edit action'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Allow signed-in Nostr users to add entries' 'public ranking editor includes friendly open-submission toggle label'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-allow-open"' 'public ranking editor uses boolean open-submission checkbox'
+assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking-node" 'submitter_pubkey=${BLOG_SESSION_USER_PUBKEY-}' 'public ranking submission falls back to session pubkey identity'
+
+tree_line=$(grep -n 'html += renderTree(graph, renderState);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')
+submit_line=$(grep -n 'html += renderSubmitForm(renderState, graph);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')
+if [ "${tree_line:-0}" -gt 0 ] && [ "${submit_line:-0}" -gt "${tree_line:-0}" ]; then
+  pass
+else
+  fail 'public ranking add-entry composer renders after ranking list content'
+fi
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"

@@ -427,12 +427,17 @@
       return;
     }
     var cooldown = document.getElementById('public-ranking-edit-cooldown');
+    var allowOpen = document.getElementById('public-ranking-edit-allow-open');
     var mode = document.getElementById('public-ranking-edit-submission-mode');
     var metric = document.getElementById('public-ranking-edit-default-metric');
     var blacklist = document.getElementById('public-ranking-edit-blacklist');
 
     state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(Number(cooldown && cooldown.value ? cooldown.value : state.draft.vote_cooldown_seconds) || 86400));
-    state.draft.submission_mode = normalizeSubmissionMode(mode ? mode.value : state.draft.submission_mode);
+    if (allowOpen instanceof HTMLInputElement && allowOpen.type === 'checkbox') {
+      state.draft.submission_mode = allowOpen.checked ? 'open' : 'owner_only';
+    } else {
+      state.draft.submission_mode = normalizeSubmissionMode(mode ? mode.value : state.draft.submission_mode);
+    }
     state.draft.default_metric = normalizeMetric(metric ? metric.value : state.draft.default_metric);
     state.currentMetric = state.draft.default_metric;
     state.draft.blacklist_pubkeys = String(blacklist && blacklist.value || '')
@@ -1001,11 +1006,7 @@
     html += '<h3>Ranking Settings</h3>';
     html += '<div class="public-ranking-editor-grid">';
     html += '<label><span>Vote cooldown (seconds)</span><input type="number" id="public-ranking-edit-cooldown" min="60" step="60" value="' + escapeHtml(String(renderState.vote_cooldown_seconds || 86400)) + '"></label>';
-    html += '<label><span>Submission mode</span><select id="public-ranking-edit-submission-mode">';
-    html += '<option value="owner_only"' + (normalizeSubmissionMode(renderState.submission_mode) === 'owner_only' ? ' selected' : '') + '>owner_only</option>';
-    html += '<option value="open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' selected' : '') + '>open</option>';
-    html += '<option value="moderated"' + (normalizeSubmissionMode(renderState.submission_mode) === 'moderated' ? ' selected' : '') + '>moderated</option>';
-    html += '</select></label>';
+    html += '<label><span>Allow signed-in Nostr users to add entries</span><input type="checkbox" id="public-ranking-edit-allow-open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' checked' : '') + '></label>';
     html += '<label><span>Default metric</span><select id="public-ranking-edit-default-metric">';
     html += '<option value="momentum"' + (normalizeMetric(renderState.default_metric) === 'momentum' ? ' selected' : '') + '>momentum</option>';
     html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>support</option>';
@@ -1034,8 +1035,8 @@
       html += renderExtraContent(renderState.content, 'markdown', 'before');
     }
     html += renderPendingToast(nodes);
-    html += renderSubmitForm(renderState, graph);
     html += renderTree(graph, renderState);
+    html += renderSubmitForm(renderState, graph);
     if (isAdmin() && state.editMode) {
       html += renderPostfixEditor(renderState);
     } else {
