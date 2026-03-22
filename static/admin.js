@@ -2856,11 +2856,16 @@
       const explicitPublic = !!file.explicit_public;
       const effectivePublic = !!file.effective_public;
       const url = String(file.url || '');
+      const openFileUrl = fileAccessUrl(url);
       const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : 'Private';
       const accessClass = effectivePublic ? ' is-public' : ' is-private';
       html += '<div class="post-row file-row">';
       html += '<div class="file-col file-col-name">';
-      html += '<span class="file-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
+      if (openFileUrl) {
+        html += '<a class="file-row-title file-row-title-link" title="' + escapeAttr(title) + '" href="' + escapeAttr(openFileUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(title) + '</a>';
+      } else {
+        html += '<span class="file-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
+      }
       if (postPath) {
         html += '<span class="file-row-submeta">Post: ' + escapeHtml(postPath) + '</span>';
       } else if (draftId) {

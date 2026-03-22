@@ -3288,6 +3288,16 @@ body {
   font-weight: 600;
 }
 
+.file-row-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.file-row-title-link:hover,
+.file-row-title-link:focus-visible {
+  text-decoration: underline;
+}
+
 .file-row-submeta {
   color: var(--muted, #6b7280);
   font-size: 0.8rem;
