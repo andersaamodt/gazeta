@@ -2739,6 +2739,13 @@ body {
 [data-admin-section="files"] .admin-card {
   padding-left: 0;
   padding-right: 0;
+  margin-left: calc(-1 * var(--admin-content-pad-left, 0.7rem));
+  margin-right: calc(-1 * var(--admin-content-pad-right, 0.72rem));
+}
+
+[data-admin-section="files"] .demo-box.admin-card {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 [data-admin-section="files"] .row-head {
@@ -2841,6 +2848,10 @@ body {
   gap: 0.9rem;
   padding: 0.72rem 0.95rem;
   background: var(--card-bg, rgba(255, 255, 255, 0.55));
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box;
 }
 
 .file-row-main {
@@ -2949,7 +2960,7 @@ body {
   width: 2rem;
   height: 2rem;
   padding: 0;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 8px;
   background: transparent !important;
   color: var(--admin-text, var(--text)) !important;
@@ -2960,7 +2971,7 @@ body {
 #admin-panel .file-row-actions .unobtrusive-icon-button:hover,
 #admin-panel .file-row-actions .unobtrusive-icon-button:focus-visible {
   background: var(--admin-hover, var(--nav-link-hover)) !important;
-  border-color: var(--admin-border, var(--border));
+  border: 0;
   color: var(--admin-text, var(--text)) !important;
   -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
@@ -3001,6 +3012,23 @@ body {
   background: transparent;
   width: 100%;
   max-width: 100%;
+}
+
+#admin-panel #drafts-list > .placeholder,
+#admin-panel #posts-list > .placeholder,
+#admin-panel #files-list > .placeholder,
+#admin-panel #moderation-list > .placeholder,
+#admin-panel #users-list > .placeholder,
+#admin-panel #nostr-pages-list > .placeholder {
+  margin: 0;
+  padding: 0.58rem 0.7rem 0.74rem;
+}
+
+#admin-panel #files-list.posts-list,
+#admin-panel #moderation-list.posts-list {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .posts-list {
@@ -3663,6 +3691,14 @@ body {
   background: var(--select-option-selected-bg, var(--admin-accent, var(--accent))) !important;
   color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
   -webkit-text-fill-color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
+}
+
+#admin-panel select[multiple] option:checked,
+#admin-panel select[size] option:checked {
+  background: var(--select-option-selected-bg, var(--admin-accent, var(--accent))) !important;
+  color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
+  -webkit-text-fill-color: var(--select-option-selected-text, var(--nav-active-text, #fff)) !important;
+  box-shadow: inset 0 0 0 999px var(--select-option-selected-bg, var(--admin-accent, var(--accent)));
 }
 
 #admin-panel select[multiple],
