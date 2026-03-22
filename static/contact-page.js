@@ -1077,7 +1077,15 @@
 
   function renderProfileTable(rows, editable) {
     var list = Array.isArray(rows) ? rows : [];
-    var html = '<div class="contact-profile-table-wrap"><table class="contact-profile-table' + (editable ? ' is-editing' : '') + '"><tbody>';
+    var html = '<div class="contact-profile-table-wrap"><table class="contact-profile-table' + (editable ? ' is-editing' : '') + '">';
+    if (editable) {
+      html += '<thead><tr class="contact-profile-head-row">';
+      html += '<th class="contact-profile-head-cell contact-profile-head-cell-handle" scope="col"></th>';
+      html += '<th class="contact-profile-head-cell contact-profile-head-cell-platform" scope="col">Protocol</th>';
+      html += '<th class="contact-profile-head-cell contact-profile-head-cell-value" scope="col">Contact</th>';
+      html += '</tr></thead>';
+    }
+    html += '<tbody>';
     list.forEach(function (row, idx) {
       var transport = String(row.transport || '').trim();
       var value = String(row.value || '');
@@ -1182,6 +1190,7 @@
         '</section>';
     }
     var inlineMode = isAdmin() && state.editMode;
+    root.classList.toggle('contact-edit-mode', inlineMode);
     els.content.innerHTML = renderReadOnly(rows, inlineMode) + afterContent;
     if (state.pendingFlipPositions) {
       playRowFlipAnimation(state.pendingFlipPositions);

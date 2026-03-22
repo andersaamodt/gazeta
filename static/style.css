@@ -816,6 +816,14 @@ header h1 {
   margin-top: 0.8rem;
 }
 
+#contact-page-root.contact-edit-mode #contact-page-description {
+  margin-bottom: 0.25rem;
+}
+
+#contact-page-root.contact-edit-mode .list-page-content {
+  margin-top: 0.18rem;
+}
+
 .list-page-empty-state {
   margin: 1.1rem 0;
   text-align: center;
@@ -2146,6 +2154,27 @@ header h1 {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+.contact-profile-head-cell {
+  padding: 0.12rem 0.78rem 0.22rem;
+  color: var(--muted-text, #4f617f);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
+  vertical-align: bottom;
+}
+
+.contact-profile-head-cell-handle {
+  width: 1.9rem;
+  padding-left: 0.12rem;
+  padding-right: 0;
+}
+
+.contact-profile-head-cell-platform {
+  width: 9.8rem;
 }
 
 .contact-profile-table.is-editing {
