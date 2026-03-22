@@ -5353,6 +5353,19 @@ nav.site-nav .btn-login:focus-visible:not(:disabled),
   -webkit-text-fill-color: var(--button-primary-text) !important;
 }
 
+/* Keep split-login divider color stable across hover states. */
+nav.site-nav .nav-login-split .btn-login,
+nav.site-nav .nav-login-split .btn-login:hover:not(:disabled),
+nav.site-nav .nav-login-split .btn-login:focus-visible:not(:disabled) {
+  border-color: var(--button-primary-end) !important;
+}
+
+nav.site-nav .nav-login-split .btn-login-caret,
+nav.site-nav .nav-login-split .btn-login-caret:hover:not(:disabled),
+nav.site-nav .nav-login-split .btn-login-caret:focus-visible:not(:disabled) {
+  border-left-color: var(--button-primary-end) !important;
+}
+
 body.nostr-publish-dialog-open {
   overflow: hidden;
 }
