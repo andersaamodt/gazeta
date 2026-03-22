@@ -201,20 +201,7 @@ blog_nostr_pages_normalize_json() {
           }] + $unique)
         end
       ) as $with_blog
-    | (
-        if any($with_blog[]?; .slug == "index") then
-          $with_blog
-        else
-          ($with_blog + [{
-            slug: "index",
-            type: "nip23",
-            show_in_nav: false,
-            default_tag: "",
-            placeholder_title: "Home",
-            path: "/"
-          }])
-        end
-      ) as $with_required_pages
+    | $with_blog as $with_required_pages
     | {
         pages:
           (if ($with_required_pages | length) == 0 then
