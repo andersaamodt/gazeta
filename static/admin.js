@@ -3121,6 +3121,7 @@
         '</svg></button>';
       html += '</div>';
       html += '</div>';
+      html += '</div>';
     });
     files.forEach(function (file) {
       const fileId = String(file.file_id || '');
@@ -3168,6 +3169,7 @@
         '<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
         '<path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
         '</svg></button>';
+      html += '</div>';
       html += '</div>';
       html += '</div>';
     });
