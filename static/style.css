@@ -2226,6 +2226,13 @@ header h1 {
   text-underline-offset: 0.15em;
 }
 
+.contact-inline-open:hover,
+.contact-inline-open:focus-visible {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .contact-inline-input {
   width: 100%;
   min-width: 0;
