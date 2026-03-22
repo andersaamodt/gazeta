@@ -1451,6 +1451,12 @@ body {
   margin-bottom: 0.08rem;
 }
 
+[data-admin-section="zaps"] .runtime-settings-list .field-row > button {
+  justify-self: start;
+  width: auto;
+  min-width: 0;
+}
+
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row {
   display: grid;
   grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
