@@ -247,6 +247,7 @@
     setSaveStatus('saved');
     renderAll();
     markInitialContentPainted();
+    markHydrationPageReady();
     return true;
   }
 
@@ -1863,5 +1864,6 @@
       maybeReloadForAuthChange();
     }
   });
+  renderFromBootstrapCache();
   load();
 })();
