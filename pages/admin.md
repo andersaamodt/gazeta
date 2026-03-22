@@ -3967,11 +3967,16 @@ body {
   border-radius: 8px;
   padding: 0;
   color: var(--admin-text, var(--text));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 #admin-panel button.user-menu-trigger .overflow-menu-icon-svg {
-  width: 1.02rem;
-  height: 1.02rem;
+  width: 1rem;
+  height: 1rem;
+  display: block;
 }
 
 #admin-panel button.user-menu-trigger:hover,
@@ -4796,6 +4801,7 @@ body {
 }
 
 #admin-panel button.post-menu-trigger,
+#admin-panel button.user-menu-trigger,
 #admin-panel button.post-row-delete {
   transition: none !important;
 }
