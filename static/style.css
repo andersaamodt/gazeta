@@ -992,7 +992,8 @@ header h1 {
 }
 
 #list-page-title,
-#blog-page-title {
+#blog-page-title,
+#contact-page-title {
   display: flex;
   width: 100%;
   align-items: baseline;
@@ -1000,7 +1001,8 @@ header h1 {
 }
 
 #list-page-title .list-inline-edit-link,
-#blog-page-title .list-inline-edit-link {
+#blog-page-title .list-inline-edit-link,
+#contact-page-title .list-inline-edit-link {
   margin-left: 0.8rem;
   line-height: 1;
   color: #46619a;
