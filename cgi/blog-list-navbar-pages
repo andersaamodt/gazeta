@@ -75,7 +75,10 @@ if [ "$needs_build" = "true" ]; then
   # Avoid hot-loop build spawning from public traffic when output is temporarily missing.
   if [ $((now_epoch - last_epoch)) -ge 30 ]; then
     printf '%s\n' "$now_epoch" > "$trigger_stamp" 2>/dev/null || true
-    blog_run_build_async
+    (
+      blog_nostr_pages_sync_source_pages "$cfg" >/dev/null 2>&1 || true
+      blog_run_build_async >/dev/null 2>&1 || true
+    ) >/dev/null 2>&1 &
   fi
 fi
 
