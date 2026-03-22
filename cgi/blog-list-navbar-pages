@@ -13,62 +13,57 @@ blog_init
 blog_send_json_headers
 
 cfg=$(blog_nostr_pages_load_json)
-all_rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-pages.XXXXXX")
-printf '%s\n' "$cfg" | jq -c '.pages[]' > "$all_rows_tmp"
-rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-navbar-pages.XXXXXX")
-printf '%s\n' "$cfg" | jq -c '.pages[] | select((if has("show_in_nav") then .show_in_nav else true end) == true)' > "$rows_tmp"
+all_slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-slugs.XXXXXX")
+printf '%s\n' "$cfg" | jq -r '.pages[]? | (.slug // "")' 2>/dev/null > "$all_slugs_tmp"
 
 needs_build=false
-while IFS= read -r row || [ -n "$row" ]; do
-  [ -n "$row" ] || continue
-  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
+  slug=$(blog_nostr_page_slug "$raw_slug")
+  [ -n "$slug" ] || continue
   case "$slug" in
     index) html_file="$blog_site_root/build/pages/index.html" ;;
     *) html_file="$blog_site_root/build/pages/$slug.html" ;;
   esac
   if [ ! -f "$html_file" ]; then
     needs_build=true
+    break
   fi
-done < "$all_rows_tmp"
+done < "$all_slugs_tmp"
 
-printf '{"success":true,"pages":['
-first=1
-while IFS= read -r row || [ -n "$row" ]; do
-  [ -n "$row" ] || continue
-  slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
-  page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
-  kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
-  path=$(blog_nostr_page_public_path "$slug")
-  placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
-
-  title=$placeholder_title
-  if [ -z "$title" ]; then
-    title=$(blog_nostr_page_canonical_title "$slug" "$page_type" 2>/dev/null || printf '')
-  fi
-  if [ -z "$title" ]; then
-    title=$(blog_nostr_page_default_title "$slug" "$page_type")
-  fi
-
-  if [ "$first" -eq 0 ]; then
-    printf ','
-  fi
-  first=0
-  jq -cn \
-    --arg slug "$slug" \
-    --arg title "$title" \
-    --arg path "$path" \
-    --arg page_type "$page_type" \
-    --argjson kind "$kind" \
-    '{
-      slug: $slug,
-      title: $title,
-      path: $path,
-      type: $page_type,
-      kind: $kind
-    }'
-done < "$rows_tmp"
-printf ']}'
-printf '\n'
+printf '%s\n' "$cfg" | jq -c '
+  def title_from_slug($s):
+    (($s // "") | tostring | gsub("-"; " ")) as $t
+    | if ($t | length) == 0 then
+        "Untitled"
+      else
+        (($t[0:1] | ascii_upcase) + ($t[1:]))
+      end;
+  {
+    success: true,
+    pages: [
+      .pages[]?
+      | (.slug // "" | tostring) as $slug
+      | select(($slug | length) > 0)
+      | select((if has("show_in_nav") then .show_in_nav else true end) == true)
+      | {
+          slug: $slug,
+          title: (
+            (.placeholder_title // "" | tostring) as $placeholder
+            | if ($placeholder | length) > 0 then
+                $placeholder
+              elif $slug == "index" then
+                "Home"
+              else
+                title_from_slug($slug)
+              end
+          ),
+          path: (if $slug == "index" then "/" else ("/" + $slug) end),
+          type: (.type // "list" | tostring),
+          kind: ((.kind // 30004) | tonumber? // 30004)
+        }
+    ]
+  }
+' 2>/dev/null || printf '{"success":true,"pages":[]}\n'
 
 if [ "$needs_build" = "true" ]; then
   trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
@@ -84,5 +79,4 @@ if [ "$needs_build" = "true" ]; then
   fi
 fi
 
-rm -f "$all_rows_tmp"
-rm -f "$rows_tmp"
+rm -f "$all_slugs_tmp"
