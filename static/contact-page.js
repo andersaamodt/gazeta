@@ -1286,7 +1286,9 @@
       state.busy = false;
       if (state.autosaveQueued) {
         state.autosaveQueued = false;
-        queueAutosave(500);
+        // Flush queued edits immediately after an in-flight save completes so
+        // drag reorders are durable even if the user refreshes right away.
+        persistDraft({ alertOnError: false });
       }
     });
   }
