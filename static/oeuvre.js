@@ -1031,7 +1031,7 @@
         els.description.innerHTML = '';
       } else
       if (state.activeHeadField === 'description') {
-        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="list-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(descText) + '" data-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
+        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="list-head-description-input" class="list-head-description-input" rows="4" data-head-input="description">' + escapeHtml(descText) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
       } else if (state.editMode) {
         if (descText.trim()) {
           els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
@@ -1776,7 +1776,7 @@
 
     root.addEventListener('input', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) || !isAdmin()) {
         return;
       }
       if (target.hasAttribute('data-page-nav-title-input') && state.editMode) {
@@ -1797,7 +1797,7 @@
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) || !isAdmin()) {
         return;
       }
       if (target.hasAttribute('data-page-nav-title-input')) {
@@ -1812,6 +1812,9 @@
         return;
       }
       if (event.key === 'Enter') {
+        if (headField === 'description' && target instanceof HTMLTextAreaElement) {
+          return;
+        }
         event.preventDefault();
         if (headField === 'description') {
           persistDraft({ alertOnError: true }).then(function (ok) {

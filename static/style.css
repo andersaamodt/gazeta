@@ -1049,13 +1049,21 @@ header h1 {
 }
 
 .list-head-description-input {
-  width: min(36rem, 84vw);
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 7rem;
+  resize: vertical;
   font-size: 0.98rem;
   font-weight: 500;
+  line-height: 1.45;
+  padding: 0.5rem 0.62rem;
 }
 
 .list-page-description-edit-wrap {
-  display: inline-block;
+  display: block;
+  width: 100%;
+  max-width: min(56rem, 100%);
 }
 
 .list-page-description-empty {

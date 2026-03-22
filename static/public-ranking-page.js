@@ -496,7 +496,7 @@
         if (suppressEmptyDescription) {
           els.description.innerHTML = '';
         } else if (state.activeHeadField === 'description') {
-          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="public-ranking-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(desc) + '" data-ranking-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-ranking-head-save="description">Save</button>';
+          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="public-ranking-head-description-input" class="list-head-description-input" rows="4" data-ranking-head-input="description">' + escapeHtml(desc) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-ranking-head-save="description">Save</button>';
         } else if (state.editMode) {
           if (desc) {
             els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(desc) + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...</button>';
@@ -1374,7 +1374,7 @@
         return;
       }
 
-      if (target instanceof HTMLInputElement) {
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         var headField = String(target.getAttribute('data-ranking-head-input') || '');
         if (headField === 'title') {
           state.draft.title = String(target.value || '');
@@ -1383,7 +1383,6 @@
         }
         if (headField === 'description') {
           state.draft.description = String(target.value || '');
-          renderHead();
           return;
         }
       }
@@ -1421,7 +1420,7 @@
           return;
         }
       }
-      if (!(target instanceof HTMLInputElement) || !isAdmin()) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) || !isAdmin()) {
         return;
       }
       var headField = String(target.getAttribute('data-ranking-head-input') || '');
@@ -1429,6 +1428,9 @@
         return;
       }
       if (event.key === 'Enter') {
+        if (headField === 'description' && target instanceof HTMLTextAreaElement) {
+          return;
+        }
         event.preventDefault();
         if (headField === 'description') {
           persistDraft({ alertOnError: true }).then(function (ok) {

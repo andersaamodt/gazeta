@@ -990,7 +990,7 @@
         if (suppressEmptyDescription) {
           els.description.innerHTML = '';
         } else if (state.activeHeadField === 'description') {
-          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="contact-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(text) + '" data-contact-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="description">Save</button> <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>';
+          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="contact-head-description-input" class="list-head-description-input" rows="4" data-contact-head-input="description">' + escapeHtml(text) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="description">Save</button> <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>';
         } else if (state.editMode) {
           if (text) {
             els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
@@ -1643,7 +1643,7 @@
         return;
       }
       var target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
         return;
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input')) {
@@ -1656,7 +1656,7 @@
         queueAutosave(500);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input')) {
+      if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.hasAttribute('data-contact-head-input')) {
         var headField = String(target.getAttribute('data-contact-head-input') || '').trim().toLowerCase();
         state.draft = normalizeDraftState(state.draft);
         if (headField === 'title') {
@@ -1693,7 +1693,7 @@
         renderHead();
         return;
       }
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
         return;
       }
       var field = String(target.getAttribute('data-contact-inline-field') || '').trim().toLowerCase();
@@ -1765,7 +1765,7 @@
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
         return;
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input') && event.key === 'Enter') {
@@ -1773,7 +1773,10 @@
         saveNavbarTitle();
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Enter') {
+      if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.hasAttribute('data-contact-head-input') && event.key === 'Enter') {
+        if (target instanceof HTMLTextAreaElement) {
+          return;
+        }
         event.preventDefault();
         state.activeHeadField = '';
         state.headFocusPending = false;
@@ -1781,7 +1784,7 @@
         queueAutosave(250);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Escape') {
+      if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.hasAttribute('data-contact-head-input') && event.key === 'Escape') {
         event.preventDefault();
         state.activeHeadField = '';
         state.headFocusPending = false;
