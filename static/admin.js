@@ -120,6 +120,7 @@
     postTagsPills: document.getElementById('post-tags-pills'),
     postContent: document.getElementById('post-content'),
     postScheduleAt: document.getElementById('post-scheduled-at'),
+    scheduledPickerButton: document.getElementById('btn-scheduled-picker'),
     navDraftsCount: document.getElementById('admin-nav-drafts-count'),
     navQueueCount: document.getElementById('admin-nav-queue-count'),
     navPostsCount: document.getElementById('admin-nav-posts-count'),
@@ -4646,6 +4647,19 @@
         }
         removeComposeTag(tag);
         queueAutosave('saving');
+      });
+    }
+
+    if (els.scheduledPickerButton && els.postScheduleAt) {
+      els.scheduledPickerButton.addEventListener('click', function () {
+        try {
+          els.postScheduleAt.focus();
+          if (typeof els.postScheduleAt.showPicker === 'function') {
+            els.postScheduleAt.showPicker();
+          }
+        } catch (_err) {
+          // Browser may block programmatic picker open.
+        }
       });
     }
 

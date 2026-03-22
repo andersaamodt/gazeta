@@ -235,47 +235,47 @@ title: ""
 <div class="editor-shell">
 <div class="toolbar" aria-label="Markdown toolbar">
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="bold" aria-label="Bold" title="Bold">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M8 5H13.2C15.3 5 17 6.7 17 8.8C17 10.9 15.3 12.6 13.2 12.6H8V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 12.4H14.1C16.3 12.4 18 14.1 18 16.3C18 18.4 16.3 20 14.1 20H8V12.4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4.75H12.4C15.05 4.75 17.2 6.9 17.2 9.55C17.2 12.2 15.05 14.35 12.4 14.35H6.5V4.75Z" stroke="currentColor" stroke-width="1.85" stroke-linejoin="round"/><path d="M6.5 14.35H13.55C16.15 14.35 18.25 16.45 18.25 19.05C18.25 21.1 16.6 22.75 14.55 22.75H6.5V14.35Z" stroke="currentColor" stroke-width="1.85" stroke-linejoin="round" transform="translate(0 -2.5)"/></svg>
 <span class="sr-only">Bold</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="italic" aria-label="Italic" title="Italic">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M14 4H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 20H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 4.5H9.5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M13.6 4.5L9.8 19.5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M14.2 19.5H9.2" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/></svg>
 <span class="sr-only">Italic</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="h2" aria-label="Heading 2" title="Heading 2">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M3 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="14.2" y="16.4" font-size="9.5" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">2</text></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 6V18" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M9.5 6V18" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M3.5 12H9.5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M14.1 10.2C14.35 8.75 15.45 7.95 16.75 7.95C18.25 7.95 19.3 8.85 19.3 10.2C19.3 11.35 18.4 12.25 17.3 13.1L14.3 15.3H19.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Heading 2</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="h3" aria-label="Heading 3" title="Heading 3">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M3 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="14.2" y="16.4" font-size="9.5" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">3</text></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 6V18" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M9.5 6V18" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M3.5 12H9.5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M14.5 9.3H18.5L16.15 12L18.5 14.7H14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Heading 3</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="code" aria-label="Inline code" title="Inline code">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M9 7L4 12L9 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7L20 12L15 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.8 7.8L4.6 12L8.8 16.2" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.2 7.8L19.4 12L15.2 16.2" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Inline code</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="code_block" aria-label="Code block" title="Code block">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M8 6L5 12L8 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 6L19 12L16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9.1 10L6.6 12L9.1 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.9 10L17.4 12L14.9 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Code block</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="link" aria-label="Insert link" title="Insert link">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M10 8L8 10C6.9 11.1 6.9 12.9 8 14C9.1 15.1 10.9 15.1 12 14L14 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 8L16 6C17.1 4.9 18.9 4.9 20 6C21.1 7.1 21.1 8.9 20 10L18 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" transform="translate(-4 4)"/><path d="M9 12H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13.25 8.65L14.75 7.15C16.05 5.85 18.15 5.85 19.45 7.15C20.75 8.45 20.75 10.55 19.45 11.85L17.95 13.35" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M10.75 15.35L9.25 16.85C7.95 18.15 5.85 18.15 4.55 16.85C3.25 15.55 3.25 13.45 4.55 12.15L6.05 10.65" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="M8.75 15.25L15.25 8.75" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/></svg>
 <span class="sr-only">Insert link</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="quote" aria-label="Quote" title="Quote">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><path d="M7 10H11V14H8.6C8.7 15 9.2 15.7 10.1 16.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 10H18V14H15.6C15.7 15 16.2 15.7 17.1 16.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 11.2H10.2V15.2H7.8C7.95 16.2 8.55 16.95 9.55 17.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.8 11.2H17.8V15.2H15.4C15.55 16.2 16.15 16.95 17.15 17.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Quote</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="ul" aria-label="Bullet list" title="Bullet list">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="7" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="5" cy="17" r="1.5" fill="currentColor"/><path d="M10 7H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5.2" cy="7.2" r="1.2" fill="currentColor"/><circle cx="5.2" cy="12" r="1.2" fill="currentColor"/><circle cx="5.2" cy="16.8" r="1.2" fill="currentColor"/><path d="M9.5 7.2H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.5 12H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.5 16.8H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
 <span class="sr-only">Bullet list</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="ol" aria-label="Numbered list" title="Numbered list">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><text x="2.4" y="9.2" font-size="7.3" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">1</text><text x="2.2" y="18.2" font-size="7.3" font-family="ui-sans-serif, system-ui, sans-serif" fill="currentColor">2</text><path d="M10 7H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.2 8.15V6.1L3.5 6.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.2 15.3C3.2 14.25 4.05 13.5 5 13.5C5.95 13.5 6.75 14.1 6.75 15.05C6.75 15.8 6.2 16.35 5.45 16.85L3.3 18.3H6.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 7.2H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.5 16.8H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
 <span class="sr-only">Numbered list</span>
 </button>
 <button type="button" class="unobtrusive-icon-button toolbar-button" data-toolbar="image" aria-label="Insert image" title="Insert image">
-<svg class="tb-icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M5.5 17L11.5 11L14.5 14L17.5 11L20.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.75" width="17" height="14.5" rx="2.25" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="9.9" r="1.4" fill="currentColor"/><path d="M5.75 16.45L10.65 11.55L13.25 14.15L16.15 11.25L19.25 14.35" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Insert image</span>
 </button>
 </div>
@@ -306,7 +306,13 @@ title: ""
 
 <div class="field-row scheduled-row is-hidden" id="scheduled-row">
 <label for="post-scheduled-at"><strong>Scheduled Release Date/Time</strong></label>
+<div class="scheduled-picker-row">
 <input type="datetime-local" id="post-scheduled-at">
+<button type="button" id="btn-scheduled-picker" class="unobtrusive-icon-button" aria-label="Open date and time picker" title="Pick date and time">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 3.5V6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16 3.5V6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.5 9H20.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="14.2" r="2.8" stroke="currentColor" stroke-width="1.6"/></svg>
+</button>
+</div>
+<p class="muted scheduled-help">Pick a date/time or type it manually.</p>
 </div>
 
 <input type="file" id="image-picker" accept="image/*" multiple style="display:none;">
@@ -1658,7 +1664,7 @@ body {
   display: flex;
   gap: 0.65rem;
   flex-wrap: wrap;
-  margin-top: 0.42rem;
+  margin-top: 0.16rem;
   padding: 0.1rem 0;
   border: 0;
   border-radius: 0;
@@ -1680,7 +1686,7 @@ body {
 
 .scheduled-row {
   overflow: hidden;
-  max-height: 5.5rem;
+  max-height: 8rem;
   opacity: 1;
   transform: translateY(0);
   transition: max-height 0.24s ease, opacity 0.2s ease, transform 0.2s ease, margin 0.2s ease;
@@ -1696,24 +1702,24 @@ body {
 
 .toolbar {
   display: flex;
-  gap: 0.18rem;
+  gap: 0.24rem;
   flex-wrap: wrap;
   margin-bottom: 0;
-  padding: 0.28rem 0.34rem;
+  padding: 0.34rem 0.42rem;
   border: 0;
-  border-bottom: 1px solid #d4e0f5;
+  border-bottom: 1px solid var(--admin-border, var(--border));
   border-radius: 0;
-  background: linear-gradient(180deg, #f9fbff 0%, #f2f6ff 100%);
+  background: color-mix(in srgb, var(--admin-accent, #2f5fb8) 8%, var(--admin-surface, var(--post-card-bg-single)) 92%);
 }
 
-.toolbar button {
+.toolbar .toolbar-button {
   width: 2rem;
   min-width: 2rem;
   height: 2rem;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: #1e396e;
+  color: var(--admin-accent-strong, var(--admin-accent, #2f5fb8));
   font-size: 0.8rem;
   font-weight: 650;
   padding: 0;
@@ -1721,22 +1727,17 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.toolbar button:hover {
-  background: #e8f0ff;
-  color: #14356f;
-}
-
-.toolbar button:focus-visible {
+.toolbar .toolbar-button:hover,
+.toolbar .toolbar-button:focus-visible {
   outline: 0;
-  background: #e8f0ff;
-  box-shadow: inset 0 0 0 1px #a9c1f0;
+  background: color-mix(in srgb, var(--admin-accent, #2f5fb8) 18%, var(--admin-surface, var(--post-card-bg-single)) 82%);
+  color: var(--admin-text, var(--text));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-accent, #2f5fb8) 40%, var(--admin-border, var(--border)) 60%);
 }
 
 .toolbar .tb-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
   stroke: currentColor;
   flex: 0 0 auto;
 }
@@ -1800,11 +1801,11 @@ body {
 
 .tag-editor {
   inline-size: min(100%, 24rem);
-  min-height: 2.2rem;
+  min-height: 2rem;
   border: 1px solid #b8caeb;
-  border-radius: 11px;
+  border-radius: 9px;
   background: #fff;
-  padding: 0.18rem 0.44rem;
+  padding: 0.06rem 0.4rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1914,7 +1915,9 @@ body {
   width: 100% !important;
   min-width: 0 !important;
   flex: 1 1 auto !important;
-  padding: 0.12rem 0 !important;
+  padding: 0.04rem 0 !important;
+  line-height: 1.35 !important;
+  min-height: 1.85rem !important;
 }
 
 .tag-editor.has-tags .tag-editor-input::placeholder {
@@ -1955,8 +1958,30 @@ body {
 }
 
 .compose-release-row {
-  margin-top: 0.54rem;
-  margin-bottom: 0.08rem;
+  margin-top: 0.86rem;
+  margin-bottom: 0.02rem;
+}
+
+.scheduled-picker-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.scheduled-picker-row #post-scheduled-at {
+  width: auto;
+}
+
+#admin-panel #btn-scheduled-picker {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.scheduled-help {
+  margin: 0.22rem 0 0;
+  font-size: 0.79rem;
 }
 
 .drip-queue-pill {
