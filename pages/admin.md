@@ -385,7 +385,7 @@ title: ""
 <span class="queue-local-drip-spinner" aria-hidden="true"></span>
 <span id="queue-local-drip-status-text">Local drip running. Keep this tab open.</span>
 </div>
-<button id="btn-local-drip-toggle" type="button" class="icon-toggle local-drip-toggle" aria-label="Pause local drip" title="Pause local drip" aria-pressed="true">
+<button id="btn-local-drip-toggle" type="button" class="unobtrusive-icon-button local-drip-toggle" aria-label="Pause local drip" title="Pause local drip" aria-pressed="true">
 <svg class="local-drip-icon local-drip-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M8 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 <path d="M16 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -2049,23 +2049,29 @@ body {
   flex: 0 0 auto;
 }
 
-#admin-panel .local-drip-toggle {
+#admin-panel .local-drip-toggle.unobtrusive-icon-button {
   min-width: 2rem;
   width: 2rem;
   height: 2rem;
   padding: 0;
-  border: 1px solid #b6c8ec;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: #f6f9ff;
-  color: #1f4489;
+  background: transparent !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-#admin-panel .local-drip-toggle:hover {
-  background: #eaf1ff;
-  border-color: #99b5e6;
+#admin-panel .local-drip-toggle.unobtrusive-icon-button:hover,
+#admin-panel .local-drip-toggle.unobtrusive-icon-button:focus-visible {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  border-color: var(--admin-border, var(--border));
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #admin-panel .local-drip-toggle .local-drip-icon-play {
