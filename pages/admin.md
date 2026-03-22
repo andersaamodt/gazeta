@@ -427,12 +427,12 @@ title: ""
 <p class="muted">Attachments are private by default. Public posts can expose attached files automatically, or you can share a file explicitly.</p>
 <p class="muted">Synced drop folder: <code>files/</code>. Anything you drop there appears here the next time this page loads.</p>
 </div>
-<div class="row-actions files-head-actions">
+</div>
+<div id="files-dropzone" class="files-dropzone">
+<div class="files-table-toolbar">
 <div id="files-upload-summary" class="files-upload-summary" hidden></div>
 <button id="btn-upload-file" type="button">Upload Files...</button>
 </div>
-</div>
-<div id="files-dropzone" class="files-dropzone">
 <div id="files-upload-jobs" class="files-upload-jobs" hidden></div>
 <div id="files-list" class="posts-list"></div>
 <div id="output-files" class="output"></div>
@@ -3125,9 +3125,12 @@ body {
   box-shadow: none !important;
 }
 
-.files-head-actions {
-  gap: 0.55rem;
+.files-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
   align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0 0.7rem 0.42rem;
 }
 
 .files-upload-summary {
@@ -4744,6 +4747,11 @@ body {
   .nostr-pages-table-toolbar {
     margin-left: 0.5rem;
     margin-right: 0.5rem;
+  }
+
+  .files-table-toolbar {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 }
 </style>
