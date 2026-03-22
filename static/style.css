@@ -2740,7 +2740,7 @@ header h1 {
   align-items: stretch;
   border-radius: 6px;
   overflow: visible;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+  box-shadow: none;
 }
 
 .btn-login-main {
