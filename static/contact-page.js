@@ -588,6 +588,22 @@
       .replace(/[^a-z0-9]+/g, '');
   }
 
+  function transportTokens(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .split(/[^a-z0-9]+/g)
+      .filter(function (part) { return !!part; });
+  }
+
+  function transportHasToken(value, token) {
+    var target = String(token || '').trim().toLowerCase();
+    if (!target) {
+      return false;
+    }
+    return transportTokens(value).indexOf(target) >= 0;
+  }
+
   function isSafeContactHref(href) {
     var value = String(href || '').trim();
     return /^(https?:\/\/|mailto:|tel:|sms:|signal:)/i.test(value);
@@ -661,10 +677,10 @@
       return '';
     }
     var transportKey = normalizeTransportKey(transport);
-    if (transportKey === 'email' || transportKey === 'mail') {
+    if (transportKey === 'email' || transportKey === 'mail' || transportHasToken(transport, 'email') || transportHasToken(transport, 'mail')) {
       return linkifyBareEmailText(raw);
     }
-    if (transportKey === 'phone' || transportKey === 'tel' || transportKey === 'telephone') {
+    if (transportKey === 'phone' || transportKey === 'tel' || transportKey === 'telephone' || transportHasToken(transport, 'phone') || transportHasToken(transport, 'tel') || transportHasToken(transport, 'telephone')) {
       var trimmed = raw.trim();
       if (trimmed && /^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(trimmed)) {
         var telTarget = 'tel:' + trimmed.replace(/[^\d+]/g, '');
@@ -712,7 +728,7 @@
     }
     var transportKey = normalizeTransportKey(transport);
     var match;
-    if (transportKey === 'email' || transportKey === 'mail') {
+    if (transportKey === 'email' || transportKey === 'mail' || transportHasToken(transport, 'email') || transportHasToken(transport, 'mail')) {
       match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
       if (match && match[0]) {
         return 'mailto:' + match[0];
@@ -739,7 +755,7 @@
     if (transportKey === 'facebook' && /^[a-z0-9.]{3,}$/i.test(raw)) {
       return 'https://facebook.com/' + raw;
     }
-    if (transportKey === 'signal') {
+    if (transportKey === 'signal' || transportHasToken(transport, 'signal')) {
       if (/^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(raw)) {
         var signalPhone = raw.replace(/[^\d+]/g, '');
         if (signalPhone) {

@@ -617,7 +617,11 @@ blog_contact_normalize_state_json() {
     def norm_extra_format($v):
       (($v // "") | tostring | ascii_downcase) as $f
       | if $f == "html" then "html" else "markdown" end;
-    def norm_transport($v): (($v // "") | tostring | ascii_downcase | gsub("[^a-z0-9]+";""));
+    def norm_transport($v):
+      (($v // "") | tostring | ascii_downcase
+      | gsub("[^a-z0-9/]+";"")
+      | gsub("/+";"/")
+      | gsub("^/+|/+$";""));
     def norm_qual($v):
       (($v // "") | tostring | ascii_downcase) as $q
       | if (qualifiers | index($q)) then $q else "" end;
@@ -730,7 +734,10 @@ blog_contact_validate_and_enrich_state_json() {
     (.rows // []) as $rows0
     | ($rows0 | if type=="array" then . else [] end
       | map({
-          transport: ((.transport // "") | tostring | ascii_downcase | gsub("[^a-z0-9]+";"")),
+          transport: ((.transport // "") | tostring | ascii_downcase
+            | gsub("[^a-z0-9/]+";"")
+            | gsub("/+";"/")
+            | gsub("^/+|/+$";"")),
           value: ((.value // "") | tostring),
           qualifier: ((.qualifier // "") | tostring | ascii_downcase)
         })) as $rows
