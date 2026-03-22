@@ -2715,6 +2715,36 @@ body {
   white-space: nowrap;
 }
 
+.nostr-page-kind-badge.is-type-blog {
+  border-color: color-mix(in srgb, #2563eb 35%, var(--admin-border, #c7d6f3) 65%);
+  background: color-mix(in srgb, #2563eb 12%, var(--admin-surface-alt, #f5f8ff) 88%);
+  color: #1f3f77;
+}
+
+.nostr-page-kind-badge.is-type-nip23 {
+  border-color: color-mix(in srgb, #7c3aed 35%, var(--admin-border, #c7d6f3) 65%);
+  background: color-mix(in srgb, #7c3aed 11%, var(--admin-surface-alt, #f5f8ff) 89%);
+  color: #5e3d9a;
+}
+
+.nostr-page-kind-badge.is-type-public-ranking {
+  border-color: color-mix(in srgb, #0f766e 38%, var(--admin-border, #c7d6f3) 62%);
+  background: color-mix(in srgb, #0f766e 11%, var(--admin-surface-alt, #f5f8ff) 89%);
+  color: #1c5d57;
+}
+
+.nostr-page-kind-badge.is-type-contact {
+  border-color: color-mix(in srgb, #92400e 34%, var(--admin-border, #c7d6f3) 66%);
+  background: color-mix(in srgb, #f59e0b 13%, var(--admin-surface-alt, #f5f8ff) 87%);
+  color: #7a3f18;
+}
+
+.nostr-page-kind-badge.is-type-list {
+  border-color: color-mix(in srgb, #4b5563 30%, var(--admin-border, #c7d6f3) 70%);
+  background: color-mix(in srgb, #94a3b8 10%, var(--admin-surface-alt, #f5f8ff) 90%);
+  color: #495464;
+}
+
 .nostr-page-path {
   color: #7a808c;
   display: inline-block;

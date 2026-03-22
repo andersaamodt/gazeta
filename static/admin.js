@@ -2968,6 +2968,23 @@
     return 'List Page';
   }
 
+  function nostrPageTypePillClass(pageType) {
+    const type = String(pageType || '').trim().toLowerCase();
+    if (type === 'blog') {
+      return 'is-type-blog';
+    }
+    if (type === 'public-ranking') {
+      return 'is-type-public-ranking';
+    }
+    if (type === 'contact') {
+      return 'is-type-contact';
+    }
+    if (type === 'nip23') {
+      return 'is-type-nip23';
+    }
+    return 'is-type-list';
+  }
+
   function uniqueSortedNostrPageTags(tags) {
     const seen = {};
     const out = [];
@@ -3167,6 +3184,7 @@
       const connectedPosts = Number(page.connected_posts || 0);
       const draftDiffers = !!page.draft_differs;
       const typeLabel = nostrPageTypeLabel(pageType);
+      const typePillClass = nostrPageTypePillClass(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
       html += '<div class="nostr-page-leading">';
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">' + dragGripIconSvg() + '</button>';
@@ -3190,7 +3208,7 @@
       }
       html += '</div>';
       html += '<div class="nostr-page-type-col">';
-      html += '<span class="nostr-page-kind-badge">' + escapeHtml(typeLabel) + '</span>';
+      html += '<span class="nostr-page-kind-badge ' + escapeAttr(typePillClass) + '" data-page-type="' + escapeAttr(pageType) + '">' + escapeHtml(typeLabel) + '</span>';
       html += '</div>';
       html += '<div class="nostr-page-settings-col">';
       if (pageType === 'blog') {
