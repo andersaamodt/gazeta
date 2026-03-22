@@ -68,6 +68,8 @@ title: ""
 <option value="wizard">Wizard</option>
 </select>
 </div>
+<h4>Registration</h4>
+<p class="muted settings-subhead">Control who can register and the default role for new accounts.</p>
 <div class="field-row checkbox-row">
 <div class="setting-label">
 <strong>Enable User Registration</strong>
@@ -80,7 +82,7 @@ title: ""
 </div>
 <div class="field-row checkbox-row">
 <div class="setting-label">
-<strong>Newly Created Accounts Are Admins</strong>
+<strong>New Accounts Are Admins</strong>
 <span class="inline-tip" tabindex="0" aria-label="When enabled, newly registered Nostr accounts are granted admin automatically. Turn this off after bootstrapping your initial admin team.">?</span>
 </div>
 <label class="checkbox-control" for="new-users-are-admins">
@@ -92,20 +94,18 @@ title: ""
 
 <section class="sub-card sub-card-feeds">
 <h4>Feeds</h4>
-<div class="grid-two">
 <div class="field-row checkbox-row">
-<div class="setting-label" title="RSS and Atom feeds are always on. This only controls full text versus a shorter/truncated item in each feed entry.">
-<strong title="RSS and Atom feeds are always on. This only controls full text versus a shorter/truncated item in each feed entry.">Full Text RSS/Atom</strong>
+<div class="setting-label" title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">
+<strong title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">RSS/Atom Includes Full Text</strong>
 </div>
-<label class="checkbox-control" for="feed-full-text" title="RSS and Atom feeds are always on. This only controls full text versus a shorter/truncated item in each feed entry.">
-<input type="checkbox" id="feed-full-text" checked title="RSS and Atom feeds are always on. This only controls full text versus a shorter/truncated item in each feed entry.">
-<span title="RSS and Atom feeds are always on. This only controls full text versus a shorter/truncated item in each feed entry.">Enabled</span>
+<label class="checkbox-control" for="feed-full-text" title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">
+<input type="checkbox" id="feed-full-text" checked title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">
+<span title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">Enabled</span>
 </label>
 </div>
 <div class="field-row">
-<label for="feed-items" title="Maximum number of recent posts included in RSS and Atom feeds."><strong title="Maximum number of recent posts included in RSS and Atom feeds.">Feed Item Count</strong></label>
-<input type="number" id="feed-items" min="1" step="1" value="50" title="Maximum number of recent posts included in RSS and Atom feeds.">
-</div>
+<label for="feed-items" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100."><strong title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">Feed Item Count (min 1; typical 20-100)</strong></label>
+<input type="number" id="feed-items" min="1" step="1" value="50" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">
 </div>
 </section>
 </div>
@@ -1040,6 +1040,7 @@ body {
   color: #1d3566;
   font-size: 0.82rem;
   font-weight: 600;
+  justify-self: start;
 }
 
 [data-admin-section="nostr-bridge"] .checkbox-row .checkbox-control {
@@ -1215,12 +1216,17 @@ body {
   margin-bottom: 0.26rem;
 }
 
+[data-admin-section="settings"] .settings-subhead {
+  margin: 0.02rem 0 0.42rem;
+}
+
 [data-admin-section="settings"] .grid-two {
   gap: 0.3rem 0.62rem;
 }
 
-[data-admin-section="settings"] .sub-card-feeds .grid-two {
-  gap: 0.06rem 0.62rem;
+[data-admin-section="settings"] .sub-card-feeds {
+  border-top: 0;
+  padding-top: 0.34rem;
 }
 
 [data-admin-section="settings"] .sub-card-feeds .field-row {
@@ -3938,8 +3944,8 @@ body {
   }
 
   [data-admin-section="settings"] .field-row {
-    grid-template-columns: 1fr;
-    align-items: start;
+    grid-template-columns: minmax(9.5rem, max-content) minmax(0, 1fr);
+    align-items: center;
   }
 
   [data-admin-section="account"] .account-passkey-row {
