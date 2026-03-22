@@ -1517,7 +1517,6 @@ header h1 {
   aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: color-mix(in srgb, var(--post-card-bg-single, #fff) 84%, var(--bg, #fff) 16%);
   margin-bottom: 0.42rem;
 }
