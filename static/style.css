@@ -255,9 +255,11 @@ header h1 {
   line-height: 1.1;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  margin-left: 0.55rem;
   margin-right: 0.35rem;
   user-select: none;
   pointer-events: none;
+  transform: translateY(1px);
 }
 
 .nav-center {
