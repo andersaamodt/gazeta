@@ -35,6 +35,7 @@
     draft: null,
     editMode: false,
     activeHeadField: '',
+    headFocusPending: false,
     activeRowIndex: -1,
     activeRowField: '',
     draggingRowUid: '',
@@ -982,16 +983,14 @@
         els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
       }
     }
-    if (isAdmin() && state.activeHeadField) {
+    if (isAdmin() && state.activeHeadField && state.headFocusPending) {
       requestAnimationFrame(function () {
         var id = state.activeHeadField === 'title' ? 'contact-head-title-input' : 'contact-head-description-input';
         var input = document.getElementById(id);
         if (input && typeof input.focus === 'function') {
           input.focus();
-          if (typeof input.select === 'function') {
-            input.select();
-          }
         }
+        state.headFocusPending = false;
       });
     }
   }
@@ -1219,7 +1218,13 @@
         state.payload.state = normalizeDraftState(state.draft || {});
       }
       setSaveStatus('saved');
-      renderAll();
+      if (state.activeHeadField === 'title' || state.activeHeadField === 'description') {
+        // Avoid replacing the active head input while autosave returns.
+        renderAdmin();
+        renderValidation();
+      } else {
+        renderAll();
+      }
       return true;
     }).catch(function (err) {
       setSaveStatus('error');
@@ -1316,6 +1321,7 @@
         if (headEditNode instanceof HTMLElement) {
           event.preventDefault();
           state.activeHeadField = String(headEditNode.getAttribute('data-contact-head-edit') || '').trim().toLowerCase();
+          state.headFocusPending = true;
           renderHead();
           return;
         }
@@ -1323,6 +1329,7 @@
         if (headSaveNode instanceof HTMLElement) {
           event.preventDefault();
           state.activeHeadField = '';
+          state.headFocusPending = false;
           renderHead();
           renderAdmin();
           queueAutosave(250);
@@ -1354,6 +1361,7 @@
           state.navTitleEditing = false;
           state.navTitleInput = '';
           state.activeHeadField = '';
+          state.headFocusPending = false;
           clearActiveRowField();
           state.draggingRowUid = '';
           state.dragOverRowUid = '';
@@ -1649,6 +1657,7 @@
         }
         if (leavingHead && state.activeHeadField) {
           state.activeHeadField = '';
+          state.headFocusPending = false;
           renderHead();
         }
       }, 0);
@@ -1667,6 +1676,7 @@
       if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Enter') {
         event.preventDefault();
         state.activeHeadField = '';
+        state.headFocusPending = false;
         renderHead();
         queueAutosave(250);
         return;
@@ -1674,6 +1684,7 @@
       if (target instanceof HTMLInputElement && target.hasAttribute('data-contact-head-input') && event.key === 'Escape') {
         event.preventDefault();
         state.activeHeadField = '';
+        state.headFocusPending = false;
         renderHead();
         return;
       }
@@ -1718,6 +1729,7 @@
       state.navTitleInput = '';
       state.navTitleBusy = false;
       state.activeHeadField = '';
+      state.headFocusPending = false;
       state.activeRowIndex = -1;
       state.activeRowField = '';
       state.saveIndicatorVisible = false;
