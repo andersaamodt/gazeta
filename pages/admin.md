@@ -2677,8 +2677,9 @@ body {
   flex: 0 0 11.5rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.32rem;
+  text-align: center;
 }
 
 .nostr-page-title-row {
@@ -2820,17 +2821,20 @@ body {
 .nostr-page-posts-count {
   color: var(--admin-muted, #6a7488);
   font-size: 0.82rem;
+  text-align: center;
 }
 
 .nostr-page-settings-blog-tools {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.22rem;
 }
 
 .nostr-page-default-tag {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   color: var(--admin-muted, #6a7488);
   font-size: 0.82rem;
