@@ -544,21 +544,24 @@ title: ""
 </div>
 
 <div class="field-row account-passkey-row">
-<label><strong>Passkey</strong></label>
+<label><strong>Passkey</strong><span class="inline-tip" tabindex="0" aria-label="A passkey lets you sign in with your device authenticator with less typing, while still tied to your account.">?</span></label>
+<div class="account-passkey-wrap">
 <div class="account-row">
 <button id="btn-bind-passkey" type="button">Bind passkey</button>
+</div>
+<p class="muted account-passkey-description">Bind a passkey for faster device-based sign-in on supported browsers and devices.</p>
 </div>
 </div>
 
 <details class="account-ssh-optional">
 <summary>SSH key for MUD and terminal login</summary>
-<p class="muted account-ssh-description">Link your SSH public key for terminal access.</p>
+<p class="muted account-ssh-description">Link an SSH public key for server terminal access (if allowed).</p>
 <div class="field-row">
 <label for="account-ssh-public-key"><strong>SSH Public Key</strong></label>
 <textarea id="account-ssh-public-key" rows="3" placeholder="ssh-ed25519 AAAA..."></textarea>
 <div class="account-row">
 <button id="btn-generate-ssh" type="button">Generate SSH Key Pair (Browser)</button>
-<button id="btn-link-ssh" type="button">Link SSH Key</button>
+<button id="btn-link-ssh" type="button">Link SSH Public Key</button>
 </div>
 <p class="muted">When generated in-browser, private key download starts locally. Keep it secret and back it up.</p>
 </div>
@@ -1349,7 +1352,9 @@ body {
 }
 
 [data-admin-section="account"] #account-player-name {
-  inline-size: clamp(4rem, 7.3vw, 6rem);
+  inline-size: clamp(9rem, 21vw, 16rem);
+  width: clamp(9rem, 21vw, 16rem);
+  max-inline-size: 100%;
 }
 
 [data-admin-section="account"] .field-row {
@@ -1387,18 +1392,24 @@ body {
 }
 
 [data-admin-section="account"] .account-nostr-row {
+  display: flex;
+  width: min(100%, 42rem);
+  max-width: 100%;
   align-items: stretch;
   gap: 0.36rem;
 }
 
 [data-admin-section="account"] .account-pubkey-field {
   position: relative;
-  flex: 1 1 24rem;
-  min-width: min(100%, 32rem);
+  flex: 1 1 auto;
+  min-width: 0;
+  width: min(100%, 42rem);
+  max-width: 100%;
 }
 
 [data-admin-section="account"] .account-nostr-row #account-nostr-pubkey {
-  min-width: min(100%, 32rem);
+  width: 100%;
+  min-width: 0;
   padding-right: 4rem;
 }
 
@@ -1414,8 +1425,9 @@ body {
   background: transparent !important;
   border-radius: 6px;
   padding: 0;
-  color: var(--muted-text, #4f617f);
+  color: var(--admin-text, var(--text));
   box-shadow: none;
+  z-index: 2;
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
@@ -1450,8 +1462,9 @@ body {
   background: transparent !important;
   border-radius: 6px;
   padding: 0;
-  color: var(--muted-text, #4f617f);
+  color: var(--admin-text, var(--text));
   box-shadow: none;
+  z-index: 2;
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
@@ -1479,6 +1492,15 @@ body {
 
 .account-ssh-description {
   margin: 0.32rem 0 0.42rem;
+}
+
+.account-passkey-wrap {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.account-passkey-description {
+  margin: 0;
 }
 
 .account-row {
@@ -1859,14 +1881,13 @@ body {
   font-weight: 520;
   padding: 0.34rem 0.72rem;
   line-height: 1.15;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
-#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):hover {
+#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):hover:not(:disabled) {
   background: #eaf2ff;
   border-color: #8ca9e2;
   color: #102c5f;
-  transform: translateY(-1px);
 }
 
 #admin-panel .row-actions button.primary {
@@ -3735,7 +3756,7 @@ body {
   -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
-#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):hover {
+#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):hover:not(:disabled) {
   background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
   color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;

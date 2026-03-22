@@ -5012,7 +5012,7 @@
             syncSshAccountActionState();
             triggerTextDownload('id_rsa', keyPair.privateKeyPem);
             triggerTextDownload('id_rsa.pub', keyPair.publicKey + '\n');
-            setOutput(els.outputAccount, 'SSH keypair generated in-browser and downloaded. Private key was never sent to the server.', 'ok');
+            setOutput(els.outputAccount, 'Generated SSH key pair. Downloaded private key (id_rsa) and public key (id_rsa.pub) as files. Private key was never sent to the server.', 'ok');
           })
           .catch(function (err) {
             setOutput(els.outputAccount, 'Error: ' + err.message, 'error');
