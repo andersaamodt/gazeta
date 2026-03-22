@@ -410,36 +410,50 @@ blog_nostr_site_pubkey() {
 }
 
 blog_nostr_contact_latest_event_json() {
-  site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
-  [ -n "$site_pubkey" ] || return 1
-  blog_nostr_kind_latest_event_json 0 "$site_pubkey"
+  [ -d "$blog_nostr_events_dir" ] || return 1
+  authors_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file" 2>/dev/null || printf '[]')
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-contact-events.XXXXXX")
+  find "$blog_nostr_events_dir" -type f -path '*/0/*.json' 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    return 1
+  fi
+  out=$(jq -c --argjson authors "$authors_json" '
+    [ .[]
+      | select(type=="object" and (.kind|type)=="number" and .kind==0 and (.pubkey|type)=="string")
+      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
+    ]
+    | sort_by((.created_at // 0), (.id // ""))
+    | last // empty
+  ' "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  if [ -z "$out" ] || [ "$out" = "null" ]; then
+    return 1
+  fi
+  printf '%s\n' "$out"
 }
 
 blog_nostr_nip23_latest_event_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   [ -n "$slug" ] || return 1
   [ -d "$blog_nostr_events_dir" ] || return 1
-  site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
-
+  authors_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file" 2>/dev/null || printf '[]')
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nip23-events.XXXXXX")
-  if [ -n "$site_pubkey" ] && [ -d "$blog_nostr_events_dir/$site_pubkey/30023" ]; then
-    find "$blog_nostr_events_dir/$site_pubkey/30023" -type f -name '*.json' 2>/dev/null | while IFS= read -r file; do
-      [ -f "$file" ] || continue
-      jq -c '.' "$file" 2>/dev/null || true
-    done > "$tmp"
-  else
-    find "$blog_nostr_events_dir" -type f -path '*/30023/*.json' 2>/dev/null | while IFS= read -r file; do
-      [ -f "$file" ] || continue
-      jq -c '.' "$file" 2>/dev/null || true
-    done > "$tmp"
-  fi
+  find "$blog_nostr_events_dir" -type f -path '*/30023/*.json' 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
   if [ ! -s "$tmp" ]; then
     rm -f "$tmp"
     return 1
   fi
-  out=$(jq -c --arg slug "$slug" '
+  out=$(jq -c --arg slug "$slug" --argjson authors "$authors_json" '
     [ .[]
-      | select(type=="object" and (.kind|type)=="number" and .kind==30023 and (.tags|type)=="array")
+      | select(type=="object" and (.kind|type)=="number" and .kind==30023 and (.tags|type)=="array" and (.pubkey|type)=="string")
+      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | select($d == $slug)
     ]

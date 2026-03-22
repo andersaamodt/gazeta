@@ -208,29 +208,23 @@ blog_nostr_public_ranking_latest_event_json() {
   [ -n "$slug" ] || return 1
   [ -d "$blog_nostr_events_dir" ] || return 1
 
-  site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+  authors_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file" 2>/dev/null || printf '[]')
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-ranking-events.XXXXXX")
 
-  if [ -n "$site_pubkey" ] && [ -d "$blog_nostr_events_dir/$site_pubkey/30040" ]; then
-    find "$blog_nostr_events_dir/$site_pubkey/30040" -type f -name '*.json' 2>/dev/null | while IFS= read -r file; do
-      [ -f "$file" ] || continue
-      jq -c '.' "$file" 2>/dev/null || true
-    done > "$tmp"
-  else
-    find "$blog_nostr_events_dir" -type f -path '*/30040/*.json' 2>/dev/null | while IFS= read -r file; do
-      [ -f "$file" ] || continue
-      jq -c '.' "$file" 2>/dev/null || true
-    done > "$tmp"
-  fi
+  find "$blog_nostr_events_dir" -type f -path '*/30040/*.json' 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
 
   if [ ! -s "$tmp" ]; then
     rm -f "$tmp"
     return 1
   fi
 
-  out=$(jq -c --arg slug "$slug" '
+  out=$(jq -c --arg slug "$slug" --argjson authors "$authors_json" '
     [ .[]
-      | select(type=="object" and (.kind|type)=="number" and .kind==30040 and (.tags|type)=="array")
+      | select(type=="object" and (.kind|type)=="number" and .kind==30040 and (.tags|type)=="array" and (.pubkey|type)=="string")
+      | select((($authors | length) == 0) or (($authors | index(.pubkey)) != null))
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="t") | .[1]] | map(ascii_downcase)) // []) as $topics
       | select($d == $slug and (($topics | index("public-ranking")) != null))
