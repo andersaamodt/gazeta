@@ -4610,4 +4610,37 @@ body {
 .moderation-item-path {
   font-size: 0.8rem;
 }
+
+/* Unified admin table framing: side margin + matching left/right borders. */
+#admin-panel .queue-rows,
+#admin-panel .draft-rows,
+#admin-panel .posts-list,
+#admin-panel .users-list,
+#admin-panel .nostr-pages-rows,
+#admin-panel #files-list.posts-list,
+#admin-panel #moderation-list.posts-list {
+  margin-left: 0.7rem !important;
+  margin-right: 0.7rem !important;
+  width: auto !important;
+  max-width: calc(100% - 1.4rem) !important;
+  box-sizing: border-box !important;
+  border-top-color: var(--admin-border, var(--border)) !important;
+  border-bottom-color: var(--admin-border, var(--border)) !important;
+  border-left: 1px solid var(--admin-border, var(--border)) !important;
+  border-right: 1px solid var(--admin-border, var(--border)) !important;
+}
+
+@media (max-width: 620px) {
+  #admin-panel .queue-rows,
+  #admin-panel .draft-rows,
+  #admin-panel .posts-list,
+  #admin-panel .users-list,
+  #admin-panel .nostr-pages-rows,
+  #admin-panel #files-list.posts-list,
+  #admin-panel #moderation-list.posts-list {
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+    max-width: calc(100% - 1rem) !important;
+  }
+}
 </style>
