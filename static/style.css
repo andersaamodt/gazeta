@@ -1818,13 +1818,15 @@ header h1 {
 
 .public-ranking-editor-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(200px, max-content));
-  gap: 0.56rem 0.64rem;
+  grid-template-columns: minmax(0, max-content);
+  gap: 0.48rem;
 }
 
 .public-ranking-editor-grid label {
   display: grid;
-  gap: 0.24rem;
+  grid-template-columns: minmax(220px, max-content) auto;
+  align-items: center;
+  column-gap: 0.7rem;
   color: var(--muted-text, #4f617f);
   font-size: 0.8rem;
 }
@@ -1832,11 +1834,16 @@ header h1 {
 .public-ranking-editor-grid input[type="text"],
 .public-ranking-editor-grid input[type="number"],
 .public-ranking-editor-grid select {
-  min-width: 12rem;
+  min-width: 11rem;
   width: auto;
-  max-width: 22rem;
+  max-width: 18rem;
   height: 2rem;
   padding: 0.35rem 0.55rem;
+}
+
+.public-ranking-editor-grid input[type="checkbox"] {
+  margin: 0;
+  justify-self: start;
 }
 
 .public-ranking-editor-grid textarea {

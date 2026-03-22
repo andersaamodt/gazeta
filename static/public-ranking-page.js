@@ -459,7 +459,6 @@
     var mode = document.getElementById('public-ranking-edit-submission-mode');
     var metric = document.getElementById('public-ranking-edit-default-metric');
     var showMarkerFilters = document.getElementById('public-ranking-edit-show-marker-filters');
-    var blacklist = document.getElementById('public-ranking-edit-blacklist');
 
     state.draft.vote_cooldown_seconds = Math.max(60, Math.floor(Number(cooldown && cooldown.value ? cooldown.value : state.draft.vote_cooldown_seconds) || 86400));
     if (allowOpen instanceof HTMLInputElement && allowOpen.type === 'checkbox') {
@@ -470,10 +469,6 @@
     state.draft.default_metric = normalizeMetric(metric ? metric.value : state.draft.default_metric);
     state.currentMetric = state.draft.default_metric;
     state.draft.show_marker_filters = !!(showMarkerFilters && showMarkerFilters.checked);
-    state.draft.blacklist_pubkeys = String(blacklist && blacklist.value || '')
-      .split(/\n|,/)
-      .map(function (pk) { return String(pk || '').trim().toLowerCase(); })
-      .filter(function (pk) { return /^[0-9a-f]{64}$/.test(pk); });
   }
 
   function draftPayloadJson() {
@@ -1049,7 +1044,6 @@
     if (!isAdmin() || !state.editMode) {
       return '';
     }
-    var blacklistText = (renderState.blacklist_pubkeys || []).join('\n');
     var html = '';
     html += '<section class="public-ranking-editor">';
     html += '<h3>Ranking Settings</h3>';
@@ -1063,7 +1057,6 @@
     html += '<option value="enthusiasm"' + (normalizeMetric(renderState.default_metric) === 'enthusiasm' ? ' selected' : '') + '>enthusiasm</option>';
     html += '<option value="intensity"' + (normalizeMetric(renderState.default_metric) === 'intensity' ? ' selected' : '') + '>intensity</option>';
     html += '</select></label>';
-    html += '<label class="public-ranking-editor-wide"><span>Blacklist pubkeys (one per line)</span><textarea id="public-ranking-edit-blacklist" rows="4" placeholder="hex pubkey">' + escapeHtml(blacklistText) + '</textarea></label>';
     html += '</div>';
     html += '</section>';
     return html;
