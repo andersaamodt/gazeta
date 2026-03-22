@@ -3352,6 +3352,23 @@ body {
   width: 100% !important;
 }
 
+#admin-panel #files-list.posts-list {
+  border-top: 1px solid var(--admin-border, #cdbd95) !important;
+  border-right: 1px solid var(--admin-border, #cdbd95) !important;
+  border-bottom: 1px solid var(--admin-border, #cdbd95) !important;
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
+
+#admin-panel #files-list.posts-list .files-table,
+#admin-panel #files-list.posts-list .file-table-header {
+  border-top: 0 !important;
+}
+
+#admin-panel #files-list.posts-list .post-row.file-row:last-child {
+  border-bottom: 0 !important;
+}
+
 .posts-list {
   display: block;
   border-top: 1px solid #d2def3;
