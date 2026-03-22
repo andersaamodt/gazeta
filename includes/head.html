@@ -2,12 +2,72 @@
 <script defer src="/static/post-context.js"></script>
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
 <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <meta name="description" content="Personal blog built with wizardry web" />
 <meta property="og:site_name" content="Wizardry Blog" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
 <script>
 (function () {
+  var ROUTE_REFRESH_PARAM = '__route_refresh';
+
+  function normalizeSlug(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function slugFromPath(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path) {
+      return 'index';
+    }
+    path = path.split('?')[0].split('#')[0];
+    path = path.replace(/\/+$/, '');
+    if (!path || path === '/') {
+      return 'index';
+    }
+    if (path.indexOf('/pages/') === 0) {
+      path = path.slice('/pages/'.length);
+    } else if (path.charAt(0) === '/') {
+      path = path.slice(1);
+    }
+    path = path.replace(/\.html?$/i, '');
+    if (path.indexOf('/') >= 0) {
+      return '';
+    }
+    return normalizeSlug(path);
+  }
+
+  function routeRootSlugFromDom() {
+    var blogRoot = document.getElementById('blog-page-root');
+    if (blogRoot) {
+      return normalizeSlug(blogRoot.getAttribute('data-page-slug') || blogRoot.getAttribute('data-blog-slug') || '');
+    }
+    var nip23Root = document.getElementById('nip23-page-root');
+    if (nip23Root) {
+      return normalizeSlug(nip23Root.getAttribute('data-page-slug') || '');
+    }
+    var listRoot = document.getElementById('oeuvre-root') || document.getElementById('icon-gallery-root');
+    if (listRoot) {
+      return normalizeSlug(listRoot.getAttribute('data-list-slug') || '');
+    }
+    var rankingRoot = document.getElementById('public-ranking-root');
+    if (rankingRoot) {
+      return normalizeSlug(rankingRoot.getAttribute('data-ranking-slug') || '');
+    }
+    var contactRoot = document.getElementById('contact-page-root');
+    if (contactRoot) {
+      return normalizeSlug(contactRoot.getAttribute('data-page-slug') || '');
+    }
+    return '';
+  }
+
   if (document.documentElement) {
     document.documentElement.classList.add('app-hydrating');
   }
@@ -26,6 +86,33 @@
     var firstHeading = document.querySelector('h1[id]') || document.querySelector('h1');
     if (firstHeading && !firstHeading.id) {
       firstHeading.id = 'main-content';
+    }
+
+    try {
+      var currentUrl = new URL(window.location.href);
+      var expectedSlug = slugFromPath(currentUrl.pathname || '/');
+      var rootSlug = routeRootSlugFromDom();
+      var hasRefreshParam = currentUrl.searchParams.get(ROUTE_REFRESH_PARAM) === '1';
+      if (expectedSlug && rootSlug && expectedSlug !== rootSlug) {
+        if (!hasRefreshParam) {
+          currentUrl.searchParams.set(ROUTE_REFRESH_PARAM, '1');
+          window.location.replace(currentUrl.toString());
+          return;
+        }
+      } else if (hasRefreshParam && window.history && typeof window.history.replaceState === 'function') {
+        currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
+        var next = currentUrl.pathname;
+        var query = currentUrl.searchParams.toString();
+        if (query) {
+          next += '?' + query;
+        }
+        if (currentUrl.hash) {
+          next += currentUrl.hash;
+        }
+        window.history.replaceState(null, '', next);
+      }
+    } catch (_routeErr) {
+      // Ignore URL parsing/runtime failures.
     }
   });
 })();
