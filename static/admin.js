@@ -2163,15 +2163,17 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
+    const stonrInstalled = !!(info.stonr_installed || info.stoner_installed);
+    const stonrRunning = !!(info.stonr_running || info.stoner_running);
     let label = 'Not Installed';
     let statusClass = 'is-offline';
     if (info.relay_connected) {
       label = 'Connected';
       statusClass = 'is-connected';
-    } else if (info.stoner_running) {
+    } else if (stonrRunning) {
       label = 'Online';
       statusClass = 'is-online';
-    } else if (info.stoner_installed) {
+    } else if (stonrInstalled) {
       label = 'Installed';
       statusClass = 'is-installed';
     }
@@ -2202,8 +2204,9 @@
 
   function setNosterButtonsBusy(isBusy) {
     const cardButtons = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('button[data-noster-action]')) : [];
+    const settingInputs = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('input[data-noster-setting]')) : [];
     const runtimeInfo = state.nosterRuntime && typeof state.nosterRuntime === 'object' ? state.nosterRuntime : {};
-    const stonerInstalled = !!runtimeInfo.stoner_installed;
+    const stonrInstalled = !!(runtimeInfo.stonr_installed || runtimeInfo.stoner_installed);
     cardButtons.forEach(function (button) {
       const action = String(button.getAttribute('data-noster-action') || '').toLowerCase();
       const requiresInstalled = action === 'start' || action === 'stop';
@@ -2211,12 +2214,46 @@
         button.disabled = true;
         return;
       }
-      if (requiresInstalled && !stonerInstalled) {
+      if (requiresInstalled && !stonrInstalled) {
         button.disabled = true;
         return;
       }
       button.disabled = false;
     });
+    settingInputs.forEach(function (input) {
+      input.disabled = !!isBusy;
+    });
+  }
+
+  function readNosterSettingsFromRuntime(info) {
+    const runtime = info && typeof info === 'object' ? info : {};
+    const settings = runtime.settings && typeof runtime.settings === 'object' ? runtime.settings : {};
+    return {
+      general_relay: !!settings.general_relay,
+      mirror_posts: (typeof settings.mirror_posts === 'boolean') ? settings.mirror_posts : true,
+      mirror_comments: (typeof settings.mirror_comments === 'boolean') ? settings.mirror_comments : true,
+      auto_start: !!settings.auto_start
+    };
+  }
+
+  function readNosterSettingsFromUi() {
+    const fallback = readNosterSettingsFromRuntime(state.nosterRuntime || {});
+    const readCheckbox = function (name, fallbackValue) {
+      if (!els.nosterRuntime) {
+        return fallbackValue;
+      }
+      const node = els.nosterRuntime.querySelector('input[data-noster-setting="' + name + '"]');
+      if (!(node instanceof HTMLInputElement)) {
+        return fallbackValue;
+      }
+      return !!node.checked;
+    };
+    return {
+      general_relay: readCheckbox('general_relay', fallback.general_relay),
+      mirror_posts: readCheckbox('mirror_posts', fallback.mirror_posts),
+      mirror_comments: readCheckbox('mirror_comments', fallback.mirror_comments),
+      auto_start: readCheckbox('auto_start', fallback.auto_start)
+    };
   }
 
   function renderNosterRuntime(runtime, logText, message) {
@@ -2227,22 +2264,35 @@
     state.nosterRuntime = info;
     setNosterNavStatus(info);
 
-    const stonerInstalled = !!info.stoner_installed;
-    const stonerRunning = !!info.stoner_running;
+    const stonrInstalled = !!(info.stonr_installed || info.stoner_installed);
+    const stonrRunning = !!(info.stonr_running || info.stoner_running);
     const relayConnected = !!info.relay_connected;
+    const settings = readNosterSettingsFromRuntime(info);
+    const oneSiteMirrorMode = !settings.general_relay;
+    const stonrPath = info.stonr_path || info.stoner_path || '';
     const actionDisabledAttr = state.nosterActionInFlight ? ' disabled' : '';
-    const startDisabledAttr = (!stonerInstalled || state.nosterActionInFlight) ? ' disabled' : '';
-    const installTitle = stonerInstalled ? '' : ' title="Install Stonr"';
-    const toggleTitle = stonerInstalled
-      ? (' title="' + (stonerRunning ? 'Stop Stonr' : 'Start Stonr') + '"')
+    const startDisabledAttr = (!stonrInstalled || state.nosterActionInFlight) ? ' disabled' : '';
+    const installTitle = stonrInstalled ? '' : ' title="Install Stonr"';
+    const toggleTitle = stonrInstalled
+      ? (' title="' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '"')
       : ' title="Install Stonr first"';
 
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div>' + (stonerInstalled ? '' : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + installTitle + '>Install Stonr</button>')) + '</div>';
-    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonerRunning ? 'is-ok' : 'is-warn') + '">' + (stonerRunning ? 'Online' : 'Stopped') + '</div><button type="button" class="zaps-runtime-action" data-noster-action="' + (stonerRunning ? 'stop' : 'start') + '"' + startDisabledAttr + toggleTitle + '>' + (stonerRunning ? 'Stop Stonr' : 'Start Stonr') + '</button></div>';
+    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonrInstalled ? 'is-ok' : 'is-warn') + '">' + (stonrInstalled ? 'Installed' : 'Not installed') + '</div>' + (stonrInstalled ? '' : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + installTitle + '>Install Stonr</button>')) + '</div>';
+    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonrRunning ? 'is-ok' : 'is-warn') + '">' + (stonrRunning ? 'Online' : 'Stopped') + '</div><button type="button" class="zaps-runtime-action" data-noster-action="' + (stonrRunning ? 'stop' : 'start') + '"' + startDisabledAttr + toggleTitle + '>' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '</button></div>';
     html += '<div class="zaps-runtime-card"><strong>Relay</strong><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
-    if (info.stoner_path) {
-      html += '<div class="zaps-runtime-card"><strong>Stonr Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.stoner_path)) + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Mode</strong><div class="zaps-runtime-value ' + (oneSiteMirrorMode ? 'is-ok' : 'is-warn') + '">' + (oneSiteMirrorMode ? 'One-site mirror' : 'General relay') + '</div></div>';
+    html += '<div class="zaps-runtime-card noster-settings-card"><strong>Settings</strong><div class="noster-settings-list">'
+      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="general_relay"' + (settings.general_relay ? ' checked' : '') + actionDisabledAttr + '><span>Also act as a general relay</span></label>'
+      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="mirror_posts"' + (settings.mirror_posts ? ' checked' : '') + actionDisabledAttr + '><span>Mirror posts from configured authors</span></label>'
+      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="mirror_comments"' + (settings.mirror_comments ? ' checked' : '') + actionDisabledAttr + '><span>Mirror comments for mirrored posts</span></label>'
+      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="auto_start"' + (settings.auto_start ? ' checked' : '') + actionDisabledAttr + '><span>Auto-start Stonr</span></label>'
+      + '</div><button type="button" class="zaps-runtime-action" data-noster-action="save_settings"' + actionDisabledAttr + '>Save Settings</button></div>';
+    if (stonrPath) {
+      html += '<div class="zaps-runtime-card"><strong>Stonr Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(stonrPath)) + '</div></div>';
+    }
+    if (info.config_path) {
+      html += '<div class="zaps-runtime-card"><strong>Config Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.config_path)) + '</div></div>';
     }
     if (info.pid) {
       html += '<div class="zaps-runtime-card"><strong>PID</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.pid)) + '</div></div>';
@@ -2282,6 +2332,7 @@
     if (!picked) {
       return;
     }
+    const request = { action: picked };
     let message = '';
     if (picked === 'install') {
       message = 'Install Stonr on this server now?';
@@ -2289,6 +2340,12 @@
       message = 'Start Stonr now?';
     } else if (picked === 'stop') {
       message = 'Stop Stonr now?';
+    } else if (picked === 'save_settings') {
+      const settings = readNosterSettingsFromUi();
+      request.general_relay = settings.general_relay ? 'true' : 'false';
+      request.mirror_posts = settings.mirror_posts ? 'true' : 'false';
+      request.mirror_comments = settings.mirror_comments ? 'true' : 'false';
+      request.auto_start = settings.auto_start ? 'true' : 'false';
     }
     if (message && !window.confirm(message)) {
       return;
@@ -2297,7 +2354,7 @@
     setNosterButtonsBusy(true);
     renderNosterRuntime(state.nosterRuntime || {}, '', 'Running ' + picked + '...');
     try {
-      const data = await apiPost('/cgi/blog-manage-noster', { action: picked }, true);
+      const data = await apiPost('/cgi/blog-manage-noster', request, true);
       if (!data.success) {
         renderNosterRuntime(data.runtime || {}, data.log || '', 'Nostr action failed.');
         throw new Error(data.error || 'Nostr action failed');

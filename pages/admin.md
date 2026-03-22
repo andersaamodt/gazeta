@@ -135,7 +135,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Nostr</h3>
-<p class="muted">Install and control Stonr on this server.</p>
+<p class="muted">Install and control Stonr on this server. Default mode is one-site mirror.</p>
 </div>
 </div>
 
@@ -1219,6 +1219,37 @@ body {
 [data-admin-section="nostr-bridge"] .checkbox-row .checkbox-control.checkbox-control-plain span {
   font-weight: 500;
   color: #1f335f;
+}
+
+[data-admin-section="nostr-bridge"] .noster-settings-card {
+  min-width: min(100%, 25.5rem);
+}
+
+[data-admin-section="nostr-bridge"] .noster-settings-list {
+  display: grid;
+  gap: 0.38rem;
+}
+
+[data-admin-section="nostr-bridge"] .noster-setting-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  color: #1f335f;
+  font-size: 0.83rem;
+  line-height: 1.25;
+}
+
+[data-admin-section="nostr-bridge"] .noster-setting-row input[type="checkbox"] {
+  margin: 0;
+}
+
+[data-admin-section="nostr-bridge"] .noster-setting-row span {
+  font-weight: 500;
+}
+
+[data-admin-section="nostr-bridge"] .noster-settings-card .zaps-runtime-action {
+  margin-top: 0.62rem;
 }
 
 .inline-tip {
@@ -4822,17 +4853,18 @@ body {
 #admin-panel [data-admin-section="settings"] #settings-row-site-title,
 #admin-panel [data-admin-section="settings"] #settings-row-theme,
 #admin-panel [data-admin-section="settings"] #settings-row-feed-items {
-  display: grid !important;
-  grid-template-columns: 13.5rem minmax(0, 1fr) !important;
+  display: flex !important;
   align-items: center !important;
-  column-gap: 0.72rem !important;
-  row-gap: 0 !important;
+  gap: 0.72rem !important;
+  flex-wrap: nowrap !important;
 }
 
 #admin-panel [data-admin-section="settings"] #settings-row-site-title > label,
 #admin-panel [data-admin-section="settings"] #settings-row-theme > label,
 #admin-panel [data-admin-section="settings"] #settings-row-feed-items > label {
-  grid-column: 1 !important;
+  flex: 0 0 13.5rem !important;
+  width: 13.5rem !important;
+  max-width: 13.5rem !important;
   margin: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -4841,9 +4873,7 @@ body {
 #admin-panel [data-admin-section="settings"] #site-title,
 #admin-panel [data-admin-section="settings"] #admin-theme,
 #admin-panel [data-admin-section="settings"] #feed-items {
-  grid-column: 2 !important;
-  justify-self: start !important;
-  align-self: center !important;
+  flex: 0 0 auto !important;
   margin: 0 !important;
 }
 
@@ -4851,7 +4881,15 @@ body {
   #admin-panel [data-admin-section="settings"] #settings-row-site-title,
   #admin-panel [data-admin-section="settings"] #settings-row-theme,
   #admin-panel [data-admin-section="settings"] #settings-row-feed-items {
-    grid-template-columns: 9.5rem minmax(0, 1fr) !important;
+    gap: 0.56rem !important;
+  }
+
+  #admin-panel [data-admin-section="settings"] #settings-row-site-title > label,
+  #admin-panel [data-admin-section="settings"] #settings-row-theme > label,
+  #admin-panel [data-admin-section="settings"] #settings-row-feed-items > label {
+    flex-basis: 9.5rem !important;
+    width: 9.5rem !important;
+    max-width: 9.5rem !important;
   }
 }
 

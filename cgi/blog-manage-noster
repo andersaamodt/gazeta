@@ -1,5 +1,5 @@
 #!/bin/sh
-# Manage Nostr runtime and Stonr install/start/stop actions.
+# Manage Nostr runtime and Stonr install/start/stop/config actions.
 
 set -eu
 
@@ -19,19 +19,108 @@ if [ -z "$action" ]; then
   action=status
 fi
 
-wizardry_dir=${WIZARDRY_DIR:-$HOME/.wizardry}
+wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
+home_dir=${HOME:-}
 noster_state_dir="$blog_state_dir/noster"
-stoner_pid_file="$noster_state_dir/stoner.pid"
-stoner_log_file="$noster_state_dir/stoner.log"
+stonr_pid_file="$noster_state_dir/stonr.pid"
+stonr_log_file="$noster_state_dir/stonr.log"
+stonr_config_file="$noster_state_dir/stonr-config.json"
+legacy_pid_file="$noster_state_dir/stoner.pid"
 
 mkdir -p "$noster_state_dir"
 
-stoner_bin_path() {
-  command -v stoner 2>/dev/null || printf ''
+bool_or_default() {
+  raw=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  default=$(printf '%s' "${2-false}" | tr '[:upper:]' '[:lower:]')
+  case "$raw" in
+    true|1|yes|on) printf 'true\n' ;;
+    false|0|no|off) printf 'false\n' ;;
+    *)
+      case "$default" in
+        true|1|yes|on) printf 'true\n' ;;
+        *) printf 'false\n' ;;
+      esac
+      ;;
+  esac
 }
 
-stoner_installed() {
-  [ -n "$(stoner_bin_path)" ]
+setting_bool() {
+  key=$1
+  default=$2
+  value=$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')
+  bool_or_default "$value" "$default"
+}
+
+setting_general_relay() {
+  setting_bool nostr_stonr_general_relay false
+}
+
+setting_mirror_posts() {
+  setting_bool nostr_stonr_mirror_posts true
+}
+
+setting_mirror_comments() {
+  setting_bool nostr_stonr_mirror_comments true
+}
+
+setting_auto_start() {
+  setting_bool nostr_stonr_auto_start false
+}
+
+setting_one_site_mirror() {
+  if [ "$(setting_general_relay)" = "true" ]; then
+    printf 'false\n'
+  else
+    printf 'true\n'
+  fi
+}
+
+settings_json() {
+  general_relay=$(setting_general_relay)
+  mirror_posts=$(setting_mirror_posts)
+  mirror_comments=$(setting_mirror_comments)
+  auto_start=$(setting_auto_start)
+  one_site_mirror=$(setting_one_site_mirror)
+  printf '{'
+  printf '"one_site_mirror_mode":%s,' "$one_site_mirror"
+  printf '"general_relay":%s,' "$general_relay"
+  printf '"mirror_posts":%s,' "$mirror_posts"
+  printf '"mirror_comments":%s,' "$mirror_comments"
+  printf '"auto_start":%s' "$auto_start"
+  printf '}'
+}
+
+stonr_bin_path() {
+  for name in stonr stoner; do
+    bin=$(command -v "$name" 2>/dev/null || printf '')
+    if [ -n "$bin" ] && [ -x "$bin" ]; then
+      printf '%s\n' "$bin"
+      return 0
+    fi
+  done
+
+  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
+  for candidate in \
+    "$home_dir/.local/bin/stonr" \
+    "$local_root/stonr" \
+    "$local_root/bin/stonr" \
+    "$local_root/target/release/stonr" \
+    "$local_root/dist/stonr" \
+    "$local_root/stoner" \
+    "$local_root/bin/stoner" \
+    "$local_root/target/release/stoner" \
+    "$local_root/dist/stoner"; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf '\n'
+}
+
+stonr_installed() {
+  [ -n "$(stonr_bin_path)" ]
 }
 
 web_wizardry_has_cmd() {
@@ -42,17 +131,46 @@ web_wizardry_has_cmd() {
   web-wizardry --help 2>/dev/null | grep -Eq "^[[:space:]]+$cmd_name([[:space:]]|$)"
 }
 
-stoner_pid() {
-  if [ -f "$stoner_pid_file" ]; then
-    pid=$(tr -cd '0-9' < "$stoner_pid_file" 2>/dev/null || printf '')
-    if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
-      printf '%s\n' "$pid"
-      return 0
+web_wizardry_run_cmd() {
+  cmd_name=$1
+  action_log=$2
+  set +e
+  env STONR_CONFIG="$stonr_config_file" web-wizardry "$cmd_name" >> "$action_log" 2>&1
+  status=$?
+  set -e
+  return "$status"
+}
+
+run_wizardry_spell() {
+  spell_path=$1
+  action_log=$2
+  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-noster-input.XXXXXX")
+  i=0
+  while [ "$i" -lt 8 ]; do
+    printf '\n' >> "$input_file"
+    i=$((i + 1))
+  done
+  set +e
+  sh -c 'WIZARDRY_DIR="$1" HOME="$2" STONR_CONFIG="$3" "$4" < "$5"' sh "$wizardry_dir" "$home_dir" "$stonr_config_file" "$spell_path" "$input_file" >> "$action_log" 2>&1
+  status=$?
+  set -e
+  rm -f "$input_file"
+  return "$status"
+}
+
+stonr_pid() {
+  for pid_file in "$stonr_pid_file" "$legacy_pid_file"; do
+    if [ -f "$pid_file" ]; then
+      pid=$(tr -cd '0-9' < "$pid_file" 2>/dev/null || printf '')
+      if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+        printf '%s\n' "$pid"
+        return 0
+      fi
     fi
-  fi
+  done
 
   if command -v pgrep >/dev/null 2>&1; then
-    pid=$(pgrep -f '[ /]stoner([[:space:]]|$)' 2>/dev/null | head -n 1 || printf '')
+    pid=$(pgrep -f '[ /](stonr|stoner)([[:space:]]|$)' 2>/dev/null | head -n 1 || printf '')
     if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
       printf '%s\n' "$pid"
       return 0
@@ -62,22 +180,35 @@ stoner_pid() {
   printf '\n'
 }
 
-stoner_running() {
-  [ -n "$(stoner_pid)" ]
+stonr_running() {
+  [ -n "$(stonr_pid)" ]
+}
+
+stonr_supports_config_flag() {
+  bin=$1
+  [ -n "$bin" ] || return 1
+  set +e
+  help_text=$("$bin" --help 2>/dev/null)
+  status=$?
+  set -e
+  if [ "$status" -ne 0 ]; then
+    return 1
+  fi
+  printf '%s' "$help_text" | grep -Eq -- '--config([=[:space:]]|$)'
 }
 
 relay_connected() {
-  if ! stoner_running; then
+  if ! stonr_running; then
     return 1
   fi
 
-  bin=$(stoner_bin_path)
+  bin=$(stonr_bin_path)
   if [ -z "$bin" ]; then
     return 1
   fi
 
   set +e
-  status_json=$("$bin" status --json 2>/dev/null)
+  status_json=$(STONR_CONFIG="$stonr_config_file" "$bin" status --json 2>/dev/null)
   status_code=$?
   set -e
   if [ "$status_code" -eq 0 ] && [ -n "$status_json" ]; then
@@ -87,7 +218,7 @@ relay_connected() {
   fi
 
   set +e
-  status_text=$("$bin" status 2>/dev/null)
+  status_text=$(STONR_CONFIG="$stonr_config_file" "$bin" status 2>/dev/null)
   status_code=$?
   set -e
   if [ "$status_code" -eq 0 ] && printf '%s' "$status_text" | grep -Eiq 'connected|relay connected'; then
@@ -105,15 +236,94 @@ bool_json() {
   fi
 }
 
+write_stonr_config() {
+  action_log=$1
+
+  general_relay=$(setting_general_relay)
+  one_site_mirror=$(setting_one_site_mirror)
+  mirror_posts=$(setting_mirror_posts)
+  mirror_comments=$(setting_mirror_comments)
+  auto_start=$(setting_auto_start)
+
+  relay_scope=site_only
+  relay_write=false
+  if [ "$general_relay" = "true" ]; then
+    relay_scope=global
+    relay_write=true
+  fi
+
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-stonr-config.XXXXXX")
+  {
+    printf '{\n'
+    printf '  "mode": "%s",\n' "$( [ "$one_site_mirror" = "true" ] && printf 'one_site_mirror' || printf 'general_relay' )"
+    printf '  "one_site_mirror_mode": %s,\n' "$one_site_mirror"
+    printf '  "relay": {\n'
+    printf '    "general": %s,\n' "$general_relay"
+    printf '    "accept_public_write": %s,\n' "$relay_write"
+    printf '    "scope": "%s"\n' "$relay_scope"
+    printf '  },\n'
+    printf '  "mirror": {\n'
+    printf '    "posts": %s,\n' "$mirror_posts"
+    printf '    "comments": %s,\n' "$mirror_comments"
+    printf '    "scope": "%s"\n' "$relay_scope"
+    printf '  },\n'
+    printf '  "runtime": {\n'
+    printf '    "auto_start": %s\n' "$auto_start"
+    printf '  },\n'
+    printf '  "site": {\n'
+    printf '    "name": "%s",\n' "$(blog_json_escape "$blog_site_name")"
+    printf '    "root": "%s"\n' "$(blog_json_escape "$blog_site_root")"
+    printf '  }\n'
+    printf '}\n'
+  } > "$tmp_file"
+
+  mv "$tmp_file" "$stonr_config_file"
+  chmod 644 "$stonr_config_file" 2>/dev/null || true
+
+  if [ -n "$home_dir" ]; then
+    mkdir -p "$home_dir/.config/stonr" "$home_dir/.stonr"
+    cp "$stonr_config_file" "$home_dir/.config/stonr/config.json" 2>/dev/null || true
+    cp "$stonr_config_file" "$home_dir/.stonr/config.json" 2>/dev/null || true
+  fi
+
+  printf 'Wrote Stonr config: %s\n' "$stonr_config_file" >> "$action_log"
+}
+
+save_settings_from_request() {
+  action_log=$1
+
+  general_relay=$(bool_or_default "$(blog_param general_relay)" "$(setting_general_relay)")
+  mirror_posts=$(bool_or_default "$(blog_param mirror_posts)" "$(setting_mirror_posts)")
+  mirror_comments=$(bool_or_default "$(blog_param mirror_comments)" "$(setting_mirror_comments)")
+  auto_start=$(bool_or_default "$(blog_param auto_start)" "$(setting_auto_start)")
+
+  config-set "$blog_site_conf" nostr_stonr_general_relay "$general_relay"
+  config-set "$blog_site_conf" nostr_stonr_mirror_posts "$mirror_posts"
+  config-set "$blog_site_conf" nostr_stonr_mirror_comments "$mirror_comments"
+  config-set "$blog_site_conf" nostr_stonr_auto_start "$auto_start"
+
+  if [ "$mirror_posts" = "true" ] || [ "$mirror_comments" = "true" ]; then
+    config-set "$blog_site_conf" nostr_bridge_enabled true
+  fi
+
+  write_stonr_config "$action_log"
+}
+
 runtime_json() {
-  pid=$(stoner_pid)
-  path=$(stoner_bin_path)
+  pid=$(stonr_pid)
+  path=$(stonr_bin_path)
   printf '{'
-  printf '"stoner_installed":%s,' "$(bool_json stoner_installed)"
-  printf '"stoner_running":%s,' "$(bool_json stoner_running)"
+  printf '"stonr_installed":%s,' "$(bool_json stonr_installed)"
+  printf '"stonr_running":%s,' "$(bool_json stonr_running)"
   printf '"relay_connected":%s,' "$(bool_json relay_connected)"
-  printf '"stoner_path":"%s",' "$(blog_json_escape "$path")"
-  printf '"pid":"%s"' "$(blog_json_escape "$pid")"
+  printf '"stonr_path":"%s",' "$(blog_json_escape "$path")"
+  printf '"config_path":"%s",' "$(blog_json_escape "$stonr_config_file")"
+  printf '"pid":"%s",' "$(blog_json_escape "$pid")"
+  printf '"settings":%s,' "$(settings_json)"
+  # Backward-compatible keys for existing UI code paths.
+  printf '"stoner_installed":%s,' "$(bool_json stonr_installed)"
+  printf '"stoner_running":%s,' "$(bool_json stonr_running)"
+  printf '"stoner_path":"%s"' "$(blog_json_escape "$path")"
   printf '}'
 }
 
@@ -137,106 +347,141 @@ emit_failure() {
     "$(blog_json_escape "$log_text")"
 }
 
-run_wizardry_spell() {
-  spell_path=$1
-  action_log=$2
-  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-noster-input.XXXXXX")
-  i=0
-  while [ "$i" -lt 8 ]; do
-    printf '\n' >> "$input_file"
-    i=$((i + 1))
+install_stonr_from_local_copy() {
+  action_log=$1
+  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
+  if [ ! -d "$local_root" ]; then
+    return 1
+  fi
+
+  for candidate in \
+    "$local_root/stonr" \
+    "$local_root/bin/stonr" \
+    "$local_root/target/release/stonr" \
+    "$local_root/dist/stonr" \
+    "$local_root/stoner" \
+    "$local_root/bin/stoner" \
+    "$local_root/target/release/stoner" \
+    "$local_root/dist/stoner"; do
+    if [ -x "$candidate" ]; then
+      if [ -n "$home_dir" ]; then
+        mkdir -p "$home_dir/.local/bin"
+        ln -sf "$candidate" "$home_dir/.local/bin/stonr"
+        chmod +x "$home_dir/.local/bin/stonr" 2>/dev/null || true
+        printf 'Installed Stonr from local copy: %s -> %s\n' "$candidate" "$home_dir/.local/bin/stonr" >> "$action_log"
+      else
+        printf 'Using local Stonr binary: %s\n' "$candidate" >> "$action_log"
+      fi
+      return 0
+    fi
   done
-  set +e
-  sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$action_log" 2>&1
-  status=$?
-  set -e
-  rm -f "$input_file"
-  return "$status"
+
+  printf 'Local Stonr copy found at %s but no executable binary was detected.\n' "$local_root" >> "$action_log"
+  return 1
 }
 
-install_stoner() {
+install_stonr() {
   action_log=$1
-  if stoner_installed; then
+  if stonr_installed; then
     return 0
   fi
 
+  if web_wizardry_has_cmd install-stonr; then
+    web_wizardry_run_cmd install-stonr "$action_log"
+    return $?
+  fi
   if web_wizardry_has_cmd install-stoner; then
-    set +e
-    web-wizardry install-stoner >> "$action_log" 2>&1
-    status=$?
-    set -e
-    [ "$status" -eq 0 ] || return 1
+    web_wizardry_run_cmd install-stoner "$action_log"
+    return $?
+  fi
+
+  for spell in \
+    "$wizardry_dir/spells/.arcana/nostr/install-stonr" \
+    "$wizardry_dir/spells/.arcana/nostr/install-stoner" \
+    "$wizardry_dir/spells/.arcana/stonr/install-stonr" \
+    "$wizardry_dir/spells/.arcana/stoner/install-stoner"; do
+    if [ -x "$spell" ]; then
+      run_wizardry_spell "$spell" "$action_log"
+      return $?
+    fi
+  done
+
+  if install_stonr_from_local_copy "$action_log"; then
     return 0
-  fi
-
-  spell="$wizardry_dir/spells/.arcana/nostr/install-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log"
-    return $?
-  fi
-
-  spell="$wizardry_dir/spells/.arcana/stoner/install-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log"
-    return $?
   fi
 
   if command -v brew >/dev/null 2>&1; then
     set +e
+    brew install stonr >> "$action_log" 2>&1
+    status=$?
+    set -e
+    if [ "$status" -eq 0 ]; then
+      return 0
+    fi
+
+    set +e
     brew install stoner >> "$action_log" 2>&1
     status=$?
     set -e
-    [ "$status" -eq 0 ] || return 1
-    return 0
+    if [ "$status" -eq 0 ]; then
+      return 0
+    fi
   fi
 
   printf 'No supported Stonr installer was found.\n' >> "$action_log"
   return 1
 }
 
-start_stoner() {
+start_stonr() {
   action_log=$1
-  if stoner_running; then
+  if stonr_running; then
     return 0
   fi
-  if ! stoner_installed; then
+  if ! stonr_installed; then
     printf 'Stonr is not installed.\n' >> "$action_log"
     return 1
   fi
 
+  write_stonr_config "$action_log"
+
+  if web_wizardry_has_cmd start-stonr; then
+    web_wizardry_run_cmd start-stonr "$action_log"
+    return $?
+  fi
   if web_wizardry_has_cmd start-stoner; then
-    set +e
-    web-wizardry start-stoner >> "$action_log" 2>&1
-    status=$?
-    set -e
-    [ "$status" -eq 0 ] || return 1
-    return 0
-  fi
-
-  spell="$wizardry_dir/spells/.arcana/nostr/start-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log"
+    web_wizardry_run_cmd start-stoner "$action_log"
     return $?
   fi
 
-  spell="$wizardry_dir/spells/.arcana/stoner/start-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log"
-    return $?
-  fi
+  for spell in \
+    "$wizardry_dir/spells/.arcana/nostr/start-stonr" \
+    "$wizardry_dir/spells/.arcana/nostr/start-stoner" \
+    "$wizardry_dir/spells/.arcana/stonr/start-stonr" \
+    "$wizardry_dir/spells/.arcana/stoner/start-stoner"; do
+    if [ -x "$spell" ]; then
+      run_wizardry_spell "$spell" "$action_log"
+      return $?
+    fi
+  done
 
-  bin=$(stoner_bin_path)
+  bin=$(stonr_bin_path)
   if [ -z "$bin" ]; then
-    printf 'stoner executable not found.\n' >> "$action_log"
+    printf 'stonr executable not found.\n' >> "$action_log"
     return 1
   fi
+
   set +e
-  nohup "$bin" >> "$stoner_log_file" 2>&1 </dev/null &
+  if stonr_supports_config_flag "$bin"; then
+    nohup "$bin" --config "$stonr_config_file" >> "$stonr_log_file" 2>&1 </dev/null &
+  else
+    STONR_CONFIG="$stonr_config_file" nohup "$bin" >> "$stonr_log_file" 2>&1 </dev/null &
+  fi
   pid=$!
   sleep 1
   if kill -0 "$pid" >/dev/null 2>&1; then
-    printf '%s\n' "$pid" > "$stoner_pid_file"
-    printf 'Started stoner (pid %s)\n' "$pid" >> "$action_log"
+    printf '%s\n' "$pid" > "$stonr_pid_file"
+    printf '%s\n' "$pid" > "$legacy_pid_file"
+    printf 'Started stonr (pid %s)\n' "$pid" >> "$action_log"
     status=0
   else
     status=1
@@ -245,52 +490,60 @@ start_stoner() {
   return "$status"
 }
 
-stop_stoner() {
+stop_stonr() {
   action_log=$1
-  if web_wizardry_has_cmd stop-stoner; then
+  if web_wizardry_has_cmd stop-stonr; then
     set +e
-    web-wizardry stop-stoner >> "$action_log" 2>&1
+    env STONR_CONFIG="$stonr_config_file" web-wizardry stop-stonr >> "$action_log" 2>&1
     status=$?
     set -e
     if [ "$status" -eq 0 ]; then
-      rm -f "$stoner_pid_file"
+      rm -f "$stonr_pid_file" "$legacy_pid_file"
+      return 0
+    fi
+  fi
+  if web_wizardry_has_cmd stop-stoner; then
+    set +e
+    env STONR_CONFIG="$stonr_config_file" web-wizardry stop-stoner >> "$action_log" 2>&1
+    status=$?
+    set -e
+    if [ "$status" -eq 0 ]; then
+      rm -f "$stonr_pid_file" "$legacy_pid_file"
       return 0
     fi
   fi
 
-  spell="$wizardry_dir/spells/.arcana/nostr/stop-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log" || return 1
-    rm -f "$stoner_pid_file"
-    return 0
-  fi
+  for spell in \
+    "$wizardry_dir/spells/.arcana/nostr/stop-stonr" \
+    "$wizardry_dir/spells/.arcana/nostr/stop-stoner" \
+    "$wizardry_dir/spells/.arcana/stonr/stop-stonr" \
+    "$wizardry_dir/spells/.arcana/stoner/stop-stoner"; do
+    if [ -x "$spell" ]; then
+      run_wizardry_spell "$spell" "$action_log" || return 1
+      rm -f "$stonr_pid_file" "$legacy_pid_file"
+      return 0
+    fi
+  done
 
-  spell="$wizardry_dir/spells/.arcana/stoner/stop-stoner"
-  if [ -x "$spell" ]; then
-    run_wizardry_spell "$spell" "$action_log" || return 1
-    rm -f "$stoner_pid_file"
-    return 0
-  fi
-
-  pid=$(stoner_pid)
+  pid=$(stonr_pid)
   if [ -n "$pid" ]; then
     set +e
     kill "$pid" >/dev/null 2>&1
     status=$?
     set -e
     if [ "$status" -eq 0 ]; then
-      rm -f "$stoner_pid_file"
-      printf 'Stopped stoner (pid %s)\n' "$pid" >> "$action_log"
+      rm -f "$stonr_pid_file" "$legacy_pid_file"
+      printf 'Stopped stonr (pid %s)\n' "$pid" >> "$action_log"
       return 0
     fi
   fi
 
   if command -v pkill >/dev/null 2>&1; then
     set +e
-    pkill -f '[ /]stoner([[:space:]]|$)' >/dev/null 2>&1
+    pkill -f '[ /](stonr|stoner)([[:space:]]|$)' >/dev/null 2>&1
     status=$?
     set -e
-    rm -f "$stoner_pid_file"
+    rm -f "$stonr_pid_file" "$legacy_pid_file"
     [ "$status" -eq 0 ] && return 0
   fi
 
@@ -298,13 +551,45 @@ stop_stoner() {
   return 0
 }
 
+configure_stonr() {
+  action_log=$1
+  write_stonr_config "$action_log"
+
+  if ! stonr_running; then
+    return 0
+  fi
+
+  bin=$(stonr_bin_path)
+  if [ -z "$bin" ]; then
+    return 0
+  fi
+
+  set +e
+  STONR_CONFIG="$stonr_config_file" "$bin" reload --config "$stonr_config_file" >> "$action_log" 2>&1
+  status=$?
+  set -e
+  if [ "$status" -eq 0 ]; then
+    printf 'Reloaded running Stonr process with updated config.\n' >> "$action_log"
+    return 0
+  fi
+
+  printf 'Saved config. Restart Stonr to guarantee config application.\n' >> "$action_log"
+  return 0
+}
+
 case "$action" in
-  status|install|start|stop) ;;
+  status|install|start|stop|save_settings|configure) ;;
   *)
     emit_failure "Unknown action" "invalid_action"
     exit 0
     ;;
 esac
+
+if [ ! -f "$stonr_config_file" ]; then
+  boot_log=$(mktemp "${TMPDIR:-/tmp}/blog-noster-boot.XXXXXX")
+  write_stonr_config "$boot_log" >/dev/null 2>&1 || true
+  rm -f "$boot_log"
+fi
 
 if [ "$action" = "status" ]; then
   emit_success ""
@@ -317,30 +602,54 @@ trap 'rm -f "$action_log"' EXIT HUP INT TERM
 set +e
 case "$action" in
   install)
-    install_stoner "$action_log"
+    install_stonr "$action_log"
     action_status=$?
-    action_message='Stonr install completed.'
+    if [ "$action_status" -eq 0 ]; then
+      configure_stonr "$action_log" || true
+      auto_start=$(setting_auto_start)
+      if [ "$auto_start" = "true" ] && ! stonr_running; then
+        start_stonr "$action_log" || true
+      fi
+    fi
+    action_message='Stonr installed and configured.'
     action_error='Stonr install failed.'
-    action_code='stoner_install_failed'
+    action_code='stonr_install_failed'
     ;;
   start)
-    start_stoner "$action_log"
+    start_stonr "$action_log"
     action_status=$?
     action_message='Stonr started.'
     action_error='Could not start Stonr.'
-    action_code='stoner_start_failed'
+    action_code='stonr_start_failed'
     ;;
   stop)
-    stop_stoner "$action_log"
+    stop_stonr "$action_log"
     action_status=$?
     action_message='Stonr stopped.'
     action_error='Could not stop Stonr.'
-    action_code='stoner_stop_failed'
+    action_code='stonr_stop_failed'
+    ;;
+  save_settings)
+    save_settings_from_request "$action_log"
+    action_status=$?
+    if [ "$action_status" -eq 0 ]; then
+      configure_stonr "$action_log" || true
+    fi
+    action_message='Nostr settings saved.'
+    action_error='Could not save Nostr settings.'
+    action_code='nostr_settings_save_failed'
+    ;;
+  configure)
+    configure_stonr "$action_log"
+    action_status=$?
+    action_message='Stonr configured for this site.'
+    action_error='Could not configure Stonr.'
+    action_code='stonr_config_failed'
     ;;
 esac
 set -e
 
-log_tail=$(tail -n 120 "$action_log" 2>/dev/null || printf '')
+log_tail=$(tail -n 160 "$action_log" 2>/dev/null || printf '')
 if [ "$action_status" -eq 0 ]; then
   emit_success "$action_message" "$log_tail"
 else
