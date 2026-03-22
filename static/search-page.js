@@ -34,18 +34,28 @@
   function rewriteEmbeddedSearchForms() {
     var forms = content.querySelectorAll('form[action="/cgi/blog-search"]');
     forms.forEach(function (form) {
-      form.setAttribute('action', '/pages/search.html');
+      if (form && form.parentNode) {
+        form.parentNode.removeChild(form);
+      }
     });
   }
 
+  function focusNavbarSearchInput() {
+    var input = document.querySelector('.nav-search input[name="q"]');
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    try {
+      input.focus({ preventScroll: true });
+    } catch (_err) {
+      input.focus();
+    }
+    input.select();
+  }
+
   function renderEmptyState() {
-    content.innerHTML = '<div class="search-form">' +
-      '<form method="get" action="/pages/search.html">' +
-      '<input type="text" name="q" value="" placeholder="Search posts..." autofocus />' +
-      '<button type="submit">Search</button>' +
-      '</form>' +
-      '</div>' +
-      '<p class="placeholder">Enter a search term to find posts.</p>';
+    content.innerHTML = '<p class="placeholder">Enter a search term to find posts.</p>';
+    focusNavbarSearchInput();
     markInitialContentPainted();
   }
 
@@ -74,6 +84,7 @@
         content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err && err.message ? err.message : 'Could not load search results.') + '</p>';
       })
       .finally(function () {
+        focusNavbarSearchInput();
         markInitialContentPainted();
       });
   }
