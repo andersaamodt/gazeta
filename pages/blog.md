@@ -3,13 +3,6 @@ title: Blog
 ---
 
 <section id="blog-page-root" class="blog-page" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
-<div class="list-page-head">
-<h1 id="blog-page-title">Blog</h1>
-<p id="blog-page-description" class="muted" hidden></p>
-</div>
-<div id="blog-page-admin" class="list-admin" hidden></div>
-<div id="blog-page-validation" class="list-validation" hidden></div>
-<div id="blog-page-content" class="list-page-content" hidden></div>
 <div class="blog-layout">
 <div class="blog-filter-column">
 <button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
@@ -24,6 +17,13 @@ title: Blog
 </button>
 </div>
 <div class="blog-main-column">
+<div class="list-page-head">
+<h1 id="blog-page-title">Blog</h1>
+<p id="blog-page-description" class="muted" hidden></p>
+</div>
+<div id="blog-page-admin" class="list-admin" hidden></div>
+<div id="blog-page-validation" class="list-validation" hidden></div>
+<div id="blog-page-content" class="list-page-content" hidden></div>
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>
 <div class="blog-filter-grid">
 <div class="blog-filter-group">
