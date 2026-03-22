@@ -245,9 +245,10 @@
   function normalizeRows(rows) {
     var list = Array.isArray(rows) ? rows : [];
     return list.map(function (row) {
+      var transport = String(row && row.transport || '').trim().toLowerCase();
       return {
-        transport: String(row && row.transport || '').trim().toLowerCase(),
-        value: String(row && row.value || ''),
+        transport: transport,
+        value: normalizeContactRowValue(transport, String(row && row.value || '')),
         qualifier: String(row && row.qualifier || '').trim().toLowerCase()
       };
     });
@@ -518,7 +519,38 @@
     return escapeHtml(raw).replace(/\n/g, '<br>');
   }
 
-  function inferContactLinkFromTransport(value, transport) {
+  function normalizeContactHrefForComparison(href) {
+    var raw = String(href || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^mailto:/i.test(raw)) {
+      return 'mailto:' + raw.slice(7).trim().toLowerCase();
+    }
+    try {
+      var parsed = new URL(raw);
+      var path = String(parsed.pathname || '/').replace(/\/+$/, '');
+      if (!path) {
+        path = '/';
+      }
+      return parsed.protocol.toLowerCase() + '//' + parsed.host.toLowerCase() + path + String(parsed.search || '');
+    } catch (_err) {
+      return raw.toLowerCase().replace(/\/+$/, '');
+    }
+  }
+
+  function normalizeLegacyContactUrl(rawUrl) {
+    var value = String(rawUrl || '').trim();
+    if (!value) {
+      return '';
+    }
+    if (/^http:\/\//i.test(value)) {
+      return 'https://' + value.slice(7);
+    }
+    return value;
+  }
+
+  function inferContactHrefFromTransport(value, transport) {
     var raw = String(value || '').trim();
     if (!raw) {
       return '';
@@ -528,39 +560,101 @@
     if (transportKey === 'email' || transportKey === 'mail') {
       match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
       if (match && match[0]) {
-        return renderContactHref('mailto:' + match[0], raw);
+        return 'mailto:' + match[0];
       }
     }
     if (transportKey === 'telegram') {
       if (/^@?[a-z0-9_]{3,}$/i.test(raw)) {
-        return renderContactHref('https://t.me/' + raw.replace(/^@/, ''), raw);
+        return 'https://t.me/' + raw.replace(/^@/, '');
       }
     }
     if (transportKey === 'twitter' || transportKey === 'x') {
       if (/^@?[a-z0-9_]{1,15}$/i.test(raw)) {
-        return renderContactHref('https://x.com/' + raw.replace(/^@/, ''), raw);
+        return 'https://x.com/' + raw.replace(/^@/, '');
       }
     }
     if (transportKey === 'reddit') {
       if (/^\/?u\/[a-z0-9_-]+$/i.test(raw)) {
-        return renderContactHref('https://reddit.com/' + raw.replace(/^\//, ''), raw);
+        return 'https://reddit.com/' + raw.replace(/^\//, '');
       }
       if (/^[a-z0-9_-]+$/i.test(raw)) {
-        return renderContactHref('https://reddit.com/u/' + raw, raw);
+        return 'https://reddit.com/u/' + raw;
       }
     }
     if (transportKey === 'facebook' && /^[a-z0-9.]{3,}$/i.test(raw)) {
-      return renderContactHref('https://facebook.com/' + raw, raw);
+      return 'https://facebook.com/' + raw;
     }
     if (transportKey === 'tumblr') {
       if (/^[a-z0-9-]+\.tumblr\.com$/i.test(raw)) {
-        return renderContactHref('https://' + raw, raw);
+        return 'https://' + raw;
       }
       if (/^[a-z0-9-]+$/i.test(raw)) {
-        return renderContactHref('https://' + raw + '.tumblr.com', raw);
+        return 'https://' + raw + '.tumblr.com';
       }
     }
     return '';
+  }
+
+  function inferContactLinkFromTransport(value, transport) {
+    var href = inferContactHrefFromTransport(value, transport);
+    if (!href) {
+      return '';
+    }
+    return renderContactHref(href, String(value || '').trim());
+  }
+
+  function normalizeContactValue(transport, value) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+    var normalized = raw;
+
+    normalized = normalized.replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/ig, function (_m, labelRaw, hrefRaw) {
+      var label = String(labelRaw || '').trim();
+      var href = normalizeLegacyContactUrl(hrefRaw);
+      if (!label) {
+        return href;
+      }
+      if (/^mailto:/i.test(href)) {
+        var addr = href.slice(7).trim();
+        if (/^mailto:/i.test(label) || label.toLowerCase() === addr.toLowerCase()) {
+          return addr;
+        }
+      }
+      var inferred = inferContactHrefFromTransport(label, transport);
+      if (inferred && normalizeContactHrefForComparison(inferred) === normalizeContactHrefForComparison(href)) {
+        return label;
+      }
+      return label + ' (' + href + ')';
+    });
+
+    normalized = normalized.replace(/(.+?)\s*\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/ig, function (_m, labelRaw, hrefRaw) {
+      var label = String(labelRaw || '').trim();
+      var href = normalizeLegacyContactUrl(hrefRaw);
+      if (!label) {
+        return href;
+      }
+      if (/^mailto:/i.test(href)) {
+        var email = href.slice(7).trim();
+        if (/^mailto:/i.test(label) || label.toLowerCase() === email.toLowerCase()) {
+          return email;
+        }
+      }
+      var inferred = inferContactHrefFromTransport(label, transport);
+      if (inferred && normalizeContactHrefForComparison(inferred) === normalizeContactHrefForComparison(href)) {
+        return label;
+      }
+      return label + ' (' + href + ')';
+    });
+
+    if (normalizeTransportKey(transport) === 'email') {
+      normalized = normalized.replace(/^mailto:\s*/i, '');
+    }
+
+    normalized = normalized.replace(/\s*;\s*/g, '; ');
+    normalized = normalized.replace(/\s{2,}/g, ' ').trim();
+    return normalized;
   }
 
   function linkifyPlainContactText(text, transport) {
