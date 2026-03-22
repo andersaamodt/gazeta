@@ -2738,7 +2738,7 @@ header h1 {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  padding: 0.27rem 1rem 0.63rem;
+  padding: 0 1rem;
 }
 
 .btn-login-caret {
@@ -2747,13 +2747,17 @@ header h1 {
   width: 1.48rem;
   height: 2.05rem;
   padding: 0;
-  border-left: 1px solid var(--button-primary-border);
+  border-left: 1px solid var(--button-primary-end);
   font-size: 0.69rem;
   font-weight: 700;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.nav-login-split .btn-login {
+  border-color: var(--button-primary-end);
 }
 
 .nav-login-menu {
