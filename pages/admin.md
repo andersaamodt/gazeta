@@ -1806,6 +1806,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
 .toolbar .toolbar-button:hover,
 .toolbar .toolbar-button:focus-visible {
   outline: 0;
