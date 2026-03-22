@@ -1782,6 +1782,7 @@
       if (els.zapDefaultAmountSats) {
         els.zapDefaultAmountSats.value = String(data.zap_default_amount_sats || 210);
       }
+      syncZapsEnabledAvailability();
       if (els.mirrorNostrButton) {
         els.mirrorNostrButton.disabled = !state.nostrBridgeEnabled;
       }
@@ -2141,12 +2142,29 @@
     });
   }
 
+  function syncZapsEnabledAvailability() {
+    if (!els.zapsEnabled) {
+      return;
+    }
+    const info = state.zapsRuntimeInfo && typeof state.zapsRuntimeInfo === 'object'
+      ? state.zapsRuntimeInfo
+      : {};
+    const canEnable = !!info.bitcoin_installed && !!info.lightning_installed;
+    els.zapsEnabled.disabled = !canEnable;
+    if (canEnable) {
+      els.zapsEnabled.removeAttribute('title');
+      return;
+    }
+    els.zapsEnabled.setAttribute('title', 'Install both Bitcoin and Lightning to enable zaps.');
+  }
+
   function renderZapsRuntime(runtime, logText, message) {
     if (!els.zapsRuntime) {
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
     state.zapsRuntimeInfo = info;
+    syncZapsEnabledAvailability();
     setZapsNavStatus(info);
     const wizardryReady = !!info.wizardry_installed;
     const bitcoinReady = !!info.bitcoin_installed;
