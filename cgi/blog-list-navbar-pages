@@ -12,6 +12,18 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 blog_send_json_headers
 
+cache_file="$blog_state_dir/navbar-pages-cache.json"
+cache_ttl_seconds=120
+now_epoch=$(date +%s 2>/dev/null || printf '0')
+cache_mtime=0
+if [ -f "$cache_file" ]; then
+  cache_mtime=$(stat -f '%m' "$cache_file" 2>/dev/null || stat -c '%Y' "$cache_file" 2>/dev/null || printf '0')
+fi
+if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && [ $((now_epoch - cache_mtime)) -le "$cache_ttl_seconds" ]; then
+  cat "$cache_file"
+  exit 0
+fi
+
 cfg=$(blog_nostr_pages_load_json)
 all_slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-slugs.XXXXXX")
 printf '%s\n' "$cfg" | jq -r '.pages[]? | (.slug // "")' 2>/dev/null > "$all_slugs_tmp"
@@ -30,7 +42,7 @@ while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
   fi
 done < "$all_slugs_tmp"
 
-printf '%s\n' "$cfg" | jq -c '
+nav_json=$(printf '%s\n' "$cfg" | jq -c '
   def title_from_slug($s):
     (($s // "") | tostring | gsub("-"; " ")) as $t
     | if ($t | length) == 0 then
@@ -63,7 +75,13 @@ printf '%s\n' "$cfg" | jq -c '
         }
     ]
   }
-' 2>/dev/null || printf '{"success":true,"pages":[]}\n'
+' 2>/dev/null || printf '{"success":true,"pages":[]}')
+printf '%s\n' "$nav_json"
+
+cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-cache.XXXXXX")
+printf '%s\n' "$nav_json" > "$cache_tmp"
+mv "$cache_tmp" "$cache_file"
+chmod 644 "$cache_file" 2>/dev/null || true
 
 if [ "$needs_build" = "true" ]; then
   trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
