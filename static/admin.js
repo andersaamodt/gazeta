@@ -3032,18 +3032,18 @@
   function nostrPageTypeLabel(pageType) {
     const type = String(pageType || '').trim().toLowerCase();
     if (type === 'blog') {
-      return 'Blog Index (NIP-23 posts)';
+      return 'Blog Index (kind 30023)';
     }
     if (type === 'public-ranking') {
       return 'Public Ranking (kind 30040)';
     }
     if (type === 'contact') {
-      return 'User Metadata';
+      return 'User Metadata (kind 0)';
     }
     if (type === 'nip23') {
-      return 'Long-form Content';
+      return 'Long-form Content (kind 30023)';
     }
-    return 'List Page';
+    return 'List Page (kind 30004)';
   }
 
   function nostrPageTypePillClass(pageType) {
