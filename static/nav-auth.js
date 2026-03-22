@@ -1094,6 +1094,9 @@
     }
 
     if (isLoggedIn) {
+      // Default to hidden until server session-check confirms there are
+      // additional active sessions beyond the current one.
+      updateLogoutOtherSessionsUi(0);
       if (els.composeTools) {
         els.composeTools.style.display = isAdmin ? 'inline-flex' : 'none';
       } else if (els.composeLink) {
