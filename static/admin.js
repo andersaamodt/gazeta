@@ -366,6 +366,65 @@
     }
   }
 
+  async function preloadAdminFirstPaint() {
+    if (!state.isAdmin) {
+      return;
+    }
+
+    const configTask = loadConfig();
+    const jobs = [
+      {
+        sections: ['settings', 'nostr-bridge'],
+        task: configTask
+      },
+      {
+        sections: ['zaps'],
+        task: configTask.then(function () { return loadZapsRuntime(); })
+      },
+      {
+        sections: ['users'],
+        task: loadUsers(false)
+      },
+      {
+        sections: ['drafts'],
+        task: loadDrafts()
+      },
+      {
+        sections: ['queue'],
+        task: loadQueue()
+      },
+      {
+        sections: ['posts'],
+        task: loadPosts()
+      },
+      {
+        sections: ['nostr-pages', 'pages'],
+        task: loadNostrPages()
+      },
+      {
+        sections: ['files'],
+        task: loadFiles()
+      },
+      {
+        sections: ['moderation'],
+        task: loadModeration()
+      }
+    ];
+
+    await Promise.all(jobs.map(async function (job) {
+      try {
+        await job.task;
+        job.sections.forEach(function (section) {
+          state.loadedAdminSections[section] = true;
+        });
+      } catch (_err) {
+        job.sections.forEach(function (section) {
+          state.loadedAdminSections[section] = false;
+        });
+      }
+    }));
+  }
+
   function initSectionNavigation() {
     if (!els.sectionButtons.length || !els.sections.length) {
       return;
@@ -1601,6 +1660,7 @@
       syncLocalDripToggleUi();
       startLocalDripWorker();
       setAccountOnlyMode(false);
+      await preloadAdminFirstPaint();
       activateSection(getSectionFromHash(), false);
       els.adminPanel.style.display = 'grid';
       renderPreview();
