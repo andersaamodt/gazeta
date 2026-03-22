@@ -1,9 +1,6 @@
 <script>
 (function () {
   var docEl = document.documentElement;
-  if (docEl) {
-    docEl.classList.add('app-hydrating');
-  }
   var navReady = false;
   var pageReady = false;
   var revealed = false;
