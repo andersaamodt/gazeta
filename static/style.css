@@ -125,6 +125,17 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Keep layout width stable across pages with/without vertical scrollbars. */
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 html.theme-switching *,
 html.theme-switching *::before,
 html.theme-switching *::after,
