@@ -1066,13 +1066,13 @@ body {
 }
 
 [data-admin-section="settings"] .field-row {
-  grid-template-columns: minmax(13.5rem, max-content) minmax(0, 1fr);
+  grid-template-columns: 13.5rem minmax(0, 1fr);
   gap: 0.04rem 0.72rem;
 }
 
 [data-admin-section="settings"] .settings-inline-control-row {
   display: grid !important;
-  grid-template-columns: minmax(13.5rem, max-content) minmax(0, 1fr) !important;
+  grid-template-columns: 13.5rem minmax(0, 1fr) !important;
   align-items: center;
   gap: 0.04rem 0.72rem;
 }
@@ -4635,7 +4635,7 @@ body {
   }
 
   [data-admin-section="settings"] .field-row {
-    grid-template-columns: minmax(9.5rem, max-content) minmax(0, 1fr);
+    grid-template-columns: 9.5rem minmax(0, 1fr);
     align-items: center;
   }
 
