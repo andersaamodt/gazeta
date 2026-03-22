@@ -21,6 +21,7 @@
     draftsPollTimer: null,
     queuePollTimer: null,
     postsPollTimer: null,
+    nosterPollTimer: null,
     moderationPollTimer: null,
     userDragActive: false,
     userDragUsername: '',
@@ -88,7 +89,6 @@
     nosterRuntime: document.getElementById('noster-runtime'),
     nosterInstallButton: document.getElementById('btn-noster-install'),
     nosterToggleButton: document.getElementById('btn-noster-toggle'),
-    nosterRefreshButton: document.getElementById('btn-noster-refresh'),
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
@@ -282,6 +282,7 @@
     syncDraftsAutoRefresh();
     syncQueueAutoRefresh();
     syncPostsAutoRefresh();
+    syncNosterAutoRefresh();
     syncModerationAutoRefresh();
     renderUploadJobs();
     maybeLoadAdminSection(sectionName, true);
@@ -1982,7 +1983,7 @@
   }
 
   function setNosterButtonsBusy(isBusy) {
-    [els.nosterRefreshButton, els.nosterInstallButton, els.nosterToggleButton].filter(Boolean).forEach(function (button) {
+    [els.nosterInstallButton, els.nosterToggleButton].filter(Boolean).forEach(function (button) {
       button.disabled = !!isBusy;
     });
   }
@@ -2091,6 +2092,37 @@
         els.nosterInstallButton.disabled = !!runtime.stoner_installed;
       }
     }
+  }
+
+  function stopNosterPolling() {
+    if (state.nosterPollTimer) {
+      clearInterval(state.nosterPollTimer);
+      state.nosterPollTimer = null;
+    }
+  }
+
+  function syncNosterAutoRefresh() {
+    const nosterVisible = state.isAdmin && state.activeSection === 'nostr-bridge';
+    if (!nosterVisible) {
+      stopNosterPolling();
+      return;
+    }
+    loadNosterRuntime().catch(function (err) {
+      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+    });
+    if (state.nosterPollTimer) {
+      return;
+    }
+    state.nosterPollTimer = setInterval(function () {
+      if (!(state.isAdmin && state.activeSection === 'nostr-bridge')) {
+        stopNosterPolling();
+        return;
+      }
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      loadNosterRuntime().catch(function () {});
+    }, 10000);
   }
 
   function setZapsButtonsBusy(isBusy) {
@@ -4494,13 +4526,6 @@
       });
     });
     syncModerationAgeFilterUi();
-    if (els.nosterRefreshButton) {
-      els.nosterRefreshButton.addEventListener('click', function () {
-        loadNosterRuntime().catch(function (err) {
-          setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
     if (els.nosterInstallButton) {
       els.nosterInstallButton.addEventListener('click', function () {
         runNosterAction('install').catch(function (err) {
@@ -5205,6 +5230,9 @@
       });
     }
     window.addEventListener('focus', function () {
+      if (state.isAdmin && state.activeSection === 'nostr-bridge') {
+        loadNosterRuntime().catch(function () {});
+      }
       if (state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
       }
@@ -5222,6 +5250,9 @@
       }
     });
     document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'nostr-bridge') {
+        loadNosterRuntime().catch(function () {});
+      }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
       }

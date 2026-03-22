@@ -121,9 +121,6 @@ title: ""
 <h3>Nostr</h3>
 <p class="muted">Install and control Stonr on this server.</p>
 </div>
-<div class="row-actions">
-<button id="btn-noster-refresh" type="button">Refresh status</button>
-</div>
 </div>
 
 <div class="settings-stack">
