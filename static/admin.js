@@ -73,7 +73,8 @@
     zapsRuntimeInfo: null,
     zapsActionInFlight: false,
     initialContentPainted: false,
-    loadedAdminSections: {}
+    loadedAdminSections: {},
+    sidebarCollapsed: false
   };
 
   const els = {
@@ -175,6 +176,8 @@
     imagePicker: document.getElementById('image-picker'),
     filePicker: document.getElementById('file-picker'),
     dropOverlay: document.getElementById('drop-overlay'),
+    sidebarToggleButton: document.getElementById('btn-admin-sidebar-toggle'),
+    sidebarRevealButton: document.getElementById('btn-admin-sidebar-reveal'),
     adminContent: document.querySelector('.admin-content'),
     sectionButtons: Array.from(document.querySelectorAll('[data-admin-nav]')),
     sections: Array.from(document.querySelectorAll('[data-admin-section]'))
@@ -182,6 +185,7 @@
   let themeSwitchVisualTimer = null;
 
   const publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
+  const ADMIN_SIDEBAR_COLLAPSED_KEY = 'blog_admin_sidebar_collapsed_v1';
   const LOCAL_DRIP_LEASE_KEY = 'blog_local_drip_lease_v1';
   const LOCAL_DRIP_ENABLED_KEY = 'blog_local_drip_enabled_v1';
   const LOCAL_DRIP_LEASE_MS = 45000;
@@ -471,12 +475,55 @@
       return;
     }
     els.adminPanel.classList.toggle('account-only', !!enabled);
+    if (enabled) {
+      els.adminPanel.classList.remove('sidebar-collapsed');
+      if (els.sidebarRevealButton) {
+        els.sidebarRevealButton.hidden = true;
+      }
+    } else {
+      applySidebarCollapseState(state.sidebarCollapsed, false);
+    }
     els.sectionButtons.forEach(function (button) {
       const section = button.getAttribute('data-admin-nav') || '';
       const visible = !enabled || section === 'account';
       button.hidden = !visible;
       button.setAttribute('aria-hidden', visible ? 'false' : 'true');
     });
+  }
+
+  function readSidebarCollapsePreference() {
+    try {
+      return localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function persistSidebarCollapsePreference(collapsed) {
+    try {
+      localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function applySidebarCollapseState(collapsed, persist) {
+    const next = !!collapsed;
+    state.sidebarCollapsed = next;
+    if (els.adminPanel) {
+      els.adminPanel.classList.toggle('sidebar-collapsed', next && !els.adminPanel.classList.contains('account-only'));
+    }
+    if (els.sidebarRevealButton) {
+      els.sidebarRevealButton.hidden = !next || !!(els.adminPanel && els.adminPanel.classList.contains('account-only'));
+    }
+    if (els.sidebarToggleButton) {
+      els.sidebarToggleButton.setAttribute('aria-label', next ? 'Show admin sidebar' : 'Hide admin sidebar');
+      els.sidebarToggleButton.setAttribute('title', next ? 'Show sidebar' : 'Hide sidebar');
+      els.sidebarToggleButton.setAttribute('aria-pressed', next ? 'false' : 'true');
+    }
+    if (persist !== false) {
+      persistSidebarCollapsePreference(next);
+    }
   }
 
   function showGlobalToast(message, kind) {
@@ -4578,6 +4625,16 @@
 
   function bindEvents() {
     bindSettingsAutosave();
+    if (els.sidebarToggleButton) {
+      els.sidebarToggleButton.addEventListener('click', function () {
+        applySidebarCollapseState(!state.sidebarCollapsed, true);
+      });
+    }
+    if (els.sidebarRevealButton) {
+      els.sidebarRevealButton.addEventListener('click', function () {
+        applySidebarCollapseState(false, true);
+      });
+    }
     if (els.adminTheme) {
       els.adminTheme.addEventListener('keydown', function (event) {
         if ((event.key !== 'ArrowDown' && event.key !== 'ArrowUp') || event.altKey || event.ctrlKey || event.metaKey) {
@@ -5768,6 +5825,8 @@
   }
 
   bindEvents();
+  state.sidebarCollapsed = readSidebarCollapsePreference();
+  applySidebarCollapseState(state.sidebarCollapsed, false);
   initSectionNavigation();
   checkAuth();
   refreshDraftLabel();

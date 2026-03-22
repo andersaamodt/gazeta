@@ -6,7 +6,12 @@ title: ""
 
 <div id="admin-panel" class="admin-layout" style="display:none;">
 <aside class="admin-sidebar">
+<div class="admin-nav-title-row">
 <div class="admin-nav-title">Admin</div>
+<button id="btn-admin-sidebar-toggle" type="button" class="unobtrusive-icon-button admin-sidebar-toggle" aria-label="Hide admin sidebar" title="Hide sidebar" aria-pressed="true">
+<svg class="admin-sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 5.5L8.5 12L15.5 18.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
+</div>
 <div class="admin-nav-list" role="tablist" aria-label="Admin sections">
 <button type="button" class="admin-nav-item is-compose" data-admin-nav="compose" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18L7.2 13.8L15.8 5.2a2 2 0 1 1 2.8 2.8L10 16.6L6 18Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="admin-nav-label">Compose</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="drafts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Drafts <span id="admin-nav-drafts-count" class="admin-nav-count">(0)</span></span></button>
@@ -22,6 +27,9 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 </div>
 </aside>
+<button id="btn-admin-sidebar-reveal" type="button" class="unobtrusive-icon-button admin-sidebar-reveal" aria-label="Show admin sidebar" title="Show sidebar" hidden>
+<svg class="admin-sidebar-reveal-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 5.5L15.5 12L8.5 18.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
 
 <div class="admin-content">
 <section class="admin-section is-active" data-admin-section="settings">
@@ -642,11 +650,14 @@ body {
 }
 
 .admin-layout {
+  --admin-sidebar-width: 248px;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: var(--admin-sidebar-width) minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   min-height: calc(100vh - 3.25rem);
+  position: relative;
+  transition: grid-template-columns 240ms ease;
 }
 
 .admin-sidebar {
@@ -663,6 +674,18 @@ body {
   align-self: stretch;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
+  transition: transform 240ms ease, opacity 200ms ease;
+}
+
+.admin-nav-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.34rem;
+  border-bottom: 1px solid #d7e1f4;
+  background: #f4f6fa;
+  padding: 0.36rem 0.2rem 0.32rem;
 }
 
 .admin-nav-list {
@@ -680,19 +703,58 @@ body {
 }
 
 .admin-nav-title {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
   margin: 0;
-  padding: 0.5rem 0.22rem;
-  border-bottom: 1px solid #d7e1f4;
-  background: #f4f6fa;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #2a3650;
   font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.01em;
-  text-align: center;
+  text-align: left;
+}
+
+.admin-sidebar-toggle,
+.admin-sidebar-reveal {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.admin-sidebar-toggle-icon,
+.admin-sidebar-reveal-icon {
+  width: 0.98rem;
+  height: 0.98rem;
+}
+
+.admin-sidebar-reveal {
+  position: absolute;
+  left: 0.3rem;
+  top: 0.36rem;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px);
+  transition: opacity 170ms ease, transform 200ms ease;
+}
+
+#admin-panel.sidebar-collapsed {
+  --admin-sidebar-width: 0px;
+}
+
+#admin-panel.sidebar-collapsed .admin-sidebar {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#admin-panel.sidebar-collapsed .admin-sidebar-reveal {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .admin-nav-item {
@@ -893,6 +955,10 @@ body {
 
 #admin-panel.account-only .admin-sidebar {
   display: none;
+}
+
+#admin-panel.account-only .admin-sidebar-reveal {
+  display: none !important;
 }
 
 .admin-section {
@@ -4101,9 +4167,17 @@ body {
   background: var(--admin-bg, var(--bg)) !important;
 }
 
-.admin-nav-title {
+.admin-nav-title-row {
   background: var(--admin-surface-alt, var(--post-card-bg)) !important;
   border-color: var(--admin-border, var(--border)) !important;
+}
+
+.admin-nav-title {
+  color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel .admin-sidebar-toggle,
+#admin-panel .admin-sidebar-reveal {
   color: var(--admin-text, var(--text)) !important;
 }
 
@@ -4852,6 +4926,20 @@ body {
   .files-table-toolbar {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+  }
+
+  #admin-panel.sidebar-collapsed .admin-sidebar {
+    display: none;
+  }
+
+  #admin-panel.sidebar-collapsed .admin-sidebar-reveal {
+    top: 0.22rem;
+    left: 0.22rem;
+  }
+
+  #admin-panel:not(.sidebar-collapsed) .admin-sidebar-reveal {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 </style>
