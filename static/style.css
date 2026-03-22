@@ -1398,6 +1398,53 @@ header h1 {
   text-decoration: none;
 }
 
+.list-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
+  gap: 0.8rem;
+}
+
+.list-tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.72rem;
+  background: var(--card-bg);
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--theme_dark, #172553) 9%, transparent);
+}
+
+.list-tile-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.list-tile-text {
+  min-width: 0;
+}
+
+.list-tile-date {
+  margin-top: 0.38rem;
+  font-size: 0.8rem;
+  color: var(--muted-text, #5c6170);
+}
+
+.list-tile-children {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+}
+
+.list-tile-children li {
+  margin: 0 0 0.24rem;
+}
+
+.list-tile-child-text {
+  min-width: 0;
+}
+
 .nostr-page-extras-editor {
   display: grid;
   gap: 0.7rem;

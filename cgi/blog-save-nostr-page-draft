@@ -139,6 +139,7 @@ if [ -z "$state_json" ]; then
       description=$(blog_param description)
       publish_intro_to_nostr=$(blog_param publish_intro_to_nostr)
       group_by=$(blog_param group_by)
+      view_mode=$(blog_param view_mode)
       content=$(blog_param content)
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
@@ -166,6 +167,7 @@ if [ -z "$state_json" ]; then
         --arg description "$description" \
         --arg publish_intro_to_nostr "$publish_intro_to_nostr" \
         --arg group_by "$group_by" \
+        --arg view_mode "$view_mode" \
         --arg content "$content" \
         --arg extras_before "$extras_before" \
         --arg extras_before_format "$extras_before_format" \
@@ -179,6 +181,7 @@ if [ -z "$state_json" ]; then
           description: $description,
           publish_intro_to_nostr: (($publish_intro_to_nostr | ascii_downcase) == "true"),
           group_by: $group_by,
+          view_mode: $view_mode,
           content: $content,
           extras_before: $extras_before,
           extras_before_format: $extras_before_format,

@@ -279,6 +279,11 @@
     return next === 'html' ? 'html' : 'markdown';
   }
 
+  function normalizeViewMode(value) {
+    var next = String(value || '').trim().toLowerCase();
+    return next === 'tile' ? 'tile' : 'list';
+  }
+
   async function apiPost(path, payload) {
     var params = new URLSearchParams();
     Object.keys(payload || {}).forEach(function (key) {
@@ -381,6 +386,7 @@
       description: String(s.description || ''),
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       group_by: String(s.group_by || ''),
+      view_mode: normalizeViewMode(s.view_mode || ''),
       content: String(s.content || ''),
       extras_after: String(s.extras_after || ''),
       extras_after_format: normalizeExtraFormat(s.extras_after_format || 'markdown'),
@@ -442,6 +448,7 @@
         description: state.draft.description,
         publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
         group_by: state.draft.group_by,
+        view_mode: normalizeViewMode(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements: cloneEditableElements(state.draft.elements)
@@ -453,6 +460,7 @@
       description: String(src.description || ''),
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       group_by: String(src.group_by || ''),
+      view_mode: normalizeViewMode(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
@@ -685,6 +693,7 @@
         description: state.draft.description || '',
         publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
         group_by: state.draft.group_by || '',
+        view_mode: normalizeViewMode(state.draft.view_mode || ''),
         content: state.draft.content || '',
         extras_after: state.draft.extras_after || '',
         extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
@@ -1127,7 +1136,78 @@
     return html;
   }
 
-  function renderGroupByReadOnly(entries, groupBy) {
+  function renderTileTreeChildren(nodes) {
+    var html = '<ul class="list-tile-children">';
+    (Array.isArray(nodes) ? nodes : []).forEach(function (node) {
+      var entry = node && node.entry ? node.entry : {};
+      var line = String(entry.markdown || '').trim();
+      var postUrl = String(entry.post_url || '');
+      var linked = postUrl
+        ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
+        : '';
+      html += '<li>' + linked + '<span class="list-tile-child-text">' + markdownInline(line) + '</span>';
+      if (node && Array.isArray(node.children) && node.children.length) {
+        html += renderTileTreeChildren(node.children);
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderTileReadOnly(entries) {
+    var roots = [];
+    var stack = [];
+    (Array.isArray(entries) ? entries : []).forEach(function (entry) {
+      var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
+      if (depth > stack.length) {
+        depth = stack.length;
+      }
+      var node = {
+        entry: entry,
+        children: []
+      };
+      if (depth > 0 && stack[depth - 1]) {
+        stack[depth - 1].children.push(node);
+      } else {
+        roots.push(node);
+        depth = 0;
+      }
+      stack[depth] = node;
+      stack.length = depth + 1;
+    });
+
+    var html = '<ul class="list-tiles">';
+    roots.forEach(function (node) {
+      var entry = node && node.entry ? node.entry : {};
+      var line = String(entry.markdown || '').trim();
+      var dateText = String(entry.date || '').trim();
+      var postUrl = String(entry.post_url || '');
+      var linked = postUrl
+        ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
+        : '';
+      html += '<li class="list-tile">';
+      html += '<div class="list-tile-main">' + linked + '<span class="list-tile-text">' + markdownInline(line) + '</span></div>';
+      if (dateText) {
+        html += '<div class="list-tile-date">' + escapeHtml(dateText) + '</div>';
+      }
+      if (Array.isArray(node.children) && node.children.length) {
+        html += renderTileTreeChildren(node.children);
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderReadOnlyByView(entries, viewMode) {
+    if (normalizeViewMode(viewMode) === 'tile') {
+      return renderTileReadOnly(entries);
+    }
+    return renderStructuredReadOnly(entries, 'list-entries');
+  }
+
+  function renderGroupByReadOnly(entries, groupBy, viewMode) {
     var html = '';
     var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(groupBy || '')) >= 0;
     if (grouped) {
@@ -1137,7 +1217,7 @@
         if (!bucket.length) {
           return;
         }
-        html += renderStructuredReadOnly(bucket, 'list-entries');
+        html += renderReadOnlyByView(bucket, viewMode);
         html += '</section>';
         bucket = [];
       }
@@ -1157,7 +1237,7 @@
       return html;
     }
 
-    return renderStructuredReadOnly(entries, 'list-entries');
+    return renderReadOnlyByView(entries, viewMode);
   }
 
   function renderExtraContent(text, format, role) {
@@ -1256,6 +1336,10 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
+    html += '<label><span>View</span><select id="list-admin-view-mode">';
+    html += '<option value="list"' + (normalizeViewMode(state.draft.view_mode || '') === 'list' ? ' selected' : '') + '>List</option>';
+    html += '<option value="tile"' + (normalizeViewMode(state.draft.view_mode || '') === 'tile' ? ' selected' : '') + '>Tile</option>';
+    html += '</select></label>';
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
@@ -1342,7 +1426,7 @@
 
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by) + afterContent;
+    }), s.group_by, s.view_mode) + afterContent;
     renderAdmin();
   }
 
@@ -1823,6 +1907,12 @@
         var beforeGroupBy = captureEntryRects();
         state.draft.group_by = String(target.value || '').trim();
         renderListWithFlip(beforeGroupBy);
+        queueAutosave(280);
+        return;
+      }
+      if (target.id === 'list-admin-view-mode' && target instanceof HTMLSelectElement) {
+        state.draft.view_mode = normalizeViewMode(target.value || '');
+        renderList();
         queueAutosave(280);
         return;
       }

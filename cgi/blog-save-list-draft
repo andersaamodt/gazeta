@@ -19,6 +19,7 @@ list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
 title=$(blog_param title)
 description=$(blog_param description)
 group_by=$(blog_param group_by)
+view_mode=$(blog_param view_mode)
 content=$(blog_param content)
 entries_json=$(blog_param entries_json)
 elements_json=$(blog_param elements_json)
@@ -47,6 +48,7 @@ raw_state=$(jq -cn \
   --arg title "$title" \
   --arg description "$description" \
   --arg group_by "$group_by" \
+  --arg view_mode "$view_mode" \
   --arg content "$content" \
   --argjson elements "$elements_json" \
   --argjson entries "$entries_json" \
@@ -55,6 +57,7 @@ raw_state=$(jq -cn \
     title: $title,
     description: $description,
     group_by: $group_by,
+    view_mode: $view_mode,
     content: $content,
     elements: (if ($elements | length) > 0 then $elements else ($entries | map(. + {type:"entry"})) end),
     entries: $entries

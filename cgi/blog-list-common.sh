@@ -19,6 +19,7 @@ blog_list_default_state_json() {
     description: "",
     publish_intro_to_nostr: false,
     group_by: "year",
+    view_mode: "list",
     content: "",
     extras_before: "",
     extras_before_format: "markdown",
@@ -26,7 +27,7 @@ blog_list_default_state_json() {
     extras_after_format: "markdown",
     elements: [],
     entries: [],
-    tags: [["title", $title], ["group_by", "year"]]
+    tags: [["title", $title], ["group_by", "year"], ["view_mode", "list"]]
   }'
 }
 
@@ -46,6 +47,9 @@ blog_list_normalize_state_json() {
     def norm_extra_format($v):
       (($v // "") | tostring | ascii_downcase) as $f
       | if $f == "html" then "html" else "markdown" end;
+    def norm_view_mode($v):
+      (($v // "") | tostring | ascii_downcase) as $mode
+      | if $mode == "tile" then "tile" else "list" end;
     def flex($obj; $idx; $key):
       if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
     def flex_markdown($obj):
@@ -140,6 +144,7 @@ blog_list_normalize_state_json() {
           end
         ),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
+        view_mode: norm_view_mode(.view_mode // first_tag("view_mode") // "list"),
         content: ((.content // "") | tostring),
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
@@ -152,7 +157,8 @@ blog_list_normalize_state_json() {
         [
           (if (.title | length) > 0 then ["title", .title] else empty end),
           (if .publish_intro_to_nostr and (.description | length) > 0 then ["description", .description] else empty end),
-          (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end)
+          (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end),
+          (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
         + (.elements | map(
             ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // "")]
@@ -172,6 +178,7 @@ blog_list_state_signature_json() {
     description: (if (.publish_intro_to_nostr // false) then (.description // "") else "" end),
     publish_intro_to_nostr: (.publish_intro_to_nostr // false),
     group_by: (.group_by // ""),
+    view_mode: (.view_mode // "list"),
     content: (.content // ""),
     elements: (.elements // []),
     entries: (.entries // [])
