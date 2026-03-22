@@ -742,6 +742,11 @@
     return localStorage.getItem('csrf_token') || '';
   }
 
+  function hasStoredSessionToken() {
+    var token = String(getSessionToken() || '').trim();
+    return !!token && token !== 'null' && token !== 'undefined';
+  }
+
   function emitAuthChanged() {
     try {
       window.dispatchEvent(new CustomEvent('blog-auth-changed', {
@@ -1088,7 +1093,7 @@
 
   function checkAuth() {
     var token = String(getSessionToken() || '').trim();
-    if (!token || token === 'null' || token === 'undefined') {
+    if (!hasStoredSessionToken()) {
       clearLocalStorageAuth();
       applyLoggedInUi(false, false, '');
       return Promise.resolve(false);
@@ -1123,12 +1128,15 @@
         updateLogoutOtherSessionsUi(data.other_sessions_count || 0);
         return true;
       })
-      .catch(function () {
-        if (!state.isAuthenticated) {
+      .catch(function (err) {
+        if (err && String(err.name || '') === 'AbortError') {
+          return !!state.isAuthenticated;
+        }
+        if (!state.isAuthenticated && !hasStoredSessionToken()) {
           applyLoggedInUi(false, false, '');
         }
         updateLogoutOtherSessionsUi(0);
-        return false;
+        return !!state.isAuthenticated;
       });
   }
 
@@ -2459,6 +2467,21 @@
   }
 
   function bootstrap() {
+    var optimisticIsLoggedIn = false;
+    var optimisticIsAdmin = false;
+    var optimisticName = '';
+    try {
+      optimisticIsLoggedIn = hasStoredSessionToken();
+      optimisticIsAdmin = String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+      optimisticName = String(localStorage.getItem('last_auth_player_name') || localStorage.getItem('last_auth_username') || '').trim();
+    } catch (_err) {
+      optimisticIsLoggedIn = false;
+      optimisticIsAdmin = false;
+      optimisticName = '';
+    }
+    state.isAuthenticated = optimisticIsLoggedIn;
+    applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
+
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');
     prefetchStaticPageHtmlForSlug('tags');
