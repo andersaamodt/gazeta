@@ -307,7 +307,7 @@ case "$action" in
 esac
 
 if [ "$action" = "status" ]; then
-  emit_success "Nostr runtime loaded."
+  emit_success ""
   exit 0
 fi
 

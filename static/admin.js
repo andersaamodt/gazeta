@@ -68,6 +68,7 @@
     moderationItems: [],
     moderationAgeFilter: '30d',
     nosterRuntime: null,
+    nosterActionInFlight: false,
     zapsRuntimeInfo: null,
     zapsActionInFlight: false,
     initialContentPainted: false,
@@ -89,8 +90,6 @@
     outputZaps: document.getElementById('output-zaps'),
     outputUsers: document.getElementById('output-users'),
     nosterRuntime: document.getElementById('noster-runtime'),
-    nosterInstallButton: document.getElementById('btn-noster-install'),
-    nosterToggleButton: document.getElementById('btn-noster-toggle'),
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
     navZapsStatus: document.getElementById('admin-nav-zaps-status'),
     siteTitle: document.getElementById('site-title'),
@@ -2005,7 +2004,8 @@
   }
 
   function setNosterButtonsBusy(isBusy) {
-    [els.nosterInstallButton, els.nosterToggleButton].filter(Boolean).forEach(function (button) {
+    const cardButtons = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('button[data-noster-action]')) : [];
+    cardButtons.forEach(function (button) {
       button.disabled = !!isBusy;
     });
   }
@@ -2021,17 +2021,16 @@
     const stonerInstalled = !!info.stoner_installed;
     const stonerRunning = !!info.stoner_running;
     const relayConnected = !!info.relay_connected;
-    if (els.nosterToggleButton) {
-      els.nosterToggleButton.textContent = stonerRunning ? 'Stop Stonr' : 'Start Stonr';
-      els.nosterToggleButton.disabled = !stonerInstalled;
-    }
-    if (els.nosterInstallButton) {
-      els.nosterInstallButton.disabled = stonerInstalled;
-    }
+    const actionDisabledAttr = state.nosterActionInFlight ? ' disabled' : '';
+    const startDisabledAttr = (!stonerInstalled || state.nosterActionInFlight) ? ' disabled' : '';
+    const installTitle = stonerInstalled ? '' : ' title="Install Stonr"';
+    const toggleTitle = stonerInstalled
+      ? (' title="' + (stonerRunning ? 'Stop Stonr' : 'Start Stonr') + '"')
+      : ' title="Install Stonr first"';
 
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div></div>';
-    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonerRunning ? 'is-ok' : 'is-warn') + '">' + (stonerRunning ? 'Online' : 'Stopped') + '</div></div>';
+    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonerInstalled ? 'is-ok' : 'is-warn') + '">' + (stonerInstalled ? 'Installed' : 'Not installed') + '</div>' + (stonerInstalled ? '' : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + installTitle + '>Install Stonr</button>')) + '</div>';
+    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonerRunning ? 'is-ok' : 'is-warn') + '">' + (stonerRunning ? 'Online' : 'Stopped') + '</div><button type="button" class="zaps-runtime-action" data-noster-action="' + (stonerRunning ? 'stop' : 'start') + '"' + startDisabledAttr + toggleTitle + '>' + (stonerRunning ? 'Stop Stonr' : 'Start Stonr') + '</button></div>';
     html += '<div class="zaps-runtime-card"><strong>Relay</strong><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
     if (info.stoner_path) {
       html += '<div class="zaps-runtime-card"><strong>Stonr Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.stoner_path)) + '</div></div>';
@@ -2066,13 +2065,6 @@
       setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
     } finally {
       setNosterButtonsBusy(false);
-      const runtime = state.nosterRuntime || {};
-      if (els.nosterToggleButton) {
-        els.nosterToggleButton.disabled = !runtime.stoner_installed;
-      }
-      if (els.nosterInstallButton) {
-        els.nosterInstallButton.disabled = !!runtime.stoner_installed;
-      }
     }
   }
 
@@ -2092,6 +2084,7 @@
     if (message && !window.confirm(message)) {
       return;
     }
+    state.nosterActionInFlight = true;
     setNosterButtonsBusy(true);
     renderNosterRuntime(state.nosterRuntime || {}, '', 'Running ' + picked + '...');
     try {
@@ -2105,14 +2098,8 @@
     } catch (err) {
       setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
     } finally {
+      state.nosterActionInFlight = false;
       setNosterButtonsBusy(false);
-      const runtime = state.nosterRuntime || {};
-      if (els.nosterToggleButton) {
-        els.nosterToggleButton.disabled = !runtime.stoner_installed;
-      }
-      if (els.nosterInstallButton) {
-        els.nosterInstallButton.disabled = !!runtime.stoner_installed;
-      }
     }
   }
 
@@ -4559,17 +4546,21 @@
       });
     });
     syncModerationAgeFilterUi();
-    if (els.nosterInstallButton) {
-      els.nosterInstallButton.addEventListener('click', function () {
-        runNosterAction('install').catch(function (err) {
-          setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
-    if (els.nosterToggleButton) {
-      els.nosterToggleButton.addEventListener('click', function () {
-        const runtime = state.nosterRuntime || {};
-        runNosterAction(runtime.stoner_running ? 'stop' : 'start').catch(function (err) {
+    if (els.nosterRuntime) {
+      els.nosterRuntime.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionButton = target.closest('button[data-noster-action]');
+        if (!actionButton) {
+          return;
+        }
+        const action = String(actionButton.getAttribute('data-noster-action') || '').trim();
+        if (!action) {
+          return;
+        }
+        runNosterAction(action).catch(function (err) {
           setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
         });
       });

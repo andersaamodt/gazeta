@@ -127,10 +127,6 @@ title: ""
 <section class="sub-card">
 <div class="zaps-runtime-head">
 <h4>Stonr</h4>
-<div class="zaps-install-actions">
-<button id="btn-noster-install" type="button">Install Stonr</button>
-<button id="btn-noster-toggle" type="button">Start Stonr</button>
-</div>
 </div>
 <div id="noster-runtime" class="zaps-runtime-grid">
 <div class="placeholder">Loading Nostr runtime...</div>
