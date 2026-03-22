@@ -1412,9 +1412,9 @@ body {
 }
 
 [data-admin-section="account"] #account-player-name {
-  inline-size: clamp(7.5rem, 14vw, 10.5rem);
-  width: clamp(7.5rem, 14vw, 10.5rem);
-  max-inline-size: 100%;
+  inline-size: clamp(6rem, 16vw, 12rem) !important;
+  width: clamp(6rem, 16vw, 12rem) !important;
+  max-inline-size: 12rem !important;
 }
 
 [data-admin-section="account"] .field-row {
