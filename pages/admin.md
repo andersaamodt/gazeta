@@ -9,7 +9,11 @@ title: ""
 <div class="admin-nav-title-row">
 <div class="admin-nav-title">Admin</div>
 <button id="btn-admin-sidebar-toggle" type="button" class="unobtrusive-icon-button admin-sidebar-toggle" aria-label="Hide admin sidebar" title="Hide sidebar" aria-pressed="true">
-<svg class="admin-sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 5.5L8.5 12L15.5 18.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg class="admin-sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<rect x="3.5" y="4.5" width="17" height="15" rx="2.2" stroke="currentColor" stroke-width="1.7"/>
+<path d="M8.5 4.5V19.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M13.5 9.4L10.5 12L13.5 14.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
 </button>
 </div>
 <div class="admin-nav-list" role="tablist" aria-label="Admin sections">
@@ -28,7 +32,11 @@ title: ""
 </div>
 </aside>
 <button id="btn-admin-sidebar-reveal" type="button" class="unobtrusive-icon-button admin-sidebar-reveal" aria-label="Show admin sidebar" title="Show sidebar" hidden>
-<svg class="admin-sidebar-reveal-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 5.5L15.5 12L8.5 18.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg class="admin-sidebar-reveal-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<rect x="3.5" y="4.5" width="17" height="15" rx="2.2" stroke="currentColor" stroke-width="1.7"/>
+<path d="M8.5 4.5V19.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M10.5 9.4L13.5 12L10.5 14.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
 </button>
 
 <div class="admin-content">
@@ -679,13 +687,14 @@ body {
 }
 
 .admin-nav-title-row {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.34rem;
   border-bottom: 1px solid var(--admin-border, var(--border, #d4c19c));
   background: var(--admin-surface-alt, var(--post-card-bg, #f8efdd));
-  padding: 0.36rem 0.2rem 0.32rem;
+  padding: 0.46rem 0.2rem 0.4rem;
 }
 
 .admin-nav-list {
@@ -712,7 +721,7 @@ body {
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.01em;
-  text-align: left;
+  text-align: center;
 }
 
 .admin-sidebar-toggle,
@@ -722,6 +731,13 @@ body {
   height: 1.9rem;
   padding: 0;
   border-radius: 8px;
+}
+
+.admin-sidebar-toggle {
+  position: absolute;
+  right: 0.22rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .admin-sidebar-toggle-icon,
