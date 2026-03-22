@@ -3907,15 +3907,19 @@ footer {
   margin-top: 0.65rem;
 }
 
-.blog-layout {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  column-gap: 0.85rem;
+.blog-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+  margin: 0 0 0.5rem;
 }
 
-.blog-filter-rail {
-  padding-top: 0.12rem;
+.blog-title-row #blog-page-title {
+  margin: 0;
+}
+
+.blog-layout {
+  display: block;
 }
 
 .blog-main-column {
@@ -4109,15 +4113,6 @@ footer {
 }
 
 @media (max-width: 900px) {
-  .blog-layout {
-    grid-template-columns: 1fr;
-    row-gap: 0.35rem;
-  }
-
-  .blog-filter-rail {
-    padding-top: 0;
-  }
-
   .blog-filter-grid {
     grid-template-columns: 1fr;
   }
