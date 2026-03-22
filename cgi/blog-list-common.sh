@@ -64,6 +64,12 @@ blog_list_normalize_state_json() {
       else
         (($obj.image_url // "") | tostring)
       end;
+    def flex_description($obj):
+      if ($obj | type) == "array" then
+        (($obj[8] // "") | tostring)
+      else
+        (($obj.description // "") | tostring)
+      end;
     def flex_depth($obj):
       if ($obj | type) == "array" then
         ($obj[5] // 0)
@@ -98,7 +104,8 @@ blog_list_normalize_state_json() {
         date: (flex(.; 4; "date") | tostring),
         depth: (if $depth < 0 then 0 else $depth end),
         markdown: ($dm.markdown | tostring),
-        image_url: (flex_image_url(.))
+        image_url: (flex_image_url(.)),
+        description: (flex_description(.))
       };
     def elements_from_tags:
       [ .tags[]?
@@ -118,7 +125,9 @@ blog_list_normalize_state_json() {
             marker: (flex(.; 3; "marker") | tostring),
             date: (flex(.; 4; "date") | tostring),
             depth: (flex_depth(.) | tonumber? // 0),
-            markdown: (flex_markdown(.))
+            markdown: (flex_markdown(.)),
+            image_url: (flex_image_url(.)),
+            description: (flex_description(.))
           }
       ];
     (
@@ -138,7 +147,8 @@ blog_list_normalize_state_json() {
         date: (flex(.; 4; "date") | tostring),
         depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
         markdown: (flex_markdown(.)),
-        image_url: (flex_image_url(.))
+        image_url: (flex_image_url(.)),
+        description: (flex_description(.))
       })) as $elements
     | {
         slug: $slug,
@@ -169,7 +179,7 @@ blog_list_normalize_state_json() {
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
         + (.elements | map(
-            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // "")]
+            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // ""), (.description // "")]
           ))
       )
   '
@@ -314,6 +324,7 @@ blog_list_validate_and_enrich_state_json() {
     date_raw=$(printf '%s\n' "$element" | jq -r '.date // ""' 2>/dev/null || printf '')
     markdown=$(printf '%s\n' "$element" | jq -r '.markdown // .[6] // .[5] // ""' 2>/dev/null || printf '')
     image_url=$(printf '%s\n' "$element" | jq -r '.image_url // .[7] // ""' 2>/dev/null || printf '')
+    tile_description=$(printf '%s\n' "$element" | jq -r '.description // .[8] // ""' 2>/dev/null || printf '')
 
     resolved=false
     post_url=""
@@ -389,6 +400,7 @@ blog_list_validate_and_enrich_state_json() {
       --arg date "$date_raw" \
       --arg markdown "$markdown" \
       --arg image_url "$image_url" \
+      --arg description "$tile_description" \
       --arg type "$element_type" \
       --argjson depth "$depth_int" \
       --arg year "$year" \
@@ -405,6 +417,7 @@ blog_list_validate_and_enrich_state_json() {
         depth: $depth,
         markdown: $markdown,
         image_url: $image_url,
+        description: $description,
         year: $year,
         resolved: $resolved,
         post_url: $post_url,

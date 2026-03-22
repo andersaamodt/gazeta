@@ -357,6 +357,7 @@
       depth: depth,
       markdown: String(raw && raw.markdown || ''),
       image_url: String(raw && raw.image_url || ''),
+      description: String(raw && raw.description || ''),
       year: String(raw && raw.year || ''),
       post_url: String(raw && raw.post_url || '')
     };
@@ -376,6 +377,7 @@
         date: entry && entry.date,
         markdown: entry && entry.markdown,
         image_url: entry && entry.image_url,
+        description: entry && entry.description,
         year: entry && entry.year,
         post_url: entry && entry.post_url
       });
@@ -393,7 +395,8 @@
         date: String(el && el.date || ''),
         depth: Math.max(0, Number(el && el.depth || 0) || 0),
         markdown: String(el && el.markdown || ''),
-        image_url: String(el && el.image_url || '')
+        image_url: String(el && el.image_url || ''),
+        description: String(el && el.description || '')
       };
     });
   }
@@ -1245,6 +1248,7 @@
       var line = String(entry.markdown || '').trim();
       var dateText = String(entry.date || '').trim();
       var imageUrl = String(entry.image_url || '').trim();
+      var tileDescription = String(entry.description || '').trim();
       var postUrl = String(entry.post_url || '');
       var linked = postUrl
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
@@ -1261,7 +1265,7 @@
         html += renderTileTreeChildren(node.children);
       }
       html += '</div>';
-      html += '<div class="list-tile-main">' + linked + '<span class="list-tile-text">' + markdownInline(line) + '</span></div>';
+      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div></div>';
       html += '</li>';
     });
     html += '</ul>';
@@ -1357,6 +1361,7 @@
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
 
     var markdownText = String(el && el.markdown || '').trim();
+    var tileDescription = String(el && el.description || '').trim();
     var dateText = String(el && el.date || '');
     var imageUrl = String(el && el.image_url || '').trim();
     var eventId = String(el && el.event_id || '');
@@ -1369,6 +1374,11 @@
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
       html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? markdownInline(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
+    }
+    if (active && activeField === 'description') {
+      html += '<div class="list-inline-cell list-inline-description"><input type="text" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(tileDescription) + '" placeholder="Tiny description..."></div>';
+    } else {
+      html += '<div class="list-inline-cell list-inline-description"><button type="button" class="list-inline-open list-inline-description-button" data-list-inline-action="edit" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (tileDescription ? markdownInline(tileDescription) : placeholderHtml('Add description...')) + '</span></button></div>';
     }
     if (active && activeField === 'date') {
       html += '<div class="list-inline-cell list-inline-date"><div class="list-inline-date-shell"><input type="text" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="YYYY / YYYY-MM / YYYY-MM-DD"></div></div>';
@@ -1433,6 +1443,7 @@
     html += '<span class="list-inline-head-handle"></span>';
     html += '<span class="list-inline-head-depth" aria-hidden="true"></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
+    html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-image">Image URL</span>';
     html += '<span class="list-inline-head-actions"></span>';
@@ -2189,20 +2200,32 @@
       var backward = !!event.shiftKey;
 
       if (field === 'event_id') {
-        nextField = backward ? 'date' : 'markdown';
+        nextField = backward ? 'image_url' : 'markdown';
         if (!backward) {
           nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
         }
       } else if (field === 'markdown') {
         if (backward) {
           nextUid = rowUids[(rowIdx - 1 + rowUids.length) % rowUids.length] || uid;
-          nextField = 'date';
+          nextField = 'event_id';
+        } else {
+          nextField = 'description';
+        }
+      } else if (field === 'description') {
+        if (backward) {
+          nextField = 'markdown';
         } else {
           nextField = 'date';
         }
       } else if (field === 'date') {
         if (backward) {
-          nextField = 'markdown';
+          nextField = 'description';
+        } else {
+          nextField = 'image_url';
+        }
+      } else if (field === 'image_url') {
+        if (backward) {
+          nextField = 'date';
         } else {
           nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
           nextField = 'markdown';

@@ -396,7 +396,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip2
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="image_url"' 'oeuvre inline editor supports image_url cell editing'
+assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
+assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 assert_file_contains "$ROOT_DIR/cgi/blog-autofill-list-macos-icons" 'Auto-fill missing list entry image URLs using local macOS app icons.' 'macOS icon autofill endpoint exists'
 
