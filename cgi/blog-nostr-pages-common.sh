@@ -375,6 +375,28 @@ blog_nostr_kind_latest_event_json() {
 
 blog_nostr_site_pubkey() {
   cache_file="$blog_nostr_state_dir/site_pubkey"
+  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+  if [ -n "$secret" ] && command -v nostril >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-site-pubkey.XXXXXX")
+    set +e
+    nostril --sec "$secret" --kind 1 --created-at "$(blog_now_epoch)" --content "" > "$tmp" 2>/dev/null
+    sign_status=$?
+    set -e
+    if [ "$sign_status" -eq 0 ]; then
+      pubkey=$(jq -r '.pubkey // ""' "$tmp" 2>/dev/null || printf '')
+      pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
+      rm -f "$tmp"
+      if [ -n "$pubkey" ]; then
+        printf '%s\n' "$pubkey" > "$cache_file"
+        chmod 600 "$cache_file" 2>/dev/null || true
+        printf '%s\n' "$pubkey"
+        return 0
+      fi
+    else
+      rm -f "$tmp"
+    fi
+  fi
+
   if [ -f "$cache_file" ]; then
     cached=$(sed -n '1p' "$cache_file" 2>/dev/null | tr -d '\r\n[:space:]')
     cached=$(blog_validate_nostr_pubkey "$cached" 2>/dev/null || printf '')
@@ -384,31 +406,7 @@ blog_nostr_site_pubkey() {
     fi
   fi
 
-  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
-  [ -n "$secret" ] || return 1
-  if ! command -v nostril >/dev/null 2>&1; then
-    return 1
-  fi
-  if ! command -v jq >/dev/null 2>&1; then
-    return 1
-  fi
-
-  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-site-pubkey.XXXXXX")
-  set +e
-  nostril --sec "$secret" --kind 1 --created-at "$(blog_now_epoch)" --content "" > "$tmp" 2>/dev/null
-  sign_status=$?
-  set -e
-  if [ "$sign_status" -ne 0 ]; then
-    rm -f "$tmp"
-    return 1
-  fi
-  pubkey=$(jq -r '.pubkey // ""' "$tmp" 2>/dev/null || printf '')
-  rm -f "$tmp"
-  pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
-  [ -n "$pubkey" ] || return 1
-  printf '%s\n' "$pubkey" > "$cache_file"
-  chmod 600 "$cache_file" 2>/dev/null || true
-  printf '%s\n' "$pubkey"
+  return 1
 }
 
 blog_nostr_contact_latest_event_json() {
