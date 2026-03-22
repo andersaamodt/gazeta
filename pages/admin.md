@@ -1233,6 +1233,7 @@ body {
 
 [data-admin-section="queue"] #drip-interval,
 [data-admin-section="queue"] #drip-randomness,
+[data-admin-section="zaps"] #zap-default-amount-sats,
 [data-admin-section="settings"] #feed-items {
   inline-size: 5rem !important;
   width: 5rem !important;
