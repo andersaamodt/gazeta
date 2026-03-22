@@ -19,24 +19,93 @@ if [ -z "$action" ]; then
   action=status
 fi
 
-wizardry_dir=${WIZARDRY_DIR:-$HOME/.wizardry}
+wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
 wizardry_install_url='https://raw.githubusercontent.com/andersaamodt/wizardry/main/install'
 
+find_web_wizardry_bin() {
+  bin=$(command -v web-wizardry 2>/dev/null || printf '')
+  if [ -n "$bin" ] && [ -x "$bin" ]; then
+    printf '%s\n' "$bin"
+    return 0
+  fi
+  for candidate in /usr/local/bin/web-wizardry /opt/homebrew/bin/web-wizardry /usr/bin/web-wizardry /bin/web-wizardry; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_wizardry_dir() {
+  configured=${WIZARDRY_DIR-}
+  if [ -n "$configured" ] && [ -x "$configured/spells/web/build" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  resolved=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
+  if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+  if [ -n "${HOME-}" ] && [ -x "$HOME/.wizardry/spells/web/build" ]; then
+    printf '%s\n' "$HOME/.wizardry"
+    return 0
+  fi
+  for candidate in /usr/local/share/wizardry /opt/homebrew/share/wizardry /usr/share/wizardry; do
+    if [ -x "$candidate/spells/web/build" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  web_wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
+  if [ -n "$web_wizardry_bin" ]; then
+    resolved=$(CDPATH= cd -- "$(dirname "$web_wizardry_bin")/../.." 2>/dev/null && pwd -P)
+    if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+refresh_wizardry_runtime() {
+  resolved=$(resolve_wizardry_dir 2>/dev/null || printf '')
+  if [ -n "$resolved" ]; then
+    wizardry_dir=$resolved
+  fi
+  wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
+  if [ ! -x "$wizardry_dir/spells/web/build" ] && [ -n "$wizardry_bin" ]; then
+    inferred_dir=$(CDPATH= cd -- "$(dirname "$wizardry_bin")/../.." 2>/dev/null && pwd -P)
+    if [ -n "$inferred_dir" ]; then
+      wizardry_dir=$inferred_dir
+    fi
+  fi
+}
+
 wizardry_installed() {
-  [ -x "$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin" ] && [ -x "$wizardry_dir/spells/.arcana/lightning/install-lightning" ]
+  refresh_wizardry_runtime
+  if [ -x "$wizardry_dir/spells/web/build" ]; then
+    return 0
+  fi
+  [ -n "$wizardry_bin" ]
 }
 
 bitcoin_installed() {
-  if wizardry_installed && [ -x "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" ]; then
-    WIZARDRY_DIR="$wizardry_dir" HOME="$HOME" "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" >/dev/null 2>&1
+  refresh_wizardry_runtime
+  if [ -x "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" ]; then
+    wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
+    PATH="$wizardry_path" WIZARDRY_DIR="$wizardry_dir" HOME="${HOME-}" "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" >/dev/null 2>&1
     return $?
   fi
   command -v bitcoin-cli >/dev/null 2>&1
 }
 
 lightning_installed() {
-  if wizardry_installed && [ -x "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" ]; then
-    WIZARDRY_DIR="$wizardry_dir" HOME="$HOME" "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" >/dev/null 2>&1
+  refresh_wizardry_runtime
+  if [ -x "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" ]; then
+    wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
+    PATH="$wizardry_path" WIZARDRY_DIR="$wizardry_dir" HOME="${HOME-}" "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" >/dev/null 2>&1
     return $?
   fi
   command -v lightning-cli >/dev/null 2>&1
@@ -51,6 +120,7 @@ bool_json() {
 }
 
 runtime_json() {
+  refresh_wizardry_runtime
   printf '{'
   printf '"wizardry_installed":%s,' "$(bool_json wizardry_installed)"
   printf '"wizardry_path":"%s",' "$(blog_json_escape "$wizardry_dir")"
@@ -97,6 +167,7 @@ ensure_wizardry() {
 
   sh "$tmp_installer"
   rm -f "$tmp_installer"
+  refresh_wizardry_runtime
   wizardry_installed
 }
 
