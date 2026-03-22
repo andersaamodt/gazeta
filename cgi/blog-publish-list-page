@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_read_request_body
@@ -73,6 +74,10 @@ fi
 
 canonical_state_json=$(blog_list_state_from_event_json "$list_slug" "$event_json")
 blog_list_save_draft_state_json "$list_slug" "$canonical_state_json"
+# Keep generated source mounts and build output aligned with canonical Nostr
+# state so remote deployments reflect newly published content.
+blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true
+blog_run_build_async >/dev/null 2>&1 || true
 
 event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
 jq -cn \

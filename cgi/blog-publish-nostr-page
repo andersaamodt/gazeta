@@ -315,6 +315,10 @@ if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
 fi
 
 blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$canonical_state_json"
+# Keep generated source mounts and build output in sync with the latest
+# canonical Nostr event so remote deployments pick up fresh content.
+blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true
+blog_run_build_async >/dev/null 2>&1 || true
 
 jq -cn \
   --arg slug "$page_slug" \
