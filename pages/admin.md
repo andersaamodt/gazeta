@@ -3170,8 +3170,8 @@ body {
 
 .users-list {
   display: block;
-  border-top: 2px solid var(--admin-border, #cdbd95);
-  border-bottom: 2px solid var(--admin-border, #cdbd95);
+  border-top: 1px solid var(--admin-border, #cdbd95);
+  border-bottom: 1px solid var(--admin-border, #cdbd95);
   border-left: 0;
   border-right: 0;
   border-radius: 0;
@@ -3346,9 +3346,9 @@ body {
 }
 
 #admin-panel button.post-menu-trigger {
-  min-width: 2.2rem;
-  width: 2.2rem;
-  height: 2.2rem;
+  min-width: 1.85rem;
+  width: 1.85rem;
+  height: 1.85rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3359,8 +3359,8 @@ body {
 }
 
 #admin-panel button.post-menu-trigger .overflow-menu-icon-svg {
-  width: 1.78rem;
-  height: 1.78rem;
+  width: 1.02rem;
+  height: 1.02rem;
 }
 
 #admin-panel .post-menu-panel {
@@ -3419,7 +3419,7 @@ body {
 .user-card {
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--admin-surface, var(--post-card-bg-single));
   padding: 0.5rem 0.68rem;
   display: flex;
   align-items: center;
@@ -3432,7 +3432,7 @@ body {
 }
 
 .user-card.user-row-alt {
-  background: #f5f8ff;
+  background: var(--admin-surface-alt, var(--post-card-bg));
 }
 
 .users-list.is-dragging .user-card.is-draggable {
@@ -3512,17 +3512,17 @@ body {
 }
 
 #admin-panel button.user-menu-trigger {
-  min-width: 2.2rem;
-  width: 2.2rem;
-  height: 2.2rem;
+  min-width: 1.85rem;
+  width: 1.85rem;
+  height: 1.85rem;
   border-radius: 8px;
   padding: 0;
   color: var(--admin-text, var(--text));
 }
 
 #admin-panel button.user-menu-trigger .overflow-menu-icon-svg {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.02rem;
+  height: 1.02rem;
 }
 
 #admin-panel button.user-menu-trigger:hover,
@@ -4291,6 +4291,43 @@ body {
 #admin-panel button.post-menu-trigger,
 #admin-panel button.post-row-delete {
   transition: none !important;
+}
+
+#admin-panel .post-menu-panel button,
+#admin-panel .user-menu-panel button,
+#admin-panel .nostr-page-menu-panel button {
+  min-width: 0 !important;
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+  text-shadow: none !important;
+  transform: none !important;
+  justify-content: flex-start !important;
+}
+
+#admin-panel .post-menu-panel button:hover,
+#admin-panel .post-menu-panel button:focus-visible,
+#admin-panel .user-menu-panel button:hover,
+#admin-panel .user-menu-panel button:focus-visible,
+#admin-panel .nostr-page-menu-panel button:hover,
+#admin-panel .nostr-page-menu-panel button:focus-visible {
+  background: var(--menu-hover-bg, var(--admin-hover, var(--nav-link-hover))) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+#admin-panel .post-menu-panel button.post-delete:hover,
+#admin-panel .post-menu-panel button.post-delete:focus-visible,
+#admin-panel .user-menu-panel button.user-delete:hover,
+#admin-panel .user-menu-panel button.user-delete:focus-visible {
+  background: var(--menu-danger-hover-bg, var(--danger-soft, rgba(180, 35, 24, 0.14))) !important;
 }
 
 .moderation-filters {
