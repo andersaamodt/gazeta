@@ -8,7 +8,7 @@ visibility: "public"
 license: "CC BY 4.0"
 ---
 
-<section id="oeuvre-root" class="list-page-shell" data-list-slug="oeuvre" data-list-title="Oeuvre">
+<section id="list-page-root" class="list-page-shell" data-list-slug="oeuvre" data-list-title="Oeuvre">
 <div class="list-page-head">
 <h1 id="list-page-title">Oeuvre</h1>
 <p id="list-page-description" class="muted"></p>
@@ -20,4 +20,4 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/oeuvre.js"></script>
+<script src="/static/list-page.js"></script>

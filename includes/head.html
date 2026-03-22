@@ -53,7 +53,7 @@
     if (nip23Root) {
       return normalizeSlug(nip23Root.getAttribute('data-page-slug') || '');
     }
-    var listRoot = document.getElementById('oeuvre-root') || document.getElementById('icon-gallery-root');
+    var listRoot = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('oeuvre-root');
     if (listRoot) {
       return normalizeSlug(listRoot.getAttribute('data-list-slug') || '');
     }
@@ -92,6 +92,7 @@
     [
       'blog-page-root',
       'nip23-page-root',
+      'list-page-root',
       'oeuvre-root',
       'icon-gallery-root',
       'public-ranking-root',

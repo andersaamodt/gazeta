@@ -153,6 +153,7 @@ body.theme-switching *::after {
  * so initial load paints in one step instead of title-then-content. */
 html.app-hydrating #blog-page-root,
 html.app-hydrating #nip23-page-root,
+html.app-hydrating #list-page-root,
 html.app-hydrating #oeuvre-root,
 html.app-hydrating #public-ranking-root,
 html.app-hydrating #contact-page-root,

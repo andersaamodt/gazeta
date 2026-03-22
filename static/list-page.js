@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('oeuvre-root');
+  var root = document.getElementById('list-page-root') || document.getElementById('oeuvre-root');
   if (!root) {
     return;
   }
@@ -29,7 +29,7 @@
     querySlug = '';
   }
 
-  var slug = String(root.getAttribute('data-list-slug') || querySlug || 'oeuvre').trim() || 'oeuvre';
+  var slug = String(root.getAttribute('data-list-slug') || querySlug || 'list').trim() || 'list';
   var els = {
     title: document.getElementById('list-page-title'),
     description: document.getElementById('list-page-description'),

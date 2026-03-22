@@ -9,6 +9,7 @@
     return !!(
       document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
+      document.getElementById('list-page-root') ||
       document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
@@ -206,6 +207,7 @@
     var hasDynamicNostrPage = !!(
       document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
+      document.getElementById('list-page-root') ||
       document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||

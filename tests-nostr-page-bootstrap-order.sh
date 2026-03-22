@@ -53,11 +53,11 @@ EOS
 
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/index.md '/static/nip23-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/about.md '/static/nip23-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/list.md '/static/oeuvre.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/oeuvre.md '/static/oeuvre.js'
+check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/list.md '/static/list-page.js'
+check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/oeuvre.md '/static/list-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/nip23-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/public-ranking-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/oeuvre.js'
+check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/list-page.js'
 check_generated_public_ranking_shell
 
 printf '%s\n' 'ok'
