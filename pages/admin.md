@@ -2893,13 +2893,13 @@ body {
 .files-dropzone {
   min-height: 16rem;
   padding: 0 0 0.9rem;
-  border-top: 1px solid transparent;
+  border-top: 0;
   transition: background 140ms ease, border-color 140ms ease;
 }
 
 .files-dropzone.is-drop-active {
   background: rgba(196, 169, 97, 0.1);
-  border-top-color: rgba(122, 92, 31, 0.18);
+  box-shadow: inset 0 1px 0 rgba(122, 92, 31, 0.18);
 }
 
 .files-upload-jobs {
