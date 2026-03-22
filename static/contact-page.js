@@ -300,23 +300,21 @@
   }
 
   function navbarTitleHost() {
-    var head = root.querySelector('.list-page-head');
-    if (!head || !els.title) {
+    if (!els.title) {
       return null;
     }
-    var host = head.querySelector('[data-page-nav-title-host="true"]');
+    var host = els.title.querySelector('[data-page-nav-title-host="true"]');
     if (host instanceof HTMLElement) {
       return host;
     }
-    host = document.createElement('div');
+    host = document.createElement('span');
     host.setAttribute('data-page-nav-title-host', 'true');
     host.className = 'list-page-nav-title-row-wrap';
-    if (els.description && els.description.parentNode === head) {
-      head.insertBefore(host, els.description);
-    } else if (els.title.nextSibling) {
-      head.insertBefore(host, els.title.nextSibling);
+    var actionsHost = document.getElementById('contact-page-title-actions');
+    if (actionsHost instanceof HTMLElement && actionsHost.parentNode === els.title) {
+      actionsHost.insertAdjacentElement('afterend', host);
     } else {
-      head.appendChild(host);
+      els.title.appendChild(host);
     }
     return host;
   }
@@ -327,18 +325,24 @@
       return;
     }
     if (!isAdmin() || !state.editMode) {
+      if (els.title) {
+        els.title.classList.remove('has-nav-title-row');
+      }
       host.hidden = true;
       host.innerHTML = '';
       return;
     }
+    if (els.title) {
+      els.title.classList.add('has-nav-title-row');
+    }
     var current = currentNavbarTitle(renderState);
     var editing = !!state.navTitleEditing;
     var html = '<div class="list-page-nav-title-row">';
-    html += '<span class="list-page-nav-title-label">Navbar title</span>';
+    html += '<span class="list-page-nav-title-label">Link:</span>';
     if (editing) {
       var value = state.navTitleInput || current;
       html += '<span class="list-page-nav-title-edit-wrap">';
-      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Navbar title">';
+      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Link title">';
       html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
       html += '</span>';
     } else {

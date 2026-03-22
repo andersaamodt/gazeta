@@ -499,6 +499,12 @@ header h1 {
   line-height: 1.16;
 }
 
+.list-page-head h1.has-nav-title-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 0.22rem;
+}
+
 .list-validation {
   margin: 1rem 0 0.9rem;
 }
@@ -903,6 +909,11 @@ header h1 {
 
 .list-page-nav-title-row-wrap {
   margin: 0 0 0.42rem;
+}
+
+.list-page-head h1.has-nav-title-row .list-page-nav-title-row-wrap {
+  flex: 0 0 100%;
+  margin: 0 0 0.1rem;
 }
 
 .list-page-nav-title-row {
