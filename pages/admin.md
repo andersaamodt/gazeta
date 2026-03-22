@@ -528,12 +528,12 @@ title: ""
 <p class="muted account-ssh-description">Link an SSH public key for server terminal access (if allowed).</p>
 <div class="field-row">
 <label for="account-ssh-public-key"><strong>SSH Public Key</strong></label>
-<textarea id="account-ssh-public-key" rows="3" placeholder="ssh-ed25519 AAAA..."></textarea>
-<div class="account-row">
+<textarea id="account-ssh-public-key" rows="6" placeholder="ssh-ed25519 AAAA..."></textarea>
+<p class="muted account-ssh-note">When generated in-browser, private key download starts locally. Keep it secret and back it up.</p>
+<div class="account-row account-ssh-actions">
 <button id="btn-generate-ssh" type="button">Generate SSH Key Pair (Browser)</button>
 <button id="btn-link-ssh" type="button">Link SSH Public Key</button>
 </div>
-<p class="muted">When generated in-browser, private key download starts locally. Keep it secret and back it up.</p>
 </div>
 </details>
 
@@ -1360,6 +1360,10 @@ body {
   overflow-wrap: anywhere;
 }
 
+[data-admin-section="account"] {
+  --account-label-col: 9.4rem;
+}
+
 [data-admin-section="account"] #account-player-name {
   inline-size: clamp(7.5rem, 14vw, 10.5rem);
   width: clamp(7.5rem, 14vw, 10.5rem);
@@ -1368,7 +1372,7 @@ body {
 
 [data-admin-section="account"] .field-row {
   display: grid;
-  grid-template-columns: minmax(9.2rem, max-content) minmax(0, 1fr);
+  grid-template-columns: var(--account-label-col) minmax(0, 1fr);
   align-items: center;
   gap: 0.18rem 0.56rem;
 }
@@ -1521,7 +1525,7 @@ body {
 
 [data-admin-section="account"] .account-passkey-row {
   display: grid;
-  grid-template-columns: minmax(8.5rem, max-content) minmax(0, 1fr);
+  grid-template-columns: var(--account-label-col) minmax(0, 1fr);
   align-items: center;
   gap: 0.18rem 0.52rem;
   margin-bottom: 0.76rem;
@@ -1533,6 +1537,25 @@ body {
 
 [data-admin-section="account"] .account-passkey-row .account-row {
   justify-self: start;
+}
+
+[data-admin-section="account"] .account-passkey-wrap {
+  grid-column: 2;
+  justify-self: start;
+}
+
+[data-admin-section="account"] #account-ssh-public-key {
+  min-height: 7.2rem;
+}
+
+[data-admin-section="account"] .account-ssh-note,
+[data-admin-section="account"] .account-ssh-actions {
+  grid-column: 2;
+  justify-self: start;
+}
+
+[data-admin-section="account"] .account-ssh-note {
+  margin: 0.3rem 0 0.2rem;
 }
 
 [data-admin-section="account"] .account-output-row {
