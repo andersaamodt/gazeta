@@ -1082,7 +1082,7 @@
       html += '<thead><tr class="contact-profile-head-row">';
       html += '<th class="contact-profile-head-cell contact-profile-head-cell-handle" scope="col"></th>';
       html += '<th class="contact-profile-head-cell contact-profile-head-cell-platform" scope="col">Protocol</th>';
-      html += '<th class="contact-profile-head-cell contact-profile-head-cell-value" scope="col"><span class="contact-profile-head-grid"><span>Contact</span><span>Qualifier</span></span></th>';
+      html += '<th class="contact-profile-head-cell contact-profile-head-cell-value" scope="col"><span class="contact-profile-head-grid"><span>Contact</span><span>Qualifier</span><button type="button" class="unobtrusive-icon-button contact-head-add-row" data-contact-action="add-row" title="Add profile row" aria-label="Add profile row">+</button></span></th>';
       html += '</tr></thead>';
     }
     html += '<tbody>';
@@ -1146,13 +1146,10 @@
       return String(row.transport || '').trim() && String(row.value || '').trim();
     });
     var html = '';
-    if (editable) {
-      html += '<div class="contact-inline-toolbar">';
-      html += '<div class="contact-inline-toolbar-spacer"></div>';
-      html += '<div class="contact-inline-toolbar-right"><button type="button" data-contact-action="add-row" title="Add profile row">+</button></div>';
-      html += '</div>';
-    }
     if (!filtered.length) {
+      if (editable) {
+        return renderProfileTable(filtered, true) + '<p class="list-page-empty-state">No content yet.</p>';
+      }
       return html + '<p class="list-page-empty-state">No content yet.</p>';
     }
     if (editable) {
