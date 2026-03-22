@@ -54,7 +54,7 @@
   --nav-button-hover-bg-dark: var(--nav-button-bg-dark);
   --nav-button-hover-border: #ccfbf1;
   --nav-pill-radius: 8px;
-  --nav-signature-color: color-mix(in srgb, var(--text) 52%, var(--bg) 48%);
+  --nav-signature-color: color-mix(in srgb, var(--text) 58%, var(--bg) 42%);
   --nav-icon-hover: var(--nav-icon);
   --nav-bg: var(--bg);
   --nav-border: var(--border);
@@ -250,12 +250,12 @@ header h1 {
   flex: 0 0 auto;
   color: var(--nav-signature-color);
   font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
-  font-size: 1rem;
+  font-size: 1.03rem;
   font-weight: 400;
   line-height: 1.1;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  margin-left: 0.55rem;
+  margin-left: 0.68rem;
   margin-right: 0.35rem;
   user-select: none;
   pointer-events: none;
