@@ -141,10 +141,8 @@ title: ""
 
 <div class="settings-stack">
 <section class="sub-card">
-<div class="zaps-runtime-head">
-<h4>Stonr</h4>
-</div>
-<div id="noster-runtime" class="zaps-runtime-grid">
+<h4>Stonr Runtime</h4>
+<div id="noster-runtime" class="runtime-settings-list">
 <div class="placeholder">Loading Nostr runtime...</div>
 </div>
 </section>
@@ -190,10 +188,8 @@ title: ""
 </section>
 
 <section class="sub-card">
-<div class="zaps-runtime-head">
 <h4>Server Runtime</h4>
-</div>
-<div id="zaps-runtime" class="zaps-runtime-grid">
+<div id="zaps-runtime" class="runtime-settings-list">
 <div class="placeholder">Loading zap runtime...</div>
 </div>
 </section>
@@ -1221,37 +1217,6 @@ body {
   color: #1f335f;
 }
 
-[data-admin-section="nostr-bridge"] .noster-settings-card {
-  min-width: min(100%, 25.5rem);
-}
-
-[data-admin-section="nostr-bridge"] .noster-settings-list {
-  display: grid;
-  gap: 0.38rem;
-}
-
-[data-admin-section="nostr-bridge"] .noster-setting-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: fit-content;
-  color: #1f335f;
-  font-size: 0.83rem;
-  line-height: 1.25;
-}
-
-[data-admin-section="nostr-bridge"] .noster-setting-row input[type="checkbox"] {
-  margin: 0;
-}
-
-[data-admin-section="nostr-bridge"] .noster-setting-row span {
-  font-weight: 500;
-}
-
-[data-admin-section="nostr-bridge"] .noster-settings-card .zaps-runtime-action {
-  margin-top: 0.62rem;
-}
-
 .inline-tip {
   position: relative;
   display: inline-flex;
@@ -1487,52 +1452,36 @@ body {
   max-width: 100%;
 }
 
-.zaps-runtime-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  margin-bottom: 0.9rem;
-}
-
-.zaps-install-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.zaps-runtime-grid {
+.runtime-settings-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, max-content));
-  gap: 0.75rem;
-  align-items: start;
+  gap: 0.08rem;
 }
 
-.zaps-runtime-card {
-  padding: 0.8rem 0.9rem;
-  border-radius: 14px;
-  border: 1px solid var(--table-border, rgba(120, 92, 45, 0.18));
-  background: color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.5));
-  min-width: 10.5rem;
+[data-admin-section="zaps"] .runtime-settings-list .field-row {
+  margin-bottom: 0.08rem;
 }
 
-.zaps-runtime-card .zaps-runtime-action {
-  margin-top: 0.55rem;
+[data-admin-section="nostr-bridge"] .runtime-settings-list .field-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.04rem 0.44rem;
+  margin-bottom: 0.08rem;
 }
 
-.zaps-runtime-card strong {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
+[data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .setting-label {
+  margin-bottom: 0;
+}
+
+[data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .zaps-runtime-value,
+[data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > button,
+[data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .checkbox-control {
+  justify-self: start;
 }
 
 .zaps-runtime-value {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--text);
 }
 

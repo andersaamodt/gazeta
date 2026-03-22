@@ -48,6 +48,7 @@
     nextDripExcerpt: '',
     configSaveTimer: null,
     nostrBridgeSaveTimer: null,
+    nosterSettingsSaveTimer: null,
     isLoadingConfig: false,
     queueItemCount: 0,
     localDripWorkerTimer: null,
@@ -1047,6 +1048,24 @@
     });
   }
 
+  function emitAuthChanged() {
+    try {
+      window.dispatchEvent(new CustomEvent('blog-auth-changed', {
+        detail: { session_token: state.sessionToken || '', csrf_token: state.csrfToken || '' }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch issues.
+    }
+  }
+
+  function clearStoredAuth() {
+    localStorage.removeItem('session_token');
+    localStorage.removeItem('csrf_token');
+    state.sessionToken = '';
+    state.csrfToken = '';
+    emitAuthChanged();
+  }
+
   async function apiPost(url, data, includeAuth) {
     const payload = includeAuth ? buildAuthPayload(data || {}) : (data || {});
     const body = new URLSearchParams(payload);
@@ -1867,8 +1886,7 @@
     try {
       const data = await fetchJson('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(state.sessionToken));
       if (!data.authenticated) {
-        localStorage.removeItem('session_token');
-        localStorage.removeItem('csrf_token');
+        clearStoredAuth();
         stopLocalDripWorker();
         setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'error');
         markInitialContentPainted();
@@ -1919,6 +1937,10 @@
       markInitialContentPainted();
       markHydrationPageReady();
     } catch (err) {
+      const msg = String((err && err.message) || '');
+      if (/\bnot authenticated\b/i.test(msg) || /\bauth(?:entication)?\s+required\b/i.test(msg)) {
+        clearStoredAuth();
+      }
       stopLocalDripWorker();
       setAuthMessage('Authentication check failed: ' + err.message, 'error');
       markInitialContentPainted();
@@ -2268,34 +2290,33 @@
     const stonrRunning = !!(info.stonr_running || info.stoner_running);
     const relayConnected = !!info.relay_connected;
     const settings = readNosterSettingsFromRuntime(info);
-    const oneSiteMirrorMode = !settings.general_relay;
     const stonrPath = info.stonr_path || info.stoner_path || '';
     const actionDisabledAttr = state.nosterActionInFlight ? ' disabled' : '';
     const startDisabledAttr = (!stonrInstalled || state.nosterActionInFlight) ? ' disabled' : '';
-    const installTitle = stonrInstalled ? '' : ' title="Install Stonr"';
-    const toggleTitle = stonrInstalled
-      ? (' title="' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '"')
-      : ' title="Install Stonr first"';
 
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Stonr</strong><div class="zaps-runtime-value ' + (stonrInstalled ? 'is-ok' : 'is-warn') + '">' + (stonrInstalled ? 'Installed' : 'Not installed') + '</div>' + (stonrInstalled ? '' : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + installTitle + '>Install Stonr</button>')) + '</div>';
-    html += '<div class="zaps-runtime-card"><strong>Process</strong><div class="zaps-runtime-value ' + (stonrRunning ? 'is-ok' : 'is-warn') + '">' + (stonrRunning ? 'Online' : 'Stopped') + '</div><button type="button" class="zaps-runtime-action" data-noster-action="' + (stonrRunning ? 'stop' : 'start') + '"' + startDisabledAttr + toggleTitle + '>' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '</button></div>';
-    html += '<div class="zaps-runtime-card"><strong>Relay</strong><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
-    html += '<div class="zaps-runtime-card"><strong>Mode</strong><div class="zaps-runtime-value ' + (oneSiteMirrorMode ? 'is-ok' : 'is-warn') + '">' + (oneSiteMirrorMode ? 'One-site mirror' : 'General relay') + '</div></div>';
-    html += '<div class="zaps-runtime-card noster-settings-card"><strong>Settings</strong><div class="noster-settings-list">'
-      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="general_relay"' + (settings.general_relay ? ' checked' : '') + actionDisabledAttr + '><span>Also act as a general relay</span></label>'
-      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="mirror_posts"' + (settings.mirror_posts ? ' checked' : '') + actionDisabledAttr + '><span>Mirror posts from configured authors</span></label>'
-      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="mirror_comments"' + (settings.mirror_comments ? ' checked' : '') + actionDisabledAttr + '><span>Mirror comments for mirrored posts</span></label>'
-      + '<label class="checkbox-control checkbox-control-plain noster-setting-row"><input type="checkbox" data-noster-setting="auto_start"' + (settings.auto_start ? ' checked' : '') + actionDisabledAttr + '><span>Auto-start Stonr</span></label>'
-      + '</div><button type="button" class="zaps-runtime-action" data-noster-action="save_settings"' + actionDisabledAttr + '>Save Settings</button></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Install Stonr</strong></div>'
+      + (stonrInstalled
+        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
+        : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + '>Install Stonr</button>'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Process</strong></div>'
+      + '<button type="button" class="zaps-runtime-action" data-noster-action="' + (stonrRunning ? 'stop' : 'start') + '"' + startDisabledAttr + '>' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '</button>'
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Relay Connection</strong></div><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
+    html += '<h4>Settings</h4>';
+    html += '<div class="field-row checkbox-row"><div class="setting-label"><strong>Also act as a general relay</strong></div><label class="checkbox-control checkbox-control-plain"><input type="checkbox" data-noster-setting="general_relay"' + (settings.general_relay ? ' checked' : '') + actionDisabledAttr + '><span>Enabled</span></label></div>';
+    html += '<div class="field-row checkbox-row"><div class="setting-label"><strong>Mirror posts from configured authors</strong></div><label class="checkbox-control checkbox-control-plain"><input type="checkbox" data-noster-setting="mirror_posts"' + (settings.mirror_posts ? ' checked' : '') + actionDisabledAttr + '><span>Enabled</span></label></div>';
+    html += '<div class="field-row checkbox-row"><div class="setting-label"><strong>Mirror comments for mirrored posts</strong></div><label class="checkbox-control checkbox-control-plain"><input type="checkbox" data-noster-setting="mirror_comments"' + (settings.mirror_comments ? ' checked' : '') + actionDisabledAttr + '><span>Enabled</span></label></div>';
+    html += '<div class="field-row checkbox-row"><div class="setting-label"><strong>Auto-start Stonr</strong></div><label class="checkbox-control checkbox-control-plain"><input type="checkbox" data-noster-setting="auto_start"' + (settings.auto_start ? ' checked' : '') + actionDisabledAttr + '><span>Enabled</span></label></div>';
     if (stonrPath) {
-      html += '<div class="zaps-runtime-card"><strong>Stonr Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(stonrPath)) + '</div></div>';
+      html += '<div class="field-row"><div class="setting-label"><strong>Stonr Path</strong></div><div class="zaps-runtime-value">' + escapeHtml(String(stonrPath)) + '</div></div>';
     }
     if (info.config_path) {
-      html += '<div class="zaps-runtime-card"><strong>Config Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.config_path)) + '</div></div>';
+      html += '<div class="field-row"><div class="setting-label"><strong>Config Path</strong></div><div class="zaps-runtime-value">' + escapeHtml(String(info.config_path)) + '</div></div>';
     }
     if (info.pid) {
-      html += '<div class="zaps-runtime-card"><strong>PID</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.pid)) + '</div></div>';
+      html += '<div class="field-row"><div class="setting-label"><strong>PID</strong></div><div class="zaps-runtime-value">' + escapeHtml(String(info.pid)) + '</div></div>';
     }
     if (message) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
@@ -2303,6 +2324,42 @@
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(logText)) + '</pre>';
     }
     els.nosterRuntime.innerHTML = html;
+  }
+
+  async function saveNosterSettings() {
+    const settings = readNosterSettingsFromUi();
+    const request = {
+      action: 'save_settings',
+      general_relay: settings.general_relay ? 'true' : 'false',
+      mirror_posts: settings.mirror_posts ? 'true' : 'false',
+      mirror_comments: settings.mirror_comments ? 'true' : 'false',
+      auto_start: settings.auto_start ? 'true' : 'false'
+    };
+    state.nosterActionInFlight = true;
+    setNosterButtonsBusy(true);
+    try {
+      const data = await apiPost('/cgi/blog-manage-noster', request, true);
+      if (!data.success) {
+        renderNosterRuntime(data.runtime || {}, data.log || '', 'Nostr settings save failed.');
+        throw new Error(data.error || 'Could not save Nostr settings');
+      }
+      renderNosterRuntime(data.runtime || {}, data.log || '', data.message || '');
+      setOutput(els.outputNostrBridge, data.message || 'Nostr settings saved.', 'ok');
+    } catch (err) {
+      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+    } finally {
+      state.nosterActionInFlight = false;
+      setNosterButtonsBusy(false);
+    }
+  }
+
+  function queueNosterSettingsAutosave(delayMs) {
+    if (state.nosterSettingsSaveTimer) {
+      clearTimeout(state.nosterSettingsSaveTimer);
+    }
+    state.nosterSettingsSaveTimer = setTimeout(function () {
+      saveNosterSettings().catch(function () {});
+    }, Math.max(100, Number(delayMs || 220)));
   }
 
   async function loadNosterRuntime() {
@@ -2340,12 +2397,6 @@
       message = 'Start Stonr now?';
     } else if (picked === 'stop') {
       message = 'Stop Stonr now?';
-    } else if (picked === 'save_settings') {
-      const settings = readNosterSettingsFromUi();
-      request.general_relay = settings.general_relay ? 'true' : 'false';
-      request.mirror_posts = settings.mirror_posts ? 'true' : 'false';
-      request.mirror_comments = settings.mirror_comments ? 'true' : 'false';
-      request.auto_start = settings.auto_start ? 'true' : 'false';
     }
     if (message && !window.confirm(message)) {
       return;
@@ -2471,11 +2522,23 @@
     const lightningReady = !!info.lightning_installed;
     const installDisabledAttr = state.zapsActionInFlight ? ' disabled' : '';
     let html = '';
-    html += '<div class="zaps-runtime-card"><strong>Wizardry</strong><div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + (wizardryReady ? 'Installed' : 'Not installed') + '</div>' + (wizardryReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install Wizardry</button>')) + '</div>';
-    html += '<div class="zaps-runtime-card"><strong>Bitcoin</strong><div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + (bitcoinReady ? 'Installed' : 'Not installed') + '</div>' + (bitcoinReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install Bitcoin (~500 MB)</button>')) + '</div>';
-    html += '<div class="zaps-runtime-card"><strong>Lightning</strong><div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + (lightningReady ? 'Installed' : 'Not installed') + '</div>' + (lightningReady ? '' : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install Lightning (~150 MB)</button>')) + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Install Wizardry</strong></div>'
+      + (wizardryReady
+        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install Wizardry</button>'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Install Bitcoin</strong></div>'
+      + (bitcoinReady
+        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install Bitcoin (~500 MB)</button>'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Install Lightning</strong></div>'
+      + (lightningReady
+        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install Lightning (~150 MB)</button>'))
+      + '</div>';
     if (info.wizardry_path) {
-      html += '<div class="zaps-runtime-card"><strong>Wizardry Path</strong><div class="zaps-runtime-value">' + escapeHtml(String(info.wizardry_path)) + '</div></div>';
+      html += '<div class="field-row"><div class="setting-label"><strong>Wizardry Path</strong></div><div class="zaps-runtime-value">' + escapeHtml(String(info.wizardry_path)) + '</div></div>';
     }
     if (message) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
@@ -4990,6 +5053,17 @@
         runNosterAction(action).catch(function (err) {
           setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
         });
+      });
+      els.nosterRuntime.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const settingInput = target.closest('input[data-noster-setting]');
+        if (!(settingInput instanceof HTMLInputElement)) {
+          return;
+        }
+        queueNosterSettingsAutosave(120);
       });
     }
     if (els.zapsRuntime) {
