@@ -63,6 +63,7 @@
     nostrPagesDragLastTarget: '',
     nostrPagesDragDropped: false,
     nostrPagesDragSnapshot: [],
+    nostrPagesMenuOpenFor: '',
     moderationItems: [],
     moderationAgeFilter: '30d',
     nosterRuntime: null,
@@ -2946,6 +2947,16 @@
     return true;
   }
 
+  function closeNostrPageMenus() {
+    state.nostrPagesMenuOpenFor = '';
+    if (!els.nostrPagesList) {
+      return;
+    }
+    Array.from(els.nostrPagesList.querySelectorAll('[data-nostr-page-menu-panel]')).forEach(function (panel) {
+      panel.hidden = true;
+    });
+  }
+
   function renderNostrPagesList(pages, animate) {
     if (!els.nostrPagesList) {
       return;
@@ -3014,7 +3025,12 @@
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
       html += '</div>';
       html += '<div class="nostr-page-actions">';
-      html += '<button type="button" class="unobtrusive-icon-button icon-danger" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page from site" title="Remove from this site (keeps Nostr event)">' + prioritiesTrashIconSvg() + '</button>';
+      html += '<div class="post-menu nostr-page-menu">';
+      html += '<button type="button" class="unobtrusive-icon-button post-menu-trigger nostr-page-menu-trigger" data-nostr-page-action="toggle_menu" data-index="' + String(idx) + '" aria-label="Page actions" title="Page actions">' + overflowMenuIconSvg() + '</button>';
+      html += '<div class="post-menu-panel nostr-page-menu-panel" data-nostr-page-menu-panel="' + String(idx) + '" hidden>';
+      html += '<button type="button" class="post-delete" data-nostr-page-action="remove" data-index="' + String(idx) + '" aria-label="Remove page from site" title="Remove from this site (keeps Nostr event)">' + prioritiesTrashIconSvg() + '<span>Delete...</span></button>';
+      html += '</div>';
+      html += '</div>';
       html += '</div>';
       html += '</div>';
     });
@@ -4661,6 +4677,27 @@
         if (action === 'drag-handle') {
           return;
         }
+        if (action === 'toggle_menu') {
+          event.preventDefault();
+          event.stopPropagation();
+          const panels = Array.from(els.nostrPagesList.querySelectorAll('[data-nostr-page-menu-panel]'));
+          let opened = '';
+          const panelKey = String(actionNode.getAttribute('data-index') || '');
+          panels.forEach(function (panel) {
+            const thisKey = String(panel.getAttribute('data-nostr-page-menu-panel') || '');
+            if (!thisKey) {
+              return;
+            }
+            const openThis = thisKey === panelKey ? panel.hidden : false;
+            panel.hidden = !openThis;
+            if (openThis) {
+              opened = thisKey;
+            }
+          });
+          state.nostrPagesMenuOpenFor = opened;
+          return;
+        }
+        closeNostrPageMenus();
         const idx = Number(actionNode.getAttribute('data-index'));
         if (!Number.isInteger(idx) || idx < 0 || idx >= state.nostrPages.length) {
           return;
@@ -4778,7 +4815,7 @@
         }
         window.setTimeout(function () {
           const active = document.activeElement;
-          if (action === 'edit-slug-input' && active instanceof HTMLElement && active.closest && active.closest('.nostr-page-meta')) {
+          if (action === 'edit-slug-input' && active instanceof HTMLElement && active.closest && active.closest('.nostr-page-path-col')) {
             return;
           }
           if (action === 'edit-nav-title-input' && active instanceof HTMLElement && active.closest && active.closest('.nostr-page-title-row')) {
@@ -4905,6 +4942,17 @@
         state.nostrPagesDragLastTarget = '';
         state.nostrPagesDragDropped = false;
         state.nostrPagesDragSnapshot = [];
+      });
+
+      document.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        if (target.closest('.nostr-page-menu')) {
+          return;
+        }
+        closeNostrPageMenus();
       });
     }
     if (els.postsList) {

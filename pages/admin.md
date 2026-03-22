@@ -2350,15 +2350,17 @@ body {
   display: block;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--admin-border, #cdbd95);
+  border-bottom: 1px solid var(--admin-border, #cdbd95);
 }
 
 .nostr-pages-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.6rem;
   padding: 0.2rem 0 0.38rem;
-  border-bottom: 1px solid var(--admin-border, #c7d6f3);
+  border-bottom: 0;
 }
 
 .nostr-pages-header-leading {
@@ -2394,10 +2396,11 @@ body {
 .nostr-pages-header-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 2rem;
-  min-width: 2rem;
-  flex: 0 0 2rem;
+  justify-content: flex-end;
+  width: 2.35rem;
+  min-width: 2.35rem;
+  flex: 0 0 2.35rem;
+  padding-right: 0.14rem;
 }
 
 .nostr-pages-header-nav-col {
@@ -2428,8 +2431,8 @@ body {
   background: #fff;
   padding: 0.56rem 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
   gap: 0.6rem;
   min-height: 2.9rem;
 }
@@ -2448,6 +2451,7 @@ body {
   justify-content: center;
   width: 2rem;
   flex: 0 0 2rem;
+  align-self: center;
 }
 
 .nostr-page-name-col {
@@ -2648,10 +2652,12 @@ body {
 .nostr-page-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 2rem;
-  min-width: 2rem;
-  flex: 0 0 2rem;
+  justify-content: flex-end;
+  width: 2.35rem;
+  min-width: 2.35rem;
+  flex: 0 0 2.35rem;
+  align-self: center;
+  padding-right: 0.14rem;
 }
 
 .nostr-page-row.is-dragging {
@@ -2685,7 +2691,8 @@ body {
   flex: 0 0 8.8rem;
 }
 
-#admin-panel .nostr-page-actions button {
+#admin-panel .nostr-page-actions > button,
+#admin-panel .nostr-page-actions > .post-menu > button {
   width: auto;
   min-width: 2rem;
   height: 2rem;
@@ -2697,7 +2704,8 @@ body {
   transform: none;
 }
 
-#admin-panel .nostr-page-actions button:hover {
+#admin-panel .nostr-page-actions > button:hover,
+#admin-panel .nostr-page-actions > .post-menu > button:hover {
   transform: none;
 }
 
@@ -2739,6 +2747,12 @@ body {
   border-radius: 8px !important;
   box-shadow: none !important;
   color: var(--admin-text, var(--text)) !important;
+}
+
+#admin-panel .nostr-page-actions .post-menu-panel button {
+  justify-content: flex-start;
+  min-width: 0;
+  height: auto;
 }
 
 #admin-panel .nostr-page-leading .nostr-page-drag-handle {
