@@ -1104,6 +1104,8 @@ body {
 [data-admin-section="settings"] .settings-inline-control-row > label {
   grid-column: 1;
   margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 [data-admin-section="settings"] .field-row > input,
@@ -1123,6 +1125,15 @@ body {
 [data-admin-section="settings"] .settings-inline-control-row > select {
   grid-column: 2;
   justify-self: start;
+  align-self: center;
+}
+
+[data-admin-section="settings"] #site-title,
+[data-admin-section="settings"] #admin-theme,
+[data-admin-section="settings"] #feed-items {
+  grid-column: 2;
+  justify-self: start;
+  align-self: center;
 }
 
 [data-admin-section="settings"] .setting-label,
