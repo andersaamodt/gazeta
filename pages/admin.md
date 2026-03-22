@@ -998,6 +998,11 @@ body {
   margin-bottom: 0.08rem;
 }
 
+[data-admin-section="settings"] .field-row {
+  grid-template-columns: minmax(13.5rem, max-content) minmax(0, 1fr);
+  gap: 0.04rem 0.72rem;
+}
+
 [data-admin-section="nostr-bridge"] .field-row {
   display: grid;
   gap: 0.24rem;
@@ -1017,11 +1022,22 @@ body {
   margin-bottom: 0;
 }
 
+[data-admin-section="settings"] .field-row > label,
+[data-admin-section="settings"] .field-row > .setting-label {
+  grid-column: 1;
+}
+
 [data-admin-section="settings"] .field-row > input,
 [data-admin-section="settings"] .field-row > select,
 [data-admin-section="zaps"] .field-row > input,
 [data-admin-section="zaps"] .field-row > select {
   justify-self: start;
+}
+
+[data-admin-section="settings"] .field-row > input,
+[data-admin-section="settings"] .field-row > select,
+[data-admin-section="settings"] .field-row > .checkbox-control {
+  grid-column: 2;
 }
 
 [data-admin-section="settings"] .setting-label,
@@ -1186,7 +1202,10 @@ body {
 }
 
 [data-admin-section="settings"] #site-title {
-  inline-size: clamp(8.25rem, 17.25vw, 13.5rem);
+  inline-size: min(100%, 16rem);
+  width: min(100%, 16rem);
+  max-inline-size: 16rem;
+  max-width: 16rem;
 }
 
 [data-admin-section="nostr-bridge"] .bridge-textarea {
@@ -1213,7 +1232,10 @@ body {
 }
 
 [data-admin-section="settings"] #admin-theme {
-  inline-size: clamp(8.5rem, 13vw, 10.5rem);
+  inline-size: min(100%, 10.5rem);
+  width: min(100%, 10.5rem);
+  max-inline-size: 10.5rem;
+  max-width: 10.5rem;
 }
 
 [data-admin-section="queue"] #drip-interval,
@@ -1222,6 +1244,7 @@ body {
   inline-size: 5rem !important;
   width: 5rem !important;
   max-inline-size: 5rem !important;
+  max-width: 5rem !important;
 }
 
 [data-admin-section="settings"] h4 {
@@ -1292,6 +1315,13 @@ body {
   padding: 0.34rem 0.56rem;
   min-height: 2.06rem;
   border-radius: 8px;
+}
+
+[data-admin-section="settings"] input[type="text"],
+[data-admin-section="settings"] input[type="number"],
+[data-admin-section="settings"] select {
+  width: auto !important;
+  max-width: 100%;
 }
 
 .zaps-runtime-head {
