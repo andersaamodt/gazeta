@@ -32,11 +32,11 @@ title: ""
 
 <div class="settings-stack">
 <section class="sub-card">
-<div class="field-row">
+<div class="field-row settings-inline-control-row">
 <label for="site-title" title="Public title shown in your blog header and feeds."><strong title="Public title shown in your blog header and feeds.">Site Title</strong></label>
 <input type="text" id="site-title" placeholder="My Blog" title="Public title shown in your blog header and feeds.">
 </div>
-<div class="field-row">
+<div class="field-row settings-inline-control-row">
 <label for="admin-theme" title="Visual theme for your public site and admin interface accents."><strong title="Visual theme for your public site and admin interface accents.">Theme</strong></label>
 <select id="admin-theme" title="Visual theme for your public site and admin interface accents.">
 <option value="adept">Adept</option>
@@ -103,7 +103,7 @@ title: ""
 <span title="Controls whether each RSS/Atom entry includes full post text or a shorter excerpt.">Enabled</span>
 </label>
 </div>
-<div class="field-row">
+<div class="field-row settings-inline-control-row">
 <label for="feed-items" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100."><strong title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">Feed Item Count (min 1; typical 20-100)</strong></label>
 <input type="number" id="feed-items" min="1" step="1" value="50" title="Maximum number of recent posts included in RSS/Atom feeds. Minimum is 1; typical range is 20-100.">
 </div>
@@ -996,6 +996,13 @@ body {
   gap: 0.04rem 0.72rem;
 }
 
+[data-admin-section="settings"] .settings-inline-control-row {
+  display: grid !important;
+  grid-template-columns: minmax(13.5rem, max-content) minmax(0, 1fr) !important;
+  align-items: center;
+  gap: 0.04rem 0.72rem;
+}
+
 [data-admin-section="nostr-bridge"] .field-row {
   display: grid;
   gap: 0.24rem;
@@ -1020,6 +1027,11 @@ body {
   grid-column: 1;
 }
 
+[data-admin-section="settings"] .settings-inline-control-row > label {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
 [data-admin-section="settings"] .field-row > input,
 [data-admin-section="settings"] .field-row > select,
 [data-admin-section="zaps"] .field-row > input,
@@ -1031,6 +1043,12 @@ body {
 [data-admin-section="settings"] .field-row > select,
 [data-admin-section="settings"] .field-row > .checkbox-control {
   grid-column: 2;
+}
+
+[data-admin-section="settings"] .settings-inline-control-row > input,
+[data-admin-section="settings"] .settings-inline-control-row > select {
+  grid-column: 2;
+  justify-self: start;
 }
 
 [data-admin-section="settings"] .setting-label,
