@@ -434,7 +434,7 @@ title: ""
 </div>
 </div>
 <div class="nostr-pages-table-toolbar">
-<button id="btn-create-nostr-page" type="button" class="primary">New Page...</button>
+<button id="btn-create-nostr-page" type="button">New Page...</button>
 </div>
 <div id="nostr-pages-list" class="nostr-pages-list"></div>
 <div id="output-nostr-pages" class="output"></div>
@@ -469,7 +469,9 @@ title: ""
 <h3>Moderation</h3>
 <p class="muted">Moderate user-submitted content shown on this site. Nostr content remains globally available, but you control what this website and this relay choose to host and display.</p>
 </div>
-<div class="row-actions moderation-filters">
+</div>
+<div class="moderation-table-toolbar">
+<div class="moderation-filters">
 <div class="moderation-age-group" role="group" aria-label="Moderation age filter">
 <button type="button" class="moderation-age-option" data-moderation-age="24h" aria-pressed="false">24h</button>
 <button type="button" class="moderation-age-option" data-moderation-age="7d" aria-pressed="false">7d</button>
@@ -3269,7 +3271,9 @@ body {
   justify-content: flex-end;
   align-items: flex-start;
   gap: 0.55rem;
-  padding: 0 0.7rem 0.42rem;
+  padding: 0 0.7rem 0.16rem;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .files-upload-summary {
@@ -3283,7 +3287,8 @@ body {
 .files-dropzone {
   min-height: 16rem;
   padding: 0 0 0.9rem;
-  border-top: 0;
+  border-top: 0 !important;
+  box-shadow: none !important;
   transition: background 140ms ease, border-color 140ms ease;
 }
 
@@ -3551,27 +3556,6 @@ body {
   -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
-#admin-panel #btn-create-nostr-page {
-  color: var(--nav-active-text, #fff) !important;
-}
-
-#admin-panel #btn-create-nostr-page:not(:disabled) {
-  background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
-  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
-  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-}
-
-#admin-panel #btn-create-nostr-page:not(:disabled):hover,
-#admin-panel #btn-create-nostr-page:not(:disabled):focus-visible {
-  background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
-  background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
-  border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
-  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-  -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
-}
-
 #output-nostr-pages {
   display: none !important;
 }
@@ -3627,12 +3611,10 @@ body {
 }
 
 #admin-panel #files-list.posts-list {
-  border-top: 0 !important;
-  border-top-width: 0 !important;
-  border-top-style: none !important;
+  border-top: 1px solid var(--admin-border, #cdbd95) !important;
   border-right: 1px solid var(--admin-border, #cdbd95) !important;
   border-bottom: 1px solid var(--admin-border, #cdbd95) !important;
-  border-left: 0 !important;
+  border-left: 1px solid var(--admin-border, #cdbd95) !important;
   box-shadow: none !important;
 }
 
@@ -4432,9 +4414,7 @@ body {
 }
 
 #admin-panel button.primary:disabled,
-#admin-panel button.primary[disabled],
-#admin-panel #btn-create-nostr-page:disabled,
-#admin-panel #btn-create-nostr-page[disabled] {
+#admin-panel button.primary[disabled] {
   background: var(--admin-surface-alt, var(--post-card-bg)) !important;
   border-color: var(--admin-border, var(--border)) !important;
   color: var(--admin-muted, var(--light-text)) !important;
@@ -4941,6 +4921,13 @@ body {
   overflow-x: auto;
 }
 
+.moderation-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0 0.7rem 0.16rem;
+}
+
 .moderation-age-group {
   display: inline-flex;
   align-items: stretch;
@@ -5048,6 +5035,11 @@ body {
   .files-table-toolbar {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+  }
+
+  .moderation-table-toolbar {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
 
   #admin-panel.sidebar-collapsed .admin-sidebar {
