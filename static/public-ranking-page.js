@@ -891,7 +891,6 @@
       html += '<input type="hidden" id="public-ranking-submit-parent" value="' + escapeHtml(graph.rootCoord || '') + '">';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="New entry">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
-      html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
       if (showAdvancedToggle) {
         html += '<button type="button" data-ranking-action="toggle-submit-advanced" class="public-ranking-submit-advanced-toggle" aria-expanded="' + (advancedOpen ? 'true' : 'false') + '">' + escapeHtml(advancedOpen ? '-Advanced' : '+Advanced') + '</button>';
       }
@@ -1667,6 +1666,38 @@
         }
         var container = pendingAction.closest('[data-pending-node]');
         moderateNode(pendingType, nodeCoord, container instanceof HTMLElement ? container : null);
+      }
+    });
+
+    root.addEventListener('keydown', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (!state.submitComposerOpen) {
+        return;
+      }
+      var submitShell = target.closest('.public-ranking-submit');
+      if (!(submitShell instanceof HTMLElement)) {
+        return;
+      }
+      var key = String(event.key || '');
+      if (key === 'Escape' || key === 'Esc') {
+        event.preventDefault();
+        state.submitComposerOpen = false;
+        state.submitAdvancedOpen = false;
+        renderContent();
+        return;
+      }
+      if (key === 'Enter') {
+        if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+          return;
+        }
+        if (target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        event.preventDefault();
+        submitNode();
       }
     });
   }
