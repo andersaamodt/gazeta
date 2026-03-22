@@ -1476,18 +1476,28 @@ header h1 {
   padding: 0.65rem 0.72rem;
   background: var(--card-bg);
   box-shadow: 0 1px 1px color-mix(in srgb, var(--theme_dark, #172553) 9%, transparent);
-  aspect-ratio: 3 / 4;
-  min-height: 16rem;
+  aspect-ratio: 4 / 5;
+  min-height: 13.5rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
 }
 
+.list-tile-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .list-tile-main {
   display: flex;
-  align-items: baseline;
-  gap: 0.2rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.26rem;
   min-width: 0;
+  width: 100%;
+  margin-top: auto;
+  text-align: center;
+  padding-top: 0.45rem;
 }
 
 .list-tile-text {

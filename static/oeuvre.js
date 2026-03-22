@@ -1193,13 +1193,15 @@
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
         : '';
       html += '<li class="list-tile">';
-      html += '<div class="list-tile-main">' + linked + '<span class="list-tile-text">' + markdownInline(line) + '</span></div>';
+      html += '<div class="list-tile-content">';
       if (dateText) {
         html += '<div class="list-tile-date">' + escapeHtml(dateText) + '</div>';
       }
       if (Array.isArray(node.children) && node.children.length) {
         html += renderTileTreeChildren(node.children);
       }
+      html += '</div>';
+      html += '<div class="list-tile-main">' + linked + '<span class="list-tile-text">' + markdownInline(line) + '</span></div>';
       html += '</li>';
     });
     html += '</ul>';
