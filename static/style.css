@@ -1143,6 +1143,14 @@ header h1 {
   color: var(--muted-text, #4f617f);
 }
 
+.list-inline-edit-controls .list-marker-filter-setting {
+  gap: 0.28rem;
+}
+
+.list-inline-edit-controls .list-marker-filter-setting input[type="checkbox"] {
+  margin: 0;
+}
+
 .list-inline-edit-controls select {
   width: auto !important;
   min-width: 0;
@@ -1514,6 +1522,50 @@ header h1 {
   display: inline-block;
   margin-right: 0.38rem;
   text-decoration: none;
+}
+
+.list-marker-filters {
+  margin: 0 0 0.72rem;
+}
+
+.list-marker-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+
+.list-marker-filter-pill {
+  width: fit-content;
+  border-radius: 999px !important;
+  border: 1px solid var(--tag-border, #c8d4f3) !important;
+  background: var(--tag-muted-bg, #f6f8ff) !important;
+  color: var(--tag-muted-text, #5f6f92) !important;
+  -webkit-text-fill-color: var(--tag-muted-text, #5f6f92) !important;
+  padding: 0.16rem 0.58rem !important;
+  font-size: 0.79rem !important;
+  line-height: 1.18 !important;
+}
+
+.list-marker-filter-pill:hover:not(:disabled),
+.list-marker-filter-pill:focus-visible:not(:disabled) {
+  background: var(--tag-muted-hover-bg, #edf2ff) !important;
+  color: var(--tag-muted-hover-text, #4f5f80) !important;
+  -webkit-text-fill-color: var(--tag-muted-hover-text, #4f5f80) !important;
+  border-color: color-mix(in srgb, var(--tag-border, #c8d4f3) 72%, var(--accent, #2f4aa6) 28%) !important;
+}
+
+.list-marker-filter-pill.is-include {
+  background: color-mix(in srgb, var(--accent, #2f4aa6) 14%, #ffffff 86%) !important;
+  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 42%, var(--tag-border, #c8d4f3) 58%) !important;
+  color: color-mix(in srgb, var(--accent-dark, #243b8a) 82%, #1f2b4d 18%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #243b8a) 82%, #1f2b4d 18%) !important;
+}
+
+.list-marker-filter-pill.is-exclude {
+  background: color-mix(in srgb, #b42318 14%, #ffffff 86%) !important;
+  border-color: color-mix(in srgb, #b42318 45%, var(--tag-border, #c8d4f3) 55%) !important;
+  color: color-mix(in srgb, #8b1a1a 78%, #2c1414 22%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, #8b1a1a 78%, #2c1414 22%) !important;
 }
 
 .list-tiles {

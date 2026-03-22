@@ -64,6 +64,8 @@
     pointerDownEntryUid: '',
     pointerDownAt: 0,
     pendingNewEntry: null,
+    markerFilterInclude: [],
+    markerFilterExclude: [],
     uidCounter: 1,
     initialContentPainted: false
   };
@@ -168,6 +170,8 @@
     state.navTitleInput = '';
     state.navTitleBusy = false;
     state.pendingNewEntry = null;
+    state.markerFilterInclude = [];
+    state.markerFilterExclude = [];
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
     renderList();
@@ -408,6 +412,7 @@
       title: String(s.title || root.getAttribute('data-list-title') || 'List'),
       description: String(s.description || ''),
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
+      show_marker_filters: !!s.show_marker_filters,
       group_by: String(s.group_by || ''),
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
@@ -464,12 +469,82 @@
     return '';
   }
 
+  function uniqueMarkerValues(entries) {
+    var seen = {};
+    var markers = [];
+    (Array.isArray(entries) ? entries : []).forEach(function (entry) {
+      var marker = String(entry && entry.marker || '').trim();
+      if (!marker || seen[marker]) {
+        return;
+      }
+      seen[marker] = true;
+      markers.push(marker);
+    });
+    return markers;
+  }
+
+  function pruneMarkerFilters(availableMarkers) {
+    var allowed = {};
+    (Array.isArray(availableMarkers) ? availableMarkers : []).forEach(function (marker) {
+      allowed[String(marker)] = true;
+    });
+    state.markerFilterInclude = (Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude : []).filter(function (marker) {
+      return !!allowed[String(marker)];
+    });
+    state.markerFilterExclude = (Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude : []).filter(function (marker) {
+      return !!allowed[String(marker)];
+    });
+  }
+
+  function applyMarkerFilters(entries) {
+    var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude : [];
+    var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude : [];
+    if (!include.length && !exclude.length) {
+      return Array.isArray(entries) ? entries.slice() : [];
+    }
+    return (Array.isArray(entries) ? entries : []).filter(function (entry) {
+      var marker = String(entry && entry.marker || '').trim();
+      if (include.length && include.indexOf(marker) < 0) {
+        return false;
+      }
+      if (exclude.indexOf(marker) >= 0) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function renderMarkerFilters(entries) {
+    var markers = uniqueMarkerValues(entries);
+    pruneMarkerFilters(markers);
+    if (!markers.length) {
+      return '';
+    }
+    var html = '<section class="list-marker-filters" aria-label="Marker filters">';
+    html += '<div class="list-marker-filters-row">';
+    markers.forEach(function (marker) {
+      var included = (state.markerFilterInclude || []).indexOf(marker) >= 0;
+      var excluded = (state.markerFilterExclude || []).indexOf(marker) >= 0;
+      var cls = 'list-marker-filter-pill';
+      if (included) {
+        cls += ' is-include';
+      } else if (excluded) {
+        cls += ' is-exclude';
+      }
+      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '">' + escapeHtml(marker) + '</button>';
+    });
+    html += '</div>';
+    html += '</section>';
+    return html;
+  }
+
   function getRenderState() {
     if (isAdmin()) {
       return {
         title: state.draft.title,
         description: state.draft.description,
         publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
+        show_marker_filters: !!state.draft.show_marker_filters,
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
@@ -482,6 +557,7 @@
       title: String(src.title || ''),
       description: String(src.description || ''),
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
+      show_marker_filters: !!src.show_marker_filters,
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
@@ -672,6 +748,10 @@
     if (groupByInput) {
       state.draft.group_by = String(groupByInput.value || '').trim();
     }
+    var showMarkerFiltersInput = els.content ? els.content.querySelector('[data-list-show-marker-filters]') : null;
+    if (showMarkerFiltersInput instanceof HTMLInputElement) {
+      state.draft.show_marker_filters = !!showMarkerFiltersInput.checked;
+    }
   }
 
   async function refreshValidation() {
@@ -719,6 +799,7 @@
         title: state.draft.title || '',
         description: state.draft.description || '',
         publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
+        show_marker_filters: state.draft.show_marker_filters ? 'true' : 'false',
         group_by: state.draft.group_by || '',
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         content: state.draft.content || '',
@@ -1246,8 +1327,20 @@
     return renderStructuredReadOnly(entries, 'list-entries');
   }
 
-  function renderGroupByReadOnly(entries, groupBy, viewMode) {
+  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters) {
     var html = '';
+    var allEntries = Array.isArray(entries) ? entries : [];
+    if (showMarkerFilters) {
+      html += renderMarkerFilters(allEntries);
+    } else {
+      state.markerFilterInclude = [];
+      state.markerFilterExclude = [];
+    }
+    var filteredEntries = applyMarkerFilters(allEntries);
+    if (!filteredEntries.length) {
+      html += '<p class="list-page-empty-state">No entries match selected marker filters.</p>';
+      return html;
+    }
     var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(groupBy || '')) >= 0;
     if (grouped) {
       var currentLabel = '__none__';
@@ -1260,7 +1353,7 @@
         html += '</section>';
         bucket = [];
       }
-      entries.forEach(function (entry) {
+      filteredEntries.forEach(function (entry) {
         var label = groupLabelForEntry(entry, groupBy);
         if (label !== currentLabel) {
           flushGroup();
@@ -1276,7 +1369,7 @@
       return html;
     }
 
-    return renderReadOnlyByView(entries, viewMode);
+    return html + renderReadOnlyByView(filteredEntries, viewMode);
   }
 
   function renderExtraContent(text, format, role) {
@@ -1392,6 +1485,7 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
+    html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '> <span>Show marker filters</span></label>';
     if (isIconGalleryPage()) {
       html += '<label><span>View</span><select id="list-admin-view-mode" disabled aria-disabled="true">';
       html += '<option value="tile" selected>Tile</option>';
@@ -1492,7 +1586,7 @@
 
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, s.view_mode) + afterContent;
+    }), s.group_by, s.view_mode, !!s.show_marker_filters) + afterContent;
     renderAdmin();
   }
 
@@ -2010,6 +2104,11 @@
         queueAutosave(280);
         return;
       }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-marker-filters')) {
+        state.draft.show_marker_filters = !!target.checked;
+        queueAutosave(280);
+        return;
+      }
       if (target.id === 'list-admin-view-mode' && target instanceof HTMLSelectElement) {
         state.draft.view_mode = normalizeViewModeForPage(target.value || '');
         renderList();
@@ -2053,6 +2152,68 @@
       if (shouldAutosaveForUid(uid)) {
         queueAutosave(500);
       }
+    });
+
+    els.content.addEventListener('contextmenu', function (event) {
+      if (state.editMode || !event.target) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest('[data-marker-filter-action="toggle"]')) {
+        event.preventDefault();
+      }
+    });
+
+    els.content.addEventListener('click', function (event) {
+      if (state.editMode || !event.target) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var filterButton = target.closest('[data-marker-filter-action="toggle"]');
+      if (!(filterButton instanceof HTMLElement)) {
+        return;
+      }
+      var marker = String(filterButton.getAttribute('data-marker-filter-value') || '').trim();
+      if (!marker) {
+        return;
+      }
+      var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude.slice() : [];
+      var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude.slice() : [];
+      var isCtrlToggle = !!event.ctrlKey;
+      var isIncludeMulti = !!(event.metaKey || event.shiftKey);
+
+      if (isCtrlToggle) {
+        include = include.filter(function (item) { return item !== marker; });
+        if (exclude.indexOf(marker) >= 0) {
+          exclude = exclude.filter(function (item) { return item !== marker; });
+        } else {
+          exclude.push(marker);
+        }
+      } else if (isIncludeMulti) {
+        exclude = exclude.filter(function (item) { return item !== marker; });
+        if (include.indexOf(marker) >= 0) {
+          include = include.filter(function (item) { return item !== marker; });
+        } else {
+          include.push(marker);
+        }
+      } else {
+        exclude = exclude.filter(function (item) { return item !== marker; });
+        if (include.length === 1 && include[0] === marker) {
+          include = [];
+        } else {
+          include = [marker];
+        }
+      }
+
+      state.markerFilterInclude = include;
+      state.markerFilterExclude = exclude;
+      renderList();
     });
 
     els.content.addEventListener('focusout', function (event) {
@@ -2346,6 +2507,8 @@
       state.navTitleInput = '';
       state.navTitleBusy = false;
       state.pendingNewEntry = null;
+      state.markerFilterInclude = [];
+      state.markerFilterExclude = [];
       state.saveIndicatorVisible = false;
       if (!state.activeEntryUid && state.draft.elements.length) {
         state.activeEntryUid = state.draft.elements[0]._uid;

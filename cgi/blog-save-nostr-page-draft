@@ -138,6 +138,7 @@ if [ -z "$state_json" ]; then
       title=$(blog_param title)
       description=$(blog_param description)
       publish_intro_to_nostr=$(blog_param publish_intro_to_nostr)
+      show_marker_filters=$(blog_param show_marker_filters)
       group_by=$(blog_param group_by)
       view_mode=$(blog_param view_mode)
       content=$(blog_param content)
@@ -166,6 +167,7 @@ if [ -z "$state_json" ]; then
         --arg title "$title" \
         --arg description "$description" \
         --arg publish_intro_to_nostr "$publish_intro_to_nostr" \
+        --arg show_marker_filters "$show_marker_filters" \
         --arg group_by "$group_by" \
         --arg view_mode "$view_mode" \
         --arg content "$content" \
@@ -180,6 +182,7 @@ if [ -z "$state_json" ]; then
           title: $title,
           description: $description,
           publish_intro_to_nostr: (($publish_intro_to_nostr | ascii_downcase) == "true"),
+          show_marker_filters: (($show_marker_filters | ascii_downcase) == "true"),
           group_by: $group_by,
           view_mode: $view_mode,
           content: $content,
