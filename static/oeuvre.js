@@ -1100,12 +1100,17 @@
       } else if (state.editMode) {
         if (descText.trim()) {
           els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
+        } else if (hasMainContent) {
+          els.description.innerHTML = '<button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
         }
       } else {
         if (descText.trim()) {
           els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span>';
+        } else if (hasMainContent) {
+          els.description.innerHTML = '';
+          els.description.hidden = true;
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }

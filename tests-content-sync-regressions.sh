@@ -526,6 +526,9 @@ assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="zaps"] .ru
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" 'setting_auto_start_from_config()' 'noster runtime reads auto-start from config files'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" '.runtime.auto_start' 'noster auto-start parser checks runtime.auto_start field'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="nostr-bridge"] .checkbox-row {' 'nostr checkbox rows use shared two-column grid layout'
+assert_file_contains "$ROOT_DIR/static/oeuvre.js" "else if (hasMainContent) {" 'list page suppresses \"No description\" when content exists'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "else if (hasMainContent) {" 'public ranking suppresses \"No description\" when content exists'
+assert_file_contains "$ROOT_DIR/static/contact-page.js" "else if (hasMainContent) {" 'contact page suppresses \"No description\" when content exists'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
