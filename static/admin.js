@@ -1929,13 +1929,13 @@
       syncLocalDripToggleUi();
       startLocalDripWorker();
       setAccountOnlyMode(false);
-      await preloadAdminFirstPaint();
       activateSection(getSectionFromHash(), false);
       els.adminPanel.style.display = 'grid';
       renderPreview();
-      await maybeLoadAdminSection(state.activeSection, false);
       markInitialContentPainted();
       markHydrationPageReady();
+      preloadAdminFirstPaint().catch(function () {});
+      maybeLoadAdminSection(state.activeSection, false).catch(function () {});
     } catch (err) {
       const msg = String((err && err.message) || '');
       if (/\bnot authenticated\b/i.test(msg) || /\bauth(?:entication)?\s+required\b/i.test(msg)) {
