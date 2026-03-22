@@ -61,6 +61,24 @@
     };
   }
 
+  function ensureNostrPublishDialog() {
+    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      var script = document.createElement('script');
+      script.src = '/static/nostr-publish-dialog.js';
+      script.async = true;
+      script.onload = function () {
+        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
+      };
+      script.onerror = function () {
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
   function authSignature() {
     var auth = authPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
@@ -1140,26 +1158,20 @@
     if (!saved) {
       return;
     }
-    state.busy = true;
-    setSaveStatus('saving');
-    try {
-      var auth = authPayload();
-      var data = await apiPost('/cgi/blog-publish-nostr-page', {
-        page_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      refreshPayloadStateFromResponse(data);
-      state.draft = normalizeDraftState(data.state || state.payload.state || {});
-      maybeSetMetricFromPayload();
-      setSaveStatus('saved');
-      await load();
-    } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not publish ranking');
-      window.alert(err && err.message ? err.message : 'Could not publish ranking');
-    } finally {
-      state.busy = false;
+    var hasDialog = await ensureNostrPublishDialog();
+    if (!hasDialog) {
+      window.alert('Publish dialog unavailable');
+      return;
     }
+    var published = await window.blogNostrPublishDialog.open({
+      pageSlug: slug,
+      pageLabel: String((state.draft && state.draft.title) || slug || 'page').trim()
+    });
+    if (!published) {
+      return;
+    }
+    setSaveStatus('saved');
+    await load();
   }
 
   async function revertDraft() {

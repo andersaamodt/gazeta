@@ -123,6 +123,24 @@
     };
   }
 
+  function ensureNostrPublishDialog() {
+    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      var script = document.createElement('script');
+      script.src = '/static/nostr-publish-dialog.js';
+      script.async = true;
+      script.onload = function () {
+        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
+      };
+      script.onerror = function () {
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
   function authSignature() {
     var auth = authPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
@@ -606,33 +624,28 @@
     });
   }
 
-  function publishDraft() {
+  async function publishDraft() {
     if (state.busy || !isAdmin()) {
       return;
     }
-    var payload = authPayload();
-    state.busy = true;
-    setSaveStatus('saving');
-    apiPost('/cgi/blog-publish-nostr-page', {
-      page_slug: slug,
-      session_token: payload.session_token,
-      csrf_token: payload.csrf_token
-    }).then(function (data) {
-      state.payload.state = data.state;
-      state.payload.canonical_state = data.state;
-      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
-      state.payload.canonical_exists = true;
-      state.payload.draft_exists = true;
-      state.payload.draft_differs = false;
-      state.draft = normalizeDraftState(data.state);
-      setSaveStatus('saved');
-      renderAll();
-    }).catch(function (err) {
-      setSaveStatus('error');
-      window.alert(err.message || 'Could not publish to Nostr');
-    }).finally(function () {
-      state.busy = false;
+    var saved = await persistDraft({ alertOnError: true });
+    if (!saved) {
+      return;
+    }
+    var hasDialog = await ensureNostrPublishDialog();
+    if (!hasDialog) {
+      window.alert('Publish dialog unavailable');
+      return;
+    }
+    var published = await window.blogNostrPublishDialog.open({
+      pageSlug: slug,
+      pageLabel: String((state.draft && state.draft.title) || slug || 'page').trim()
     });
+    if (!published) {
+      return;
+    }
+    await load();
+    setSaveStatus('saved');
   }
 
   function revertDraft() {

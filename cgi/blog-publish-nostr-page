@@ -17,6 +17,25 @@ if ! blog_require_session true true; then
   exit 0
 fi
 
+preview_only=false
+preview_only_raw=$(blog_param preview_only)
+preview_only_norm=$(printf '%s' "$preview_only_raw" | tr '[:upper:]' '[:lower:]')
+case "$preview_only_norm" in
+  1|true|yes|on)
+    preview_only=true
+    ;;
+esac
+
+provided_event_json=''
+event_json_param=$(blog_param event_json)
+if [ -n "$event_json_param" ]; then
+  provided_event_json=$(printf '%s\n' "$event_json_param" | jq -c '.' 2>/dev/null || printf '')
+  if [ -z "$provided_event_json" ]; then
+    blog_json_error "event_json must be valid JSON" "invalid_event_json"
+    exit 0
+  fi
+fi
+
 page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
 if [ -z "$page_slug" ]; then
   page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
@@ -94,14 +113,18 @@ case "$page_type" in
       exit 0
     fi
     content_json=$(printf '%s\n' "$validation_json" | jq -c '.content_json // {}' 2>/dev/null || printf '{}')
-    event_json=$(blog_nostr_sign_contact_event "$content_json" 2>/dev/null || printf '')
-    if [ -z "$event_json" ]; then
-      reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
-      if [ -z "$reason" ]; then
-        reason="Could not sign user metadata page event."
+    if [ -n "$provided_event_json" ]; then
+      event_json=$provided_event_json
+    else
+      event_json=$(blog_nostr_sign_contact_event "$content_json" 2>/dev/null || printf '')
+      if [ -z "$event_json" ]; then
+        reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+        if [ -z "$reason" ]; then
+          reason="Could not sign user metadata page event."
+        fi
+        blog_json_error "$reason" "nostr_publish_failed"
+        exit 0
       fi
-      blog_json_error "$reason" "nostr_publish_failed"
-      exit 0
     fi
     canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$event_json")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
@@ -126,14 +149,18 @@ case "$page_type" in
       printf '\n'
       exit 0
     fi
-    event_json=$(blog_nostr_sign_public_ranking_event "$page_slug" "$state_json" 2>/dev/null || printf '')
-    if [ -z "$event_json" ]; then
-      reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
-      if [ -z "$reason" ]; then
-        reason="Could not sign public ranking page event."
+    if [ -n "$provided_event_json" ]; then
+      event_json=$provided_event_json
+    else
+      event_json=$(blog_nostr_sign_public_ranking_event "$page_slug" "$state_json" 2>/dev/null || printf '')
+      if [ -z "$event_json" ]; then
+        reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+        if [ -z "$reason" ]; then
+          reason="Could not sign public ranking page event."
+        fi
+        blog_json_error "$reason" "nostr_publish_failed"
+        exit 0
       fi
-      blog_json_error "$reason" "nostr_publish_failed"
-      exit 0
     fi
     canonical_state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$event_json")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
@@ -160,14 +187,18 @@ case "$page_type" in
     fi
     title=$(printf '%s\n' "$state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
     content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
-    event_json=$(blog_nostr_sign_nip23_event "$page_slug" "$title" "$content" 2>/dev/null || printf '')
-    if [ -z "$event_json" ]; then
-      reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
-      if [ -z "$reason" ]; then
-        reason="Could not sign long-form content page event."
+    if [ -n "$provided_event_json" ]; then
+      event_json=$provided_event_json
+    else
+      event_json=$(blog_nostr_sign_nip23_event "$page_slug" "$title" "$content" 2>/dev/null || printf '')
+      if [ -z "$event_json" ]; then
+        reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+        if [ -z "$reason" ]; then
+          reason="Could not sign long-form content page event."
+        fi
+        blog_json_error "$reason" "nostr_publish_failed"
+        exit 0
       fi
-      blog_json_error "$reason" "nostr_publish_failed"
-      exit 0
     fi
     canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json" "$page_type")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: $local.extras_after, extras_after_format: $local.extras_after_format}')
@@ -194,14 +225,18 @@ case "$page_type" in
     fi
     content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
     tags_json=$(printf '%s\n' "$state_json" | jq -c '.tags // []' 2>/dev/null || printf '[]')
-    event_json=$(blog_nostr_sign_list_event "$page_slug" "$content" "$tags_json" 2>/dev/null || printf '')
-    if [ -z "$event_json" ]; then
-      reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
-      if [ -z "$reason" ]; then
-        reason="Could not sign list page event."
+    if [ -n "$provided_event_json" ]; then
+      event_json=$provided_event_json
+    else
+      event_json=$(blog_nostr_sign_list_event "$page_slug" "$content" "$tags_json" 2>/dev/null || printf '')
+      if [ -z "$event_json" ]; then
+        reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+        if [ -z "$reason" ]; then
+          reason="Could not sign list page event."
+        fi
+        blog_json_error "$reason" "nostr_publish_failed"
+        exit 0
       fi
-      blog_json_error "$reason" "nostr_publish_failed"
-      exit 0
     fi
     canonical_state_json=$(blog_list_state_from_event_json "$page_slug" "$event_json")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
@@ -209,6 +244,31 @@ case "$page_type" in
     canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {elements: $validation.elements, entries: $validation.entries}')
     ;;
 esac
+
+if ! blog_nostr_verify_event_json "$event_json"; then
+  blog_json_error "Provided event_json failed Nostr verification" "invalid_event_json"
+  exit 0
+fi
+
+expected_kind='30004'
+case "$page_type" in
+  contact) expected_kind='0' ;;
+  public-ranking) expected_kind='30040' ;;
+  nip23|blog) expected_kind='30023' ;;
+esac
+event_kind=$(printf '%s\n' "$event_json" | jq -r '.kind // ""' 2>/dev/null || printf '')
+if [ "$event_kind" != "$expected_kind" ]; then
+  blog_json_error "event_json kind does not match page type" "invalid_event_json"
+  exit 0
+fi
+
+if [ "$page_type" != "contact" ]; then
+  event_slug=$(printf '%s\n' "$event_json" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // ""' 2>/dev/null || printf '')
+  if [ -z "$event_slug" ] || [ "$event_slug" != "$page_slug" ]; then
+    blog_json_error "event_json d tag does not match page slug" "invalid_event_json"
+    exit 0
+  fi
+fi
 
 pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // empty' 2>/dev/null || printf '')
 author_count=$(blog_nostr_list_file_lines "$blog_nostr_authors_file" | wc -l | tr -d ' ')
@@ -220,14 +280,41 @@ if [ -n "$pubkey" ] && ! blog_nostr_author_allowed "$pubkey"; then
   exit 0
 fi
 
+event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+
+if [ "$preview_only" = "true" ]; then
+  jq -cn \
+    --arg slug "$page_slug" \
+    --arg page_type "$page_type" \
+    --arg event_id "$event_id" \
+    --argjson event "$event_json" \
+    --argjson state "$canonical_enriched" \
+    --argjson validation "$validation_after" \
+    '{
+      success: true,
+      preview_only: true,
+      slug: $slug,
+      page_type: $page_type,
+      event_id: $event_id,
+      event: $event,
+      state: $state,
+      validation: {
+        errors: $validation.errors,
+        warnings: $validation.warnings,
+        can_publish: $validation.can_publish
+      },
+      message: "Preview ready."
+    }'
+  printf '\n'
+  exit 0
+fi
+
 if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
   blog_json_error "Could not store published event" "store_failed"
   exit 0
 fi
 
 blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$canonical_state_json"
-
-event_id=$(printf '%s\n' "$event_json" | jq -r '.id // ""' 2>/dev/null || printf '')
 
 jq -cn \
   --arg slug "$page_slug" \

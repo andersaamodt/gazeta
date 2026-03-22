@@ -946,6 +946,24 @@
     return res;
   }
 
+  function ensureNostrPublishDialog() {
+    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      const script = document.createElement('script');
+      script.src = '/static/nostr-publish-dialog.js';
+      script.async = true;
+      script.onload = function () {
+        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
+      };
+      script.onerror = function () {
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
   function fileAccessUrl(url) {
     syncAuthStateFromStorage();
     const raw = String(url || '').trim();
@@ -3169,7 +3187,7 @@
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-settings"><span class="nostr-pages-header-type-label">Settings</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
-    html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish</span></div>';
+    html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish to Nostr</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
     list.forEach(function (page, idx) {
@@ -3225,7 +3243,7 @@
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
       if (draftDiffers) {
-        html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish...</button>';
+        html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish to Nostr...</button>';
       } else {
         html += '<span class="nostr-page-publish-empty" aria-hidden="true"></span>';
       }
@@ -3301,20 +3319,22 @@
     if (!Number.isInteger(index) || index < 0 || index >= state.nostrPages.length) {
       return;
     }
+    const hasDialog = await ensureNostrPublishDialog();
+    if (!hasDialog) {
+      throw new Error('Publish dialog unavailable');
+    }
     const page = state.nostrPages[index] || {};
     const slug = normalizeNostrPageSlug(page.slug || '');
     if (!slug) {
       throw new Error('Page slug missing');
     }
     const label = String(page.title || page.placeholder_title || slug || 'page').trim();
-    if (!window.confirm('Publish "' + label + '" to Nostr now?')) {
+    const published = await window.blogNostrPublishDialog.open({
+      pageSlug: slug,
+      pageLabel: label
+    });
+    if (!published) {
       return;
-    }
-    const result = await apiPost('/cgi/blog-publish-nostr-page', {
-      page_slug: slug
-    }, true);
-    if (!result.success) {
-      throw new Error(result.error || 'Publish failed');
     }
     setOutput(els.outputNostrPages, 'Published ' + label + ' to Nostr.', 'ok');
     await loadNostrPages();

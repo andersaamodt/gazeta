@@ -1068,6 +1068,7 @@ license: "CC BY 4.0"
 <div id="contact-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/contact-page.js"></script>
 EOCONTACT
       ;;
@@ -1092,6 +1093,7 @@ license: "CC BY 4.0"
 <div id="nip23-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/nip23-page.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 EONIP23
@@ -1182,6 +1184,7 @@ license: "CC BY 4.0"
 <div id="public-ranking-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/public-ranking-page.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 EORANKING
@@ -1208,6 +1211,7 @@ license: "CC BY 4.0"
 <div id="list-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/oeuvre.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 EOLIST

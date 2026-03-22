@@ -590,6 +590,7 @@ title: ""
 <div id="drop-overlay" class="drop-overlay">Drop files to upload</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/admin.js"></script>
 
 <style>
@@ -2598,9 +2599,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 7.2rem;
-  min-width: 7.2rem;
-  flex: 0 0 7.2rem;
+  width: 10rem;
+  min-width: 10rem;
+  flex: 0 0 10rem;
   text-align: center;
 }
 
@@ -2932,9 +2933,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 7.2rem;
-  min-width: 7.2rem;
-  flex: 0 0 7.2rem;
+  width: 10rem;
+  min-width: 10rem;
+  flex: 0 0 10rem;
 }
 
 .nostr-page-publish-empty {
@@ -4386,9 +4387,9 @@ body {
 
   .nostr-pages-header-publish-col,
   .nostr-page-publish-col {
-    width: 6.8rem;
-    min-width: 6.8rem;
-    flex-basis: 6.8rem;
+    width: 9.8rem;
+    min-width: 9.8rem;
+    flex-basis: 9.8rem;
   }
 }
 
