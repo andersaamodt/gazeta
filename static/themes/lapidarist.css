@@ -69,7 +69,7 @@
   --admin-accent: #2f5fb8;
   --admin-accent-strong: #6a4fa3;
   --admin-hover: rgba(47, 95, 184, 0.11);
-  --admin-nav-selected-bg: color-mix(in srgb, var(--amethyst) 24%, var(--bg) 76%);
+  --admin-nav-selected-bg: color-mix(in srgb, var(--lapis) 20%, var(--amethyst) 28%, var(--bg) 52%);
   --admin-nav-selected-text: #2f2517;
 
   --post-card-bg: #f8efdd;
