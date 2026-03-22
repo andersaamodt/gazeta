@@ -1844,6 +1844,14 @@ header h1 {
   min-width: 0;
 }
 
+.public-ranking-submit-inline .public-ranking-submit-add {
+  height: 2rem;
+  padding: 0.3rem 0.58rem;
+  line-height: 1.05;
+  font-size: 0.86rem;
+  border-radius: 8px;
+}
+
 .public-ranking-submit-cancel {
   border: 0;
   background: transparent !important;

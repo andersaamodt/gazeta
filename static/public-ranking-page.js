@@ -868,7 +868,6 @@
     if (!canSubmitByMode(renderState.submission_mode)) {
       return '';
     }
-    var forceInline = normalizeSubmissionMode(renderState.submission_mode) === 'open';
     var groups = Object.keys(graph.nodeMap).map(function (coord) {
       return graph.nodeMap[coord];
     }).filter(function (node) {
@@ -878,19 +877,19 @@
       return compareNodes(a, b, normalizeMetric(state.currentMetric || renderState.default_metric));
     });
 
-    var open = forceInline || !!state.submitComposerOpen;
+    var open = !!state.submitComposerOpen;
     var html = '';
     html += '<section class="public-ranking-submit">';
-    if (!forceInline) {
-      html += '<div class="public-ranking-submit-toolbar">';
-      html += '<div class="public-ranking-submit-toolbar-right">';
-      html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
-      html += '</div>';
-      html += '</div>';
-    }
+    html += '<div class="public-ranking-submit-toolbar">';
+    html += '<div class="public-ranking-submit-toolbar-right">';
+    html += '<button type="button" class="unobtrusive-icon-button public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'Add entry') + '">' + (open ? '-' : '+') + '</button>';
+    html += '</div>';
+    html += '</div>';
     if (open) {
       html += '<div class="public-ranking-submit-inline">';
-      html += '<select id="public-ranking-submit-type" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select>';
+      if (isAdmin()) {
+        html += '<select id="public-ranking-submit-type" aria-label="Entry type"><option value="entry">Entry</option><option value="group">Group</option></select>';
+      }
       html += '<select id="public-ranking-submit-parent" aria-label="Parent">';
       html += '<option value="' + escapeHtml(graph.rootCoord || '') + '">Root</option>';
       groups.forEach(function (group) {
@@ -898,10 +897,8 @@
       });
       html += '</select>';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="Entry title">';
-      html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn">Add</button>';
-      if (!forceInline) {
-        html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
-      }
+      html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
+      html += '<button type="button" data-ranking-action="cancel-submit" class="public-ranking-submit-cancel">Cancel</button>';
       html += '</div>';
       html += '<details class="public-ranking-submit-more">';
       html += '<summary>More fields</summary>';
@@ -909,7 +906,7 @@
       html += '<label><span>Summary</span><input type="text" id="public-ranking-submit-summary" placeholder="Optional summary"></label>';
       html += '<label><span>External URL</span><input type="url" id="public-ranking-submit-url" placeholder="https://..."></label>';
       html += '<label class="public-ranking-submit-wide"><span>Nostr post coordinate</span><input type="text" id="public-ranking-submit-post" placeholder="30023:pubkey:d"></label>';
-      html += '<label class="public-ranking-submit-wide"><span>Markdown</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional Markdown"></textarea></label>';
+      html += '<label class="public-ranking-submit-wide"><span>Body</span><textarea id="public-ranking-submit-content" rows="4" placeholder="Optional body"></textarea></label>';
       html += '</div>';
       html += '</details>';
     }
