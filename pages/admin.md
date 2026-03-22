@@ -475,27 +475,12 @@ title: ""
 <p class="muted">Pending ranking submissions across all Public Ranking pages.</p>
 </div>
 <div class="row-actions moderation-filters">
-<label for="moderation-filter-page"><span>Page</span>
-<select id="moderation-filter-page">
-<option value="">All pages</option>
-</select>
-</label>
-<label for="moderation-filter-type"><span>Type</span>
-<select id="moderation-filter-type">
-<option value="all">All</option>
-<option value="group">Group</option>
-<option value="entry">Entry</option>
-</select>
-</label>
-<label for="moderation-filter-age"><span>Age</span>
-<select id="moderation-filter-age">
-<option value="all">All</option>
-<option value="24h">Last 24h</option>
-<option value="7d">Last 7d</option>
-<option value="30d">Last 30d</option>
-<option value="older">Older</option>
-</select>
-</label>
+<div class="moderation-age-group" role="group" aria-label="Moderation age filter">
+<button type="button" class="moderation-age-option" data-moderation-age="24h" aria-pressed="false">24h</button>
+<button type="button" class="moderation-age-option" data-moderation-age="7d" aria-pressed="false">7d</button>
+<button type="button" class="moderation-age-option is-active" data-moderation-age="30d" aria-pressed="true">30d</button>
+<button type="button" class="moderation-age-option" data-moderation-age="older" aria-pressed="false">Older</button>
+</div>
 </div>
 </div>
 <div id="moderation-list" class="posts-list"></div>
@@ -1872,7 +1857,7 @@ body {
   color: #8f2f2d;
 }
 
-#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item) {
+#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):not(.moderation-age-option) {
   border: 1px solid #b8c9ea;
   border-radius: 10px;
   background: #fff;
@@ -1884,7 +1869,7 @@ body {
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
-#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):hover:not(:disabled) {
+#admin-panel button:not(.unobtrusive-icon-button):not(.admin-nav-item):not(.moderation-age-option):hover:not(:disabled) {
   background: #eaf2ff;
   border-color: #8ca9e2;
   color: #102c5f;
@@ -3789,7 +3774,7 @@ body {
   box-shadow: 0 0 0 3px var(--focus-ring) !important;
 }
 
-#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button) {
+#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):not(.moderation-age-option) {
   border-color: var(--button-primary-border, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-color: var(--button-primary-start, var(--admin-accent, var(--accent))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start, var(--admin-accent, var(--accent))) 0%, var(--button-primary-end, var(--admin-accent-strong, var(--accent-dark))) 100%) !important;
@@ -3797,7 +3782,7 @@ body {
   -webkit-text-fill-color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
 }
 
-#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):hover:not(:disabled) {
+#admin-panel button:not(.admin-nav-item):not(.unobtrusive-icon-button):not(.moderation-age-option):hover:not(:disabled) {
   background-color: var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) !important;
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start, var(--admin-accent-strong, var(--accent-dark))) 0%, var(--button-primary-hover-end, var(--admin-accent, var(--accent))) 100%) !important;
   color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
@@ -4175,24 +4160,53 @@ body {
 
 .moderation-filters {
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.55rem;
   flex-wrap: nowrap;
   overflow-x: auto;
 }
 
-.moderation-filters label {
-  display: grid;
-  gap: 0.2rem;
-  color: var(--muted-text, #4f617f);
-  font-size: 0.8rem;
+.moderation-age-group {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--admin-border, var(--border));
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--admin-surface, var(--post-card-bg-single));
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.03);
 }
 
-.moderation-filters select {
-  width: 6.25rem;
-  min-width: 6.25rem;
-  max-width: 6.25rem;
-  height: 2rem;
+.moderation-age-option {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--admin-muted, #4f617f) !important;
+  -webkit-text-fill-color: var(--admin-muted, #4f617f) !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  height: 1.92rem !important;
+  padding: 0.22rem 0.62rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 620 !important;
+  line-height: 1.1 !important;
+}
+
+.moderation-age-option + .moderation-age-option {
+  border-left: 1px solid var(--admin-border, var(--border)) !important;
+}
+
+.moderation-age-option:hover:not(:disabled),
+.moderation-age-option:focus-visible {
+  background: var(--admin-hover, var(--nav-link-hover)) !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
+}
+
+.moderation-age-option.is-active,
+.moderation-age-option[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--admin-accent, var(--accent)) 18%, var(--admin-surface, var(--post-card-bg-single))) !important;
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
 }
 
 #moderation-list .post-row {

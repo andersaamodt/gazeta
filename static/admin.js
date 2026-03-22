@@ -64,6 +64,7 @@
     nostrPagesDragDropped: false,
     nostrPagesDragSnapshot: [],
     moderationItems: [],
+    moderationAgeFilter: '30d',
     initialContentPainted: false,
     loadedAdminSections: {}
   };
@@ -131,9 +132,7 @@
     filesUploadSummary: document.getElementById('files-upload-summary'),
     uploadFileButton: document.getElementById('btn-upload-file'),
     moderationList: document.getElementById('moderation-list'),
-    moderationFilterPage: document.getElementById('moderation-filter-page'),
-    moderationFilterType: document.getElementById('moderation-filter-type'),
-    moderationFilterAge: document.getElementById('moderation-filter-age'),
+    moderationAgeOptions: Array.from(document.querySelectorAll('[data-moderation-age]')),
     newPostButton: document.getElementById('btn-new-post'),
     postAddToListDialog: document.getElementById('post-add-to-list-dialog'),
     postAddToListForm: document.getElementById('post-add-to-list-form'),
@@ -3204,26 +3203,41 @@
     }, 7000);
   }
 
-  function renderModerationPageFilterOptions() {
-    if (!els.moderationFilterPage) {
+  function normalizeModerationAgeFilter(raw) {
+    const value = String(raw || '').trim().toLowerCase();
+    if (value === '24h' || value === '7d' || value === '30d' || value === 'older') {
+      return value;
+    }
+    return '30d';
+  }
+
+  function syncModerationAgeFilterUi() {
+    const selected = normalizeModerationAgeFilter(state.moderationAgeFilter);
+    state.moderationAgeFilter = selected;
+    (Array.isArray(els.moderationAgeOptions) ? els.moderationAgeOptions : []).forEach(function (button) {
+      const age = normalizeModerationAgeFilter(button && button.getAttribute ? button.getAttribute('data-moderation-age') : '');
+      const active = age === selected;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function setModerationAgeFilter(nextAge) {
+    const normalized = normalizeModerationAgeFilter(nextAge);
+    if (normalized === state.moderationAgeFilter) {
       return;
     }
-    const previous = String(els.moderationFilterPage.value || '');
-    let html = '<option value=\"\">All pages</option>';
-    (Array.isArray(state.nostrPages) ? state.nostrPages : [])
-      .filter(function (page) { return String(page && page.type || '') === 'public-ranking'; })
-      .forEach(function (page) {
-        const slug = normalizeNostrPageSlug(page && page.slug);
-        if (!slug) {
-          return;
-        }
-        const title = String((page && (page.title || page.placeholder_title)) || defaultNostrPageTitleFromSlug(slug) || slug);
-        html += '<option value=\"' + escapeAttr(slug) + '\">' + escapeHtml(title) + '</option>';
+    state.moderationAgeFilter = normalized;
+    syncModerationAgeFilterUi();
+    if (state.isAdmin && state.activeSection === 'moderation') {
+      loadModeration().catch(function (err) {
+        setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
       });
-    els.moderationFilterPage.innerHTML = html;
-    if (previous && Array.from(els.moderationFilterPage.options).some(function (opt) { return String(opt.value || '') === previous; })) {
-      els.moderationFilterPage.value = previous;
     }
+  }
+
+  function renderModerationPageFilterOptions() {
+    syncModerationAgeFilterUi();
   }
 
   function renderModerationList(items) {
@@ -3275,12 +3289,10 @@
     if (!state.isAdmin) {
       return;
     }
-    const filterPage = String((els.moderationFilterPage && els.moderationFilterPage.value) || '').trim();
-    const filterType = String((els.moderationFilterType && els.moderationFilterType.value) || 'all').trim();
-    const filterAge = String((els.moderationFilterAge && els.moderationFilterAge.value) || 'all').trim();
+    const filterAge = normalizeModerationAgeFilter(state.moderationAgeFilter);
+    state.moderationAgeFilter = filterAge;
+    syncModerationAgeFilterUi();
     const data = await apiPost('/cgi/blog-list-public-ranking-moderation', {
-      page_slug: filterPage,
-      item_type: filterType,
       age: filterAge
     }, true);
     if (!data.success) {
@@ -4242,27 +4254,13 @@
         syncAddToListNewRowVisibility();
       });
     }
-    if (els.moderationFilterPage) {
-      els.moderationFilterPage.addEventListener('change', function () {
-        loadModeration().catch(function (err) {
-          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
-        });
+    (Array.isArray(els.moderationAgeOptions) ? els.moderationAgeOptions : []).forEach(function (button) {
+      button.addEventListener('click', function () {
+        const picked = button.getAttribute('data-moderation-age');
+        setModerationAgeFilter(picked);
       });
-    }
-    if (els.moderationFilterType) {
-      els.moderationFilterType.addEventListener('change', function () {
-        loadModeration().catch(function (err) {
-          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
-    if (els.moderationFilterAge) {
-      els.moderationFilterAge.addEventListener('change', function () {
-        loadModeration().catch(function (err) {
-          setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
-        });
-      });
-    }
+    });
+    syncModerationAgeFilterUi();
     if (els.zapsRefreshButton) {
       els.zapsRefreshButton.addEventListener('click', function () {
         loadZapsRuntime().catch(function (err) {
