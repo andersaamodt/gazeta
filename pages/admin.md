@@ -2207,6 +2207,10 @@ body {
   padding: 0 0.7rem;
 }
 
+[data-admin-section="users"] .section-head {
+  padding: 0 0.7rem;
+}
+
 .draft-rows {
   display: block;
   border-top: 1px solid #d2def3;
@@ -3056,8 +3060,8 @@ body {
 
 .users-list {
   display: block;
-  border-top: 1px solid #d2def3;
-  border-bottom: 1px solid #d2def3;
+  border-top: 2px solid var(--admin-border, #cdbd95);
+  border-bottom: 2px solid var(--admin-border, #cdbd95);
   border-left: 0;
   border-right: 0;
   border-radius: 0;
@@ -3065,6 +3069,8 @@ body {
   background: transparent;
   width: 100%;
   max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 #admin-panel #drafts-list > .placeholder,
@@ -3396,11 +3402,22 @@ body {
 }
 
 #admin-panel button.user-menu-trigger {
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
+  min-width: 2.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border-radius: 8px;
   padding: 0;
+  color: var(--admin-text, var(--text));
+}
+
+#admin-panel button.user-menu-trigger .overflow-menu-icon-svg {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+#admin-panel button.user-menu-trigger:hover,
+#admin-panel button.user-menu-trigger:focus-visible {
+  background: var(--admin-hover, var(--nav-link-hover));
 }
 
 #admin-panel .user-menu {
@@ -3470,12 +3487,13 @@ body {
 
 .user-drop-zone {
   height: 0;
-  border-top: 2px solid transparent;
+  border-top: 0;
   margin: 0;
   transition: border-color 120ms ease, margin 120ms ease;
 }
 
 .users-list.is-dragging .user-drop-zone {
+  border-top: 2px solid transparent;
   margin: -1px 0 4px;
 }
 

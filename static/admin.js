@@ -3545,9 +3545,10 @@
     }
   }
 
-  function userCardActionButton(label, action, username, className) {
+  function userCardActionButton(label, action, username, className, extraAttrs) {
     const classes = className ? ' class="' + className + '"' : '';
-    return '<button type="button"' + classes + ' data-user-action="' + escapeAttr(action) + '" data-username="' + escapeAttr(username) + '">' + label + '</button>';
+    const attrs = extraAttrs ? (' ' + extraAttrs) : '';
+    return '<button type="button"' + classes + attrs + ' data-user-action="' + escapeAttr(action) + '" data-username="' + escapeAttr(username) + '">' + label + '</button>';
   }
 
   function prioritiesTrashIconSvg() {
@@ -3648,7 +3649,13 @@
       html += '<div class="user-card-actions">';
       if (!isSelf && (isBelow || !isAdmin)) {
         html += '<div class="user-menu">';
-        html += userCardActionButton('⋯', 'toggle_menu', username, 'user-menu-trigger');
+        html += userCardActionButton(
+          overflowMenuIconSvg(),
+          'toggle_menu',
+          username,
+          'unobtrusive-icon-button user-menu-trigger',
+          'aria-label="User actions" title="User actions"'
+        );
         html += '<div class="user-menu-panel" data-user-menu-panel="' + escapeAttr(username) + '" hidden>';
         if (state.nostrBridgeEnabled && user.nostr_pubkey) {
           if (user.is_author) {
@@ -4794,6 +4801,8 @@
           return;
         }
         if (action === 'toggle_menu') {
+          event.preventDefault();
+          event.stopPropagation();
           const panels = Array.from(els.usersList.querySelectorAll('[data-user-menu-panel]'));
           let opened = '';
           panels.forEach(function (panel) {
@@ -4817,6 +4826,10 @@
       els.usersList.addEventListener('dragstart', function (event) {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (target.closest('button, a, input, textarea, select, [role="button"]')) {
+          event.preventDefault();
           return;
         }
         const card = target.closest('.user-card[data-username][data-can-drag="true"]');
