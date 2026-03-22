@@ -402,7 +402,6 @@ assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="image_url"
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
-assert_file_contains "$ROOT_DIR/cgi/blog-autofill-list-macos-icons" 'Auto-fill missing list entry image URLs using local macOS app icons.' 'macOS icon autofill endpoint exists'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "cache: 'no-store'" 'nav-auth has no-store directives'
@@ -419,7 +418,6 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
-assert_success sh -n "$ROOT_DIR/cgi/blog-autofill-list-macos-icons"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 

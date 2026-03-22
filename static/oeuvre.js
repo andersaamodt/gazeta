@@ -826,43 +826,6 @@
     }
   }
 
-  async function autofillMacosIcons() {
-    if (state.busy || !isAdmin()) {
-      return;
-    }
-    if (!window.confirm('Auto-fill missing image URLs from macOS app icons for this list?')) {
-      return;
-    }
-    state.busy = true;
-    setSaveStatus('saving');
-    try {
-      var auth = getAuthPayload();
-      var data = await apiPost('/cgi/blog-autofill-list-macos-icons', {
-        list_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      if (data && data.state) {
-        if (!state.payload || typeof state.payload !== 'object') {
-          state.payload = {};
-        }
-        state.payload.state = data.state;
-        state.payload.validation = data.validation || state.payload.validation;
-        state.payload.draft_exists = true;
-      }
-      state.draft = readEditableStateFromPayload();
-      renderList();
-      renderAdmin();
-      renderValidation();
-      setSaveStatus('saved');
-    } catch (err) {
-      setSaveStatus('error', err && err.message ? err.message : 'Could not auto-fill icons');
-      window.alert(err && err.message ? err.message : 'Could not auto-fill icons');
-    } finally {
-      state.busy = false;
-    }
-  }
-
   function moveEntryByYear(uid) {
     if (!isAdmin() || state.draft.group_by !== 'year') {
       return;
@@ -1599,9 +1562,6 @@
     if (showPublish) {
       html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
     }
-    if (state.editMode) {
-      html += '<button type="button" data-list-action="autofill-icons" title="Fill missing image URLs by matching macOS app icons">Auto-fill macOS icons</button>';
-    }
     html += '<button type="button" class="list-admin-primary-btn" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
     html += '</span>';
     if (actionsHost) {
@@ -1748,10 +1708,6 @@
         }
         if (topActionName === 'publish') {
           publishDraft();
-          return;
-        }
-        if (topActionName === 'autofill-icons') {
-          autofillMacosIcons();
           return;
         }
         if (topActionName === 'revert') {
