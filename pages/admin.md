@@ -4260,6 +4260,8 @@ body {
   background-image: none !important;
   color: var(--admin-text, var(--text)) !important;
   border-color: transparent !important;
+  padding-left: 0.52rem !important;
+  padding-right: 0.3rem !important;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,
