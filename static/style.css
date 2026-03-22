@@ -149,15 +149,6 @@ body.theme-switching *::after {
   animation: none !important;
 }
 
-html.app-hydrating #blog-page-root,
-html.app-hydrating #nip23-page-root,
-html.app-hydrating #oeuvre-root,
-html.app-hydrating #public-ranking-root,
-html.app-hydrating #contact-page-root,
-html.app-hydrating #admin-panel {
-  visibility: hidden;
-}
-
 body {
   font-family: var(--font-family);
   max-width: 700px;
