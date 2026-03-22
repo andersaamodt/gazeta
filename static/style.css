@@ -2026,9 +2026,9 @@ header h1 {
 .contact-value-cell {
   padding: 0.56rem 0.78rem;
   vertical-align: top;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10.5rem;
+  align-items: start;
   gap: 0.62rem;
 }
 
@@ -2055,6 +2055,11 @@ header h1 {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: fit-content;
+  min-width: 7.8rem;
+  text-align: center;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--table-border, #d2def3) 66%);
   background: color-mix(in srgb, var(--accent, #2f4aa6) 11%, transparent);
@@ -2066,6 +2071,38 @@ header h1 {
   white-space: nowrap;
 }
 
+.contact-qualifier-pill[data-qualifier="preferred"],
+.contact-qualifier-pill[data-qualifier="primary"] {
+  border-color: color-mix(in srgb, var(--green, #60a5fa) 62%, var(--table-border, #d2def3) 38%);
+  background: color-mix(in srgb, var(--green, #60a5fa) 24%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 62%, var(--green, #60a5fa) 38%);
+}
+
+.contact-qualifier-pill[data-qualifier="public"],
+.contact-qualifier-pill[data-qualifier="secondary"] {
+  border-color: color-mix(in srgb, var(--teal, #2563eb) 56%, var(--table-border, #d2def3) 44%);
+  background: color-mix(in srgb, var(--teal, #2563eb) 18%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 65%, var(--teal, #2563eb) 35%);
+}
+
+.contact-qualifier-pill[data-qualifier="unpreferred"] {
+  border-color: color-mix(in srgb, var(--feed-rss-start, #f8a31f) 58%, var(--table-border, #d2def3) 42%);
+  background: color-mix(in srgb, var(--feed-rss-start, #f8a31f) 20%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 64%, var(--feed-rss-end, #ea6b0f) 36%);
+}
+
+.contact-qualifier-pill[data-qualifier="archive"] {
+  border-color: color-mix(in srgb, var(--purple, #4338ca) 54%, var(--table-border, #d2def3) 46%);
+  background: color-mix(in srgb, var(--violet, #a5b4fc) 24%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 62%, var(--purple, #4338ca) 38%);
+}
+
+.contact-qualifier-pill[data-qualifier="emergency"] {
+  border-color: color-mix(in srgb, var(--danger, #b42318) 62%, var(--table-border, #d2def3) 38%);
+  background: color-mix(in srgb, var(--danger, #b42318) 18%, transparent);
+  color: color-mix(in srgb, var(--text, #243046) 58%, var(--danger, #b42318) 42%);
+}
+
 @media (max-width: 760px) {
   .contact-platform-cell {
     width: 7.1rem;
@@ -2074,8 +2111,12 @@ header h1 {
 
   .contact-value-cell {
     padding: 0.5rem 0.62rem;
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem;
+  }
+
+  .contact-qualifier-pill {
+    justify-self: start;
   }
 }
 
