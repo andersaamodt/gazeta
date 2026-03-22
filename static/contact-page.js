@@ -1377,7 +1377,6 @@
         state.draft.rows.push({ _uid: nextRowUid(), transport: '', value: '', qualifier: '' });
         setActiveRowField(state.draft.rows.length - 1, 'transport');
         renderAll();
-        queueAutosave(500);
         return;
       }
       if (action === 'remove-row') {
