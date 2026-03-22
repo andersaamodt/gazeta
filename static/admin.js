@@ -31,6 +31,8 @@
     userDropAfterUsername: '',
     usersMenuOpenFor: '',
     usersActionInFlight: false,
+    usersSortColumn: '',
+    usersSortDirection: '',
     postsMenuOpenFor: '',
     draftsMenuOpenFor: '',
     postsActionInFlight: false,
@@ -4343,6 +4345,88 @@
     });
   }
 
+  function normalizeUsersSortColumn(raw) {
+    const col = String(raw || '').trim().toLowerCase();
+    if (col === 'name' || col === 'created' || col === 'role') {
+      return col;
+    }
+    return '';
+  }
+
+  function usersSortDefaultDirection(column) {
+    if (column === 'created') {
+      return 'desc';
+    }
+    if (column === 'role') {
+      return 'desc';
+    }
+    return 'asc';
+  }
+
+  function usersSortNextDirection(column) {
+    const col = normalizeUsersSortColumn(column);
+    if (!col) {
+      return '';
+    }
+    if (state.usersSortColumn !== col) {
+      return usersSortDefaultDirection(col);
+    }
+    return state.usersSortDirection === 'asc' ? 'desc' : 'asc';
+  }
+
+  function userRoleSortRank(user) {
+    if (!user || typeof user !== 'object') {
+      return 0;
+    }
+    if (user.is_admin) {
+      return 3;
+    }
+    if (user.is_author) {
+      return 2;
+    }
+    return 1;
+  }
+
+  function userSortCreatedEpoch(user) {
+    const raw = String(user && user.created_at || '').trim();
+    if (!raw) {
+      return 0;
+    }
+    const parsed = Date.parse(raw);
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+    return Math.floor(parsed / 1000);
+  }
+
+  function sortUsersForDisplay(users) {
+    const col = normalizeUsersSortColumn(state.usersSortColumn);
+    const dir = state.usersSortDirection === 'desc' ? -1 : 1;
+    const list = Array.isArray(users) ? users.slice() : [];
+    if (!col) {
+      return list;
+    }
+    list.sort(function (a, b) {
+      let cmp = 0;
+      if (col === 'name') {
+        const aName = String((a && (a.player_name || a.username)) || '').toLowerCase();
+        const bName = String((b && (b.player_name || b.username)) || '').toLowerCase();
+        cmp = aName.localeCompare(bName);
+      } else if (col === 'created') {
+        cmp = userSortCreatedEpoch(a) - userSortCreatedEpoch(b);
+      } else if (col === 'role') {
+        cmp = userRoleSortRank(a) - userRoleSortRank(b);
+      }
+      if (cmp === 0) {
+        const aUser = String(a && a.username || '').toLowerCase();
+        const bUser = String(b && b.username || '').toLowerCase();
+        cmp = aUser.localeCompare(bUser);
+      }
+      return cmp * dir;
+    });
+    return list;
+  }
+
   function renderUsersList(animate) {
     if (!els.usersList) {
       return;
@@ -4353,16 +4437,25 @@
       return;
     }
     let html = '';
-    html += '<div class="users-table-header" aria-hidden="true">';
-    html += '<div class="users-col users-col-name"><span class="users-col-head">Name</span></div>';
-    html += '<div class="users-col users-col-created"><span class="users-col-head">Created</span></div>';
-    html += '<div class="users-col users-col-role"><span class="users-col-head">Role</span></div>';
+    const displayedUsers = sortUsersForDisplay(state.users);
+    const sortColumn = normalizeUsersSortColumn(state.usersSortColumn);
+    const sortDirection = state.usersSortDirection === 'desc' ? 'desc' : 'asc';
+    const sortArrow = function (col) {
+      if (sortColumn !== col) {
+        return '';
+      }
+      return sortDirection === 'desc' ? ' ↓' : ' ↑';
+    };
+    html += '<div class="users-table-header">';
+    html += '<div class="users-col users-col-name"><button type="button" class="users-col-sort" data-users-sort="name" aria-sort="' + (sortColumn === 'name' ? sortDirection : 'none') + '">Name' + sortArrow('name') + '</button></div>';
+    html += '<div class="users-col users-col-created"><button type="button" class="users-col-sort" data-users-sort="created" aria-sort="' + (sortColumn === 'created' ? sortDirection : 'none') + '">Created' + sortArrow('created') + '</button></div>';
+    html += '<div class="users-col users-col-role"><button type="button" class="users-col-sort" data-users-sort="role" aria-sort="' + (sortColumn === 'role' ? sortDirection : 'none') + '">Role' + sortArrow('role') + '</button></div>';
     html += '<div class="users-col users-col-actions"><span class="users-col-head" aria-hidden="true"></span></div>';
     html += '</div>';
     const actorName = state.username || '';
     const actorRank = Number(state.actorRank || 0);
     let seenBelow = false;
-    state.users.forEach(function (user, idx) {
+    displayedUsers.forEach(function (user, idx) {
       const username = String(user.username || '');
       const rank = Number(user.rank || 0);
       const isSelf = !!user.is_self || username === actorName;
@@ -4370,7 +4463,7 @@
       const createdAtRaw = String(user.created_at || '');
       const createdLabel = createdAtRaw ? formatPostPublishedAt(createdAtRaw) : '-';
       const isBelow = actorRank > 0 && rank > actorRank;
-      const canDrag = !isSelf && isBelow;
+      const canDrag = !sortColumn && !isSelf && isBelow;
       const dragAttrs = canDrag ? ' draggable="true" data-can-drag="true"' : ' data-can-drag="false"';
       if (!seenBelow && isBelow) {
         html += userDropZone(actorName);
@@ -5634,6 +5727,18 @@
       els.usersList.addEventListener('click', function (event) {
         const target = event.target;
         if (!(target instanceof Element)) {
+          return;
+        }
+        const sortNode = target.closest('[data-users-sort]');
+        if (sortNode instanceof HTMLElement) {
+          const picked = normalizeUsersSortColumn(sortNode.getAttribute('data-users-sort') || '');
+          if (!picked) {
+            return;
+          }
+          const nextDirection = usersSortNextDirection(picked);
+          state.usersSortColumn = picked;
+          state.usersSortDirection = nextDirection;
+          renderUsersList(false);
           return;
         }
         const actionNode = target.closest('[data-user-action][data-username]');

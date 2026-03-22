@@ -583,6 +583,11 @@ assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'apiPostFirstAvai
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "'/cgi/blog-submit-public-ranking'" 'public ranking submit includes compatibility endpoint fallback'
 assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking" 'exec "$SCRIPT_DIR/blog-submit-public-ranking-node"' 'public ranking compatibility endpoint delegates to node submit handler'
 assert_success test -x "$ROOT_DIR/cgi/blog-submit-public-ranking"
+assert_file_contains "$ROOT_DIR/static/admin.js" 'data-users-sort="name"' 'users header exposes sortable Name control'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'data-users-sort="created"' 'users header exposes sortable Created control'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'data-users-sort="role"' 'users header exposes sortable Role control'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'sortUsersForDisplay(state.users)' 'users list rendering applies client-side sort'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '.user-card-created .user-card-meta {' 'users created date column aligns via inline metadata wrapper rule'
 
 tree_line=$(grep -n 'html += renderTree(graph, renderState);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')
 submit_line=$(grep -n 'html += renderSubmitForm(renderState, graph);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')

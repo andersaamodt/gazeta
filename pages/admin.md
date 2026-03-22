@@ -3965,9 +3965,39 @@ body {
   text-align: center;
 }
 
+.users-col-sort {
+  border: 0;
+  background: transparent !important;
+  padding: 0.08rem 0.2rem;
+  margin: 0 auto;
+  color: var(--admin-muted, #6a7488) !important;
+  -webkit-text-fill-color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.users-col-sort:hover,
+.users-col-sort:focus-visible {
+  color: var(--admin-text, var(--text)) !important;
+  -webkit-text-fill-color: var(--admin-text, var(--text));
+}
+
 .users-col-created {
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+
+.user-card-created.users-col-created {
+  justify-content: center;
+}
+
+.user-card-created .user-card-meta {
+  display: inline-block;
+  min-width: 7.6ch;
+  text-align: left;
 }
 
 .users-col-role {
