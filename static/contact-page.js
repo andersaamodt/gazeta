@@ -1082,18 +1082,10 @@
       }
 
       html += '<span class="contact-qualifier-wrap">';
-      if (editable && isActiveRowField(idx, 'qualifier')) {
+      if (editable) {
         html += '<select class="contact-inline-select" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
         html += renderQualifierSelectOptions(qValue);
         html += '</select>';
-      } else if (editable) {
-        html += '<button type="button" class="contact-inline-open contact-qualifier-open" data-contact-inline-action="edit-cell" data-contact-inline-field="qualifier" data-row-index="' + String(idx) + '">';
-        if (qLabel) {
-          html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';
-        } else {
-          html += '<span class="list-inline-placeholder">Set qualifier...</span>';
-        }
-        html += '</button>';
         html += '<button type="button" class="icon-danger unobtrusive-icon-button contact-row-delete" data-contact-action="remove-row" data-row-index="' + String(idx) + '" title="Delete this entry" aria-label="Delete this entry">' + deleteIconSvg() + '</button>';
       } else if (qLabel) {
         html += '<span class="contact-qualifier-pill" data-qualifier="' + escapeAttr(qValue) + '">' + escapeHtml(qLabel) + '</span>';

@@ -2226,6 +2226,13 @@ header h1 {
   text-underline-offset: 0.15em;
 }
 
+.contact-platform-open:hover .contact-inline-open-value,
+.contact-platform-open:focus-visible .contact-inline-open-value,
+.contact-value-open:hover .contact-inline-open-value,
+.contact-value-open:focus-visible .contact-inline-open-value {
+  text-decoration: none;
+}
+
 .contact-inline-open:hover,
 .contact-inline-open:focus-visible {
   background: transparent !important;
