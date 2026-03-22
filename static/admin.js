@@ -5872,7 +5872,44 @@
     });
   }
 
+  function enforceSiteSettingsControlAlignment() {
+    const siteTitleInput = document.getElementById('site-title');
+    const themeSelect = document.getElementById('admin-theme');
+    const feedItemsInput = document.getElementById('feed-items');
+    const compact = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+    const labelColumn = compact ? '9.5rem' : '13.5rem';
+
+    [siteTitleInput, themeSelect, feedItemsInput].forEach(function (control) {
+      if (!(control instanceof HTMLElement)) {
+        return;
+      }
+      const row = control.closest('.field-row');
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+      row.style.display = 'grid';
+      row.style.gridTemplateColumns = labelColumn + ' minmax(0, 1fr)';
+      row.style.alignItems = 'center';
+      row.style.columnGap = '0.72rem';
+      row.style.rowGap = '0.04rem';
+
+      const label = row.querySelector('label');
+      if (label instanceof HTMLElement) {
+        label.style.marginBottom = '0';
+        label.style.display = 'inline-flex';
+        label.style.alignItems = 'center';
+        label.style.gridColumn = '1';
+      }
+
+      control.style.gridColumn = '2';
+      control.style.justifySelf = 'start';
+      control.style.alignSelf = 'center';
+    });
+  }
+
   bindEvents();
+  enforceSiteSettingsControlAlignment();
+  window.addEventListener('resize', enforceSiteSettingsControlAlignment);
   state.sidebarCollapsed = readSidebarCollapsePreference();
   applySidebarCollapseState(state.sidebarCollapsed, false);
   initSectionNavigation();
