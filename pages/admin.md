@@ -3571,9 +3571,9 @@ body {
 }
 
 #admin-panel #files-list.posts-list {
-  border-top: 1px solid var(--admin-border, #cdbd95) !important;
-  border-top-width: 1px !important;
-  border-top-style: solid !important;
+  border-top: 0 !important;
+  border-top-width: 0 !important;
+  border-top-style: none !important;
   border-right: 1px solid var(--admin-border, #cdbd95) !important;
   border-bottom: 1px solid var(--admin-border, #cdbd95) !important;
   border-left: 0 !important;
