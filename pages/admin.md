@@ -3121,6 +3121,8 @@ body {
 [data-admin-section="files"] .row-head {
   padding-left: 0.7rem;
   padding-right: 0.7rem;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
 }
 
 .files-head-actions {
