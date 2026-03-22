@@ -84,8 +84,10 @@
   }
 
   function showRouteLoadFailure() {
-    var container = document.querySelector('main') || document.body;
-    if (!container) {
+    var mainContainer = document.querySelector('main');
+    var nav = document.querySelector('nav.site-nav');
+    var body = document.body;
+    if (!mainContainer && !nav && !body) {
       return;
     }
 
@@ -114,11 +116,23 @@
     var panel = document.createElement('section');
     panel.id = 'route-load-failure';
     panel.className = 'route-load-failure';
-    panel.innerHTML = '<h1 id="main-content">Page is still loading.</h1><p>Try refreshing in a moment.</p>';
-    if (container.firstChild) {
-      container.insertBefore(panel, container.firstChild);
+    panel.innerHTML = '<h1>Page is still loading.</h1><p>Try refreshing in a moment.</p>';
+    if (mainContainer) {
+      if (mainContainer.firstChild) {
+        mainContainer.insertBefore(panel, mainContainer.firstChild);
+      } else {
+        mainContainer.appendChild(panel);
+      }
+    } else if (nav && nav.parentNode) {
+      nav.insertAdjacentElement('afterend', panel);
+    } else if (body) {
+      if (body.firstChild) {
+        body.insertBefore(panel, body.firstChild);
+      } else {
+        body.appendChild(panel);
+      }
     } else {
-      container.appendChild(panel);
+      return;
     }
     forceHydrationReveal();
   }
