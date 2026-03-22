@@ -862,7 +862,7 @@
   }
 
   function renderSubmitForm(renderState, graph) {
-    if (isAdmin() && !state.editMode) {
+    if (isAdmin() && state.editMode) {
       return '';
     }
     if (!canSubmitByMode(renderState.submission_mode)) {

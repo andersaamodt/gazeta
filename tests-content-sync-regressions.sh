@@ -557,6 +557,8 @@ assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'list-page-descri
 assert_file_contains "$ROOT_DIR/static/contact-page.js" 'list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...' 'contact edit mode shows italic no-description text before edit action'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'Allow signed-in Nostr users to add entries' 'public ranking editor includes friendly open-submission toggle label'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'id="public-ranking-edit-allow-open"' 'public ranking editor uses boolean open-submission checkbox'
+assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'if (isAdmin() && state.editMode) {' 'public ranking submit composer hides only during admin edit mode'
+assert_file_not_contains "$ROOT_DIR/static/public-ranking-page.js" 'if (isAdmin() && !state.editMode) {' 'public ranking submit composer is not hidden in normal admin view mode'
 assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking-node" 'submitter_pubkey=${BLOG_SESSION_USER_PUBKEY-}' 'public ranking submission falls back to session pubkey identity'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'apiPostFirstAvailable([' 'public ranking submit uses endpoint fallback helper'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "'/cgi/blog-submit-public-ranking'" 'public ranking submit includes compatibility endpoint fallback'
