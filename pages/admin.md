@@ -619,17 +619,12 @@ title: ""
 
 <style>
 header#title-block-header {
-  display: block !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
+  display: none !important;
 }
 
 header#title-block-header h1.title,
 body > h1:first-of-type {
-  margin: 0 !important;
-  padding: 0 0 0.4rem !important;
-  border: 0 !important;
+  display: none !important;
 }
 
 header h1::after,
