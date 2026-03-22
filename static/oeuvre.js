@@ -871,13 +871,14 @@
     if (!isAdmin()) {
       return '';
     }
+    var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
       _uid: nextUid(),
       type: 'entry',
       event_id: '',
       relay_hint: '',
-      marker: 'oeuvre',
+      marker: defaultMarker,
       date: defaultDate,
       depth: 0,
       markdown: ''
@@ -890,7 +891,7 @@
       defaults: {
         event_id: '',
         relay_hint: '',
-        marker: 'oeuvre',
+        marker: defaultMarker,
         date: defaultDate,
         depth: 0,
         markdown: ''
