@@ -387,9 +387,13 @@
     }
     if (els.description) {
       var desc = String(s.description || '').trim();
+      var hasMainContent = hasVisibleMainContent(s);
+      var suppressEmptyDescription = !desc && !hasMainContent && state.activeHeadField !== 'description';
       if (isAdmin()) {
-        els.description.hidden = false;
-        if (state.activeHeadField === 'description') {
+        els.description.hidden = suppressEmptyDescription;
+        if (suppressEmptyDescription) {
+          els.description.innerHTML = '';
+        } else if (state.activeHeadField === 'description') {
           els.description.innerHTML = '<span class="list-page-description-edit-wrap"><input id="public-ranking-head-description-input" class="list-head-inline-input list-head-description-input" type="text" value="' + escapeHtml(desc) + '" data-ranking-head-input="description"></span> <button type="button" class="list-inline-edit-link" data-ranking-head-save="description">Save</button>';
         } else if (state.editMode) {
           if (desc) {
@@ -571,6 +575,33 @@
     var coordA = String(a && a.coordinate || '');
     var coordB = String(b && b.coordinate || '');
     return coordA < coordB ? -1 : (coordA > coordB ? 1 : 0);
+  }
+
+  function visibleRootChildren(graph, metric) {
+    var nodes = (graph.children[graph.rootCoord] || []).map(function (coord) {
+      return graph.nodeMap[coord] || null;
+    }).filter(Boolean);
+    if (!isAdmin()) {
+      nodes = nodes.filter(function (node) {
+        return String(node && node.status || 'approved').toLowerCase() === 'approved';
+      });
+    }
+    nodes.sort(function (a, b) {
+      return compareNodes(a, b, metric);
+    });
+    return nodes;
+  }
+
+  function hasVisibleMainContent(renderState) {
+    if (String(renderState.content || '').trim()) {
+      return true;
+    }
+    if (String(renderState.extras_after || '').trim()) {
+      return true;
+    }
+    var graph = buildGraph();
+    var metric = normalizeMetric(state.currentMetric || renderState.default_metric);
+    return visibleRootChildren(graph, metric).length > 0;
   }
 
   function canSubmitByMode(mode) {
@@ -839,15 +870,10 @@
 
   function renderTree(graph, renderState) {
     var metric = normalizeMetric(state.currentMetric || renderState.default_metric);
-    var rootChildren = (graph.children[graph.rootCoord] || []).map(function (coord) {
-      return graph.nodeMap[coord] || null;
-    }).filter(Boolean);
-    rootChildren.sort(function (a, b) {
-      return compareNodes(a, b, metric);
-    });
+    var rootChildren = visibleRootChildren(graph, metric);
 
     if (!rootChildren.length) {
-      return '<p class="list-page-empty-state">No ranking entries yet.</p>';
+      return '<p class="list-page-empty-state">No content yet.</p>';
     }
 
     var html = '';
