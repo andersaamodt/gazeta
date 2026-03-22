@@ -2387,14 +2387,13 @@ header h1 {
   border-radius: var(--nav-pill-radius);
 }
 
-.nav-username:hover,
-.nav-username:focus-visible {
-  color: var(--nav-username-hover);
-}
-
-.nav-username.active:hover,
-.nav-username.active:focus-visible {
-  color: var(--nav-active-text);
+.nav-username:not(.active):hover,
+.nav-username:not(.active):focus-visible {
+  color: var(--nav-username-color) !important;
+  background: transparent !important;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
 }
 
 /* Theme settings panel */
