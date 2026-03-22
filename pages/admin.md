@@ -1434,7 +1434,7 @@ body {
 }
 
 .account-note {
-  margin: 0.28rem 0 0.34rem;
+  margin: 0.12rem 0 0.34rem;
   grid-column: 2;
 }
 
