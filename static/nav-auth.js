@@ -354,6 +354,42 @@
     }, { passive: true });
   }
 
+  function warmNavbarNostrPagePrefetch() {
+    var navCenter = document.querySelector('.nav-center');
+    if (!navCenter) {
+      return;
+    }
+    var currentPath = normalizeNavPath(window.location.pathname || '/');
+    var slugs = [];
+    Array.prototype.slice.call(navCenter.querySelectorAll('a[href]')).forEach(function (link) {
+      var href = String(link.getAttribute('href') || '').trim();
+      if (!href) {
+        return;
+      }
+      if (normalizeNavPath(href) === currentPath) {
+        return;
+      }
+      var slug = slugFromHref(href);
+      if (!slug) {
+        return;
+      }
+      if (slugs.indexOf(slug) >= 0) {
+        return;
+      }
+      slugs.push(slug);
+    });
+    if (!slugs.length) {
+      return;
+    }
+
+    // Stagger warm prefetches to avoid clobbering initial critical requests.
+    slugs.slice(0, 6).forEach(function (slug, idx) {
+      setTimeout(function () {
+        prefetchNostrPageBootstrap(slug);
+      }, 180 + (idx * 180));
+    });
+  }
+
   function hasNostrTools() {
     return !!(window.NostrTools &&
       typeof window.NostrTools.generateSecretKey === 'function' &&
@@ -1897,6 +1933,7 @@
         var cachedPages = JSON.parse(cachedRaw);
         if (Array.isArray(cachedPages) && cachedPages.length) {
           renderNavbarNostrPages(cachedPages);
+          warmNavbarNostrPagePrefetch();
         }
       }
     } catch (_cacheReadErr) {
@@ -1915,6 +1952,7 @@
           // Ignore storage failures.
         }
         renderNavbarNostrPages(data.pages);
+        warmNavbarNostrPagePrefetch();
       })
       .catch(function () {
         // Keep static nav links on fetch failure.
@@ -2487,6 +2525,7 @@
     prefetchStaticPageHtmlForSlug('tags');
     highlightCurrentPage();
     applyInitialHighlightInSyncWithContent();
+    warmNavbarNostrPagePrefetch();
     loadNavbarNostrPages()
       .then(function () {
         highlightCurrentPage();
