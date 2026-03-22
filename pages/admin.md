@@ -601,7 +601,7 @@ title: ""
 </form>
 </dialog>
 
-<div id="drop-overlay" class="drop-overlay">Drop files to upload</div>
+<div id="drop-overlay" class="drop-overlay" hidden>Drop files to upload</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>

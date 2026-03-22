@@ -5830,6 +5830,7 @@
     document.addEventListener('dragenter', function (event) {
       if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('Files')) {
         dragDepth += 1;
+        els.dropOverlay.hidden = false;
         els.dropOverlay.classList.add('show');
         if (state.activeSection === 'files' && els.filesDropzone) {
           els.filesDropzone.classList.add('is-drop-active');
@@ -5841,6 +5842,7 @@
       dragDepth = Math.max(0, dragDepth - 1);
       if (dragDepth === 0) {
         els.dropOverlay.classList.remove('show');
+        els.dropOverlay.hidden = true;
         if (els.filesDropzone) {
           els.filesDropzone.classList.remove('is-drop-active');
         }
@@ -5858,6 +5860,7 @@
       event.preventDefault();
       dragDepth = 0;
       els.dropOverlay.classList.remove('show');
+      els.dropOverlay.hidden = true;
       if (els.filesDropzone) {
         els.filesDropzone.classList.remove('is-drop-active');
       }
