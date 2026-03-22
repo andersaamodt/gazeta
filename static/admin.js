@@ -2525,26 +2525,24 @@
     const wizardryReady = !!info.wizardry_installed;
     const bitcoinReady = !!info.bitcoin_installed;
     const lightningReady = !!info.lightning_installed;
+    const wizardryPath = String(info.wizardry_path || '').trim();
     const installDisabledAttr = state.zapsActionInFlight ? ' disabled' : '';
     let html = '';
-    html += '<div class="field-row"><div class="setting-label"><strong>Install Wizardry</strong></div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
       + (wizardryReady
-        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install Wizardry</button>'))
+        ? ('<div class="zaps-runtime-value is-ok">' + escapeHtml(wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') + '</div>')
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install</button>'))
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Install Bitcoin</strong></div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Bitcoin</strong></div>'
       + (bitcoinReady
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install Bitcoin (~500 MB)</button>'))
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install (~500 MB)</button>'))
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Install Lightning</strong></div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Lightning</strong></div>'
       + (lightningReady
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install Lightning (~150 MB)</button>'))
+        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install (~150 MB)</button>'))
       + '</div>';
-    if (info.wizardry_path) {
-      html += '<div class="field-row"><div class="setting-label"><strong>Wizardry Path</strong></div><div class="zaps-runtime-value">' + escapeHtml(String(info.wizardry_path)) + '</div></div>';
-    }
     if (message) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
     } else if (logText) {
