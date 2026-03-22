@@ -1388,6 +1388,10 @@
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
     html += '<h3 class="nostr-page-extras-heading">Before and after content</h3>';
+    html += '<label class="nostr-page-extra-edit list-show-marker-filters-setting">';
+    html += '<span><span>Show marker filters</span><span class="nostr-page-scope-pill is-local">Local</span></span>';
+    html += '<span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-show-marker-filters="true"' + (draft.show_marker_filters ? ' checked' : '') + '> <span>Enabled</span></label></span>';
+    html += '</label>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>Before content (Markdown) <span class="nostr-page-scope-pill is-' + introScope + '">' + introScopeLabel + '</span><span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label></span></span>';
     html += '<textarea data-list-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(draft.description || '') + '</textarea>';
@@ -1485,7 +1489,6 @@
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '> <span>Show marker filters</span></label>';
     if (isIconGalleryPage()) {
       html += '<label><span>View</span><select id="list-admin-view-mode" disabled aria-disabled="true">';
       html += '<option value="tile" selected>Tile</option>';
