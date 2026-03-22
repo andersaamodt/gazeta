@@ -2216,6 +2216,10 @@
         return;
       }
       var target = event.target;
+      if (target && target.closest && target.closest('[data-inline-field], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
+        event.preventDefault();
+        return;
+      }
       var row = target && target.closest ? target.closest('.list-entry-inline[data-element-uid]') : null;
       if (!(row instanceof HTMLElement)) {
         return;

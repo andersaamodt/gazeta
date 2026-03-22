@@ -400,6 +400,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="image_url"' 'oeuvre inline editor supports image_url cell editing'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="marker"' 'oeuvre inline editor supports marker cell editing'
+assert_file_contains "$ROOT_DIR/static/oeuvre.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'oeuvre inline dragstart ignores form controls so text selection works'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" "var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';" 'new list entries default marker only on oeuvre page'
 assert_file_contains "$ROOT_DIR/static/oeuvre.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
