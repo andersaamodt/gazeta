@@ -261,7 +261,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_asyn
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
 assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23 api no-store'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public ranking api no-store'
-assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'oeuvre api no-store'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'list api no-store'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "cache: 'no-store'" 'blog page no-store present'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'BOOTSTRAP_CACHE_MAX_AGE_MS = 15000' 'list bootstrap cache has freshness window'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" 'BOOTSTRAP_CACHE_MAX_AGE_MS = 15000' 'public ranking bootstrap cache has freshness window'
@@ -347,9 +347,9 @@ assert_eq "$ID_3" "$(printf '%s' "$kind_latest" | jq -r '.id')" 'kind selector r
 kind_latest_for_pubkey=$(blog_nostr_kind_latest_event_json 30023 "$KEY_A")
 assert_eq "$ID_2" "$(printf '%s' "$kind_latest_for_pubkey" | jq -r '.id')" 'kind selector supports pubkey filter'
 
-write_event "$KEY_A" 30004 "$ID_5" 2100 '[["d","oeuvre"],["title","Old Oeuvre"]]' 'old oeuvre'
-write_event "$KEY_B" 30004 "$ID_6" 2200 '[["d","oeuvre"],["title","New Oeuvre"]]' 'new oeuvre'
-list_latest=$(blog_nostr_list_latest_event_json 'oeuvre')
+write_event "$KEY_A" 30004 "$ID_5" 2100 '[["d","list"],["title","Old List"]]' 'old list'
+write_event "$KEY_B" 30004 "$ID_6" 2200 '[["d","list"],["title","New List"]]' 'new list'
+list_latest=$(blog_nostr_list_latest_event_json 'list')
 assert_eq "$ID_6" "$(printf '%s' "$list_latest" | jq -r '.id')" 'list selector returns newest event for requested slug'
 
 write_event "$KEY_A" 30042 "$ID_7" 2300 '[["d","node-a"],["t","public-ranking-node"]]' '{}'
@@ -450,9 +450,9 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'extras_after_fo
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'extras_after_format: "markdown"' 'list normalization forces after-content format to markdown'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'extras_after_format: "markdown"' 'public ranking normalization forces after-content format to markdown'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'extras_after_format: "markdown"' 'page payload projection forces after-content format to markdown'
-assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="image_url"' 'oeuvre inline editor supports image_url cell editing'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="image_url"' 'list inline editor supports image_url cell editing'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "root && root.id === 'icon-gallery-root'" 'image URL editing gate keys off icon-gallery shell identity'
-assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="marker"' 'oeuvre inline editor supports marker cell editing'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="marker"' 'list inline editor supports marker cell editing'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-list-show-marker-filters="true"' 'list editor exposes show marker filters checkbox'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true"' 'list edit toolbar exposes show marker filters checkbox in settings row'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
@@ -467,14 +467,14 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" 'list-entry-date-pill' 'lis
 assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-outro-format' 'list editor no longer exposes markdown/html format dropdown for local after-content'
 assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-intro="true"' 'list editor no longer exposes redundant before-content textarea'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'html += renderAfterContentEditor();' 'list editor renders after-content editor at end of edit content'
-assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'oeuvre inline dragstart ignores form controls so text selection works'
-assert_file_contains "$ROOT_DIR/static/list-page.js" "var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';" 'new list entries default marker only on oeuvre page'
-assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'list inline dragstart ignores form controls so text selection works'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "var defaultMarker = slug === 'list' ? 'list' : '';" 'new list entries default marker only on list page'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="description"' 'list inline editor supports description cell editing'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'markdownText ? escapeHtml(markdownText) : placeholderHtml' 'list edit-mode text column renders plain text without markdown link hover behavior'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'list inline editor outside-click close ignores active form controls so marker text is selectable'
 assert_file_contains "$ROOT_DIR/pages/index.md" 'data-page-slug="index"' 'index shell includes explicit source slug marker for sync'
 assert_file_contains "$ROOT_DIR/pages/list.md" 'data-page-type="list"' 'list source page shell marks list type'
-assert_file_contains "$ROOT_DIR/pages/oeuvre.md" 'data-page-type="list"' 'oeuvre source page shell marks list type'
+assert_file_contains "$ROOT_DIR/pages/list.md" 'data-page-type="list"' 'list source page shell marks list type'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1820px, calc(100vw - 0.75rem));' 'list page edit-mode body width cap expanded for full table fit'
 assert_file_contains "$ROOT_DIR/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
@@ -506,7 +506,7 @@ assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'id="nip23-tag-input"' 'ni
 assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'data-nip23-action="add-to-cart"' 'nip23 read mode exposes add-to-cart action'
 assert_file_contains "$ROOT_DIR/static/style.css" '.nip23-product-card {' 'nip23 read mode renders product checkout card styles'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
-assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'oeuvre has no-store directives'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'list has no-store directives'
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-title-row {' 'in-blog compose title row style exists'
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-btn {' 'in-blog compose preview/publish buttons are compact'
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-delete {' 'in-blog compose has lower-left trash icon control style'
@@ -536,7 +536,7 @@ assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
 sync_cfg=$(jq -cn '{pages:[
   {slug:"about", type:"nip23", show_in_nav:true},
   {slug:"contact", type:"contact", show_in_nav:true},
-  {slug:"oeuvre", type:"list", show_in_nav:true},
+  {slug:"list", type:"list", show_in_nav:true},
   {slug:"assignments", type:"public-ranking", show_in_nav:false}
 ]}')
 blog_nostr_pages_save_json "$sync_cfg"
@@ -544,16 +544,16 @@ blog_nostr_pages_sync_source_pages "$sync_cfg"
 
 about_mount=$(blog_nostr_page_mount_path 'about')
 contact_mount=$(blog_nostr_page_mount_path 'contact')
-oeuvre_mount=$(blog_nostr_page_mount_path 'oeuvre')
+list_mount=$(blog_nostr_page_mount_path 'list')
 ranking_mount=$(blog_nostr_page_mount_path 'assignments')
 
 assert_success test -f "$about_mount"
 assert_success test -f "$contact_mount"
-assert_success test -f "$oeuvre_mount"
+assert_success test -f "$list_mount"
 assert_success test -f "$ranking_mount"
 assert_file_contains "$about_mount" 'id="nip23-page-title"' 'nip23 mount keeps expected template markers'
 assert_file_contains "$contact_mount" 'id="contact-page-title"' 'contact mount keeps expected template markers'
-assert_file_contains "$oeuvre_mount" 'id="list-page-title"' 'list mount keeps expected template markers'
+assert_file_contains "$list_mount" 'id="list-page-title"' 'list mount keeps expected template markers'
 assert_file_contains "$ranking_mount" 'id="public-ranking-title"' 'public ranking mount keeps expected template markers'
 
 # Prune stale managed mount when slug disappears from config.

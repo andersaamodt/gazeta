@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+ROOT_DIR=$SCRIPT_DIR
+
 check_script_then_marked() {
   file=$1
   local_script=$2
@@ -48,8 +51,8 @@ EOS
   PATH="$tmp_root/bin:$PATH"
   export PATH
 
-  . /Users/andersaamodt/git/nostr-blog/cgi/blog-lib.sh
-  . /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh
+  . "$ROOT_DIR/cgi/blog-lib.sh"
+  . "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 
   blog_init
   blog_nostr_pages_save_json '{"pages":[{"slug":"assignments","type":"public-ranking","show_in_nav":true,"placeholder_title":"Assignments","path":"/assignments"}]}'
@@ -66,13 +69,12 @@ EOS
   trap - EXIT INT TERM
 }
 
-check_script_present /Users/andersaamodt/git/nostr-blog/pages/index.md '/static/blog-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/about.md '/static/nip23-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/list.md '/static/list-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/oeuvre.md '/static/list-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/nip23-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/public-ranking-page.js'
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/cgi/blog-nostr-pages-common.sh '/static/list-page.js'
+check_script_present "$ROOT_DIR/pages/index.md" '/static/blog-page.js'
+check_script_then_marked "$ROOT_DIR/pages/about.md" '/static/nip23-page.js'
+check_script_then_marked "$ROOT_DIR/pages/list.md" '/static/list-page.js'
+check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/nip23-page.js'
+check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/public-ranking-page.js'
+check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/list-page.js'
 check_generated_public_ranking_shell
 
 printf '%s\n' 'ok'

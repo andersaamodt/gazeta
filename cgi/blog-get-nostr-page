@@ -18,7 +18,7 @@ if [ -z "$page_slug" ]; then
   page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
 fi
 if [ -z "$page_slug" ]; then
-  page_slug="oeuvre"
+  page_slug="list"
 fi
 
 page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')

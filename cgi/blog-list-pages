@@ -35,7 +35,7 @@ done | awk 'NF' | while IFS= read -r slug || [ -n "$slug" ]; do
 done >> "$slugs_tmp"
 
 if [ ! -s "$slugs_tmp" ]; then
-  printf 'oeuvre\n' > "$slugs_tmp"
+  printf 'list\n' > "$slugs_tmp"
 fi
 
 cfg_json=$(blog_nostr_pages_load_json 2>/dev/null || printf '')

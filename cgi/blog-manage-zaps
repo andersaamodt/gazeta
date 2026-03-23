@@ -20,7 +20,8 @@ if [ -z "$action" ]; then
 fi
 
 wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
-wizardry_install_url='https://raw.githubusercontent.com/andersaamodt/wizardry/main/install'
+wizardry_install_url=$(config-get "$blog_site_conf" wizardry_install_url 2>/dev/null || printf '')
+[ -n "$wizardry_install_url" ] || wizardry_install_url=${WIZARDRY_INSTALL_URL:-}
 
 find_web_wizardry_bin() {
   bin=$(command -v web-wizardry 2>/dev/null || printf '')
@@ -152,6 +153,11 @@ emit_failure() {
 ensure_wizardry() {
   if wizardry_installed; then
     return 0
+  fi
+
+  if [ -z "$wizardry_install_url" ]; then
+    printf 'Wizardry install URL is not configured. Set wizardry_install_url in site.conf or WIZARDRY_INSTALL_URL.\n' >&2
+    return 1
   fi
 
   tmp_installer=$(mktemp "${TMPDIR:-/tmp}/wizardry-install.XXXXXX")

@@ -27,7 +27,7 @@ if [ -z "$list_slug" ] || [ -z "$post_path" ]; then
   exit 0
 fi
 if [ -z "$marker" ]; then
-  marker="oeuvre"
+  marker="list"
 fi
 
 post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')

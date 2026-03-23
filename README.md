@@ -71,7 +71,7 @@ blog/
 │       ├── admin.md              # Application/admin page (template-owned)
 │       ├── login-security.md     # Application/help page (template-owned)
 │       ├── blog.md -> .../blog/content/pages/blog.md
-│       ├── oeuvre.md -> .../blog/content/pages/oeuvre.md
+│       ├── list.md -> .../blog/content/pages/list.md
 │       ├── reading-list.md -> .../blog/content/pages/reading-list.md
 │       └── posts -> .../blog/content/posts
 │

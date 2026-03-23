@@ -99,7 +99,6 @@
     wrap.innerHTML = '' +
       '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋯</button>' +
       '<div class="post-page-menu-panel" role="menu" hidden>' +
-      '<button type="button" data-post-page-action="add_to_oeuvre" role="menuitem">Add to oeuvre...</button>' +
       '<button type="button" data-post-page-action="add_to_list" role="menuitem">Add to list...</button>' +
       '<button type="button" data-post-page-action="edit_post" role="menuitem">Edit post...</button>' +
       '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" role="menuitem">Delete post...</button>' +
@@ -173,30 +172,27 @@
       return;
     }
 
-    if (picked === 'add_to_oeuvre' || picked === 'add_to_list') {
-      var targetSlug = 'oeuvre';
-      var sequence = Promise.resolve();
-      if (picked === 'add_to_list') {
-        sequence = postForm('/cgi/blog-list-pages', {
-          session_token: token,
-          csrf_token: csrf
-        }).then(function (listsData) {
-          if (!listsData || !listsData.success) {
-            throw new Error((listsData && listsData.error) || 'Could not load lists');
-          }
-          var lists = Array.isArray(listsData.lists) ? listsData.lists : [];
-          var options = lists.map(function (item) { return String((item && item.slug) || '').trim(); }).filter(Boolean);
-          var fallback = options.length ? options[0] : 'oeuvre';
-          var pickedSlug = window.prompt('Select list slug:\n' + (options.length ? options.join(', ') : 'oeuvre'), fallback);
-          if (pickedSlug === null) {
-            throw new Error('__cancel__');
-          }
-          targetSlug = String(pickedSlug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
-          if (!targetSlug) {
-            throw new Error('List slug is required.');
-          }
-        });
-      }
+    if (picked === 'add_to_list') {
+      var targetSlug = 'list';
+      var sequence = postForm('/cgi/blog-list-pages', {
+        session_token: token,
+        csrf_token: csrf
+      }).then(function (listsData) {
+        if (!listsData || !listsData.success) {
+          throw new Error((listsData && listsData.error) || 'Could not load lists');
+        }
+        var lists = Array.isArray(listsData.lists) ? listsData.lists : [];
+        var options = lists.map(function (item) { return String((item && item.slug) || '').trim(); }).filter(Boolean);
+        var fallback = options.length ? options[0] : 'list';
+        var pickedSlug = window.prompt('Select list slug:\n' + (options.length ? options.join(', ') : 'list'), fallback);
+        if (pickedSlug === null) {
+          throw new Error('__cancel__');
+        }
+        targetSlug = String(pickedSlug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+        if (!targetSlug) {
+          throw new Error('List slug is required.');
+        }
+      });
       postMenuBusy = true;
       sequence
         .then(function () {
@@ -213,7 +209,7 @@
             post_path: currentRelPath,
             date: String(dateInput || '').trim(),
             markdown: String(markdownInput || '').trim(),
-            marker: picked === 'add_to_oeuvre' ? 'oeuvre' : '',
+            marker: 'list',
             session_token: token,
             csrf_token: csrf
           });

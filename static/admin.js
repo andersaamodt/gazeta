@@ -3171,7 +3171,7 @@
       publicKey: {
         challenge: base64ToArrayBuffer(challengeB64),
         rp: {
-          name: 'Wizardry Blog',
+          name: 'Nostr Blog',
           id: window.location.hostname
         },
         user: {
@@ -4634,7 +4634,7 @@
         !els.postAddToListSelect ||
         !els.postAddToListDate ||
         !els.postAddToListMarkdown) {
-      const fallback = window.prompt('List slug:', 'oeuvre');
+      const fallback = window.prompt('List slug:', 'list');
       if (fallback === null) {
         return;
       }

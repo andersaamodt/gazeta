@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('oeuvre-root');
+  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root');
   if (!root) {
     return;
   }
@@ -1127,7 +1127,7 @@
     if (!isAdmin()) {
       return '';
     }
-    var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';
+    var defaultMarker = slug === 'list' ? 'list' : '';
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
       _uid: nextUid(),

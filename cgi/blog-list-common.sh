@@ -348,7 +348,7 @@ blog_list_validate_and_enrich_state_json() {
     resolved=false
     post_url=""
     post_created_at=""
-    post_oeuvre_date=""
+    post_list_date=""
 
     if [ -n "$relay_hint" ] && ! printf '%s' "$relay_hint" | grep -Eq '^wss://'; then
       printf 'Entry %s has a relay hint that does not start with wss://\n' "$((idx + 1))" >> "$warnings_tmp"
@@ -363,7 +363,7 @@ blog_list_validate_and_enrich_state_json() {
         if [ -n "$md_path" ]; then
           file="$blog_site_root/site/pages/$md_path"
           if [ -f "$file" ]; then
-            post_oeuvre_date=$(blog_read_front_matter_value "$file" oeuvre_date 2>/dev/null || printf '')
+            post_list_date=$(blog_read_front_matter_value "$file" list_date 2>/dev/null || printf '')
             post_url=$(blog_rel_post_html_url "$file")
           fi
         fi
@@ -385,8 +385,8 @@ blog_list_validate_and_enrich_state_json() {
         year=$(printf '%s' "$date_raw" | cut -c1-4)
       fi
     fi
-    if [ -z "$year" ] && [ -n "$post_oeuvre_date" ] && printf '%s' "$post_oeuvre_date" | grep -Eq '^[0-9]{4}'; then
-      year=$(printf '%s' "$post_oeuvre_date" | cut -c1-4)
+    if [ -z "$year" ] && [ -n "$post_list_date" ] && printf '%s' "$post_list_date" | grep -Eq '^[0-9]{4}'; then
+      year=$(printf '%s' "$post_list_date" | cut -c1-4)
     fi
     if [ -z "$year" ] && [ -n "$post_created_at" ]; then
       year=$(blog_list_year_from_created_at "$post_created_at")
@@ -425,7 +425,7 @@ blog_list_validate_and_enrich_state_json() {
       --arg year "$year" \
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
-      --arg post_oeuvre_date "$post_oeuvre_date" \
+      --arg post_list_date "$post_list_date" \
       --argjson resolved "$( [ "$resolved" = "true" ] && printf true || printf false )" \
       '{
         type: $type,
@@ -441,7 +441,7 @@ blog_list_validate_and_enrich_state_json() {
         resolved: $resolved,
         post_url: $post_url,
         post_created_at: $post_created_at,
-        post_oeuvre_date: $post_oeuvre_date
+        post_list_date: $post_list_date
       }' | tee -a "$elements_tmp" >> "$entries_tmp"
     idx=$((idx + 1))
   done

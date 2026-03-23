@@ -648,7 +648,7 @@ title: ""
 </div>
 <div class="field-row">
 <label for="nostr-page-slug-input"><strong>Page slug/path</strong></label>
-<input type="text" id="nostr-page-slug-input" placeholder="oeuvre">
+<input type="text" id="nostr-page-slug-input" placeholder="list">
 </div>
 <div class="admin-inline-dialog-actions">
 <button id="nostr-page-create-cancel" type="button">Cancel</button>

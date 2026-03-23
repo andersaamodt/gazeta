@@ -13,7 +13,7 @@ blog_send_json_headers
 
 list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
 if [ -z "$list_slug" ]; then
-  list_slug="oeuvre"
+  list_slug="list"
 fi
 
 is_admin=false

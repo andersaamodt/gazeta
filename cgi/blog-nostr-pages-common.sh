@@ -113,12 +113,12 @@ blog_nostr_pages_default_json() {
         path: "/about"
       },
       {
-        slug: "oeuvre",
+        slug: "list",
         type: "list",
         kind: 30004,
         show_in_nav: true,
-        placeholder_title: "Oeuvre",
-        path: "/oeuvre"
+        placeholder_title: "List",
+        path: "/list"
       }
     ]
   }'
@@ -258,7 +258,7 @@ blog_nostr_page_type_for_slug() {
     printf '%s\n' "$page" | jq -r '.type // "list"' 2>/dev/null || printf 'list\n'
     return 0
   fi
-  if [ "$slug" = "oeuvre" ]; then
+  if [ "$slug" = "list" ]; then
     printf 'list\n'
     return 0
   fi
@@ -1010,8 +1010,7 @@ blog_nostr_page_source_template_type() {
     printf 'public-ranking\n'
     return 0
   fi
-  if grep -q 'id="list-page-root"' "$file" 2>/dev/null ||
-     grep -q 'id="oeuvre-root"' "$file" 2>/dev/null; then
+  if grep -q 'id="list-page-root"' "$file" 2>/dev/null; then
     printf 'list\n'
     return 0
   fi
