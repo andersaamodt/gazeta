@@ -48,6 +48,16 @@ else
 fi
 
 root_coord=$(blog_public_ranking_effective_root_coord "$page_slug" "$canonical_event")
+fallback_admin_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+if [ -z "$fallback_admin_pubkey" ]; then
+  fallback_admin_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
+fi
+if [ -z "$fallback_admin_pubkey" ]; then
+  fallback_admin_pubkey='0000000000000000000000000000000000000000000000000000000000000000'
+fi
+if [ -z "$root_coord" ] && [ "$is_admin" = "true" ]; then
+  root_coord="30040:$fallback_admin_pubkey:$page_slug"
+fi
 [ -n "$root_coord" ] || {
   blog_json_error "Ranking root coordinate is unavailable" "missing_root_coordinate"
   exit 0
@@ -64,8 +74,12 @@ if [ -z "$submitter_pubkey" ]; then
   submitter_pubkey=${BLOG_SESSION_USER_PUBKEY-}
 fi
 if [ -z "$submitter_pubkey" ]; then
-  blog_json_error "Signed-in account has no bound Nostr pubkey" "nostr_identity_required"
-  exit 0
+  if [ "$is_admin" = "true" ]; then
+    submitter_pubkey=$fallback_admin_pubkey
+  else
+    blog_json_error "Signed-in account has no bound Nostr pubkey" "nostr_identity_required"
+    exit 0
+  fi
 fi
 
 node_kind=$(printf '%s' "$(blog_param node_kind)" | tr '[:upper:]' '[:lower:]')
@@ -151,12 +165,26 @@ tags_json=$(jq -cn \
   ')
 
 if ! event_json=$(blog_nostr_sign_public_ranking_node_event "$event_kind" "$node_d" "$content" "$tags_json" 2>/dev/null); then
-  reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
-  if [ -z "$reason" ]; then
-    reason="Could not sign public ranking node event."
+  if [ "$is_admin" = "true" ]; then
+    # Admin edit-mode fallback: store as local unsigned node so entries can be added
+    # without a signer key. This remains local until later Nostr publish workflows.
+    local_event_id="local-$(blog_now_epoch)-$(blog_random_token 6)"
+    event_json=$(jq -cn \
+      --arg id "$local_event_id" \
+      --arg pubkey "$submitter_pubkey" \
+      --argjson kind "$event_kind" \
+      --argjson created_at "$(blog_now_epoch)" \
+      --argjson tags "$tags_json" \
+      --arg content "$content" \
+      '{id:$id,pubkey:$pubkey,kind:$kind,created_at:$created_at,tags:$tags,content:$content,sig:""}')
+  else
+    reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+    if [ -z "$reason" ]; then
+      reason="Could not sign public ranking node event."
+    fi
+    blog_json_error "$reason" "nostr_publish_failed"
+    exit 0
   fi
-  blog_json_error "$reason" "nostr_publish_failed"
-  exit 0
 fi
 
 pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
@@ -164,7 +192,7 @@ author_count=$(blog_nostr_list_file_lines "$blog_nostr_authors_file" | wc -l | t
 if [ "${author_count:-0}" -eq 0 ] && [ -n "$pubkey" ]; then
   blog_nostr_append_author_if_missing "$pubkey" >/dev/null 2>&1 || true
 fi
-if [ -n "$pubkey" ] && ! blog_nostr_author_allowed "$pubkey"; then
+if [ "$is_admin" != "true" ] && [ -n "$pubkey" ] && ! blog_nostr_author_allowed "$pubkey"; then
   blog_json_error "Publisher pubkey is not allowed by site author policy" "nostr_author_not_allowed"
   exit 0
 fi
