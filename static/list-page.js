@@ -1386,17 +1386,11 @@
     return '<section class="nostr-page-extra nostr-page-extra-' + escapeHtml(role || '') + '">' + html + '</section>';
   }
 
-  function renderExtrasEditor() {
+  function renderAfterContentEditor() {
     var draft = state.draft || {};
-    var introScope = draft.publish_intro_to_nostr ? 'nostr' : 'local';
-    var introScopeLabel = introScope === 'nostr' ? 'Nostr' : 'Local';
     var html = '';
     html += '<section class="nostr-page-extras-editor" aria-label="Page extras">';
-    html += '<h3 class="nostr-page-extras-heading">Before and after content</h3>';
-    html += '<label class="nostr-page-extra-edit">';
-    html += '<span>Before content (Markdown) <span class="nostr-page-scope-pill is-' + introScope + '">' + introScopeLabel + '</span><span class="nostr-page-extra-controls"><label class="checkbox-control"><input type="checkbox" data-list-intro-publish="true"' + (draft.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label></span></span>';
-    html += '<textarea data-list-intro="true" rows="4" placeholder="Optional content shown before the main content section">' + escapeHtml(draft.description || '') + '</textarea>';
-    html += '</label>';
+    html += '<h3 class="nostr-page-extras-heading">After content</h3>';
     html += '<label class="nostr-page-extra-edit">';
     html += '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>';
     html += '<textarea data-list-outro="after" rows="4" placeholder="Optional local content shown after the main content section">' + escapeHtml(draft.extras_after || '') + '</textarea>';
@@ -1470,7 +1464,6 @@
 
   function renderInlineEditor(elements) {
     var html = '';
-    html += renderExtrasEditor();
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
     var pendingUnedited = isPendingNewEntryUnedited();
@@ -1496,6 +1489,7 @@
 
     if (!elements.length) {
       html += '<div class="list-inline-empty">No entries yet.</div>';
+      html += renderAfterContentEditor();
       return html;
     }
 
@@ -1545,6 +1539,7 @@
       });
       html += '</ul>';
     }
+    html += renderAfterContentEditor();
     return html;
   }
 

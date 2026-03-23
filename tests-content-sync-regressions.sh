@@ -456,6 +456,8 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-marker-filter-action=
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.ctrlKey' 'list marker filters support ctrl-click exclusion mode'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.metaKey || event.shiftKey' 'list marker filters support cmd/shift multi-select include mode'
 assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-outro-format' 'list editor no longer exposes markdown/html format dropdown for local after-content'
+assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-intro="true"' 'list editor no longer exposes redundant before-content textarea'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'html += renderAfterContentEditor();' 'list editor renders after-content editor at end of edit content'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'oeuvre inline dragstart ignores form controls so text selection works'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';" 'new list entries default marker only on oeuvre page'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
