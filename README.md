@@ -132,6 +132,19 @@ visibility: "public"  # Change from "draft"
 - Public page source lives under `.sitedata/<site>/blog/content/pages/`
 - `site/pages/*.md` mounts are generated from that canonical content directory during build
 
+## Sample Site Data
+
+- Example post content ships in `sample-site-data/`, not under `site/pages/`.
+- Copy sample posts into a site's canonical data directory when needed:
+
+```sh
+site_name=myblog
+sites_root=${WIZARDRY_SITES_DIR:-$HOME/sites}
+site_data_root="$sites_root/.sitedata/$site_name"
+mkdir -p "$site_data_root/blog/content/posts"
+cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/"
+```
+
 ## Interaction Model
 
 - Blog rendering is deterministic from local files only.
@@ -165,7 +178,7 @@ web-wizardry install-nostril
 web-wizardry install-syncthing   # optional, for content mirroring/backups
 
 # Edit content
-vim ~/sites/.sitedata/myblog/blog/content/posts/2024-01-15-welcome.md
+vim ~/sites/.sitedata/myblog/blog/content/posts/first-post.md
 
 # Build
 web-wizardry build myblog

@@ -974,7 +974,7 @@
 
   function normalizeSiteTitle(value) {
     const text = String(value || '').trim();
-    return text || 'My Blog';
+    return text || 'Site';
   }
 
   function applyNavSiteTitle(value) {

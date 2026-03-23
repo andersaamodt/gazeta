@@ -135,7 +135,7 @@
 
   function normalizeSiteTitle(value) {
     var text = compact(value);
-    return text || 'My Blog';
+    return text || 'Site';
   }
 
   function updateNavSiteSignature(title) {

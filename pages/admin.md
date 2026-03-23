@@ -51,7 +51,7 @@ title: ""
 <section class="sub-card">
 <div id="settings-row-site-title" class="field-row settings-inline-control-row">
 <label for="site-title" title="Public title shown in your blog header and feeds."><strong title="Public title shown in your blog header and feeds.">Site Title</strong></label>
-<input type="text" id="site-title" placeholder="My Blog" title="Public title shown in your blog header and feeds.">
+<input type="text" id="site-title" placeholder="Site" title="Public title shown in your blog header and feeds.">
 </div>
 <div id="settings-row-theme" class="field-row settings-inline-control-row">
 <label for="admin-theme" title="Visual theme for your public site and admin interface accents."><strong title="Visual theme for your public site and admin interface accents.">Theme</strong></label>

@@ -53,7 +53,7 @@ case "$BLOG_REQUEST_BODY" in
     if [ -n "$site_title" ]; then
       config-set "$blog_site_conf" site_title "$site_title"
     else
-      config-set "$blog_site_conf" site_title "My Blog"
+      config-set "$blog_site_conf" site_title "Site"
     fi
     ;;
 esac

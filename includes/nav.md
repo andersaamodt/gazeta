@@ -52,7 +52,7 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">My Blog</span>
+<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
 <div class="nav-center">
 <a href="/" data-page="blog">Blog</a>
 </div>
@@ -110,7 +110,7 @@
     var siteSignature = document.getElementById('nav-site-signature');
     function normalizeSiteTitle(value) {
       var text = String(value || '').replace(/\s+/g, ' ').trim();
-      return text || 'My Blog';
+      return text || 'Site';
     }
     function applySiteTitleSignature(value) {
       if (!siteSignature) {
@@ -123,7 +123,7 @@
     try {
       applySiteTitleSignature(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
     } catch (_siteTitleErr) {
-      applySiteTitleSignature('My Blog');
+      applySiteTitleSignature('Site');
     }
 
     var token = String(localStorage.getItem('session_token') || '').trim();
