@@ -66,6 +66,8 @@
     pendingNewEntry: null,
     markerFilterInclude: [],
     markerFilterExclude: [],
+    viewModeOverride: '',
+    createProductBusyUid: '',
     uidCounter: 1,
     initialContentPainted: false
   };
@@ -178,6 +180,8 @@
     state.pendingNewEntry = null;
     state.markerFilterInclude = [];
     state.markerFilterExclude = [];
+    state.createProductBusyUid = '';
+    state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
     renderList();
@@ -294,7 +298,7 @@
     return next === 'tile' ? 'tile' : 'list';
   }
 
-  function isIconGalleryPage() {
+  function isProductGalleryPage() {
     if (root && root.id === 'icon-gallery-root') {
       return true;
     }
@@ -303,10 +307,99 @@
   }
 
   function normalizeViewModeForPage(value) {
-    if (isIconGalleryPage()) {
+    var normalized = normalizeViewMode(value);
+    if (isProductGalleryPage() && !String(value || '').trim()) {
       return 'tile';
     }
-    return normalizeViewMode(value);
+    return normalized;
+  }
+
+  function productGalleryViewStorageKey() {
+    return 'nostr_product_gallery_view_v1:' + slug;
+  }
+
+  function loadProductGalleryViewOverride(fallbackMode) {
+    if (!isProductGalleryPage()) {
+      return '';
+    }
+    try {
+      var saved = String(localStorage.getItem(productGalleryViewStorageKey()) || '').trim().toLowerCase();
+      if (saved === 'tile' || saved === 'list') {
+        return saved;
+      }
+    } catch (_err) {
+      // Ignore localStorage read failures.
+    }
+    return normalizeViewMode(String(fallbackMode || 'tile'));
+  }
+
+  function saveProductGalleryViewOverride(mode) {
+    if (!isProductGalleryPage()) {
+      return;
+    }
+    try {
+      localStorage.setItem(productGalleryViewStorageKey(), normalizeViewMode(mode));
+    } catch (_err) {
+      // Ignore localStorage write failures.
+    }
+  }
+
+  function currentReadViewMode(renderState) {
+    var fallback = normalizeViewModeForPage(renderState && renderState.view_mode || '');
+    if (!isProductGalleryPage()) {
+      return fallback;
+    }
+    if (!state.viewModeOverride) {
+      state.viewModeOverride = loadProductGalleryViewOverride(fallback);
+    }
+    return normalizeViewMode(state.viewModeOverride || fallback);
+  }
+
+  function slugFromUrlPath(raw) {
+    var text = String(raw || '').trim();
+    if (!text) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(text)) {
+      try {
+        text = new URL(text).pathname || '';
+      } catch (_err) {
+        text = '';
+      }
+    }
+    text = text.split('?')[0].split('#')[0];
+    text = text.replace(/^\/+/, '');
+    if (text.indexOf('pages/') === 0) {
+      text = text.slice('pages/'.length);
+    }
+    text = text.replace(/\.html?$/i, '');
+    text = text.split('/')[0];
+    text = String(text || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return text;
+  }
+
+  function entryProductSlug(entry) {
+    var postUrl = String(entry && entry.post_url || '').trim();
+    var fromUrl = slugFromUrlPath(postUrl);
+    if (fromUrl) {
+      return fromUrl;
+    }
+    var text = String(entry && entry.markdown || '');
+    return String(text || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function entryHasProductBasics(entry) {
+    return String(entry && entry.markdown || '').trim().length > 0;
   }
 
   async function apiPost(path, payload) {
@@ -405,7 +498,8 @@
         depth: Math.max(0, Number(el && el.depth || 0) || 0),
         markdown: String(el && el.markdown || ''),
         image_url: String(el && el.image_url || ''),
-        description: String(el && el.description || '')
+        description: String(el && el.description || ''),
+        post_url: String(el && el.post_url || '')
       };
     });
   }
@@ -538,6 +632,22 @@
       }
       html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '">' + escapeHtml(marker) + '</button>';
     });
+    html += '</div>';
+    html += '</section>';
+    return html;
+  }
+
+  function renderProductGalleryViewModeControl(viewMode) {
+    if (!isProductGalleryPage()) {
+      return '';
+    }
+    var mode = normalizeViewMode(viewMode || 'tile');
+    var tileActive = mode === 'tile';
+    var listActive = mode === 'list';
+    var html = '<section class="list-view-mode-row" aria-label="Gallery view mode">';
+    html += '<div class="list-view-mode-pill" role="group" aria-label="Choose gallery view">';
+    html += '<button type="button" class="list-view-mode-btn' + (tileActive ? ' is-active' : '') + '" data-list-view-mode="tile" aria-pressed="' + (tileActive ? 'true' : 'false') + '" title="Tile view">Tile</button>';
+    html += '<button type="button" class="list-view-mode-btn' + (listActive ? ' is-active' : '') + '" data-list-view-mode="list" aria-pressed="' + (listActive ? 'true' : 'false') + '" title="List view">List</button>';
     html += '</div>';
     html += '</section>';
     return html;
@@ -953,6 +1063,66 @@
     }
   }
 
+  function addProductToCartBySlug(productSlug) {
+    var slugValue = String(productSlug || '').trim();
+    if (!slugValue) {
+      return;
+    }
+    if (!window.blogShopCart || typeof window.blogShopCart.addProductBySlug !== 'function') {
+      window.alert('Cart is still loading. Try again in a moment.');
+      return;
+    }
+    window.blogShopCart.addProductBySlug(slugValue).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not add product to cart');
+    });
+  }
+
+  async function createProductFromEntry(uid) {
+    if (!isAdmin() || !isProductGalleryPage() || state.createProductBusyUid) {
+      return;
+    }
+    var idx = findElementIndex(uid);
+    if (idx < 0) {
+      return;
+    }
+    var entry = state.draft.elements[idx] || {};
+    if (!entryHasProductBasics(entry)) {
+      window.alert('Add product text first.');
+      return;
+    }
+    var productTitle = String(entry.markdown || '').trim();
+    var suggestedSlug = entryProductSlug(entry) || productTitle;
+    var payload = {
+      product_title: productTitle,
+      product_slug: suggestedSlug,
+      description: String(entry.description || ''),
+      content: String(entry.description || '')
+    };
+    var auth = getAuthPayload();
+    payload.session_token = auth.session_token;
+    payload.csrf_token = auth.csrf_token;
+
+    state.createProductBusyUid = uid;
+    renderList();
+    renderAdmin();
+    try {
+      var data = await apiPost('/cgi/blog-create-product-page', payload);
+      var nextPath = String(data && data.path || '').trim();
+      if (nextPath) {
+        state.draft.elements[idx].post_url = nextPath;
+        queueAutosave(150);
+      }
+      renderList();
+      window.alert(data && data.message ? data.message : 'Product page created.');
+    } catch (err) {
+      window.alert(err && err.message ? err.message : 'Could not create product page');
+    } finally {
+      state.createProductBusyUid = '';
+      renderList();
+      renderAdmin();
+    }
+  }
+
   function addEntry(prefillYear) {
     if (!isAdmin()) {
       return '';
@@ -1219,11 +1389,16 @@
   function renderEntryReadOnly(entry, groupBy, sectionLabel) {
     var line = String(entry && entry.markdown || '').trim();
     var postUrl = String(entry && entry.post_url || '');
+    var productSlug = entryProductSlug(entry);
     var datePill = datePillForEntryInSection(entry, groupBy, sectionLabel);
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
-    return '<li class="list-entry-line"><div class="list-entry-first-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</div></li>';
+    var cartButton = '';
+    if (isProductGalleryPage() && productSlug) {
+      cartButton = '<button type="button" class="list-entry-cart-btn" data-add-product-slug="' + escapeHtml(productSlug) + '" title="Add to cart">+ Cart</button>';
+    }
+    return '<li class="list-entry-line"><div class="list-entry-first-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + cartButton + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</div></li>';
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel) {
@@ -1338,9 +1513,14 @@
       var imageUrl = String(entry.image_url || '').trim();
       var tileDescription = String(entry.description || '').trim();
       var postUrl = String(entry.post_url || '');
+      var productSlug = entryProductSlug(entry);
       var linked = postUrl
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
         : '';
+      var cartButton = '';
+      if (isProductGalleryPage() && productSlug) {
+        cartButton = '<button type="button" class="list-entry-cart-btn list-entry-cart-btn-tile" data-add-product-slug="' + escapeHtml(productSlug) + '" title="Add to cart">+ Cart</button>';
+      }
       html += '<li class="list-tile">';
       html += '<div class="list-tile-content">';
       if (imageUrl) {
@@ -1353,7 +1533,7 @@
         html += renderTileTreeChildren(node.children);
       }
       html += '</div>';
-      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div></div>';
+      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div>' + cartButton + '</div>';
       html += '</li>';
     });
     html += '</ul>';
@@ -1370,6 +1550,7 @@
   function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters) {
     var html = '';
     var allEntries = Array.isArray(entries) ? entries : [];
+    html += renderProductGalleryViewModeControl(viewMode);
     if (showMarkerFilters) {
       html += renderMarkerFilters(allEntries);
     } else {
@@ -1453,8 +1634,11 @@
     var dateText = String(el && el.date || '');
     var markerText = String(el && el.marker || '');
     var imageUrl = String(el && el.image_url || '').trim();
-    var showImageField = isIconGalleryPage();
+    var showImageField = isProductGalleryPage();
     var eventId = String(el && el.event_id || '');
+    var productReady = entryHasProductBasics(el);
+    var productBusy = state.createProductBusyUid === uid;
+    var hasProductLink = String(el && el.post_url || '').trim().length > 0;
 
     html += '<div class="list-inline-cell list-inline-indent-controls">';
     html += '<button type="button" class="list-inline-indent-btn" data-list-inline-action="toggle-depth" data-element-uid="' + escapeHtml(uid) + '" title="' + (guiDepth > 0 ? 'Unindent entry' : 'Indent entry') + '"' + (canToggle ? '' : ' disabled aria-disabled="true"') + '>' + (guiDepth > 0 ? '←' : '→') + '</button>';
@@ -1483,7 +1667,15 @@
         html += '<div class="list-inline-cell list-inline-image-url"><button type="button" class="list-inline-open list-inline-image-button" data-list-inline-action="edit" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (imageUrl ? escapeHtml(imageUrl) : placeholderHtml('Add image URL...')) + '</span></button></div>';
       }
     }
-    html += '<div class="list-inline-cell list-inline-actions"><button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button></div>';
+    html += '<div class="list-inline-cell list-inline-actions">';
+    if (isProductGalleryPage()) {
+      html += '<button type="button" data-list-inline-action="create-product" data-element-uid="' + escapeHtml(uid) + '" title="' + (productReady ? (hasProductLink ? 'Update product page from this row' : 'Create product page from this row') : 'Add text first to create a product') + '"' + (productReady && !productBusy ? '' : ' disabled aria-disabled="true"') + '>' + (productBusy ? 'Creating...' : (hasProductLink ? 'Update Product' : 'Create Product')) + '</button>';
+      if (hasProductLink) {
+        html += '<a class="list-inline-action-link" href="' + escapeHtml(String(el && el.post_url || '')) + '" target="_blank" rel="noopener noreferrer" title="Open product page">↗</a>';
+      }
+    }
+    html += '<button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button>';
+    html += '</div>';
     if (active) {
       html += '<div class="list-inline-eventid">';
       html += '<details class="list-admin-eventid-details"' + (activeField === 'event_id' ? ' open' : '') + '>';
@@ -1513,11 +1705,6 @@
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
     html += '<label class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '></label>';
-    if (isIconGalleryPage()) {
-      html += '<label><span>View</span><select id="list-admin-view-mode" disabled aria-disabled="true">';
-      html += '<option value="tile" selected>Tile</option>';
-      html += '</select></label>';
-    }
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
@@ -1535,7 +1722,7 @@
     html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-marker">Marker</span>';
-    if (isIconGalleryPage()) {
+    if (isProductGalleryPage()) {
       html += '<span class="list-inline-head-image">Image URL</span>';
     }
     html += '<span class="list-inline-head-actions"></span>';
@@ -1613,9 +1800,10 @@
       return;
     }
 
+    var readViewMode = currentReadViewMode(s);
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, s.view_mode, !!s.show_marker_filters) + afterContent;
+    }), s.group_by, readViewMode, !!s.show_marker_filters) + afterContent;
     renderAdmin();
   }
 
@@ -1938,6 +2126,14 @@
           focusInlineField(uid, state.activeCellField);
           return;
         }
+        if (actionType === 'create-product') {
+          event.preventDefault();
+          if (inlineAction.hasAttribute('disabled')) {
+            return;
+          }
+          createProductFromEntry(uid);
+          return;
+        }
         if (actionType === 'remove') {
           var idx = findElementIndex(uid);
           if (idx < 0) {
@@ -2138,12 +2334,6 @@
         queueAutosave(280);
         return;
       }
-      if (target.id === 'list-admin-view-mode' && target instanceof HTMLSelectElement) {
-        state.draft.view_mode = normalizeViewModeForPage(target.value || '');
-        renderList();
-        queueAutosave(280);
-        return;
-      }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
         state.draft.publish_intro_to_nostr = !!target.checked;
         queueAutosave(500);
@@ -2193,6 +2383,24 @@
       }
       var target = event.target;
       if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var cartButton = target.closest('[data-add-product-slug]');
+      if (cartButton instanceof HTMLElement) {
+        event.preventDefault();
+        var cartSlug = String(cartButton.getAttribute('data-add-product-slug') || '').trim();
+        if (cartSlug) {
+          addProductToCartBySlug(cartSlug);
+        }
+        return;
+      }
+      var viewButton = target.closest('[data-list-view-mode]');
+      if (viewButton instanceof HTMLElement) {
+        event.preventDefault();
+        var nextMode = normalizeViewMode(viewButton.getAttribute('data-list-view-mode') || '');
+        state.viewModeOverride = nextMode;
+        saveProductGalleryViewOverride(nextMode);
+        renderList();
         return;
       }
       var filterButton = target.closest('[data-marker-filter-action="toggle"]');
@@ -2347,7 +2555,7 @@
       var nextField = field;
       var backward = !!event.shiftKey;
 
-      var hasImageField = isIconGalleryPage();
+      var hasImageField = isProductGalleryPage();
       if (field === 'event_id') {
         nextField = backward ? (hasImageField ? 'image_url' : 'marker') : 'markdown';
         if (!backward) {
@@ -2529,6 +2737,8 @@
       state.pendingNewEntry = null;
       state.markerFilterInclude = [];
       state.markerFilterExclude = [];
+      state.createProductBusyUid = '';
+      state.viewModeOverride = '';
       state.saveIndicatorVisible = false;
       if (!state.activeEntryUid && state.draft.elements.length) {
         state.activeEntryUid = state.draft.elements[0]._uid;

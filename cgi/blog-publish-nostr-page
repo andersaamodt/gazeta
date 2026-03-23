@@ -56,7 +56,11 @@ draft_local_json='{}'
 if [ -n "$existing_draft_state" ]; then
   draft_local_json=$(printf '%s\n' "$existing_draft_state" | jq -c '{
     extras_after: (.extras_after // ""),
-    extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end)
+    extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end),
+    product_type: (.product_type // "software"),
+    crypto_discount_percent: (.crypto_discount_percent // 0),
+    repo: (.repo // ""),
+    tag: (.tag // "latest")
   }' 2>/dev/null || printf '{}')
 fi
 
@@ -187,10 +191,22 @@ case "$page_type" in
     fi
     title=$(printf '%s\n' "$state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
     content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+    product_enabled=$(printf '%s\n' "$state_json" | jq -r '.product_enabled // false' 2>/dev/null || printf 'false')
+    price=$(printf '%s\n' "$state_json" | jq -r '.price // ""' 2>/dev/null || printf '')
+    currency=$(printf '%s\n' "$state_json" | jq -r '.currency // "USD"' 2>/dev/null || printf 'USD')
+    purchase_endpoint=$(printf '%s\n' "$state_json" | jq -r '.purchase_endpoint // ""' 2>/dev/null || printf '')
+    sign_price=''
+    sign_currency=''
+    sign_purchase_endpoint=''
+    if [ "$product_enabled" = "true" ] || [ -n "$price" ]; then
+      sign_price=$price
+      sign_currency=$currency
+      sign_purchase_endpoint=$purchase_endpoint
+    fi
     if [ -n "$provided_event_json" ]; then
       event_json=$provided_event_json
     else
-      event_json=$(blog_nostr_sign_nip23_event "$page_slug" "$title" "$content" 2>/dev/null || printf '')
+      event_json=$(blog_nostr_sign_nip23_event "$page_slug" "$title" "$content" "$sign_price" "$sign_currency" "$sign_purchase_endpoint" 2>/dev/null || printf '')
       if [ -z "$event_json" ]; then
         reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
         if [ -z "$reason" ]; then
@@ -201,7 +217,14 @@ case "$page_type" in
       fi
     fi
     canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json" "$page_type")
-    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: $local.extras_after, extras_after_format: $local.extras_after_format}')
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {
+      extras_after: ($local.extras_after // .extras_after),
+      extras_after_format: ($local.extras_after_format // .extras_after_format),
+      product_type: ($local.product_type // .product_type),
+      crypto_discount_percent: ($local.crypto_discount_percent // .crypto_discount_percent),
+      repo: ($local.repo // .repo),
+      tag: ($local.tag // .tag)
+    }')
     validation_after=$(blog_nip23_validate_and_enrich_state_json "$canonical_state_json" false)
     canonical_enriched=$canonical_state_json
     ;;

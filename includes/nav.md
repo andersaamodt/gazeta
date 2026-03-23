@@ -75,6 +75,14 @@
 </svg>
 </a>
 </div>
+<button id="nav-cart-toggle" class="nav-cart-toggle" type="button" aria-label="Open cart" aria-expanded="false" hidden>
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 4H5L7 16H18L21 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="9" cy="20" r="1.7" fill="currentColor"/>
+<circle cx="17" cy="20" r="1.7" fill="currentColor"/>
+</svg>
+<span id="nav-cart-count" class="nav-cart-count" hidden>0</span>
+</button>
 <a id="nav-user-name" class="nav-username" href="/pages/admin.html#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋯</button>
@@ -226,6 +234,21 @@
 </script>
 
 <div id="nav-top-toast-host" class="nav-top-toast-host" aria-live="polite" aria-atomic="true"></div>
+<aside id="nav-cart-drawer" class="nav-cart-drawer" hidden>
+  <div class="nav-cart-drawer-head">
+    <h2>Shopping Cart</h2>
+    <button id="nav-cart-close" type="button" aria-label="Close cart">&times;</button>
+  </div>
+  <p id="nav-cart-empty" class="nav-cart-empty">Your cart is empty.</p>
+  <ul id="nav-cart-items" class="nav-cart-items"></ul>
+  <div class="nav-cart-drawer-footer">
+    <div class="nav-cart-subtotal-row"><span>Subtotal</span><strong id="nav-cart-subtotal">$0.00</strong></div>
+    <div class="nav-cart-drawer-links">
+      <a href="/pages/cart.html" class="nav-cart-link-button">View Cart</a>
+      <a href="/pages/checkout.html" class="nav-cart-link-button nav-cart-link-button-primary">Checkout</a>
+    </div>
+  </div>
+</aside>
 
 <div class="auth-modal" id="auth-modal" hidden>
   <div class="auth-modal-backdrop" data-close-auth-modal></div>
@@ -308,5 +331,6 @@
 </div>
 
 <script src="/static/nav-auth.js?v=20260321-navfast3"></script>
+<script src="/static/shop-cart.js?v=20260323-cartv1"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

@@ -475,18 +475,33 @@ blog_nip23_default_state_json() {
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$page_type" ] || page_type='nip23'
   title=$(blog_nostr_page_default_title "$slug" "$page_type")
+  purchase_endpoint=$(blog_nip23_default_purchase_endpoint "$slug" 2>/dev/null || printf '')
   state_type='nip23'
   if [ "$page_type" = 'blog' ]; then
     state_type='blog'
   fi
-  jq -cn --arg slug "$slug" --arg title "$title" --arg state_type "$state_type" '{
+  jq -cn --arg slug "$slug" --arg title "$title" --arg state_type "$state_type" --arg purchase_endpoint "$purchase_endpoint" '{
     slug: $slug,
     type: $state_type,
     title: $title,
     content: "",
+    product_enabled: false,
+    product_type: "software",
+    price: "",
+    currency: "USD",
+    crypto_discount_percent: 0,
+    purchase_endpoint: $purchase_endpoint,
+    repo: "",
+    tag: "latest",
     extras_after: "",
     extras_after_format: "markdown"
   }'
+}
+
+blog_nip23_default_purchase_endpoint() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  printf '/purchase/%s\n' "$slug"
 }
 
 blog_nip23_normalize_state_json() {
@@ -495,6 +510,7 @@ blog_nip23_normalize_state_json() {
   page_type=$(printf '%s' "${3-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$page_type" ] || page_type='nip23'
   fallback_title=$(blog_nostr_page_default_title "$slug" "$page_type")
+  default_purchase_endpoint=$(blog_nip23_default_purchase_endpoint "$slug" 2>/dev/null || printf '')
   state_type='nip23'
   if [ "$page_type" = 'blog' ]; then
     state_type='blog'
@@ -503,12 +519,54 @@ blog_nip23_normalize_state_json() {
     blog_nip23_default_state_json "$slug" "$page_type"
     return 0
   fi
-  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg state_type "$state_type" '
-    {
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg state_type "$state_type" --arg default_purchase_endpoint "$default_purchase_endpoint" '
+    def norm_bool($v):
+      if $v == true then true
+      elif $v == false then false
+      else
+        (($v // "") | tostring | ascii_downcase) as $s
+        | ($s == "true" or $s == "1" or $s == "yes" or $s == "on")
+      end;
+    def norm_price($v):
+      (($v // "") | tostring | gsub("[[:space:]]"; "")) as $raw
+      | if ($raw | test("^[0-9]+([.][0-9]{1,2})?$")) then $raw else "" end;
+    def norm_currency($v):
+      (($v // "USD") | tostring | ascii_upcase | gsub("[^A-Z]"; "")) as $c
+      | if ($c | length) == 3 then $c else "USD" end;
+    def norm_purchase($v):
+      (($v // "") | tostring) as $p
+      | if ($p | length) > 0 then $p else $default_purchase_endpoint end;
+    def norm_product_type($v):
+      (($v // "software") | tostring | ascii_downcase) as $t
+      | if ($t == "software" or $t == "service" or $t == "membership") then $t else "software" end;
+    def norm_discount($v):
+      (($v // 0) | tonumber? // 0) as $n
+      | if $n < 0 then 0 elif $n > 95 then 95 else $n end;
+    def norm_trim($v):
+      (($v // "") | tostring | gsub("^\\s+|\\s+$"; ""));
+
+    (.product_enabled // .is_product // null) as $product_flag
+    | (norm_price(.price // .price_usd // "")) as $price
+    | (norm_purchase(.purchase_endpoint // .r // "")) as $purchase_endpoint
+    | {
       slug: $slug,
       type: $state_type,
       title: ((.title // $fallback_title) | tostring),
       content: ((.content // "") | tostring),
+      product_enabled: (
+        if $product_flag == null then
+          (($price | length) > 0)
+        else
+          norm_bool($product_flag)
+        end
+      ),
+      product_type: norm_product_type(.product_type // ""),
+      price: $price,
+      currency: norm_currency(.currency // ""),
+      crypto_discount_percent: norm_discount(.crypto_discount_percent // .crypto_discount // .discount_percent // 0),
+      purchase_endpoint: $purchase_endpoint,
+      repo: norm_trim(.repo // ""),
+      tag: (norm_trim(.tag // "latest") | if length > 0 then . else "latest" end),
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
       extras_after_format: "markdown"
     }
@@ -527,7 +585,20 @@ blog_nip23_state_from_event_json() {
   raw=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{
     slug: $slug,
     title: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""),
-    content: (.content // "")
+    content: (.content // ""),
+    price: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="price") | .[1]] | first) // ""),
+    currency: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="currency") | .[1]] | first) // "USD"),
+    purchase_endpoint: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="r") | .[1]] | first) // ""),
+    product_enabled: (
+      (
+        (([.tags[]? | select(type=="array" and length>=2 and .[0]=="price") | .[1]] | first) // "") as $price
+        | ($price | length) > 0
+      ) or
+      (
+        (([.tags[]? | select(type=="array" and length>=2 and .[0]=="r") | .[1]] | first) // "") as $r
+        | ($r | length) > 0
+      )
+    )
   }' 2>/dev/null || printf '')
   blog_nip23_normalize_state_json "$slug" "$raw" "$page_type"
 }
@@ -540,21 +611,54 @@ blog_nip23_state_signature_json() {
   fi
   printf '%s\n' "$state_json" | jq -c '{
     title: (.title // ""),
-    content: (.content // "")
+    content: (.content // ""),
+    product_enabled: (.product_enabled // false),
+    price: (if (.product_enabled // false) then (.price // "") else "" end),
+    currency: (if (.product_enabled // false) then (.currency // "USD") else "USD" end),
+    purchase_endpoint: (if (.product_enabled // false) then (.purchase_endpoint // "") else "" end)
   }' 2>/dev/null || printf '{}\n'
 }
 
 blog_nip23_validate_and_enrich_state_json() {
   state_json=${1-}
+  strict_publish=${2-false}
   if [ -z "$state_json" ]; then
     printf '{"errors":["Missing page state"],"warnings":[],"can_publish":false}\n'
     return 0
   fi
-  printf '%s\n' "$state_json" | jq -c '
+  printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" '
+    def is_price($v):
+      ($v | test("^[0-9]+([.][0-9]{1,2})?$"));
+
+    (.title // "" | tostring) as $title
+    | (.product_enabled // false) as $is_product
+    | (.price // "" | tostring) as $price
+    | (.currency // "USD" | tostring | ascii_upcase) as $currency
+    | (.purchase_endpoint // "" | tostring) as $purchase_endpoint
     {
-      errors: [],
+      errors: (
+        []
+        + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
+        + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
+        + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
+        + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
+        + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
+        + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
+        + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
+      ),
       warnings: [],
-      can_publish: true
+      can_publish: (
+        (
+          []
+          + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
+          + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
+          + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
+          + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
+          + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
+          + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
+          + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
+        ) | length
+      ) == 0
     }
   ' 2>/dev/null || printf '{"errors":["Could not validate page state"],"warnings":[],"can_publish":false}\n'
 }
@@ -563,6 +667,9 @@ blog_nostr_sign_nip23_event() {
   slug=$(blog_nostr_page_slug "${1-}")
   title=${2-}
   content=${3-}
+  price=${4-}
+  currency=${5-}
+  purchase_endpoint=${6-}
   [ -n "$slug" ] || return 1
   if ! command -v nostril >/dev/null 2>&1; then
     return 1
@@ -573,6 +680,15 @@ blog_nostr_sign_nip23_event() {
   set -- nostril --sec "$secret" --kind 30023 --created-at "$created_at" --content "$content" --tag d "$slug"
   if [ -n "$title" ]; then
     set -- "$@" --tag title "$title"
+  fi
+  if [ -n "$price" ]; then
+    set -- "$@" --tag price "$price"
+  fi
+  if [ -n "$currency" ]; then
+    set -- "$@" --tag currency "$currency"
+  fi
+  if [ -n "$purchase_endpoint" ]; then
+    set -- "$@" --tag r "$purchase_endpoint"
   fi
   sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nip23-sign.XXXXXX")
   set +e

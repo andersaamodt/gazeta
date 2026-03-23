@@ -640,7 +640,7 @@ title: ""
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="blog">Blog Index (NIP-23 posts)</option>
 <option value="list">List Page (kind 30004)</option>
-<option value="icon-gallery">Icon Gallery (kind 30004)</option>
+<option value="icon-gallery">Product Gallery (kind 30004)</option>
 <option value="public-ranking">Public Ranking (kind 30040)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>

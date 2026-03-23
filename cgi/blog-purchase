@@ -1,0 +1,227 @@
+#!/bin/sh
+# Create a single-product order from /purchase/<product> and redirect to provider.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+
+resolve_product_slug() {
+  slug=$(blog_nostr_page_slug "$(blog_param product)")
+  if [ -n "$slug" ]; then
+    printf '%s\n' "$slug"
+    return 0
+  fi
+
+  path_info=${PATH_INFO-}
+  path_info=$(printf '%s' "$path_info" | sed 's#^/##; s#/.*$##')
+  slug=$(blog_nostr_page_slug "$path_info")
+  if [ -n "$slug" ]; then
+    printf '%s\n' "$slug"
+    return 0
+  fi
+
+  uri=${REQUEST_URI-}
+  if printf '%s' "$uri" | grep -q '/purchase/'; then
+    tail_part=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/purchase\/##' | sed 's#[/?].*$##')
+    slug=$(blog_nostr_page_slug "$tail_part")
+    if [ -n "$slug" ]; then
+      printf '%s\n' "$slug"
+      return 0
+    fi
+  fi
+
+  printf '\n'
+}
+
+btcpay_host_for_request() {
+  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
+  if [ -n "$configured" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  host=${HTTP_HOST-}
+  host=${host%%:*}
+  host=$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')
+  case "$host" in
+    ''|localhost|127.0.0.1|*' '*|*'/'*|*'..'*|*:* )
+      printf '\n'
+      return 0
+      ;;
+  esac
+  case "$host" in
+    *.*) printf 'pay.%s\n' "$host" ;;
+    *) printf '\n' ;;
+  esac
+}
+
+provider_url_for_order() {
+  order_id=${1-}
+  provider=${2-btcpay}
+  fiat_total=${3-0.00}
+  crypto_total=${4-0.00}
+
+  case "$provider" in
+    btcpay)
+      btcpay_host=$(btcpay_host_for_request)
+      if [ -n "$btcpay_host" ]; then
+        printf 'https://%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_host" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
+      else
+        printf '/pages/checkout.html?order_id=%s\n' "$(blog_url_encode "$order_id")"
+      fi
+      ;;
+    paybis)
+      partner=$(config-get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
+      printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
+      ;;
+    ramp|*)
+      host_api_key=$(config-get "$blog_site_conf" ramp_host_api_key 2>/dev/null || printf '')
+      printf 'https://buy.ramp.network/?hostApiKey=%s&fiatCurrency=USD&fiatValue=%s&orderId=%s\n' "$(blog_url_encode "$host_api_key")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
+      ;;
+  esac
+}
+
+emit_json_error() {
+  message=${1-Request failed}
+  code=${2-request_failed}
+  blog_send_json_headers
+  blog_json_error "$message" "$code"
+  printf '\n'
+}
+
+slug=$(resolve_product_slug)
+if [ -z "$slug" ]; then
+  emit_json_error "Product slug could not be resolved from URL" "missing_product_slug"
+  exit 0
+fi
+
+qty=$(blog_param qty)
+case "$qty" in
+  ''|*[!0-9]*) qty=1 ;;
+esac
+[ "$qty" -ge 1 ] || qty=1
+[ "$qty" -le 50 ] || qty=50
+
+payment_method=$(printf '%s' "$(blog_param payment_method)" | tr '[:upper:]' '[:lower:]')
+provider=$(printf '%s' "$(blog_param provider)" | tr '[:upper:]' '[:lower:]')
+[ -n "$payment_method" ] || payment_method='crypto'
+case "$payment_method" in
+  crypto|credit) ;;
+  *) payment_method='crypto' ;;
+esac
+case "$provider" in
+  btcpay|ramp|paybis) ;;
+  *)
+    if [ "$payment_method" = 'credit' ]; then
+      provider='ramp'
+    else
+      provider='btcpay'
+    fi
+    ;;
+esac
+
+product=$(blog_payments_public_product_json "$slug" 2>/dev/null || printf '')
+if [ -z "$product" ]; then
+  emit_json_error "Product not found" "unknown_product"
+  exit 0
+fi
+
+title=$(printf '%s\n' "$product" | jq -r '.title // ""' 2>/dev/null || printf '')
+unit_price=$(printf '%s\n' "$product" | jq -r '.price // "0.00"' 2>/dev/null || printf '0.00')
+unit_crypto_price=$(printf '%s\n' "$product" | jq -r '.crypto_price // .price // "0.00"' 2>/dev/null || printf '0.00')
+currency=$(printf '%s\n' "$product" | jq -r '.currency // "USD"' 2>/dev/null || printf 'USD')
+
+subtotal_num=$(awk 'BEGIN { printf "%.6f\n", (ARGV[1] + 0) * (ARGV[2] + 0) }' "$unit_price" "$qty")
+crypto_total_num=$(awk 'BEGIN { printf "%.6f\n", (ARGV[1] + 0) * (ARGV[2] + 0) }' "$unit_crypto_price" "$qty")
+
+line_json=$(jq -cn \
+  --arg slug "$slug" \
+  --arg title "$title" \
+  --argjson qty "$qty" \
+  --arg unit_price "$(blog_payments_format_money "$unit_price")" \
+  --arg unit_crypto_price "$(blog_payments_format_money "$unit_crypto_price")" \
+  --arg currency "$currency" \
+  --arg subtotal "$(blog_payments_format_money "$subtotal_num")" \
+  --arg crypto_subtotal "$(blog_payments_format_money "$crypto_total_num")" \
+  --argjson subtotal_num "$(blog_payments_parse_amount "$subtotal_num")" \
+  --argjson crypto_subtotal_num "$(blog_payments_parse_amount "$crypto_total_num")" \
+  '{
+    slug: $slug,
+    title: $title,
+    qty: $qty,
+    unit_price: $unit_price,
+    unit_crypto_price: $unit_crypto_price,
+    currency: $currency,
+    subtotal: $subtotal,
+    crypto_subtotal: $crypto_subtotal,
+    subtotal_num: $subtotal_num,
+    crypto_subtotal_num: $crypto_subtotal_num
+  }')
+
+order_id=$(blog_payments_new_order_id 2>/dev/null || printf '')
+if [ -z "$order_id" ]; then
+  emit_json_error "Could not create order" "order_create_failed"
+  exit 0
+fi
+
+purchase_payload=$(jq -cn --arg order_id "$order_id" --arg provider "$provider" --arg slug "$slug" '{order_id:$order_id, provider:$provider, product:$slug}')
+purchase_token=$(blog_payments_issue_token purchase "$purchase_payload" 7200 2>/dev/null || printf '')
+provider_url=$(provider_url_for_order "$order_id" "$provider" "$(blog_payments_format_money "$subtotal_num")" "$(blog_payments_format_money "$crypto_total_num")")
+
+now=$(blog_now_epoch)
+order_json=$(jq -cn \
+  --arg order_id "$order_id" \
+  --arg provider "$provider" \
+  --arg payment_method "$payment_method" \
+  --arg purchase_token "$purchase_token" \
+  --arg provider_url "$provider_url" \
+  --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+  --argjson created_at "$now" \
+  --argjson line "$line_json" \
+  --arg subtotal "$(blog_payments_format_money "$subtotal_num")" \
+  --arg crypto_total "$(blog_payments_format_money "$crypto_total_num")" \
+  '{
+    order_id: $order_id,
+    status: "pending",
+    provider: $provider,
+    payment_method: $payment_method,
+    created_at: $created_at,
+    purchase_token: $purchase_token,
+    provider_url: $provider_url,
+    checkout_url: $checkout_url,
+    items: [$line],
+    totals: {
+      subtotal: $subtotal,
+      crypto_total: $crypto_total,
+      currency: "USD"
+    },
+    download_links: []
+  }')
+blog_payments_order_save_json "$order_id" "$order_json"
+
+resp_json=$(jq -cn \
+  --argjson order "$order_json" \
+  --arg provider_url "$provider_url" \
+  --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+  '{success:true, order:$order, provider_url:$provider_url, checkout_url:$checkout_url}')
+
+format=$(printf '%s' "$(blog_param format)" | tr '[:upper:]' '[:lower:]')
+accept=${HTTP_ACCEPT-}
+if [ "$format" = 'json' ] || printf '%s' "$accept" | grep -qi 'application/json'; then
+  blog_send_json_headers
+  printf '%s\n' "$resp_json"
+  exit 0
+fi
+
+printf 'Status: 302 Found\r\n'
+printf 'Location: %s\r\n' "$provider_url"
+printf 'Cache-Control: no-store\r\n'
+printf '\r\n'

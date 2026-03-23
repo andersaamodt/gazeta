@@ -1,0 +1,60 @@
+#!/bin/sh
+# Return normalized product metadata for checkout/cart flows.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+blog_send_json_headers
+
+emit_single() {
+  slug_in=${1-}
+  slug=$(blog_nostr_page_slug "$slug_in")
+  if [ -z "$slug" ]; then
+    blog_json_error "product slug is required" "missing_product_slug"
+    return 0
+  fi
+  product_json=$(blog_payments_public_product_json "$slug" 2>/dev/null || printf '')
+  if [ -z "$product_json" ]; then
+    blog_json_error "Product not found" "unknown_product"
+    return 0
+  fi
+  jq -cn --argjson product "$product_json" '{success:true, product:$product}'
+  printf '\n'
+}
+
+slugs_json=$(blog_param slugs_json)
+if [ -n "$slugs_json" ]; then
+  if ! printf '%s\n' "$slugs_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+    blog_json_error "slugs_json must be a JSON array" "invalid_slugs"
+    exit 0
+  fi
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-products.XXXXXX")
+  : > "$tmp"
+  printf '%s\n' "$slugs_json" | jq -r '.[] | tostring' 2>/dev/null | while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
+    slug=$(blog_nostr_page_slug "$raw_slug")
+    [ -n "$slug" ] || continue
+    product_json=$(blog_payments_public_product_json "$slug" 2>/dev/null || printf '')
+    [ -n "$product_json" ] || continue
+    printf '%s\n' "$product_json" >> "$tmp"
+  done
+  products_json=$(jq -sc '.' "$tmp" 2>/dev/null || printf '[]')
+  rm -f "$tmp"
+  jq -cn --argjson products "$products_json" '{success:true, products:$products}'
+  printf '\n'
+  exit 0
+fi
+
+single_slug=$(blog_param product_slug)
+if [ -z "$single_slug" ]; then
+  single_slug=$(blog_param slug)
+fi
+emit_single "$single_slug"

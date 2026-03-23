@@ -456,6 +456,10 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="marker"
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-list-show-marker-filters="true"' 'list editor exposes show marker filters checkbox'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true"' 'list edit toolbar exposes show marker filters checkbox in settings row'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-list-view-mode="tile"' 'product gallery read mode renders tile/list selector pill'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-list-inline-action="create-product"' 'product gallery edit rows expose create-product action'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "'/cgi/blog-create-product-page'" 'product gallery create-product action calls dedicated CGI endpoint'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-add-product-slug' 'product gallery read mode exposes add-to-cart controls'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.ctrlKey' 'list marker filters support ctrl-click exclusion mode'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.metaKey || event.shiftKey' 'list marker filters support cmd/shift multi-select include mode'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'function datePillForEntryInSection(entry, groupBy, sectionLabel)' 'list read renderer computes section-aware date-pill visibility'
@@ -480,10 +484,12 @@ assert_file_contains "$ROOT_DIR/static/style.css" '.list-page-shell {' 'list she
 assert_file_contains "$ROOT_DIR/static/style.css" 'list-inline-grid-columns:' 'list inline table uses shared grid template variable'
 assert_file_contains "$ROOT_DIR/static/style.css" 'grid-template-columns: var(--list-inline-grid-columns);' 'list headers and rows both read same grid template variable'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-entry-date-pill {' 'list read rows include a dedicated date-pill style'
+assert_file_contains "$ROOT_DIR/static/style.css" '.list-view-mode-pill {' 'product gallery tile/list selector uses a compact pill shell'
+assert_file_contains "$ROOT_DIR/static/style.css" '.list-inline-actions button[data-list-inline-action="create-product"] {' 'product gallery create-product action uses fit-to-content button styling'
 assert_file_contains "$ROOT_DIR/static/style.css" '.nav-center {' 'nav center lane styling exists'
 assert_file_contains "$ROOT_DIR/static/style.css" 'overflow-x: auto;' 'navbar center lane scrolls within its own column instead of overlapping right controls'
 assert_file_contains "$ROOT_DIR/static/style.css" 'min-width: max-content;' 'navbar right lane preserves intrinsic width so search/actions do not intrude into center links'
-assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "cache: 'no-store'" 'nav-auth has no-store directives'
@@ -494,6 +500,11 @@ assert_file_contains "$ROOT_DIR/static/blog-page.js" "apiPost('/cgi/blog-delete-
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
+assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'id="nip23-price-input"' 'nip23 editor exposes product USD price input'
+assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'id="nip23-repo-input"' 'nip23 editor exposes product artifact repo field'
+assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'id="nip23-tag-input"' 'nip23 editor exposes product artifact tag field'
+assert_file_contains "$ROOT_DIR/static/nip23-page.js" 'data-nip23-action="add-to-cart"' 'nip23 read mode exposes add-to-cart action'
+assert_file_contains "$ROOT_DIR/static/style.css" '.nip23-product-card {' 'nip23 read mode renders product checkout card styles'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'oeuvre has no-store directives'
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-title-row {' 'in-blog compose title row style exists'
@@ -512,7 +523,14 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
+assert_success sh -n "$ROOT_DIR/cgi/blog-payments-common.sh"
+assert_success sh -n "$ROOT_DIR/cgi/blog-payments"
+assert_success sh -n "$ROOT_DIR/cgi/blog-get-product"
+assert_success sh -n "$ROOT_DIR/cgi/blog-purchase"
+assert_success sh -n "$ROOT_DIR/cgi/blog-download"
+assert_success sh -n "$ROOT_DIR/cgi/blog-create-product-page"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
+assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
 
 # 11) Managed source-page sync invariants (unit layer).
 sync_cfg=$(jq -cn '{pages:[
@@ -627,6 +645,22 @@ assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_installed"' 'bt
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_host"' 'btcpay cgi runtime emits host key'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_url"' 'btcpay cgi runtime emits URL key'
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
+assert_success test -x "$ROOT_DIR/cgi/blog-payments"
+assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
+assert_success test -x "$ROOT_DIR/cgi/blog-purchase"
+assert_success test -x "$ROOT_DIR/cgi/blog-download"
+assert_success test -x "$ROOT_DIR/cgi/blog-create-product-page"
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'create_order' 'payments cgi supports create_order action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'order_status' 'payments cgi supports order_status action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'simulate_paid' 'payments cgi supports simulated paid transition'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'webhook' 'payments cgi supports provider webhook action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_host_api_key:' 'payments status emits ramp runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_verify_token "$token" download' 'download cgi verifies signed download token'
+assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_release_assets_json' 'download cgi resolves release assets from GitHub API'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-download" 'Location: %s' 'download cgi avoids exposing direct GitHub asset URLs to clients'
+assert_file_contains "$ROOT_DIR/cgi/blog-create-product-page" 'type: "nip23"' 'product-page creator provisions nip23 product pages'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" 'setting_auto_start_from_config()' 'noster runtime reads auto-start from config files'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" '.runtime.auto_start' 'noster auto-start parser checks runtime.auto_start field'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" 'activate_relay_url_flow()' 'noster runtime exposes relay URL setup flow helper'

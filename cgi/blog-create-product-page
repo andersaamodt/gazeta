@@ -1,0 +1,132 @@
+#!/bin/sh
+# Create or update a NIP-23 product page from Product Gallery row data.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+raw_title=$(blog_param product_title)
+raw_slug=$(blog_param product_slug)
+if [ -z "$raw_slug" ]; then
+  raw_slug=$raw_title
+fi
+slug=$(blog_nostr_page_slug "$raw_slug")
+if [ -z "$slug" ]; then
+  blog_json_error "Product slug/title is required" "missing_product_slug"
+  exit 0
+fi
+
+page_title=$(printf '%s' "$raw_title" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+if [ -z "$page_title" ]; then
+  page_title=$(blog_nostr_page_default_title "$slug" 'nip23')
+fi
+
+product_type=$(printf '%s' "$(blog_param product_type)" | tr '[:upper:]' '[:lower:]')
+case "$product_type" in
+  software|service|membership) ;;
+  *) product_type='software' ;;
+esac
+
+price=$(blog_param price)
+currency=$(printf '%s' "$(blog_param currency)" | tr '[:lower:]' '[:upper:]')
+[ -n "$currency" ] || currency='USD'
+repo=$(blog_param repo)
+tag=$(blog_param tag)
+[ -n "$tag" ] || tag='latest'
+content=$(blog_param content)
+if [ -z "$content" ]; then
+  desc=$(blog_param description)
+  if [ -n "$desc" ]; then
+    content=$desc
+  fi
+fi
+
+pages_cfg=$(blog_nostr_pages_load_json)
+existing=$(printf '%s\n' "$pages_cfg" | jq -c --arg slug "$slug" '.pages[]? | select(.slug == $slug) | .' 2>/dev/null | head -n 1)
+
+created=true
+if [ -n "$existing" ]; then
+  existing_type=$(printf '%s\n' "$existing" | jq -r '.type // ""' 2>/dev/null || printf '')
+  case "$existing_type" in
+    nip23|blog)
+      created=false
+      ;;
+    *)
+      blog_json_error "A page with this slug already exists with a different type" "slug_conflict"
+      exit 0
+      ;;
+  esac
+else
+  next_cfg=$(printf '%s\n' "$pages_cfg" | jq -c \
+    --arg slug "$slug" \
+    --arg title "$page_title" \
+    '.pages += [{
+      slug: $slug,
+      type: "nip23",
+      kind: 30023,
+      show_in_nav: false,
+      placeholder_title: $title,
+      path: ("/" + $slug)
+    }]')
+  blog_nostr_pages_sync_source_pages "$next_cfg"
+  blog_nostr_pages_save_json "$next_cfg"
+fi
+
+purchase_endpoint=$(blog_payments_default_purchase_endpoint "$slug" 2>/dev/null || printf '')
+state_json=$(jq -cn \
+  --arg slug "$slug" \
+  --arg title "$page_title" \
+  --arg content "$content" \
+  --arg product_type "$product_type" \
+  --arg price "$price" \
+  --arg currency "$currency" \
+  --arg purchase_endpoint "$purchase_endpoint" \
+  --arg repo "$repo" \
+  --arg tag "$tag" \
+  '{
+    slug: $slug,
+    type: "nip23",
+    title: $title,
+    content: $content,
+    product_enabled: true,
+    product_type: $product_type,
+    price: $price,
+    currency: $currency,
+    purchase_endpoint: $purchase_endpoint,
+    repo: $repo,
+    tag: $tag,
+    extras_after: "",
+    extras_after_format: "markdown"
+  }')
+
+blog_nostr_page_save_draft_state_json "$slug" 'nip23' "$state_json"
+blog_run_build_async
+
+jq -cn \
+  --arg slug "$slug" \
+  --arg path "/$slug" \
+  --arg title "$page_title" \
+  --argjson created "$( [ "$created" = 'true' ] && printf true || printf false )" \
+  '{
+    success: true,
+    created: $created,
+    slug: $slug,
+    path: $path,
+    title: $title,
+    message: (if $created then "Product page created." else "Product page updated." end)
+  }'
+printf '\n'

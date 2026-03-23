@@ -119,6 +119,14 @@ if [ -z "$state_json" ]; then
     nip23|blog)
       title=$(blog_param title)
       content=$(blog_param content)
+      product_enabled=$(blog_param product_enabled)
+      product_type=$(blog_param product_type)
+      price=$(blog_param price)
+      currency=$(blog_param currency)
+      crypto_discount_percent=$(blog_param crypto_discount_percent)
+      purchase_endpoint=$(blog_param purchase_endpoint)
+      repo=$(blog_param repo)
+      tag=$(blog_param tag)
       extras_after=$(blog_param extras_after)
       extras_after_format='markdown'
       state_json=$(jq -cn \
@@ -126,6 +134,14 @@ if [ -z "$state_json" ]; then
         --arg page_type "$page_type" \
         --arg title "$title" \
         --arg content "$content" \
+        --arg product_enabled "$product_enabled" \
+        --arg product_type "$product_type" \
+        --arg price "$price" \
+        --arg currency "$currency" \
+        --arg crypto_discount_percent "$crypto_discount_percent" \
+        --arg purchase_endpoint "$purchase_endpoint" \
+        --arg repo "$repo" \
+        --arg tag "$tag" \
         --arg extras_after "$extras_after" \
         --arg extras_after_format "$extras_after_format" \
         '{
@@ -133,6 +149,14 @@ if [ -z "$state_json" ]; then
           type: $page_type,
           title: $title,
           content: $content,
+          product_enabled: (($product_enabled | ascii_downcase) == "true"),
+          product_type: $product_type,
+          price: $price,
+          currency: $currency,
+          crypto_discount_percent: ($crypto_discount_percent | tonumber? // 0),
+          purchase_endpoint: $purchase_endpoint,
+          repo: $repo,
+          tag: $tag,
           extras_after: $extras_after,
           extras_after_format: $extras_after_format
         }')

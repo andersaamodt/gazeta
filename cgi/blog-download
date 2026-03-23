@@ -1,0 +1,171 @@
+#!/bin/sh
+# Token-verified product download endpoint with GitHub release asset resolution.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+
+emit_json_error() {
+  message=${1-Download failed}
+  code=${2-download_failed}
+  blog_send_json_headers
+  blog_json_error "$message" "$code"
+  printf '\n'
+}
+
+resolve_slug() {
+  raw=$(blog_param product)
+  slug=$(blog_nostr_page_slug "$raw")
+  if [ -n "$slug" ]; then
+    printf '%s\n' "$slug"
+    return 0
+  fi
+
+  path_info=${PATH_INFO-}
+  path_info=$(printf '%s' "$path_info" | sed 's#^/##; s#/.*$##')
+  slug=$(blog_nostr_page_slug "$path_info")
+  if [ -n "$slug" ]; then
+    printf '%s\n' "$slug"
+    return 0
+  fi
+
+  uri=${REQUEST_URI-}
+  if printf '%s' "$uri" | grep -q '/download/'; then
+    tail=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/download\/##' | sed 's#[/?].*$##')
+    slug=$(blog_nostr_page_slug "$tail")
+    if [ -n "$slug" ]; then
+      printf '%s\n' "$slug"
+      return 0
+    fi
+  fi
+
+  printf '\n'
+}
+
+slug=$(resolve_slug)
+if [ -z "$slug" ]; then
+  emit_json_error "Product slug is required" "missing_product_slug"
+  exit 0
+fi
+
+token=$(blog_param token)
+if [ -z "$token" ]; then
+  emit_json_error "Download token is required" "missing_download_token"
+  exit 0
+fi
+
+payload=$(blog_payments_verify_token "$token" download 2>/dev/null || printf '')
+if [ -z "$payload" ]; then
+  emit_json_error "Download token is invalid or expired" "invalid_download_token"
+  exit 0
+fi
+
+payload_product=$(printf '%s\n' "$payload" | jq -r '.product // ""' 2>/dev/null || printf '')
+payload_product=$(blog_nostr_page_slug "$payload_product")
+if [ -z "$payload_product" ] || [ "$payload_product" != "$slug" ]; then
+  emit_json_error "Download token does not match requested product" "download_token_product_mismatch"
+  exit 0
+fi
+
+state_json=$(blog_payments_product_state_json "$slug" 2>/dev/null || printf '')
+if [ -z "$state_json" ]; then
+  emit_json_error "Product settings not found" "product_settings_missing"
+  exit 0
+fi
+
+repo=$(printf '%s\n' "$state_json" | jq -r '.repo // ""' 2>/dev/null || printf '')
+tag=$(printf '%s\n' "$state_json" | jq -r '.tag // "latest"' 2>/dev/null || printf 'latest')
+if [ -z "$repo" ]; then
+  emit_json_error "Product repository is not configured" "product_repo_missing"
+  exit 0
+fi
+
+release_json=$(blog_payments_release_assets_json "$repo" "$tag" 2>/dev/null || printf '')
+if [ -z "$release_json" ]; then
+  emit_json_error "Could not fetch release assets from GitHub" "release_lookup_failed"
+  exit 0
+fi
+
+ua=${HTTP_USER_AGENT-}
+os_arch=$(blog_payments_detect_os_arch "$ua")
+os_name=$(printf '%s' "$os_arch" | cut -d';' -f1)
+arch_name=$(printf '%s' "$os_arch" | cut -d';' -f2)
+
+asset_json=$(blog_payments_pick_asset_json "$release_json" "$os_name" "$arch_name" 2>/dev/null || printf '')
+if [ -z "$asset_json" ]; then
+  emit_json_error "No downloadable asset found for this release" "asset_not_found"
+  exit 0
+fi
+
+asset_name=$(printf '%s\n' "$asset_json" | jq -r '.name // "download.bin"' 2>/dev/null || printf 'download.bin')
+asset_name=$(blog_basename_safe "$asset_name")
+asset_url=$(printf '%s\n' "$asset_json" | jq -r '.url // ""' 2>/dev/null || printf '')
+browser_url=$(printf '%s\n' "$asset_json" | jq -r '.browser_download_url // ""' 2>/dev/null || printf '')
+content_type=$(printf '%s\n' "$asset_json" | jq -r '.content_type // "application/octet-stream"' 2>/dev/null || printf 'application/octet-stream')
+
+token_param=$(printf '%s' "$(blog_param format)" | tr '[:upper:]' '[:lower:]')
+accept=${HTTP_ACCEPT-}
+if [ "$token_param" = 'json' ] || printf '%s' "$accept" | grep -qi 'application/json'; then
+  blog_send_json_headers
+  jq -cn \
+    --arg slug "$slug" \
+    --arg repo "$repo" \
+    --arg tag "$tag" \
+    --arg os "$os_name" \
+    --arg arch "$arch_name" \
+    --arg asset_name "$asset_name" \
+    --arg content_type "$content_type" \
+    '{
+      success: true,
+      product: $slug,
+      repo: $repo,
+      tag: $tag,
+      os: $os,
+      arch: $arch,
+      asset: {
+        name: $asset_name,
+        content_type: $content_type
+      }
+    }'
+  printf '\n'
+  exit 0
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  emit_json_error "curl is required for download proxying" "curl_missing"
+  exit 0
+fi
+
+github_token=$(blog_payments_github_token)
+if [ -n "$github_token" ] && [ -n "$asset_url" ]; then
+  printf 'Content-Type: %s\r\n' "$content_type"
+  printf 'Content-Disposition: attachment; filename="%s"\r\n' "$asset_name"
+  printf 'Cache-Control: no-store\r\n'
+  printf '\r\n'
+  curl -fsSL -H 'Accept: application/octet-stream' -H "Authorization: Bearer $github_token" "$asset_url" 2>/dev/null || exit 1
+  exit 0
+fi
+
+source_url=$browser_url
+if [ -z "$source_url" ]; then
+  source_url=$asset_url
+fi
+if [ -n "$source_url" ]; then
+  printf 'Content-Type: %s\r\n' "$content_type"
+  printf 'Content-Disposition: attachment; filename="%s"\r\n' "$asset_name"
+  printf 'Cache-Control: no-store\r\n'
+  printf '\r\n'
+  curl -fsSL "$source_url" 2>/dev/null || exit 1
+  exit 0
+fi
+
+emit_json_error "No delivery URL available for selected asset" "asset_delivery_unavailable"

@@ -71,6 +71,12 @@ blog_list_normalize_state_json() {
       else
         (($obj.description // "") | tostring)
       end;
+    def flex_post_url($obj):
+      if ($obj | type) == "array" then
+        (($obj[9] // "") | tostring)
+      else
+        (($obj.post_url // "") | tostring)
+      end;
     def flex_depth($obj):
       if ($obj | type) == "array" then
         ($obj[5] // 0)
@@ -106,7 +112,8 @@ blog_list_normalize_state_json() {
         depth: (if $depth < 0 then 0 else $depth end),
         markdown: ($dm.markdown | tostring),
         image_url: (flex_image_url(.)),
-        description: (flex_description(.))
+        description: (flex_description(.)),
+        post_url: (flex_post_url(.))
       };
     def elements_from_tags:
       [ .tags[]?
@@ -128,7 +135,8 @@ blog_list_normalize_state_json() {
             depth: (flex_depth(.) | tonumber? // 0),
             markdown: (flex_markdown(.)),
             image_url: (flex_image_url(.)),
-            description: (flex_description(.))
+            description: (flex_description(.)),
+            post_url: (flex_post_url(.))
           }
       ];
     (
@@ -149,7 +157,8 @@ blog_list_normalize_state_json() {
         depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
         markdown: (flex_markdown(.)),
         image_url: (flex_image_url(.)),
-        description: (flex_description(.))
+        description: (flex_description(.)),
+        post_url: (flex_post_url(.))
       })) as $elements
     | {
         slug: $slug,
@@ -188,7 +197,7 @@ blog_list_normalize_state_json() {
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
         + (.elements | map(
-            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // ""), (.description // "")]
+            ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // ""), (.description // ""), (.post_url // "")]
           ))
       )
   '

@@ -105,16 +105,88 @@
     return next === 'html' ? 'html' : 'markdown';
   }
 
+  function normalizeProductType(value) {
+    var next = String(value || '').trim().toLowerCase();
+    if (next === 'service' || next === 'membership') {
+      return next;
+    }
+    return 'software';
+  }
+
+  function normalizeCurrency(value) {
+    var next = String(value || 'USD').trim().toUpperCase().replace(/[^A-Z]/g, '');
+    if (next.length === 3) {
+      return next;
+    }
+    return 'USD';
+  }
+
+  function normalizePrice(value) {
+    var text = String(value || '').trim();
+    if (!text) {
+      return '';
+    }
+    if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(text)) {
+      return '';
+    }
+    return text;
+  }
+
+  function normalizeDiscount(value) {
+    var n = Number(value);
+    if (!isFinite(n) || n < 0) {
+      return 0;
+    }
+    if (n > 95) {
+      return 95;
+    }
+    return n;
+  }
+
+  function defaultPurchaseEndpoint() {
+    return '/purchase/' + slug;
+  }
+
   function normalizeDraftState(raw) {
     var src = raw || {};
+    var parsedPrice = normalizePrice(src.price || src.price_usd || '');
+    var parsedPurchaseEndpoint = String(src.purchase_endpoint || src.r || '').trim();
+    if (!parsedPurchaseEndpoint) {
+      parsedPurchaseEndpoint = defaultPurchaseEndpoint();
+    }
+    var productFlag = src.product_enabled;
+    if (productFlag === undefined || productFlag === null) {
+      productFlag = !!parsedPrice;
+    }
+    var productEnabled = (productFlag === true || String(productFlag || '').toLowerCase() === 'true' || String(productFlag || '') === '1');
     return {
       slug: String(src.slug || slug),
       type: String(src.type || 'nip23'),
       title: String(src.title || ''),
       content: String(src.content || ''),
+      product_enabled: productEnabled,
+      product_type: normalizeProductType(src.product_type || 'software'),
+      price: parsedPrice,
+      currency: normalizeCurrency(src.currency || 'USD'),
+      crypto_discount_percent: normalizeDiscount(src.crypto_discount_percent || 0),
+      purchase_endpoint: parsedPurchaseEndpoint,
+      repo: String(src.repo || ''),
+      tag: String(src.tag || 'latest'),
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown')
     };
+  }
+
+  function parseMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n) || n < 0) {
+      return 0;
+    }
+    return n;
+  }
+
+  function moneyText(value) {
+    return parseMoney(value).toFixed(2);
   }
 
   function authPayload() {
@@ -511,6 +583,38 @@
     els.admin.innerHTML = '';
   }
 
+  function renderProductCard(s) {
+    var priceText = normalizePrice(s.price || '');
+    var priceValue = parseMoney(priceText);
+    var discountValue = normalizeDiscount(s.crypto_discount_percent || 0);
+    var cryptoValue = priceValue * ((100 - discountValue) / 100);
+    var hasPrice = priceValue > 0;
+    var productType = normalizeProductType(s.product_type || 'software');
+    var enabled = !!s.product_enabled || hasPrice;
+    if (!enabled) {
+      return '';
+    }
+    var html = '';
+    html += '<section class="nip23-product-card" aria-label="Product checkout">';
+    html += '<div class="nip23-product-card-head">';
+    html += '<strong>Checkout</strong>';
+    html += '<span class="nip23-product-type-pill">' + escapeHtml(productType) + '</span>';
+    html += '</div>';
+    html += '<div class="nip23-product-prices">';
+    html += '<div><span>Card price</span><strong>$' + moneyText(priceValue) + ' ' + escapeHtml(normalizeCurrency(s.currency || 'USD')) + '</strong></div>';
+    html += '<div><span>Crypto price</span><strong>$' + moneyText(cryptoValue) + '</strong></div>';
+    if (discountValue > 0) {
+      html += '<div><span>Crypto discount</span><strong>' + escapeHtml(String(discountValue.toFixed(2)).replace(/\.00$/, '')) + '%</strong></div>';
+    }
+    html += '</div>';
+    html += '<div class="nip23-product-actions">';
+    html += '<button type="button" class="nip23-product-btn" data-nip23-action="add-to-cart">Add to Cart</button>';
+    html += '<a class="nip23-product-btn nip23-product-btn-primary" href="/pages/checkout.html?product=' + encodeURIComponent(slug) + '">Checkout Now</a>';
+    html += '</div>';
+    html += '</section>';
+    return html;
+  }
+
   function renderContent() {
     if (!els.content) {
       return;
@@ -527,6 +631,7 @@
     var readOnlyMain = hasMainContent
       ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
       : '<p class="list-page-empty-state">No content yet.</p>';
+    var productCardHtml = renderProductCard(s);
 
     if (isAdmin() && state.editMode) {
       var html = '';
@@ -534,15 +639,28 @@
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
       html += '<label class="nostr-page-extra-edit"><span>Title <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><input type="text" id="nip23-title-input" value="' + escapeHtml(s.title || '') + '"></label>';
       html += '<label class="nostr-page-extra-edit"><span>Content (Markdown) <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
+      html += '<section class="nip23-product-editor" aria-label="Product settings">';
+      html += '<h4>Product settings</h4>';
+      html += '<label class="nip23-product-enable-row"><span>Enable product checkout</span><input type="checkbox" id="nip23-product-enabled"' + (s.product_enabled ? ' checked' : '') + '></label>';
+      html += '<div class="nip23-product-grid">';
+      html += '<label><span>Type</span><select id="nip23-product-type"><option value="software"' + (normalizeProductType(s.product_type || '') === 'software' ? ' selected' : '') + '>Software</option><option value="service"' + (normalizeProductType(s.product_type || '') === 'service' ? ' selected' : '') + '>Service</option><option value="membership"' + (normalizeProductType(s.product_type || '') === 'membership' ? ' selected' : '') + '>Membership</option></select></label>';
+      html += '<label><span>Price (USD)</span><input type="text" id="nip23-price-input" inputmode="decimal" placeholder="19.00" value="' + escapeHtml(normalizePrice(s.price || '')) + '"></label>';
+      html += '<label><span>Crypto discount %</span><input type="number" id="nip23-discount-input" min="0" max="95" step="1" value="' + escapeHtml(String(normalizeDiscount(s.crypto_discount_percent || 0))) + '"></label>';
+      html += '<label><span>Purchase endpoint</span><input type="text" id="nip23-purchase-endpoint" value="' + escapeHtml(String(s.purchase_endpoint || defaultPurchaseEndpoint())) + '"></label>';
+      html += '<label><span>GitHub repo</span><input type="text" id="nip23-repo-input" placeholder="owner/private-repo" value="' + escapeHtml(String(s.repo || '')) + '"></label>';
+      html += '<label><span>Release tag</span><input type="text" id="nip23-tag-input" placeholder="latest" value="' + escapeHtml(String(s.tag || 'latest')) + '"></label>';
+      html += '</div>';
+      html += '</section>';
       html += '<label class="nostr-page-extra-edit"><span>After content <span class="nostr-page-scope-pill is-local">Local</span></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after the main content section">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
       html += '</section>';
+      html += productCardHtml;
       html += readOnlyMain;
       html += outroHtml;
       els.content.innerHTML = html;
       return;
     }
 
-    els.content.innerHTML = readOnlyMain + outroHtml;
+    els.content.innerHTML = productCardHtml + readOnlyMain + outroHtml;
   }
 
   function renderAll() {
@@ -550,6 +668,16 @@
     renderAdmin();
     renderContent();
     renderValidation();
+  }
+
+  function addCurrentProductToCart() {
+    if (!window.blogShopCart || typeof window.blogShopCart.addProductBySlug !== 'function') {
+      window.alert('Cart is still loading. Try again in a moment.');
+      return;
+    }
+    window.blogShopCart.addProductBySlug(slug).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not add product to cart');
+    });
   }
 
   function saveNavbarTitle() {
@@ -694,7 +822,19 @@
   function bindEvents() {
     root.addEventListener('click', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLElement) || !isAdmin()) {
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var actionNode = target.closest('[data-nip23-action]');
+      if (actionNode instanceof HTMLElement) {
+        var action = String(actionNode.getAttribute('data-nip23-action') || '');
+        if (action === 'add-to-cart') {
+          event.preventDefault();
+          addCurrentProductToCart();
+          return;
+        }
+      }
+      if (!isAdmin()) {
         return;
       }
       var navTitleActionNode = target.closest('[data-page-nav-title-action]');
@@ -712,7 +852,6 @@
           return;
         }
       }
-      var actionNode = target.closest('[data-nip23-action]');
       if (!(actionNode instanceof HTMLElement)) {
         return;
       }
@@ -761,6 +900,44 @@
       if (target.id === 'nip23-content-input') {
         state.draft.content = String(target.value || '');
         queueAutosave(500);
+        return;
+      }
+      if (target.id === 'nip23-product-enabled' && target instanceof HTMLInputElement) {
+        state.draft.product_enabled = !!target.checked;
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-product-type' && target instanceof HTMLSelectElement) {
+        state.draft.product_type = normalizeProductType(target.value || 'software');
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-price-input') {
+        state.draft.price = String(target.value || '').trim();
+        if (state.draft.price) {
+          state.draft.product_enabled = true;
+        }
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-discount-input') {
+        state.draft.crypto_discount_percent = normalizeDiscount(target.value || 0);
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-purchase-endpoint') {
+        state.draft.purchase_endpoint = String(target.value || '').trim();
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-repo-input') {
+        state.draft.repo = String(target.value || '').trim();
+        queueAutosave(450);
+        return;
+      }
+      if (target.id === 'nip23-tag-input') {
+        state.draft.tag = String(target.value || '').trim();
+        queueAutosave(450);
         return;
       }
       if (target.id === 'nip23-outro-input') {

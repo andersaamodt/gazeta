@@ -3659,7 +3659,7 @@
       return 'Blog Index (kind 30023)';
     }
     if (type === 'icon-gallery') {
-      return 'Icon Gallery (kind 30004)';
+      return 'Product Gallery (kind 30004)';
     }
     if (type === 'public-ranking') {
       return 'Public Ranking (kind 30040)';
