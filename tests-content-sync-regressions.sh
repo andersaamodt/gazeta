@@ -615,6 +615,18 @@ else
 fi
 assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel #posts-list > .placeholder.table-empty {' 'posts empty-state placeholder remains centered'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="zaps"] .runtime-settings-list .field-row > button {' 'zaps runtime action buttons are fit-to-content aligned'
+assert_file_contains "$ROOT_DIR/pages/admin.md" 'data-admin-nav="btcpay"' 'admin nav includes BTCPay section entry'
+assert_file_contains "$ROOT_DIR/pages/admin.md" 'id="admin-nav-btcpay-status"' 'admin nav includes BTCPay status pill'
+assert_file_contains "$ROOT_DIR/pages/admin.md" 'data-admin-section="btcpay"' 'admin includes BTCPay section scaffold'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="btcpay"] .runtime-settings-list .field-row > button {' 'btcpay runtime action buttons are fit-to-content aligned'
+assert_file_contains "$ROOT_DIR/static/admin.js" '/cgi/blog-manage-btcpay' 'admin runtime fetches BTCPay status endpoint'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'data-btcpay-action="install_btcpay"' 'admin runtime includes BTCPay install action control'
+assert_file_contains "$ROOT_DIR/static/admin.js" "state.activeSection === 'btcpay'" 'btcpay polling only runs while btcpay section is active'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" 'install_btcpay|uninstall_btcpay' 'btcpay cgi supports install and uninstall actions'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_installed"' 'btcpay cgi runtime emits install status key'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_host"' 'btcpay cgi runtime emits host key'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_url"' 'btcpay cgi runtime emits URL key'
+assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" 'setting_auto_start_from_config()' 'noster runtime reads auto-start from config files'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" '.runtime.auto_start' 'noster auto-start parser checks runtime.auto_start field'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-noster" 'activate_relay_url_flow()' 'noster runtime exposes relay URL setup flow helper'

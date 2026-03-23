@@ -91,6 +91,8 @@ blog_write_draft_markdown() {
   created_at=${11}
   updated_at=${12}
   content=${13}
+  post_type=${14-longform}
+  post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$tags")
   tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-draft.XXXXXX")
   {
@@ -99,6 +101,7 @@ blog_write_draft_markdown() {
     printf 'title: "%s"\n' "$(blog_yaml_escape "$title")"
     printf 'slug: "%s"\n' "$(blog_yaml_escape "$slug")"
     printf 'tags: %s\n' "$tags_yaml"
+    printf 'post_type: "%s"\n' "$(blog_yaml_escape "$post_type")"
     printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
     printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
     printf 'publish_mode: "%s"\n' "$(blog_yaml_escape "$publish_mode")"
@@ -2050,6 +2053,15 @@ blog_normalize_tags() {
   printf '%s' "$tags" | tr '\n' ',' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | awk 'NF { if (!seen[$0]++) { if (out != "") out = out ", "; out = out $0; } } END { printf "%s", out }'
 }
 
+blog_normalize_post_type() {
+  raw=${1-longform}
+  raw=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
+  if [ -z "$raw" ]; then
+    raw='longform'
+  fi
+  printf '%s\n' "$raw"
+}
+
 blog_tags_to_json_array() {
   tags=$(blog_normalize_tags "${1-}")
   if [ -z "$tags" ]; then
@@ -2874,6 +2886,7 @@ blog_save_draft() {
   publish_mode=$7
   scheduled_at=$8
   status=$9
+  post_type=${10-longform}
 
   draft_file=$(blog_draft_file_path "$draft_id")
   mkdir -p "$blog_drafts_dir"
@@ -2884,9 +2897,10 @@ blog_save_draft() {
   fi
 
   normalized_tags=$(blog_normalize_tags "$tags")
+  normalized_post_type=$(blog_normalize_post_type "$post_type")
   slug=$(blog_slugify "$title")
   now_iso=$(blog_now_iso)
-  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content"
+  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type"
   blog_file_sync_draft_refs "$draft_id" "$content"
 }
 
@@ -2929,7 +2943,7 @@ blog_compute_post_filename() {
 }
 
 blog_publish_content_markdown() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
   title=$1
   tags=$2
   summary=$3
@@ -2938,11 +2952,13 @@ blog_publish_content_markdown() {
   draft_id=$6
   publish_mode=$7
   scheduled_at=$8
+  post_type=${9-longform}
 
   filename=$(blog_compute_post_filename "$title")
   post_path="$blog_posts_dir/$filename"
   now_iso=$(blog_now_iso)
   normalized_tags=$(blog_normalize_tags "$tags")
+  normalized_post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$normalized_tags")
   content_hash=$(printf '%s' "$content" | blog_sha256)
 
@@ -2952,6 +2968,7 @@ blog_publish_content_markdown() {
     printf 'published_at: "%s"\n' "$now_iso"
     printf 'content_hash: "%s"\n' "$content_hash"
     printf 'tags: %s\n' "$tags_yaml"
+    printf 'post_type: "%s"\n' "$(blog_yaml_escape "$normalized_post_type")"
     printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
     if [ -n "$summary" ]; then
       printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
@@ -2974,7 +2991,7 @@ blog_publish_content_markdown() {
 }
 
 blog_publish_content_nostr() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
   title=$1
   tags=$2
   summary=$3
@@ -2983,6 +3000,7 @@ blog_publish_content_nostr() {
   draft_id=$6
   _publish_mode=$7
   _scheduled_at=$8
+  _post_type=${9-}
 
   published_iso=$(blog_now_iso)
   event_json=$(blog_nostr_sign_post_event "$title" "$tags" "$summary" "$content" "$published_iso" 2>/dev/null || printf '')
@@ -3024,7 +3042,7 @@ blog_publish_content_nostr() {
 }
 
 blog_publish_content() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
   if blog_nostr_bridge_enabled; then
     if out=$(blog_publish_content_nostr "$@" 2>/dev/null); then
       BLOG_PUBLISH_LAST_MODE="nostr"
@@ -3234,12 +3252,13 @@ blog_run_scheduler() {
       tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
       summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
       author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
+      post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
       author=$(blog_author_display_name "$author")
       if [ -z "$author" ]; then
         author='author'
       fi
       content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
-      if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" scheduled "$now_iso"); then
+      if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" scheduled "$now_iso" "$post_type"); then
         continue
       fi
       if [ -n "$published_file" ]; then
@@ -3276,12 +3295,13 @@ blog_run_scheduler() {
         tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
         summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
         author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
+        post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
         author=$(blog_author_display_name "$author")
         if [ -z "$author" ]; then
           author='author'
         fi
         content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
-        if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" drip ""); then
+        if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" drip "" "$post_type"); then
           continue
         fi
         if [ -n "$published_file" ]; then

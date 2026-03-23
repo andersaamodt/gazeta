@@ -29,6 +29,7 @@ title: ""
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 </div>
 </aside>
 <button id="btn-admin-sidebar-reveal" type="button" class="unobtrusive-icon-button admin-sidebar-reveal" aria-label="Show admin sidebar" title="Show sidebar" hidden>
@@ -196,6 +197,28 @@ title: ""
 </div>
 
 <div id="output-zaps" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="btcpay" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>BTCPay Server</h3>
+<p class="muted">Install and check BTCPay Server runtime on this server through Wizardry.</p>
+</div>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Server Runtime</h4>
+<div id="btcpay-runtime" class="runtime-settings-list">
+<div class="placeholder">Loading BTCPay runtime...</div>
+</div>
+</section>
+</div>
+
+<div id="output-btcpay" class="output"></div>
 </div>
 </section>
 
@@ -1088,6 +1111,14 @@ body {
   margin-bottom: 0.08rem;
 }
 
+[data-admin-section="btcpay"] .field-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.04rem 0.44rem;
+  margin-bottom: 0.08rem;
+}
+
 [data-admin-section="nostr-bridge"] .checkbox-row {
   display: grid;
   grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
@@ -1152,6 +1183,16 @@ body {
 }
 
 [data-admin-section="nostr-bridge"] .setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  color: #1f335f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+[data-admin-section="btcpay"] .setting-label {
   display: inline-flex;
   align-items: center;
   gap: 0.38rem;
@@ -1458,7 +1499,21 @@ body {
   min-width: 0;
 }
 
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > button {
+  justify-self: start;
+  width: auto;
+  min-width: 0;
+}
+
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.04rem 0.44rem;
+  margin-bottom: 0.08rem;
+}
+
+[data-admin-section="btcpay"] .runtime-settings-list .field-row {
   display: grid;
   grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
   align-items: center;
@@ -1471,9 +1526,21 @@ body {
   grid-column: 1;
 }
 
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > .setting-label {
+  margin-bottom: 0;
+  grid-column: 1;
+}
+
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .zaps-runtime-value,
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > button,
 [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .checkbox-control {
+  grid-column: 2;
+  justify-self: start;
+}
+
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > .zaps-runtime-value,
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > button,
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > .checkbox-control {
   grid-column: 2;
   justify-self: start;
 }

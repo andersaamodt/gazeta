@@ -29,6 +29,11 @@ fi
 title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
 tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
 summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+if [ -z "$post_type" ]; then
+  post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
+fi
+post_type=$(blog_normalize_post_type "$post_type")
 publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
 status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
 scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
@@ -43,6 +48,7 @@ printf '"draft_id":"%s",' "$(blog_json_escape "$resolved_draft_id")"
 printf '"title":"%s",' "$(blog_json_escape "$title")"
 printf '"tags":"%s",' "$(blog_json_escape "$tags")"
 printf '"summary":"%s",' "$(blog_json_escape "$summary")"
+printf '"post_type":"%s",' "$(blog_json_escape "$post_type")"
 printf '"publish_mode":"%s",' "$(blog_json_escape "$publish_mode")"
 printf '"status":"%s",' "$(blog_json_escape "$status")"
 printf '"scheduled_at":"%s",' "$(blog_json_escape "$scheduled_at")"

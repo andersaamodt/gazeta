@@ -1,0 +1,410 @@
+#!/bin/sh
+# Manage BTCPay Server runtime and Wizardry-backed install/uninstall actions.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+if [ -z "$action" ]; then
+  action=status
+fi
+
+wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
+home_dir=${HOME:-}
+wizardry_install_url='https://raw.githubusercontent.com/andersaamodt/wizardry/main/install'
+
+find_web_wizardry_bin() {
+  bin=$(command -v web-wizardry 2>/dev/null || printf '')
+  if [ -n "$bin" ] && [ -x "$bin" ]; then
+    printf '%s\n' "$bin"
+    return 0
+  fi
+  for candidate in /usr/local/bin/web-wizardry /opt/homebrew/bin/web-wizardry /usr/bin/web-wizardry /bin/web-wizardry; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_wizardry_dir() {
+  configured=${WIZARDRY_DIR-}
+  if [ -n "$configured" ] && [ -x "$configured/spells/web/build" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  resolved=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
+  if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+  if [ -n "${HOME-}" ] && [ -x "$HOME/.wizardry/spells/web/build" ]; then
+    printf '%s\n' "$HOME/.wizardry"
+    return 0
+  fi
+  for candidate in /usr/local/share/wizardry /opt/homebrew/share/wizardry /usr/share/wizardry; do
+    if [ -x "$candidate/spells/web/build" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  web_wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
+  if [ -n "$web_wizardry_bin" ]; then
+    resolved=$(CDPATH= cd -- "$(dirname "$web_wizardry_bin")/../.." 2>/dev/null && pwd -P)
+    if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+refresh_wizardry_runtime() {
+  resolved=$(resolve_wizardry_dir 2>/dev/null || printf '')
+  if [ -n "$resolved" ]; then
+    wizardry_dir=$resolved
+  fi
+  wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
+  if [ ! -x "$wizardry_dir/spells/web/build" ] && [ -n "$wizardry_bin" ]; then
+    inferred_dir=$(CDPATH= cd -- "$(dirname "$wizardry_bin")/../.." 2>/dev/null && pwd -P)
+    if [ -n "$inferred_dir" ]; then
+      wizardry_dir=$inferred_dir
+    fi
+  fi
+}
+
+wizardry_installed() {
+  refresh_wizardry_runtime
+  if [ -x "$wizardry_dir/spells/web/build" ]; then
+    return 0
+  fi
+  [ -n "${wizardry_bin-}" ]
+}
+
+web_wizardry_has_cmd() {
+  cmd_name=$1
+  if ! command -v web-wizardry >/dev/null 2>&1; then
+    return 1
+  fi
+  web-wizardry --help 2>/dev/null | grep -Eq "^[[:space:]]+$cmd_name([[:space:]]|$)"
+}
+
+web_wizardry_run_cmd() {
+  cmd_name=$1
+  action_log=$2
+  btcpay_host=${3-}
+  if [ -n "$btcpay_host" ]; then
+    if env BTCPAY_HOST="$btcpay_host" web-wizardry "$cmd_name" >> "$action_log" 2>&1; then
+      return 0
+    else
+      status=$?
+      return "$status"
+    fi
+  else
+    if web-wizardry "$cmd_name" >> "$action_log" 2>&1; then
+      return 0
+    else
+      status=$?
+      return "$status"
+    fi
+  fi
+}
+
+run_wizardry_spell() {
+  spell_path=$1
+  action_log=$2
+  btcpay_host=${3-}
+
+  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-btcpay-input.XXXXXX")
+  i=0
+  while [ "$i" -lt 12 ]; do
+    printf '\n' >> "$input_file"
+    i=$((i + 1))
+  done
+
+  status=0
+  if [ -n "$btcpay_host" ]; then
+    if sh -c 'WIZARDRY_DIR="$1" HOME="$2" BTCPAY_HOST="$3" "$4" < "$5"' sh "$wizardry_dir" "$home_dir" "$btcpay_host" "$spell_path" "$input_file" >> "$action_log" 2>&1; then
+      status=0
+    else
+      status=$?
+    fi
+  else
+    if sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$home_dir" "$spell_path" "$input_file" >> "$action_log" 2>&1; then
+      status=0
+    else
+      status=$?
+    fi
+  fi
+
+  rm -f "$input_file"
+  return "$status"
+}
+
+normalize_host() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  raw=$(printf '%s' "$raw" | sed -e 's#^https\{0,1\}://##' -e 's#/.*$##' -e 's/:[0-9][0-9]*$//')
+  printf '%s\n' "$raw"
+}
+
+valid_public_host() {
+  candidate=${1-}
+  [ -n "$candidate" ] || return 1
+  printf '%s' "$candidate" | grep -Eq '^[A-Za-z0-9.-]+$' || return 1
+  printf '%s' "$candidate" | grep -q '\.' || return 1
+  case "$candidate" in
+    localhost|*.local|*..*|.*|*.) return 1 ;;
+  esac
+  case "$candidate" in
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 1 ;;
+  esac
+  return 0
+}
+
+configured_btcpay_host() {
+  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
+  configured=$(normalize_host "$configured")
+  if valid_public_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  printf '\n'
+}
+
+derived_btcpay_host() {
+  source_host=$(normalize_host "${HTTP_HOST:-${SERVER_NAME:-}}")
+  if ! valid_public_host "$source_host"; then
+    printf '\n'
+    return 0
+  fi
+  printf 'pay.%s\n' "$source_host"
+}
+
+resolve_btcpay_host() {
+  configured=$(configured_btcpay_host)
+  if [ -n "$configured" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  derived=$(derived_btcpay_host)
+  if [ -n "$derived" ] && valid_public_host "$derived"; then
+    printf '%s\n' "$derived"
+    return 0
+  fi
+  printf '\n'
+}
+
+btcpay_url_for_host() {
+  host=${1-}
+  if [ -z "$host" ]; then
+    printf '\n'
+    return 0
+  fi
+  printf 'https://%s\n' "$host"
+}
+
+btcpay_installed() {
+  refresh_wizardry_runtime
+
+  if web_wizardry_has_cmd check-btcpay; then
+    status_line=$(web-wizardry check-btcpay 2>/dev/null | awk -F= '/^status=/{print $2; exit}' || printf '')
+    if [ "$status_line" = "ok" ]; then
+      return 0
+    fi
+  fi
+
+  if [ -x "$wizardry_dir/spells/.arcana/btcpay/check-btcpay" ]; then
+    status_line=$(WIZARDRY_DIR="$wizardry_dir" HOME="$home_dir" "$wizardry_dir/spells/.arcana/btcpay/check-btcpay" 2>/dev/null | awk -F= '/^status=/{print $2; exit}' || printf '')
+    if [ "$status_line" = "ok" ]; then
+      return 0
+    fi
+  fi
+
+  btcpay_root=${BTCPAY_BASE_DIR:-$home_dir/.btcpayserver}
+  [ -x "$btcpay_root/btcpayserver-docker/btcpay-setup.sh" ]
+}
+
+btcpay_running() {
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -Eiq 'btcpay|nbxplorer|generated_btcpay'
+}
+
+bool_json() {
+  if "$@"; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+runtime_json() {
+  refresh_wizardry_runtime
+  btcpay_host=$(resolve_btcpay_host)
+  btcpay_url=$(btcpay_url_for_host "$btcpay_host")
+  printf '{'
+  printf '"wizardry_installed":%s,' "$(bool_json wizardry_installed)"
+  printf '"wizardry_path":"%s",' "$(blog_json_escape "$wizardry_dir")"
+  printf '"btcpay_installed":%s,' "$(bool_json btcpay_installed)"
+  printf '"btcpay_running":%s,' "$(bool_json btcpay_running)"
+  printf '"btcpay_host":"%s",' "$(blog_json_escape "$btcpay_host")"
+  printf '"btcpay_url":"%s"' "$(blog_json_escape "$btcpay_url")"
+  printf '}'
+}
+
+emit_success() {
+  message=${1-OK}
+  log_text=${2-}
+  printf '{"success":true,"message":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+emit_failure() {
+  message=${1-Request failed}
+  code=${2-btcpay_failed}
+  log_text=${3-}
+  printf '{"success":false,"error":"%s","code":"%s","runtime":%s,"log":"%s"}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(blog_json_escape "$code")" \
+    "$(runtime_json)" \
+    "$(blog_json_escape "$log_text")"
+}
+
+ensure_wizardry() {
+  if wizardry_installed; then
+    return 0
+  fi
+
+  tmp_installer=$(mktemp "${TMPDIR:-/tmp}/wizardry-install.XXXXXX")
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$wizardry_install_url" -o "$tmp_installer"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$tmp_installer" "$wizardry_install_url"
+  else
+    rm -f "$tmp_installer"
+    printf 'curl or wget is required to bootstrap Wizardry.\n' >&2
+    return 1
+  fi
+
+  sh "$tmp_installer"
+  rm -f "$tmp_installer"
+  refresh_wizardry_runtime
+  wizardry_installed
+}
+
+install_btcpay() {
+  action_log=$1
+  btcpay_host=$(resolve_btcpay_host)
+  if [ -z "$btcpay_host" ]; then
+    printf 'Unable to resolve BTCPay host. Set btcpay_host in site.conf or access this site via a public FQDN.\n' >> "$action_log"
+    return 2
+  fi
+
+  printf 'Using BTCPay host: %s\n' "$btcpay_host" >> "$action_log"
+
+  if web_wizardry_has_cmd install-btcpay; then
+    web_wizardry_run_cmd install-btcpay "$action_log" "$btcpay_host"
+    return $?
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/btcpay/install-btcpay"
+  if [ ! -x "$spell" ]; then
+    printf 'Wizardry BTCPay installer was not found.\n' >> "$action_log"
+    return 3
+  fi
+
+  run_wizardry_spell "$spell" "$action_log" "$btcpay_host"
+}
+
+uninstall_btcpay() {
+  action_log=$1
+
+  if web_wizardry_has_cmd uninstall-btcpay; then
+    web_wizardry_run_cmd uninstall-btcpay "$action_log"
+    return $?
+  fi
+
+  spell="$wizardry_dir/spells/.arcana/btcpay/uninstall-btcpay"
+  if [ ! -x "$spell" ]; then
+    printf 'Wizardry BTCPay uninstall script was not found.\n' >> "$action_log"
+    return 3
+  fi
+
+  run_wizardry_spell "$spell" "$action_log"
+}
+
+case "$action" in
+  status)
+    emit_success "BTCPay runtime loaded."
+    exit 0
+    ;;
+  install_btcpay|uninstall_btcpay) ;;
+  *)
+    emit_failure "Unknown action" "invalid_action"
+    exit 0
+    ;;
+esac
+
+log_file=$(mktemp "${TMPDIR:-/tmp}/blog-btcpay-log.XXXXXX")
+trap 'rm -f "$log_file"' EXIT HUP INT TERM
+
+printf 'Ensuring Wizardry is installed at %s\n' "$wizardry_dir" >> "$log_file"
+if ! ensure_wizardry >> "$log_file" 2>&1; then
+  emit_failure "Could not install or locate Wizardry." "wizardry_bootstrap_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+  exit 0
+fi
+
+case "$action" in
+  install_btcpay)
+    set +e
+    install_btcpay "$log_file"
+    status=$?
+    set -e
+    if [ "$status" -ne 0 ]; then
+      if [ "$status" -eq 2 ]; then
+        emit_failure "Could not determine BTCPay hostname." "btcpay_host_invalid" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      elif [ "$status" -eq 3 ]; then
+        emit_failure "Wizardry BTCPay installer was not found." "missing_btcpay_installer" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      else
+        emit_failure "BTCPay install failed. Check the log output." "btcpay_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      fi
+      exit 0
+    fi
+    btcpay_url=$(btcpay_url_for_host "$(resolve_btcpay_host)")
+    if [ -n "$btcpay_url" ]; then
+      emit_success "BTCPay install completed. URL: $btcpay_url" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    else
+      emit_success "BTCPay install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    fi
+    ;;
+  uninstall_btcpay)
+    set +e
+    uninstall_btcpay "$log_file"
+    status=$?
+    set -e
+    if [ "$status" -ne 0 ]; then
+      if [ "$status" -eq 3 ]; then
+        emit_failure "Wizardry BTCPay uninstall script was not found." "missing_btcpay_uninstaller" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      else
+        emit_failure "BTCPay uninstall failed. Check the log output." "btcpay_uninstall_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      fi
+      exit 0
+    fi
+    emit_success "BTCPay uninstall completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    ;;
+esac

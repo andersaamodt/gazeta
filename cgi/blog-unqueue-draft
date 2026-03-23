@@ -31,6 +31,11 @@ tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
 summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
 author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
 content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
-blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft
+post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+if [ -z "$post_type" ]; then
+  post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
+fi
+post_type=$(blog_normalize_post_type "$post_type")
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type"
 
 printf '{"success":true,"message":"Draft moved back to drafts","draft_id":"%s"}\n' "$(blog_json_escape "$draft_id")"

@@ -49,6 +49,11 @@ fi
 
 title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
 summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+if [ -z "$post_type" ]; then
+  post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+fi
+post_type=$(blog_normalize_post_type "$post_type")
 author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
 if [ -z "$author" ]; then
   author=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
@@ -60,6 +65,6 @@ tags=$(blog_normalize_tags "$tags_csv")
 content=$(blog_read_markdown_body "$file")
 
 draft_id=$(blog_new_draft_id)
-blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type"
 
 printf '{"success":true,"draft_id":"%s","message":"Draft created from published post."}\n' "$(blog_json_escape "$draft_id")"

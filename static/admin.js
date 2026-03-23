@@ -25,6 +25,7 @@
     postsPollTimer: null,
     nosterPollTimer: null,
     zapsPollTimer: null,
+    btcpayPollTimer: null,
     moderationPollTimer: null,
     userDragActive: false,
     userDragUsername: '',
@@ -79,6 +80,8 @@
     nosterActionInFlight: false,
     zapsRuntimeInfo: null,
     zapsActionInFlight: false,
+    btcpayRuntimeInfo: null,
+    btcpayActionInFlight: false,
     initialContentPainted: false,
     loadedAdminSections: {},
     sidebarCollapsed: false
@@ -97,10 +100,12 @@
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
     outputZaps: document.getElementById('output-zaps'),
+    outputBtcpay: document.getElementById('output-btcpay'),
     outputUsers: document.getElementById('output-users'),
     nosterRuntime: document.getElementById('noster-runtime'),
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
     navZapsStatus: document.getElementById('admin-nav-zaps-status'),
+    navBtcpayStatus: document.getElementById('admin-nav-btcpay-status'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
     registrationEnabled: document.getElementById('registration-enabled'),
@@ -116,6 +121,7 @@
     zapLud16: document.getElementById('zap-lud16'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
+    btcpayRuntime: document.getElementById('btcpay-runtime'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -293,6 +299,9 @@
     if (key === 'zaps') {
       return 'Zaps';
     }
+    if (key === 'btcpay') {
+      return 'BTCPay';
+    }
     return 'Admin';
   }
 
@@ -339,6 +348,7 @@
     syncPostsAutoRefresh();
     syncNosterAutoRefresh();
     syncZapsAutoRefresh();
+    syncBtcpayAutoRefresh();
     syncModerationAutoRefresh();
     renderUploadJobs();
     maybeLoadAdminSection(sectionName, true);
@@ -365,6 +375,10 @@
       if (section === 'zaps') {
         await loadConfig();
         await loadZapsRuntime();
+        return;
+      }
+      if (section === 'btcpay') {
+        await loadBtcpayRuntime();
         return;
       }
       if (section === 'users') {
@@ -411,6 +425,10 @@
         setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
         return;
       }
+      if (section === 'btcpay') {
+        setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+        return;
+      }
       if (section === 'users') {
         setOutput(els.outputUsers, 'Error: ' + err.message, 'error');
         return;
@@ -455,6 +473,10 @@
       {
         sections: ['zaps'],
         task: configTask.then(function () { return loadZapsRuntime(); })
+      },
+      {
+        sections: ['btcpay'],
+        task: loadBtcpayRuntime()
       },
       {
         sections: ['users'],
@@ -2229,6 +2251,26 @@
     els.navZapsStatus.className = 'admin-nav-status-pill ' + statusClass;
   }
 
+  function setBtcpayNavStatus(runtime) {
+    if (!els.navBtcpayStatus) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    const btcpayInstalled = !!info.btcpay_installed;
+    const btcpayRunning = !!info.btcpay_running;
+    let label = 'Not Installed';
+    let statusClass = 'is-offline';
+    if (btcpayRunning) {
+      label = 'Online';
+      statusClass = 'is-online';
+    } else if (btcpayInstalled) {
+      label = 'Installed';
+      statusClass = 'is-installed';
+    }
+    els.navBtcpayStatus.textContent = label;
+    els.navBtcpayStatus.className = 'admin-nav-status-pill ' + statusClass;
+  }
+
   function setNosterButtonsBusy(isBusy) {
     const cardButtons = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('button[data-noster-action]')) : [];
     const settingInputs = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('input[data-noster-setting]')) : [];
@@ -2620,6 +2662,141 @@
     } finally {
       state.zapsActionInFlight = false;
       setZapsButtonsBusy(false);
+    }
+  }
+
+  function setBtcpayButtonsBusy(isBusy) {
+    const cardButtons = els.btcpayRuntime ? Array.from(els.btcpayRuntime.querySelectorAll('button[data-btcpay-action]')) : [];
+    cardButtons.filter(Boolean).forEach(function (button) {
+      button.disabled = !!isBusy;
+    });
+  }
+
+  function stopBtcpayPolling() {
+    if (state.btcpayPollTimer) {
+      clearInterval(state.btcpayPollTimer);
+      state.btcpayPollTimer = null;
+    }
+  }
+
+  function syncBtcpayAutoRefresh() {
+    const btcpayVisible = state.isAdmin && state.activeSection === 'btcpay';
+    if (!btcpayVisible) {
+      stopBtcpayPolling();
+      return;
+    }
+    loadBtcpayRuntime().catch(function (err) {
+      setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+    });
+    if (state.btcpayPollTimer) {
+      return;
+    }
+    state.btcpayPollTimer = setInterval(function () {
+      if (!(state.isAdmin && state.activeSection === 'btcpay')) {
+        stopBtcpayPolling();
+        return;
+      }
+      if (document.visibilityState !== 'visible' || state.btcpayActionInFlight) {
+        return;
+      }
+      loadBtcpayRuntime().catch(function () {});
+    }, 10000);
+  }
+
+  function renderBtcpayRuntime(runtime, logText, message) {
+    if (!els.btcpayRuntime) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    state.btcpayRuntimeInfo = info;
+    setBtcpayNavStatus(info);
+
+    const wizardryReady = !!info.wizardry_installed;
+    const btcpayReady = !!info.btcpay_installed;
+    const btcpayRunning = !!info.btcpay_running;
+    const wizardryPath = String(info.wizardry_path || '').trim();
+    const btcpayHost = String(info.btcpay_host || '').trim();
+    const btcpayUrl = String(info.btcpay_url || '').trim();
+    const actionDisabledAttr = state.btcpayActionInFlight ? ' disabled' : '';
+
+    let html = '';
+    html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
+      + (wizardryReady
+        ? ('<div class="zaps-runtime-value is-ok">' + escapeHtml(wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') + '</div>')
+        : '<div class="zaps-runtime-value is-warn">Not installed</div>')
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>BTCPay Server</strong></div>'
+      + (btcpayReady
+        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
+        : ('<button type="button" class="zaps-runtime-action" data-btcpay-action="install_btcpay"' + actionDisabledAttr + '>Install</button>'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Process</strong></div>'
+      + '<div class="zaps-runtime-value ' + (btcpayRunning ? 'is-ok' : 'is-warn') + '">' + (btcpayRunning ? 'Running' : 'Stopped') + '</div>'
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Host</strong></div>'
+      + '<div class="zaps-runtime-value">' + (btcpayHost ? escapeHtml(btcpayHost) : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>URL</strong></div>'
+      + '<div class="zaps-runtime-value">' + (btcpayUrl ? ('<a href="' + escapeAttr(btcpayUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(btcpayUrl) + '</a>') : '<span class="zaps-runtime-value is-warn">Unavailable</span>') + '</div>'
+      + '</div>';
+    if (message) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
+    } else if (logText) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(logText)) + '</pre>';
+    }
+    els.btcpayRuntime.innerHTML = html;
+  }
+
+  async function loadBtcpayRuntime() {
+    if (!els.btcpayRuntime) {
+      return;
+    }
+    setBtcpayButtonsBusy(true);
+    try {
+      const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load BTCPay runtime');
+      }
+      renderBtcpayRuntime(data.runtime || {}, '', '');
+      if (els.outputBtcpay) {
+        els.outputBtcpay.innerHTML = '';
+      }
+    } catch (err) {
+      renderBtcpayRuntime({}, '', '');
+      setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+    } finally {
+      setBtcpayButtonsBusy(false);
+    }
+  }
+
+  async function runBtcpayAction(action) {
+    const picked = String(action || '').trim();
+    if (!picked) {
+      return;
+    }
+    if (picked !== 'install_btcpay' && picked !== 'uninstall_btcpay') {
+      return;
+    }
+    const label = picked === 'install_btcpay' ? 'BTCPay Server installer' : 'BTCPay Server uninstall';
+    if (!window.confirm('Run the ' + label + ' on this server now?')) {
+      return;
+    }
+    state.btcpayActionInFlight = true;
+    setBtcpayButtonsBusy(true);
+    renderBtcpayRuntime(state.btcpayRuntimeInfo || {}, '', 'Running ' + label + '...');
+    try {
+      const data = await apiPost('/cgi/blog-manage-btcpay', { action: picked }, true);
+      if (!data.success) {
+        renderBtcpayRuntime(data.runtime || {}, data.log || '', 'BTCPay action failed.');
+        throw new Error(data.error || 'BTCPay action failed');
+      }
+      renderBtcpayRuntime(data.runtime || {}, data.log || '', data.message || '');
+      setOutput(els.outputBtcpay, data.message || 'BTCPay updated.', 'ok');
+    } catch (err) {
+      setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+    } finally {
+      state.btcpayActionInFlight = false;
+      setBtcpayButtonsBusy(false);
     }
   }
 
@@ -5204,6 +5381,25 @@
         });
       });
     }
+    if (els.btcpayRuntime) {
+      els.btcpayRuntime.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const actionButton = target.closest('button[data-btcpay-action]');
+        if (!actionButton) {
+          return;
+        }
+        const action = String(actionButton.getAttribute('data-btcpay-action') || '').trim();
+        if (!action) {
+          return;
+        }
+        runBtcpayAction(action).catch(function (err) {
+          setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
     if (els.moderationList) {
       els.moderationList.addEventListener('click', function (event) {
         const target = event.target;
@@ -5896,6 +6092,9 @@
       if (state.isAdmin && state.activeSection === 'zaps') {
         loadZapsRuntime().catch(function () {});
       }
+      if (state.isAdmin && state.activeSection === 'btcpay') {
+        loadBtcpayRuntime().catch(function () {});
+      }
       if (state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
       }
@@ -5918,6 +6117,9 @@
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'zaps') {
         loadZapsRuntime().catch(function () {});
+      }
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'btcpay') {
+        loadBtcpayRuntime().catch(function () {});
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
