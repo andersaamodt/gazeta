@@ -37,12 +37,12 @@
   --select-option-selected-text: #fff;
   --select-color-scheme: light;
   --accent-hover-end: #1d4ed8;
-  --button-primary-start: var(--accent);
-  --button-primary-end: var(--accent-dark);
-  --button-primary-hover-start: var(--accent-dark);
-  --button-primary-hover-end: var(--accent-hover-end);
-  --button-primary-active-start: var(--accent-hover-end);
-  --button-primary-active-end: var(--accent-dark);
+  --button-primary-start: #c56b28;
+  --button-primary-end: #9a4e1d;
+  --button-primary-hover-start: #ad551f;
+  --button-primary-hover-end: #7f3f17;
+  --button-primary-active-start: #b25d22;
+  --button-primary-active-end: #8b451a;
   --button-primary-text: var(--nav-active-text, #fff);
   --button-primary-border: color-mix(in srgb, var(--button-primary-end) 70%, var(--border) 30%);
   --button-primary-overlay: none;
@@ -902,32 +902,32 @@ header h1 {
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
-  border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--border, #c3cada) 66%);
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 10%, var(--surface-raised-strong, #fff) 90%) !important;
+  border: 1px solid color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 10%, var(--surface-raised-strong, #fff) 90%) !important;
   background-image: none !important;
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%);
   box-shadow: none;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn):hover:not(:disabled),
 .list-page-admin-bar button:not(.list-admin-primary-btn):focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 16%, var(--surface-raised-strong, #fff) 84%) !important;
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 16%, var(--surface-raised-strong, #fff) 84%) !important;
   background-image: none !important;
-  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 52%, var(--border, #c3cada) 48%);
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%);
+  border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%);
 }
 
 .list-page-admin-bar .list-admin-primary-btn,
 .public-ranking-submit-toggle {
   padding: 0.36rem 0.74rem;
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--border, #c3cada) 66%);
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 10%, var(--surface-raised-strong, #fff) 90%) !important;
+  border: 1px solid color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 10%, var(--surface-raised-strong, #fff) 90%) !important;
   background-image: none !important;
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%);
   box-shadow: none;
   font-size: 0.92rem;
   font-weight: 400;
@@ -938,21 +938,21 @@ header h1 {
 .list-page-admin-bar .list-admin-primary-btn:focus-visible:not(:disabled),
 .public-ranking-submit-toggle:hover:not(:disabled),
 .public-ranking-submit-toggle:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 16%, var(--surface-raised-strong, #fff) 84%) !important;
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 16%, var(--surface-raised-strong, #fff) 84%) !important;
   background-image: none !important;
-  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 52%, var(--border, #c3cada) 48%);
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%);
+  border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%);
   box-shadow: none;
 }
 
 .list-page-admin-bar .list-admin-primary-btn:active:not(:disabled),
 .public-ranking-submit-toggle:active:not(:disabled) {
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 20%, var(--surface-raised-strong, #fff) 80%) !important;
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 20%, var(--surface-raised-strong, #fff) 80%) !important;
   background-image: none !important;
-  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 58%, var(--border, #c3cada) 42%);
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 88%, var(--text, #243046) 12%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 88%, var(--text, #243046) 12%);
+  border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 58%, var(--border, #c3cada) 42%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 88%, var(--text, #243046) 12%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 88%, var(--text, #243046) 12%);
 }
 
 .list-page-admin-bar button:disabled {
@@ -4367,10 +4367,10 @@ footer {
 .blog-compose-fab,
 .blog-compose-preview-toggle,
 .blog-compose-card [data-compose-action="publish"] {
-  border: 1px solid color-mix(in srgb, var(--accent, #2f4aa6) 34%, var(--border, #c3cada) 66%);
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 10%, var(--surface-raised-strong, #fff) 90%) !important;
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 78%, var(--text, #243046) 22%);
+  border: 1px solid color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 10%, var(--surface-raised-strong, #fff) 90%) !important;
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%);
 }
 
 .blog-compose-fab:hover:not(:disabled),
@@ -4379,10 +4379,10 @@ footer {
 .blog-compose-preview-toggle:focus-visible:not(:disabled),
 .blog-compose-card [data-compose-action="publish"]:hover:not(:disabled),
 .blog-compose-card [data-compose-action="publish"]:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--accent, #2f4aa6) 16%, var(--surface-raised-strong, #fff) 84%) !important;
-  border-color: color-mix(in srgb, var(--accent, #2f4aa6) 52%, var(--border, #c3cada) 48%);
-  color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%);
+  background: color-mix(in srgb, var(--button-primary-start, #c56b28) 16%, var(--surface-raised-strong, #fff) 84%) !important;
+  border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%) !important;
+  -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%);
 }
 
 .blog-compose-slot {
