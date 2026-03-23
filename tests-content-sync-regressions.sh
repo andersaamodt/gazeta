@@ -480,6 +480,9 @@ assert_file_contains "$ROOT_DIR/static/style.css" '.list-page-shell {' 'list she
 assert_file_contains "$ROOT_DIR/static/style.css" 'list-inline-grid-columns:' 'list inline table uses shared grid template variable'
 assert_file_contains "$ROOT_DIR/static/style.css" 'grid-template-columns: var(--list-inline-grid-columns);' 'list headers and rows both read same grid template variable'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-entry-date-pill {' 'list read rows include a dedicated date-pill style'
+assert_file_contains "$ROOT_DIR/static/style.css" '.nav-center {' 'nav center lane styling exists'
+assert_file_contains "$ROOT_DIR/static/style.css" 'overflow-x: auto;' 'navbar center lane scrolls within its own column instead of overlapping right controls'
+assert_file_contains "$ROOT_DIR/static/style.css" 'min-width: max-content;' 'navbar right lane preserves intrinsic width so search/actions do not intrude into center links'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.

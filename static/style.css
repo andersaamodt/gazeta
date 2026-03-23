@@ -5404,14 +5404,21 @@ nav.site-nav {
 
 .nav-center {
   width: auto;
+  min-width: 0;
   justify-content: flex-start;
   flex-wrap: nowrap;
   gap: 0.45rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-center::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-right {
   width: auto;
-  min-width: 0;
+  min-width: max-content;
   justify-content: flex-end;
   gap: 0.55rem;
   flex-wrap: nowrap;
@@ -5420,7 +5427,8 @@ nav.site-nav {
 .nav-search {
   margin: 0;
   flex: 0 1 280px;
-  min-width: 160px;
+  min-width: 0;
+  max-width: 280px;
 }
 
 .nav-search input[type="text"] {
