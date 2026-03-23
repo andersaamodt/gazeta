@@ -504,16 +504,13 @@ blog_nip23_normalize_state_json() {
     return 0
   fi
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg state_type "$state_type" '
-    def norm_extra_format($v):
-      (($v // "") | tostring | ascii_downcase) as $f
-      | if $f == "html" then "html" else "markdown" end;
     {
       slug: $slug,
       type: $state_type,
       title: ((.title // $fallback_title) | tostring),
       content: ((.content // "") | tostring),
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-      extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown")
+      extras_after_format: "markdown"
     }
   ' 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type"
 }
@@ -679,7 +676,7 @@ blog_contact_normalize_state_json() {
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-        extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown"),
+        extras_after_format: "markdown",
         rows: (
           $rows_raw
           | if type=="array" then . else [] end

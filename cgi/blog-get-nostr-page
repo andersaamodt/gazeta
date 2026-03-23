@@ -103,7 +103,7 @@ draft_local_json='{}'
 if [ -n "$draft_state_json" ]; then
   draft_local_json=$(printf '%s\n' "$draft_state_json" | jq -c '{
     extras_after: (.extras_after // ""),
-    extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end)
+    extras_after_format: "markdown"
   }' 2>/dev/null || printf '{}')
 fi
 

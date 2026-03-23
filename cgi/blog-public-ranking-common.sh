@@ -34,9 +34,6 @@ blog_public_ranking_normalize_state_json() {
   fi
 
   printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
-    def norm_extra_format($v):
-      (($v // "") | tostring | ascii_downcase) as $f
-      | if $f == "html" then "html" else "markdown" end;
     def norm_mode($v):
       (($v // "") | tostring | ascii_downcase) as $m
       | if ($m == "open" or $m == "moderated") then $m else "owner_only" end;
@@ -55,7 +52,7 @@ blog_public_ranking_normalize_state_json() {
       description: ((.description // .summary // "") | tostring),
       content: ((.content // "") | tostring),
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-      extras_after_format: norm_extra_format(.extras_after_format // (if ((.extras // null) | type) == "object" then (.extras.after_format // .extras.after_type) else empty end) // "markdown"),
+      extras_after_format: "markdown",
       vote_cooldown_seconds: ((.vote_cooldown_seconds // .vote_cooldown // 86400) | tonumber? // 86400),
       submission_mode: norm_mode(.submission_mode // .permission_mode // .entry_mode // "owner_only"),
       show_marker_filters: (

@@ -43,7 +43,7 @@ if [ -z "$state_json" ]; then
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
       extras_after=$(blog_param extras_after)
-      extras_after_format=$(blog_param extras_after_format)
+      extras_after_format='markdown'
       rows_json=$(blog_param rows_json)
       if [ -z "$rows_json" ]; then
         rows_json='[]'
@@ -76,7 +76,7 @@ if [ -z "$state_json" ]; then
       blacklist_pubkeys_json=$(blog_param blacklist_pubkeys_json)
       root_refs_json=$(blog_param root_refs_json)
       extras_after=$(blog_param extras_after)
-      extras_after_format=$(blog_param extras_after_format)
+      extras_after_format='markdown'
       [ -n "$blacklist_pubkeys_json" ] || blacklist_pubkeys_json='[]'
       [ -n "$root_refs_json" ] || root_refs_json='[]'
       if ! printf '%s\n' "$blacklist_pubkeys_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
@@ -120,7 +120,7 @@ if [ -z "$state_json" ]; then
       title=$(blog_param title)
       content=$(blog_param content)
       extras_after=$(blog_param extras_after)
-      extras_after_format=$(blog_param extras_after_format)
+      extras_after_format='markdown'
       state_json=$(jq -cn \
         --arg slug "$page_slug" \
         --arg page_type "$page_type" \
@@ -148,7 +148,7 @@ if [ -z "$state_json" ]; then
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
       extras_after=$(blog_param extras_after)
-      extras_after_format=$(blog_param extras_after_format)
+      extras_after_format='markdown'
       entries_json=$(blog_param entries_json)
       elements_json=$(blog_param elements_json)
       if [ -z "$elements_json" ]; then
