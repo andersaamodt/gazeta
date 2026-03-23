@@ -567,6 +567,44 @@
     });
   }
 
+  function isEditableTarget(target) {
+    if (!target || !(target instanceof Element)) {
+      return false;
+    }
+    if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+      return true;
+    }
+    if (target.isContentEditable) {
+      return true;
+    }
+    return !!target.closest('textarea, input, [contenteditable="true"], [contenteditable=""]');
+  }
+
+  function clipboardImageFiles(event) {
+    var out = [];
+    var clip = event && event.clipboardData;
+    if (!clip) {
+      return out;
+    }
+    var items = clip.items ? Array.from(clip.items) : [];
+    items.forEach(function (item) {
+      if (!item || item.kind !== 'file' || String(item.type || '').indexOf('image/') !== 0) {
+        return;
+      }
+      var file = item.getAsFile ? item.getAsFile() : null;
+      if (file) {
+        out.push(file);
+      }
+    });
+    if (out.length) {
+      return out;
+    }
+    var files = clip.files ? Array.from(clip.files) : [];
+    return files.filter(function (file) {
+      return file && String(file.type || '').indexOf('image/') === 0;
+    });
+  }
+
   function composeLocalToIso(value) {
     if (!value) {
       return '';
@@ -706,6 +744,7 @@
   function afterComposePublishSuccess() {
     state.compose.draftId = '';
     state.compose.saveStatus = '';
+    state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
@@ -796,6 +835,7 @@
   function clearComposeFields() {
     state.compose.draftId = '';
     state.compose.saveStatus = '';
+    state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
@@ -826,7 +866,12 @@
 
   function deleteComposeDraft() {
     var fields = readComposeFields() || { title: '', content: '' };
-    var hasContent = !!String(fields.title || '').trim() || !!String(fields.content || '').trim() || state.compose.tags.length > 0 || !!state.compose.draftId;
+    var hasContent = !!String(fields.title || '').trim() ||
+      !!String(fields.content || '').trim() ||
+      !!String(fields.linkUrl || '').trim() ||
+      !!String(fields.linkBody || '').trim() ||
+      state.compose.tags.length > 0 ||
+      !!state.compose.draftId;
     if (hasContent && !window.confirm('Delete this draft?')) {
       return;
     }
@@ -1042,9 +1087,71 @@
       return;
     }
 
-    var fields = readComposeFields() || { title: '', content: '', scheduledAt: '', tags: '' };
+    var fields = readComposeFields() || {
+      title: '',
+      content: '',
+      scheduledAt: '',
+      tags: '',
+      linkUrl: String(state.compose.linkUrl || ''),
+      linkBody: String(state.compose.linkBody || ''),
+      postType: composePostType()
+    };
     var mode = composePublishMode();
-    var previewHtml = renderComposePreviewHtml(fields.title, fields.content);
+    var postType = normalizeComposePostType(fields.postType);
+    state.compose.postType = postType;
+    state.compose.linkUrl = String(fields.linkUrl || '');
+    state.compose.linkBody = String(fields.linkBody || '');
+    var previewContent = fields.content;
+    if (postType === 'link-share') {
+      var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
+      if (linkPreview) {
+        previewContent = linkPreview;
+      }
+    }
+    var previewHtml = renderComposePreviewHtml(fields.title, previewContent);
+    var contentLabel = composePostTypeIsTextual(postType) ? 'Content' : 'Body';
+    var contentPlaceholder = '# Write in Markdown';
+    if (postType === 'shortform') {
+      contentPlaceholder = 'Write a short post...';
+    } else if (postType === 'link-share') {
+      contentPlaceholder = 'Optional commentary...';
+    } else if (postType === 'capture-media') {
+      contentPlaceholder = 'Optional caption for captured media...';
+    } else if (postType === 'upload-media') {
+      contentPlaceholder = 'Optional caption for uploaded media...';
+    } else if (postType === 'attachment') {
+      contentPlaceholder = 'Optional note for attached files...';
+    } else if (postType === 'audio-note') {
+      contentPlaceholder = 'Optional note for uploaded audio...';
+    }
+    var titlePlaceholder = 'My post';
+    if (postType === 'shortform') {
+      titlePlaceholder = 'Short post';
+    } else if (postType === 'link-share') {
+      titlePlaceholder = 'Link title (optional)';
+    } else if (postType === 'capture-media' || postType === 'upload-media') {
+      titlePlaceholder = 'Media title (optional)';
+    }
+    var mediaToolsHtml = '';
+    if (!composePostTypeIsTextual(postType)) {
+      mediaToolsHtml = '' +
+        '<div class="compose-media-tools">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-capture-media">Take Photo/Video</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-media">Upload Photo/Video</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-file">Upload Attachment/File</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-audio">Upload Audio</button>' +
+          '</div>' +
+          (postType === 'link-share'
+            ? '<div class="compose-link-fields">' +
+                '<label><strong>Link URL</strong></label>' +
+                '<input type="url" data-compose-field="link-url" placeholder="https://example.com" value="' + escapeHtml(fields.linkUrl) + '">' +
+                '<label><strong>Body</strong></label>' +
+                '<textarea rows="3" data-compose-field="link-body" placeholder="Optional note">' + escapeHtml(fields.linkBody) + '</textarea>' +
+              '</div>'
+            : '') +
+        '</div>';
+    }
     var tagsHtml = state.compose.tags.map(function (tag) {
       return '<span class="tag-pill"><span>' + escapeHtml(tag) + '</span><button type="button" class="tag-pill-remove" data-compose-action="remove-tag" data-compose-tag="' + escapeHtml(tag) + '" aria-label="Remove tag ' + escapeHtml(tag) + '">×</button></span>';
     }).join('');
@@ -1057,14 +1164,17 @@
     els.composeSlot.innerHTML = '' +
       '<article class="post-item blog-post-item blog-compose-card">' +
         '<div class="blog-compose-body">' +
+          '<div class="field-row compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div>' +
           '<div class="field-row blog-compose-title-row">' +
-            '<input type="text" data-compose-field="title" placeholder="My post" value="' + escapeHtml(fields.title) + '">' +
+            '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
             '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
           '</div>' +
+          mediaToolsHtml +
           (state.compose.preview
-            ? '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>'
+            ? '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
+              '<textarea data-compose-field="content" rows="14" hidden>' + escapeHtml(fields.content) + '</textarea>'
             : '<div class="field-row">' +
-                '<label><strong>Content</strong></label>' +
+                '<label><strong>' + escapeHtml(contentLabel) + '</strong></label>' +
                 '<div class="editor-shell blog-compose-editor-shell">' +
                   '<div class="toolbar blog-compose-toolbar" aria-label="Markdown toolbar">' +
                     '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="bold" title="Bold">B</button>' +
@@ -1079,9 +1189,13 @@
                     '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="ol" title="Numbered list">1. List</button>' +
                     '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="image" title="Insert image">Image</button>' +
                   '</div>' +
-                  '<textarea data-compose-field="content" rows="14" placeholder="# Write in Markdown">' + escapeHtml(fields.content) + '</textarea>' +
+                  '<textarea data-compose-field="content" rows="' + (composePostTypeIsTextual(postType) ? '14' : '8') + '" placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
                 '</div>' +
               '</div>') +
+          '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
+          '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
+          '<input type="file" data-compose-field="file-upload" data-compose-upload="attachment" multiple hidden>' +
+          '<input type="file" data-compose-field="audio-upload" data-compose-upload="audio-note" accept="audio/*" multiple hidden>' +
           '<div class="grid-two">' +
             '<div class="field-row">' +
               '<label><strong>Tags</strong></label>' +
@@ -1131,7 +1245,7 @@
     var publishBtn = els.composeSlot.querySelector('[data-compose-action="publish"]');
     if (publishBtn instanceof HTMLButtonElement) {
       publishBtn.textContent = composePrimaryLabel(mode);
-      publishBtn.disabled = !!state.compose.busy;
+      publishBtn.disabled = !!state.compose.busy || state.compose.uploading > 0;
     }
     var scheduledRow = els.composeSlot.querySelector('.scheduled-row');
     if (scheduledRow) {
@@ -1145,6 +1259,13 @@
     var autosave = els.composeSlot.querySelector('.autosave-indicator');
     if (autosave) {
       var modeStatus = String(state.compose.saveStatus || '');
+      if (state.compose.uploading > 0) {
+        autosave.hidden = false;
+        autosave.classList.remove('is-error');
+        autosave.classList.add('is-saving');
+        autosave.textContent = 'Uploading...';
+        return;
+      }
       autosave.hidden = !modeStatus;
       autosave.classList.toggle('is-saving', modeStatus === 'saving');
       autosave.classList.toggle('is-error', modeStatus === 'error');
@@ -1488,6 +1609,10 @@
         renderComposeUi();
         return;
       }
+      if (actionName === 'set-post-type') {
+        setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''));
+        return;
+      }
       if (actionName === 'publish') {
         saveCompose(composeModeAction(composePublishMode()));
         return;
@@ -1500,6 +1625,29 @@
         removeComposeTag(String(composeAction.getAttribute('data-compose-tag') || ''));
         renderComposeUi();
         queueComposeAutosave();
+        return;
+      }
+      if (actionName === 'pick-capture-media' || actionName === 'pick-upload-media' || actionName === 'pick-upload-file' || actionName === 'pick-upload-audio') {
+        var field = '';
+        var type = '';
+        if (actionName === 'pick-capture-media') {
+          field = 'capture-upload';
+          type = 'capture-media';
+        } else if (actionName === 'pick-upload-media') {
+          field = 'media-upload';
+          type = 'upload-media';
+        } else if (actionName === 'pick-upload-file') {
+          field = 'file-upload';
+          type = 'attachment';
+        } else {
+          field = 'audio-upload';
+          type = 'audio-note';
+        }
+        setComposePostType(type, { skipAutosave: true, skipRender: true });
+        var picker = els.composeSlot.querySelector('[data-compose-field="' + field + '"]');
+        if (picker instanceof HTMLInputElement) {
+          picker.click();
+        }
         return;
       }
     }
@@ -1544,7 +1692,17 @@
     if (!(target instanceof HTMLElement) || !state.compose.open) {
       return;
     }
-    if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"]')) {
+    if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"], [data-compose-field="link-url"], [data-compose-field="link-body"]')) {
+      if (target.matches('[data-compose-field="link-url"], [data-compose-field="link-body"]')) {
+        if (target.matches('[data-compose-field="link-url"]')) {
+          state.compose.linkUrl = String(target.value || '');
+        } else {
+          state.compose.linkBody = String(target.value || '');
+        }
+        if (composePostType() !== 'link-share') {
+          state.compose.postType = 'link-share';
+        }
+      }
       queueComposeAutosave();
       if (state.compose.preview) {
         renderComposeUi();
@@ -1557,6 +1715,24 @@
       renderComposeUi();
       queueComposeAutosave();
     }
+  });
+
+  root.addEventListener('change', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLInputElement) || !state.compose.open) {
+      return;
+    }
+    if (!target.matches('[data-compose-upload]')) {
+      return;
+    }
+    var uploadType = String(target.getAttribute('data-compose-upload') || '').trim();
+    var files = target.files ? Array.from(target.files) : [];
+    if (!files.length) {
+      return;
+    }
+    handleComposeUploads(files, uploadType).finally(function () {
+      target.value = '';
+    });
   });
 
   root.addEventListener('keydown', function (event) {
@@ -1582,6 +1758,25 @@
         }
       }
     }
+  });
+
+  document.addEventListener('paste', function (event) {
+    if (!isAdmin()) {
+      return;
+    }
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+    var images = clipboardImageFiles(event);
+    if (!images.length) {
+      return;
+    }
+    event.preventDefault();
+    if (!state.compose.open) {
+      setComposeOpen(true);
+    }
+    setComposePostType('upload-media', { skipAutosave: true, skipRender: true });
+    handleComposeUploads(images, 'upload-media');
   });
 
   if (els.toggle) {

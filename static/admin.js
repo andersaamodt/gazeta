@@ -5310,8 +5310,20 @@
     if (!picked.length) {
       return;
     }
-    if (preferredPostType) {
-      setComposePostType(preferredPostType, { queueAutosave: false, syncUi: true });
+    let targetType = preferredPostType;
+    if (!targetType) {
+      const first = picked[0];
+      const mime = String((first && first.type) || '').toLowerCase();
+      if (mime.indexOf('image/') === 0 || mime.indexOf('video/') === 0) {
+        targetType = 'upload-media';
+      } else if (mime.indexOf('audio/') === 0) {
+        targetType = 'audio-note';
+      } else {
+        targetType = 'attachment';
+      }
+    }
+    if (targetType) {
+      setComposePostType(targetType, { queueAutosave: false, syncUi: true });
     }
     state.composeUploadBusy = true;
     setOutput(els.outputCompose, 'Uploading ' + picked.length + ' file(s)...', 'warn');
