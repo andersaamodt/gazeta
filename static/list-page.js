@@ -295,8 +295,7 @@
   }
 
   function isIconGalleryPage() {
-    var payloadType = String(state.payload && state.payload.page_type || '').trim().toLowerCase();
-    if (payloadType === 'icon-gallery') {
+    if (root && root.id === 'icon-gallery-root') {
       return true;
     }
     var rootType = String(root.getAttribute('data-page-type') || '').trim().toLowerCase();

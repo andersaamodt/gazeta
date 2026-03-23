@@ -8,7 +8,7 @@ visibility: "public"
 license: "CC BY 4.0"
 ---
 
-<section id="list-page-root" class="list-page-shell" data-list-slug="oeuvre" data-list-title="Oeuvre">
+<section id="list-page-root" class="list-page-shell" data-list-slug="oeuvre" data-list-title="Oeuvre" data-page-type="list">
 <div class="list-page-head">
 <h1 id="list-page-title">Oeuvre</h1>
 <p id="list-page-description" class="muted"></p>
