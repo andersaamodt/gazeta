@@ -470,6 +470,7 @@ assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'ti
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1820px, calc(100vw - 0.75rem));' 'list page edit-mode body width cap expanded for full table fit'
 assert_file_contains "$ROOT_DIR/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1780px, calc(100vw - 1rem));' 'list page shell edit-mode max width expanded'
+assert_file_contains "$ROOT_DIR/static/style.css" 'margin: 1.25rem auto 2.4rem;' 'list page shell stays centered while edit-mode width animates'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.

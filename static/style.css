@@ -565,7 +565,7 @@ header h1 {
 .list-page-shell {
   width: 100%;
   max-width: 100%;
-  margin: 1.25rem 0 2.4rem;
+  margin: 1.25rem auto 2.4rem;
   padding: 1.15rem 1.25rem 1rem;
   border: 1px solid #afbdd8;
   border-radius: 12px;
@@ -573,7 +573,7 @@ header h1 {
   box-shadow:
     0 18px 36px rgba(15, 23, 42, 0.09),
     0 1px 0 rgba(255, 255, 255, 0.82) inset;
-  transition: width 240ms ease, max-width 240ms ease, box-shadow 240ms ease;
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), max-width 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms ease;
 }
 
 .list-page-shell.is-editing {
