@@ -137,9 +137,8 @@
     forceHydrationReveal();
   }
 
-  if (document.documentElement) {
-    document.documentElement.classList.add('app-hydrating');
-  }
+  // Keep content visible during route transitions so navigation does not
+  // flash to a blank intermediate state before the destination page scripts initialize.
 
   var canonical = document.createElement('link');
   canonical.rel = 'canonical';
