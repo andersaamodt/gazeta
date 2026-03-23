@@ -4590,6 +4590,26 @@ footer {
   cursor: not-allowed;
 }
 
+.blog-compose-card .compose-nostr-target-row {
+  margin: -0.08rem 0 0.2rem;
+}
+
+.blog-compose-card .nostr-target-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.16rem 0.54rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 84%, var(--light-bg, #eef3ff) 16%);
+  color: var(--light-text);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .blog-compose-card .compose-media-tools {
   display: grid;
   gap: 0.36rem;

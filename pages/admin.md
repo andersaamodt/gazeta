@@ -293,6 +293,9 @@ title: ""
 </button>
 </div>
 </div>
+<div class="field-row compose-nostr-target-row">
+<span id="compose-nostr-target-pill" class="nostr-target-pill" title="Nostr kind 30023 · d, title, summary, published_at">Nostr kind 30023 · d, title, summary, published_at</span>
+</div>
 
 <div id="compose-media-tools" class="compose-media-tools" hidden>
 <div class="compose-media-actions">
@@ -1993,6 +1996,26 @@ body {
 .compose-post-type-pill:disabled {
   opacity: 0.44;
   cursor: not-allowed;
+}
+
+.compose-nostr-target-row {
+  margin: -0.08rem 0 0.28rem;
+}
+
+.nostr-target-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.18rem 0.56rem;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border, var(--border));
+  background: color-mix(in srgb, var(--admin-surface-alt, var(--post-card-bg)) 82%, transparent);
+  color: var(--admin-light-text, var(--light-text));
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compose-media-tools {

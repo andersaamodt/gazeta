@@ -363,6 +363,37 @@
     return out;
   }
 
+  function composeNostrTarget(postType) {
+    var type = normalizeComposePostType(postType);
+    if (type === 'shortform') {
+      return { kind: '1', tags: 't=short, alt' };
+    }
+    if (type === 'longform') {
+      return { kind: '30023', tags: 'd, title, summary, published_at' };
+    }
+    if (type === 'capture-media') {
+      return { kind: '20 or 21', tags: 'url, m=image/*|video/*, alt, dim|duration' };
+    }
+    if (type === 'upload-media') {
+      return { kind: '20 or 21', tags: 'url, m=image/*|video/*, ox, size, dim|duration' };
+    }
+    if (type === 'attachment') {
+      return { kind: '15', tags: 'url, m, size, ox' };
+    }
+    if (type === 'audio-note') {
+      return { kind: '21', tags: 'url, m=audio/*, duration, alt' };
+    }
+    if (type === 'link-share') {
+      return { kind: '1', tags: 'r, title, summary, image' };
+    }
+    return { kind: '30311', tags: 'streaming, starts, status=live' };
+  }
+
+  function composeNostrTargetLabel(postType) {
+    var target = composeNostrTarget(postType);
+    return 'Nostr kind ' + target.kind + ' · ' + target.tags;
+  }
+
   function composePostTypeIconSvg(type) {
     var picked = normalizeComposePostType(type);
     if (picked === 'shortform') {
@@ -1151,6 +1182,7 @@
     state.compose.postType = postType;
     state.compose.linkUrl = String(fields.linkUrl || '');
     state.compose.linkBody = String(fields.linkBody || '');
+    var nostrTargetLabel = composeNostrTargetLabel(postType);
     var previewContent = fields.content;
     if (postType === 'link-share') {
       var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
@@ -1215,6 +1247,7 @@
       '<article class="post-item blog-post-item blog-compose-card">' +
         '<div class="blog-compose-body">' +
           '<div class="field-row compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div>' +
+          '<div class="field-row compose-nostr-target-row"><span class="nostr-target-pill" title="' + escapeHtml(nostrTargetLabel) + '">' + escapeHtml(nostrTargetLabel) + '</span></div>' +
           '<div class="field-row blog-compose-title-row">' +
             '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
             '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +

@@ -131,6 +131,7 @@
     newUsersAreAdmins: document.getElementById('new-users-are-admins'),
     postTitle: document.getElementById('post-title'),
     composePostTypeToolbar: document.getElementById('compose-post-type-toolbar'),
+    composeNostrTargetPill: document.getElementById('compose-nostr-target-pill'),
     composeMediaTools: document.getElementById('compose-media-tools'),
     composeLinkFields: document.getElementById('compose-link-fields'),
     composeLinkUrl: document.getElementById('compose-link-url'),
@@ -1563,6 +1564,37 @@
     return type === 'shortform' || type === 'longform';
   }
 
+  function composeNostrTarget(postType) {
+    const type = normalizeComposePostType(postType);
+    if (type === 'shortform') {
+      return { kind: '1', tags: 't=short, alt' };
+    }
+    if (type === 'longform') {
+      return { kind: '30023', tags: 'd, title, summary, published_at' };
+    }
+    if (type === 'capture-media') {
+      return { kind: '20 or 21', tags: 'url, m=image/*|video/*, alt, dim|duration' };
+    }
+    if (type === 'upload-media') {
+      return { kind: '20 or 21', tags: 'url, m=image/*|video/*, ox, size, dim|duration' };
+    }
+    if (type === 'attachment') {
+      return { kind: '15', tags: 'url, m, size, ox' };
+    }
+    if (type === 'audio-note') {
+      return { kind: '21', tags: 'url, m=audio/*, duration, alt' };
+    }
+    if (type === 'link-share') {
+      return { kind: '1', tags: 'r, title, summary, image' };
+    }
+    return { kind: '30311', tags: 'streaming, starts, status=live' };
+  }
+
+  function composeNostrTargetLabel(postType) {
+    const target = composeNostrTarget(postType);
+    return 'Nostr kind ' + target.kind + ' · ' + target.tags;
+  }
+
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
     if (els.composePostTypeToolbar) {
@@ -1579,6 +1611,11 @@
     }
     if (els.composeLinkFields) {
       els.composeLinkFields.hidden = type !== 'link-share';
+    }
+    if (els.composeNostrTargetPill) {
+      const label = composeNostrTargetLabel(type);
+      els.composeNostrTargetPill.textContent = label;
+      els.composeNostrTargetPill.setAttribute('title', label);
     }
     if (els.postTitle) {
       if (type === 'shortform') {

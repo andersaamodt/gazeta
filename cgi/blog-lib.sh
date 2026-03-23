@@ -2282,13 +2282,150 @@ blog_nostr_append_author_if_missing() {
   printf '%s\n' "$pubkey" >> "$blog_nostr_authors_file"
 }
 
+blog_nostr_absolute_url() {
+  raw=${1-}
+  [ -n "$raw" ] || return 1
+  case "$raw" in
+    http://*|https://*)
+      printf '%s\n' "$raw"
+      ;;
+    /*)
+      printf '%s%s\n' "$(blog_base_url)" "$raw"
+      ;;
+    *)
+      printf '%s/%s\n' "$(blog_base_url)" "$raw"
+      ;;
+  esac
+}
+
+blog_nostr_first_http_url() {
+  text=${1-}
+  [ -n "$text" ] || return 1
+  printf '%s\n' "$text" | grep -Eo "https?://[^[:space:])>\"']+" 2>/dev/null | head -n 1
+}
+
+blog_nostr_first_markdown_image_url() {
+  text=${1-}
+  [ -n "$text" ] || return 1
+  printf '%s\n' "$text" | sed -n 's/.*!\[[^]]*\](\([^)]\{1,\}\)).*/\1/p' | head -n 1
+}
+
+blog_nostr_primary_file_metadata() {
+  content=${1-}
+  file_id=$(blog_file_ids_from_text "$content" | head -n 1)
+  [ -n "$file_id" ] || return 1
+  record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+  [ -f "$record_path" ] || return 1
+
+  safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf '')
+  rel_url=$(blog_file_public_url_encoded "$file_id" "$safe_name" 2>/dev/null || printf '')
+  abs_url=$(blog_nostr_absolute_url "$rel_url" 2>/dev/null || printf '')
+  mime_type=$(config-get "$record_path" mime_type 2>/dev/null || printf '')
+  size_bytes=$(config-get "$record_path" size_bytes 2>/dev/null || printf '')
+  disk_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
+
+  ox=''
+  dim=''
+  duration=''
+  if [ -n "$disk_path" ] && [ -f "$disk_path" ]; then
+    ox=$(blog_sha256 < "$disk_path" 2>/dev/null || printf '')
+    case "$mime_type" in
+      image/*)
+        if command -v sips >/dev/null 2>&1; then
+          dim=$(sips -g pixelWidth -g pixelHeight "$disk_path" 2>/dev/null \
+            | awk '/pixelWidth:/ {w=$2} /pixelHeight:/ {h=$2} END { if (w > 0 && h > 0) printf "%sx%s", w, h }')
+        fi
+        ;;
+    esac
+    case "$mime_type" in
+      video/*|audio/*)
+        if command -v ffprobe >/dev/null 2>&1; then
+          duration_raw=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$disk_path" 2>/dev/null | head -n 1)
+          if [ -n "$duration_raw" ]; then
+            duration=$(printf '%s\n' "$duration_raw" | awk '{v=$1+0; if (v > 0) printf "%d", int(v+0.5)}')
+          fi
+        fi
+        ;;
+    esac
+  fi
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$file_id" "$abs_url" "$mime_type" "$size_bytes" "$ox" "$dim" "$duration"
+}
+
+blog_nostr_kind_for_post_type() {
+  post_type=$(blog_normalize_post_type "${1-}")
+  mime_type=${2-}
+  case "$post_type" in
+    shortform|link-share)
+      printf '1\n'
+      ;;
+    longform)
+      printf '30023\n'
+      ;;
+    attachment)
+      printf '15\n'
+      ;;
+    audio-note)
+      printf '21\n'
+      ;;
+    capture-media|upload-media)
+      case "$mime_type" in
+        image/*) printf '20\n' ;;
+        video/*|audio/*) printf '21\n' ;;
+        *) printf '20\n' ;;
+      esac
+      ;;
+    go-live)
+      printf '30311\n'
+      ;;
+    *)
+      printf '30023\n'
+      ;;
+  esac
+}
+
+blog_nostr_alt_for_post_type() {
+  post_type=$(blog_normalize_post_type "${1-}")
+  title=${2-}
+  summary=${3-}
+  mime_type=${4-}
+  default_alt=''
+  case "$post_type" in
+    shortform) default_alt='Shortform post' ;;
+    longform) default_alt='Longform post' ;;
+    link-share) default_alt='Link share' ;;
+    attachment) default_alt='Attachment post' ;;
+    audio-note) default_alt='Audio note' ;;
+    capture-media|upload-media)
+      case "$mime_type" in
+        image/*) default_alt='Image post' ;;
+        video/*) default_alt='Video post' ;;
+        audio/*) default_alt='Audio post' ;;
+        *) default_alt='Media post' ;;
+      esac
+      ;;
+    go-live) default_alt='Live stream post' ;;
+    *) default_alt='Post' ;;
+  esac
+  if [ -n "$title" ]; then
+    printf '%s\n' "$title"
+    return 0
+  fi
+  if [ -n "$summary" ]; then
+    printf '%s\n' "$summary"
+    return 0
+  fi
+  printf '%s\n' "$default_alt"
+}
+
 blog_nostr_sign_post_event() {
-  # args: title tags_csv summary content published_iso
+  # args: title tags_csv summary content published_iso post_type
   title=$1
   tags_csv=$2
   summary=$3
   content=$4
   published_iso=$5
+  post_type=$(blog_normalize_post_type "${6-longform}")
 
   if ! command -v jq >/dev/null 2>&1; then
     return 1
@@ -2301,17 +2438,97 @@ blog_nostr_sign_post_event() {
 
   created_at=$(blog_now_epoch)
   d_tag=$(blog_slugify "$title")
+  if [ -z "$d_tag" ]; then
+    d_tag="post-$created_at"
+  fi
   tags_normalized=$(blog_normalize_tags "$tags_csv")
+
+  primary_file_meta=$(blog_nostr_primary_file_metadata "$content" 2>/dev/null || printf '')
+  primary_file_url=''
+  primary_file_mime=''
+  primary_file_size=''
+  primary_file_ox=''
+  primary_file_dim=''
+  primary_file_duration=''
+  if [ -n "$primary_file_meta" ]; then
+    primary_file_url=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $2}')
+    primary_file_mime=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $3}')
+    primary_file_size=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $4}')
+    primary_file_ox=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $5}')
+    primary_file_dim=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $6}')
+    primary_file_duration=$(printf '%s' "$primary_file_meta" | awk -F '\t' '{print $7}')
+  fi
+
+  event_kind=$(blog_nostr_kind_for_post_type "$post_type" "$primary_file_mime")
+  alt_text=$(blog_nostr_alt_for_post_type "$post_type" "$title" "$summary" "$primary_file_mime")
+  link_url=$(blog_nostr_first_http_url "$content" 2>/dev/null || printf '')
+  image_url=$(blog_nostr_first_markdown_image_url "$content" 2>/dev/null || printf '')
+  if [ -n "$image_url" ]; then
+    image_url=$(blog_nostr_absolute_url "$image_url" 2>/dev/null || printf "$image_url")
+  fi
+  if [ -z "$image_url" ] && [ -n "$primary_file_url" ]; then
+    case "$primary_file_mime" in
+      image/*) image_url=$primary_file_url ;;
+    esac
+  fi
 
   sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-sign.XXXXXX")
   event_json=''
 
   if command -v nostril >/dev/null 2>&1; then
-    set -- nostril --sec "$secret" --kind 30023 --created-at "$created_at" --content "$content" \
-      --tag "d=$d_tag" --tag "title=$title" --tag "published_at=$published_iso"
-    if [ -n "$summary" ]; then
-      set -- "$@" --tag "summary=$summary"
+    set -- nostril --sec "$secret" --kind "$event_kind" --created-at "$created_at" --content "$content" --tag "d=$d_tag" --tag "t=blog" --tag "post_type=$post_type"
+    if [ -n "$alt_text" ]; then
+      set -- "$@" --tag "alt=$alt_text"
     fi
+    case "$post_type" in
+      shortform)
+        set -- "$@" --tag "t=short"
+        ;;
+      longform)
+        set -- "$@" --tag "title=$title" --tag "published_at=$published_iso"
+        if [ -n "$summary" ]; then
+          set -- "$@" --tag "summary=$summary"
+        fi
+        ;;
+      link-share)
+        if [ -n "$title" ]; then
+          set -- "$@" --tag "title=$title"
+        fi
+        if [ -n "$summary" ]; then
+          set -- "$@" --tag "summary=$summary"
+        fi
+        if [ -n "$link_url" ]; then
+          set -- "$@" --tag "r=$link_url"
+        fi
+        if [ -n "$image_url" ]; then
+          set -- "$@" --tag "image=$image_url"
+        fi
+        ;;
+      attachment|audio-note|capture-media|upload-media)
+        if [ -n "$primary_file_url" ]; then
+          set -- "$@" --tag "url=$primary_file_url"
+        fi
+        if [ -n "$primary_file_mime" ]; then
+          set -- "$@" --tag "m=$primary_file_mime"
+        fi
+        if [ -n "$primary_file_size" ]; then
+          set -- "$@" --tag "size=$primary_file_size"
+        fi
+        if [ -n "$primary_file_ox" ]; then
+          set -- "$@" --tag "ox=$primary_file_ox"
+        fi
+        if [ -n "$primary_file_dim" ]; then
+          set -- "$@" --tag "dim=$primary_file_dim"
+        fi
+        if [ -n "$primary_file_duration" ]; then
+          set -- "$@" --tag "duration=$primary_file_duration"
+        fi
+        ;;
+      go-live)
+        set -- "$@" --tag "streaming=true" --tag "starts=$published_iso" --tag "status=live"
+        ;;
+    esac
+
     printf '%s\n' "$tags_normalized" | tr ',' '\n' | while IFS= read -r tag || [ -n "$tag" ]; do
       clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
       [ -n "$clean" ] || continue
@@ -2395,10 +2612,11 @@ blog_nostr_sign_list_event() {
       if [ -n "$e1" ]; then
         ref_record=$(blog_nostr_post_record_for_event_id "$e1" 2>/dev/null || printf '')
         if [ -n "$ref_record" ]; then
+          ref_kind=$(printf '%s\n' "$ref_record" | jq -r '.kind // 30023' 2>/dev/null || printf '30023')
           ref_pubkey=$(printf '%s\n' "$ref_record" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
           ref_d=$(printf '%s\n' "$ref_record" | jq -r '.d // ""' 2>/dev/null || printf '')
           if [ -n "$ref_pubkey" ] && [ -n "$ref_d" ]; then
-            printf '30023:%s:%s\n' "$ref_pubkey" "$ref_d" >> "$refs_tmp"
+            printf '%s:%s:%s\n' "$ref_kind" "$ref_pubkey" "$ref_d" >> "$refs_tmp"
           fi
         fi
       fi
@@ -2496,6 +2714,8 @@ blog_nostr_write_projection_posts() {
     pubkey=$(printf '%s\n' "$row" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
     event_id=$(printf '%s\n' "$row" | jq -r '.id // ""' 2>/dev/null || printf '')
     event_kind=$(printf '%s\n' "$row" | jq -r '.kind // 30023' 2>/dev/null || printf '30023')
+    post_type=$(printf '%s\n' "$row" | jq -r '.post_type // ""' 2>/dev/null || printf '')
+    post_type=$(blog_normalize_post_type "$post_type")
     d_tag=$(printf '%s\n' "$row" | jq -r '.d // ""' 2>/dev/null || printf '')
     uri=$(printf '%s\n' "$row" | jq -r '.uri // ""' 2>/dev/null || printf '')
     tags_csv=$(printf '%s\n' "$row" | jq -r '.tags // [] | join(", ")' 2>/dev/null || printf '')
@@ -2510,6 +2730,7 @@ blog_nostr_write_projection_posts() {
       printf 'published_at: "%s"\n' "$published_at"
       printf 'content_hash: "%s"\n' "$content_hash"
       printf 'tags: %s\n' "$tags_yaml"
+      printf 'post_type: "%s"\n' "$(blog_yaml_escape "$post_type")"
       printf 'author: "%s"\n' "$(blog_yaml_escape "$author_label")"
       if [ -n "$summary" ]; then
         printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
@@ -2555,38 +2776,74 @@ blog_nostr_rebuild_derived() {
   blocked_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
 
   jq -s --argjson hidden "$hidden_json" '
-    map(select(type=="object" and (.kind|type)=="number" and .kind==30023 and (.id|type)=="string" and (.pubkey|type)=="string" and (.tags|type)=="array" and (.content|type)=="string"))
+    map(select(
+      type=="object"
+      and (.kind|type)=="number"
+      and (.kind==1 or .kind==15 or .kind==20 or .kind==21 or .kind==30023 or .kind==30311)
+      and (.id|type)=="string"
+      and (.pubkey|type)=="string"
+      and (.tags|type)=="array"
+      and (.content|type)=="string"
+    ))
     | map(. + {
         d: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // ""),
-        title_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""),
-        summary_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="summary") | .[1]] | first) // ""),
-        published_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="published_at") | .[1]] | first) // ""),
+        title_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1] | select(type=="string")] | first) // ""),
+        summary_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="summary") | .[1] | select(type=="string")] | first) // ""),
+        published_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="published_at") | .[1] | select(type=="string")] | first) // ""),
+        post_type_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="post_type") | .[1] | select(type=="string")] | first) // ""),
+        r_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="r") | .[1] | select(type=="string")] | first) // ""),
+        m_tag: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="m") | .[1] | select(type=="string")] | first) // ""),
         tag_list: ([.tags[]? | select(type=="array" and length>=2 and .[0]=="t") | .[1]] | map(select(type=="string")))
       })
     | map(select(.d != ""))
+    | map(select((.kind == 30023) or ((.tag_list | index("blog")) != null) or ((.post_type_tag | length) > 0)))
     | map(select(((.d as $d | $hidden | index($d)) == null) and (((.pubkey + ":" + .d) as $pair | $hidden | index($pair)) == null)))
     | sort_by(.pubkey, .kind, .d, (.created_at // 0), .id)
     | group_by(.pubkey, .kind, .d)
     | map(last)
     | sort_by((.created_at // 0), .id)
     | reverse
-    | map({
-        id: .id,
-        pubkey: .pubkey,
-        kind: .kind,
-        d: .d,
-        slug: ((.d | ascii_downcase | gsub("[^a-z0-9]+";"-") | gsub("(^-+|-+$)";"")) as $s | if ($s | length) > 0 then $s else "post" end),
-        created_at: (.created_at // 0),
-        published_at: (if (.published_tag | length) > 0 then .published_tag else ((.created_at // 0) | todateiso8601) end),
-        title: (if (.title_tag | length) > 0 then .title_tag else .d end),
-        summary: .summary_tag,
-        tags: (.tag_list | unique),
-        content: .content,
-        address: ((.kind | tostring) + ":" + .pubkey + ":" + .d),
-        uri: ("nostr:" + (.kind | tostring) + ":" + .pubkey + ":" + .d),
-        md_path: ("posts/" + ((.d | ascii_downcase | gsub("[^a-z0-9]+";"-") | gsub("(^-+|-+$)";"")) as $s | if ($s | length) > 0 then $s else "post" end) + ".md"),
-        html_path: ("posts/" + ((.d | ascii_downcase | gsub("[^a-z0-9]+";"-") | gsub("(^-+|-+$)";"")) as $s | if ($s | length) > 0 then $s else "post" end) + ".html")
-      })
+    | map(
+        . as $ev
+        | ($ev.d | ascii_downcase | gsub("[^a-z0-9]+";"-") | gsub("(^-+|-+$)";"")) as $slug_raw
+        | ($ev.post_type_tag // "") as $tagged_type
+        | ($ev.tag_list | unique) as $tag_list
+        | {
+            id: $ev.id,
+            pubkey: $ev.pubkey,
+            kind: $ev.kind,
+            d: $ev.d,
+            slug: (if ($slug_raw | length) > 0 then $slug_raw else "post" end),
+            created_at: ($ev.created_at // 0),
+            published_at: (if ($ev.published_tag | length) > 0 then $ev.published_tag else (($ev.created_at // 0) | todateiso8601) end),
+            title: (if ($ev.title_tag | length) > 0 then $ev.title_tag else $ev.d end),
+            summary: (
+              if ($ev.summary_tag | length) > 0 then $ev.summary_tag
+              elif ($ev.kind == 1 and ($ev.r_tag | length) > 0) then $ev.r_tag
+              else ""
+              end
+            ),
+            tags: $tag_list,
+            content: $ev.content,
+            post_type: (
+              if ($tagged_type | length) > 0 then $tagged_type
+              elif $ev.kind == 30023 then "longform"
+              elif $ev.kind == 15 then "attachment"
+              elif $ev.kind == 20 then "upload-media"
+              elif ($ev.kind == 21 and ($ev.m_tag | startswith("audio/"))) then "audio-note"
+              elif $ev.kind == 21 then "upload-media"
+              elif ($ev.kind == 1 and ($tag_list | index("short")) != null) then "shortform"
+              elif ($ev.kind == 1 and ($ev.r_tag | length) > 0) then "link-share"
+              elif $ev.kind == 30311 then "go-live"
+              else "longform"
+              end
+            ),
+            address: (($ev.kind | tostring) + ":" + $ev.pubkey + ":" + $ev.d),
+            uri: ("nostr:" + ($ev.kind | tostring) + ":" + $ev.pubkey + ":" + $ev.d),
+            md_path: ("posts/" + (if ($slug_raw | length) > 0 then $slug_raw else "post" end) + ".md"),
+            html_path: ("posts/" + (if ($slug_raw | length) > 0 then $slug_raw else "post" end) + ".html")
+          }
+      )
   ' "$nostr_events_tmp" > "$nostr_posts_tmp"
 
   addresses_json=$(jq -c '[.[].address]' "$nostr_posts_tmp" 2>/dev/null || printf '[]')
@@ -2703,6 +2960,28 @@ blog_nostr_comments_for_address_json() {
   ' "$blog_nostr_comments_index" 2>/dev/null || printf '[]'
 }
 
+blog_nostr_mirror_store_events_from_file() {
+  input_file=${1-}
+  if [ -z "$input_file" ] || [ ! -f "$input_file" ]; then
+    printf '0\n'
+    return 0
+  fi
+
+  mirrored=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -n "$line" ] || continue
+    event_json=$(printf '%s\n' "$line" | jq -c '.' 2>/dev/null || printf '')
+    [ -n "$event_json" ] || continue
+    if ! blog_nostr_verify_event_json "$event_json"; then
+      continue
+    fi
+    if blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
+      mirrored=$((mirrored + 1))
+    fi
+  done < "$input_file"
+  printf '%s\n' "$mirrored"
+}
+
 blog_nostr_mirror_posts() {
   if ! blog_nostr_bridge_enabled; then
     printf '0\n'
@@ -2725,7 +3004,10 @@ blog_nostr_mirror_posts() {
     return 0
   fi
 
-  out_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts.XXXXXX")
+  out_longform_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-longform.XXXXXX")
+  out_blog_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-blog.XXXXXX")
+
+  # Backward-compatibility: include legacy kind:30023 posts even if they predate t=blog tagging.
   set -- nak req -k 30023
   while IFS= read -r author || [ -n "$author" ]; do
     [ -n "$author" ] || continue
@@ -2737,28 +3019,41 @@ blog_nostr_mirror_posts() {
   done < "$relays_tmp"
 
   set +e
-  "$@" > "$out_tmp" 2>/dev/null
+  "$@" > "$out_longform_tmp" 2>/dev/null
   _status=$?
   set -e
-  if [ "$_status" -ne 0 ] && [ ! -s "$out_tmp" ]; then
-    rm -f "$authors_tmp" "$relays_tmp" "$out_tmp"
+  if [ "$_status" -ne 0 ] && [ ! -s "$out_longform_tmp" ]; then
+    rm -f "$authors_tmp" "$relays_tmp" "$out_longform_tmp" "$out_blog_tmp"
     return 1
   fi
 
   mirrored=0
-  while IFS= read -r line || [ -n "$line" ]; do
-    [ -n "$line" ] || continue
-    event_json=$(printf '%s\n' "$line" | jq -c '.' 2>/dev/null || printf '')
-    [ -n "$event_json" ] || continue
-    if ! blog_nostr_verify_event_json "$event_json"; then
-      continue
-    fi
-    if blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
-      mirrored=$((mirrored + 1))
-    fi
-  done < "$out_tmp"
+  mirrored_longform=$(blog_nostr_mirror_store_events_from_file "$out_longform_tmp" 2>/dev/null || printf '0')
+  case "$mirrored_longform" in ''|*[!0-9]*) mirrored_longform=0 ;; esac
+  mirrored=$((mirrored + mirrored_longform))
 
-  rm -f "$authors_tmp" "$relays_tmp" "$out_tmp"
+  # Non-longform posts can be very noisy on kind:1; constrain to posts emitted by this app (t=blog).
+  set -- nak req -k 1 -k 15 -k 20 -k 21 -k 30311 -t "t=blog"
+  while IFS= read -r author || [ -n "$author" ]; do
+    [ -n "$author" ] || continue
+    set -- "$@" -a "$author"
+  done < "$authors_tmp"
+  while IFS= read -r relay || [ -n "$relay" ]; do
+    [ -n "$relay" ] || continue
+    set -- "$@" "$relay"
+  done < "$relays_tmp"
+
+  set +e
+  "$@" > "$out_blog_tmp" 2>/dev/null
+  _status=$?
+  set -e
+  if [ "$_status" -eq 0 ] || [ -s "$out_blog_tmp" ]; then
+    mirrored_blog=$(blog_nostr_mirror_store_events_from_file "$out_blog_tmp" 2>/dev/null || printf '0')
+    case "$mirrored_blog" in ''|*[!0-9]*) mirrored_blog=0 ;; esac
+    mirrored=$((mirrored + mirrored_blog))
+  fi
+
+  rm -f "$authors_tmp" "$relays_tmp" "$out_longform_tmp" "$out_blog_tmp"
   printf '%s\n' "$mirrored"
 }
 
@@ -3028,7 +3323,7 @@ blog_publish_content_nostr() {
   _post_type=${9-}
 
   published_iso=$(blog_now_iso)
-  event_json=$(blog_nostr_sign_post_event "$title" "$tags" "$summary" "$content" "$published_iso" 2>/dev/null || printf '')
+  event_json=$(blog_nostr_sign_post_event "$title" "$tags" "$summary" "$content" "$published_iso" "$_post_type" 2>/dev/null || printf '')
   if [ -z "$event_json" ]; then
     return 1
   fi
