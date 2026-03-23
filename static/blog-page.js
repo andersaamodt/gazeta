@@ -2,6 +2,7 @@
   'use strict';
 
   var CACHE_KEY = 'wizardry_blog_posts_v2';
+  var POSTS_CACHE_MAX_AGE_MS = 15000;
   var root = document.getElementById('blog-page-root');
   if (!root) {
     return;
@@ -1137,6 +1138,11 @@
         return null;
       }
       var parsed = JSON.parse(raw);
+      var savedAt = Number(parsed && parsed.saved_at || 0);
+      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > POSTS_CACHE_MAX_AGE_MS) {
+        localStorage.removeItem(CACHE_KEY);
+        return null;
+      }
       if (parsed && Array.isArray(parsed.posts)) {
         return parsed.posts;
       }
@@ -1148,7 +1154,10 @@
 
   function writeCache(posts) {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ posts: posts || [] }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        posts: posts || [],
+        saved_at: Date.now()
+      }));
     } catch (_err) {
       // Ignore storage failures.
     }

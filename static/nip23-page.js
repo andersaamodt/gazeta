@@ -75,6 +75,7 @@
     initialContentPainted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
+  var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeTimer = 0;
   var markedUpgradeAttempts = 0;
 
@@ -188,6 +189,11 @@
       }
       var parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      var savedAt = Number(parsed.saved_at || 0);
+      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > BOOTSTRAP_CACHE_MAX_AGE_MS) {
+        localStorage.removeItem(bootstrapCacheKey());
         return null;
       }
       if (String(parsed.auth_signature || '') !== authSignature()) {
