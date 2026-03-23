@@ -4476,6 +4476,8 @@ footer {
 
 .blog-compose-card {
   margin: 0;
+  max-width: min(980px, 100%);
+  animation: blog-compose-fade-in 220ms ease both;
 }
 
 .blog-compose-head {
@@ -4494,6 +4496,14 @@ footer {
   min-width: 0;
 }
 
+.blog-compose-btn {
+  width: auto;
+  min-width: 0;
+  padding: 0.34rem 0.82rem !important;
+  font-size: 0.94rem !important;
+  line-height: 1.15 !important;
+}
+
 .blog-compose-body {
   display: grid;
   gap: 0.68rem;
@@ -4508,6 +4518,12 @@ footer {
 .blog-compose-card .field-row > strong {
   font-size: 0.86rem;
   color: var(--muted-text, #4f617f);
+}
+
+.blog-compose-title-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.58rem;
 }
 
 .blog-compose-card input[type="text"],
@@ -4626,6 +4642,45 @@ footer {
   margin-top: 0.6rem;
   display: grid;
   gap: 0.55rem;
+}
+
+.blog-compose-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.blog-compose-delete {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--danger) !important;
+  -webkit-text-fill-color: var(--danger) !important;
+  width: 2.15rem !important;
+  min-width: 2.15rem !important;
+  height: 2.05rem !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+
+.blog-compose-delete .trash-icon-svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.blog-compose-delete:hover:not(:disabled),
+.blog-compose-delete:focus-visible:not(:disabled) {
+  background: var(--danger-soft) !important;
+  color: var(--danger) !important;
+  -webkit-text-fill-color: var(--danger) !important;
+}
+
+@keyframes blog-compose-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .blog-compose-status-row {

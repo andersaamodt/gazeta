@@ -489,10 +489,17 @@ assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Ic
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "cache: 'no-store'" 'nav-auth has no-store directives'
 assert_file_contains "$ROOT_DIR/static/admin.js" "cache: 'no-store'" 'admin has no-store directives'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "cache: 'no-store'" 'blog-page has no-store directives'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "data-compose-action=\"delete\"" 'in-blog compose exposes delete-draft trash action'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "apiPost('/cgi/blog-delete-draft'" 'in-blog compose can delete local draft via delete endpoint'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'oeuvre has no-store directives'
+assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-title-row {' 'in-blog compose title row style exists'
+assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-btn {' 'in-blog compose preview/publish buttons are compact'
+assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-delete {' 'in-blog compose has lower-left trash icon control style'
+assert_file_contains "$ROOT_DIR/static/style.css" '@keyframes blog-compose-fade-in {' 'in-blog compose fade-in animation exists'
 assert_file_not_contains "$ROOT_DIR/includes/nav.md" 'if (!hasDynamicPageRoot() || pageReady)' 'hydration timeout fallback always unlocks the page'
 
 prune_hook_count=$(grep -Fc 'blog_nostr_pages_prune_stale_source_pages "$normalized"' "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" || printf '0')

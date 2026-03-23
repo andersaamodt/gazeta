@@ -445,6 +445,14 @@
     return html;
   }
 
+  function composeTrashIconSvg() {
+    return '<svg class="trash-icon-svg" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M9 3.75h6a1 1 0 0 1 1 1V6h4v1.75H4V6h4V4.75a1 1 0 0 1 1-1Z" fill="currentColor"/>' +
+      '<path d="M6.75 8.5h10.5l-.7 10.02a2 2 0 0 1-2 1.86H9.45a2 2 0 0 1-2-1.86L6.75 8.5Z" fill="currentColor"/>' +
+      '<path d="M10.2 10.75v6.7M13.8 10.75v6.7" stroke="var(--bg, #fff)" stroke-width="1.4" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+
   function readComposeFields() {
     if (!els.composeSlot) {
       return null;
@@ -579,6 +587,69 @@
       } else {
         setComposeOutput('Error: ' + message, 'error');
       }
+      renderComposeStatusOnly();
+    }).finally(function () {
+      state.compose.busy = false;
+      renderComposeStatusOnly();
+    });
+  }
+
+  function clearComposeFields() {
+    state.compose.draftId = '';
+    state.compose.saveStatus = '';
+    setComposeOutput('', '');
+    setComposeTags([]);
+    if (!els.composeSlot) {
+      renderComposeStatusOnly();
+      return;
+    }
+    var title = els.composeSlot.querySelector('[data-compose-field="title"]');
+    var content = els.composeSlot.querySelector('[data-compose-field="content"]');
+    var schedule = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+    var immediateMode = els.composeSlot.querySelector('input[name="blog-inline-compose-mode"][value="immediate"]');
+    if (title instanceof HTMLInputElement) {
+      title.value = '';
+    }
+    if (content instanceof HTMLTextAreaElement) {
+      content.value = '';
+    }
+    if (schedule instanceof HTMLInputElement) {
+      schedule.value = '';
+    }
+    if (immediateMode instanceof HTMLInputElement) {
+      immediateMode.checked = true;
+    }
+    renderComposeUi();
+  }
+
+  function deleteComposeDraft() {
+    var fields = readComposeFields() || { title: '', content: '' };
+    var hasContent = !!String(fields.title || '').trim() || !!String(fields.content || '').trim() || state.compose.tags.length > 0 || !!state.compose.draftId;
+    if (hasContent && !window.confirm('Delete this draft?')) {
+      return;
+    }
+    if (!state.compose.draftId) {
+      clearComposeFields();
+      return;
+    }
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      setComposeOutput('Sign in again to delete draft.', 'error');
+      renderComposeStatusOnly();
+      return;
+    }
+    state.compose.busy = true;
+    renderComposeStatusOnly();
+    apiPost('/cgi/blog-delete-draft', {
+      draft_id: String(state.compose.draftId || ''),
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function () {
+      clearComposeFields();
+      setComposeOutput('Draft deleted.', 'ok');
+      renderComposeStatusOnly();
+    }).catch(function (err) {
+      setComposeOutput('Error: ' + ((err && err.message) ? err.message : 'Delete failed'), 'error');
       renderComposeStatusOnly();
     }).finally(function () {
       state.compose.busy = false;
@@ -783,16 +854,11 @@
     els.composeSlot.hidden = false;
     els.composeSlot.innerHTML = '' +
       '<article class="post-item blog-post-item blog-compose-card">' +
-        '<div class="post-head blog-compose-head">' +
-          '<div class="post-head-main">' +
-            '<h2 class="post-title">New post</h2>' +
-          '</div>' +
-          '<div class="blog-compose-head-actions">' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
-          '</div>' +
-        '</div>' +
         '<div class="blog-compose-body">' +
-          '<div class="field-row"><label><strong>Post title</strong></label><input type="text" data-compose-field="title" placeholder="My post" value="' + escapeHtml(fields.title) + '"></div>' +
+          '<div class="field-row blog-compose-title-row">' +
+            '<input type="text" data-compose-field="title" placeholder="My post" value="' + escapeHtml(fields.title) + '">' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
+          '</div>' +
           (state.compose.preview
             ? '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>'
             : '<div class="field-row">' +
@@ -838,8 +904,9 @@
           '</div>' +
         '</div>' +
         '<div class="compose-footer blog-compose-footer">' +
-          '<div class="compose-actions">' +
-            '<button type="button" class="list-admin-primary-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode)) + '</button>' +
+          '<div class="compose-actions blog-compose-footer-actions">' +
+            '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-compose-action="delete" aria-label="Delete draft" title="Delete draft"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + composeTrashIconSvg() + '</button>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode)) + '</button>' +
           '</div>' +
           '<div class="blog-compose-status-row">' +
             '<div class="autosave-indicator' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
@@ -1221,6 +1288,10 @@
       }
       if (actionName === 'publish') {
         saveCompose(composeModeAction(composePublishMode()));
+        return;
+      }
+      if (actionName === 'delete') {
+        deleteComposeDraft();
         return;
       }
       if (actionName === 'remove-tag') {
