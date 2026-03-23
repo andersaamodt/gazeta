@@ -563,6 +563,7 @@ header h1 {
 }
 
 .list-page-shell {
+  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(120px, 180px) minmax(180px, 260px) 2.1rem;
   width: 100%;
   max-width: 100%;
   margin: 1.25rem auto 2.4rem;
@@ -1255,7 +1256,7 @@ header h1 {
 
 .list-inline-head {
   display: grid;
-  grid-template-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(120px, 180px) minmax(180px, 260px) 2.1rem;
+  grid-template-columns: var(--list-inline-grid-columns);
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.5rem;
@@ -1283,7 +1284,7 @@ header h1 {
 
 .list-entry-inline {
   display: grid;
-  grid-template-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(120px, 180px) minmax(180px, 260px) 2.1rem;
+  grid-template-columns: var(--list-inline-grid-columns);
   gap: 0.45rem;
   align-items: center;
   margin: 0 0 0.46rem;
@@ -1294,9 +1295,8 @@ header h1 {
   background: transparent;
 }
 
-.list-page-shell[data-page-type="list"] .list-inline-head,
-.list-page-shell[data-page-type="list"] .list-entry-inline {
-  grid-template-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(130px, 190px) 2.1rem;
+.list-page-shell[data-page-type="list"] {
+  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(130px, 190px) 2.1rem;
 }
 
 .list-entry-inline.is-active {

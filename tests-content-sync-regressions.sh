@@ -474,6 +474,9 @@ assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1820px, calc(1
 assert_file_contains "$ROOT_DIR/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1780px, calc(100vw - 1rem));' 'list page shell edit-mode max width expanded'
 assert_file_contains "$ROOT_DIR/static/style.css" 'margin: 1.25rem auto 2.4rem;' 'list page shell stays centered while edit-mode width animates'
+assert_file_contains "$ROOT_DIR/static/style.css" '.list-page-shell {' 'list shell block exists for shared inline-grid variable definitions'
+assert_file_contains "$ROOT_DIR/static/style.css" 'list-inline-grid-columns:' 'list inline table uses shared grid template variable'
+assert_file_contains "$ROOT_DIR/static/style.css" 'grid-template-columns: var(--list-inline-grid-columns);' 'list headers and rows both read same grid template variable'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.
