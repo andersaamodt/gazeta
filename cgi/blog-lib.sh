@@ -2056,10 +2056,35 @@ blog_normalize_tags() {
 blog_normalize_post_type() {
   raw=${1-longform}
   raw=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
-  if [ -z "$raw" ]; then
-    raw='longform'
-  fi
-  printf '%s\n' "$raw"
+  case "$raw" in
+    ''|long|longform)
+      printf 'longform\n'
+      ;;
+    short|shortform)
+      printf 'shortform\n'
+      ;;
+    capture|capture-media|capture_media|take-photo|take-photo-video)
+      printf 'capture-media\n'
+      ;;
+    media|media-upload|media_upload|upload-media|upload_media|photo|video|image)
+      printf 'upload-media\n'
+      ;;
+    attachment|attachments|file|file-upload|file_upload)
+      printf 'attachment\n'
+      ;;
+    audio|audio-note|audio_note|voice|voice-note|voice_note)
+      printf 'audio-note\n'
+      ;;
+    link|link-share|link_share|url|share-link)
+      printf 'link-share\n'
+      ;;
+    go-live|go_live|live)
+      printf 'go-live\n'
+      ;;
+    *)
+      printf 'longform\n'
+      ;;
+  esac
 }
 
 blog_tags_to_json_array() {

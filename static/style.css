@@ -6231,3 +6231,70 @@ body.nostr-publish-dialog-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final mobile nav safety: prevent search/actions from covering center links. */
+@media (max-width: 700px) {
+  nav.site-nav {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto;
+    row-gap: 0.34rem;
+    align-items: start !important;
+    overflow: visible !important;
+  }
+
+  nav.site-nav .nav-center {
+    grid-row: 1;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav .nav-center::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav.site-nav .nav-right {
+    grid-row: 2;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.4rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav .nav-right::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav.site-nav .nav-search {
+    flex: 1 1 12rem !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+
+  nav.site-nav .nav-search input[type="text"] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  nav.site-nav .nav-search button,
+  nav.site-nav .btn-login,
+  nav.site-nav .nav-login-split,
+  nav.site-nav .nav-user-menu,
+  nav.site-nav .nav-menu-btn,
+  nav.site-nav .nav-compose,
+  nav.site-nav .nav-username {
+    flex: 0 0 auto !important;
+  }
+}
