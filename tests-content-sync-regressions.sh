@@ -458,6 +458,8 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" 'class="list-marker-filter-
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.ctrlKey' 'list marker filters support ctrl-click exclusion mode'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.metaKey || event.shiftKey' 'list marker filters support cmd/shift multi-select include mode'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'function datePillForEntryInSection(entry, groupBy, sectionLabel)' 'list read renderer computes section-aware date-pill visibility'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'list-entry-date-pill' 'list read renderer outputs right-aligned date pill for more-specific dates'
 assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-outro-format' 'list editor no longer exposes markdown/html format dropdown for local after-content'
 assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-intro="true"' 'list editor no longer exposes redundant before-content textarea'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'html += renderAfterContentEditor();' 'list editor renders after-content editor at end of edit content'
@@ -477,6 +479,7 @@ assert_file_contains "$ROOT_DIR/static/style.css" 'margin: 1.25rem auto 2.4rem;'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-page-shell {' 'list shell block exists for shared inline-grid variable definitions'
 assert_file_contains "$ROOT_DIR/static/style.css" 'list-inline-grid-columns:' 'list inline table uses shared grid template variable'
 assert_file_contains "$ROOT_DIR/static/style.css" 'grid-template-columns: var(--list-inline-grid-columns);' 'list headers and rows both read same grid template variable'
+assert_file_contains "$ROOT_DIR/static/style.css" '.list-entry-date-pill {' 'list read rows include a dedicated date-pill style'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.

@@ -1582,6 +1582,32 @@ header h1 {
   text-decoration: none;
 }
 
+.list-entry-first-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.list-entry-first-line .list-entry-markdown {
+  min-width: 0;
+}
+
+.list-entry-date-pill {
+  margin-left: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--border, #c8d4f3) 78%, var(--accent, #2f4aa6) 22%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--post-card-bg-single, #fff) 90%, var(--nav-link-hover, #e0e7ff) 10%);
+  color: var(--muted-text, #5f6f92);
+  -webkit-text-fill-color: var(--muted-text, #5f6f92);
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .list-marker-filters {
   margin: 0 0 0.72rem;
 }

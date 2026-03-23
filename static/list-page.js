@@ -1182,24 +1182,59 @@
     }
   }
 
-  function renderEntryReadOnly(entry) {
+  function datePillForEntryInSection(entry, groupBy, sectionLabel) {
+    var dateText = String(entry && entry.date || '').trim();
+    var mode = String(groupBy || '').trim();
+    var label = String(sectionLabel || '').trim();
+    if (!dateText || !mode || !label) {
+      return '';
+    }
+    if (mode === 'year') {
+      if (!/^\d{4}(-\d{2}(-\d{2})?)?$/.test(dateText)) {
+        return '';
+      }
+      if (yearFromDate(dateText) !== label) {
+        return '';
+      }
+      if (dateText.length <= 4) {
+        return '';
+      }
+      return dateText;
+    }
+    if (mode === 'month') {
+      if (!/^\d{4}-\d{2}(-\d{2})?$/.test(dateText)) {
+        return '';
+      }
+      if (monthFromDate(dateText) !== label) {
+        return '';
+      }
+      if (dateText.length <= 7) {
+        return '';
+      }
+      return dateText;
+    }
+    return '';
+  }
+
+  function renderEntryReadOnly(entry, groupBy, sectionLabel) {
     var line = String(entry && entry.markdown || '').trim();
     var postUrl = String(entry && entry.post_url || '');
+    var datePill = datePillForEntryInSection(entry, groupBy, sectionLabel);
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
-    return '<li class="list-entry-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span></li>';
+    return '<li class="list-entry-line"><div class="list-entry-first-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</div></li>';
   }
 
-  function renderEntryInner(entry) {
-    return renderEntryReadOnly(entry).replace(/^<li[^>]*>|<\/li>$/g, '');
+  function renderEntryInner(entry, groupBy, sectionLabel) {
+    return renderEntryReadOnly(entry, groupBy, sectionLabel).replace(/^<li[^>]*>|<\/li>$/g, '');
   }
 
   function placeholderHtml(label) {
     return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
-  function renderStructuredReadOnly(elements, listClass) {
+  function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel) {
     var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
     var openDepth = -1;
     var started = false;
@@ -1214,14 +1249,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
         return;
       }
 
@@ -1230,7 +1265,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
         return;
       }
 
@@ -1239,7 +1274,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
     });
 
     if (started) {
@@ -1325,11 +1360,11 @@
     return html;
   }
 
-  function renderReadOnlyByView(entries, viewMode) {
+  function renderReadOnlyByView(entries, viewMode, groupBy, sectionLabel) {
     if (normalizeViewMode(viewMode) === 'tile') {
       return renderTileReadOnly(entries);
     }
-    return renderStructuredReadOnly(entries, 'list-entries');
+    return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel);
   }
 
   function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters) {
@@ -1354,7 +1389,7 @@
         if (!bucket.length) {
           return;
         }
-        html += renderReadOnlyByView(bucket, viewMode);
+        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel);
         html += '</section>';
         bucket = [];
       }
@@ -1374,7 +1409,7 @@
       return html;
     }
 
-    return html + renderReadOnlyByView(filteredEntries, viewMode);
+    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '');
   }
 
   function renderExtraContent(text, format, role) {
