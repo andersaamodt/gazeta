@@ -259,14 +259,38 @@ title: ""
 <div class="compose-editor">
 <div class="field-row compose-post-type-row">
 <div id="compose-post-type-toolbar" class="compose-post-type-toolbar" role="tablist" aria-label="Post type">
-<button type="button" class="compose-post-type-pill" data-post-type="shortform" aria-pressed="false">Shortform Post</button>
-<button type="button" class="compose-post-type-pill is-active" data-post-type="longform" aria-pressed="true">Longform Post</button>
-<button type="button" class="compose-post-type-pill" data-post-type="capture-media" aria-pressed="false">Take Photo/Video</button>
-<button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false">Upload Photo/Video</button>
-<button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false">Upload Attachment/File</button>
-<button type="button" class="compose-post-type-pill" data-post-type="audio-note" aria-pressed="false">Audio Note</button>
-<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false">Link Share</button>
-<button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" title="Coming soon">Go Live</button>
+<button type="button" class="compose-post-type-pill" data-post-type="shortform" aria-pressed="false" aria-label="Shortform Post" title="Shortform Post">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8H15M5 12H13M5 16H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Shortform Post</span>
+</button>
+<button type="button" class="compose-post-type-pill is-active" data-post-type="longform" aria-pressed="true" aria-label="Longform Post" title="Longform Post">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7H19M5 11H19M5 15H17M5 19H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Longform Post</span>
+</button>
+<button type="button" class="compose-post-type-pill" data-post-type="capture-media" aria-pressed="false" aria-label="Take Photo/Video" title="Take Photo/Video">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="7" width="16" height="11" rx="2.2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12.5" r="2.6" stroke="currentColor" stroke-width="1.8"/><path d="M9.2 7L10.4 5.2H13.6L14.8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Take Photo/Video</span>
+</button>
+<button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false" aria-label="Upload Photo/Video" title="Upload Photo/Video">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V6M8.8 9.2L12 6L15.2 9.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="4.2" y="15.3" width="15.6" height="3.9" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+<span class="sr-only">Upload Photo/Video</span>
+</button>
+<button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false" aria-label="Upload Attachment/File" title="Upload Attachment/File">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.2 12.8L14.4 7.6C15.8 6.2 18 6.2 19.4 7.6C20.8 9 20.8 11.2 19.4 12.6L11.2 20.8C8.9 23.1 5.2 23.1 2.9 20.8C0.6 18.5 0.6 14.8 2.9 12.5L11 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span class="sr-only">Upload Attachment/File</span>
+</button>
+<button type="button" class="compose-post-type-pill" data-post-type="audio-note" aria-pressed="false" aria-label="Audio Note" title="Audio Note">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="4.2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M6.6 11.2C6.6 14.4 9.1 16.9 12 16.9C14.9 16.9 17.4 14.4 17.4 11.2M12 16.9V20.2M9.3 20.2H14.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Audio Note</span>
+</button>
+<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link Share" title="Link Share">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10.2 13.8L13.8 10.2M8.2 15.8L6.7 17.3C5.3 18.7 3.1 18.7 1.7 17.3C0.3 15.9 0.3 13.7 1.7 12.3L3.2 10.8M15.8 8.2L17.3 6.7C18.7 5.3 20.9 5.3 22.3 6.7C23.7 8.1 23.7 10.3 22.3 11.7L20.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Link Share</span>
+</button>
+<button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="Go Live" title="Coming soon: Go Live">
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M4.4 12H2.2M21.8 12H19.6M17.7 6.3L16.1 7.9M7.9 16.1L6.3 17.7M17.7 17.7L16.1 16.1M7.9 7.9L6.3 6.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<span class="sr-only">Go Live</span>
+</button>
 </div>
 </div>
 
@@ -1898,42 +1922,76 @@ body {
 
 .compose-post-type-row {
   margin: 0 0 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.06rem;
+  scrollbar-width: none;
+}
+
+.compose-post-type-row::-webkit-scrollbar {
+  display: none;
 }
 
 .compose-post-type-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.34rem;
-  align-items: center;
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: stretch;
+  border: 1px solid var(--admin-border, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 88%, var(--admin-hover, var(--nav-link-hover)) 12%);
+  overflow: hidden;
 }
 
 .compose-post-type-pill {
-  width: auto;
-  min-width: 0;
-  padding: 0.34rem 0.52rem;
-  border-radius: 10px;
-  border: 1px solid var(--admin-border, var(--border));
-  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 86%, var(--admin-hover, var(--nav-link-hover)) 14%);
+  width: 2.05rem;
+  min-width: 2.05rem;
+  height: 2.05rem;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--admin-border, var(--border));
+  border-radius: 0;
+  background: transparent;
   color: var(--admin-text, var(--text));
-  font-size: 0.76rem;
-  font-weight: 620;
-  line-height: 1.18;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.compose-post-type-pill:last-child {
+  border-right: 0;
+}
+
+.compose-post-type-pill .compose-post-type-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  fill: none;
+  pointer-events: none;
 }
 
 .compose-post-type-pill:hover:not(:disabled),
 .compose-post-type-pill:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 72%, var(--admin-surface, var(--post-card-bg-single)) 28%);
+  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 64%, transparent);
 }
 
 .compose-post-type-pill.is-active {
-  border-color: var(--admin-accent, var(--accent));
-  background: color-mix(in srgb, var(--admin-accent, var(--accent)) 18%, var(--admin-surface, var(--post-card-bg-single)) 82%);
+  background: color-mix(in srgb, var(--admin-accent, var(--accent)) 22%, var(--admin-surface, var(--post-card-bg-single)) 78%);
   color: var(--admin-accent-strong, var(--admin-text, var(--text)));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--admin-accent, var(--accent)) 34%, transparent);
+}
+
+.compose-post-type-pill:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--admin-accent, var(--accent)) 52%, transparent);
+  outline-offset: -1px;
 }
 
 .compose-post-type-pill.is-disabled,
 .compose-post-type-pill:disabled {
-  opacity: 0.5;
+  opacity: 0.44;
   cursor: not-allowed;
 }
 
@@ -4984,16 +5042,10 @@ body {
     inline-size: 100%;
   }
 
-  .compose-post-type-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 0.08rem;
-  }
-
   .compose-post-type-pill {
-    flex: 0 0 auto;
-    font-size: 0.73rem;
-    padding: 0.3rem 0.46rem;
+    width: 1.92rem;
+    min-width: 1.92rem;
+    height: 1.92rem;
   }
 }
 

@@ -363,6 +363,53 @@
     return out;
   }
 
+  function composePostTypeIconSvg(type) {
+    var picked = normalizeComposePostType(type);
+    if (picked === 'shortform') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 8H15M5 12H13M5 16H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (picked === 'longform') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 7H19M5 11H19M5 15H17M5 19H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (picked === 'capture-media') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="4" y="7" width="16" height="11" rx="2.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="12" cy="12.5" r="2.6" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M9.2 7L10.4 5.2H13.6L14.8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (picked === 'upload-media') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M12 16V6M8.8 9.2L12 6L15.2 9.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="4.2" y="15.3" width="15.6" height="3.9" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+      '</svg>';
+    }
+    if (picked === 'attachment') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M9.2 12.8L14.4 7.6C15.8 6.2 18 6.2 19.4 7.6C20.8 9 20.8 11.2 19.4 12.6L11.2 20.8C8.9 23.1 5.2 23.1 2.9 20.8C0.6 18.5 0.6 14.8 2.9 12.5L11 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+    }
+    if (picked === 'audio-note') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="9" y="4.2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M6.6 11.2C6.6 14.4 9.1 16.9 12 16.9C14.9 16.9 17.4 14.4 17.4 11.2M12 16.9V20.2M9.3 20.2H14.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (picked === 'link-share') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M10.2 13.8L13.8 10.2M8.2 15.8L6.7 17.3C5.3 18.7 3.1 18.7 1.7 17.3C0.3 15.9 0.3 13.7 1.7 12.3L3.2 10.8M15.8 8.2L17.3 6.7C18.7 5.3 20.9 5.3 22.3 6.7C23.7 8.1 23.7 10.3 22.3 11.7L20.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="2.4" fill="currentColor"/>' +
+      '<path d="M4.4 12H2.2M21.8 12H19.6M17.7 6.3L16.1 7.9M7.9 16.1L6.3 17.7M17.7 17.7L16.1 16.1M7.9 7.9L6.3 6.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
   function composeTypeButtonsHtml(activeType) {
     var current = normalizeComposePostType(activeType);
     function btn(type, label, disabled) {
@@ -373,11 +420,14 @@
       if (disabled) {
         cls += ' is-disabled';
       }
+      var icon = composePostTypeIconSvg(type);
+      var title = disabled ? ('Coming soon: ' + label) : label;
       return '<button type="button" class="' + cls + '" data-compose-action="set-post-type" data-compose-post-type="' + escapeHtml(type) + '"' +
         (disabled ? ' disabled aria-disabled="true"' : '') +
         ' aria-pressed="' + (type === current ? 'true' : 'false') + '"' +
-        (disabled ? ' title="Coming soon"' : '') +
-        '>' + escapeHtml(label) + '</button>';
+        ' aria-label="' + escapeHtml(label) + '"' +
+        ' title="' + escapeHtml(title) + '"' +
+        '>' + icon + '<span class="sr-only">' + escapeHtml(label) + '</span></button>';
     }
     return '' +
       '<div class="compose-post-type-toolbar" role="tablist" aria-label="Post type">' +
