@@ -880,7 +880,7 @@
     html += '<section class="public-ranking-submit">';
     html += '<div class="public-ranking-submit-toolbar">';
     html += '<div class="public-ranking-submit-toolbar-right">';
-    html += '<button type="button" class="public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'New entry') + '">' + escapeHtml(open ? 'Close' : 'New entry') + '</button>';
+    html += '<button type="button" class="list-admin-primary-btn public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'New entry') + '">' + escapeHtml(open ? 'Close' : 'New entry') + '</button>';
     html += '</div>';
     html += '</div>';
     if (open) {
