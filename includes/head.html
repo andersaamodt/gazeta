@@ -12,6 +12,7 @@
 <script>
 (function () {
   var ROUTE_REFRESH_PARAM = '__route_refresh';
+  var routeFailureTimer = 0;
 
   function normalizeSlug(value) {
     return String(value || '')
@@ -68,6 +69,21 @@
     return '';
   }
 
+  function slugsEquivalent(expected, root) {
+    var a = normalizeSlug(expected);
+    var b = normalizeSlug(root);
+    if (!a || !b) {
+      return false;
+    }
+    if (a === b) {
+      return true;
+    }
+    if ((a === 'index' && b === 'blog') || (a === 'blog' && b === 'index')) {
+      return true;
+    }
+    return false;
+  }
+
   function forceHydrationReveal() {
     try {
       var gate = window.__wizardryHydration;
@@ -90,23 +106,6 @@
     if (!mainContainer && !nav && !body) {
       return;
     }
-
-    [
-      'blog-page-root',
-      'nip23-page-root',
-      'list-page-root',
-      'oeuvre-root',
-      'icon-gallery-root',
-      'public-ranking-root',
-      'contact-page-root',
-      'search-page-root',
-      'admin-panel'
-    ].forEach(function (id) {
-      var node = document.getElementById(id);
-      if (node && node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
-    });
 
     var existing = document.getElementById('route-load-failure');
     if (existing && existing.parentNode) {
@@ -137,6 +136,28 @@
     forceHydrationReveal();
   }
 
+  function cancelRouteLoadFailure() {
+    if (routeFailureTimer) {
+      window.clearTimeout(routeFailureTimer);
+      routeFailureTimer = 0;
+    }
+    var existing = document.getElementById('route-load-failure');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+  }
+
+  function scheduleRouteLoadFailure() {
+    cancelRouteLoadFailure();
+    routeFailureTimer = window.setTimeout(function () {
+      routeFailureTimer = 0;
+      if (window.__wizardryPageInitialContentReady) {
+        return;
+      }
+      showRouteLoadFailure();
+    }, 2200);
+  }
+
   // Keep content visible during route transitions so navigation does not
   // flash to a blank intermediate state before the destination page scripts initialize.
 
@@ -161,13 +182,13 @@
       var expectedSlug = slugFromPath(currentUrl.pathname || '/');
       var rootSlug = routeRootSlugFromDom();
       var hasRefreshParam = currentUrl.searchParams.get(ROUTE_REFRESH_PARAM) === '1';
-      if (expectedSlug && rootSlug && expectedSlug !== rootSlug) {
+      if (expectedSlug && rootSlug && !slugsEquivalent(expectedSlug, rootSlug)) {
         if (!hasRefreshParam) {
           currentUrl.searchParams.set(ROUTE_REFRESH_PARAM, '1');
           window.location.replace(currentUrl.toString());
           return;
         }
-        showRouteLoadFailure();
+        scheduleRouteLoadFailure();
         return;
       } else if (hasRefreshParam && window.history && typeof window.history.replaceState === 'function') {
         currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
@@ -184,6 +205,10 @@
     } catch (_routeErr) {
       // Ignore URL parsing/runtime failures.
     }
+  });
+
+  window.addEventListener('blog-page-initial-content-ready', function () {
+    cancelRouteLoadFailure();
   });
 })();
 </script>
