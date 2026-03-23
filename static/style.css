@@ -943,7 +943,7 @@ header h1 {
   border-color: color-mix(in srgb, var(--accent, #2f4aa6) 52%, var(--border, #c3cada) 48%);
   color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #223b85) 84%, var(--text, #243046) 16%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #2f4aa6) 28%, transparent);
+  box-shadow: none;
 }
 
 .list-page-admin-bar .list-admin-primary-btn:active:not(:disabled),
