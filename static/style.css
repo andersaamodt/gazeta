@@ -898,6 +898,7 @@ header h1 {
   appearance: none;
   -webkit-appearance: none;
   background-clip: padding-box;
+  outline: none;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
@@ -939,7 +940,7 @@ header h1 {
   border-color: color-mix(in srgb, var(--accent, #2f4aa6) 36%, var(--border, #c3cada) 64%);
   color: var(--text, #243046) !important;
   -webkit-text-fill-color: var(--text, #243046);
-  box-shadow: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #2f4aa6) 22%, transparent);
 }
 
 .list-page-admin-bar .list-admin-primary-btn:active:not(:disabled) {
