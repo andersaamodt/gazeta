@@ -897,12 +897,15 @@ header h1 {
   line-height: 1.22;
   appearance: none;
   -webkit-appearance: none;
-  background-clip: padding-box;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
   outline: none;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
   border: 1px solid color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  border-left-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  border-right-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
   background: color-mix(in srgb, var(--button-primary-start, #c56b28) 10%, var(--surface-raised-strong, #fff) 90%) !important;
   background-image: none !important;
   color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%) !important;
@@ -915,6 +918,8 @@ header h1 {
   background: color-mix(in srgb, var(--button-primary-start, #c56b28) 16%, var(--surface-raised-strong, #fff) 84%) !important;
   background-image: none !important;
   border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  border-left-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  border-right-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
   color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%);
 }
@@ -924,6 +929,8 @@ header h1 {
   padding: 0.36rem 0.74rem;
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  border-left-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
+  border-right-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 34%, var(--border, #c3cada) 66%);
   background: color-mix(in srgb, var(--button-primary-start, #c56b28) 10%, var(--surface-raised-strong, #fff) 90%) !important;
   background-image: none !important;
   color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 78%, var(--text, #243046) 22%) !important;
@@ -941,6 +948,8 @@ header h1 {
   background: color-mix(in srgb, var(--button-primary-start, #c56b28) 16%, var(--surface-raised-strong, #fff) 84%) !important;
   background-image: none !important;
   border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  border-left-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
+  border-right-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 52%, var(--border, #c3cada) 48%);
   color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 84%, var(--text, #243046) 16%);
   box-shadow: none;
@@ -951,6 +960,8 @@ header h1 {
   background: color-mix(in srgb, var(--button-primary-start, #c56b28) 20%, var(--surface-raised-strong, #fff) 80%) !important;
   background-image: none !important;
   border-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 58%, var(--border, #c3cada) 42%);
+  border-left-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 58%, var(--border, #c3cada) 42%);
+  border-right-color: color-mix(in srgb, var(--button-primary-start, #c56b28) 58%, var(--border, #c3cada) 42%);
   color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 88%, var(--text, #243046) 12%) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--button-primary-end, #9a4e1d) 88%, var(--text, #243046) 12%);
 }
