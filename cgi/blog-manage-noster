@@ -294,6 +294,109 @@ relay_connected() {
   return 1
 }
 
+stonr_status_json_cache_loaded=0
+stonr_status_json_cache=''
+
+stonr_status_json() {
+  if [ "$stonr_status_json_cache_loaded" = "1" ]; then
+    printf '%s' "$stonr_status_json_cache"
+    return 0
+  fi
+  stonr_status_json_cache_loaded=1
+  stonr_status_json_cache=''
+
+  if ! stonr_running; then
+    return 0
+  fi
+
+  bin=$(stonr_bin_path)
+  if [ -z "$bin" ]; then
+    return 0
+  fi
+
+  set +e
+  status_json=$(STONR_CONFIG="$stonr_config_file" "$bin" status --json 2>/dev/null)
+  status_code=$?
+  set -e
+  if [ "$status_code" -eq 0 ] && [ -n "$status_json" ]; then
+    stonr_status_json_cache=$status_json
+  fi
+
+  printf '%s' "$stonr_status_json_cache"
+  return 0
+}
+
+relay_url() {
+  status_json=$(stonr_status_json 2>/dev/null || printf '')
+  if [ -n "$status_json" ] && command -v jq >/dev/null 2>&1; then
+    value=$(printf '%s' "$status_json" | jq -r '
+      .relay_url //
+      .relay_url_https //
+      .relay_url_http //
+      (.relay.url // empty) //
+      (.relay.public_url // empty) //
+      (.relay.listen_url // empty) //
+      .url //
+      .public_url //
+      (.runtime.relay_url // empty) //
+      empty
+    ' 2>/dev/null || printf '')
+    case "$value" in
+      http://*|https://*)
+        printf '%s' "$value"
+        return 0
+        ;;
+    esac
+  fi
+
+  if ! stonr_running; then
+    printf ''
+    return 0
+  fi
+
+  bin=$(stonr_bin_path)
+  if [ -z "$bin" ]; then
+    printf ''
+    return 0
+  fi
+  set +e
+  status_text=$(STONR_CONFIG="$stonr_config_file" "$bin" status 2>/dev/null)
+  set -e
+  value=$(printf '%s' "$status_text" | grep -Eo 'https?://[^"[:space:]]+' | head -n 1 || printf '')
+  printf '%s' "$value"
+}
+
+relay_ssl_status() {
+  status_json=$(stonr_status_json 2>/dev/null || printf '')
+  if [ -n "$status_json" ] && command -v jq >/dev/null 2>&1; then
+    status=$(printf '%s' "$status_json" | jq -r '
+      if (
+        (.relay_ssl_ok == true) or
+        (.ssl_ok == true) or
+        (.tls_ok == true) or
+        (.https_ok == true) or
+        ((.relay // {}) | .ssl_ok == true or .ssl_ready == true or .tls_ok == true or .https_ok == true)
+      ) then "ok"
+      elif (
+        (.relay_ssl_ok == false) or
+        (.ssl_ok == false) or
+        (.tls_ok == false) or
+        (.https_ok == false) or
+        ((.relay // {}) | .ssl_ok == false or .ssl_ready == false or .tls_ok == false or .https_ok == false)
+      ) then "warn"
+      else ""
+      end
+    ' 2>/dev/null || printf '')
+    case "$status" in
+      ok|warn)
+        printf '%s' "$status"
+        return 0
+        ;;
+    esac
+  fi
+  printf ''
+}
+
 bool_json() {
   if "$@"; then
     printf 'true'
@@ -379,10 +482,14 @@ save_settings_from_request() {
 runtime_json() {
   pid=$(stonr_pid)
   path=$(stonr_bin_path)
+  relay_url_value=$(relay_url)
+  relay_ssl_value=$(relay_ssl_status)
   printf '{'
   printf '"stonr_installed":%s,' "$(bool_json stonr_installed)"
   printf '"stonr_running":%s,' "$(bool_json stonr_running)"
   printf '"relay_connected":%s,' "$(bool_json relay_connected)"
+  printf '"relay_url":"%s",' "$(blog_json_escape "$relay_url_value")"
+  printf '"relay_ssl_status":"%s",' "$(blog_json_escape "$relay_ssl_value")"
   printf '"stonr_path":"%s",' "$(blog_json_escape "$path")"
   printf '"config_path":"%s",' "$(blog_json_escape "$stonr_config_file")"
   printf '"pid":"%s",' "$(blog_json_escape "$pid")"
@@ -761,8 +868,55 @@ configure_stonr() {
   return 0
 }
 
+activate_relay_url_flow() {
+  action_log=$1
+  if ! stonr_installed; then
+    printf 'Stonr is not installed.\n' >> "$action_log"
+    return 1
+  fi
+
+  if web_wizardry_has_cmd activate-stonr-relay-url; then
+    web_wizardry_run_cmd activate-stonr-relay-url "$action_log"
+    return $?
+  fi
+  if web_wizardry_has_cmd activate-relay-url; then
+    web_wizardry_run_cmd activate-relay-url "$action_log"
+    return $?
+  fi
+  if web_wizardry_has_cmd stonr-relay-url; then
+    web_wizardry_run_cmd stonr-relay-url "$action_log"
+    return $?
+  fi
+
+  bin=$(stonr_bin_path)
+  if [ -z "$bin" ]; then
+    printf 'stonr executable not found.\n' >> "$action_log"
+    return 1
+  fi
+
+  for cmd_spec in \
+    "relay-url setup" \
+    "relay-url activate" \
+    "activate-relay-url" \
+    "setup-relay-url"; do
+    # shellcheck disable=SC2086
+    set -- $cmd_spec
+    set +e
+    STONR_CONFIG="$stonr_config_file" "$bin" "$@" >> "$action_log" 2>&1
+    status=$?
+    set -e
+    if [ "$status" -eq 0 ]; then
+      printf 'Activated relay URL flow via: %s\n' "$cmd_spec" >> "$action_log"
+      return 0
+    fi
+  done
+
+  printf 'No supported relay URL activation command was found in this Stonr runtime.\n' >> "$action_log"
+  return 1
+}
+
 case "$action" in
-  status|install|start|stop|save_settings|configure) ;;
+  status|install|start|stop|save_settings|configure|activate_relay_url) ;;
   *)
     emit_failure "Unknown action" "invalid_action"
     exit 0
@@ -829,6 +983,13 @@ case "$action" in
     action_message='Stonr configured for this site.'
     action_error='Could not configure Stonr.'
     action_code='stonr_config_failed'
+    ;;
+  activate_relay_url)
+    activate_relay_url_flow "$action_log"
+    action_status=$?
+    action_message='Relay URL setup flow activated.'
+    action_error='Could not activate Relay URL setup flow.'
+    action_code='stonr_relay_url_flow_failed'
     ;;
 esac
 set -e

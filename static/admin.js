@@ -2236,7 +2236,7 @@
     const stonrInstalled = !!(runtimeInfo.stonr_installed || runtimeInfo.stoner_installed);
     cardButtons.forEach(function (button) {
       const action = String(button.getAttribute('data-noster-action') || '').toLowerCase();
-      const requiresInstalled = action === 'start' || action === 'stop';
+      const requiresInstalled = action === 'start' || action === 'stop' || action === 'activate_relay_url';
       if (isBusy) {
         button.disabled = true;
         return;
@@ -2294,10 +2294,21 @@
     const stonrInstalled = !!(info.stonr_installed || info.stoner_installed);
     const stonrRunning = !!(info.stonr_running || info.stoner_running);
     const relayConnected = !!info.relay_connected;
+    const relayUrl = String(info.relay_url || '').trim();
+    const relaySslStatus = String(info.relay_ssl_status || '').trim().toLowerCase();
     const settings = readNosterSettingsFromRuntime(info);
     const stonrPath = info.stonr_path || info.stoner_path || '';
     const actionDisabledAttr = state.nosterActionInFlight ? ' disabled' : '';
     const startDisabledAttr = (!stonrInstalled || state.nosterActionInFlight) ? ' disabled' : '';
+    const relayUrlDisabledAttr = (!stonrInstalled || state.nosterActionInFlight) ? ' disabled' : '';
+    const relaySslIcon = relaySslStatus === 'ok'
+      ? '<span class="noster-relay-ssl is-ok" title="SSL ready" aria-label="SSL ready"></span>'
+      : (relaySslStatus === 'warn'
+        ? '<span class="noster-relay-ssl is-warn" title="SSL issue" aria-label="SSL issue"></span>'
+        : '');
+    const relayUrlHtml = relayUrl
+      ? ('<span class="noster-relay-url">' + relaySslIcon + '<span class="noster-relay-url-text">' + escapeHtml(relayUrl) + '</span></span>')
+      : '<span class="zaps-runtime-value is-warn">Not set</span>';
 
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Install Stonr</strong></div>'
@@ -2305,9 +2316,13 @@
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
         : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + '>Install Stonr</button>'))
       + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Relay URL Setup</strong></div>'
+      + '<button type="button" class="zaps-runtime-action" data-noster-action="activate_relay_url"' + relayUrlDisabledAttr + '>Activate Relay URL Flow</button>'
+      + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Process</strong></div>'
       + '<button type="button" class="zaps-runtime-action" data-noster-action="' + (stonrRunning ? 'stop' : 'start') + '"' + startDisabledAttr + '>' + (stonrRunning ? 'Stop Stonr' : 'Start Stonr') + '</button>'
       + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Relay URL</strong></div><div class="zaps-runtime-value">' + relayUrlHtml + '</div></div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Relay Connection</strong></div><div class="zaps-runtime-value ' + (relayConnected ? 'is-ok' : 'is-warn') + '">' + (relayConnected ? 'Connected' : 'Disconnected') + '</div></div>';
     html += '<h4>Settings</h4>';
     html += '<div class="field-row checkbox-row"><div class="setting-label"><strong>Also act as a general relay</strong></div><label class="checkbox-control checkbox-control-plain"><input type="checkbox" data-noster-setting="general_relay"' + (settings.general_relay ? ' checked' : '') + actionDisabledAttr + '><span>Enabled</span></label></div>';
@@ -2402,6 +2417,8 @@
       message = 'Start Stonr now?';
     } else if (picked === 'stop') {
       message = 'Stop Stonr now?';
+    } else if (picked === 'activate_relay_url') {
+      message = 'Activate Stonr Relay URL setup flow now?';
     }
     if (message && !window.confirm(message)) {
       return;

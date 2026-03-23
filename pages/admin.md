@@ -1492,6 +1492,37 @@ body {
   color: color-mix(in srgb, #875e12 70%, var(--text));
 }
 
+.noster-relay-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.noster-relay-url-text {
+  overflow-wrap: anywhere;
+}
+
+.noster-relay-ssl {
+  width: 0.56rem;
+  height: 0.56rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--light-text, #64748b) 72%, #fff 28%);
+  border: 1px solid color-mix(in srgb, var(--light-text, #64748b) 50%, #fff 50%);
+  flex: 0 0 auto;
+}
+
+.noster-relay-ssl.is-ok {
+  background: color-mix(in srgb, #2b8a3e 78%, #fff 22%);
+  border-color: color-mix(in srgb, #2b8a3e 62%, #fff 38%);
+}
+
+.noster-relay-ssl.is-warn {
+  background: color-mix(in srgb, #b35a18 78%, #fff 22%);
+  border-color: color-mix(in srgb, #b35a18 62%, #fff 38%);
+}
+
 .zaps-runtime-log {
   grid-column: 1 / -1;
   margin: 0;
