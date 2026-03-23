@@ -257,6 +257,34 @@ title: ""
 
 <div class="composer-grid">
 <div class="compose-editor">
+<div class="field-row compose-post-type-row">
+<div id="compose-post-type-toolbar" class="compose-post-type-toolbar" role="tablist" aria-label="Post type">
+<button type="button" class="compose-post-type-pill" data-post-type="shortform" aria-pressed="false">Shortform Post</button>
+<button type="button" class="compose-post-type-pill is-active" data-post-type="longform" aria-pressed="true">Longform Post</button>
+<button type="button" class="compose-post-type-pill" data-post-type="capture-media" aria-pressed="false">Take Photo/Video</button>
+<button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false">Upload Photo/Video</button>
+<button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false">Upload Attachment/File</button>
+<button type="button" class="compose-post-type-pill" data-post-type="audio-note" aria-pressed="false">Audio Note</button>
+<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false">Link Share</button>
+<button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" title="Coming soon">Go Live</button>
+</div>
+</div>
+
+<div id="compose-media-tools" class="compose-media-tools" hidden>
+<div class="compose-media-actions">
+<button type="button" id="btn-compose-capture" class="unobtrusive-icon-button compose-media-btn">Take Photo/Video</button>
+<button type="button" id="btn-compose-upload-media" class="unobtrusive-icon-button compose-media-btn">Upload Photo/Video</button>
+<button type="button" id="btn-compose-upload-file" class="unobtrusive-icon-button compose-media-btn">Upload Attachment/File</button>
+<button type="button" id="btn-compose-upload-audio" class="unobtrusive-icon-button compose-media-btn">Upload Audio</button>
+</div>
+<div id="compose-link-fields" class="compose-link-fields" hidden>
+<label for="compose-link-url"><strong>Link URL</strong></label>
+<input type="url" id="compose-link-url" placeholder="https://example.com">
+<label for="compose-link-body"><strong>Body</strong></label>
+<textarea id="compose-link-body" rows="3" placeholder="Optional note"></textarea>
+</div>
+</div>
+
 <div class="field-row">
 <label for="post-title"><strong>Post Title</strong></label>
 <input type="text" id="post-title" placeholder="My post">
@@ -348,6 +376,8 @@ title: ""
 </div>
 
 <input type="file" id="image-picker" accept="image/*" multiple style="display:none;">
+<input type="file" id="capture-picker" accept="image/*,video/*" capture="environment" multiple style="display:none;">
+<input type="file" id="audio-picker" accept="audio/*" multiple style="display:none;">
 <input type="file" id="file-picker" multiple style="display:none;">
 </div>
 
@@ -1549,6 +1579,10 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .zaps-runtime-value.is-ok {
@@ -1860,6 +1894,77 @@ body {
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
   gap: 1.05rem;
   align-items: start;
+}
+
+.compose-post-type-row {
+  margin: 0 0 0.4rem;
+}
+
+.compose-post-type-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  align-items: center;
+}
+
+.compose-post-type-pill {
+  width: auto;
+  min-width: 0;
+  padding: 0.34rem 0.52rem;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, var(--border));
+  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 86%, var(--admin-hover, var(--nav-link-hover)) 14%);
+  color: var(--admin-text, var(--text));
+  font-size: 0.76rem;
+  font-weight: 620;
+  line-height: 1.18;
+}
+
+.compose-post-type-pill:hover:not(:disabled),
+.compose-post-type-pill:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--admin-hover, var(--nav-link-hover)) 72%, var(--admin-surface, var(--post-card-bg-single)) 28%);
+}
+
+.compose-post-type-pill.is-active {
+  border-color: var(--admin-accent, var(--accent));
+  background: color-mix(in srgb, var(--admin-accent, var(--accent)) 18%, var(--admin-surface, var(--post-card-bg-single)) 82%);
+  color: var(--admin-accent-strong, var(--admin-text, var(--text)));
+}
+
+.compose-post-type-pill.is-disabled,
+.compose-post-type-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compose-media-tools {
+  display: grid;
+  gap: 0.42rem;
+  margin: 0 0 0.56rem;
+  padding: 0.48rem 0.56rem;
+  border: 1px solid var(--admin-border, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--admin-surface-alt, var(--post-card-bg)) 82%, transparent);
+}
+
+.compose-media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+.compose-media-btn {
+  width: auto;
+  min-width: 0;
+  padding: 0.28rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.15;
+}
+
+.compose-link-fields {
+  display: grid;
+  gap: 0.32rem;
 }
 
 .mode-row {
@@ -4805,6 +4910,24 @@ body {
     left: 0;
   }
 
+  [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row,
+  [data-admin-section="btcpay"] .runtime-settings-list .field-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.18rem;
+  }
+
+  [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .setting-label,
+  [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .zaps-runtime-value,
+  [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > button,
+  [data-admin-section="nostr-bridge"] .runtime-settings-list .field-row > .checkbox-control,
+  [data-admin-section="btcpay"] .runtime-settings-list .field-row > .setting-label,
+  [data-admin-section="btcpay"] .runtime-settings-list .field-row > .zaps-runtime-value,
+  [data-admin-section="btcpay"] .runtime-settings-list .field-row > button,
+  [data-admin-section="btcpay"] .runtime-settings-list .field-row > .checkbox-control {
+    grid-column: 1;
+  }
+
   [data-admin-section="account"] .account-ssh-note {
     white-space: normal;
   }
@@ -4859,6 +4982,18 @@ body {
 
   .compose-actions {
     inline-size: 100%;
+  }
+
+  .compose-post-type-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.08rem;
+  }
+
+  .compose-post-type-pill {
+    flex: 0 0 auto;
+    font-size: 0.73rem;
+    padding: 0.3rem 0.46rem;
   }
 }
 

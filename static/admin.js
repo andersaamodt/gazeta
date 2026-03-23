@@ -10,6 +10,8 @@
     sshFingerprint: '',
     isAdmin: false,
     composeTags: [],
+    composePostType: 'longform',
+    composeUploadBusy: false,
     currentDraftId: '',
     autosaveTimer: null,
     suspendAutosave: false,
@@ -39,6 +41,7 @@
     postsActionInFlight: false,
     moderationActionInFlight: false,
     files: [],
+    filePickerContext: 'files-admin',
     fileUploads: [],
     activeUploadCount: 0,
     filesSectionLoadedOnce: false,
@@ -127,6 +130,15 @@
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
     newUsersAreAdmins: document.getElementById('new-users-are-admins'),
     postTitle: document.getElementById('post-title'),
+    composePostTypeToolbar: document.getElementById('compose-post-type-toolbar'),
+    composeMediaTools: document.getElementById('compose-media-tools'),
+    composeLinkFields: document.getElementById('compose-link-fields'),
+    composeLinkUrl: document.getElementById('compose-link-url'),
+    composeLinkBody: document.getElementById('compose-link-body'),
+    composeCaptureButton: document.getElementById('btn-compose-capture'),
+    composeUploadMediaButton: document.getElementById('btn-compose-upload-media'),
+    composeUploadFileButton: document.getElementById('btn-compose-upload-file'),
+    composeUploadAudioButton: document.getElementById('btn-compose-upload-audio'),
     postTags: document.getElementById('post-tags'),
     postTagsInput: document.getElementById('post-tags-input'),
     postTagsEditor: document.getElementById('post-tags-editor'),
@@ -186,6 +198,8 @@
     generateSshButton: document.getElementById('btn-generate-ssh'),
     linkSshButton: document.getElementById('btn-link-ssh'),
     imagePicker: document.getElementById('image-picker'),
+    capturePicker: document.getElementById('capture-picker'),
+    audioPicker: document.getElementById('audio-picker'),
     filePicker: document.getElementById('file-picker'),
     dropOverlay: document.getElementById('drop-overlay'),
     sidebarToggleButton: document.getElementById('btn-admin-sidebar-toggle'),
@@ -197,6 +211,8 @@
   let themeSwitchVisualTimer = null;
 
   const publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
+  const COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
+  const COMPOSE_POST_TYPES_ENABLED = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share'];
   const ADMIN_SIDEBAR_COLLAPSED_KEY = 'blog_admin_sidebar_collapsed_v1';
   const LOCAL_DRIP_LEASE_KEY = 'blog_local_drip_lease_v1';
   const LOCAL_DRIP_ENABLED_KEY = 'blog_local_drip_enabled_v1';
@@ -1522,14 +1538,134 @@
     return local.toISOString().slice(0, 16);
   }
 
+  function normalizeComposePostType(raw) {
+    const picked = String(raw || '').trim().toLowerCase();
+    if (COMPOSE_POST_TYPES.indexOf(picked) >= 0) {
+      return picked;
+    }
+    return 'longform';
+  }
+
+  function composePostTypeLabel(postType) {
+    const type = normalizeComposePostType(postType);
+    if (type === 'shortform') { return 'shortform'; }
+    if (type === 'capture-media') { return 'capture media'; }
+    if (type === 'upload-media') { return 'media upload'; }
+    if (type === 'attachment') { return 'attachment'; }
+    if (type === 'audio-note') { return 'audio note'; }
+    if (type === 'link-share') { return 'link share'; }
+    if (type === 'go-live') { return 'go live'; }
+    return 'longform';
+  }
+
+  function composePostTypeIsTextual(postType) {
+    const type = normalizeComposePostType(postType);
+    return type === 'shortform' || type === 'longform';
+  }
+
+  function syncComposePostTypeUi() {
+    const type = normalizeComposePostType(state.composePostType);
+    if (els.composePostTypeToolbar) {
+      Array.from(els.composePostTypeToolbar.querySelectorAll('[data-post-type]')).forEach(function (node) {
+        const picked = normalizeComposePostType(node.getAttribute('data-post-type') || '');
+        const active = picked === type;
+        node.classList.toggle('is-active', active);
+        node.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+    if (els.composeMediaTools) {
+      const showMedia = !composePostTypeIsTextual(type);
+      els.composeMediaTools.hidden = !showMedia;
+    }
+    if (els.composeLinkFields) {
+      els.composeLinkFields.hidden = type !== 'link-share';
+    }
+    if (els.postTitle) {
+      if (type === 'shortform') {
+        els.postTitle.placeholder = 'Short post';
+      } else if (type === 'link-share') {
+        els.postTitle.placeholder = 'Link title (optional)';
+      } else if (type === 'capture-media' || type === 'upload-media') {
+        els.postTitle.placeholder = 'Media post title (optional)';
+      } else {
+        els.postTitle.placeholder = 'My post';
+      }
+    }
+    if (els.postContent) {
+      if (type === 'shortform') {
+        els.postContent.placeholder = 'Write a short post...';
+      } else if (type === 'link-share') {
+        els.postContent.placeholder = 'Optional commentary...';
+      } else if (type === 'capture-media') {
+        els.postContent.placeholder = 'Optional caption for captured media...';
+      } else if (type === 'upload-media') {
+        els.postContent.placeholder = 'Optional caption for uploaded media...';
+      } else if (type === 'attachment') {
+        els.postContent.placeholder = 'Optional note about attached files...';
+      } else if (type === 'audio-note') {
+        els.postContent.placeholder = 'Optional note for uploaded audio...';
+      } else {
+        els.postContent.placeholder = '# Write in Markdown\n\nDrop images anywhere on this page to upload + insert.';
+      }
+      els.postContent.rows = composePostTypeIsTextual(type) ? 16 : 8;
+    }
+  }
+
+  function setComposePostType(nextType, options) {
+    const opts = options || {};
+    const normalized = normalizeComposePostType(nextType);
+    if (normalized === 'go-live') {
+      setOutput(els.outputCompose, 'Go Live is a future feature.', 'warn');
+      return;
+    }
+    if (state.composePostType === normalized && !opts.force) {
+      if (opts.syncUi) {
+        syncComposePostTypeUi();
+      }
+      return;
+    }
+    state.composePostType = normalized;
+    syncComposePostTypeUi();
+    if (opts.queueAutosave !== false) {
+      queueAutosave('saving');
+    }
+  }
+
+  function composeBuildLinkMarkdown(urlValue, bodyValue, titleValue) {
+    const url = String(urlValue || '').trim();
+    if (!url) {
+      return '';
+    }
+    const label = String(titleValue || '').trim() || url;
+    let out = '[' + label + '](' + url + ')';
+    const body = String(bodyValue || '').trim();
+    if (body) {
+      out += '\n\n' + body;
+    }
+    return out;
+  }
+
   function readComposer() {
     commitTagInput();
+    const postType = normalizeComposePostType(state.composePostType);
+    let content = els.postContent ? String(els.postContent.value || '') : '';
+    if (postType === 'link-share') {
+      const linkContent = composeBuildLinkMarkdown(
+        els.composeLinkUrl ? els.composeLinkUrl.value : '',
+        els.composeLinkBody ? els.composeLinkBody.value : '',
+        els.postTitle ? els.postTitle.value : ''
+      );
+      if (linkContent) {
+        content = linkContent;
+      }
+    }
     return {
       draft_id: state.currentDraftId,
       title: els.postTitle.value.trim(),
       tags: els.postTags.value.trim(),
       summary: '',
-      content: els.postContent.value,
+      content: content,
+      post_type: postType,
       scheduled_at: localToIso(els.postScheduleAt.value),
       publish_mode: getPublishMode()
     };
@@ -1549,10 +1685,26 @@
 
     state.suspendAutosave = true;
     state.currentDraftId = draft.draft_id || '';
+    state.composePostType = normalizeComposePostType((draft && draft.post_type) || 'longform');
     els.postTitle.value = draft.title || '';
     setComposeTagsFromString(draft.tags || '');
     els.postContent.value = draft.content || '';
+    if (els.composeLinkUrl) {
+      let linkUrl = '';
+      const linkMatch = String(draft.content || '').match(/\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/i);
+      if (linkMatch && linkMatch[1]) {
+        linkUrl = String(linkMatch[1]);
+      }
+      els.composeLinkUrl.value = linkUrl;
+    }
+    if (els.composeLinkBody) {
+      const body = String(draft.content || '')
+        .replace(/\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/i, '')
+        .trim();
+      els.composeLinkBody.value = body;
+    }
     els.postScheduleAt.value = isoToLocal(draft.scheduled_at || '');
+    syncComposePostTypeUi();
     setPublishMode(mode || 'immediate');
     renderPreview();
     refreshDraftLabel();
@@ -1563,10 +1715,18 @@
 
   function resetComposer() {
     state.currentDraftId = '';
+    state.composePostType = 'longform';
     els.postTitle.value = '';
     setComposeTags([]);
     els.postContent.value = '';
+    if (els.composeLinkUrl) {
+      els.composeLinkUrl.value = '';
+    }
+    if (els.composeLinkBody) {
+      els.composeLinkBody.value = '';
+    }
     els.postScheduleAt.value = '';
+    syncComposePostTypeUi();
     setPublishMode('immediate');
     renderPreview();
     refreshDraftLabel();
@@ -1680,7 +1840,17 @@
   }
 
   function renderPreview() {
-    const md = els.postContent.value;
+    let md = els.postContent.value;
+    if (normalizeComposePostType(state.composePostType) === 'link-share') {
+      const built = composeBuildLinkMarkdown(
+        els.composeLinkUrl ? els.composeLinkUrl.value : '',
+        els.composeLinkBody ? els.composeLinkBody.value : '',
+        els.postTitle ? els.postTitle.value : ''
+      );
+      if (built) {
+        md = built;
+      }
+    }
     if (!md.trim()) {
       els.markdownPreview.innerHTML = '<p class="placeholder">Preview will appear here...</p>';
       return;
@@ -5064,9 +5234,41 @@
     }
   }
 
-  async function uploadImageFile(file) {
+  function uploadedReferenceMarkdown(url, file) {
+    const safeUrl = String(url || '').trim();
+    const name = String((file && file.name) || 'file').trim();
+    const mime = String((file && file.type) || '').toLowerCase();
+    const alt = name.replace(/\.[^.]+$/, '') || 'media';
+    if (!safeUrl) {
+      return '';
+    }
+    if (mime.indexOf('image/') === 0) {
+      return '![' + alt + '](' + safeUrl + ')';
+    }
+    if (mime.indexOf('video/') === 0) {
+      return '<video controls src="' + safeUrl + '"></video>';
+    }
+    if (mime.indexOf('audio/') === 0) {
+      return '<audio controls src="' + safeUrl + '"></audio>';
+    }
+    return '[' + name + '](' + safeUrl + ')';
+  }
+
+  function appendToComposerContent(text) {
+    const addition = String(text || '').trim();
+    if (!addition || !els.postContent) {
+      return;
+    }
+    const source = String(els.postContent.value || '');
+    const next = source.trim() ? (source.replace(/\s*$/, '') + '\n\n' + addition) : addition;
+    els.postContent.value = next;
+    renderPreview();
+    queueAutosave('saving');
+  }
+
+  async function uploadComposeFile(file, kind) {
     const data = await uploadFileWithProgress(file, {
-      kind: 'image',
+      kind: kind || 'file',
       data: {
         draft_id: state.currentDraftId || ''
       }
@@ -5074,8 +5276,13 @@
     if (!data.success) {
       throw new Error(data.error || 'Upload failed');
     }
-    insertImage(data.url, file.name.replace(/\.[^.]+$/, ''));
-    return data.url;
+    const url = String(data.url || '').trim();
+    if (!url) {
+      throw new Error('Upload succeeded but URL is missing');
+    }
+    const line = uploadedReferenceMarkdown(url, file);
+    appendToComposerContent(line);
+    return url;
   }
 
   function readFileAsDataUrl(file) {
@@ -5096,23 +5303,82 @@
       .replace(/'/g, '&#39;');
   }
 
-  async function handleDroppedFiles(files) {
-    const imageFiles = Array.from(files || []).filter(function (file) {
-      return file && file.type && file.type.indexOf('image/') === 0;
+  async function handleDroppedFiles(files, preferredPostType) {
+    const picked = Array.from(files || []).filter(function (file) {
+      return file && file.size >= 0;
     });
-    if (!imageFiles.length) {
+    if (!picked.length) {
       return;
     }
-
-    setOutput(els.outputCompose, 'Uploading ' + imageFiles.length + ' image(s)...', 'warn');
+    if (preferredPostType) {
+      setComposePostType(preferredPostType, { queueAutosave: false, syncUi: true });
+    }
+    state.composeUploadBusy = true;
+    setOutput(els.outputCompose, 'Uploading ' + picked.length + ' file(s)...', 'warn');
     try {
-      for (const file of imageFiles) {
-        await uploadImageFile(file);
+      for (const file of picked) {
+        let uploadKind = 'file';
+        if (file.type && file.type.indexOf('image/') === 0) {
+          uploadKind = 'image';
+        } else if (file.type && file.type.indexOf('video/') === 0) {
+          uploadKind = 'video';
+        } else if (file.type && file.type.indexOf('audio/') === 0) {
+          uploadKind = 'audio';
+        }
+        await uploadComposeFile(file, uploadKind);
       }
-      setOutput(els.outputCompose, 'Images inserted into markdown.', 'ok');
+      setOutput(els.outputCompose, 'Upload complete. Added to compose body.', 'ok');
     } catch (err) {
       setOutput(els.outputCompose, 'Upload error: ' + err.message, 'error');
+    } finally {
+      state.composeUploadBusy = false;
     }
+  }
+
+  function composeSectionVisible() {
+    return !!(state.isAdmin && state.activeSection === 'compose');
+  }
+
+  function isEditableTarget(target) {
+    if (!target || !(target instanceof Element)) {
+      return false;
+    }
+    if (target instanceof HTMLTextAreaElement) {
+      return true;
+    }
+    if (target instanceof HTMLInputElement) {
+      return true;
+    }
+    if (target.isContentEditable) {
+      return true;
+    }
+    const editableAncestor = target.closest('textarea, input, [contenteditable="true"], [contenteditable=""]');
+    return !!editableAncestor;
+  }
+
+  function clipboardImageFiles(event) {
+    const list = [];
+    const clip = event && event.clipboardData;
+    if (!clip) {
+      return list;
+    }
+    const items = clip.items ? Array.from(clip.items) : [];
+    items.forEach(function (item) {
+      if (!item || item.kind !== 'file' || String(item.type || '').indexOf('image/') !== 0) {
+        return;
+      }
+      const file = item.getAsFile ? item.getAsFile() : null;
+      if (file) {
+        list.push(file);
+      }
+    });
+    if (list.length) {
+      return list;
+    }
+    const files = clip.files ? Array.from(clip.files) : [];
+    return files.filter(function (file) {
+      return file && String(file.type || '').indexOf('image/') === 0;
+    });
   }
 
   async function uploadAdminFiles(files) {
@@ -5486,6 +5752,7 @@
     if (els.uploadFileButton) {
       els.uploadFileButton.addEventListener('click', function () {
         if (els.filePicker) {
+          state.filePickerContext = 'files-admin';
           els.filePicker.click();
         }
       });
@@ -5493,7 +5760,12 @@
     if (els.filePicker) {
       els.filePicker.addEventListener('change', function () {
         if (els.filePicker.files && els.filePicker.files.length) {
-          uploadAdminFiles(els.filePicker.files).finally(function () {
+          const context = state.filePickerContext || 'files-admin';
+          const work = context === 'compose-attachment'
+            ? handleDroppedFiles(els.filePicker.files, 'attachment')
+            : uploadAdminFiles(els.filePicker.files);
+          work.finally(function () {
+            state.filePickerContext = 'files-admin';
             els.filePicker.value = '';
           });
         }
@@ -6254,6 +6526,46 @@
       });
     }
 
+    if (els.composePostTypeToolbar) {
+      els.composePostTypeToolbar.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const button = target.closest('[data-post-type]');
+        if (!(button instanceof HTMLButtonElement) || button.disabled) {
+          return;
+        }
+        const nextType = String(button.getAttribute('data-post-type') || '');
+        setComposePostType(nextType, { queueAutosave: true, syncUi: true });
+      });
+    }
+    if (els.composeCaptureButton && els.capturePicker) {
+      els.composeCaptureButton.addEventListener('click', function () {
+        setComposePostType('capture-media', { queueAutosave: false, syncUi: true });
+        els.capturePicker.click();
+      });
+    }
+    if (els.composeUploadMediaButton && els.imagePicker) {
+      els.composeUploadMediaButton.addEventListener('click', function () {
+        setComposePostType('upload-media', { queueAutosave: false, syncUi: true });
+        els.imagePicker.click();
+      });
+    }
+    if (els.composeUploadFileButton && els.filePicker) {
+      els.composeUploadFileButton.addEventListener('click', function () {
+        setComposePostType('attachment', { queueAutosave: false, syncUi: true });
+        state.filePickerContext = 'compose-attachment';
+        els.filePicker.click();
+      });
+    }
+    if (els.composeUploadAudioButton && els.audioPicker) {
+      els.composeUploadAudioButton.addEventListener('click', function () {
+        setComposePostType('audio-note', { queueAutosave: false, syncUi: true });
+        els.audioPicker.click();
+      });
+    }
+
     document.querySelectorAll('[data-toolbar]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const action = btn.getAttribute('data-toolbar');
@@ -6267,20 +6579,47 @@
         if (action === 'ul') { togglePrefixOnLines('- '); return; }
         if (action === 'ol') { toggleOrderedListOnLines(); return; }
         if (action === 'link') { insertLink(); return; }
-        if (action === 'image') { els.imagePicker.click(); return; }
+        if (action === 'image') {
+          setComposePostType('upload-media', { queueAutosave: false, syncUi: true });
+          els.imagePicker.click();
+          return;
+        }
       });
     });
 
     els.imagePicker.addEventListener('change', function () {
       if (els.imagePicker.files && els.imagePicker.files.length) {
-        handleDroppedFiles(els.imagePicker.files).finally(function () {
+        handleDroppedFiles(els.imagePicker.files, 'upload-media').finally(function () {
           els.imagePicker.value = '';
         });
       }
     });
+    if (els.capturePicker) {
+      els.capturePicker.addEventListener('change', function () {
+        if (els.capturePicker.files && els.capturePicker.files.length) {
+          handleDroppedFiles(els.capturePicker.files, 'capture-media').finally(function () {
+            els.capturePicker.value = '';
+          });
+        }
+      });
+    }
+    if (els.audioPicker) {
+      els.audioPicker.addEventListener('change', function () {
+        if (els.audioPicker.files && els.audioPicker.files.length) {
+          handleDroppedFiles(els.audioPicker.files, 'audio-note').finally(function () {
+            els.audioPicker.value = '';
+          });
+        }
+      });
+    }
 
-    [els.postTitle, els.postContent, els.postScheduleAt].forEach(function (el) {
+    [els.postTitle, els.postContent, els.postScheduleAt, els.composeLinkUrl, els.composeLinkBody].filter(Boolean).forEach(function (el) {
       el.addEventListener('input', function () {
+        if (el === els.composeLinkUrl || el === els.composeLinkBody) {
+          if (state.composePostType !== 'link-share') {
+            setComposePostType('link-share', { queueAutosave: false, syncUi: true });
+          }
+        }
         renderPreview();
         const typing = (el === els.postTitle || el === els.postContent);
         queueAutosave(typing ? 'typing' : 'saving');
@@ -6291,6 +6630,24 @@
       input.addEventListener('change', function () {
         updatePrimaryPublishButton();
         queueAutosave('saving');
+      });
+    });
+
+    document.addEventListener('paste', function (event) {
+      if (!composeSectionVisible()) {
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      const images = clipboardImageFiles(event);
+      if (!images.length) {
+        return;
+      }
+      event.preventDefault();
+      setComposePostType('upload-media', { queueAutosave: false, syncUi: true });
+      handleDroppedFiles(images, 'upload-media').catch(function (err) {
+        setOutput(els.outputCompose, 'Paste upload error: ' + err.message, 'error');
       });
     });
 
@@ -6480,6 +6837,7 @@
   initSectionNavigation();
   checkAuth();
   refreshDraftLabel();
+  syncComposePostTypeUi();
   updatePrimaryPublishButton();
   updateScheduledRowVisibility();
   setAutosaveStatus();

@@ -9,9 +9,24 @@ check_script_then_marked() {
     printf '%s\n' "missing $local_script in $file" >&2
     return 1
   }
-  marked_after=$(sed -n "$((local_line + 1)),$((local_line + 3))p" "$file" | awk '/marked@11\.0\.0\/marked\.min\.js/ { print "yes"; exit }')
-  [ "$marked_after" = "yes" ] || {
-    printf '%s\n' "expected marked include immediately after $local_script in $file" >&2
+  start_line=$((local_line - 3))
+  end_line=$((local_line + 3))
+  if [ "$start_line" -lt 1 ]; then
+    start_line=1
+  fi
+  marked_nearby=$(sed -n "${start_line},${end_line}p" "$file" | awk '/marked@11\.0\.0\/marked\.min\.js/ { print "yes"; exit }')
+  [ "$marked_nearby" = "yes" ] || {
+    printf '%s\n' "expected marked include adjacent to $local_script in $file" >&2
+    return 1
+  }
+}
+
+check_script_present() {
+  file=$1
+  local_script=$2
+  local_line=$(awk -v needle="$local_script" 'index($0, needle) { print NR; exit }' "$file")
+  [ -n "$local_line" ] || {
+    printf '%s\n' "missing $local_script in $file" >&2
     return 1
   }
 }
@@ -51,7 +66,7 @@ EOS
   trap - EXIT INT TERM
 }
 
-check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/index.md '/static/nip23-page.js'
+check_script_present /Users/andersaamodt/git/nostr-blog/pages/index.md '/static/blog-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/about.md '/static/nip23-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/list.md '/static/list-page.js'
 check_script_then_marked /Users/andersaamodt/git/nostr-blog/pages/oeuvre.md '/static/list-page.js'

@@ -44,6 +44,10 @@
       preview: false,
       draftId: '',
       tags: [],
+      postType: 'longform',
+      linkUrl: '',
+      linkBody: '',
+      uploading: 0,
       autosaveTimer: null,
       busy: false,
       output: '',
@@ -52,6 +56,7 @@
     }
   };
   var panelHideTimer = null;
+  var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -327,6 +332,83 @@
     }
   }
 
+  function normalizeComposePostType(raw) {
+    var picked = String(raw || '').trim().toLowerCase();
+    if (COMPOSE_POST_TYPES.indexOf(picked) >= 0) {
+      return picked;
+    }
+    return 'longform';
+  }
+
+  function composePostType() {
+    return normalizeComposePostType(state.compose.postType);
+  }
+
+  function composePostTypeIsTextual(type) {
+    var picked = normalizeComposePostType(type);
+    return picked === 'shortform' || picked === 'longform';
+  }
+
+  function composeBuildLinkMarkdown(urlValue, bodyValue, titleValue) {
+    var url = String(urlValue || '').trim();
+    if (!url) {
+      return '';
+    }
+    var label = String(titleValue || '').trim() || url;
+    var out = '[' + label + '](' + url + ')';
+    var body = String(bodyValue || '').trim();
+    if (body) {
+      out += '\n\n' + body;
+    }
+    return out;
+  }
+
+  function composeTypeButtonsHtml(activeType) {
+    var current = normalizeComposePostType(activeType);
+    function btn(type, label, disabled) {
+      var cls = 'compose-post-type-pill';
+      if (type === current) {
+        cls += ' is-active';
+      }
+      if (disabled) {
+        cls += ' is-disabled';
+      }
+      return '<button type="button" class="' + cls + '" data-compose-action="set-post-type" data-compose-post-type="' + escapeHtml(type) + '"' +
+        (disabled ? ' disabled aria-disabled="true"' : '') +
+        ' aria-pressed="' + (type === current ? 'true' : 'false') + '"' +
+        (disabled ? ' title="Coming soon"' : '') +
+        '>' + escapeHtml(label) + '</button>';
+    }
+    return '' +
+      '<div class="compose-post-type-toolbar" role="tablist" aria-label="Post type">' +
+      btn('shortform', 'Shortform Post', false) +
+      btn('longform', 'Longform Post', false) +
+      btn('capture-media', 'Take Photo/Video', false) +
+      btn('upload-media', 'Upload Photo/Video', false) +
+      btn('attachment', 'Upload Attachment/File', false) +
+      btn('audio-note', 'Audio Note', false) +
+      btn('link-share', 'Link Share', false) +
+      btn('go-live', 'Go Live', true) +
+      '</div>';
+  }
+
+  function setComposePostType(nextType, options) {
+    var opts = options || {};
+    var normalized = normalizeComposePostType(nextType);
+    if (normalized === 'go-live') {
+      setComposeOutput('Go Live is a future feature.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    state.compose.postType = normalized;
+    if (!opts.skipRender) {
+      renderComposeUi();
+    }
+    if (!opts.skipAutosave) {
+      queueComposeAutosave();
+    }
+  }
+
   function normalizeTagValue(tag) {
     return String(tag || '').trim().replace(/\s+/g, '-');
   }
@@ -384,6 +466,105 @@
     });
     input.value = '';
     return changed;
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(new Error('Failed to read file')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function composeUploadMarkdown(url, file) {
+    var safeUrl = String(url || '').trim();
+    if (!safeUrl) {
+      return '';
+    }
+    var name = String((file && file.name) || 'file').trim();
+    var mime = String((file && file.type) || '').toLowerCase();
+    var alt = name.replace(/\.[^.]+$/, '') || 'media';
+    if (mime.indexOf('image/') === 0) {
+      return '![' + alt + '](' + safeUrl + ')';
+    }
+    if (mime.indexOf('video/') === 0) {
+      return '<video controls src="' + safeUrl + '"></video>';
+    }
+    if (mime.indexOf('audio/') === 0) {
+      return '<audio controls src="' + safeUrl + '"></audio>';
+    }
+    return '[' + name + '](' + safeUrl + ')';
+  }
+
+  function appendComposeContent(text) {
+    if (!els.composeSlot) {
+      return;
+    }
+    var source = els.composeSlot.querySelector('[data-compose-field="content"]');
+    if (!(source instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    var addition = String(text || '').trim();
+    if (!addition) {
+      return;
+    }
+    var current = String(source.value || '');
+    source.value = current.trim() ? (current.replace(/\s*$/, '') + '\n\n' + addition) : addition;
+  }
+
+  function uploadComposeFile(file) {
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      return Promise.reject(new Error('Sign in again to upload.'));
+    }
+    return readFileAsDataUrl(file).then(function (dataUrl) {
+      return apiPost('/cgi/blog-upload-media', {
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token,
+        draft_id: String(state.compose.draftId || ''),
+        filename: String((file && file.name) || 'upload.bin'),
+        mime_type: String((file && file.type) || ''),
+        data_base64: String(dataUrl || '')
+      });
+    });
+  }
+
+  function handleComposeUploads(files, preferredType) {
+    var list = Array.from(files || []).filter(function (file) {
+      return file && file.size >= 0;
+    });
+    if (!list.length) {
+      return Promise.resolve();
+    }
+    if (preferredType) {
+      setComposePostType(preferredType, { skipAutosave: true });
+    }
+    state.compose.uploading += 1;
+    setComposeOutput('Uploading ' + list.length + ' file(s)...', 'warn');
+    renderComposeStatusOnly();
+    var chain = Promise.resolve();
+    list.forEach(function (file) {
+      chain = chain.then(function () {
+        return uploadComposeFile(file).then(function (data) {
+          if (data && data.draft_id) {
+            state.compose.draftId = String(data.draft_id);
+          }
+          appendComposeContent(composeUploadMarkdown(data && data.url, file));
+        });
+      });
+    });
+    return chain.then(function () {
+      setComposeOutput('Upload complete. Added to body.', 'ok');
+      queueComposeAutosave();
+      renderComposeUi();
+    }).catch(function (err) {
+      setComposeOutput('Upload error: ' + ((err && err.message) ? err.message : 'Upload failed'), 'error');
+      renderComposeStatusOnly();
+    }).finally(function () {
+      state.compose.uploading = Math.max(0, state.compose.uploading - 1);
+      renderComposeStatusOnly();
+    });
   }
 
   function composeLocalToIso(value) {
@@ -461,11 +642,16 @@
     var content = els.composeSlot.querySelector('[data-compose-field="content"]');
     var scheduled = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
     var tags = els.composeSlot.querySelector('[data-compose-field="tags"]');
+    var linkUrl = els.composeSlot.querySelector('[data-compose-field="link-url"]');
+    var linkBody = els.composeSlot.querySelector('[data-compose-field="link-body"]');
     return {
       title: title instanceof HTMLInputElement ? String(title.value || '') : '',
       content: content instanceof HTMLTextAreaElement ? String(content.value || '') : '',
       scheduledAt: scheduled instanceof HTMLInputElement ? String(scheduled.value || '') : '',
-      tags: tags instanceof HTMLInputElement ? String(tags.value || '') : ''
+      tags: tags instanceof HTMLInputElement ? String(tags.value || '') : '',
+      linkUrl: linkUrl instanceof HTMLInputElement ? String(linkUrl.value || '') : String(state.compose.linkUrl || ''),
+      linkBody: linkBody instanceof HTMLTextAreaElement ? String(linkBody.value || '') : String(state.compose.linkBody || ''),
+      postType: composePostType()
     };
   }
 
@@ -475,13 +661,23 @@
     if (!fields) {
       return null;
     }
+    var payloadContent = fields.content;
+    if (fields.postType === 'link-share') {
+      var linkMd = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
+      if (linkMd) {
+        payloadContent = linkMd;
+      }
+      state.compose.linkUrl = String(fields.linkUrl || '');
+      state.compose.linkBody = String(fields.linkBody || '');
+    }
     return {
       action: action,
       draft_id: String(state.compose.draftId || ''),
       title: fields.title.trim(),
       tags: fields.tags.trim(),
       summary: '',
-      content: fields.content,
+      content: payloadContent,
+      post_type: fields.postType,
       scheduled_at: composeLocalToIso(fields.scheduledAt),
       publish_mode: composePublishMode()
     };
@@ -510,6 +706,9 @@
   function afterComposePublishSuccess() {
     state.compose.draftId = '';
     state.compose.saveStatus = '';
+    state.compose.postType = 'longform';
+    state.compose.linkUrl = '';
+    state.compose.linkBody = '';
     setComposeTags([]);
     var fields = readComposeFields();
     if (!fields || !els.composeSlot) {
@@ -597,6 +796,9 @@
   function clearComposeFields() {
     state.compose.draftId = '';
     state.compose.saveStatus = '';
+    state.compose.postType = 'longform';
+    state.compose.linkUrl = '';
+    state.compose.linkBody = '';
     setComposeOutput('', '');
     setComposeTags([]);
     if (!els.composeSlot) {
