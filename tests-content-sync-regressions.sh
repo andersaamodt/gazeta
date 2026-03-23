@@ -443,6 +443,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-page-draft" 'show_marker_fil
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="image_url"' 'oeuvre inline editor supports image_url cell editing'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="marker"' 'oeuvre inline editor supports marker cell editing'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-list-show-marker-filters="true"' 'list editor exposes show marker filters checkbox'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true"' 'list edit toolbar exposes show marker filters checkbox in settings row'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.ctrlKey' 'list marker filters support ctrl-click exclusion mode'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'event.metaKey || event.shiftKey' 'list marker filters support cmd/shift multi-select include mode'
@@ -452,6 +453,9 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" "var defaultMarker = slug =
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
 assert_file_contains "$ROOT_DIR/pages/index.md" 'data-page-slug="index"' 'index shell includes explicit source slug marker for sync'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
+assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1820px, calc(100vw - 0.75rem));' 'list page edit-mode body width cap expanded for full table fit'
+assert_file_contains "$ROOT_DIR/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
+assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1780px, calc(100vw - 1rem));' 'list page shell edit-mode max width expanded'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Icon Gallery (kind 30004)</option>' 'admin create-page dialog exposes icon-gallery type'
 
 # 9) Broader static checks to guard accidental cache regression in targeted fetches.
