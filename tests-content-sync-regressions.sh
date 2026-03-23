@@ -263,6 +263,9 @@ assert_file_contains "$ROOT_DIR/static/nip23-page.js" "cache: 'no-store'" 'nip23
 assert_file_contains "$ROOT_DIR/static/public-ranking-page.js" "cache: 'no-store'" 'public ranking api no-store'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "cache: 'no-store'" 'oeuvre api no-store'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "cache: 'no-store'" 'blog page no-store present'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "data-blog-action=\"toggle-compose\"" 'blog page exposes inline compose toggle action'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "data-compose-action=\"publish\"" 'blog page inline composer exposes publish action'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "'/cgi/blog-save-post'" 'blog inline composer uses canonical blog-save-post endpoint'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })" 'blog posts fetch no-store'
 assert_file_contains "$ROOT_DIR/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "Object.assign({ cache: 'no-store' }, options || {})" 'nav-auth fetch default no-store'
@@ -606,6 +609,8 @@ assert_file_contains "$ROOT_DIR/static/admin.js" 'data-users-sort="created"' 'us
 assert_file_contains "$ROOT_DIR/static/admin.js" 'data-users-sort="role"' 'users header exposes sortable Role control'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'sortUsersForDisplay(state.users)' 'users list rendering applies client-side sort'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '.user-card-created .user-card-meta {' 'users created date column aligns via inline metadata wrapper rule'
+assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-fab {' 'blog inline compose uses fixed bottom-right compose button style'
+assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-slot.is-open {' 'blog inline compose uses animated expansion slot'
 
 tree_line=$(grep -n 'html += renderTree(graph, renderState);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')
 submit_line=$(grep -n 'html += renderSubmitForm(renderState, graph);' "$ROOT_DIR/static/public-ranking-page.js" | head -n 1 | cut -d: -f1 || printf '0')

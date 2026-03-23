@@ -21,7 +21,9 @@
     types: document.getElementById('blog-filter-types'),
     clear: document.getElementById('blog-clear-filters'),
     list: document.getElementById('blog-post-list'),
-    empty: document.getElementById('blog-empty')
+    empty: document.getElementById('blog-empty'),
+    composeFab: null,
+    composeSlot: null
   };
 
   var state = {
@@ -35,6 +37,17 @@
       tags: new Set(),
       years: new Set(),
       types: new Set()
+    },
+    compose: {
+      open: false,
+      preview: false,
+      draftId: '',
+      tags: [],
+      autosaveTimer: null,
+      busy: false,
+      output: '',
+      outputTone: '',
+      saveStatus: ''
     }
   };
   var panelHideTimer = null;
@@ -290,6 +303,585 @@
     els.admin.innerHTML = '';
   }
 
+  function ensureComposeHosts() {
+    if (!els.list || !els.list.parentNode) {
+      return;
+    }
+    if (!els.composeSlot) {
+      var slot = document.createElement('div');
+      slot.className = 'blog-compose-slot';
+      slot.hidden = true;
+      els.list.parentNode.insertBefore(slot, els.list);
+      els.composeSlot = slot;
+    }
+    if (!els.composeFab) {
+      var fab = document.createElement('button');
+      fab.type = 'button';
+      fab.className = 'blog-compose-fab list-admin-primary-btn';
+      fab.setAttribute('data-blog-action', 'toggle-compose');
+      fab.textContent = 'Compose';
+      fab.hidden = true;
+      root.appendChild(fab);
+      els.composeFab = fab;
+    }
+  }
+
+  function normalizeTagValue(tag) {
+    return String(tag || '').trim().replace(/\s+/g, '-');
+  }
+
+  function syncComposeTagsField() {
+    if (!els.composeSlot) {
+      return;
+    }
+    var hidden = els.composeSlot.querySelector('[data-compose-field="tags"]');
+    if (hidden instanceof HTMLInputElement) {
+      hidden.value = state.compose.tags.join(',');
+    }
+  }
+
+  function setComposeTags(tags) {
+    var list = Array.from(tags || [])
+      .map(normalizeTagValue)
+      .filter(Boolean);
+    state.compose.tags = list.filter(function (tag, idx) {
+      return list.indexOf(tag) === idx;
+    });
+    syncComposeTagsField();
+  }
+
+  function addComposeTag(rawTag) {
+    var tag = normalizeTagValue(rawTag);
+    if (!tag || state.compose.tags.indexOf(tag) !== -1) {
+      return false;
+    }
+    state.compose.tags.push(tag);
+    syncComposeTagsField();
+    return true;
+  }
+
+  function removeComposeTag(tag) {
+    setComposeTags(state.compose.tags.filter(function (item) {
+      return item !== tag;
+    }));
+  }
+
+  function commitComposeTagInput() {
+    if (!els.composeSlot) {
+      return false;
+    }
+    var input = els.composeSlot.querySelector('[data-compose-field="tags-input"]');
+    if (!(input instanceof HTMLInputElement)) {
+      return false;
+    }
+    var parts = String(input.value || '').split(',');
+    var changed = false;
+    parts.forEach(function (part) {
+      if (addComposeTag(part)) {
+        changed = true;
+      }
+    });
+    input.value = '';
+    return changed;
+  }
+
+  function composeLocalToIso(value) {
+    if (!value) {
+      return '';
+    }
+    var dt = new Date(value);
+    if (isNaN(dt.getTime())) {
+      return '';
+    }
+    return dt.toISOString().replace('.000Z', 'Z');
+  }
+
+  function composePublishMode() {
+    if (!els.composeSlot) {
+      return 'immediate';
+    }
+    var checked = els.composeSlot.querySelector('input[name="blog-inline-compose-mode"]:checked');
+    var value = checked ? String(checked.value || '') : 'immediate';
+    if (value === 'scheduled' || value === 'drip' || value === 'immediate') {
+      return value;
+    }
+    return 'immediate';
+  }
+
+  function composePrimaryLabel(mode) {
+    if (mode === 'scheduled') {
+      return 'Schedule Post';
+    }
+    if (mode === 'drip') {
+      return 'Enqueue Post';
+    }
+    return 'Publish Now';
+  }
+
+  function composeModeAction(mode) {
+    if (mode === 'scheduled') {
+      return 'queue_scheduled';
+    }
+    if (mode === 'drip') {
+      return 'queue_drip';
+    }
+    return 'publish_now';
+  }
+
+  function renderComposePreviewHtml(title, content) {
+    var body = String(content || '').trim();
+    var heading = String(title || '').trim();
+    if (!body && !heading) {
+      return '<p class="placeholder">Preview will appear here...</p>';
+    }
+    var html = '';
+    if (heading) {
+      html += '<h2>' + escapeHtml(heading) + '</h2>';
+    }
+    if (body) {
+      html += markdownBlock(body);
+    }
+    return html;
+  }
+
+  function readComposeFields() {
+    if (!els.composeSlot) {
+      return null;
+    }
+    var title = els.composeSlot.querySelector('[data-compose-field="title"]');
+    var content = els.composeSlot.querySelector('[data-compose-field="content"]');
+    var scheduled = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+    var tags = els.composeSlot.querySelector('[data-compose-field="tags"]');
+    return {
+      title: title instanceof HTMLInputElement ? String(title.value || '') : '',
+      content: content instanceof HTMLTextAreaElement ? String(content.value || '') : '',
+      scheduledAt: scheduled instanceof HTMLInputElement ? String(scheduled.value || '') : '',
+      tags: tags instanceof HTMLInputElement ? String(tags.value || '') : ''
+    };
+  }
+
+  function composePayload(action) {
+    commitComposeTagInput();
+    var fields = readComposeFields();
+    if (!fields) {
+      return null;
+    }
+    return {
+      action: action,
+      draft_id: String(state.compose.draftId || ''),
+      title: fields.title.trim(),
+      tags: fields.tags.trim(),
+      summary: '',
+      content: fields.content,
+      scheduled_at: composeLocalToIso(fields.scheduledAt),
+      publish_mode: composePublishMode()
+    };
+  }
+
+  function setComposeOutput(message, tone) {
+    state.compose.output = String(message || '');
+    state.compose.outputTone = String(tone || '');
+  }
+
+  function queueComposeAutosave() {
+    if (!isAdmin() || !state.compose.open) {
+      return;
+    }
+    if (state.compose.autosaveTimer) {
+      clearTimeout(state.compose.autosaveTimer);
+    }
+    state.compose.saveStatus = 'saving';
+    renderComposeStatusOnly();
+    state.compose.autosaveTimer = setTimeout(function () {
+      state.compose.autosaveTimer = null;
+      autosaveCompose();
+    }, 1500);
+  }
+
+  function afterComposePublishSuccess() {
+    state.compose.draftId = '';
+    state.compose.saveStatus = '';
+    setComposeTags([]);
+    var fields = readComposeFields();
+    if (!fields || !els.composeSlot) {
+      return;
+    }
+    var title = els.composeSlot.querySelector('[data-compose-field="title"]');
+    var content = els.composeSlot.querySelector('[data-compose-field="content"]');
+    var schedule = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+    var immediateMode = els.composeSlot.querySelector('input[name="blog-inline-compose-mode"][value="immediate"]');
+    if (title instanceof HTMLInputElement) {
+      title.value = '';
+    }
+    if (content instanceof HTMLTextAreaElement) {
+      content.value = '';
+    }
+    if (schedule instanceof HTMLInputElement) {
+      schedule.value = '';
+    }
+    if (immediateMode instanceof HTMLInputElement) {
+      immediateMode.checked = true;
+    }
+  }
+
+  function saveCompose(action) {
+    if (state.compose.busy || !isAdmin()) {
+      return;
+    }
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      setComposeOutput('Sign in again to compose posts.', 'error');
+      renderComposeStatusOnly();
+      return;
+    }
+    var payload = composePayload(action);
+    if (!payload) {
+      return;
+    }
+    if (action === 'publish_now' && !payload.content.trim()) {
+      setComposeOutput('Cannot publish an empty post.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    if (action === 'queue_scheduled' && !payload.scheduled_at) {
+      setComposeOutput('Scheduled posts need a release date/time.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    payload.session_token = auth.session_token;
+    payload.csrf_token = auth.csrf_token;
+    state.compose.busy = true;
+    state.compose.saveStatus = action === 'autosave' ? 'saving' : '';
+    renderComposeStatusOnly();
+    apiPost('/cgi/blog-save-post', payload).then(function (data) {
+      if (data && data.draft_id) {
+        state.compose.draftId = String(data.draft_id);
+      }
+      if (action === 'autosave') {
+        state.compose.saveStatus = 'saved';
+        renderComposeStatusOnly();
+        return;
+      }
+      if (action === 'publish_now') {
+        setComposeOutput('Published. Rebuild may take a few seconds.', 'ok');
+        afterComposePublishSuccess();
+      } else {
+        setComposeOutput((data && data.message) || 'Saved.', 'ok');
+      }
+      renderComposeUi();
+      loadPosts();
+      setTimeout(function () { loadPosts(); }, 2500);
+    }).catch(function (err) {
+      var message = err && err.message ? err.message : 'Save failed';
+      if (action === 'autosave') {
+        state.compose.saveStatus = 'error';
+      } else {
+        setComposeOutput('Error: ' + message, 'error');
+      }
+      renderComposeStatusOnly();
+    }).finally(function () {
+      state.compose.busy = false;
+      renderComposeStatusOnly();
+    });
+  }
+
+  function autosaveCompose() {
+    var payload = composePayload('autosave');
+    if (!payload) {
+      return;
+    }
+    if (!payload.title.trim() && !payload.content.trim()) {
+      state.compose.saveStatus = '';
+      renderComposeStatusOnly();
+      return;
+    }
+    saveCompose('autosave');
+  }
+
+  function setComposeOpen(open) {
+    state.compose.open = !!open;
+    renderComposeUi();
+    if (state.compose.open && els.composeSlot) {
+      setTimeout(function () {
+        var title = els.composeSlot.querySelector('[data-compose-field="title"]');
+        if (title && typeof title.focus === 'function') {
+          title.focus();
+        }
+      }, 30);
+    }
+  }
+
+  function composeToolbarAction(action) {
+    if (!els.composeSlot) {
+      return;
+    }
+    var textarea = els.composeSlot.querySelector('[data-compose-field="content"]');
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    function placeCursor(start, end) {
+      textarea.focus();
+      textarea.setSelectionRange(start, end);
+    }
+    function replaceSelection(transformer) {
+      var start = textarea.selectionStart;
+      var end = textarea.selectionEnd;
+      var selected = textarea.value.slice(start, end);
+      var updated = transformer(selected);
+      var prefix = textarea.value.slice(0, start);
+      var suffix = textarea.value.slice(end);
+      textarea.value = prefix + updated.text + suffix;
+      placeCursor(start + updated.cursorStart, start + updated.cursorEnd);
+    }
+    function replaceSelectedLines(transformer) {
+      var value = textarea.value;
+      var selStart = textarea.selectionStart;
+      var selEnd = textarea.selectionEnd;
+      var lineStart = value.lastIndexOf('\n', Math.max(0, selStart - 1)) + 1;
+      var lineEndIdx = value.indexOf('\n', selEnd);
+      var lineEnd = lineEndIdx === -1 ? value.length : lineEndIdx;
+      var source = value.slice(lineStart, lineEnd);
+      var lines = source.split('\n');
+      var result = transformer(lines);
+      if (!result || !Array.isArray(result.lines)) {
+        return;
+      }
+      var next = result.lines.join('\n');
+      textarea.value = value.slice(0, lineStart) + next + value.slice(lineEnd);
+      placeCursor(lineStart, lineStart + next.length);
+    }
+
+    if (action === 'bold' || action === 'italic' || action === 'code') {
+      var token = action === 'bold' ? '**' : (action === 'italic' ? '*' : '`');
+      replaceSelection(function (selected) {
+        var s = selected || 'text';
+        if (s.startsWith(token) && s.endsWith(token)) {
+          var unwrapped = s.slice(token.length, s.length - token.length);
+          return { text: unwrapped, cursorStart: 0, cursorEnd: unwrapped.length };
+        }
+        var wrapped = token + s + token;
+        return { text: wrapped, cursorStart: token.length, cursorEnd: token.length + s.length };
+      });
+    } else if (action === 'h2' || action === 'h3') {
+      var heading = action === 'h2' ? '## ' : '### ';
+      replaceSelectedLines(function (lines) {
+        var line = lines[0] || '';
+        var stripped = line.replace(/^#{1,6}\s+/, '');
+        lines[0] = line.startsWith(heading) ? stripped : (heading + stripped);
+        return { lines: lines };
+      });
+    } else if (action === 'quote' || action === 'ul') {
+      var prefix = action === 'quote' ? '> ' : '- ';
+      replaceSelectedLines(function (lines) {
+        var nonEmpty = lines.filter(function (line) { return line.trim() !== ''; });
+        var allHave = nonEmpty.length > 0 && nonEmpty.every(function (line) {
+          return line.startsWith(prefix);
+        });
+        return {
+          lines: lines.map(function (line) {
+            if (line.trim() === '') {
+              return line;
+            }
+            if (allHave) {
+              return line.startsWith(prefix) ? line.slice(prefix.length) : line;
+            }
+            return prefix + line;
+          })
+        };
+      });
+    } else if (action === 'ol') {
+      replaceSelectedLines(function (lines) {
+        var nonEmpty = lines.filter(function (line) { return line.trim() !== ''; });
+        var allOrdered = nonEmpty.length > 0 && nonEmpty.every(function (line) {
+          return /^\d+\.\s+/.test(line);
+        });
+        var index = 1;
+        return {
+          lines: lines.map(function (line) {
+            if (line.trim() === '') {
+              return line;
+            }
+            if (allOrdered) {
+              return line.replace(/^\d+\.\s+/, '');
+            }
+            var text = line.replace(/^\d+\.\s+/, '').replace(/^-+\s+/, '');
+            var out = index + '. ' + text;
+            index += 1;
+            return out;
+          })
+        };
+      });
+    } else if (action === 'code_block') {
+      replaceSelection(function (selected) {
+        var source = selected || '';
+        if (/^```[\s\S]*```$/.test(source.trim())) {
+          var unwrapped = source.trim().replace(/^```[\n]?/, '').replace(/\n?```$/, '');
+          return { text: unwrapped, cursorStart: 0, cursorEnd: unwrapped.length };
+        }
+        var wrapped = '```\n' + source + '\n```';
+        return { text: wrapped, cursorStart: 4, cursorEnd: wrapped.length - 4 };
+      });
+    } else if (action === 'link') {
+      replaceSelection(function (selected) {
+        var label = selected || 'link text';
+        var text = '[' + label + '](https://)';
+        var start = text.indexOf('https://');
+        return { text: text, cursorStart: start, cursorEnd: start + 8 };
+      });
+    } else if (action === 'image') {
+      replaceSelection(function (selected) {
+        var label = selected || 'image';
+        var text = '![' + label + '](https://)';
+        var start = text.indexOf('https://');
+        return { text: text, cursorStart: start, cursorEnd: start + 8 };
+      });
+    }
+
+    queueComposeAutosave();
+    renderComposeUi();
+  }
+
+  function renderComposeUi() {
+    ensureComposeHosts();
+    if (!els.composeSlot || !els.composeFab) {
+      return;
+    }
+    var admin = isAdmin();
+    els.composeFab.hidden = !admin;
+    if (!admin) {
+      state.compose.open = false;
+      els.composeSlot.hidden = true;
+      els.composeSlot.classList.remove('is-open');
+      els.composeSlot.innerHTML = '';
+      return;
+    }
+    els.composeFab.textContent = state.compose.open ? 'Close' : 'Compose';
+    els.composeFab.setAttribute('aria-expanded', state.compose.open ? 'true' : 'false');
+    if (!state.compose.open) {
+      els.composeSlot.classList.remove('is-open');
+      setTimeout(function () {
+        if (!state.compose.open && els.composeSlot) {
+          els.composeSlot.hidden = true;
+          els.composeSlot.innerHTML = '';
+        }
+      }, 240);
+      return;
+    }
+
+    var fields = readComposeFields() || { title: '', content: '', scheduledAt: '', tags: '' };
+    var mode = composePublishMode();
+    var previewHtml = renderComposePreviewHtml(fields.title, fields.content);
+    var tagsHtml = state.compose.tags.map(function (tag) {
+      return '<span class="tag-pill"><span>' + escapeHtml(tag) + '</span><button type="button" class="tag-pill-remove" data-compose-action="remove-tag" data-compose-tag="' + escapeHtml(tag) + '" aria-label="Remove tag ' + escapeHtml(tag) + '">×</button></span>';
+    }).join('');
+    var outputClass = 'output';
+    if (state.compose.outputTone) {
+      outputClass += ' ' + state.compose.outputTone;
+    }
+
+    els.composeSlot.hidden = false;
+    els.composeSlot.innerHTML = '' +
+      '<article class="post-item blog-post-item blog-compose-card">' +
+        '<div class="post-head blog-compose-head">' +
+          '<div class="post-head-main">' +
+            '<h2 class="post-title">New post</h2>' +
+          '</div>' +
+          '<div class="blog-compose-head-actions">' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="blog-compose-body">' +
+          '<div class="field-row"><label><strong>Post title</strong></label><input type="text" data-compose-field="title" placeholder="My post" value="' + escapeHtml(fields.title) + '"></div>' +
+          (state.compose.preview
+            ? '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>'
+            : '<div class="field-row">' +
+                '<label><strong>Content</strong></label>' +
+                '<div class="editor-shell blog-compose-editor-shell">' +
+                  '<div class="toolbar blog-compose-toolbar" aria-label="Markdown toolbar">' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="bold" title="Bold">B</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="italic" title="Italic">I</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="h2" title="Heading 2">H2</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="h3" title="Heading 3">H3</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="code" title="Inline code">&lt;/&gt;</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="code_block" title="Code block">```</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="link" title="Insert link">Link</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="quote" title="Quote">Quote</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="ul" title="Bullet list">• List</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="ol" title="Numbered list">1. List</button>' +
+                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="image" title="Insert image">Image</button>' +
+                  '</div>' +
+                  '<textarea data-compose-field="content" rows="14" placeholder="# Write in Markdown">' + escapeHtml(fields.content) + '</textarea>' +
+                '</div>' +
+              '</div>') +
+          '<div class="grid-two">' +
+            '<div class="field-row">' +
+              '<label><strong>Tags</strong></label>' +
+              '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
+              '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
+                '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
+                '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="field-row compose-release-row">' +
+            '<strong>Release Mode</strong>' +
+            '<div class="mode-row">' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="immediate"' + (mode === 'immediate' ? ' checked' : '') + '> Immediate</label>' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Scheduled Date</label>' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Drip Queue</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
+            '<label><strong>Scheduled Release Date/Time</strong></label>' +
+            '<input type="datetime-local" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '">' +
+          '</div>' +
+        '</div>' +
+        '<div class="compose-footer blog-compose-footer">' +
+          '<div class="compose-actions">' +
+            '<button type="button" class="list-admin-primary-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode)) + '</button>' +
+          '</div>' +
+          '<div class="blog-compose-status-row">' +
+            '<div class="autosave-indicator' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
+            '<div class="' + outputClass + '">' + escapeHtml(state.compose.output) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>';
+    requestAnimationFrame(function () {
+      if (els.composeSlot) {
+        els.composeSlot.classList.add('is-open');
+      }
+    });
+  }
+
+  function renderComposeStatusOnly() {
+    if (!els.composeSlot || !state.compose.open) {
+      return;
+    }
+    var mode = composePublishMode();
+    var publishBtn = els.composeSlot.querySelector('[data-compose-action="publish"]');
+    if (publishBtn instanceof HTMLButtonElement) {
+      publishBtn.textContent = composePrimaryLabel(mode);
+      publishBtn.disabled = !!state.compose.busy;
+    }
+    var scheduledRow = els.composeSlot.querySelector('.scheduled-row');
+    if (scheduledRow) {
+      scheduledRow.classList.toggle('is-hidden', mode !== 'scheduled');
+    }
+    var output = els.composeSlot.querySelector('.output');
+    if (output) {
+      output.textContent = state.compose.output || '';
+      output.className = 'output' + (state.compose.outputTone ? (' ' + state.compose.outputTone) : '');
+    }
+    var autosave = els.composeSlot.querySelector('.autosave-indicator');
+    if (autosave) {
+      var modeStatus = String(state.compose.saveStatus || '');
+      autosave.hidden = !modeStatus;
+      autosave.classList.toggle('is-saving', modeStatus === 'saving');
+      autosave.classList.toggle('is-error', modeStatus === 'error');
+      autosave.textContent = modeStatus === 'saving' ? 'Saving...' : (modeStatus === 'error' ? 'Save failed' : 'Saved');
+    }
+  }
+
   function renderExtrasAfter() {
     if (!els.content) {
       return;
@@ -447,6 +1039,7 @@
     renderExtrasAfter();
     renderFilters();
     renderList();
+    renderComposeUi();
   }
 
   function toggleFilter(group, value, multi) {
@@ -601,6 +1194,41 @@
   }
 
   root.addEventListener('click', function (event) {
+    var composeFab = event.target && event.target.closest('[data-blog-action="toggle-compose"]');
+    if (composeFab) {
+      event.preventDefault();
+      setComposeOpen(!state.compose.open);
+      return;
+    }
+
+    var composeAction = event.target && event.target.closest('[data-compose-action]');
+    if (composeAction) {
+      event.preventDefault();
+      var actionName = String(composeAction.getAttribute('data-compose-action') || '');
+      if (actionName === 'toggle-preview') {
+        state.compose.preview = !state.compose.preview;
+        renderComposeUi();
+        return;
+      }
+      if (actionName === 'publish') {
+        saveCompose(composeModeAction(composePublishMode()));
+        return;
+      }
+      if (actionName === 'remove-tag') {
+        removeComposeTag(String(composeAction.getAttribute('data-compose-tag') || ''));
+        renderComposeUi();
+        queueComposeAutosave();
+        return;
+      }
+    }
+
+    var composeToolbar = event.target && event.target.closest('[data-compose-toolbar]');
+    if (composeToolbar) {
+      event.preventDefault();
+      composeToolbarAction(String(composeToolbar.getAttribute('data-compose-toolbar') || ''));
+      return;
+    }
+
     var toggle = event.target && event.target.closest('[data-filter-group][data-filter-value]');
     if (toggle) {
       event.preventDefault();
@@ -625,6 +1253,51 @@
       event.preventDefault();
       if (action.getAttribute('data-blog-action') === 'open-admin') {
         openAdminPage();
+      }
+    }
+  });
+
+  root.addEventListener('input', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement) || !state.compose.open) {
+      return;
+    }
+    if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"]')) {
+      queueComposeAutosave();
+      if (state.compose.preview) {
+        renderComposeUi();
+      } else {
+        renderComposeStatusOnly();
+      }
+      return;
+    }
+    if (target.matches('input[name="blog-inline-compose-mode"]')) {
+      renderComposeUi();
+      queueComposeAutosave();
+    }
+  });
+
+  root.addEventListener('keydown', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement) || !state.compose.open) {
+      return;
+    }
+    if (target.matches('[data-compose-field="tags-input"]')) {
+      if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        if (commitComposeTagInput()) {
+          renderComposeUi();
+          queueComposeAutosave();
+        }
+        return;
+      }
+      if (event.key === 'Backspace') {
+        var input = target;
+        if (!String(input.value || '').trim() && state.compose.tags.length) {
+          removeComposeTag(state.compose.tags[state.compose.tags.length - 1]);
+          renderComposeUi();
+          queueComposeAutosave();
+        }
       }
     }
   });
