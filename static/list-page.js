@@ -1434,7 +1434,7 @@
     if (active && activeField === 'markdown') {
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
-      html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? markdownInline(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
+      html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? escapeHtml(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
     }
     if (active && activeField === 'description') {
       html += '<div class="list-inline-cell list-inline-description"><input type="text" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(tileDescription) + '" placeholder="Tiny description..."></div>';
@@ -2543,6 +2543,9 @@
       return;
     }
     if (target.closest('[data-list-inline-action="edit"]')) {
+      return;
+    }
+    if (target.closest('[data-inline-field], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
       return;
     }
     var activeUid = String(state.activeEntryUid || '');

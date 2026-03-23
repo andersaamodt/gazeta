@@ -453,6 +453,8 @@ assert_file_not_contains "$ROOT_DIR/static/list-page.js" 'data-list-outro-format
 assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'oeuvre inline dragstart ignores form controls so text selection works'
 assert_file_contains "$ROOT_DIR/static/list-page.js" "var defaultMarker = slug === 'oeuvre' ? 'oeuvre' : '';" 'new list entries default marker only on oeuvre page'
 assert_file_contains "$ROOT_DIR/static/list-page.js" 'data-inline-field="description"' 'oeuvre inline editor supports description cell editing'
+assert_file_contains "$ROOT_DIR/static/list-page.js" 'markdownText ? escapeHtml(markdownText) : placeholderHtml' 'list edit-mode text column renders plain text without markdown link hover behavior'
+assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inline-field], input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')" 'list inline editor outside-click close ignores active form controls so marker text is selectable'
 assert_file_contains "$ROOT_DIR/pages/index.md" 'data-page-slug="index"' 'index shell includes explicit source slug marker for sync'
 assert_file_contains "$ROOT_DIR/pages/list.md" 'data-page-type="list"' 'list source page shell marks list type'
 assert_file_contains "$ROOT_DIR/pages/oeuvre.md" 'data-page-type="list"' 'oeuvre source page shell marks list type'
