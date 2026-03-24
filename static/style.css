@@ -2248,7 +2248,7 @@ body.nav-cart-open {
 
 .list-entry-first-line {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 0.38rem;
   min-width: 0;
 }
@@ -2266,13 +2266,14 @@ body.nav-cart-open {
 
 .list-entry-first-line .list-entry-markdown {
   min-width: 0;
+  line-height: 1.2;
 }
 
 .list-entry-description-inline {
   color: var(--muted-text, #6e778a);
   -webkit-text-fill-color: var(--muted-text, #6e778a);
   font-size: 0.82rem;
-  line-height: 1.25;
+  line-height: 1.2;
   opacity: 0.95;
   margin-left: 0.28rem;
 }
