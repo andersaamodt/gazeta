@@ -2393,7 +2393,7 @@ body.nav-cart-open {
 
 .list-tile.has-cart-button {
   position: relative;
-  padding-top: 2.45rem;
+  padding-top: 2.15rem;
 }
 
 .list-tile-content {
@@ -2496,7 +2496,7 @@ body.nav-cart-open {
 
 .list-tile.has-cart-button .list-entry-cart-btn-tile {
   position: absolute;
-  top: 0.58rem;
+  top: 0.34rem;
   right: 0.58rem;
   margin-top: 0;
   z-index: 2;
