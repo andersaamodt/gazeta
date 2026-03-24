@@ -68,6 +68,8 @@
     markerFilterExclude: [],
     viewModeOverride: '',
     createProductBusyUid: '',
+    productPriceBySlug: {},
+    productPricePending: {},
     uidCounter: 1,
     initialContentPainted: false
   };
@@ -396,6 +398,147 @@
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  function parsePositivePrice(raw) {
+    var amount = Number(raw);
+    if (!isFinite(amount) || amount <= 0) {
+      return 0;
+    }
+    return amount;
+  }
+
+  function formatUsdPrice(amount) {
+    return parsePositivePrice(amount).toFixed(2);
+  }
+
+  function normalizeProductPriceInfo(raw) {
+    var product = raw && raw.product ? raw.product : raw;
+    var amount = parsePositivePrice(product && product.price);
+    return {
+      loaded: true,
+      hasPrice: amount > 0,
+      amount: amount,
+      label: amount > 0 ? ('$' + formatUsdPrice(amount)) : ''
+    };
+  }
+
+  function fetchProductPriceInfo(slugValue) {
+    var slugText = String(slugValue || '').trim();
+    if (!slugText) {
+      return Promise.resolve({
+        loaded: true,
+        hasPrice: false,
+        amount: 0,
+        label: ''
+      });
+    }
+    if (state.productPriceBySlug[slugText] && state.productPriceBySlug[slugText].loaded) {
+      return Promise.resolve(state.productPriceBySlug[slugText]);
+    }
+    if (state.productPricePending[slugText]) {
+      return state.productPricePending[slugText];
+    }
+    state.productPricePending[slugText] = fetch('/cgi/blog-get-product?slug=' + encodeURIComponent(slugText), {
+      method: 'GET',
+      cache: 'no-store'
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var data = {};
+        try {
+          data = JSON.parse(text);
+        } catch (_err) {
+          throw new Error('Invalid product payload');
+        }
+        if (!res.ok || !data || data.success === false) {
+          throw new Error((data && data.error) ? data.error : ('Request failed (' + res.status + ')'));
+        }
+        return data;
+      });
+    }).then(function (data) {
+      return normalizeProductPriceInfo(data);
+    }).catch(function () {
+      return {
+        loaded: true,
+        hasPrice: false,
+        amount: 0,
+        label: ''
+      };
+    }).then(function (info) {
+      state.productPriceBySlug[slugText] = info;
+      return info;
+    }).finally(function () {
+      delete state.productPricePending[slugText];
+    });
+    return state.productPricePending[slugText];
+  }
+
+  function renderProductCartButton(productSlug, extraClass) {
+    var slugText = String(productSlug || '').trim();
+    if (!isProductGalleryPage() || !slugText) {
+      return '';
+    }
+    var info = state.productPriceBySlug[slugText];
+    var hasPrice = !!(info && info.loaded && info.hasPrice);
+    var cls = 'list-entry-cart-btn';
+    if (extraClass) {
+      cls += ' ' + String(extraClass || '').trim();
+    }
+    if (!hasPrice) {
+      cls += ' is-price-pending';
+    }
+    var label = hasPrice ? ('+ Cart ' + info.label) : '+ Cart';
+    var title = hasPrice ? ('Add to cart (' + info.label + ')') : 'Add to cart';
+    return '<button type="button" class="' + escapeHtml(cls) + '" data-add-product-slug="' + escapeHtml(slugText) + '"' +
+      ' title="' + escapeHtml(title) + '"' + (hasPrice ? '' : ' hidden') + '>' + escapeHtml(label) + '</button>';
+  }
+
+  function applyProductCartButtonState(button, info) {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    if (info && info.hasPrice) {
+      button.hidden = false;
+      button.textContent = '+ Cart ' + info.label;
+      button.title = 'Add to cart (' + info.label + ')';
+      button.classList.remove('is-price-pending');
+      return;
+    }
+    button.hidden = true;
+    button.textContent = '+ Cart';
+    button.title = 'Add to cart';
+    button.classList.add('is-price-pending');
+  }
+
+  function refreshProductCartButtons() {
+    if (!isProductGalleryPage() || !els.content) {
+      return;
+    }
+    var buttons = Array.from(els.content.querySelectorAll('button[data-add-product-slug]'));
+    if (!buttons.length) {
+      return;
+    }
+    var slugMap = {};
+    buttons.forEach(function (button) {
+      var slugText = String(button.getAttribute('data-add-product-slug') || '').trim();
+      if (!slugText) {
+        return;
+      }
+      slugMap[slugText] = true;
+      var info = state.productPriceBySlug[slugText];
+      applyProductCartButtonState(button, info);
+    });
+    Object.keys(slugMap).forEach(function (slugText) {
+      fetchProductPriceInfo(slugText).then(function (info) {
+        if (!els.content) {
+          return;
+        }
+        Array.from(els.content.querySelectorAll('button[data-add-product-slug="' + slugText.replace(/"/g, '\\"') + '"]'))
+          .forEach(function (button) {
+            applyProductCartButtonState(button, info);
+          });
+      });
+    });
   }
 
   function entryHasProductBasics(entry) {
@@ -1394,11 +1537,9 @@
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
-    var cartButton = '';
-    if (isProductGalleryPage() && productSlug) {
-      cartButton = '<button type="button" class="list-entry-cart-btn" data-add-product-slug="' + escapeHtml(productSlug) + '" title="Add to cart">+ Cart</button>';
-    }
-    return '<li class="list-entry-line"><div class="list-entry-first-line">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + cartButton + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</div></li>';
+    var cartButton = renderProductCartButton(productSlug, '');
+    var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + cartButton + '</div></li>';
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel) {
@@ -1517,11 +1658,9 @@
       var linked = postUrl
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
         : '';
-      var cartButton = '';
-      if (isProductGalleryPage() && productSlug) {
-        cartButton = '<button type="button" class="list-entry-cart-btn list-entry-cart-btn-tile" data-add-product-slug="' + escapeHtml(productSlug) + '" title="Add to cart">+ Cart</button>';
-      }
-      html += '<li class="list-tile">';
+      var cartButton = renderProductCartButton(productSlug, 'list-entry-cart-btn-tile');
+      html += '<li class="list-tile' + (cartButton ? ' has-cart-button' : '') + '">';
+      html += cartButton;
       html += '<div class="list-tile-content">';
       if (imageUrl) {
         html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>';
@@ -1804,6 +1943,7 @@
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     }), s.group_by, readViewMode, !!s.show_marker_filters) + afterContent;
+    refreshProductCartButtons();
     renderAdmin();
   }
 
