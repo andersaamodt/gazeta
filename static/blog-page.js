@@ -494,6 +494,18 @@
     return 'Nostr kind ' + target.kind + ' · ' + target.tags;
   }
 
+  function composePostTypeLabel(postType) {
+    var type = normalizeComposePostType(postType);
+    if (type === 'shortform') return 'Shortform Post';
+    if (type === 'longform') return 'Longform Post';
+    if (type === 'capture-media') return 'Take Photo/Video';
+    if (type === 'upload-media') return 'Upload Photo/Video';
+    if (type === 'attachment') return 'Upload Attachment/File';
+    if (type === 'audio-note') return 'Audio Note';
+    if (type === 'link-share') return 'Link Share';
+    return 'Go Live';
+  }
+
   function composePostTypeIconSvg(type) {
     var picked = normalizeComposePostType(type);
     if (picked === 'shortform') {
@@ -570,7 +582,8 @@
       btn('audio-note', 'Audio Note', false) +
       btn('link-share', 'Link Share', false) +
       btn('go-live', 'Go Live', true) +
-      '</div>';
+      '</div>' +
+      '<div class="compose-post-type-active-label" aria-live="polite">' + escapeHtml(composePostTypeLabel(current)) + '</div>';
   }
 
   function setComposePostType(nextType, options) {
