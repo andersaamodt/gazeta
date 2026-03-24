@@ -173,6 +173,14 @@
     if (!cachedPayload) {
       return false;
     }
+    // Bootstrap cache is an optimistic first-paint path; avoid showing stale
+    // validation alarms from previous runs before fresh server validation lands.
+    if (!cachedPayload.validation || typeof cachedPayload.validation !== 'object') {
+      cachedPayload.validation = {};
+    }
+    cachedPayload.validation.errors = [];
+    cachedPayload.validation.warnings = [];
+    cachedPayload.validation.can_publish = true;
     state.payload = cachedPayload;
     state.draft = readEditableStateFromPayload();
     state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
