@@ -1185,6 +1185,10 @@ body.nav-cart-open {
   transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), max-width 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms ease;
 }
 
+.list-page-shell.is-loading {
+  visibility: hidden;
+}
+
 .list-page-shell.is-editing {
   width: fit-content;
   max-width: min(1780px, calc(100vw - 1rem));

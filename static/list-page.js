@@ -5,6 +5,7 @@
   if (!root) {
     return;
   }
+  root.classList.add('is-loading');
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -99,6 +100,9 @@
       return;
     }
     state.initialContentPainted = true;
+    if (root && root.classList) {
+      root.classList.remove('is-loading');
+    }
     try {
       window.__wizardryPageInitialContentReady = true;
       window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
@@ -2947,6 +2951,9 @@
       if (els.content) {
         els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml((lastErr && lastErr.message) ? lastErr.message : 'Could not load list page') + '</p>';
       }
+      if (root && root.classList) {
+        root.classList.remove('is-loading');
+      }
     } finally {
       markHydrationPageReady();
     }
@@ -3014,6 +3021,5 @@
       maybeReloadForAuthChange();
     }
   });
-  renderFromBootstrapCache();
   load();
 })();
