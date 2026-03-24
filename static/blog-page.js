@@ -58,6 +58,86 @@
   };
   var panelHideTimer = null;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
+  var routeSelfHealTriggered = false;
+
+  function normalizeSlug(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function slugFromPath(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path) {
+      return 'index';
+    }
+    path = path.split('?')[0].split('#')[0];
+    path = path.replace(/\/+$/, '');
+    if (!path || path === '/') {
+      return 'index';
+    }
+    if (path.indexOf('/pages/') === 0) {
+      path = path.slice('/pages/'.length);
+    } else if (path.charAt(0) === '/') {
+      path = path.slice(1);
+    }
+    path = path.replace(/\.html?$/i, '');
+    if (path.indexOf('/') >= 0) {
+      return '';
+    }
+    return normalizeSlug(path);
+  }
+
+  function slugsEquivalent(aRaw, bRaw) {
+    var a = normalizeSlug(aRaw);
+    var b = normalizeSlug(bRaw);
+    if (!a || !b) {
+      return false;
+    }
+    if (a === b) {
+      return true;
+    }
+    return (a === 'index' && b === 'blog') || (a === 'blog' && b === 'index');
+  }
+
+  function maybeRepairRoute(reason) {
+    if (routeSelfHealTriggered) {
+      return;
+    }
+    routeSelfHealTriggered = true;
+    var url;
+    try {
+      url = new URL(window.location.href);
+    } catch (_err) {
+      window.location.reload();
+      return;
+    }
+    var attempted = url.searchParams.get('__route_repair') === '1';
+    if (attempted) {
+      return;
+    }
+    url.searchParams.set('__route_repair', '1');
+    fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' })
+      .catch(function () {
+        // Ignore sync hint errors; still attempt one repair reload.
+      })
+      .finally(function () {
+        window.setTimeout(function () {
+          if (reason) {
+            // Preserve last reason for debugging in browser console/state.
+            try {
+              sessionStorage.setItem('wizardry_last_route_repair_reason', String(reason));
+            } catch (_storageErr) {
+              // Ignore storage errors.
+            }
+          }
+          window.location.replace(url.toString());
+        }, 220);
+      });
+  }
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -1659,16 +1739,31 @@
   }
 
   function loadPageState() {
+    var expectedSlug = slugFromPath(window.location.pathname || '/');
+    var requestedSlug = expectedSlug || slug;
+    if (expectedSlug && !slugsEquivalent(expectedSlug, slug)) {
+      maybeRepairRoute('blog-root-slug-mismatch');
+      return Promise.resolve();
+    }
     var auth = authPayload();
     return apiPost('/cgi/blog-get-nostr-page', {
-      page_slug: slug,
+      page_slug: requestedSlug,
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     }).then(function (data) {
+      var pageType = String(data && data.page_type || '').trim().toLowerCase();
+      if (pageType && pageType !== 'blog') {
+        maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
+        return;
+      }
       state.payload = data;
       applyDefaultFilters();
       renderAll();
-    }).catch(function () {
+    }).catch(function (err) {
+      var message = String(err && err.message || '');
+      if (/unknown nostr page slug/i.test(message) || /unknown_page/i.test(message)) {
+        maybeRepairRoute('unknown-page-slug');
+      }
       renderAll();
     }).finally(function () {
       state.initialPageStateLoaded = true;
