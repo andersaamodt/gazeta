@@ -25,11 +25,15 @@ if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && 
 fi
 
 cfg=$(blog_nostr_pages_load_json)
-all_slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-slugs.XXXXXX")
-printf '%s\n' "$cfg" | jq -r '.pages[]? | (.slug // "")' 2>/dev/null > "$all_slugs_tmp"
+all_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-pages.XXXXXX")
+printf '%s\n' "$cfg" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null > "$all_pages_tmp"
+
+# Keep mounted/source page templates aligned with configured types before
+# deciding whether a rebuild is needed.
+blog_nostr_pages_sync_source_pages "$cfg" >/dev/null 2>&1 || true
 
 needs_build=false
-while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
+while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
   slug=$(blog_nostr_page_slug "$raw_slug")
   [ -n "$slug" ] || continue
   case "$slug" in
@@ -40,7 +44,16 @@ while IFS= read -r raw_slug || [ -n "$raw_slug" ]; do
     needs_build=true
     break
   fi
-done < "$all_slugs_tmp"
+  src_file=$(blog_nostr_page_mount_path "$slug" 2>/dev/null || printf '')
+  if [ -n "$src_file" ] && [ -f "$src_file" ]; then
+    src_mtime=$(stat -f '%m' "$src_file" 2>/dev/null || stat -c '%Y' "$src_file" 2>/dev/null || printf '0')
+    html_mtime=$(stat -f '%m' "$html_file" 2>/dev/null || stat -c '%Y' "$html_file" 2>/dev/null || printf '0')
+    if [ -n "$src_mtime" ] && [ -n "$html_mtime" ] && [ "$src_mtime" -gt "$html_mtime" ]; then
+      needs_build=true
+      break
+    fi
+  fi
+done < "$all_pages_tmp"
 
 if [ "$cache_is_fresh" = "true" ]; then
   cat "$cache_file"
@@ -104,4 +117,4 @@ if [ "$needs_build" = "true" ]; then
   fi
 fi
 
-rm -f "$all_slugs_tmp"
+rm -f "$all_pages_tmp"
