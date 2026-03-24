@@ -2316,17 +2316,19 @@ body.nav-cart-open {
 }
 
 .list-view-mode-btn {
-  width: fit-content;
-  min-width: 4.4rem;
+  width: 2rem;
+  min-width: 2rem;
   height: 1.9rem;
-  padding: 0 0.58rem;
+  padding: 0;
   border: 0;
   border-radius: 8px;
   background: transparent !important;
   color: var(--muted-text, #4f617f) !important;
   -webkit-text-fill-color: var(--muted-text, #4f617f);
-  font-size: 0.8rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .list-view-mode-btn:hover,
@@ -2341,6 +2343,12 @@ body.nav-cart-open {
   background: color-mix(in srgb, var(--accent, #3158a4) 22%, #ffffff 78%) !important;
   color: color-mix(in srgb, var(--accent-dark, #1f3f83) 85%, #112245 15%) !important;
   -webkit-text-fill-color: color-mix(in srgb, var(--accent-dark, #1f3f83) 85%, #112245 15%);
+}
+
+.list-view-mode-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
 }
 
 .list-marker-filters-row {

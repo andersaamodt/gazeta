@@ -785,13 +785,29 @@
     if (!isProductGalleryPage()) {
       return '';
     }
+    function viewModeIconSvg(modeName) {
+      if (modeName === 'list') {
+        return '<svg class="list-view-mode-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M8 7H20M8 12H20M8 17H20" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>' +
+          '<circle cx="4.8" cy="7" r="1.2" fill="currentColor"/>' +
+          '<circle cx="4.8" cy="12" r="1.2" fill="currentColor"/>' +
+          '<circle cx="4.8" cy="17" r="1.2" fill="currentColor"/>' +
+        '</svg>';
+      }
+      return '<svg class="list-view-mode-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="4.2" y="4.2" width="6.6" height="6.6" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="13.2" y="4.2" width="6.6" height="6.6" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="4.2" y="13.2" width="6.6" height="6.6" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="13.2" y="13.2" width="6.6" height="6.6" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+      '</svg>';
+    }
     var mode = normalizeViewMode(viewMode || 'tile');
     var tileActive = mode === 'tile';
     var listActive = mode === 'list';
     var html = '<section class="list-view-mode-row" aria-label="Gallery view mode">';
     html += '<div class="list-view-mode-pill" role="group" aria-label="Choose gallery view">';
-    html += '<button type="button" class="list-view-mode-btn' + (tileActive ? ' is-active' : '') + '" data-list-view-mode="tile" aria-pressed="' + (tileActive ? 'true' : 'false') + '" title="Tile view">Tile</button>';
-    html += '<button type="button" class="list-view-mode-btn' + (listActive ? ' is-active' : '') + '" data-list-view-mode="list" aria-pressed="' + (listActive ? 'true' : 'false') + '" title="List view">List</button>';
+    html += '<button type="button" class="list-view-mode-btn' + (tileActive ? ' is-active' : '') + '" data-list-view-mode="tile" aria-pressed="' + (tileActive ? 'true' : 'false') + '" aria-label="Tile view" title="Tile view">' + viewModeIconSvg('tile') + '</button>';
+    html += '<button type="button" class="list-view-mode-btn' + (listActive ? ' is-active' : '') + '" data-list-view-mode="list" aria-pressed="' + (listActive ? 'true' : 'false') + '" aria-label="List view" title="List view">' + viewModeIconSvg('list') + '</button>';
     html += '</div>';
     html += '</section>';
     return html;
