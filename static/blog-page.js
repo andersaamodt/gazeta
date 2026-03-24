@@ -7,7 +7,6 @@
   if (!root) {
     return;
   }
-  root.classList.add('is-loading');
 
   var slug = String(root.getAttribute('data-blog-slug') || 'blog').trim() || 'blog';
   var els = {
@@ -35,6 +34,7 @@
     initialContentPainted: false,
     initialPageStateLoaded: false,
     initialPostsLoaded: false,
+    renderSignature: '',
     defaultFiltersApplied: false,
     filters: {
       tags: new Set(),
@@ -165,9 +165,6 @@
       return;
     }
     state.initialContentPainted = true;
-    if (root && root.classList) {
-      root.classList.remove('is-loading');
-    }
     try {
       window.__wizardryPageInitialContentReady = true;
       window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
@@ -1748,6 +1745,21 @@
     }
   }
 
+  function renderSignature() {
+    function sortedSet(setObj) {
+      return Array.from(setObj || []).sort();
+    }
+    return JSON.stringify({
+      payload: (state.payload && state.payload.state) ? state.payload.state : null,
+      posts: Array.isArray(state.posts) ? state.posts : [],
+      filters: {
+        tags: sortedSet(state.filters.tags),
+        years: sortedSet(state.filters.years),
+        types: sortedSet(state.filters.types)
+      }
+    });
+  }
+
   function loadPageState(options) {
     var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
@@ -2030,15 +2042,23 @@
     if (cached) {
       state.posts = cached;
     }
+    state.postsLoading = false;
+    renderAll();
+    state.renderSignature = renderSignature();
+    state.initialPageStateLoaded = true;
+    state.initialPostsLoaded = true;
+    markInitialContentPainted();
+
     Promise.allSettled([
       loadPageState({ deferRender: true, deferInitialFlags: true }),
       loadPosts({ deferRender: true, deferInitialFlags: true })
     ]).finally(function () {
       state.postsLoading = false;
-      state.initialPageStateLoaded = true;
-      state.initialPostsLoaded = true;
-      renderAll();
-      markInitialContentPainted();
+      var nextSignature = renderSignature();
+      if (state.renderSignature !== nextSignature) {
+        state.renderSignature = nextSignature;
+        renderAll();
+      }
     });
   })();
 })();
