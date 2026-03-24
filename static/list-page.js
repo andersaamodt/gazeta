@@ -1531,15 +1531,20 @@
 
   function renderEntryReadOnly(entry, groupBy, sectionLabel) {
     var line = String(entry && entry.markdown || '').trim();
+    var description = String(entry && entry.description || '').trim();
     var postUrl = String(entry && entry.post_url || '');
     var productSlug = entryProductSlug(entry);
     var datePill = datePillForEntryInSection(entry, groupBy, sectionLabel);
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
+    var descriptionInline = '';
+    if (isProductGalleryPage() && description) {
+      descriptionInline = '<span class="list-entry-description-inline">' + markdownInline(description) + '</span>';
+    }
     var cartButton = renderProductCartButton(productSlug, '');
     var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + cartButton + '</div></li>';
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + cartButton + '</div></li>';
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel) {
