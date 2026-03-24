@@ -1691,8 +1691,7 @@
         ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
         : '';
       var cartButton = renderProductCartButton(productSlug, 'list-entry-cart-btn-tile');
-      html += '<li class="list-tile' + (cartButton ? ' has-cart-button' : '') + '">';
-      html += cartButton;
+      html += '<li class="list-tile">';
       html += '<div class="list-tile-content">';
       if (imageUrl) {
         html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>';
@@ -1703,8 +1702,11 @@
       if (Array.isArray(node.children) && node.children.length) {
         html += renderTileTreeChildren(node.children);
       }
+      if (cartButton) {
+        html += '<div class="list-tile-cart-row">' + cartButton + '</div>';
+      }
       html += '</div>';
-      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div>' + cartButton + '</div>';
+      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div></div>';
       html += '</li>';
     });
     html += '</ul>';

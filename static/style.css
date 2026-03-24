@@ -2423,20 +2423,15 @@ body.nav-cart-open {
   padding: 0.65rem 0.72rem;
   background: var(--card-bg);
   box-shadow: 0 1px 1px color-mix(in srgb, var(--theme_dark, #172553) 9%, transparent);
-  aspect-ratio: 4 / 5;
+  aspect-ratio: auto;
   min-height: 13.5rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
 }
 
-.list-tile.has-cart-button {
-  position: relative;
-  padding-top: 1.95rem;
-}
-
 .list-tile-content {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -2464,9 +2459,9 @@ body.nav-cart-open {
   gap: 0.26rem;
   min-width: 0;
   width: 100%;
-  margin-top: auto;
+  margin-top: 0.3rem;
   text-align: center;
-  padding-top: 0.45rem;
+  padding-top: 0.28rem;
 }
 
 .list-tile-label {
@@ -2487,6 +2482,12 @@ body.nav-cart-open {
   font-size: 0.68rem;
   line-height: 1.2;
   color: var(--muted-text, #5c6170);
+}
+
+.list-tile-cart-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.34rem;
 }
 
 .list-tile-date {
@@ -2537,15 +2538,7 @@ body.nav-cart-open {
 }
 
 .list-entry-cart-btn-tile {
-  margin-top: 0.2rem;
-}
-
-.list-tile.has-cart-button .list-entry-cart-btn-tile {
-  position: absolute;
-  top: 0.18rem;
-  right: 0.58rem;
   margin-top: 0;
-  z-index: 2;
 }
 
 @media (max-width: 980px) {
