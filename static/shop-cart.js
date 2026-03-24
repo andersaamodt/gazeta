@@ -441,6 +441,8 @@
 
   loadCart();
   bindEvents();
+  // Ensure drawer starts hidden even if markup hydration dropped the hidden attr.
+  closeDrawer();
   render();
 
   window.blogShopCart = {

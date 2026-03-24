@@ -610,6 +610,10 @@ header h1 {
   overflow: hidden;
 }
 
+#nav-cart-drawer[hidden] {
+  display: none !important;
+}
+
 .nav-cart-drawer-head {
   display: flex;
   align-items: center;
