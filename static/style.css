@@ -594,11 +594,19 @@ header h1 {
   padding: 0 0.22rem;
 }
 
+:root {
+  --nav-cart-drawer-width: min(420px, calc(100vw - 1.1rem));
+}
+
+body.nav-cart-open {
+  overflow: hidden;
+}
+
 .nav-cart-drawer {
   position: fixed;
   top: 0;
   right: 0;
-  width: min(420px, calc(100vw - 1.1rem));
+  width: var(--nav-cart-drawer-width);
   height: 100vh;
   background: var(--surface-raised, #fff);
   border-left: 1px solid var(--border);
@@ -781,6 +789,10 @@ header h1 {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --nav-cart-drawer-width: 100vw;
+  }
+
   .nav-cart-drawer {
     width: 100vw;
     max-width: 100vw;

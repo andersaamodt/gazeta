@@ -30,6 +30,7 @@
   var state = {
     payload: null,
     posts: [],
+    postsLoading: true,
     initialContentPainted: false,
     initialPageStateLoaded: false,
     initialPostsLoaded: false,
@@ -1479,10 +1480,23 @@
     if (!els.list || !els.empty) {
       return;
     }
+    if (state.postsLoading && !state.posts.length) {
+      els.list.innerHTML = '';
+      els.empty.textContent = 'Loading posts...';
+      els.empty.hidden = false;
+      return;
+    }
+
     var shown = filteredPosts();
+    var hasFilters = state.filters.tags.size || state.filters.years.size || state.filters.types.size;
 
     if (!shown.length) {
       els.list.innerHTML = '';
+      if (!state.posts.length && !hasFilters) {
+        els.empty.textContent = 'No posts published yet.';
+      } else {
+        els.empty.textContent = 'No posts match these filters.';
+      }
       els.empty.hidden = false;
       return;
     }
@@ -1664,6 +1678,8 @@
   }
 
   function loadPosts() {
+    state.postsLoading = true;
+    renderList();
     return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -1679,7 +1695,9 @@
         // Keep cached posts if fetch fails.
       })
       .finally(function () {
+        state.postsLoading = false;
         state.initialPostsLoaded = true;
+        renderList();
         maybeMarkInitialContentPainted();
       });
   }
