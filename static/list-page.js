@@ -2539,7 +2539,7 @@
         return;
       }
       var target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      if (!(target instanceof Element)) {
         return;
       }
       if (target.closest('[data-marker-filter-action="toggle"]')) {
@@ -2552,7 +2552,7 @@
         return;
       }
       var target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      if (!(target instanceof Element)) {
         return;
       }
       var cartButton = target.closest('[data-add-product-slug]');
