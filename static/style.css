@@ -2286,6 +2286,16 @@ body.nav-cart-open {
   line-height: 1.2;
 }
 
+.list-entry-list-icon {
+  width: 1.28rem;
+  height: 1.28rem;
+  min-width: 1.28rem;
+  border-radius: 4px;
+  object-fit: cover;
+  display: inline-block;
+  align-self: center;
+}
+
 .list-entry-description-inline {
   color: var(--muted-text, #6e778a);
   -webkit-text-fill-color: var(--muted-text, #6e778a);
