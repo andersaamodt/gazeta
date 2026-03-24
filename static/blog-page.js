@@ -7,6 +7,7 @@
   if (!root) {
     return;
   }
+  root.classList.add('is-loading');
 
   var slug = String(root.getAttribute('data-blog-slug') || 'blog').trim() || 'blog';
   var els = {
@@ -164,6 +165,9 @@
       return;
     }
     state.initialContentPainted = true;
+    if (root && root.classList) {
+      root.classList.remove('is-loading');
+    }
     try {
       window.__wizardryPageInitialContentReady = true;
       window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
@@ -1571,12 +1575,6 @@
     if (!els.list || !els.empty) {
       return;
     }
-    if (state.postsLoading && !state.posts.length) {
-      els.list.innerHTML = '';
-      els.empty.textContent = 'Loading posts...';
-      els.empty.hidden = false;
-      return;
-    }
 
     var shown = filteredPosts();
     var hasFilters = state.filters.tags.size || state.filters.years.size || state.filters.types.size;
@@ -1750,7 +1748,8 @@
     }
   }
 
-  function loadPageState() {
+  function loadPageState(options) {
+    var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
     var requestedSlug = expectedSlug || slug;
     if (expectedSlug && !slugsEquivalent(expectedSlug, slug)) {
@@ -1770,22 +1769,31 @@
       }
       state.payload = data;
       applyDefaultFilters();
-      renderAll();
+      if (!opts.deferRender) {
+        renderAll();
+      }
     }).catch(function (err) {
       var message = String(err && err.message || '');
       if (/unknown nostr page slug/i.test(message) || /unknown_page/i.test(message)) {
         maybeRepairRoute('unknown-page-slug');
       }
-      renderAll();
+      if (!opts.deferRender) {
+        renderAll();
+      }
     }).finally(function () {
-      state.initialPageStateLoaded = true;
-      maybeMarkInitialContentPainted();
+      if (!opts.deferInitialFlags) {
+        state.initialPageStateLoaded = true;
+        maybeMarkInitialContentPainted();
+      }
     });
   }
 
-  function loadPosts() {
+  function loadPosts(options) {
+    var opts = options || {};
     state.postsLoading = true;
-    renderList();
+    if (!opts.deferRender) {
+      renderList();
+    }
     return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -1794,17 +1802,23 @@
         }
         state.posts = data.posts;
         writeCache(state.posts);
-        renderFilters();
-        renderList();
+        if (!opts.deferRender) {
+          renderFilters();
+          renderList();
+        }
       })
       .catch(function () {
         // Keep cached posts if fetch fails.
       })
       .finally(function () {
         state.postsLoading = false;
-        state.initialPostsLoaded = true;
-        renderList();
-        maybeMarkInitialContentPainted();
+        if (!opts.deferInitialFlags) {
+          state.initialPostsLoaded = true;
+          maybeMarkInitialContentPainted();
+        }
+        if (!opts.deferRender) {
+          renderList();
+        }
       });
   }
 
@@ -2010,11 +2024,21 @@
 
   removeLegacyTitleBlock();
   ensureFilterGutterLayout();
-  var cached = readCache();
-  if (cached) {
-    state.posts = cached;
-  }
-  renderAll();
-  loadPageState();
-  loadPosts();
+
+  (function bootstrapOnce() {
+    var cached = readCache();
+    if (cached) {
+      state.posts = cached;
+    }
+    Promise.allSettled([
+      loadPageState({ deferRender: true, deferInitialFlags: true }),
+      loadPosts({ deferRender: true, deferInitialFlags: true })
+    ]).finally(function () {
+      state.postsLoading = false;
+      state.initialPageStateLoaded = true;
+      state.initialPostsLoaded = true;
+      renderAll();
+      markInitialContentPainted();
+    });
+  })();
 })();

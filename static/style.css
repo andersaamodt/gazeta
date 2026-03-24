@@ -5170,6 +5170,10 @@ footer {
   margin-top: 0.65rem;
 }
 
+.blog-page.is-loading {
+  visibility: hidden;
+}
+
 .blog-layout {
   --blog-filter-gutter: 2.2rem;
   display: grid;
