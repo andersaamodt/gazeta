@@ -325,7 +325,14 @@
       fab.type = 'button';
       fab.className = 'blog-compose-fab list-admin-primary-btn';
       fab.setAttribute('data-blog-action', 'toggle-compose');
-      fab.textContent = 'Compose';
+      fab.setAttribute('aria-label', 'Toggle composer');
+      fab.setAttribute('title', 'Toggle composer');
+      fab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span><span class="sr-only">Toggle composer</span>';
+      fab.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setComposeOpen(!state.compose.open);
+      });
       fab.hidden = true;
       root.appendChild(fab);
       els.composeFab = fab;
@@ -1155,8 +1162,10 @@
       els.composeSlot.innerHTML = '';
       return;
     }
-    els.composeFab.textContent = state.compose.open ? 'Close' : 'Compose';
+    els.composeFab.classList.toggle('is-open', state.compose.open);
     els.composeFab.setAttribute('aria-expanded', state.compose.open ? 'true' : 'false');
+    els.composeFab.setAttribute('aria-pressed', state.compose.open ? 'true' : 'false');
+    els.composeFab.setAttribute('title', state.compose.open ? 'Close composer' : 'Open composer');
     if (!state.compose.open) {
       els.composeSlot.classList.remove('is-open');
       setTimeout(function () {

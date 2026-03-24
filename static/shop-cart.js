@@ -158,11 +158,16 @@
       return;
     }
     var count = countItems();
-    els.toggle.hidden = count <= 0;
-    els.toggle.setAttribute('aria-hidden', count <= 0 ? 'true' : 'false');
+    var hasItems = count > 0;
+    if (!hasItems) {
+      closeDrawer();
+    }
+    els.toggle.hidden = !hasItems;
+    els.toggle.style.display = hasItems ? '' : 'none';
+    els.toggle.setAttribute('aria-hidden', hasItems ? 'false' : 'true');
     if (els.count) {
       els.count.textContent = String(count);
-      els.count.hidden = count <= 0;
+      els.count.hidden = !hasItems;
     }
   }
 
@@ -279,6 +284,10 @@
 
   function openDrawer() {
     if (!els.drawer) {
+      return;
+    }
+    if (countItems() <= 0) {
+      closeDrawer();
       return;
     }
     if (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) {
