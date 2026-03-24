@@ -1935,9 +1935,8 @@ body {
 }
 
 .compose-post-type-toolbar {
-  display: inline-flex;
-  width: max-content;
-  max-width: 100%;
+  display: flex;
+  width: 100%;
   flex-wrap: nowrap;
   gap: 0;
   align-items: stretch;
@@ -1948,9 +1947,9 @@ body {
 }
 
 .compose-post-type-pill {
-  width: 2.05rem;
-  min-width: 2.05rem;
-  height: 2.05rem;
+  flex: 1 1 0;
+  min-width: 2.2rem;
+  height: 2.2rem;
   padding: 0;
   border: 0;
   border-right: 1px solid var(--admin-border, var(--border));
@@ -1968,8 +1967,8 @@ body {
 }
 
 .compose-post-type-pill .compose-post-type-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.16rem;
+  height: 1.16rem;
   flex: 0 0 auto;
   stroke: currentColor;
   fill: none;
@@ -5066,9 +5065,9 @@ body {
   }
 
   .compose-post-type-pill {
-    width: 1.92rem;
-    min-width: 1.92rem;
-    height: 1.92rem;
+    flex: 1 1 0;
+    min-width: 1.94rem;
+    height: 2rem;
   }
 }
 

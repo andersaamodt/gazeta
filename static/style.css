@@ -5511,9 +5511,8 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-toolbar {
-  display: inline-flex;
-  width: max-content;
-  max-width: 100%;
+  display: flex;
+  width: 100%;
   flex-wrap: nowrap;
   gap: 0;
   align-items: stretch;
@@ -5524,9 +5523,9 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-pill {
-  width: 2.02rem;
-  min-width: 2.02rem;
-  height: 2.02rem;
+  flex: 1 1 0;
+  min-width: 2.18rem;
+  height: 2.18rem;
   padding: 0;
   border: 0;
   border-right: 1px solid var(--border);
@@ -5544,8 +5543,8 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-pill .compose-post-type-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.16rem;
+  height: 1.16rem;
   flex: 0 0 auto;
   stroke: currentColor;
   fill: none;
@@ -5822,9 +5821,9 @@ footer {
   }
 
   .blog-compose-card .compose-post-type-pill {
-    width: 1.9rem;
-    min-width: 1.9rem;
-    height: 1.9rem;
+    flex: 1 1 0;
+    min-width: 1.98rem;
+    height: 2.04rem;
   }
 }
 
@@ -5845,9 +5844,9 @@ footer {
   }
 
   .blog-compose-card .compose-post-type-pill {
-    width: 1.84rem;
-    min-width: 1.84rem;
-    height: 1.84rem;
+    flex: 1 1 0;
+    min-width: 1.88rem;
+    height: 1.96rem;
   }
 }
 
