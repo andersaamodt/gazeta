@@ -219,6 +219,7 @@
   const LOCAL_DRIP_ENABLED_KEY = 'blog_local_drip_enabled_v1';
   const LOCAL_DRIP_LEASE_MS = 45000;
   const LOCAL_DRIP_TICK_MS = 15000;
+  const ADMIN_COMPOSE_SESSION_KEY_PREFIX = 'blog_admin_compose_session_v1:';
   let themeSwapToken = 0;
 
   function markHydrationPageReady() {
@@ -259,6 +260,57 @@
       els.authStatus.classList.add('is-' + type);
     }
     els.authStatus.innerHTML = message;
+  }
+
+  function adminComposeSessionStorageKey() {
+    const username = String(state.username || '').trim().toLowerCase();
+    if (!username) {
+      return '';
+    }
+    return ADMIN_COMPOSE_SESSION_KEY_PREFIX + username;
+  }
+
+  function readAdminComposeSession() {
+    const key = adminComposeSessionStorageKey();
+    if (!key) {
+      return null;
+    }
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      const section = String(parsed.active_section || '').trim().toLowerCase();
+      const draftId = String(parsed.draft_id || '').trim();
+      return {
+        activeSection: section,
+        draftId: draftId
+      };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function persistAdminComposeSession() {
+    if (!state.isAdmin) {
+      return;
+    }
+    const key = adminComposeSessionStorageKey();
+    if (!key) {
+      return;
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        active_section: String(state.activeSection || '').trim().toLowerCase(),
+        draft_id: String(state.currentDraftId || '').trim()
+      }));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
   }
 
   function getSectionFromHash() {
@@ -359,6 +411,7 @@
         history.replaceState(null, '', '#' + sectionName);
       }
     }
+    persistAdminComposeSession();
     syncUsersAutoRefresh();
     syncDraftsAutoRefresh();
     syncQueueAutoRefresh();
@@ -1772,6 +1825,7 @@
   function refreshDraftLabel() {
     if (!els.currentDraftLabel) {
       updateDripQueuePill();
+      persistAdminComposeSession();
       return;
     }
     if (state.currentDraftId) {
@@ -1780,6 +1834,7 @@
       els.currentDraftLabel.textContent = 'New draft';
     }
     updateDripQueuePill();
+    persistAdminComposeSession();
   }
 
   function syncComposeTagsField() {
@@ -2155,9 +2210,29 @@
       syncLocalDripToggleUi();
       startLocalDripWorker();
       setAccountOnlyMode(false);
-      activateSection(getSectionFromHash(), false);
+      const rememberedComposeSession = readAdminComposeSession();
+      const currentHashSection = String((window.location.hash || '').replace(/^#/, '') || '').trim();
+      const sectionFromHash = getSectionFromHash();
+      const rememberedSection = rememberedComposeSession && rememberedComposeSession.activeSection
+        ? rememberedComposeSession.activeSection
+        : '';
+      const hasRememberedSection = rememberedSection && els.sections.some(function (sectionNode) {
+        return sectionNode.getAttribute('data-admin-section') === rememberedSection;
+      });
+      const sectionToActivate = currentHashSection
+        ? sectionFromHash
+        : (hasRememberedSection ? rememberedSection : sectionFromHash);
+      activateSection(sectionToActivate, !currentHashSection && sectionToActivate !== sectionFromHash);
       els.adminPanel.style.display = 'grid';
       renderPreview();
+      if (sectionToActivate === 'compose' && rememberedComposeSession && rememberedComposeSession.draftId) {
+        try {
+          await loadDraft(rememberedComposeSession.draftId, { silent: true });
+        } catch (_restoreErr) {
+          resetComposer();
+          persistAdminComposeSession();
+        }
+      }
       try {
         await preloadAdminFirstPaint();
       } catch (_preloadErr) {
@@ -5051,14 +5126,17 @@
     }
   }
 
-  async function loadDraft(draftId) {
+  async function loadDraft(draftId, opts) {
+    const options = opts || {};
     const data = await apiPost('/cgi/blog-get-draft', { draft_id: draftId }, true);
     if (!data.success || !data.draft) {
       throw new Error(data.error || 'Failed to load draft');
     }
     populateComposer(data.draft);
     activateSection('compose', true);
-    setOutput(els.outputCompose, 'Draft loaded.', 'ok');
+    if (!options.silent) {
+      setOutput(els.outputCompose, 'Draft loaded.', 'ok');
+    }
   }
 
   async function deleteDraft(draftId) {
