@@ -487,19 +487,13 @@
     if (!isProductGalleryPage() || !slugText) {
       return '';
     }
-    var info = state.productPriceBySlug[slugText];
-    var hasPrice = !!(info && info.loaded && info.hasPrice);
     var cls = 'list-entry-cart-btn';
     if (extraClass) {
       cls += ' ' + String(extraClass || '').trim();
     }
-    if (!hasPrice) {
-      cls += ' is-price-pending';
-    }
-    var label = hasPrice ? ('+ Cart ' + info.label) : '+ Cart';
-    var title = hasPrice ? ('Add to cart (' + info.label + ')') : 'Add to cart';
+    cls += ' is-price-pending';
     return '<button type="button" class="' + escapeHtml(cls) + '" data-add-product-slug="' + escapeHtml(slugText) + '"' +
-      ' title="' + escapeHtml(title) + '"' + (hasPrice ? '' : ' hidden') + '>' + escapeHtml(label) + '</button>';
+      ' title="Add to cart" hidden>+ Cart</button>';
   }
 
   function applyProductCartButtonState(button, info) {
