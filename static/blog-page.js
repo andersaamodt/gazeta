@@ -340,8 +340,20 @@
       return;
     }
     var validation = (state.payload && state.payload.validation) ? state.payload.validation : {};
-    var errors = Array.isArray(validation.errors) ? validation.errors : [];
-    var warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+    var errors = (Array.isArray(validation.errors) ? validation.errors : []).filter(function (msg) {
+      var text = String(msg || '').trim().toLowerCase();
+      if (!text) {
+        return false;
+      }
+      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
+    });
+    var warnings = (Array.isArray(validation.warnings) ? validation.warnings : []).filter(function (msg) {
+      var text = String(msg || '').trim().toLowerCase();
+      if (!text) {
+        return false;
+      }
+      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
+    });
     if (!isAdmin() || (!errors.length && !warnings.length)) {
       els.validation.hidden = true;
       els.validation.innerHTML = '';
