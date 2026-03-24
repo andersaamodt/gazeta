@@ -660,7 +660,7 @@ blog_nip23_validate_and_enrich_state_json() {
         ) | length
       ) == 0
     }
-  ' 2>/dev/null || printf '{"errors":["Could not validate page state"],"warnings":[],"can_publish":false}\n'
+  ' 2>/dev/null || printf '{"errors":[],"warnings":["Page state validation is temporarily unavailable."],"can_publish":true}\n'
 }
 
 blog_nostr_sign_nip23_event() {

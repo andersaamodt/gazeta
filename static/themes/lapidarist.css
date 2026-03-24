@@ -366,13 +366,25 @@ strong {
 }
 
 .list-validation-block.is-error {
-  background: #7d2b22;
-  border-color: #ab4538;
+  background: var(--status-error-bg);
+  border-color: var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .list-validation-block.is-warn {
-  background: #5f4a1b;
-  border-color: #8d6a22;
+  background: var(--status-warn-bg);
+  border-color: var(--status-warn-border);
+  color: var(--status-warn-text);
+}
+
+.list-validation-block.is-error strong,
+.list-validation-block.is-error li {
+  color: var(--status-error-text);
+}
+
+.list-validation-block.is-warn strong,
+.list-validation-block.is-warn li {
+  color: var(--status-warn-text);
 }
 
 .list-entry-post-link {
