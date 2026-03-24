@@ -72,7 +72,8 @@
     productPriceBySlug: {},
     productPricePending: {},
     uidCounter: 1,
-    initialContentPainted: false
+    initialContentPainted: false,
+    renderSignature: ''
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
@@ -198,6 +199,12 @@
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
+    state.renderSignature = JSON.stringify({
+      slug: String(cachedPayload && cachedPayload.slug || ''),
+      page_type: String(cachedPayload && cachedPayload.page_type || ''),
+      nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
+      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
+    });
     renderList();
     renderAdmin();
     renderValidation();
@@ -2918,6 +2925,13 @@
           if (!isExpectedPayload(payload)) {
             throw new Error('Unexpected page payload for list page');
           }
+          var nextRenderSignature = JSON.stringify({
+            slug: String(payload && payload.slug || ''),
+            page_type: String(payload && payload.page_type || ''),
+            nav_title: String(payload && payload.nav_title || ''),
+            state: (payload && payload.state) ? payload.state : null
+          });
+          var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
           state.payload = payload;
           state.draft = readEditableStateFromPayload();
           state.navTitle = String(payload.nav_title || '').trim();
@@ -2934,11 +2948,14 @@
             state.activeEntryUid = state.draft.elements[0]._uid;
           }
           setSaveStatus('saved');
+          state.renderSignature = nextRenderSignature;
           writeBootstrapCache(state.payload);
-          renderList();
-          renderAdmin();
-          renderValidation();
-          markInitialContentPainted();
+          if (shouldRepaint) {
+            renderList();
+            renderAdmin();
+            renderValidation();
+            markInitialContentPainted();
+          }
           return;
         } catch (err) {
           lastErr = err;
@@ -3023,5 +3040,6 @@
       maybeReloadForAuthChange();
     }
   });
+  renderFromBootstrapCache();
   load();
 })();
