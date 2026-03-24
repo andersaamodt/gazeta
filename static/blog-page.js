@@ -326,9 +326,8 @@
       fab.type = 'button';
       fab.className = 'blog-compose-fab list-admin-primary-btn';
       fab.setAttribute('data-blog-action', 'toggle-compose');
-      fab.setAttribute('aria-label', 'Toggle composer');
-      fab.setAttribute('title', 'Toggle composer');
-      fab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span><span class="sr-only">Toggle composer</span>';
+      fab.setAttribute('aria-label', 'Compose');
+      fab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span>';
       fab.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -1166,7 +1165,7 @@
     els.composeFab.classList.toggle('is-open', state.compose.open);
     els.composeFab.setAttribute('aria-expanded', state.compose.open ? 'true' : 'false');
     els.composeFab.setAttribute('aria-pressed', state.compose.open ? 'true' : 'false');
-    els.composeFab.setAttribute('title', state.compose.open ? 'Close composer' : 'Open composer');
+    els.composeFab.setAttribute('aria-label', state.compose.open ? 'Close compose' : 'Compose');
     if (!state.compose.open) {
       els.composeSlot.classList.remove('is-open');
       setTimeout(function () {
