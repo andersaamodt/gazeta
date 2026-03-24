@@ -1221,6 +1221,12 @@ body.nav-cart-open {
   color: var(--status-error-text);
 }
 
+.list-validation-block,
+.list-validation-block * {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
 .list-validation-block ul {
   margin: 0.45rem 0 0;
 }
@@ -1228,11 +1234,13 @@ body.nav-cart-open {
 .list-validation-block.is-error {
   background: var(--status-error-bg);
   border: 1px solid var(--status-error-border);
+  color: var(--status-error-text) !important;
 }
 
 .list-validation-block.is-warn {
   background: var(--status-warn-bg);
   border: 1px solid var(--status-warn-border);
+  color: var(--status-warn-text) !important;
 }
 
 .list-validation-block strong,
