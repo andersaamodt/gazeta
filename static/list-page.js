@@ -423,7 +423,8 @@
     };
   }
 
-  function fetchProductPriceInfo(slugValue) {
+  function fetchProductPriceInfo(slugValue, options) {
+    var opts = options || {};
     var slugText = String(slugValue || '').trim();
     if (!slugText) {
       return Promise.resolve({
@@ -433,7 +434,7 @@
         label: ''
       });
     }
-    if (state.productPriceBySlug[slugText] && state.productPriceBySlug[slugText].loaded) {
+    if (!opts.forceRefresh && state.productPriceBySlug[slugText] && state.productPriceBySlug[slugText].loaded) {
       return Promise.resolve(state.productPriceBySlug[slugText]);
     }
     if (state.productPricePending[slugText]) {
@@ -525,11 +526,11 @@
         return;
       }
       slugMap[slugText] = true;
-      var info = state.productPriceBySlug[slugText];
-      applyProductCartButtonState(button, info);
+      // Always start hidden until this render cycle confirms current server price.
+      applyProductCartButtonState(button, null);
     });
     Object.keys(slugMap).forEach(function (slugText) {
-      fetchProductPriceInfo(slugText).then(function (info) {
+      fetchProductPriceInfo(slugText, { forceRefresh: true }).then(function (info) {
         if (!els.content) {
           return;
         }
