@@ -502,14 +502,18 @@
     }
     if (info && info.hasPrice) {
       button.hidden = false;
+      button.style.display = 'inline-flex';
       button.textContent = '+ Cart ' + info.label;
       button.title = 'Add to cart (' + info.label + ')';
+      button.classList.add('is-price-active');
       button.classList.remove('is-price-pending');
       return;
     }
     button.hidden = true;
+    button.style.display = 'none';
     button.textContent = '+ Cart';
     button.title = 'Add to cart';
+    button.classList.remove('is-price-active');
     button.classList.add('is-price-pending');
   }
 

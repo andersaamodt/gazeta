@@ -2505,6 +2505,7 @@ body.nav-cart-open {
 }
 
 .list-entry-cart-btn {
+  display: none !important;
   width: fit-content;
   min-width: 0;
   height: 1.72rem;
@@ -2517,6 +2518,12 @@ body.nav-cart-open {
   font-size: 0.72rem !important;
   line-height: 1 !important;
   white-space: nowrap;
+}
+
+.list-entry-cart-btn.is-price-active {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .list-entry-cart-btn:hover,
