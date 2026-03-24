@@ -2897,41 +2897,55 @@
   }
 
   async function load() {
+    var maxAttempts = 3;
+    var lastErr = null;
     try {
       state.authSignature = authSignature();
-      var auth = getAuthPayload();
-      var payload = await apiPost('/cgi/blog-get-nostr-page', {
-        page_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      if (!isExpectedPayload(payload)) {
-        throw new Error('Unexpected page payload for list page');
+      for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          var auth = getAuthPayload();
+          var payload = await apiPost('/cgi/blog-get-nostr-page', {
+            page_slug: slug,
+            session_token: auth.session_token,
+            csrf_token: auth.csrf_token
+          });
+          if (!isExpectedPayload(payload)) {
+            throw new Error('Unexpected page payload for list page');
+          }
+          state.payload = payload;
+          state.draft = readEditableStateFromPayload();
+          state.navTitle = String(payload.nav_title || '').trim();
+          state.navTitleEditing = false;
+          state.navTitleInput = '';
+          state.navTitleBusy = false;
+          state.pendingNewEntry = null;
+          state.markerFilterInclude = [];
+          state.markerFilterExclude = [];
+          state.createProductBusyUid = '';
+          state.viewModeOverride = '';
+          state.saveIndicatorVisible = false;
+          if (!state.activeEntryUid && state.draft.elements.length) {
+            state.activeEntryUid = state.draft.elements[0]._uid;
+          }
+          setSaveStatus('saved');
+          writeBootstrapCache(state.payload);
+          renderList();
+          renderAdmin();
+          renderValidation();
+          markInitialContentPainted();
+          return;
+        } catch (err) {
+          lastErr = err;
+          if (attempt >= maxAttempts) {
+            break;
+          }
+          await new Promise(function (resolve) {
+            window.setTimeout(resolve, attempt * 220);
+          });
+        }
       }
-      state.payload = payload;
-      state.draft = readEditableStateFromPayload();
-      state.navTitle = String(payload.nav_title || '').trim();
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      state.navTitleBusy = false;
-      state.pendingNewEntry = null;
-      state.markerFilterInclude = [];
-      state.markerFilterExclude = [];
-      state.createProductBusyUid = '';
-      state.viewModeOverride = '';
-      state.saveIndicatorVisible = false;
-      if (!state.activeEntryUid && state.draft.elements.length) {
-        state.activeEntryUid = state.draft.elements[0]._uid;
-      }
-      setSaveStatus('saved');
-      writeBootstrapCache(state.payload);
-      renderList();
-      renderAdmin();
-      renderValidation();
-      markInitialContentPainted();
-    } catch (err) {
       if (els.content) {
-        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load list page') + '</p>';
+        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml((lastErr && lastErr.message) ? lastErr.message : 'Could not load list page') + '</p>';
       }
     } finally {
       markHydrationPageReady();
