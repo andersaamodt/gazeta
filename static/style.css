@@ -5408,12 +5408,17 @@ footer {
 }
 
 .blog-compose-fab .blog-compose-fab-icon {
-  display: inline-block;
-  transform: translateY(-1px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  transform: none;
 }
 
 .blog-compose-fab.is-open .blog-compose-fab-icon {
-  transform: translateY(-1px) rotate(45deg);
+  transform: rotate(45deg);
 }
 
 .blog-compose-fab,
