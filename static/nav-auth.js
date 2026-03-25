@@ -275,19 +275,8 @@
       return;
     }
     state.prefetchedNostrPageSlugs[safeSlug] = true;
-    var sessionToken = '';
-    var csrfToken = '';
-    try {
-      sessionToken = String(localStorage.getItem('session_token') || '').trim();
-      csrfToken = String(localStorage.getItem('csrf_token') || '').trim();
-    } catch (_err) {
-      sessionToken = '';
-      csrfToken = '';
-    }
     var body = new URLSearchParams({
-      page_slug: safeSlug,
-      session_token: sessionToken,
-      csrf_token: csrfToken
+      page_slug: safeSlug
     });
     fetch('/cgi/blog-get-nostr-page', {
       method: 'POST',
@@ -410,7 +399,7 @@
     }
 
     // Stagger warm prefetches to avoid clobbering initial critical requests.
-    slugs.slice(0, 6).forEach(function (slug, idx) {
+    slugs.slice(0, 3).forEach(function (slug, idx) {
       setTimeout(function () {
         prefetchNostrPageBootstrap(slug);
       }, 180 + (idx * 180));
@@ -1960,7 +1949,9 @@
         var cachedPages = JSON.parse(cachedRaw);
         if (Array.isArray(cachedPages) && cachedPages.length) {
           renderNavbarNostrPages(cachedPages);
-          warmNavbarNostrPagePrefetch();
+          if (!hasStoredSessionToken()) {
+            warmNavbarNostrPagePrefetch();
+          }
         }
       }
     } catch (_cacheReadErr) {
@@ -1979,7 +1970,9 @@
           // Ignore storage failures.
         }
         renderNavbarNostrPages(data.pages);
-        warmNavbarNostrPagePrefetch();
+        if (!hasStoredSessionToken()) {
+          warmNavbarNostrPagePrefetch();
+        }
       })
       .catch(function () {
         // Keep static nav links on fetch failure.
@@ -2575,7 +2568,9 @@
     prefetchStaticPageHtmlForSlug('tags');
     highlightCurrentPage();
     applyInitialHighlightInSyncWithContent();
-    warmNavbarNostrPagePrefetch();
+    if (!optimisticIsLoggedIn) {
+      warmNavbarNostrPagePrefetch();
+    }
     loadNavbarNostrPages()
       .then(function () {
         highlightCurrentPage();

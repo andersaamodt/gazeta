@@ -70,7 +70,7 @@
     viewModeOverride: '',
     createProductBusyUid: '',
     productPriceBySlug: {},
-    productPricePending: {},
+    productPriceBatchPending: {},
     uidCounter: 1,
     initialContentPainted: false,
     renderSignature: ''
@@ -173,10 +173,31 @@
     }
   }
 
-  function renderFromBootstrapCache() {
-    var cachedPayload = readBootstrapCache();
-    if (!cachedPayload) {
+  function readPrerenderBootstrap() {
+    try {
+      var allPayloads = window.__wizardryNostrPageBootstrap;
+      if (!allPayloads || typeof allPayloads !== 'object') {
+        return null;
+      }
+      var payload = allPayloads[slug];
+      if (!isExpectedPayload(payload)) {
+        return null;
+      }
+      return payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function renderFromBootstrapPayload(payload) {
+    if (!payload || typeof payload !== 'object' || !isExpectedPayload(payload)) {
       return false;
+    }
+    var cachedPayload = payload;
+    try {
+      cachedPayload = JSON.parse(JSON.stringify(payload));
+    } catch (_cloneErr) {
+      cachedPayload = payload;
     }
     // Bootstrap cache is an optimistic first-paint path; avoid showing stale
     // validation alarms from previous runs before fresh server validation lands.
@@ -209,6 +230,22 @@
     renderAdmin();
     renderValidation();
     markInitialContentPainted();
+    return true;
+  }
+
+  function renderFromBootstrapCache() {
+    return renderFromBootstrapPayload(readBootstrapCache());
+  }
+
+  function renderFromPrerenderBootstrap() {
+    var prerenderedPayload = readPrerenderBootstrap();
+    if (!prerenderedPayload) {
+      return false;
+    }
+    if (!renderFromBootstrapPayload(prerenderedPayload)) {
+      return false;
+    }
+    writeBootstrapCache(prerenderedPayload);
     return true;
   }
 
@@ -442,26 +479,43 @@
     };
   }
 
-  function fetchProductPriceInfo(slugValue, options) {
+  function emptyProductPriceInfo() {
+    return {
+      loaded: true,
+      hasPrice: false,
+      amount: 0,
+      label: ''
+    };
+  }
+
+  function fetchProductPriceInfoBatch(slugValues, options) {
     var opts = options || {};
-    var slugText = String(slugValue || '').trim();
-    if (!slugText) {
-      return Promise.resolve({
-        loaded: true,
-        hasPrice: false,
-        amount: 0,
-        label: ''
-      });
+    var slugMap = {};
+    var slugs = [];
+    (Array.isArray(slugValues) ? slugValues : []).forEach(function (rawSlug) {
+      var slugText = String(rawSlug || '').trim();
+      if (!slugText || slugMap[slugText]) {
+        return;
+      }
+      slugMap[slugText] = true;
+      slugs.push(slugText);
+    });
+    if (!slugs.length) {
+      return Promise.resolve({});
     }
-    if (!opts.forceRefresh && state.productPriceBySlug[slugText] && state.productPriceBySlug[slugText].loaded) {
-      return Promise.resolve(state.productPriceBySlug[slugText]);
+
+    var batchKey = slugs.slice().sort().join(',');
+    if (!opts.forceRefresh && state.productPriceBatchPending[batchKey]) {
+      return state.productPriceBatchPending[batchKey];
     }
-    if (state.productPricePending[slugText]) {
-      return state.productPricePending[slugText];
-    }
-    state.productPricePending[slugText] = fetch('/cgi/blog-get-product?slug=' + encodeURIComponent(slugText), {
-      method: 'GET',
-      cache: 'no-store'
+
+    var request = new URLSearchParams();
+    request.set('slugs_json', JSON.stringify(slugs));
+    state.productPriceBatchPending[batchKey] = fetch('/cgi/blog-get-product', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: request.toString()
     }).then(function (res) {
       return res.text().then(function (text) {
         var data = {};
@@ -476,21 +530,34 @@
         return data;
       });
     }).then(function (data) {
-      return normalizeProductPriceInfo(data);
+      var infoBySlug = {};
+      slugs.forEach(function (slugText) {
+        infoBySlug[slugText] = emptyProductPriceInfo();
+      });
+      var products = Array.isArray(data && data.products) ? data.products : [];
+      products.forEach(function (product) {
+        var productSlug = String(product && product.slug || '').trim();
+        if (!productSlug || !Object.prototype.hasOwnProperty.call(infoBySlug, productSlug)) {
+          return;
+        }
+        infoBySlug[productSlug] = normalizeProductPriceInfo({ product: product });
+      });
+      slugs.forEach(function (slugText) {
+        state.productPriceBySlug[slugText] = infoBySlug[slugText];
+      });
+      return infoBySlug;
     }).catch(function () {
-      return {
-        loaded: true,
-        hasPrice: false,
-        amount: 0,
-        label: ''
-      };
-    }).then(function (info) {
-      state.productPriceBySlug[slugText] = info;
-      return info;
+      var infoBySlug = {};
+      slugs.forEach(function (slugText) {
+        var info = emptyProductPriceInfo();
+        state.productPriceBySlug[slugText] = info;
+        infoBySlug[slugText] = info;
+      });
+      return infoBySlug;
     }).finally(function () {
-      delete state.productPricePending[slugText];
+      delete state.productPriceBatchPending[batchKey];
     });
-    return state.productPricePending[slugText];
+    return state.productPriceBatchPending[batchKey];
   }
 
   function renderProductCartButton(productSlug, extraClass) {
@@ -543,14 +610,30 @@
         return;
       }
       slugMap[slugText] = true;
-      // Always start hidden until this render cycle confirms current server price.
-      applyProductCartButtonState(button, null);
+      var cachedInfo = state.productPriceBySlug[slugText];
+      if (cachedInfo && cachedInfo.loaded) {
+        applyProductCartButtonState(button, cachedInfo);
+      } else {
+        applyProductCartButtonState(button, null);
+      }
     });
+
+    var missingSlugs = [];
     Object.keys(slugMap).forEach(function (slugText) {
-      fetchProductPriceInfo(slugText, { forceRefresh: true }).then(function (info) {
-        if (!els.content) {
-          return;
-        }
+      if (!state.productPriceBySlug[slugText] || !state.productPriceBySlug[slugText].loaded) {
+        missingSlugs.push(slugText);
+      }
+    });
+    if (!missingSlugs.length) {
+      return;
+    }
+
+    fetchProductPriceInfoBatch(missingSlugs).then(function (infoBySlug) {
+      if (!els.content) {
+        return;
+      }
+      missingSlugs.forEach(function (slugText) {
+        var info = infoBySlug[slugText] || emptyProductPriceInfo();
         Array.from(els.content.querySelectorAll('button[data-add-product-slug="' + slugText.replace(/"/g, '\\"') + '"]'))
           .forEach(function (button) {
             applyProductCartButtonState(button, info);
@@ -3045,6 +3128,8 @@
       maybeReloadForAuthChange();
     }
   });
-  renderFromBootstrapCache();
+  if (!renderFromBootstrapCache()) {
+    renderFromPrerenderBootstrap();
+  }
   load();
 })();

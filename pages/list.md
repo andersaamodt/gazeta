@@ -18,6 +18,7 @@ license: "CC BY 4.0"
 <div id="list-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/list.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/list-page.js?v=20260324-listv4"></script>

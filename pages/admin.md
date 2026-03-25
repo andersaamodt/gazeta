@@ -272,7 +272,7 @@ title: ""
 <span class="sr-only">Take Photo/Video</span>
 </button>
 <button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false" aria-label="Upload Photo/Video" title="Upload Photo/Video">
-<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V6M8.8 9.2L12 6L15.2 9.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="4.2" y="15.3" width="15.6" height="3.9" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.8" y="5.1" width="16.4" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/><circle cx="9.1" cy="10.1" r="1.2" fill="currentColor"/><path d="M6.1 16L10.5 11.8L12.9 14.2L15.3 12.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.2 8.1V12.2M15.5 10.4L17.2 8.1L18.9 10.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
 <span class="sr-only">Upload Photo/Video</span>
 </button>
 <button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false" aria-label="Upload Attachment/File" title="Upload Attachment/File">
@@ -284,7 +284,7 @@ title: ""
 <span class="sr-only">Audio Note</span>
 </button>
 <button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link Share" title="Link Share">
-<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10.2 13.8L13.8 10.2M8.2 15.8L6.7 17.3C5.3 18.7 3.1 18.7 1.7 17.3C0.3 15.9 0.3 13.7 1.7 12.3L3.2 10.8M15.8 8.2L17.3 6.7C18.7 5.3 20.9 5.3 22.3 6.7C23.7 8.1 23.7 10.3 22.3 11.7L20.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10.2 13.8L13.8 10.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.3 15.7L6.5 17.5C5 19 2.6 19 1.1 17.5C-0.4 16 -0.4 13.6 1.1 12.1L2.9 10.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15.7 8.3L17.5 6.5C19 5 21.4 5 22.9 6.5C24.4 8 24.4 10.4 22.9 11.9L21.1 13.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
 <span class="sr-only">Link Share</span>
 </button>
 <button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="Go Live" title="Coming soon: Go Live">
@@ -367,6 +367,10 @@ title: ""
 </button>
 </div>
 <textarea id="post-content" rows="16" placeholder="# Write in Markdown\n\nDrop images anywhere on this page to upload + insert."></textarea>
+<div id="compose-shortform-meter" class="compose-shortform-meter" hidden>
+<button type="button" id="btn-compose-shortform-limit" class="unobtrusive-icon-button compose-shortform-limit-button" title="Click to toggle 280/140. Double-click to set custom limit.">0/280</button>
+<input type="number" id="compose-shortform-limit-input" class="compose-shortform-limit-input" min="1" step="1" inputmode="numeric" aria-label="Shortform character limit" hidden>
+</div>
 <div id="autosave-status" class="autosave-indicator" hidden></div>
 </div>
 </div>
@@ -2045,6 +2049,32 @@ body {
 .compose-link-fields {
   display: grid;
   gap: 0.32rem;
+}
+
+.compose-shortform-meter {
+  margin-top: 0.2rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.compose-shortform-limit-button {
+  width: auto;
+  min-width: 0;
+  padding: 0.14rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  line-height: 1.15;
+  color: var(--admin-light-text, var(--light-text));
+}
+
+.compose-shortform-limit-input {
+  width: 5.5rem;
+  min-width: 0;
+  padding: 0.18rem 0.34rem;
+  font-size: 0.74rem;
+  line-height: 1.2;
 }
 
 .mode-row {

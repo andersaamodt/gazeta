@@ -1,0 +1,121 @@
+#!/bin/sh
+# Build-time prerender of canonical Nostr page payloads for first-paint bootstrap.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+
+bootstrap_dir="$blog_site_root/site/static/nostr-page-bootstrap"
+mkdir -p "$bootstrap_dir"
+
+manifest_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-manifest.XXXXXX")
+trap 'rm -f "$manifest_tmp"' EXIT HUP INT TERM
+: > "$manifest_tmp"
+
+is_prerender_type() {
+  case "$1" in
+    list|icon-gallery)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+render_payload_json() {
+  slug_in=${1-}
+  slug=$(blog_nostr_page_slug "$slug_in")
+  [ -n "$slug" ] || return 1
+
+  raw_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-raw.XXXXXX")
+  body_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-body.XXXXXX")
+  (
+    env \
+      "REQUEST_METHOD=GET" \
+      "CONTENT_LENGTH=0" \
+      "QUERY_STRING=page_slug=$slug" \
+      "WIZARDRY_SITES_DIR=$WIZARDRY_SITES_DIR" \
+      "WIZARDRY_SITE_NAME=$WIZARDRY_SITE_NAME" \
+      "$SCRIPT_DIR/blog-get-nostr-page"
+  ) > "$raw_tmp" 2>/dev/null || {
+    rm -f "$raw_tmp" "$body_tmp"
+    return 1
+  }
+
+  awk '
+    BEGIN { in_body = 0 }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      if (in_body == 1) {
+        print line
+      } else if (line == "") {
+        in_body = 1
+      }
+    }
+  ' "$raw_tmp" > "$body_tmp"
+  if [ ! -s "$body_tmp" ]; then
+    cp "$raw_tmp" "$body_tmp"
+  fi
+  payload=$(cat "$body_tmp")
+  rm -f "$raw_tmp" "$body_tmp"
+
+  if ! printf '%s\n' "$payload" | jq -e --arg slug "$slug" '
+    (.success == true) and
+    ((.slug // "") | tostring == $slug) and
+    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery"))
+  ' >/dev/null 2>&1; then
+    return 1
+  fi
+
+  printf '%s\n' "$payload"
+}
+
+write_bootstrap_js() {
+  slug_in=${1-}
+  slug=$(blog_nostr_page_slug "$slug_in")
+  [ -n "$slug" ] || return 1
+  payload_json=${2-}
+  [ -n "$payload_json" ] || return 1
+
+  js_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-js.XXXXXX")
+  {
+    printf '%s\n' '(function () {'
+    printf '%s\n' '  window.__wizardryNostrPageBootstrap = window.__wizardryNostrPageBootstrap || {};'
+    printf '  window.__wizardryNostrPageBootstrap[%s] = ' "$(printf '%s\n' "$slug" | jq -R .)"
+    printf '%s' "$payload_json"
+    printf '%s\n' ';'
+    printf '%s\n' '})();'
+  } > "$js_tmp"
+
+  out_file="$bootstrap_dir/$slug.js"
+  mv "$js_tmp" "$out_file"
+  chmod 644 "$out_file" 2>/dev/null || true
+  printf '%s\n' "$slug" >> "$manifest_tmp"
+}
+
+cfg_json=$(blog_nostr_pages_load_json)
+printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
+  slug=$(blog_nostr_page_slug "$raw_slug")
+  page_type=$(printf '%s' "${raw_type-}" | tr '[:upper:]' '[:lower:]')
+  [ -n "$slug" ] || continue
+  is_prerender_type "$page_type" || continue
+  payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
+  [ -n "$payload_json" ] || continue
+  write_bootstrap_js "$slug" "$payload_json" || true
+done
+
+if [ -d "$bootstrap_dir" ]; then
+  find "$bootstrap_dir" -type f -name '*.js' ! -name '._*' 2>/dev/null | while IFS= read -r js_file || [ -n "$js_file" ]; do
+    file_name=$(basename "$js_file")
+    slug=${file_name%.js}
+    if ! grep -Fqx "$slug" "$manifest_tmp" 2>/dev/null; then
+      rm -f "$js_file"
+    fi
+  done
+fi

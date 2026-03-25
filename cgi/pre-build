@@ -12,3 +12,6 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 pages_json=$(blog_nostr_pages_load_json)
 blog_nostr_pages_sync_source_pages "$pages_json"
+if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
+  "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
+fi

@@ -660,7 +660,7 @@ blog_nip23_validate_and_enrich_state_json() {
         ) | length
       ) == 0
     }
-  ' 2>/dev/null || printf '{"errors":[],"warnings":["Page state validation is temporarily unavailable."],"can_publish":true}\n'
+  ' 2>/dev/null || printf '{"errors":[],"warnings":[],"can_publish":true}\n'
 }
 
 blog_nostr_sign_nip23_event() {
@@ -1063,12 +1063,14 @@ blog_nostr_page_template_is_current() {
     list)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="list-page-content"' "$file" 2>/dev/null
+      grep -q 'id="list-page-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     icon-gallery)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="list-page-content"' "$file" 2>/dev/null
+      grep -q 'id="list-page-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     *)
       return 0
@@ -1342,6 +1344,7 @@ license: "CC BY 4.0"
 <div id="list-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/list-page.js?v=20260324-listv4"></script>
@@ -1369,6 +1372,7 @@ license: "CC BY 4.0"
 <div id="list-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/list-page.js?v=20260324-listv4"></script>

@@ -11,6 +11,8 @@
     isAdmin: false,
     composeTags: [],
     composePostType: 'longform',
+    composeShortformLimit: 280,
+    composeShortformLimitEditing: false,
     composeUploadBusy: false,
     currentDraftId: '',
     autosaveTimer: null,
@@ -148,6 +150,9 @@
     postTagsEditor: document.getElementById('post-tags-editor'),
     postTagsPills: document.getElementById('post-tags-pills'),
     postContent: document.getElementById('post-content'),
+    composeShortformMeter: document.getElementById('compose-shortform-meter'),
+    composeShortformLimitButton: document.getElementById('btn-compose-shortform-limit'),
+    composeShortformLimitInput: document.getElementById('compose-shortform-limit-input'),
     postScheduleAt: document.getElementById('post-scheduled-at'),
     scheduledPickerButton: document.getElementById('btn-scheduled-picker'),
     navDraftsCount: document.getElementById('admin-nav-drafts-count'),
@@ -1651,6 +1656,62 @@
     return 'Nostr kind ' + target.kind + ' · ' + target.tags;
   }
 
+  function normalizeComposeShortformLimit(raw) {
+    const n = parseInt(String(raw || '').trim(), 10);
+    if (!Number.isFinite(n) || n < 1) {
+      return 280;
+    }
+    return Math.max(1, Math.min(5000, n));
+  }
+
+  function currentComposeShortformLimit() {
+    state.composeShortformLimit = normalizeComposeShortformLimit(state.composeShortformLimit);
+    return state.composeShortformLimit;
+  }
+
+  function enforceComposeShortformLimit() {
+    if (!els.postContent) {
+      return;
+    }
+    if (normalizeComposePostType(state.composePostType) !== 'shortform') {
+      return;
+    }
+    const limit = currentComposeShortformLimit();
+    if (String(els.postContent.value || '').length > limit) {
+      els.postContent.value = String(els.postContent.value || '').slice(0, limit);
+    }
+  }
+
+  function syncComposeShortformCounter() {
+    if (!els.composeShortformMeter || !els.composeShortformLimitButton || !els.composeShortformLimitInput || !els.postContent) {
+      return;
+    }
+    const shortform = normalizeComposePostType(state.composePostType) === 'shortform';
+    const limit = currentComposeShortformLimit();
+    if (shortform) {
+      enforceComposeShortformLimit();
+    }
+    const count = String(els.postContent.value || '').length;
+    els.composeShortformLimitButton.textContent = String(count) + '/' + String(limit);
+    els.composeShortformLimitInput.value = String(limit);
+    els.composeShortformMeter.hidden = !shortform;
+    els.composeShortformLimitButton.hidden = !shortform || !!state.composeShortformLimitEditing;
+    els.composeShortformLimitInput.hidden = !shortform || !state.composeShortformLimitEditing;
+  }
+
+  function setComposeShortformLimit(raw, opts) {
+    const options = opts || {};
+    state.composeShortformLimit = normalizeComposeShortformLimit(raw);
+    if (options.editing === true || options.editing === false) {
+      state.composeShortformLimitEditing = !!options.editing;
+    }
+    enforceComposeShortformLimit();
+    syncComposeShortformCounter();
+    if (options.queueAutosave !== false) {
+      queueAutosave('saving');
+    }
+  }
+
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
     if (els.composePostTypeToolbar) {
@@ -1700,8 +1761,15 @@
       } else {
         els.postContent.placeholder = '# Write in Markdown\n\nDrop images anywhere on this page to upload + insert.';
       }
-      els.postContent.rows = composePostTypeIsTextual(type) ? 16 : 8;
+      if (type === 'shortform') {
+        els.postContent.rows = 11;
+      } else if (composePostTypeIsTextual(type)) {
+        els.postContent.rows = 16;
+      } else {
+        els.postContent.rows = 8;
+      }
     }
+    syncComposeShortformCounter();
   }
 
   function setComposePostType(nextType, options) {
@@ -1741,6 +1809,9 @@
   function readComposer() {
     commitTagInput();
     const postType = normalizeComposePostType(state.composePostType);
+    if (postType === 'shortform') {
+      enforceComposeShortformLimit();
+    }
     let content = els.postContent ? String(els.postContent.value || '') : '';
     if (postType === 'link-share') {
       const linkContent = composeBuildLinkMarkdown(
@@ -1779,6 +1850,7 @@
     state.suspendAutosave = true;
     state.currentDraftId = draft.draft_id || '';
     state.composePostType = normalizeComposePostType((draft && draft.post_type) || 'longform');
+    state.composeShortformLimitEditing = false;
     els.postTitle.value = draft.title || '';
     setComposeTagsFromString(draft.tags || '');
     els.postContent.value = draft.content || '';
@@ -1809,6 +1881,7 @@
   function resetComposer() {
     state.currentDraftId = '';
     state.composePostType = 'longform';
+    state.composeShortformLimitEditing = false;
     els.postTitle.value = '';
     setComposeTags([]);
     els.postContent.value = '';
@@ -6753,6 +6826,47 @@
         els.audioPicker.click();
       });
     }
+    if (els.composeShortformLimitButton) {
+      els.composeShortformLimitButton.addEventListener('click', function (event) {
+        if (event.detail > 1) {
+          return;
+        }
+        if (normalizeComposePostType(state.composePostType) !== 'shortform' || state.composeShortformLimitEditing) {
+          return;
+        }
+        const current = currentComposeShortformLimit();
+        setComposeShortformLimit(current === 280 ? 140 : 280, { editing: false });
+      });
+      els.composeShortformLimitButton.addEventListener('dblclick', function (event) {
+        event.preventDefault();
+        if (normalizeComposePostType(state.composePostType) !== 'shortform') {
+          return;
+        }
+        state.composeShortformLimitEditing = true;
+        syncComposeShortformCounter();
+        if (els.composeShortformLimitInput) {
+          els.composeShortformLimitInput.focus();
+          els.composeShortformLimitInput.select();
+        }
+      });
+    }
+    if (els.composeShortformLimitInput) {
+      els.composeShortformLimitInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          setComposeShortformLimit(els.composeShortformLimitInput.value, { editing: false });
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          state.composeShortformLimitEditing = false;
+          syncComposeShortformCounter();
+        }
+      });
+      els.composeShortformLimitInput.addEventListener('blur', function () {
+        setComposeShortformLimit(els.composeShortformLimitInput.value, { editing: false });
+      });
+    }
 
     document.querySelectorAll('[data-toolbar]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -6807,6 +6921,10 @@
           if (state.composePostType !== 'link-share') {
             setComposePostType('link-share', { queueAutosave: false, syncUi: true });
           }
+        }
+        if (el === els.postContent) {
+          enforceComposeShortformLimit();
+          syncComposeShortformCounter();
         }
         renderPreview();
         const typing = (el === els.postTitle || el === els.postContent);

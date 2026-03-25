@@ -48,12 +48,20 @@
       tags: [],
       tagsOpen: false,
       postType: 'longform',
-      publishDestination: 'nostr_now',
+      publishDestination: 'local_only',
+      shortformLimit: 280,
+      shortformLimitEditing: false,
       linkUrl: '',
       linkBody: '',
       cameraStream: null,
       cameraStarting: false,
       cameraError: '',
+      audioStream: null,
+      audioRecorder: null,
+      audioChunks: [],
+      audioStarting: false,
+      audioRecording: false,
+      audioError: '',
       uploading: 0,
       autosaveTimer: null,
       busy: false,
@@ -76,12 +84,20 @@
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
     if (typeof state.compose.tagsOpen !== 'boolean') state.compose.tagsOpen = false;
     if (typeof state.compose.postType !== 'string') state.compose.postType = 'longform';
-    if (typeof state.compose.publishDestination !== 'string') state.compose.publishDestination = 'nostr_now';
+    if (typeof state.compose.publishDestination !== 'string') state.compose.publishDestination = 'local_only';
+    if (typeof state.compose.shortformLimit !== 'number' || !isFinite(state.compose.shortformLimit)) state.compose.shortformLimit = 280;
+    if (typeof state.compose.shortformLimitEditing !== 'boolean') state.compose.shortformLimitEditing = false;
     if (typeof state.compose.linkUrl !== 'string') state.compose.linkUrl = '';
     if (typeof state.compose.linkBody !== 'string') state.compose.linkBody = '';
     if (typeof state.compose.cameraStarting !== 'boolean') state.compose.cameraStarting = false;
     if (typeof state.compose.cameraError !== 'string') state.compose.cameraError = '';
     if (typeof state.compose.cameraStream === 'undefined') state.compose.cameraStream = null;
+    if (typeof state.compose.audioStream === 'undefined') state.compose.audioStream = null;
+    if (typeof state.compose.audioRecorder === 'undefined') state.compose.audioRecorder = null;
+    if (!Array.isArray(state.compose.audioChunks)) state.compose.audioChunks = [];
+    if (typeof state.compose.audioStarting !== 'boolean') state.compose.audioStarting = false;
+    if (typeof state.compose.audioRecording !== 'boolean') state.compose.audioRecording = false;
+    if (typeof state.compose.audioError !== 'string') state.compose.audioError = '';
     if (typeof state.compose.uploading !== 'number' || !isFinite(state.compose.uploading)) state.compose.uploading = 0;
     if (typeof state.compose.autosaveTimer === 'undefined') state.compose.autosaveTimer = null;
     if (typeof state.compose.busy !== 'boolean') state.compose.busy = false;
@@ -563,8 +579,10 @@
     }
     if (picked === 'upload-media') {
       return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<path d="M12 16V6M8.8 9.2L12 6L15.2 9.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '<rect x="4.2" y="15.3" width="15.6" height="3.9" rx="1.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="3.8" y="5.1" width="16.4" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="9.1" cy="10.1" r="1.2" fill="currentColor"/>' +
+        '<path d="M6.1 16L10.5 11.8L12.9 14.2L15.3 12.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M17.2 8.1V12.2M15.5 10.4L17.2 8.1L18.9 10.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>';
     }
     if (picked === 'attachment') {
@@ -580,7 +598,9 @@
     }
     if (picked === 'link-share') {
       return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<path d="M10.2 13.8L13.8 10.2M8.2 15.8L6.7 17.3C5.3 18.7 3.1 18.7 1.7 17.3C0.3 15.9 0.3 13.7 1.7 12.3L3.2 10.8M15.8 8.2L17.3 6.7C18.7 5.3 20.9 5.3 22.3 6.7C23.7 8.1 23.7 10.3 22.3 11.7L20.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M10.2 13.8L13.8 10.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M8.3 15.7L6.5 17.5C5 19 2.6 19 1.1 17.5C-0.4 16 -0.4 13.6 1.1 12.1L2.9 10.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M15.7 8.3L17.5 6.5C19 5 21.4 5 22.9 6.5C24.4 8 24.4 10.4 22.9 11.9L21.1 13.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
       '</svg>';
     }
     return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -621,6 +641,78 @@
       '</div>';
   }
 
+  function normalizeComposeShortformLimit(raw) {
+    var n = parseInt(String(raw || '').trim(), 10);
+    if (!isFinite(n) || n < 1) {
+      return 280;
+    }
+    return Math.max(1, Math.min(5000, n));
+  }
+
+  function currentComposeShortformLimit() {
+    ensureComposeStateShape();
+    state.compose.shortformLimit = normalizeComposeShortformLimit(state.compose.shortformLimit);
+    return state.compose.shortformLimit;
+  }
+
+  function enforceComposeShortformLimitOnFields(fields) {
+    var data = fields || readComposeFields();
+    if (!data) {
+      return;
+    }
+    if (normalizeComposePostType(data.postType) !== 'shortform') {
+      return;
+    }
+    var limit = currentComposeShortformLimit();
+    if (String(data.content || '').length <= limit) {
+      return;
+    }
+    var next = String(data.content || '').slice(0, limit);
+    if (els.composeSlot) {
+      var contentField = els.composeSlot.querySelector('[data-compose-field="content"]');
+      if (contentField instanceof HTMLTextAreaElement) {
+        contentField.value = next;
+      }
+    }
+  }
+
+  function composeShortformMeterHtml(contentValue) {
+    var limit = currentComposeShortformLimit();
+    var count = String(contentValue || '').length;
+    var editing = !!state.compose.shortformLimitEditing;
+    return '' +
+      '<div class="blog-compose-shortform-meter">' +
+        '<button type="button" class="unobtrusive-icon-button blog-compose-shortform-limit-btn" data-compose-action="shortform-limit-toggle" title="Click to toggle 280/140. Double-click to set custom limit."' + (editing ? ' hidden' : '') + '>' + escapeHtml(String(count) + '/' + String(limit)) + '</button>' +
+        '<input type="number" class="blog-compose-shortform-limit-input" data-compose-field="shortform-limit" min="1" step="1" inputmode="numeric" value="' + escapeHtml(String(limit)) + '"' + (editing ? '' : ' hidden') + '>' +
+      '</div>';
+  }
+
+  function setComposeShortformLimit(raw, opts) {
+    var options = opts || {};
+    state.compose.shortformLimit = normalizeComposeShortformLimit(raw);
+    if (options.editing === true || options.editing === false) {
+      state.compose.shortformLimitEditing = !!options.editing;
+    }
+    enforceComposeShortformLimitOnFields();
+    if (!options.skipRender) {
+      renderComposeUi();
+    }
+    if (!options.skipAutosave) {
+      queueComposeAutosave();
+    }
+  }
+
+  function composeTextareaRows(postType) {
+    var type = normalizeComposePostType(postType);
+    if (type === 'shortform') {
+      return 9;
+    }
+    if (composePostTypeIsTextual(type)) {
+      return 14;
+    }
+    return 8;
+  }
+
   function setComposePostType(nextType, options) {
     var opts = options || {};
     var normalized = normalizeComposePostType(nextType);
@@ -637,13 +729,13 @@
       queueComposeAutosave();
     }
     if (opts.interactive) {
-      if (normalized === 'upload-media' || normalized === 'attachment' || normalized === 'audio-note') {
+      if (normalized === 'upload-media' || normalized === 'attachment') {
         setTimeout(function () {
           openComposePickerForType(normalized);
         }, 0);
-      } else if (normalized === 'capture-media') {
+      } else if (normalized === 'capture-media' || normalized === 'audio-note') {
         setTimeout(function () {
-          applyComposeModeEffects('capture-media');
+          applyComposeModeEffects(normalized);
         }, 0);
       }
     }
@@ -878,9 +970,9 @@
     }
     state.compose.cameraStarting = true;
     state.compose.cameraError = '';
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
       .catch(function () {
-        return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       })
       .then(function (stream) {
         state.compose.cameraStream = stream || null;
@@ -892,6 +984,143 @@
         state.compose.cameraStarting = false;
         renderComposeUi();
       });
+  }
+
+  function stopComposeAudioStream() {
+    ensureComposeStateShape();
+    var recorder = state.compose.audioRecorder;
+    if (recorder && recorder.state === 'recording') {
+      recorder.onstop = null;
+      recorder.onerror = null;
+      try {
+        recorder.stop();
+      } catch (_err) {
+        // Ignore stop errors.
+      }
+    }
+    var stream = state.compose.audioStream;
+    if (stream && typeof stream.getTracks === 'function') {
+      stream.getTracks().forEach(function (track) {
+        if (track && typeof track.stop === 'function') {
+          track.stop();
+        }
+      });
+    }
+    state.compose.audioStream = null;
+    state.compose.audioRecorder = null;
+    state.compose.audioChunks = [];
+    state.compose.audioStarting = false;
+    state.compose.audioRecording = false;
+  }
+
+  function ensureComposeAudioStream() {
+    ensureComposeStateShape();
+    if (state.compose.audioStream) {
+      return Promise.resolve(state.compose.audioStream);
+    }
+    if (state.compose.audioStarting) {
+      return Promise.resolve(null);
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      state.compose.audioError = 'Microphone is unavailable in this browser.';
+      renderComposeUi();
+      return Promise.resolve(null);
+    }
+    state.compose.audioStarting = true;
+    state.compose.audioError = '';
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function (stream) {
+        state.compose.audioStream = stream || null;
+        return state.compose.audioStream;
+      })
+      .catch(function (err) {
+        state.compose.audioError = String((err && err.message) || 'Could not access microphone.');
+        return null;
+      })
+      .finally(function () {
+        state.compose.audioStarting = false;
+        renderComposeUi();
+      });
+  }
+
+  function startComposeAudioRecording() {
+    ensureComposeStateShape();
+    if (state.compose.audioRecording || state.compose.audioStarting) {
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      state.compose.audioError = 'Audio recording is unavailable in this browser.';
+      renderComposeUi();
+      return;
+    }
+    ensureComposeAudioStream().then(function (stream) {
+      if (!stream || state.compose.audioRecording) {
+        return;
+      }
+      var recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      } catch (_err) {
+        try {
+          recorder = new MediaRecorder(stream);
+        } catch (fallbackErr) {
+          state.compose.audioError = String((fallbackErr && fallbackErr.message) || 'Could not start recording.');
+          renderComposeUi();
+          return;
+        }
+      }
+      state.compose.audioChunks = [];
+      state.compose.audioRecorder = recorder;
+      state.compose.audioError = '';
+      recorder.ondataavailable = function (event) {
+        if (event && event.data && event.data.size > 0) {
+          state.compose.audioChunks.push(event.data);
+        }
+      };
+      recorder.onerror = function (event) {
+        state.compose.audioError = String((event && event.error && event.error.message) || 'Recording failed.');
+      };
+      recorder.onstop = function () {
+        var chunks = Array.isArray(state.compose.audioChunks) ? state.compose.audioChunks.slice() : [];
+        state.compose.audioChunks = [];
+        state.compose.audioRecorder = null;
+        state.compose.audioRecording = false;
+        if (!chunks.length) {
+          renderComposeUi();
+          return;
+        }
+        var mime = (chunks[0] && chunks[0].type) ? String(chunks[0].type) : 'audio/webm';
+        var blob = new Blob(chunks, { type: mime });
+        var ext = mime.indexOf('ogg') >= 0 ? 'ogg' : (mime.indexOf('mp4') >= 0 ? 'm4a' : 'webm');
+        var file = new File([blob], 'voice-note-' + Date.now() + '.' + ext, { type: mime });
+        handleComposeUploads([file], 'audio-note');
+        renderComposeUi();
+      };
+      try {
+        recorder.start(250);
+        state.compose.audioRecording = true;
+      } catch (err) {
+        state.compose.audioRecorder = null;
+        state.compose.audioRecording = false;
+        state.compose.audioError = String((err && err.message) || 'Could not start recording.');
+      }
+      renderComposeUi();
+    });
+  }
+
+  function stopComposeAudioRecording() {
+    ensureComposeStateShape();
+    var recorder = state.compose.audioRecorder;
+    if (!recorder || recorder.state !== 'recording') {
+      return;
+    }
+    try {
+      recorder.stop();
+    } catch (_err) {
+      state.compose.audioRecording = false;
+      state.compose.audioRecorder = null;
+      renderComposeUi();
+    }
   }
 
   function capturePhotoFromComposeCamera() {
@@ -995,10 +1224,10 @@
 
   function normalizeComposePublishDestination(raw) {
     var picked = String(raw || '').trim().toLowerCase();
-    if (picked === 'local_only') {
-      return 'local_only';
+    if (picked === 'nostr_now') {
+      return 'nostr_now';
     }
-    return 'nostr_now';
+    return 'local_only';
   }
 
   function composePublishDestination() {
@@ -1095,11 +1324,20 @@
         '</div>';
     }
     if (type === 'audio-note') {
+      var audioStatus = state.compose.audioRecording
+        ? 'Recording... press Stop to finish and attach audio.'
+        : (state.compose.audioStarting
+            ? 'Requesting microphone access...'
+            : (state.compose.audioError
+                ? escapeHtml(state.compose.audioError)
+                : 'Microphone is ready. Press Record to capture audio.'));
       return '' +
-        '<div class="compose-media-tools compose-mode-panel">' +
+        '<div class="compose-media-tools compose-mode-panel compose-audio-panel">' +
           '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="audio-note">Upload Audio</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="audio-record-toggle">' + (state.compose.audioRecording ? 'Stop Recording' : 'Start Recording') + '</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="audio-note">Upload Audio File</button>' +
           '</div>' +
+          '<div class="compose-audio-status">' + audioStatus + '</div>' +
         '</div>';
     }
     if (type === 'link-share') {
@@ -1118,13 +1356,18 @@
 
   function applyComposeModeEffects(postType) {
     var type = normalizeComposePostType(postType);
-    root.classList.toggle('blog-camera-mode', !!state.compose.open && type === 'capture-media');
+    root.classList.remove('blog-camera-mode');
     if (!state.compose.open || type !== 'capture-media') {
       stopComposeCameraStream();
-      return;
+    } else {
+      ensureComposeCameraStream();
+      attachComposeCameraPreview();
     }
-    ensureComposeCameraStream();
-    attachComposeCameraPreview();
+    if (!state.compose.open || type !== 'audio-note') {
+      stopComposeAudioStream();
+    } else {
+      ensureComposeAudioStream();
+    }
   }
 
   function renderComposePreviewHtml(title, content) {
@@ -1223,10 +1466,12 @@
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.tagsOpen = false;
-    state.compose.publishDestination = 'nostr_now';
+    state.compose.publishDestination = 'local_only';
+    state.compose.shortformLimitEditing = false;
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
     stopComposeCameraStream();
+    stopComposeAudioStream();
     setComposeTags([]);
     var fields = readComposeFields();
     if (!fields || !els.composeSlot) {
@@ -1248,9 +1493,9 @@
     if (immediateMode instanceof HTMLInputElement) {
       immediateMode.checked = true;
     }
-    var nostrNowTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="nostr_now"]');
-    if (nostrNowTarget instanceof HTMLInputElement) {
-      nostrNowTarget.checked = true;
+    var localOnlyTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="local_only"]');
+    if (localOnlyTarget instanceof HTMLInputElement) {
+      localOnlyTarget.checked = true;
     }
   }
 
@@ -1321,10 +1566,12 @@
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.tagsOpen = false;
-    state.compose.publishDestination = 'nostr_now';
+    state.compose.publishDestination = 'local_only';
+    state.compose.shortformLimitEditing = false;
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
     stopComposeCameraStream();
+    stopComposeAudioStream();
     setComposeOutput('', '');
     setComposeTags([]);
     if (!els.composeSlot) {
@@ -1347,9 +1594,9 @@
     if (immediateMode instanceof HTMLInputElement) {
       immediateMode.checked = true;
     }
-    var nostrNowTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="nostr_now"]');
-    if (nostrNowTarget instanceof HTMLInputElement) {
-      nostrNowTarget.checked = true;
+    var localOnlyTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="local_only"]');
+    if (localOnlyTarget instanceof HTMLInputElement) {
+      localOnlyTarget.checked = true;
     }
     renderComposeUi();
   }
@@ -1415,6 +1662,7 @@
     } catch (err) {
       state.compose.open = false;
       stopComposeCameraStream();
+      stopComposeAudioStream();
       if (window && window.console && typeof window.console.error === 'function') {
         window.console.error('Compose render failed', err);
       }
@@ -1619,10 +1867,20 @@
     var mode = composePublishMode();
     var destination = composePublishDestination();
     var postType = normalizeComposePostType(fields.postType);
+    if (postType !== 'shortform') {
+      state.compose.shortformLimitEditing = false;
+    }
     state.compose.postType = postType;
     state.compose.publishDestination = destination;
     state.compose.linkUrl = String(fields.linkUrl || '');
     state.compose.linkBody = String(fields.linkBody || '');
+    if (postType === 'shortform') {
+      enforceComposeShortformLimitOnFields(fields);
+      var shortLimit = currentComposeShortformLimit();
+      if (String(fields.content || '').length > shortLimit) {
+        fields.content = String(fields.content || '').slice(0, shortLimit);
+      }
+    }
     var previewContent = fields.content;
     if (postType === 'link-share') {
       var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
@@ -1681,8 +1939,9 @@
                 '<label><strong>' + escapeHtml(contentLabel) + '</strong></label>' +
                 '<div class="editor-shell blog-compose-editor-shell">' +
                   composeToolbarHtml() +
-                  '<textarea data-compose-field="content" rows="' + (composePostTypeIsTextual(postType) ? '14' : '8') + '" placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
+                  '<textarea data-compose-field="content" rows="' + String(composeTextareaRows(postType)) + '"' + (postType === 'shortform' ? (' maxlength="' + escapeHtml(String(currentComposeShortformLimit())) + '"') : '') + ' placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
                 '</div>' +
+                (postType === 'shortform' ? composeShortformMeterHtml(fields.content) : '') +
               '</div>') +
           '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
           '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
@@ -1712,8 +1971,8 @@
           '<div class="field-row compose-destination-row">' +
             '<strong>Publish Destination</strong>' +
             '<div class="mode-row">' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
               '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Local only</label>' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
             '</div>' +
           '</div>' +
           '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
@@ -2202,6 +2461,25 @@
         capturePhotoFromComposeCamera();
         return;
       }
+      if (actionName === 'audio-record-toggle') {
+        if (state.compose.audioRecording) {
+          stopComposeAudioRecording();
+        } else {
+          startComposeAudioRecording();
+        }
+        return;
+      }
+      if (actionName === 'shortform-limit-toggle') {
+        if (event.detail > 1) {
+          return;
+        }
+        if (composePostType() !== 'shortform' || state.compose.shortformLimitEditing) {
+          return;
+        }
+        var currentLimit = currentComposeShortformLimit();
+        setComposeShortformLimit(currentLimit === 280 ? 140 : 280, { editing: false });
+        return;
+      }
       if (actionName === 'pick-capture-media' || actionName === 'pick-upload-media' || actionName === 'pick-upload-file' || actionName === 'pick-upload-audio') {
         var field = '';
         var type = '';
@@ -2215,8 +2493,9 @@
           field = 'file-upload';
           type = 'attachment';
         } else {
-          field = 'audio-upload';
           type = 'audio-note';
+          setComposePostType(type, { skipAutosave: true, interactive: true });
+          return;
         }
         setComposePostType(type, { skipAutosave: true, skipRender: true });
         var picker = els.composeSlot.querySelector('[data-compose-field="' + field + '"]');
@@ -2262,9 +2541,29 @@
     }
   });
 
+  root.addEventListener('dblclick', function (event) {
+    var toggle = event.target && event.target.closest('[data-compose-action="shortform-limit-toggle"]');
+    if (!toggle || !state.compose.open || composePostType() !== 'shortform') {
+      return;
+    }
+    event.preventDefault();
+    state.compose.shortformLimitEditing = true;
+    renderComposeUi();
+    if (els.composeSlot) {
+      var input = els.composeSlot.querySelector('[data-compose-field="shortform-limit"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+
   root.addEventListener('input', function (event) {
     var target = event.target;
     if (!(target instanceof HTMLElement) || !state.compose.open) {
+      return;
+    }
+    if (target.matches('[data-compose-field="shortform-limit"]')) {
       return;
     }
     if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"], [data-compose-field="link-url"], [data-compose-field="link-body"]')) {
@@ -2276,6 +2575,15 @@
         }
         if (composePostType() !== 'link-share') {
           state.compose.postType = 'link-share';
+        }
+      }
+      if (target.matches('[data-compose-field="content"]') && composePostType() === 'shortform') {
+        enforceComposeShortformLimitOnFields();
+        if (els.composeSlot) {
+          var meterButton = els.composeSlot.querySelector('[data-compose-action="shortform-limit-toggle"]');
+          if (meterButton instanceof HTMLButtonElement) {
+            meterButton.textContent = String(target.value || '').length + '/' + String(currentComposeShortformLimit());
+          }
         }
       }
       queueComposeAutosave();
@@ -2297,6 +2605,10 @@
     if (!(target instanceof HTMLInputElement) || !state.compose.open) {
       return;
     }
+    if (target.matches('[data-compose-field="shortform-limit"]')) {
+      setComposeShortformLimit(target.value, { editing: false });
+      return;
+    }
     if (!target.matches('[data-compose-upload]')) {
       return;
     }
@@ -2314,6 +2626,19 @@
     var target = event.target;
     if (!(target instanceof HTMLElement) || !state.compose.open) {
       return;
+    }
+    if (target.matches('[data-compose-field="shortform-limit"]')) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        setComposeShortformLimit(target.value, { editing: false });
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        state.compose.shortformLimitEditing = false;
+        renderComposeUi();
+        return;
+      }
     }
     if (target.matches('[data-compose-field="tags-input"]')) {
       if (event.key === 'Enter' || event.key === ',') {
@@ -2333,6 +2658,20 @@
         }
       }
     }
+  });
+
+  root.addEventListener('focusout', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLInputElement) || !state.compose.open) {
+      return;
+    }
+    if (!target.matches('[data-compose-field="shortform-limit"]')) {
+      return;
+    }
+    if (!state.compose.shortformLimitEditing) {
+      return;
+    }
+    setComposeShortformLimit(target.value, { editing: false });
   });
 
   document.addEventListener('paste', function (event) {
