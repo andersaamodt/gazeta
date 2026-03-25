@@ -17,8 +17,22 @@ cache_ttl_seconds=120
 now_epoch=$(date +%s 2>/dev/null || printf '0')
 cache_mtime=0
 cache_is_fresh=false
+
+file_mtime_epoch() {
+  file_path=$1
+  mtime=$(stat -c '%Y' "$file_path" 2>/dev/null || printf '')
+  case "$mtime" in
+    ''|*[!0-9]*) mtime=$(stat -f '%m' "$file_path" 2>/dev/null || printf '') ;;
+  esac
+  mtime=$(printf '%s\n' "$mtime" | sed -n '1p')
+  case "$mtime" in
+    ''|*[!0-9]*) mtime=0 ;;
+  esac
+  printf '%s\n' "$mtime"
+}
+
 if [ -f "$cache_file" ]; then
-  cache_mtime=$(stat -c '%Y' "$cache_file" 2>/dev/null || stat -f '%m' "$cache_file" 2>/dev/null || printf '0')
+  cache_mtime=$(file_mtime_epoch "$cache_file")
 fi
 if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && [ $((now_epoch - cache_mtime)) -le "$cache_ttl_seconds" ]; then
   cache_is_fresh=true
@@ -46,8 +60,8 @@ while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
   fi
   src_file=$(blog_nostr_page_mount_path "$slug" 2>/dev/null || printf '')
   if [ -n "$src_file" ] && [ -f "$src_file" ]; then
-    src_mtime=$(stat -c '%Y' "$src_file" 2>/dev/null || stat -f '%m' "$src_file" 2>/dev/null || printf '0')
-    html_mtime=$(stat -c '%Y' "$html_file" 2>/dev/null || stat -f '%m' "$html_file" 2>/dev/null || printf '0')
+    src_mtime=$(file_mtime_epoch "$src_file")
+    html_mtime=$(file_mtime_epoch "$html_file")
     if [ -n "$src_mtime" ] && [ -n "$html_mtime" ] && [ "$src_mtime" -gt "$html_mtime" ]; then
       needs_build=true
       break

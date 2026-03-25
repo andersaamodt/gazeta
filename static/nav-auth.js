@@ -371,39 +371,10 @@
   }
 
   function warmNavbarNostrPagePrefetch() {
-    var navCenter = document.querySelector('.nav-center');
-    if (!navCenter) {
-      return;
-    }
-    var currentPath = normalizeNavPath(window.location.pathname || '/');
-    var slugs = [];
-    Array.prototype.slice.call(navCenter.querySelectorAll('a[href]')).forEach(function (link) {
-      var href = String(link.getAttribute('href') || '').trim();
-      if (!href) {
-        return;
-      }
-      if (normalizeNavPath(href) === currentPath) {
-        return;
-      }
-      var slug = slugFromHref(href);
-      if (!slug) {
-        return;
-      }
-      if (slugs.indexOf(slug) >= 0) {
-        return;
-      }
-      slugs.push(slug);
-    });
-    if (!slugs.length) {
-      return;
-    }
-
-    // Stagger warm prefetches to avoid clobbering initial critical requests.
-    slugs.slice(0, 3).forEach(function (slug, idx) {
-      setTimeout(function () {
-        prefetchNostrPageBootstrap(slug);
-      }, 180 + (idx * 180));
-    });
+    // Intentionally disabled: this eager fanout added avoidable concurrent
+    // bootstrap CGI calls during first paint. Keep prefetch on direct user
+    // intent (hover/focus/touch) via bindNavbarNostrPagePrefetch().
+    return;
   }
 
   function hasNostrTools() {
