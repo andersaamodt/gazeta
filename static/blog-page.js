@@ -47,6 +47,7 @@
       draftId: '',
       tags: [],
       postType: 'longform',
+      publishDestination: 'nostr_now',
       linkUrl: '',
       linkBody: '',
       uploading: 0,
@@ -489,11 +490,6 @@
     return { kind: '30311', tags: 'streaming, starts, status=live' };
   }
 
-  function composeNostrTargetLabel(postType) {
-    var target = composeNostrTarget(postType);
-    return 'Nostr kind ' + target.kind + ' · ' + target.tags;
-  }
-
   function composePostTypeLabel(postType) {
     var type = normalizeComposePostType(postType);
     if (type === 'shortform') return 'Shortform Post';
@@ -504,6 +500,17 @@
     if (type === 'audio-note') return 'Audio Note';
     if (type === 'link-share') return 'Link Share';
     return 'Go Live';
+  }
+
+  function composeNostrPillsHtml(postType) {
+    var type = normalizeComposePostType(postType);
+    var target = composeNostrTarget(type);
+    var typeLabel = composePostTypeLabel(type);
+    var kindLabel = 'Nostr kind ' + target.kind;
+    var kindDetail = kindLabel + ' · ' + target.tags;
+    return '' +
+      '<span class="nostr-target-pill" title="' + escapeHtml(typeLabel) + '">' + escapeHtml(typeLabel) + '</span>' +
+      '<span class="nostr-target-pill" title="' + escapeHtml(kindDetail) + '">' + escapeHtml(kindLabel) + '</span>';
   }
 
   function composePostTypeIconSvg(type) {
@@ -570,7 +577,7 @@
         ' aria-pressed="' + (type === current ? 'true' : 'false') + '"' +
         ' aria-label="' + escapeHtml(label) + '"' +
         ' title="' + escapeHtml(title) + '"' +
-        '>' + icon + '<span class="sr-only">' + escapeHtml(label) + '</span></button>';
+        '>' + icon + '</button>';
     }
     return '' +
       '<div class="compose-post-type-toolbar" role="tablist" aria-label="Post type">' +
@@ -582,8 +589,7 @@
       btn('audio-note', 'Audio Note', false) +
       btn('link-share', 'Link Share', false) +
       btn('go-live', 'Go Live', true) +
-      '</div>' +
-      '<div class="compose-post-type-active-label" aria-live="polite">' + escapeHtml(composePostTypeLabel(current)) + '</div>';
+      '</div>';
   }
 
   function setComposePostType(nextType, options) {
@@ -822,24 +828,68 @@
     return 'immediate';
   }
 
-  function composePrimaryLabel(mode) {
+  function normalizeComposePublishDestination(raw) {
+    var picked = String(raw || '').trim().toLowerCase();
+    if (picked === 'local_only') {
+      return 'local_only';
+    }
+    return 'nostr_now';
+  }
+
+  function composePublishDestination() {
+    if (!els.composeSlot) {
+      return normalizeComposePublishDestination(state.compose.publishDestination);
+    }
+    var checked = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"]:checked');
+    var value = checked ? String(checked.value || '') : String(state.compose.publishDestination || '');
+    return normalizeComposePublishDestination(value);
+  }
+
+  function composePrimaryLabel(mode, destination) {
     if (mode === 'scheduled') {
       return 'Schedule Post';
     }
     if (mode === 'drip') {
       return 'Enqueue Post';
     }
+    if (normalizeComposePublishDestination(destination) === 'local_only') {
+      return 'Save Local Draft';
+    }
     return 'Publish Now';
   }
 
-  function composeModeAction(mode) {
+  function composeModeAction(mode, destination) {
     if (mode === 'scheduled') {
       return 'queue_scheduled';
     }
     if (mode === 'drip') {
       return 'queue_drip';
     }
+    if (normalizeComposePublishDestination(destination) === 'local_only') {
+      return 'save_draft';
+    }
     return 'publish_now';
+  }
+
+  function composeToolbarButtonHtml(action, label, icon) {
+    return '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="' + escapeHtml(action) + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '">' + icon + '</button>';
+  }
+
+  function composeToolbarHtml() {
+    return '' +
+      '<div class="toolbar blog-compose-toolbar" aria-label="Markdown toolbar">' +
+        composeToolbarButtonHtml('bold', 'Bold', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4.8H13.2C15.7 4.8 17.7 6.8 17.7 9.3C17.7 11.7 15.7 13.8 13.2 13.8H6.5V4.8Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M6.5 10.6H14.2C16.8 10.6 18.9 12.7 18.9 15.3C18.9 17.9 16.8 20 14.2 20H6.5V10.6Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('italic', 'Italic', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 5H16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M8 19H14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M14 5L10 19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
+        composeToolbarButtonHtml('h2', 'Heading 2', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5V19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M10 5V19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M4 12H10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M15 10C15.2 8.9 16 8.2 17.1 8.2C18.3 8.2 19.1 9 19.1 10C19.1 10.8 18.6 11.4 17.8 11.9L15.4 13.6H19.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('h3', 'Heading 3', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5V19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M10 5V19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M4 12H10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M14.8 9.3H19.2L16.6 12L19.2 14.7H14.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('code', 'Inline code', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 8.5L5 12L9 15.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8.5L19 12L15 15.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('code_block', 'Code block', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.8" y="5.2" width="16.4" height="13.6" rx="2.1" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 10L7.2 12L9.5 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 10L16.8 12L14.5 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('link', 'Insert link', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13.9L8.4 15.5C6.8 17.1 4.2 17.1 2.6 15.5C1 13.9 1 11.3 2.6 9.7L4.2 8.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 10.1L15.6 8.5C17.2 6.9 19.8 6.9 21.4 8.5C23 10.1 23 12.7 21.4 14.3L19.8 15.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 12H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>') +
+        composeToolbarButtonHtml('quote', 'Quote', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10.2H10V14.2H7.3C7.4 15.5 8 16.4 9.1 17" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.2 10.2H17.2V14.2H14.5C14.6 15.5 15.2 16.4 16.3 17" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('ul', 'Bullet list', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5.1" cy="7.2" r="1.2" fill="currentColor"/><circle cx="5.1" cy="12" r="1.2" fill="currentColor"/><circle cx="5.1" cy="16.8" r="1.2" fill="currentColor"/><path d="M9.2 7.2H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 12H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 16.8H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
+        composeToolbarButtonHtml('ol', 'Numbered list', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8V6.1L3 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.1 15.1C3.1 14.1 3.9 13.4 4.9 13.4C5.8 13.4 6.6 14.1 6.6 15C6.6 15.8 6.2 16.3 5.5 16.8L3.2 18.3H6.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.4 7.2H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.4 16.8H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
+        composeToolbarButtonHtml('image', 'Insert image', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/><circle cx="9.2" cy="10.2" r="1.2" fill="currentColor"/><path d="M6.2 16.1L10.7 11.7L13.2 14.2L16.1 11.5L17.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+      '</div>';
   }
 
   function renderComposePreviewHtml(title, content) {
@@ -911,7 +961,8 @@
       content: payloadContent,
       post_type: fields.postType,
       scheduled_at: composeLocalToIso(fields.scheduledAt),
-      publish_mode: composePublishMode()
+      publish_mode: composePublishMode(),
+      publish_destination: composePublishDestination()
     };
   }
 
@@ -940,6 +991,7 @@
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
+    state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
     setComposeTags([]);
@@ -962,6 +1014,10 @@
     }
     if (immediateMode instanceof HTMLInputElement) {
       immediateMode.checked = true;
+    }
+    var nostrNowTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="nostr_now"]');
+    if (nostrNowTarget instanceof HTMLInputElement) {
+      nostrNowTarget.checked = true;
     }
   }
 
@@ -1031,6 +1087,7 @@
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
+    state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
     setComposeOutput('', '');
@@ -1054,6 +1111,10 @@
     }
     if (immediateMode instanceof HTMLInputElement) {
       immediateMode.checked = true;
+    }
+    var nostrNowTarget = els.composeSlot.querySelector('input[name="blog-inline-compose-destination"][value="nostr_now"]');
+    if (nostrNowTarget instanceof HTMLInputElement) {
+      nostrNowTarget.checked = true;
     }
     renderComposeUi();
   }
@@ -1293,11 +1354,12 @@
       postType: composePostType()
     };
     var mode = composePublishMode();
+    var destination = composePublishDestination();
     var postType = normalizeComposePostType(fields.postType);
     state.compose.postType = postType;
+    state.compose.publishDestination = destination;
     state.compose.linkUrl = String(fields.linkUrl || '');
     state.compose.linkBody = String(fields.linkBody || '');
-    var nostrTargetLabel = composeNostrTargetLabel(postType);
     var previewContent = fields.content;
     if (postType === 'link-share') {
       var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
@@ -1362,7 +1424,7 @@
       '<article class="post-item blog-post-item blog-compose-card">' +
         '<div class="blog-compose-body">' +
           '<div class="field-row compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div>' +
-          '<div class="field-row compose-nostr-target-row"><span class="nostr-target-pill" title="' + escapeHtml(nostrTargetLabel) + '">' + escapeHtml(nostrTargetLabel) + '</span></div>' +
+          '<div class="field-row compose-nostr-target-row">' + composeNostrPillsHtml(postType) + '</div>' +
           '<div class="field-row blog-compose-title-row">' +
             '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
             '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
@@ -1374,19 +1436,7 @@
             : '<div class="field-row">' +
                 '<label><strong>' + escapeHtml(contentLabel) + '</strong></label>' +
                 '<div class="editor-shell blog-compose-editor-shell">' +
-                  '<div class="toolbar blog-compose-toolbar" aria-label="Markdown toolbar">' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="bold" title="Bold">B</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="italic" title="Italic">I</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="h2" title="Heading 2">H2</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="h3" title="Heading 3">H3</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="code" title="Inline code">&lt;/&gt;</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="code_block" title="Code block">```</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="link" title="Insert link">Link</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="quote" title="Quote">Quote</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="ul" title="Bullet list">• List</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="ol" title="Numbered list">1. List</button>' +
-                    '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="image" title="Insert image">Image</button>' +
-                  '</div>' +
+                  composeToolbarHtml() +
                   '<textarea data-compose-field="content" rows="' + (composePostTypeIsTextual(postType) ? '14' : '8') + '" placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
                 '</div>' +
               '</div>') +
@@ -1412,6 +1462,13 @@
               '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Drip Queue</label>' +
             '</div>' +
           '</div>' +
+          '<div class="field-row compose-destination-row">' +
+            '<strong>Publish Destination</strong>' +
+            '<div class="mode-row">' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Local only</label>' +
+            '</div>' +
+          '</div>' +
           '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
             '<label><strong>Scheduled Release Date/Time</strong></label>' +
             '<input type="datetime-local" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '">' +
@@ -1420,7 +1477,7 @@
         '<div class="compose-footer blog-compose-footer">' +
           '<div class="compose-actions blog-compose-footer-actions">' +
             '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-compose-action="delete" aria-label="Delete draft" title="Delete draft"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + composeTrashIconSvg() + '</button>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode)) + '</button>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode, destination)) + '</button>' +
           '</div>' +
           '<div class="blog-compose-status-row">' +
             '<div class="autosave-indicator' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
@@ -1440,9 +1497,11 @@
       return;
     }
     var mode = composePublishMode();
+    var destination = composePublishDestination();
+    state.compose.publishDestination = destination;
     var publishBtn = els.composeSlot.querySelector('[data-compose-action="publish"]');
     if (publishBtn instanceof HTMLButtonElement) {
-      publishBtn.textContent = composePrimaryLabel(mode);
+      publishBtn.textContent = composePrimaryLabel(mode, destination);
       publishBtn.disabled = !!state.compose.busy || state.compose.uploading > 0;
     }
     var scheduledRow = els.composeSlot.querySelector('.scheduled-row');
@@ -1869,7 +1928,7 @@
         return;
       }
       if (actionName === 'publish') {
-        saveCompose(composeModeAction(composePublishMode()));
+        saveCompose(composeModeAction(composePublishMode(), composePublishDestination()));
         return;
       }
       if (actionName === 'delete') {
@@ -1966,7 +2025,7 @@
       }
       return;
     }
-    if (target.matches('input[name="blog-inline-compose-mode"]')) {
+    if (target.matches('input[name="blog-inline-compose-mode"], input[name="blog-inline-compose-destination"]')) {
       renderComposeUi();
       queueComposeAutosave();
     }
