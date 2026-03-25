@@ -62,6 +62,26 @@
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
 
+  function ensureComposeStateShape() {
+    if (!state.compose || typeof state.compose !== 'object') {
+      state.compose = {};
+    }
+    if (typeof state.compose.open !== 'boolean') state.compose.open = false;
+    if (typeof state.compose.preview !== 'boolean') state.compose.preview = false;
+    if (typeof state.compose.draftId !== 'string') state.compose.draftId = '';
+    if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
+    if (typeof state.compose.postType !== 'string') state.compose.postType = 'longform';
+    if (typeof state.compose.publishDestination !== 'string') state.compose.publishDestination = 'nostr_now';
+    if (typeof state.compose.linkUrl !== 'string') state.compose.linkUrl = '';
+    if (typeof state.compose.linkBody !== 'string') state.compose.linkBody = '';
+    if (typeof state.compose.uploading !== 'number' || !isFinite(state.compose.uploading)) state.compose.uploading = 0;
+    if (typeof state.compose.autosaveTimer === 'undefined') state.compose.autosaveTimer = null;
+    if (typeof state.compose.busy !== 'boolean') state.compose.busy = false;
+    if (typeof state.compose.output !== 'string') state.compose.output = '';
+    if (typeof state.compose.outputTone !== 'string') state.compose.outputTone = '';
+    if (typeof state.compose.saveStatus !== 'string') state.compose.saveStatus = '';
+  }
+
   function normalizeSlug(value) {
     return String(value || '')
       .trim()
@@ -442,6 +462,7 @@
   }
 
   function composePostType() {
+    ensureComposeStateShape();
     return normalizeComposePostType(state.compose.postType);
   }
 
@@ -837,6 +858,7 @@
   }
 
   function composePublishDestination() {
+    ensureComposeStateShape();
     if (!els.composeSlot) {
       return normalizeComposePublishDestination(state.compose.publishDestination);
     }
@@ -1173,8 +1195,29 @@
   }
 
   function setComposeOpen(open) {
+    ensureComposeStateShape();
     state.compose.open = !!open;
-    renderComposeUi();
+    try {
+      renderComposeUi();
+    } catch (err) {
+      state.compose.open = false;
+      if (window && window.console && typeof window.console.error === 'function') {
+        window.console.error('Compose render failed', err);
+      }
+      if (els.composeSlot) {
+        els.composeSlot.hidden = true;
+        els.composeSlot.classList.remove('is-open');
+        els.composeSlot.innerHTML = '';
+      }
+      if (els.composeFab) {
+        els.composeFab.classList.remove('is-open');
+        els.composeFab.setAttribute('aria-expanded', 'false');
+        els.composeFab.setAttribute('aria-pressed', 'false');
+        els.composeFab.setAttribute('aria-label', 'Compose');
+      }
+      setComposeOutput('Compose failed to open. Reload and try again.', 'error');
+      return;
+    }
     if (state.compose.open && els.composeSlot) {
       setTimeout(function () {
         var title = els.composeSlot.querySelector('[data-compose-field="title"]');
@@ -1316,6 +1359,7 @@
   }
 
   function renderComposeUi() {
+    ensureComposeStateShape();
     ensureComposeHosts();
     if (!els.composeSlot || !els.composeFab) {
       return;
