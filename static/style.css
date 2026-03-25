@@ -6016,6 +6016,19 @@ footer {
   animation: spin 0.75s linear infinite;
 }
 
+.zaps-runtime-action.is-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: progress;
+}
+
+.zaps-runtime-action.is-loading .loading-spinner {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-width: 2px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   body {

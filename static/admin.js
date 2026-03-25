@@ -81,10 +81,13 @@
     moderationAgeFilter: '30d',
     nosterRuntime: null,
     nosterActionInFlight: false,
+    nosterActionPending: '',
     zapsRuntimeInfo: null,
     zapsActionInFlight: false,
+    zapsActionPending: '',
     btcpayRuntimeInfo: null,
     btcpayActionInFlight: false,
+    btcpayActionPending: '',
     initialContentPainted: false,
     loadedAdminSections: {},
     sidebarCollapsed: false
@@ -2607,6 +2610,25 @@
     };
   }
 
+  function runtimeActionButtonHtml(config) {
+    const opts = config && typeof config === 'object' ? config : {};
+    const action = String(opts.action || '').trim();
+    const label = String(opts.label || '').trim();
+    const dataAttr = String(opts.dataAttr || '').trim();
+    const disabled = !!opts.disabled;
+    const loading = !!opts.loading;
+    const title = String(opts.title || '').trim();
+    if (!action || !label || !dataAttr) {
+      return '';
+    }
+    const disabledAttr = disabled ? ' disabled aria-disabled="true"' : '';
+    const titleAttr = title ? ' title="' + escapeAttr(title) + '"' : '';
+    if (loading) {
+      return '<button type="button" class="zaps-runtime-action is-loading" data-' + dataAttr + '="' + escapeAttr(action) + '"' + disabledAttr + ' aria-busy="true"' + titleAttr + '><span class="loading-spinner" aria-hidden="true"></span><span>Installing...</span></button>';
+    }
+    return '<button type="button" class="zaps-runtime-action" data-' + dataAttr + '="' + escapeAttr(action) + '"' + disabledAttr + titleAttr + '>' + escapeHtml(label) + '</button>';
+  }
+
   function renderNosterRuntime(runtime, logText, message) {
     if (!els.nosterRuntime) {
       return;
@@ -2638,7 +2660,13 @@
     html += '<div class="field-row"><div class="setting-label"><strong>Install Stonr</strong></div>'
       + (stonrInstalled
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-noster-action="install"' + actionDisabledAttr + '>Install Stonr</button>'))
+        : runtimeActionButtonHtml({
+          action: 'install',
+          label: 'Install Stonr',
+          dataAttr: 'noster-action',
+          disabled: state.nosterActionInFlight,
+          loading: state.nosterActionInFlight && state.nosterActionPending === 'install'
+        }))
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Relay URL Setup</strong></div>'
       + '<button type="button" class="zaps-runtime-action" data-noster-action="activate_relay_url"' + relayUrlDisabledAttr + '>Activate Relay URL Flow</button>'
@@ -2748,6 +2776,7 @@
       return;
     }
     state.nosterActionInFlight = true;
+    state.nosterActionPending = picked;
     setNosterButtonsBusy(true);
     renderNosterRuntime(state.nosterRuntime || {}, '', 'Running ' + picked + '...');
     try {
@@ -2762,6 +2791,7 @@
       setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
     } finally {
       state.nosterActionInFlight = false;
+      state.nosterActionPending = '';
       setNosterButtonsBusy(false);
     }
   }
@@ -2867,22 +2897,41 @@
     const bitcoinReady = !!info.bitcoin_installed;
     const lightningReady = !!info.lightning_installed;
     const wizardryPath = String(info.wizardry_path || '').trim();
-    const installDisabledAttr = state.zapsActionInFlight ? ' disabled' : '';
+    const lightningBlocked = !bitcoinReady && !lightningReady;
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
       + (wizardryReady
         ? ('<div class="zaps-runtime-value is-ok">' + escapeHtml(wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') + '</div>')
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_wizardry"' + installDisabledAttr + '>Install</button>'))
+        : runtimeActionButtonHtml({
+          action: 'install_wizardry',
+          label: 'Install',
+          dataAttr: 'zaps-action',
+          disabled: state.zapsActionInFlight,
+          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_wizardry'
+        }))
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Bitcoin</strong></div>'
       + (bitcoinReady
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_bitcoin"' + installDisabledAttr + '>Install (~500 MB)</button>'))
+        : runtimeActionButtonHtml({
+          action: 'install_bitcoin',
+          label: 'Install (~500 MB)',
+          dataAttr: 'zaps-action',
+          disabled: state.zapsActionInFlight,
+          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_bitcoin'
+        }))
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Lightning</strong></div>'
       + (lightningReady
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-zaps-action="install_lightning"' + installDisabledAttr + '>Install (~150 MB)</button>'))
+        : runtimeActionButtonHtml({
+          action: 'install_lightning',
+          label: 'Install (~150 MB)',
+          dataAttr: 'zaps-action',
+          disabled: state.zapsActionInFlight || lightningBlocked,
+          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_lightning',
+          title: lightningBlocked ? 'Install Bitcoin first.' : ''
+        }))
       + '</div>';
     if (message) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
@@ -2925,10 +2974,18 @@
     if (!label) {
       return;
     }
+    if (picked === 'install_lightning') {
+      const runtimeInfo = state.zapsRuntimeInfo && typeof state.zapsRuntimeInfo === 'object' ? state.zapsRuntimeInfo : {};
+      if (!runtimeInfo.bitcoin_installed) {
+        setOutput(els.outputZaps, 'Install Bitcoin first before installing Lightning.', 'warn');
+        return;
+      }
+    }
     if (!window.confirm('Run the ' + label + ' installer on this server now?')) {
       return;
     }
     state.zapsActionInFlight = true;
+    state.zapsActionPending = picked;
     setZapsButtonsBusy(true);
     renderZapsRuntime(state.zapsRuntimeInfo || {}, '', 'Running ' + label + ' installer...');
     try {
@@ -2943,6 +3000,7 @@
       setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
     } finally {
       state.zapsActionInFlight = false;
+      state.zapsActionPending = '';
       setZapsButtonsBusy(false);
     }
   }
@@ -2999,7 +3057,6 @@
     const wizardryPath = String(info.wizardry_path || '').trim();
     const btcpayHost = String(info.btcpay_host || '').trim();
     const btcpayUrl = String(info.btcpay_url || '').trim();
-    const actionDisabledAttr = state.btcpayActionInFlight ? ' disabled' : '';
 
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
@@ -3010,7 +3067,9 @@
     html += '<div class="field-row"><div class="setting-label"><strong>BTCPay Server</strong></div>'
       + (btcpayReady
         ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : ('<button type="button" class="zaps-runtime-action" data-btcpay-action="install_btcpay"' + actionDisabledAttr + '>Install</button>'))
+        : (state.btcpayActionInFlight && state.btcpayActionPending === 'install_btcpay'
+          ? '<button type="button" class="zaps-runtime-action is-loading" data-btcpay-action="install_btcpay" disabled aria-disabled="true" aria-busy="true"><span class="loading-spinner" aria-hidden="true"></span><span>Installing...</span></button>'
+          : '<button type="button" class="zaps-runtime-action" data-btcpay-action="install_btcpay"' + (state.btcpayActionInFlight ? ' disabled aria-disabled="true"' : '') + '>Install</button>'))
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Process</strong></div>'
       + '<div class="zaps-runtime-value ' + (btcpayRunning ? 'is-ok' : 'is-warn') + '">' + (btcpayRunning ? 'Running' : 'Stopped') + '</div>'
@@ -3064,6 +3123,7 @@
       return;
     }
     state.btcpayActionInFlight = true;
+    state.btcpayActionPending = picked;
     setBtcpayButtonsBusy(true);
     renderBtcpayRuntime(state.btcpayRuntimeInfo || {}, '', 'Running ' + label + '...');
     try {
@@ -3078,6 +3138,7 @@
       setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
     } finally {
       state.btcpayActionInFlight = false;
+      state.btcpayActionPending = '';
       setBtcpayButtonsBusy(false);
     }
   }
