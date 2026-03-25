@@ -50,6 +50,9 @@
       publishDestination: 'nostr_now',
       linkUrl: '',
       linkBody: '',
+      cameraStream: null,
+      cameraStarting: false,
+      cameraError: '',
       uploading: 0,
       autosaveTimer: null,
       busy: false,
@@ -74,6 +77,9 @@
     if (typeof state.compose.publishDestination !== 'string') state.compose.publishDestination = 'nostr_now';
     if (typeof state.compose.linkUrl !== 'string') state.compose.linkUrl = '';
     if (typeof state.compose.linkBody !== 'string') state.compose.linkBody = '';
+    if (typeof state.compose.cameraStarting !== 'boolean') state.compose.cameraStarting = false;
+    if (typeof state.compose.cameraError !== 'string') state.compose.cameraError = '';
+    if (typeof state.compose.cameraStream === 'undefined') state.compose.cameraStream = null;
     if (typeof state.compose.uploading !== 'number' || !isFinite(state.compose.uploading)) state.compose.uploading = 0;
     if (typeof state.compose.autosaveTimer === 'undefined') state.compose.autosaveTimer = null;
     if (typeof state.compose.busy !== 'boolean') state.compose.busy = false;
@@ -628,6 +634,17 @@
     if (!opts.skipAutosave) {
       queueComposeAutosave();
     }
+    if (opts.interactive) {
+      if (normalized === 'upload-media' || normalized === 'attachment' || normalized === 'audio-note') {
+        setTimeout(function () {
+          openComposePickerForType(normalized);
+        }, 0);
+      } else if (normalized === 'capture-media') {
+        setTimeout(function () {
+          applyComposeModeEffects('capture-media');
+        }, 0);
+      }
+    }
   }
 
   function normalizeTagValue(tag) {
@@ -788,6 +805,130 @@
     });
   }
 
+  function composePickerFieldByType(type) {
+    var picked = normalizeComposePostType(type);
+    if (picked === 'capture-media') return 'capture-upload';
+    if (picked === 'upload-media') return 'media-upload';
+    if (picked === 'attachment') return 'file-upload';
+    if (picked === 'audio-note') return 'audio-upload';
+    return '';
+  }
+
+  function openComposePickerForType(type) {
+    if (!els.composeSlot) {
+      return false;
+    }
+    var field = composePickerFieldByType(type);
+    if (!field) {
+      return false;
+    }
+    var picker = els.composeSlot.querySelector('[data-compose-field="' + field + '"]');
+    if (!(picker instanceof HTMLInputElement)) {
+      return false;
+    }
+    picker.click();
+    return true;
+  }
+
+  function stopComposeCameraStream() {
+    ensureComposeStateShape();
+    var stream = state.compose.cameraStream;
+    if (stream && typeof stream.getTracks === 'function') {
+      stream.getTracks().forEach(function (track) {
+        if (track && typeof track.stop === 'function') {
+          track.stop();
+        }
+      });
+    }
+    state.compose.cameraStream = null;
+    state.compose.cameraStarting = false;
+  }
+
+  function attachComposeCameraPreview() {
+    if (!els.composeSlot) {
+      return;
+    }
+    var video = els.composeSlot.querySelector('[data-compose-camera-preview]');
+    if (!(video instanceof HTMLVideoElement)) {
+      return;
+    }
+    if (state.compose.cameraStream && video.srcObject !== state.compose.cameraStream) {
+      video.srcObject = state.compose.cameraStream;
+    }
+    if (video.srcObject) {
+      video.play().catch(function () {
+        // Ignore autoplay restrictions; controls are still available.
+      });
+    }
+  }
+
+  function ensureComposeCameraStream() {
+    ensureComposeStateShape();
+    if (state.compose.cameraStream || state.compose.cameraStarting) {
+      attachComposeCameraPreview();
+      return;
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      state.compose.cameraError = 'Camera is unavailable in this browser.';
+      renderComposeUi();
+      return;
+    }
+    state.compose.cameraStarting = true;
+    state.compose.cameraError = '';
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true })
+      .catch(function () {
+        return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      })
+      .then(function (stream) {
+        state.compose.cameraStream = stream || null;
+      })
+      .catch(function (err) {
+        state.compose.cameraError = String((err && err.message) || 'Could not access camera.');
+      })
+      .finally(function () {
+        state.compose.cameraStarting = false;
+        renderComposeUi();
+      });
+  }
+
+  function capturePhotoFromComposeCamera() {
+    if (!els.composeSlot) {
+      return;
+    }
+    var video = els.composeSlot.querySelector('[data-compose-camera-preview]');
+    if (!(video instanceof HTMLVideoElement)) {
+      setComposeOutput('Camera preview is not ready yet.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    var width = video.videoWidth;
+    var height = video.videoHeight;
+    if (!width || !height) {
+      setComposeOutput('Camera preview is still starting. Try again in a moment.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setComposeOutput('Could not capture from camera.', 'error');
+      renderComposeStatusOnly();
+      return;
+    }
+    ctx.drawImage(video, 0, 0, width, height);
+    canvas.toBlob(function (blob) {
+      if (!blob) {
+        setComposeOutput('Could not capture photo.', 'error');
+        renderComposeStatusOnly();
+        return;
+      }
+      var file = new File([blob], 'capture-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+      handleComposeUploads([file], 'capture-media');
+    }, 'image/jpeg', 0.92);
+  }
+
   function isEditableTarget(target) {
     if (!target || !(target instanceof Element)) {
       return false;
@@ -911,7 +1052,76 @@
         composeToolbarButtonHtml('ul', 'Bullet list', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5.1" cy="7.2" r="1.2" fill="currentColor"/><circle cx="5.1" cy="12" r="1.2" fill="currentColor"/><circle cx="5.1" cy="16.8" r="1.2" fill="currentColor"/><path d="M9.2 7.2H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 12H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 16.8H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
         composeToolbarButtonHtml('ol', 'Numbered list', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8V6.1L3 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.1 15.1C3.1 14.1 3.9 13.4 4.9 13.4C5.8 13.4 6.6 14.1 6.6 15C6.6 15.8 6.2 16.3 5.5 16.8L3.2 18.3H6.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.4 7.2H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.4 16.8H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
         composeToolbarButtonHtml('image', 'Insert image', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/><circle cx="9.2" cy="10.2" r="1.2" fill="currentColor"/><path d="M6.2 16.1L10.7 11.7L13.2 14.2L16.1 11.5L17.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('attachment', 'Attach file', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.2 12.8L14.4 7.6C15.8 6.2 18 6.2 19.4 7.6C20.8 9 20.8 11.2 19.4 12.6L11.2 20.8C8.9 23.1 5.2 23.1 2.9 20.8C0.6 18.5 0.6 14.8 2.9 12.5L11 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
       '</div>';
+  }
+
+  function composeModePanelHtml(postType, fields) {
+    var type = normalizeComposePostType(postType);
+    if (type === 'capture-media') {
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel compose-camera-panel">' +
+          '<div class="compose-camera-shell">' +
+            '<video class="compose-camera-preview" data-compose-camera-preview playsinline autoplay muted></video>' +
+          '</div>' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="capture-photo">Capture Photo</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="capture-media">Use Camera App / Upload</button>' +
+          '</div>' +
+          '<div class="compose-camera-status">' +
+            (state.compose.cameraStarting
+              ? 'Requesting camera access...'
+              : (state.compose.cameraError ? escapeHtml(state.compose.cameraError) : 'Camera is live. Capture a frame or upload media.')) +
+          '</div>' +
+        '</div>';
+    }
+    if (type === 'upload-media') {
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="upload-media">Upload Photo/Video</button>' +
+          '</div>' +
+        '</div>';
+    }
+    if (type === 'attachment') {
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="attachment">Browse Attachment/File</button>' +
+          '</div>' +
+        '</div>';
+    }
+    if (type === 'audio-note') {
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="audio-note">Upload Audio</button>' +
+          '</div>' +
+        '</div>';
+    }
+    if (type === 'link-share') {
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-link-fields">' +
+            '<label><strong>Link URL</strong></label>' +
+            '<input type="url" data-compose-field="link-url" placeholder="https://example.com" value="' + escapeHtml(fields.linkUrl) + '">' +
+            '<label><strong>Body</strong></label>' +
+            '<textarea rows="3" data-compose-field="link-body" placeholder="Optional note">' + escapeHtml(fields.linkBody) + '</textarea>' +
+          '</div>' +
+        '</div>';
+    }
+    return '';
+  }
+
+  function applyComposeModeEffects(postType) {
+    var type = normalizeComposePostType(postType);
+    root.classList.toggle('blog-camera-mode', !!state.compose.open && type === 'capture-media');
+    if (!state.compose.open || type !== 'capture-media') {
+      stopComposeCameraStream();
+      return;
+    }
+    ensureComposeCameraStream();
+    attachComposeCameraPreview();
   }
 
   function renderComposePreviewHtml(title, content) {
@@ -1012,6 +1222,7 @@
     state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
+    stopComposeCameraStream();
     setComposeTags([]);
     var fields = readComposeFields();
     if (!fields || !els.composeSlot) {
@@ -1108,6 +1319,7 @@
     state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
+    stopComposeCameraStream();
     setComposeOutput('', '');
     setComposeTags([]);
     if (!els.composeSlot) {
@@ -1197,6 +1409,7 @@
       renderComposeUi();
     } catch (err) {
       state.compose.open = false;
+      stopComposeCameraStream();
       if (window && window.console && typeof window.console.error === 'function') {
         window.console.error('Compose render failed', err);
       }
@@ -1348,6 +1561,9 @@
         var start = text.indexOf('https://');
         return { text: text, cursorStart: start, cursorEnd: start + 8 };
       });
+    } else if (action === 'attachment') {
+      openComposePickerForType('attachment');
+      return;
     }
 
     queueComposeAutosave();
@@ -1364,6 +1580,7 @@
     els.composeFab.hidden = !admin;
     if (!admin) {
       state.compose.open = false;
+      applyComposeModeEffects('longform');
       els.composeSlot.hidden = true;
       els.composeSlot.classList.remove('is-open');
       els.composeSlot.innerHTML = '';
@@ -1374,6 +1591,7 @@
     els.composeFab.setAttribute('aria-pressed', state.compose.open ? 'true' : 'false');
     els.composeFab.setAttribute('aria-label', state.compose.open ? 'Close compose' : 'Compose');
     if (!state.compose.open) {
+      applyComposeModeEffects('longform');
       els.composeSlot.classList.remove('is-open');
       setTimeout(function () {
         if (!state.compose.open && els.composeSlot) {
@@ -1431,26 +1649,7 @@
     } else if (postType === 'capture-media' || postType === 'upload-media') {
       titlePlaceholder = 'Media title (optional)';
     }
-    var mediaToolsHtml = '';
-    if (!composePostTypeIsTextual(postType)) {
-      mediaToolsHtml = '' +
-        '<div class="compose-media-tools">' +
-          '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-capture-media">Take Photo/Video</button>' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-media">Upload Photo/Video</button>' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-file">Upload Attachment/File</button>' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="pick-upload-audio">Upload Audio</button>' +
-          '</div>' +
-          (postType === 'link-share'
-            ? '<div class="compose-link-fields">' +
-                '<label><strong>Link URL</strong></label>' +
-                '<input type="url" data-compose-field="link-url" placeholder="https://example.com" value="' + escapeHtml(fields.linkUrl) + '">' +
-                '<label><strong>Body</strong></label>' +
-                '<textarea rows="3" data-compose-field="link-body" placeholder="Optional note">' + escapeHtml(fields.linkBody) + '</textarea>' +
-              '</div>'
-            : '') +
-        '</div>';
-    }
+    var mediaToolsHtml = composeModePanelHtml(postType, fields);
     var tagsHtml = state.compose.tags.map(function (tag) {
       return '<span class="tag-pill"><span>' + escapeHtml(tag) + '</span><button type="button" class="tag-pill-remove" data-compose-action="remove-tag" data-compose-tag="' + escapeHtml(tag) + '" aria-label="Remove tag ' + escapeHtml(tag) + '">×</button></span>';
     }).join('');
@@ -1529,6 +1728,7 @@
       if (els.composeSlot) {
         els.composeSlot.classList.add('is-open');
       }
+      applyComposeModeEffects(postType);
     });
   }
 
@@ -1964,7 +2164,7 @@
         return;
       }
       if (actionName === 'set-post-type') {
-        setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''));
+        setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''), { interactive: true });
         return;
       }
       if (actionName === 'publish') {
@@ -1979,6 +2179,14 @@
         removeComposeTag(String(composeAction.getAttribute('data-compose-tag') || ''));
         renderComposeUi();
         queueComposeAutosave();
+        return;
+      }
+      if (actionName === 'open-mode-picker') {
+        openComposePickerForType(String(composeAction.getAttribute('data-compose-mode-target') || composePostType()));
+        return;
+      }
+      if (actionName === 'capture-photo') {
+        capturePhotoFromComposeCamera();
         return;
       }
       if (actionName === 'pick-capture-media' || actionName === 'pick-upload-media' || actionName === 'pick-upload-file' || actionName === 'pick-upload-audio') {
@@ -2145,6 +2353,10 @@
       clearFilters();
     });
   }
+
+  window.addEventListener('beforeunload', function () {
+    stopComposeCameraStream();
+  });
 
   removeLegacyTitleBlock();
   ensureFilterGutterLayout();
