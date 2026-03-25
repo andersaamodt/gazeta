@@ -3429,6 +3429,17 @@ blog_wizardry_exec_path() {
   printf '%s\n' "$wizardry_path"
 }
 
+blog_fix_build_page_permissions() {
+  build_dir="$blog_site_root/build"
+  pages_dir="$build_dir/pages"
+  if [ -d "$pages_dir" ]; then
+    find "$pages_dir" -type f -name '*.html' ! -name '._*' -exec chmod 644 {} + >/dev/null 2>&1 || true
+  fi
+  if [ -d "$build_dir" ]; then
+    find "$build_dir" -maxdepth 1 -type f \( -name '*.xml' -o -name 'robots.txt' -o -name '.wizardry-build-stamp' \) -exec chmod 644 {} + >/dev/null 2>&1 || true
+  fi
+}
+
 blog_run_build_async() {
   wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
   if [ -z "$wizardry_dir" ]; then
@@ -3437,12 +3448,16 @@ blog_run_build_async() {
   wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
 
   if command -v nohup >/dev/null 2>&1; then
-    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null &
+    (
+      env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+      blog_fix_build_page_permissions >/dev/null 2>&1 || true
+    ) >/dev/null 2>&1 &
     return 0
   fi
 
   (
     env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+    blog_fix_build_page_permissions >/dev/null 2>&1 || true
   ) &
 }
 
