@@ -5780,6 +5780,16 @@ footer {
   background: transparent;
 }
 
+.blog-compose-card .compose-tags-toggle {
+  width: auto;
+  min-width: 0;
+  justify-self: start;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
 .blog-compose-card .mode-row {
   display: flex;
   flex-wrap: wrap;

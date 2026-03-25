@@ -46,6 +46,7 @@
       preview: false,
       draftId: '',
       tags: [],
+      tagsOpen: false,
       postType: 'longform',
       publishDestination: 'nostr_now',
       linkUrl: '',
@@ -73,6 +74,7 @@
     if (typeof state.compose.preview !== 'boolean') state.compose.preview = false;
     if (typeof state.compose.draftId !== 'string') state.compose.draftId = '';
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
+    if (typeof state.compose.tagsOpen !== 'boolean') state.compose.tagsOpen = false;
     if (typeof state.compose.postType !== 'string') state.compose.postType = 'longform';
     if (typeof state.compose.publishDestination !== 'string') state.compose.publishDestination = 'nostr_now';
     if (typeof state.compose.linkUrl !== 'string') state.compose.linkUrl = '';
@@ -677,6 +679,7 @@
       return false;
     }
     state.compose.tags.push(tag);
+    state.compose.tagsOpen = true;
     syncComposeTagsField();
     return true;
   }
@@ -1219,6 +1222,7 @@
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
+    state.compose.tagsOpen = false;
     state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
@@ -1316,6 +1320,7 @@
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
+    state.compose.tagsOpen = false;
     state.compose.publishDestination = 'nostr_now';
     state.compose.linkUrl = '';
     state.compose.linkBody = '';
@@ -1687,10 +1692,13 @@
             '<div class="field-row">' +
               '<label><strong>Tags</strong></label>' +
               '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
-              '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
-                '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
-                '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
-              '</div>' +
+              (state.compose.tagsOpen
+                ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
+                    '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
+                    '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
+                    '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
+                  '</div>'
+                : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
             '</div>' +
           '</div>' +
           '<div class="field-row compose-release-row">' +
@@ -2179,6 +2187,11 @@
         removeComposeTag(String(composeAction.getAttribute('data-compose-tag') || ''));
         renderComposeUi();
         queueComposeAutosave();
+        return;
+      }
+      if (actionName === 'toggle-tags') {
+        state.compose.tagsOpen = !state.compose.tagsOpen;
+        renderComposeUi();
         return;
       }
       if (actionName === 'open-mode-picker') {
