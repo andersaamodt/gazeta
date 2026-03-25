@@ -71,10 +71,13 @@ EOS
 
 check_script_present "$ROOT_DIR/pages/index.md" '/static/blog-page.js'
 check_script_then_marked "$ROOT_DIR/pages/about.md" '/static/nip23-page.js'
+check_script_present "$ROOT_DIR/pages/list.md" '/static/nostr-page-bootstrap/list.js'
 check_script_then_marked "$ROOT_DIR/pages/list.md" '/static/list-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/nip23-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/public-ranking-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/list-page.js'
+check_script_present "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/nostr-page-bootstrap/$slug.js'
+check_script_present "$ROOT_DIR/cgi/pre-build" 'blog-prerender-nostr-page-bootstraps'
 check_generated_public_ranking_shell
 
 printf '%s\n' 'ok'
