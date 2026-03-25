@@ -6651,11 +6651,12 @@ button.loading::after {
   }
 }
 
-/* Final nav layout overrides: full-bleed top bar (not constrained to body width) */
+/* Final nav layout overrides */
 nav.site-nav {
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -6766,22 +6767,24 @@ nav.site-nav {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 0.45rem;
     padding: 0.24rem 0.55rem;
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .nav-center {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     width: auto;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
     white-space: nowrap;
   }
 
   .nav-right {
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: max-content;
     width: auto;
     justify-content: flex-end;
     align-items: center;
@@ -6790,7 +6793,7 @@ nav.site-nav {
   }
 
   .nav-search {
-    flex: 0 1 220px;
+    flex: 0 1 clamp(140px, 22vw, 220px);
     min-width: 130px;
     max-width: 230px;
     margin: 0;
