@@ -96,6 +96,10 @@
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
   }
 
+  function compact(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
   function markInitialContentPainted() {
     if (state.initialContentPainted) {
       return;
