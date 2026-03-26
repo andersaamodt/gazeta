@@ -7386,7 +7386,7 @@ body.nostr-publish-dialog-open {
 }
 
 /* Final mobile nav safety: prevent search/actions from covering center links. */
-@media (max-width: 1100px) and (min-width: 701px) {
+@media (max-width: 1400px) and (min-width: 701px) {
   nav.site-nav {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
@@ -7429,6 +7429,9 @@ body.nostr-publish-dialog-open {
     grid-row: 2;
     width: 100% !important;
     min-width: 0 !important;
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.42rem;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     white-space: nowrap;
