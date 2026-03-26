@@ -7385,113 +7385,61 @@ body.nostr-publish-dialog-open {
   }
 }
 
-/* Final mobile nav safety: prevent search/actions from covering center links. */
-@media (max-width: 1400px) and (min-width: 701px) {
+/* Final nav invariant: always single-row; never stack onto a second line. */
+@media (max-width: 1400px) {
   nav.site-nav {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto;
-    row-gap: 0.34rem;
+    display: flex !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
-    overflow: visible !important;
+    justify-content: flex-start !important;
+    gap: 0.4rem;
+    overflow: hidden !important;
+    padding: 0.24rem 0.55rem;
   }
 
   nav.site-nav .nav-site-signature {
     display: none !important;
   }
 
-  nav.site-nav .nav-right {
-    grid-row: 1;
-    width: 100% !important;
+  nav.site-nav .nav-center {
+    flex: 1 1 auto !important;
     min-width: 0 !important;
+    width: auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav .nav-center::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav.site-nav .nav-center a {
+    white-space: nowrap;
+  }
+
+  nav.site-nav .nav-right {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
     display: flex;
     flex-wrap: nowrap !important;
     align-items: center !important;
     justify-content: flex-end !important;
     gap: 0.4rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-
-  nav.site-nav .nav-right::-webkit-scrollbar {
-    display: none;
   }
 
   nav.site-nav .nav-search {
-    flex: 0 1 clamp(148px, 26vw, 240px) !important;
-    min-width: 132px !important;
-    max-width: 240px !important;
+    flex: 0 1 clamp(132px, 21vw, 220px) !important;
+    min-width: 112px !important;
+    max-width: 220px !important;
     width: auto !important;
-  }
-
-  nav.site-nav .nav-center {
-    grid-row: 2;
-    width: 100% !important;
-    min-width: 0 !important;
-    display: flex;
-    justify-content: flex-start;
-    gap: 0.42rem;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap;
-    scrollbar-width: none;
-  }
-
-  nav.site-nav .nav-center::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* Final mobile nav safety: prevent search/actions from covering center links. */
-@media (max-width: 700px) {
-  nav.site-nav {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto;
-    row-gap: 0.34rem;
-    align-items: start !important;
-    overflow: visible !important;
-  }
-
-  nav.site-nav .nav-center {
-    grid-row: 1;
-    width: 100% !important;
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap;
-    scrollbar-width: none;
-  }
-
-  nav.site-nav .nav-center::-webkit-scrollbar {
-    display: none;
-  }
-
-  nav.site-nav .nav-right {
-    grid-row: 2;
-    width: 100% !important;
-    min-width: 0 !important;
-    display: flex;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 0.4rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-
-  nav.site-nav .nav-right::-webkit-scrollbar {
-    display: none;
-  }
-
-  nav.site-nav .nav-search {
-    flex: 1 1 12rem !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    width: auto !important;
+    margin: 0 !important;
   }
 
   nav.site-nav .nav-search input[type="text"] {
@@ -7507,5 +7455,38 @@ body.nostr-publish-dialog-open {
   nav.site-nav .nav-compose,
   nav.site-nav .nav-username {
     flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 920px) {
+  nav.site-nav .nav-center a {
+    padding: 0.3rem 0.64rem;
+    font-size: 0.84rem;
+  }
+
+  nav.site-nav .nav-search {
+    flex: 0 1 170px !important;
+    min-width: 120px !important;
+    max-width: 170px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  nav.site-nav .nav-search {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  nav.site-nav .nav-search input[type="text"] {
+    display: none !important;
+  }
+
+  nav.site-nav .nav-search button {
+    width: 40px !important;
+    min-width: 40px !important;
+    padding: 0 !important;
+    border-left: 1px solid var(--nav-border, var(--border));
+    border-radius: 20px !important;
   }
 }
