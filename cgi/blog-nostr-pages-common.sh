@@ -1241,7 +1241,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nip23-page.js?v=20260326-pagefix3"></script>
+<script src="/static/nip23-page.js?v=20260326-pagefix5"></script>
 EONIP23
       ;;
     blog)
@@ -1304,7 +1304,7 @@ license: "CC BY 4.0"
 </div>
 </section>
 
-<script src="/static/blog-page.js?v=20260326-pagefix4"></script>
+<script src="/static/blog-page.js?v=20260326-pagefix5"></script>
 EOBLOG
       ;;
     public-ranking)
@@ -1358,7 +1358,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260326-pagefix3"></script>
+<script src="/static/list-page.js?v=20260326-pagefix5"></script>
 EOICONGALLERY
       ;;
     *)
@@ -1385,7 +1385,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260326-pagefix3"></script>
+<script src="/static/list-page.js?v=20260326-pagefix5"></script>
 EOLIST
       ;;
   esac
