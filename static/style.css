@@ -5318,6 +5318,29 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: 0;
 }
 
+.post-single-item .post-single-byline {
+  margin-top: 0.22rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.16rem;
+}
+
+.post-single-item .post-single-author {
+  display: block;
+  margin-top: 0;
+  text-align: center;
+  font-size: 0.84rem;
+  line-height: 1.25;
+}
+
+.post-single-item .post-single-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .post-meta {
   color: var(--light-text);
   font-size: 0.84rem;
@@ -5329,13 +5352,15 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 .post-single-item .post-reading-inline {
   color: var(--light-text);
   font-size: 0.84rem;
+  line-height: 1.25;
   white-space: nowrap;
 }
 
 .post-single-item .post-date-published {
-  margin-left: auto;
+  margin-left: 0;
   color: var(--light-text);
   font-size: 0.84rem;
+  line-height: 1.25;
   white-space: nowrap;
   text-align: right;
 }
