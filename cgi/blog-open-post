@@ -11,6 +11,18 @@ blog_read_request_body
 
 path=$(blog_param path)
 if [ -z "$path" ]; then
+  path=${PATH_INFO-}
+fi
+if [ -z "$path" ]; then
+  uri=${REQUEST_URI-}
+  case "$uri" in
+    *'/cgi/blog-open-post/'*)
+      path=${uri#*'/cgi/blog-open-post/'}
+      path=${path%%\?*}
+      ;;
+  esac
+fi
+if [ -z "$path" ]; then
   http-status 400 "Bad Request"
   http-header "Content-Type" "text/plain; charset=utf-8"
   http-end-headers
@@ -18,7 +30,13 @@ if [ -z "$path" ]; then
   exit 0
 fi
 
-path=$(printf '%s' "$path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/posts/##' -e 's#^posts/##')
+path=$(printf '%s' "$path" | sed \
+  -e 's#^https\{0,1\}://[^/]*/##' \
+  -e 's#^[?].*$##' \
+  -e 's#^/##' \
+  -e 's#^cgi/blog-open-post/##' \
+  -e 's#^pages/posts/##' \
+  -e 's#^posts/##')
 case "$path" in
   *'..'*|*'\\'*|*'//'*)
     http-status 400 "Bad Request"
@@ -60,6 +78,8 @@ if [ "$visibility" != "public" ]; then
 fi
 
 rel_html=${rel_md%.md}.html
+rel_slug=${rel_md%.md}
+canonical_url="/posts/$rel_slug"
 html_file="$blog_site_root/build/pages/posts/$rel_html"
 wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
 wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
@@ -70,7 +90,7 @@ fi
 
 if [ -f "$html_file" ]; then
   http-status 302 "Found"
-  http-header "Location" "/pages/posts/$rel_html"
+  http-header "Location" "$canonical_url"
   http-end-headers
   exit 0
 fi

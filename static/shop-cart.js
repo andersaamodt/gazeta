@@ -291,7 +291,7 @@
       return;
     }
     if (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) {
-      window.location.href = '/pages/cart.html';
+      window.location.href = '/cart';
       return;
     }
     els.drawer.hidden = false;

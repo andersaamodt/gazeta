@@ -24,10 +24,13 @@
 
   function isPostPage(pathname) {
     var path = String(pathname || '');
-    if (/^\/pages\/posts\/.+\.html$/.test(path)) {
+    if (/^\/posts\/[^/?#]+\/?$/.test(path)) {
       return true;
     }
-    if (path === '/cgi/blog-open-post') {
+    if (/^\/pages\/posts\/[^/?#]+(?:\.html?)?\/?$/.test(path)) {
+      return true;
+    }
+    if (path === '/cgi/blog-open-post' || path.indexOf('/cgi/blog-open-post/') === 0) {
       return true;
     }
     return false;
@@ -314,7 +317,7 @@
           if (!data || !data.success) {
             throw new Error((data && data.error) || 'Delete failed');
           }
-          window.location.href = '/pages/archive.html';
+          window.location.href = '/archive';
         })
         .catch(function (err) {
           window.alert(err.message || 'Delete failed');
@@ -351,7 +354,7 @@
       if (!t) {
         return '';
       }
-      return '<a class="tag" href="/pages/tags.html#' + encodeURIComponent(t) + '">' + escapeHtml(t) + '</a>';
+      return '<a class="tag" href="/tags#' + encodeURIComponent(t) + '">' + escapeHtml(t) + '</a>';
     }).filter(Boolean);
     if (!chips.length) {
       return '';
@@ -1103,9 +1106,10 @@
     if (!isPostPage(window.location.pathname)) {
       return;
     }
-    if (window.location.pathname === '/cgi/blog-open-post') {
+    if (window.location.pathname === '/cgi/blog-open-post' || window.location.pathname.indexOf('/cgi/blog-open-post/') === 0) {
       var query = new URLSearchParams(window.location.search || '');
-      currentRelPath = normalizePostMdPath(query.get('path') || '');
+      var fromPathInfo = String(window.location.pathname || '').replace(/^\/cgi\/blog-open-post\/?/, '');
+      currentRelPath = normalizePostMdPath(query.get('path') || fromPathInfo || '');
     } else {
       currentRelPath = normalizePostMdPath(window.location.pathname || '');
     }

@@ -91,7 +91,7 @@
       + '<div class="cart-page-summary-row"><span>Estimated crypto total</span><strong>$' + fmtMoney(cryptoSubtotal) + '</strong></div>'
       + '<div class="cart-page-summary-actions">'
       + '<button type="button" id="cart-page-clear">Clear Cart</button>'
-      + '<a href="/pages/checkout.html" class="cart-page-link-button cart-page-link-button-primary">Continue to Checkout</a>'
+      + '<a href="/checkout" class="cart-page-link-button cart-page-link-button-primary">Continue to Checkout</a>'
       + '</div>'
       + '</div>'
       + '</section>';

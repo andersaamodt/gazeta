@@ -243,7 +243,7 @@ assert_contains "$webhook_out" '"status":"paid"' 'webhook marks order as paid'
 purchase_out=$(run_purchase_cgi 'format=json&product=sample-product&qty=1&payment_method=credit&provider=paybis')
 assert_contains "$purchase_out" '"success":true' 'purchase json flow succeeds'
 assert_contains "$purchase_out" '"provider":"paybis"' 'purchase flow keeps requested provider'
-assert_contains "$purchase_out" '"checkout_url":"/pages/checkout.html?order_id=' 'purchase flow emits checkout url'
+assert_contains "$purchase_out" '"checkout_url":"/checkout?order_id=' 'purchase flow emits checkout url'
 
 # 7) /download rejects invalid tokens.
 download_missing=$(run_download_cgi 'product=sample-product')

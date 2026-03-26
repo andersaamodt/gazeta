@@ -555,7 +555,7 @@ blog_public_ranking_view_json() {
           summary: (($posts | map(select(.address == $coord) | .summary) | first) // ""),
           content: "",
           status: "approved",
-          url: (($posts | map(select(.address == $coord and (.html_path // "") != "") | ("/pages/" + .html_path)) | first) // ""),
+          url: (($posts | map(select(.address == $coord and (.html_path // "") != "") | ("/" + .html_path)) | first) // ""),
           post_ref: $coord,
           author: "",
           parent: "",

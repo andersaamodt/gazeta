@@ -89,7 +89,7 @@ else
       printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
         clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
         [ -n "$clean" ] || continue
-        printf '    <a href="/pages/tags.html#%s" class="tag">%s</a>\n' \
+        printf '    <a href="/tags#%s" class="tag">%s</a>\n' \
           "$(blog_html_escape "$clean")" "$(blog_html_escape "$clean")"
       done
       printf '  </div>\n'

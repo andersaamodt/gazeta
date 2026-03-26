@@ -2983,7 +2983,7 @@ blog_nostr_rebuild_derived() {
             address: (($ev.kind | tostring) + ":" + $ev.pubkey + ":" + $ev.d),
             uri: ("nostr:" + ($ev.kind | tostring) + ":" + $ev.pubkey + ":" + $ev.d),
             md_path: ("posts/" + (if ($slug_raw | length) > 0 then $slug_raw else "post" end) + ".md"),
-            html_path: ("posts/" + (if ($slug_raw | length) > 0 then $slug_raw else "post" end) + ".html")
+            html_path: ("posts/" + (if ($slug_raw | length) > 0 then $slug_raw else "post" end))
           }
       )
   ' "$nostr_events_tmp" > "$nostr_posts_tmp"
@@ -3909,9 +3909,14 @@ blog_base_url() {
   printf '%s://%s\n' "$scheme" "$domain"
 }
 
-blog_rel_post_html_url() {
+blog_rel_post_url() {
   file=$1
   rel=${file#"$blog_posts_dir/"}
-  rel_html=${rel%.md}.html
-  printf '/pages/posts/%s\n' "$rel_html"
+  rel_slug=${rel%.md}
+  printf '/posts/%s\n' "$rel_slug"
+}
+
+blog_rel_post_html_url() {
+  # Backward-compatible helper name; canonical post URLs are extensionless.
+  blog_rel_post_url "$1"
 }

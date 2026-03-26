@@ -263,7 +263,7 @@
       + '<div><span>Crypto total</span><strong>$' + fmtMoney(cryptoTotal) + '</strong></div>'
       + '</div>'
       + '<div class="checkout-links">'
-      + '<a href="/pages/cart.html" class="checkout-link-button">Back to Cart</a>'
+      + '<a href="/cart" class="checkout-link-button">Back to Cart</a>'
       + '</div>'
       + renderOrderPanel()
       + '</div>'

@@ -609,7 +609,7 @@
     html += '</div>';
     html += '<div class="nip23-product-actions">';
     html += '<button type="button" class="nip23-product-btn" data-nip23-action="add-to-cart">Add to Cart</button>';
-    html += '<a class="nip23-product-btn nip23-product-btn-primary" href="/pages/checkout.html?product=' + encodeURIComponent(slug) + '">Checkout Now</a>';
+    html += '<a class="nip23-product-btn nip23-product-btn-primary" href="/checkout?product=' + encodeURIComponent(slug) + '">Checkout Now</a>';
     html += '</div>';
     html += '</section>';
     return html;
@@ -975,7 +975,7 @@
       csrf_token: auth.csrf_token
     }).then(function (payload) {
       if (payload && payload.success === false && slug === 'index' && String(payload.code || '') === 'unknown_page') {
-        window.location.replace('/pages/blog.html');
+        window.location.replace('/posts');
         return;
       }
       if (!isExpectedPayload(payload)) {

@@ -75,7 +75,7 @@ provider_url_for_order() {
       if [ -n "$btcpay_host" ]; then
         printf 'https://%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_host" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
       else
-        printf '/pages/checkout.html?order_id=%s\n' "$(blog_url_encode "$order_id")"
+        printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
       ;;
     paybis)
@@ -183,7 +183,7 @@ order_json=$(jq -cn \
   --arg payment_method "$payment_method" \
   --arg purchase_token "$purchase_token" \
   --arg provider_url "$provider_url" \
-  --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+  --arg checkout_url "/checkout?order_id=$order_id" \
   --argjson created_at "$now" \
   --argjson line "$line_json" \
   --arg subtotal "$(blog_payments_format_money "$subtotal_num")" \
@@ -210,7 +210,7 @@ blog_payments_order_save_json "$order_id" "$order_json"
 resp_json=$(jq -cn \
   --argjson order "$order_json" \
   --arg provider_url "$provider_url" \
-  --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+  --arg checkout_url "/checkout?order_id=$order_id" \
   '{success:true, order:$order, provider_url:$provider_url, checkout_url:$checkout_url}')
 
 format=$(printf '%s' "$(blog_param format)" | tr '[:upper:]' '[:lower:]')

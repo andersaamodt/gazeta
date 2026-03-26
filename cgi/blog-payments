@@ -194,7 +194,7 @@ provider_url_for_order() {
       if [ -n "$btcpay_url" ]; then
         printf '%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
       else
-        printf '/pages/checkout.html?order_id=%s\n' "$(blog_url_encode "$order_id")"
+        printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
       ;;
     paybis)
@@ -303,7 +303,7 @@ case "$action" in
       --argjson quote "$quoted" \
       --arg purchase_token "$purchase_token" \
       --arg provider_url "$provider_url" \
-      --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+      --arg checkout_url "/checkout?order_id=$order_id" \
       --argjson created_at "$now" \
       '{
         order_id: $order_id,
@@ -327,7 +327,7 @@ case "$action" in
     jq -cn \
       --argjson order "$order_json" \
       --arg provider_url "$provider_url" \
-      --arg checkout_url "/pages/checkout.html?order_id=$order_id" \
+      --arg checkout_url "/checkout?order_id=$order_id" \
       '{
         success: true,
         order: $order,

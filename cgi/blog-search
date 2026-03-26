@@ -13,7 +13,7 @@ blog_send_html_headers
 query=$(blog_param q)
 
 printf '<div class="search-form">\n'
-printf '  <form method="get" action="/pages/search.html">\n'
+printf '  <form method="get" action="/search">\n'
 printf '    <input type="text" name="q" value="%s" placeholder="Search posts..." autofocus />\n' "$(blog_html_escape "$query")"
 printf '    <button type="submit">Search</button>\n'
 printf '  </form>\n'
@@ -85,7 +85,7 @@ else
       printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
         clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
         [ -n "$clean" ] || continue
-        printf '        <a href="/pages/tags.html#%s" class="tag">%s</a>\n' "$(blog_html_escape "$clean")" "$(blog_html_escape "$clean")"
+        printf '        <a href="/tags#%s" class="tag">%s</a>\n' "$(blog_html_escape "$clean")" "$(blog_html_escape "$clean")"
       done
       printf '      </div>\n'
     fi

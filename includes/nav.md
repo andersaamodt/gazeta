@@ -68,7 +68,7 @@
   </button>
   <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
 </div>
-<form class="nav-search" method="get" action="/pages/search.html">
+<form class="nav-search" method="get" action="/search">
 <input type="text" name="q" placeholder="Search..." />
 <button type="submit" aria-label="Search">
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -78,7 +78,7 @@
 </button>
 </form>
 <div class="nav-compose-tools" id="nav-compose-tools" style="display:none;">
-<a href="/pages/admin.html#compose" class="nav-compose nav-compose-icon" aria-label="Compose post" title="Compose post">
+<a href="/admin#compose" class="nav-compose nav-compose-icon" aria-label="Compose post" title="Compose post">
 <!-- Icon is replaced by nav-auth.js -->
 <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"/>
@@ -93,11 +93,11 @@
 </svg>
 <span id="nav-cart-count" class="nav-cart-count" hidden>0</span>
 </button>
-<a id="nav-user-name" class="nav-username" href="/pages/admin.html#account" style="display:none;"></a>
+<a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋯</button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
-    <a id="nav-menu-primary-link" class="nav-menu-item" href="/pages/admin.html" role="menuitem">Admin</a>
+    <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
     <button id="nav-menu-logout" class="nav-menu-item nav-menu-item-danger" type="button" role="menuitem">Logout</button>
   </div>
@@ -155,7 +155,7 @@
     if (userName) {
       userName.style.display = 'none';
       userName.textContent = '';
-      userName.setAttribute('href', '/pages/admin.html#account');
+      userName.setAttribute('href', '/admin#account');
     }
 
     if (hasToken) {
@@ -169,7 +169,7 @@
         userName.style.display = 'inline-block';
         userName.textContent = cachedPlayerName || 'signed-in';
         userName.setAttribute('aria-label', 'Open account settings');
-        userName.setAttribute('href', '/pages/admin.html#account');
+        userName.setAttribute('href', '/admin#account');
       }
     } else if (loginSplit) {
       loginSplit.style.display = 'inline-flex';
@@ -253,8 +253,8 @@
   <div class="nav-cart-drawer-footer">
     <div class="nav-cart-subtotal-row"><span>Subtotal</span><strong id="nav-cart-subtotal">$0.00</strong></div>
     <div class="nav-cart-drawer-links">
-      <a href="/pages/cart.html" class="nav-cart-link-button">View Cart</a>
-      <a href="/pages/checkout.html" class="nav-cart-link-button nav-cart-link-button-primary">Checkout</a>
+      <a href="/cart" class="nav-cart-link-button">View Cart</a>
+      <a href="/checkout" class="nav-cart-link-button nav-cart-link-button-primary">Checkout</a>
     </div>
   </div>
 </aside>

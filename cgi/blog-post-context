@@ -86,13 +86,13 @@ post_json() {
   reading_minutes=$(blog_estimated_read_minutes "$word_count")
   url=$(blog_rel_post_html_url "$file")
   rel=${file#"$blog_posts_dir/"}
-  rel_html=${rel%.md}.html
+  rel_path="posts/${rel%.md}"
 
   printf '{'
   printf '"title":"%s",' "$(blog_json_escape "$title")"
   printf '"author":"%s",' "$(blog_json_escape "$author")"
   printf '"url":"%s",' "$(blog_json_escape "$url")"
-  printf '"path":"%s",' "$(blog_json_escape "$rel_html")"
+  printf '"path":"%s",' "$(blog_json_escape "$rel_path")"
   printf '"published_at":"%s",' "$(blog_json_escape "$published_at")"
   printf '"published_date":"%s",' "$(blog_json_escape "$published_date")"
   printf '"summary":"%s",' "$(blog_json_escape "$summary")"

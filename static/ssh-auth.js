@@ -261,7 +261,7 @@
     updateCurrentIdentity({ username: finish.username, fingerprint: finish.fingerprint });
     showOutput(
       els.outputLogin,
-      'Signed in as <strong>' + escapeHtml(finish.username) + '</strong>. <a href="admin.html">Open admin panel</a>.',
+      'Signed in as <strong>' + escapeHtml(finish.username) + '</strong>. <a href="/admin">Open admin panel</a>.',
       'ok'
     );
   }

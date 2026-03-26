@@ -1055,7 +1055,7 @@
       els.userName.style.display = 'none';
       els.userName.textContent = '';
       els.userName.removeAttribute('aria-label');
-      els.userName.setAttribute('href', '/pages/admin.html#account');
+      els.userName.setAttribute('href', '/admin#account');
       els.userName.classList.remove('active');
       els.userName.removeAttribute('aria-current');
     }
@@ -1073,10 +1073,10 @@
         if (els.menuPrimaryLink) {
           if (isAdmin) {
             els.menuPrimaryLink.textContent = 'Admin';
-            els.menuPrimaryLink.href = '/pages/admin.html';
+            els.menuPrimaryLink.href = '/admin';
           } else {
             els.menuPrimaryLink.textContent = 'Account';
-            els.menuPrimaryLink.href = '/pages/admin.html#account';
+            els.menuPrimaryLink.href = '/admin#account';
           }
         }
         els.userMenu.style.display = 'inline-flex';
@@ -1085,7 +1085,7 @@
         els.userName.style.display = 'inline-block';
         els.userName.textContent = displayName || 'signed-in';
         els.userName.setAttribute('aria-label', 'Open account settings');
-        els.userName.setAttribute('href', '/pages/admin.html#account');
+        els.userName.setAttribute('href', '/admin#account');
         updateUserNameActiveState();
       }
       scheduleNavOverflowMenuSync();
@@ -2221,7 +2221,8 @@
     }
 
     if (els.composeLink) {
-      var onCompose = currentPath.indexOf('/pages/admin.html') !== -1 && currentHash === '#compose';
+      var normalizedComposePath = normalizeNavPath(currentPath);
+      var onCompose = (normalizedComposePath === '/admin') && currentHash === '#compose';
       els.composeLink.classList.toggle('active', onCompose);
       els.composeLink.setAttribute('aria-disabled', onCompose ? 'true' : 'false');
       if (onCompose) {
