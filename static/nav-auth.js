@@ -1860,14 +1860,6 @@
     els.navOverflowBtn.setAttribute('aria-expanded', 'true');
   }
 
-  function isCompactOverflowBreakpoint() {
-    try {
-      return !!(window.matchMedia && window.matchMedia('(max-width: 980px)').matches);
-    } catch (_err) {
-      return false;
-    }
-  }
-
   function setNavOverflowButtonCount(hiddenCount) {
     if (!els.navOverflowBtn) {
       return;
@@ -1907,19 +1899,23 @@
     els.navOverflowMenu.hidden = true;
     setNavOverflowButtonCount(0);
 
-    if (!isCompactOverflowBreakpoint() || links.length < 2) {
+    if (links.length < 2) {
       return;
     }
 
-    if (navCenter.scrollWidth <= navCenter.clientWidth) {
+    var initialOverflowPx = navCenter.scrollWidth - navCenter.clientWidth;
+    if (initialOverflowPx <= 2) {
       return;
     }
 
-    var reservePx = 76;
+    var reservePx = 44;
+    if (els.navOverflowBtn && els.navOverflowBtn.offsetWidth) {
+      reservePx = Math.ceil(els.navOverflowBtn.offsetWidth + 12);
+    }
     var hiddenLinks = [];
     var safety = 0;
     var activeLink = links.find(function (link) { return link.classList.contains('active'); }) || null;
-    while (navCenter.scrollWidth > (navCenter.clientWidth - reservePx) && safety < links.length) {
+    while (navCenter.scrollWidth > ((navCenter.clientWidth - reservePx) + 2) && safety < links.length) {
       var candidate = null;
       for (var i = links.length - 1; i >= 0; i -= 1) {
         var link = links[i];
