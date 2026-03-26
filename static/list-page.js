@@ -1894,8 +1894,8 @@
     var canToggle = !(idx === 0 && guiDepth === 0);
     var html = '';
 
-    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(guiDepth) + '" style="--list-depth:' + String(guiDepth) + ';" draggable="true">';
-    html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</div>';
+    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(guiDepth) + '" style="--list-depth:' + String(guiDepth) + ';" draggable="false">';
+    html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-label="Drag to reorder" draggable="true" data-list-drag-handle="true">⋮⋮</div>';
 
     var markdownText = String(el && el.markdown || '').trim();
     var tileDescription = String(el && el.description || '').trim();

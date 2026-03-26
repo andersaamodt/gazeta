@@ -122,7 +122,7 @@ assert_file_contains "$ROOT_DIR/static/admin.js" "const COMPOSE_POST_TYPES_ENABL
 assert_file_contains "$ROOT_DIR/static/admin.js" 'if (type === '\''go-live'\'') { return '\''go live'\''; }' 'admin js labels go-live'
 assert_file_contains "$ROOT_DIR/static/admin.js" "setOutput(els.outputCompose, 'Go Live is a future feature.', 'warn');" 'admin js surfaces go-live disabled message'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'els.composeMediaTools.hidden = !showMedia;' 'admin js toggles media tool visibility by type'
-assert_file_contains "$ROOT_DIR/static/admin.js" 'els.composeLinkFields.hidden = type !== '\''link-share'\'';' 'admin js toggles link fields visibility'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'els.composeLinkFields.hidden = !linkShare;' 'admin js toggles link fields visibility'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'composeShortformLimit: 280,' 'admin js tracks shortform limit state'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'function setComposeShortformLimit(raw, opts) {' 'admin js supports editable shortform limits'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'els.postContent.rows = 11;' 'admin shortform textarea uses reduced height'

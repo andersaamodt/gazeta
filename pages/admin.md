@@ -298,7 +298,7 @@ title: ""
 </div>
 
 <div id="compose-media-tools" class="compose-media-tools" hidden>
-<div class="compose-media-actions">
+<div id="compose-media-actions" class="compose-media-actions">
 <button type="button" id="btn-compose-capture" class="unobtrusive-icon-button compose-media-btn">Take Photo/Video</button>
 <button type="button" id="btn-compose-upload-media" class="unobtrusive-icon-button compose-media-btn">Upload Photo/Video</button>
 <button type="button" id="btn-compose-upload-file" class="unobtrusive-icon-button compose-media-btn">Upload Attachment/File</button>
@@ -317,7 +317,7 @@ title: ""
 <input type="text" id="post-title" placeholder="Post title">
 </div>
 
-<div class="field-row">
+<div id="compose-content-row" class="field-row">
 <label for="post-content"><strong>Content</strong></label>
 <div class="editor-shell">
 <div class="toolbar" aria-label="Markdown toolbar">

@@ -138,7 +138,9 @@
     composePostTypeToolbar: document.getElementById('compose-post-type-toolbar'),
     composeNostrTargetPill: document.getElementById('compose-nostr-target-pill'),
     composeMediaTools: document.getElementById('compose-media-tools'),
+    composeMediaActions: document.getElementById('compose-media-actions'),
     composeLinkFields: document.getElementById('compose-link-fields'),
+    composeContentRow: document.getElementById('compose-content-row'),
     composeLinkUrl: document.getElementById('compose-link-url'),
     composeLinkBody: document.getElementById('compose-link-body'),
     composeCaptureButton: document.getElementById('btn-compose-capture'),
@@ -1714,6 +1716,7 @@
 
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
+    const linkShare = type === 'link-share';
     if (els.composePostTypeToolbar) {
       Array.from(els.composePostTypeToolbar.querySelectorAll('[data-post-type]')).forEach(function (node) {
         const picked = normalizeComposePostType(node.getAttribute('data-post-type') || '');
@@ -1726,8 +1729,14 @@
       const showMedia = !composePostTypeIsTextual(type);
       els.composeMediaTools.hidden = !showMedia;
     }
+    if (els.composeMediaActions) {
+      els.composeMediaActions.hidden = linkShare;
+    }
     if (els.composeLinkFields) {
-      els.composeLinkFields.hidden = type !== 'link-share';
+      els.composeLinkFields.hidden = !linkShare;
+    }
+    if (els.composeContentRow) {
+      els.composeContentRow.hidden = linkShare;
     }
     if (els.composeNostrTargetPill) {
       const label = composeNostrTargetLabel(type);

@@ -2031,6 +2031,8 @@ body.nav-cart-open {
   box-sizing: border-box;
   padding: 0.35rem 0.55rem;
   line-height: 1.2;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .list-inline-eventid input[type="text"] {
