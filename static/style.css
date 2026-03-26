@@ -1857,6 +1857,10 @@ body.nav-cart-open {
   white-space: nowrap;
 }
 
+.list-inline-edit-controls .list-default-markers-setting {
+  gap: 0.32rem;
+}
+
 .list-inline-edit-controls .list-marker-filter-setting {
   gap: 0.28rem;
 }
@@ -1877,6 +1881,13 @@ body.nav-cart-open {
 .list-inline-edit-controls select {
   width: auto !important;
   min-width: 0;
+  height: 2.05rem;
+}
+
+.list-inline-edit-controls .list-default-markers-setting input[type="text"] {
+  width: 19rem;
+  min-width: 12rem;
+  max-width: min(38vw, 24rem);
   height: 2.05rem;
 }
 

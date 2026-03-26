@@ -168,6 +168,7 @@ if [ -z "$state_json" ]; then
       show_marker_filters=$(blog_param show_marker_filters)
       show_markers=$(blog_param show_markers)
       alphabetize_markers=$(blog_param alphabetize_markers)
+      default_markers=$(blog_param default_markers)
       group_by=$(blog_param group_by)
       view_mode=$(blog_param view_mode)
       content=$(blog_param content)
@@ -199,6 +200,7 @@ if [ -z "$state_json" ]; then
         --arg show_marker_filters "$show_marker_filters" \
         --arg show_markers "$show_markers" \
         --arg alphabetize_markers "$alphabetize_markers" \
+        --arg default_markers "$default_markers" \
         --arg group_by "$group_by" \
         --arg view_mode "$view_mode" \
         --arg content "$content" \
@@ -216,6 +218,7 @@ if [ -z "$state_json" ]; then
           show_marker_filters: (($show_marker_filters | ascii_downcase) == "true"),
           show_markers: (($show_markers | ascii_downcase) == "true"),
           alphabetize_markers: (($alphabetize_markers | ascii_downcase) == "true"),
+          default_markers: $default_markers,
           group_by: $group_by,
           view_mode: $view_mode,
           content: $content,

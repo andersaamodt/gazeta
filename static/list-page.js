@@ -68,6 +68,7 @@
     pendingNewEntry: null,
     markerFilterInclude: [],
     markerFilterExclude: [],
+    markerFilterInitialized: false,
     markerColorByToken: {},
     viewModeOverride: '',
     createProductBusyUid: '',
@@ -122,6 +123,18 @@
       markers.push(token);
     });
     return markers.join(', ');
+  }
+
+  function markerTokensFromText(text) {
+    var normalized = normalizeMarkerListText(text);
+    if (!normalized) {
+      return [];
+    }
+    return normalized.split(',').map(function (part) {
+      return compact(part);
+    }).filter(function (token) {
+      return !!token;
+    });
   }
 
   function markInitialContentPainted() {
@@ -244,6 +257,8 @@
     state.pendingNewEntry = null;
     state.markerFilterInclude = [];
     state.markerFilterExclude = [];
+    state.markerFilterInitialized = false;
+    state.markerColorByToken = {};
     state.createProductBusyUid = '';
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
@@ -786,6 +801,7 @@
       show_marker_filters: !!s.show_marker_filters,
       show_markers: !!s.show_markers,
       alphabetize_markers: !!s.alphabetize_markers,
+      default_markers: normalizeMarkerListText(s.default_markers || ''),
       group_by: String(s.group_by || ''),
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
@@ -1014,6 +1030,25 @@
     });
   }
 
+  function ensureDefaultMarkerFilters(availableMarkers, rawDefaultMarkers) {
+    if (state.markerFilterInitialized) {
+      return;
+    }
+    state.markerFilterInitialized = true;
+    var defaults = markerTokensFromText(rawDefaultMarkers || '');
+    if (!defaults.length) {
+      return;
+    }
+    var allowed = {};
+    (Array.isArray(availableMarkers) ? availableMarkers : []).forEach(function (marker) {
+      allowed[String(marker)] = true;
+    });
+    state.markerFilterInclude = defaults.filter(function (marker) {
+      return !!allowed[String(marker)];
+    });
+    state.markerFilterExclude = [];
+  }
+
   function applyMarkerFilters(entries) {
     var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude : [];
     var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude : [];
@@ -1061,11 +1096,12 @@
     return 'Click to filter. ' + multiKey + '-click to multi-select. ' + excludeKey + '-click to filter out.';
   }
 
-  function renderMarkerFilters(entries) {
+  function renderMarkerFilters(entries, defaultMarkersRaw) {
     buildMarkerColorMap(entries);
     var markers = uniqueMarkerValues(entries).slice().sort(function (a, b) {
       return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
     });
+    ensureDefaultMarkerFilters(markers, defaultMarkersRaw);
     pruneMarkerFilters(markers);
     if (!markers.length) {
       return '';
@@ -1131,6 +1167,7 @@
         show_marker_filters: !!state.draft.show_marker_filters,
         show_markers: !!state.draft.show_markers,
         alphabetize_markers: !!state.draft.alphabetize_markers,
+        default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
@@ -1146,6 +1183,7 @@
       show_marker_filters: !!src.show_marker_filters,
       show_markers: !!src.show_markers,
       alphabetize_markers: !!src.alphabetize_markers,
+      default_markers: normalizeMarkerListText(src.default_markers || ''),
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
@@ -1348,6 +1386,10 @@
     if (alphabetizeMarkersInput instanceof HTMLInputElement) {
       state.draft.alphabetize_markers = !!alphabetizeMarkersInput.checked;
     }
+    var defaultMarkersInput = els.content ? els.content.querySelector('[data-list-default-markers]') : null;
+    if (defaultMarkersInput instanceof HTMLInputElement) {
+      state.draft.default_markers = normalizeMarkerListText(defaultMarkersInput.value || '');
+    }
   }
 
   async function refreshValidation() {
@@ -1398,6 +1440,7 @@
         show_marker_filters: state.draft.show_marker_filters ? 'true' : 'false',
         show_markers: state.draft.show_markers ? 'true' : 'false',
         alphabetize_markers: state.draft.alphabetize_markers ? 'true' : 'false',
+        default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
         group_by: state.draft.group_by || '',
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         content: state.draft.content || '',
@@ -2052,16 +2095,17 @@
     return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
   }
 
-  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers, alphabetizeMarkers) {
+  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers, alphabetizeMarkers, defaultMarkersRaw) {
     var html = '';
     var allEntries = Array.isArray(entries) ? entries : [];
     buildMarkerColorMap(allEntries);
     html += renderProductGalleryViewModeControl(viewMode);
     if (showMarkerFilters) {
-      html += renderMarkerFilters(allEntries);
+      html += renderMarkerFilters(allEntries, defaultMarkersRaw);
     } else {
       state.markerFilterInclude = [];
       state.markerFilterExclude = [];
+      state.markerFilterInitialized = false;
     }
     var filteredEntries = applyMarkerFilters(allEntries);
     if (!filteredEntries.length) {
@@ -2209,20 +2253,26 @@
     var canUndo = state.undoStack.length > 0;
     var canRedo = state.redoStack.length > 0;
     var addTitle = pendingUnedited ? 'Edit the new entry before adding another' : 'Add entry';
+    var groupByTip = 'Choose how entries are grouped in this list.';
+    var showMarkersTip = 'Show marker pills on each list item.';
+    var alphabetizeMarkersTip = 'Sort marker pills alphabetically on each list item.';
+    var showMarkerFiltersTip = 'Show clickable marker pills for filtering.';
+    var defaultMarkersTip = 'Comma-delimited markers preselected on page load for all users. Filter changes reset on refresh.';
     html += '<section class="nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
-    html += '<label><span>Group by</span><select id="list-admin-group-by">';
+    html += '<label title="' + escapeHtml(groupByTip) + '"><span title="' + escapeHtml(groupByTip) + '">Group by</span><select id="list-admin-group-by" title="' + escapeHtml(groupByTip) + '" aria-label="Group by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
     html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
     html += '<option value="first_letter"' + (state.draft.group_by === 'first_letter' ? ' selected' : '') + '>First letter</option>';
     html += '<option value="month"' + (state.draft.group_by === 'month' ? ' selected' : '') + '>Month</option>';
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
-    html += '<label class="list-show-markers-setting"><input type="checkbox" data-list-show-markers="true"' + (state.draft.show_markers ? ' checked' : '') + '><span>Show markers</span></label>';
-    html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '"><input type="checkbox" data-list-alphabetize-markers="true"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span>Alphabetize markers</span></label>';
-    html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span>Show marker-based filters</span></label>';
+    html += '<label class="list-show-markers-setting" title="' + escapeHtml(showMarkersTip) + '"><input type="checkbox" data-list-show-markers="true" title="' + escapeHtml(showMarkersTip) + '"' + (state.draft.show_markers ? ' checked' : '') + '><span title="' + escapeHtml(showMarkersTip) + '">Show markers</span></label>';
+    html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '" title="' + escapeHtml(alphabetizeMarkersTip) + '"><input type="checkbox" data-list-alphabetize-markers="true" title="' + escapeHtml(alphabetizeMarkersTip) + '"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span title="' + escapeHtml(alphabetizeMarkersTip) + '">Alphabetize markers</span></label>';
+    html += '<label class="list-marker-filter-setting" title="' + escapeHtml(showMarkerFiltersTip) + '"><input type="checkbox" data-list-show-marker-filters="true" title="' + escapeHtml(showMarkerFiltersTip) + '"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span title="' + escapeHtml(showMarkerFiltersTip) + '">Show marker-based filters</span></label>';
+    html += '<label class="list-default-markers-setting" title="' + escapeHtml(defaultMarkersTip) + '"><span title="' + escapeHtml(defaultMarkersTip) + '">Default markers</span><input type="text" data-list-default-markers="true" title="' + escapeHtml(defaultMarkersTip) + '" value="' + escapeHtml(state.draft.default_markers || '') + '" placeholder="marker one, marker two"></label>';
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right">';
     html += '<button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
@@ -2230,7 +2280,7 @@
     html += '</div>';
     html += '</section>';
     if (state.draft.show_marker_filters) {
-      html += renderMarkerFilters(entryElements);
+      html += renderMarkerFilters(entryElements, state.draft.default_markers);
       workingElements = applyMarkerFilters(entryElements);
     }
 
@@ -2340,7 +2390,7 @@
     var readViewMode = currentReadViewMode(s);
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers) + afterContent;
+    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
     refreshProductCartButtons();
     renderAdmin();
   }
@@ -3002,6 +3052,11 @@
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-default-markers')) {
+        state.draft.default_markers = String(target.value || '');
+        queueAutosave(500);
+        return;
+      }
       var uid = String(target.getAttribute('data-element-uid') || '');
       var field = String(target.getAttribute('data-inline-field') || '');
       if (!uid || !field) {
@@ -3042,6 +3097,14 @@
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-marker-filters')) {
         state.draft.show_marker_filters = !!target.checked;
+        if (!state.draft.show_marker_filters) {
+          state.markerFilterInclude = [];
+          state.markerFilterExclude = [];
+          state.markerFilterInitialized = false;
+        } else {
+          state.markerFilterInitialized = false;
+        }
+        renderList();
         queueAutosave(280);
         return;
       }
@@ -3053,6 +3116,16 @@
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-alphabetize-markers')) {
         state.draft.alphabetize_markers = !!target.checked;
+        renderList();
+        queueAutosave(280);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-default-markers')) {
+        state.draft.default_markers = normalizeMarkerListText(target.value || '');
+        target.value = state.draft.default_markers;
+        state.markerFilterInclude = [];
+        state.markerFilterExclude = [];
+        state.markerFilterInitialized = false;
         renderList();
         queueAutosave(280);
         return;
@@ -3151,6 +3224,7 @@
 
         state.markerFilterInclude = include;
         state.markerFilterExclude = exclude;
+        state.markerFilterInitialized = true;
         renderList();
         return;
       }
@@ -3520,6 +3594,7 @@
           state.pendingNewEntry = null;
           state.markerFilterInclude = [];
           state.markerFilterExclude = [];
+          state.markerFilterInitialized = false;
           state.markerColorByToken = {};
           state.createProductBusyUid = '';
           state.viewModeOverride = '';
