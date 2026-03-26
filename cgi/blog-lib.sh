@@ -3863,6 +3863,5 @@ blog_rel_post_html_url() {
   file=$1
   rel=${file#"$blog_posts_dir/"}
   rel_html=${rel%.md}.html
-  rel_enc=$(blog_url_encode "$rel_html")
-  printf '/cgi/blog-open-post?path=%s\n' "$rel_enc"
+  printf '/pages/posts/%s\n' "$rel_html"
 }
