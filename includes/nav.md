@@ -54,7 +54,19 @@
 <nav class="site-nav">
 <span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
 <div class="nav-center">
+<div id="nav-center-links" class="nav-center-links">
 <a href="/" data-page="blog">Blog</a>
+</div>
+<div id="nav-center-more" class="nav-center-more" hidden>
+<button id="nav-center-more-btn" class="nav-center-more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 6.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M4 12H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M4 17.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+</button>
+<div id="nav-center-more-panel" class="nav-center-more-panel nav-menu-panel" role="menu" hidden></div>
+</div>
 </div>
 <div class="nav-right">
 <form class="nav-search" method="get" action="/pages/search.html">
@@ -168,9 +180,9 @@
   }
 
   try {
-    var navCenter = document.querySelector('.nav-center');
+    var navCenterLinks = document.getElementById('nav-center-links');
     var cachedRaw = localStorage.getItem('cached_navbar_pages_v1');
-    if (navCenter && cachedRaw) {
+    if (navCenterLinks && cachedRaw) {
       var cachedPages = JSON.parse(cachedRaw);
       if (!Array.isArray(cachedPages)) {
         cachedPages = [];
@@ -203,7 +215,7 @@
         html += '<a href="' + esc(path) + '" data-page="' + esc(slug) + '">' + esc(title || slug) + '</a>';
       });
       if (html) {
-        navCenter.innerHTML = html;
+        navCenterLinks.innerHTML = html;
       }
     }
   } catch (_err2) {

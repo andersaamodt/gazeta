@@ -314,9 +314,67 @@ header h1 {
   align-items: center;
   flex: 1;
   justify-content: center;
+  min-width: 0;
 }
 
-.nav-center a {
+.nav-center-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.nav-center-links > a[data-overflow-hidden="true"] {
+  display: none !important;
+}
+
+.nav-center-more {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.nav-center-more[hidden] {
+  display: none !important;
+}
+
+.nav-center-more-btn {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  width: 2.1rem;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-center-more-btn:hover,
+.nav-center-more-btn:focus-visible {
+  background: var(--light-bg);
+  color: var(--accent);
+  outline: 0;
+}
+
+.nav-center-more-panel {
+  right: 0;
+  left: auto;
+  min-width: 10.5rem;
+}
+
+.nav-center-more-panel .nav-menu-item.active {
+  background: var(--menu-hover-bg) !important;
+  font-weight: 700;
+}
+
+.nav-center-links > a {
   color: var(--text);
   text-decoration: none;
   font-weight: 600;
@@ -328,14 +386,14 @@ header h1 {
   cursor: pointer;
 }
 
-.nav-center a:hover {
+.nav-center-links > a:hover {
   background-color: transparent;
   color: var(--text);
   text-decoration: underline;
   border-radius: var(--nav-pill-radius);
 }
 
-.nav-center a.active,
+.nav-center-links > a.active,
 .nav-username.active {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: var(--nav-active-text);
@@ -345,8 +403,8 @@ header h1 {
   pointer-events: none;
 }
 
-.nav-center a.active:hover,
-.nav-center a.active:focus-visible,
+.nav-center-links > a.active:hover,
+.nav-center-links > a.active:focus-visible,
 .nav-username.active:hover,
 .nav-username.active:focus-visible {
   text-decoration: none;
@@ -4562,7 +4620,7 @@ body.nav-cart-open :is(.skip-link, .site-nav, #main-content, #nav-top-toast-host
     width: 100px;
   }
   
-  .nav-center a,
+  .nav-center-links > a,
   .btn-login {
     padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
@@ -6653,7 +6711,7 @@ nav.site-nav {
     padding: 0.2rem 0.45rem;
   }
 
-  .nav-center a {
+  .nav-center-links > a {
     padding: 0.3rem 0.62rem;
     font-size: 0.84rem;
   }
@@ -7229,5 +7287,44 @@ body.nostr-publish-dialog-open {
   nav.site-nav .nav-compose,
   nav.site-nav .nav-username {
     flex: 0 0 auto !important;
+  }
+}
+
+/* Final navbar overflow behavior: move extra center links into More menu. */
+nav.site-nav .nav-center {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: visible !important;
+}
+
+nav.site-nav .nav-center-links {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden !important;
+}
+
+nav.site-nav .nav-center-more {
+  flex: 0 0 auto;
+}
+
+nav.site-nav .nav-center-more-btn {
+  width: 2.05rem;
+  min-width: 2.05rem;
+  height: 2.05rem;
+}
+
+@media (max-width: 700px) {
+  nav.site-nav .nav-center {
+    overflow: visible !important;
+  }
+
+  nav.site-nav .nav-center-links {
+    overflow: hidden !important;
   }
 }
