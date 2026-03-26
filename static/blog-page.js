@@ -79,6 +79,7 @@
   var composeToggleGuardUntil = 0;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
+  var postCardMenuBusy = false;
 
   function ensureComposeStateShape() {
     if (!state.compose || typeof state.compose !== 'object') {
@@ -2399,6 +2400,7 @@
 
     els.empty.hidden = true;
     els.list.innerHTML = shown.map(function (post) {
+      var postPath = String(post.path || '').trim();
       var tagsHtml = (post.tags || []).map(function (tag) {
         return '<button type="button" class="tag blog-inline-tag" data-inline-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
       }).join('');
@@ -2408,6 +2410,17 @@
       if (!author) {
         author = 'Blog Author';
       }
+      var adminMenuHtml = '';
+      if (isAdmin() && postPath) {
+        adminMenuHtml = '' +
+          '<div class="post-page-menu">' +
+            '<button type="button" class="post-page-menu-trigger" data-post-card-menu-toggle="' + escapeHtml(postPath) + '" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
+            '<div class="post-page-menu-panel" role="menu" hidden>' +
+              '<button type="button" data-post-card-action="edit_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Edit post...</button>' +
+              '<button type="button" class="post-page-menu-delete" data-post-card-action="delete_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Delete post...</button>' +
+            '</div>' +
+          '</div>';
+      }
 
       return '' +
         '<article class="post-item blog-post-item">' +
@@ -2416,6 +2429,7 @@
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
               '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span></div>' +
             '</div>' +
+            adminMenuHtml +
           '</div>' +
           (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
           '<div class="blog-meta-row"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span></div>' +
@@ -2425,6 +2439,96 @@
           '</div>' +
         '</article>';
     }).join('');
+  }
+
+  function closePostCardMenus() {
+    if (!els.list) {
+      return;
+    }
+    var panels = els.list.querySelectorAll('.post-page-menu-panel');
+    panels.forEach(function (panel) {
+      panel.hidden = true;
+    });
+    var triggers = els.list.querySelectorAll('.post-page-menu-trigger[data-post-card-menu-toggle]');
+    triggers.forEach(function (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function togglePostCardMenu(trigger) {
+    if (!(trigger instanceof HTMLElement)) {
+      return;
+    }
+    var wrap = trigger.closest('.post-page-menu');
+    if (!wrap) {
+      return;
+    }
+    var panel = wrap.querySelector('.post-page-menu-panel');
+    if (!(panel instanceof HTMLElement)) {
+      return;
+    }
+    var shouldOpen = !!panel.hidden;
+    closePostCardMenus();
+    panel.hidden = !shouldOpen;
+    trigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  }
+
+  function runPostCardAction(action, postPath) {
+    var picked = String(action || '').trim();
+    var path = String(postPath || '').trim();
+    if (!picked || !path || postCardMenuBusy) {
+      return;
+    }
+    if (!isAdmin()) {
+      window.alert('Sign in as admin first.');
+      return;
+    }
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      window.alert('Sign in as admin first.');
+      return;
+    }
+    if (picked === 'edit_post') {
+      postCardMenuBusy = true;
+      apiPost('/cgi/blog-create-draft-from-post', {
+        post_path: path,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      }).then(function (data) {
+        var draftId = String((data && data.draft_id) || '').trim();
+        if (!draftId) {
+          throw new Error('Draft was created but no draft id was returned');
+        }
+        window.location.href = '/pages/admin.html?draft_id=' + encodeURIComponent(draftId) + '&lock_post_type=1#compose';
+      }).catch(function (err) {
+        window.alert(err && err.message ? err.message : 'Could not create draft from post');
+      }).finally(function () {
+        postCardMenuBusy = false;
+      });
+      return;
+    }
+    if (picked === 'delete_post') {
+      if (!window.confirm('Delete this published post from this site? This cannot be undone.')) {
+        return;
+      }
+      postCardMenuBusy = true;
+      apiPost('/cgi/blog-manage-post', {
+        action: 'delete',
+        post_path: path,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      }).then(function () {
+        state.posts = (Array.isArray(state.posts) ? state.posts : []).filter(function (post) {
+          return String(post && post.path || '').trim() !== path;
+        });
+        renderFilters();
+        renderList();
+      }).catch(function (err) {
+        window.alert(err && err.message ? err.message : 'Delete failed');
+      }).finally(function () {
+        postCardMenuBusy = false;
+      });
+    }
   }
 
   function renderAll() {
@@ -2647,6 +2751,28 @@
   }
 
   root.addEventListener('click', function (event) {
+    var postCardMenuTrigger = event.target && event.target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]');
+    if (postCardMenuTrigger) {
+      event.preventDefault();
+      togglePostCardMenu(postCardMenuTrigger);
+      return;
+    }
+
+    var postCardMenuAction = event.target && event.target.closest('[data-post-card-action]');
+    if (postCardMenuAction instanceof HTMLElement) {
+      event.preventDefault();
+      closePostCardMenus();
+      runPostCardAction(
+        String(postCardMenuAction.getAttribute('data-post-card-action') || ''),
+        String(postCardMenuAction.getAttribute('data-post-path') || '')
+      );
+      return;
+    }
+
+    if (!(event.target instanceof Element) || !event.target.closest('.post-page-menu')) {
+      closePostCardMenus();
+    }
+
     var composeFab = event.target && event.target.closest('[data-blog-action="toggle-compose"]');
     if (composeFab) {
       event.preventDefault();
