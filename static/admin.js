@@ -11,6 +11,7 @@
     isAdmin: false,
     composeTags: [],
     composePostType: 'longform',
+    composePostTypeLocked: false,
     composeShortformLimit: 280,
     composeShortformLimitEditing: false,
     composeUploadBusy: false,
@@ -338,6 +339,41 @@
       return 'account';
     }
     return name;
+  }
+
+  function readComposeLaunchParams() {
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const draftId = String(params.get('draft_id') || '').trim();
+      const lockRaw = String(params.get('lock_post_type') || '').trim().toLowerCase();
+      const lockPostType = lockRaw === '1' || lockRaw === 'true' || lockRaw === 'yes';
+      return {
+        draftId: draftId,
+        lockPostType: lockPostType
+      };
+    } catch (_err) {
+      return { draftId: '', lockPostType: false };
+    }
+  }
+
+  function clearComposeLaunchParamsFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      let changed = false;
+      ['draft_id', 'lock_post_type'].forEach(function (key) {
+        if (url.searchParams.has(key)) {
+          url.searchParams.delete(key);
+          changed = true;
+        }
+      });
+      if (!changed) {
+        return;
+      }
+      const nextSearch = url.searchParams.toString();
+      window.history.replaceState({}, '', url.pathname + (nextSearch ? ('?' + nextSearch) : '') + (url.hash || ''));
+    } catch (_err) {
+      // Ignore URL rewrite failures.
+    }
   }
 
   function adminSectionDisplayTitle(sectionName) {
@@ -1752,11 +1788,16 @@
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
     const linkShare = type === 'link-share';
+    const locked = !!state.composePostTypeLocked;
     if (els.composePostTypeToolbar) {
       let activeCount = 0;
       Array.from(els.composePostTypeToolbar.querySelectorAll('[data-post-type]')).forEach(function (node) {
         const picked = normalizeComposePostType(node.getAttribute('data-post-type') || '');
         const active = picked === type;
+        const intrinsicDisabled = picked === 'go-live';
+        const disabled = intrinsicDisabled || locked;
+        node.disabled = disabled;
+        node.setAttribute('aria-disabled', disabled ? 'true' : 'false');
         node.classList.toggle('is-active', active);
         node.setAttribute('aria-pressed', active ? 'true' : 'false');
         if (active) {
@@ -1769,7 +1810,8 @@
           fallback.classList.add('is-active');
           fallback.setAttribute('aria-pressed', 'true');
         }
-      });
+      }
+      els.composePostTypeToolbar.classList.toggle('is-locked', locked);
     }
     if (els.composeMediaTools) {
       const showMedia = !composePostTypeIsTextual(type);
@@ -1833,6 +1875,10 @@
   function setComposePostType(nextType, options) {
     const opts = options || {};
     const normalized = normalizeComposePostType(nextType);
+    if (state.composePostTypeLocked && !opts.forceWhileLocked) {
+      syncComposePostTypeUi();
+      return;
+    }
     if (normalized === 'go-live') {
       setOutput(els.outputCompose, 'Go Live is a future feature.', 'warn');
       return;
@@ -1942,6 +1988,7 @@
   function resetComposer() {
     state.currentDraftId = '';
     state.composePostType = 'longform';
+    state.composePostTypeLocked = false;
     state.composeShortformLimitEditing = false;
     els.postTitle.value = '';
     setComposeTags([]);
@@ -2382,7 +2429,16 @@
       activateSection(sectionToActivate, !currentHashSection && sectionToActivate !== sectionFromHash);
       els.adminPanel.style.display = 'grid';
       renderPreview();
-      if (sectionToActivate === 'compose' && rememberedComposeSession && rememberedComposeSession.draftId) {
+      const launchParams = readComposeLaunchParams();
+      if (sectionToActivate === 'compose' && launchParams.draftId) {
+        try {
+          await loadDraft(launchParams.draftId, { silent: true, lockPostType: launchParams.lockPostType });
+          clearComposeLaunchParamsFromUrl();
+        } catch (_launchErr) {
+          resetComposer();
+          persistAdminComposeSession();
+        }
+      } else if (sectionToActivate === 'compose' && rememberedComposeSession && rememberedComposeSession.draftId) {
         try {
           await loadDraft(rememberedComposeSession.draftId, { silent: true });
         } catch (_restoreErr) {
@@ -5348,6 +5404,8 @@
       throw new Error(data.error || 'Failed to load draft');
     }
     populateComposer(data.draft);
+    state.composePostTypeLocked = !!options.lockPostType;
+    syncComposePostTypeUi();
     activateSection('compose', true);
     if (!options.silent) {
       setOutput(els.outputCompose, 'Draft loaded.', 'ok');

@@ -17,6 +17,31 @@
     return false;
   }
 
+  function normalizePostMdPath(raw) {
+    var value = String(raw || '').trim();
+    if (!value) {
+      return '';
+    }
+    value = value
+      .replace(/^https?:\/\/[^/]+\//, '')
+      .replace(/^\/+/, '')
+      .replace(/^pages\//, '')
+      .replace(/^posts\//, '');
+    if (!value) {
+      return '';
+    }
+    if (/\.html?$/i.test(value)) {
+      value = value.replace(/\.html?$/i, '');
+    } else if (/\.md$/i.test(value)) {
+      value = value.replace(/\.md$/i, '');
+    }
+    value = value.replace(/^\/*/, '').replace(/\/*$/, '');
+    if (!value || value.indexOf('..') !== -1 || value.indexOf('\\') !== -1) {
+      return '';
+    }
+    return 'posts/' + value + '.md';
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, '&amp;')
@@ -161,7 +186,11 @@
             throw new Error((data && data.error) || 'Could not create draft from post');
           }
           closePostPageMenu();
-          window.location.href = '/pages/admin.html#compose';
+          var draftId = String((data && data.draft_id) || '').trim();
+          if (!draftId) {
+            throw new Error('Draft was created but no draft id was returned');
+          }
+          window.location.href = '/pages/admin.html?draft_id=' + encodeURIComponent(draftId) + '&lock_post_type=1#compose';
         })
         .catch(function (err) {
           window.alert(err.message || 'Could not create draft from post');
@@ -678,6 +707,10 @@
     if (!payload || !payload.current) {
       return;
     }
+    var canonicalPath = normalizePostMdPath(payload.current.path || payload.current.url || '');
+    if (canonicalPath) {
+      currentRelPath = canonicalPath;
+    }
 
     var layout = ensureSinglePostCard(payload.current);
     if (!layout || !layout.body) {
@@ -722,13 +755,9 @@
     }
     if (window.location.pathname === '/cgi/blog-open-post') {
       var query = new URLSearchParams(window.location.search || '');
-      currentRelPath = query.get('path') || '';
-      currentRelPath = String(currentRelPath || '')
-        .replace(/^https?:\/\/[^/]+\//, '')
-        .replace(/^pages\/posts\//, '')
-        .replace(/^posts\//, '');
+      currentRelPath = normalizePostMdPath(query.get('path') || '');
     } else {
-      currentRelPath = window.location.pathname.replace(/^\/pages\/posts\//, '');
+      currentRelPath = normalizePostMdPath(window.location.pathname || '');
     }
     if (!currentRelPath) {
       return;
