@@ -2072,12 +2072,12 @@
       }
     }
     html += '<div class="list-inline-row-menu-wrap">';
-    html += '<button type="button" class="list-inline-row-menu-trigger" data-list-inline-action="toggle-menu" data-element-uid="' + escapeHtml(uid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋯</button>';
+    html += '<button type="button" class="list-inline-row-menu-trigger" data-list-inline-action="toggle-menu" data-element-uid="' + escapeHtml(uid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋮</button>';
     html += '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>';
     html += '<button type="button" role="menuitem" data-list-inline-action="edit-event-id" data-element-uid="' + escapeHtml(uid) + '">' + eventMenuLabel + '</button>';
+    html += '<button type="button" role="menuitem" class="list-inline-row-menu-danger" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Delete entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l.9 1.5H20a1 1 0 1 1 0 2h-1l-.7 11a2 2 0 0 1-2 1.9H7.7a2 2 0 0 1-2-1.9L5 7H4a1 1 0 1 1 0-2h4.1L9 3.5Zm-2 3.5.7 11h8.6L17 7H7Zm2.5 2a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm5 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" fill="currentColor"/></svg><span>Delete</span></button>';
     html += '</div>';
     html += '</div>';
-    html += '<button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button>';
     html += '</div>';
 
     html += '</li>';

@@ -2129,7 +2129,8 @@ body.nav-cart-open {
 .list-inline-actions .list-inline-row-menu-trigger {
   color: var(--text) !important;
   -webkit-text-fill-color: var(--text);
-  font-size: 1.1rem;
+  font-size: 1.26rem;
+  line-height: 1;
 }
 
 .list-inline-actions .list-inline-row-menu-trigger:hover,
@@ -2165,6 +2166,28 @@ body.nav-cart-open {
   -webkit-text-fill-color: var(--text);
   text-align: left;
   line-height: 1.25;
+}
+
+.list-inline-row-menu button[role="menuitem"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.list-inline-row-menu-danger {
+  color: var(--danger) !important;
+  -webkit-text-fill-color: var(--danger) !important;
+}
+
+.list-inline-row-menu-danger svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  display: block;
+}
+
+.list-inline-row-menu-danger:hover,
+.list-inline-row-menu-danger:focus-visible {
+  background: var(--danger-soft) !important;
 }
 
 .list-inline-row-menu button:hover,
