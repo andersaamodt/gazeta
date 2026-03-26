@@ -5557,6 +5557,10 @@ footer {
   animation: blog-compose-fade-in 220ms ease both;
 }
 
+.blog-compose-card.is-wide-preview {
+  max-width: min(1320px, 100%);
+}
+
 .blog-compose-head {
   align-items: flex-start;
   gap: 0.75rem;
@@ -5586,6 +5590,13 @@ footer {
   gap: 0.68rem;
 }
 
+.blog-compose-card .blog-compose-head-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.56rem;
+}
+
 .blog-compose-card .field-row {
   display: grid;
   gap: 0.26rem;
@@ -5597,8 +5608,45 @@ footer {
   color: var(--muted-text, #4f617f);
 }
 
+.blog-compose-card .compose-post-type-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.34rem;
+}
+
+.blog-compose-card .compose-post-type-current-btn {
+  width: 2.06rem;
+  min-width: 2.06rem;
+  height: 2.06rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 88%, var(--light-bg, #eef3ff) 12%);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.blog-compose-card .compose-post-type-current-btn .compose-post-type-icon {
+  width: 1.04rem;
+  height: 1.04rem;
+}
+
+.blog-compose-card .compose-post-type-toolbar-wrap {
+  min-width: 0;
+  flex: 1 1 auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
 .blog-compose-card .compose-post-type-row {
-  margin: 0 0 0.3rem;
+  margin: 0;
   overflow-x: auto;
   padding-bottom: 0.06rem;
   scrollbar-width: none;
@@ -5606,6 +5654,20 @@ footer {
 
 .blog-compose-card .compose-post-type-row::-webkit-scrollbar {
   display: none;
+}
+
+.blog-compose-card .compose-post-type-control.is-collapsed .compose-post-type-current-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.blog-compose-card .compose-post-type-control.is-collapsed .compose-post-type-toolbar-wrap {
+  opacity: 0;
+  transform: translateY(-5px);
+  max-width: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .blog-compose-card .compose-post-type-toolbar {
@@ -5670,7 +5732,7 @@ footer {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.34rem;
-  margin: -0.08rem 0 0.2rem;
+  min-width: 0;
 }
 
 .blog-compose-card .nostr-target-pill {
@@ -5684,6 +5746,13 @@ footer {
   font-size: 0.72rem;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.blog-compose-card .nostr-target-pill.is-pages-pill {
+  border-color: #c1d1f0;
+  color: #32508f;
+  background: #f2f6ff;
+  font-weight: 700;
 }
 
 .blog-compose-card .compose-media-tools {
@@ -5789,9 +5858,9 @@ footer {
 }
 
 .blog-compose-title-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  column-gap: 0.58rem;
+  column-gap: 0;
 }
 
 .blog-compose-card input[type="text"],
@@ -5867,6 +5936,22 @@ footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.68rem;
+}
+
+.blog-compose-preview-split {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.blog-compose-split-editor,
+.blog-compose-split-preview {
+  min-width: 0;
+}
+
+.blog-compose-split-preview .preview-box {
+  margin-top: 0.08rem;
 }
 
 .blog-compose-card .tag-editor {
@@ -6033,9 +6118,37 @@ footer {
     min-width: 0;
     height: 2.04rem;
   }
+
+  .blog-compose-card .blog-compose-head-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "type preview"
+      "pills pills";
+    row-gap: 0.42rem;
+  }
+
+  .blog-compose-card .compose-post-type-control {
+    grid-area: type;
+  }
+
+  .blog-compose-card .compose-nostr-target-row {
+    grid-area: pills;
+  }
+
+  .blog-compose-card .blog-compose-preview-toggle {
+    grid-area: preview;
+  }
+
+  .blog-compose-preview-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
+  .blog-compose-card .blog-compose-head-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .blog-compose-card .blog-compose-title-row {
     grid-template-columns: 1fr;
     gap: 0.44rem;
