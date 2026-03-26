@@ -1835,15 +1835,19 @@ body.nav-cart-open {
 .list-inline-edit-controls {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  row-gap: 0.34rem;
 }
 
 .list-inline-edit-controls label {
   display: inline-flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 0.35rem;
   font-size: 0.8rem;
   color: var(--muted-text, #4f617f);
+  white-space: nowrap;
 }
 
 .list-inline-edit-controls .list-marker-filter-setting {
@@ -2223,6 +2227,8 @@ body.nav-cart-open {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
   width: 100%;
   margin-bottom: 0.4rem;
 }
@@ -2231,6 +2237,11 @@ body.nav-cart-open {
 .list-inline-toolbar-right {
   display: inline-flex;
   align-items: center;
+}
+
+.list-inline-toolbar-left {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .list-inline-toolbar-right button {
