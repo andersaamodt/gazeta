@@ -148,7 +148,32 @@ HTMX_HEADER
   fi
 fi
 
-http-status 404 "Not Found"
-http-header "Content-Type" "text/plain; charset=utf-8"
+# Final fallback: render a minimal HTML page without pandoc/build so
+# post links never break while markdown exists.
+title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf 'Untitled')
+body=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
+safe_title=$(printf '%s' "$title" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+safe_body=$(printf '%s' "$body" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+
+http-status 200 "OK"
+http-header "Content-Type" "text/html; charset=utf-8"
 http-end-headers
-printf 'Post page is unavailable\n'
+cat <<HTML
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$safe_title</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
+    <article class="post-item blog-post-item">
+      <h1>$safe_title</h1>
+      <pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">$safe_body</pre>
+    </article>
+  </main>
+</body>
+</html>
+HTML
