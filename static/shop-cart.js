@@ -158,8 +158,8 @@
       return;
     }
     var count = countItems();
-    els.toggle.hidden = count <= 0;
-    els.toggle.setAttribute('aria-hidden', count <= 0 ? 'true' : 'false');
+    els.toggle.hidden = false;
+    els.toggle.setAttribute('aria-hidden', 'false');
     if (els.count) {
       els.count.textContent = String(count);
       els.count.hidden = count <= 0;

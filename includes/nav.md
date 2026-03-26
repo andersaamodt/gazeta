@@ -86,7 +86,7 @@
 </svg>
 </a>
 </div>
-<button id="nav-cart-toggle" class="nav-cart-toggle" type="button" aria-label="Open cart" aria-expanded="false" hidden>
+<button id="nav-cart-toggle" class="nav-cart-toggle" type="button" aria-label="Open cart" aria-expanded="false">
 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M3 4H5L7 16H18L21 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="9" cy="20" r="1.7" fill="currentColor"/>
