@@ -124,8 +124,8 @@
     wrap.innerHTML = '' +
       '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
       '<div class="post-page-menu-panel" role="menu" hidden>' +
-      '<button type="button" data-post-page-action="add_to_list" role="menuitem">Add to list...</button>' +
       '<button type="button" data-post-page-action="edit_post" role="menuitem">Edit post...</button>' +
+      '<button type="button" data-post-page-action="add_to_list" role="menuitem">Add to list...</button>' +
       '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" role="menuitem">Delete post...</button>' +
       '</div>';
     head.appendChild(wrap);
