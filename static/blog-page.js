@@ -2419,8 +2419,10 @@
           '</div>' +
           (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
           '<div class="blog-meta-row"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span></div>' +
-          (tagsHtml ? '<div class="tags">' + tagsHtml + '</div>' : '') +
-          '<div class="post-card-footer"><span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span></div>' +
+          '<div class="post-card-footer">' +
+            (tagsHtml ? '<div class="tags">' + tagsHtml + '</div>' : '') +
+            '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>' +
+          '</div>' +
         '</article>';
     }).join('');
   }

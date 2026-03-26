@@ -4994,10 +4994,19 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: auto;
   padding-top: 0.65rem;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.blog-post-item .post-card-footer .tags {
+  margin-top: 0;
+  padding-top: 0;
+  text-align: left;
 }
 
 .blog-post-item .post-card-comments-count {
+  margin-left: auto;
   color: var(--light-text);
   font-size: 0.78rem;
   white-space: nowrap;
