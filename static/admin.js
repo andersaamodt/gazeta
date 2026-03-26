@@ -1761,7 +1761,7 @@
       els.composeMediaTools.hidden = !showMedia;
     }
     if (els.composeMediaActions) {
-      els.composeMediaActions.hidden = linkShare;
+      els.composeMediaActions.hidden = true;
     }
     if (els.composeLinkFields) {
       els.composeLinkFields.hidden = !linkShare;
@@ -1769,6 +1769,7 @@
     if (els.composeContentRow) {
       els.composeContentRow.hidden = linkShare;
       els.composeContentRow.classList.toggle('is-hidden', linkShare);
+      els.composeContentRow.style.display = linkShare ? 'none' : '';
     }
     if (els.composeNostrTargetPill) {
       const label = composeNostrTargetLabel(type);

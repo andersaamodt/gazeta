@@ -574,10 +574,14 @@
       return;
     }
     var control = els.composeSlot.querySelector('[data-compose-type-control]');
+    var headRow = els.composeSlot.querySelector('[data-compose-head-row]');
     if (!control) {
       return;
     }
     control.classList.toggle('is-collapsed', !!state.compose.postTypeToolbarCollapsed);
+    if (headRow) {
+      headRow.classList.toggle('is-type-collapsed', !!state.compose.postTypeToolbarCollapsed);
+    }
   }
 
   function setComposePostTypeToolbarCollapsed(collapsed, options) {
@@ -1990,6 +1994,7 @@
     }
     var mediaToolsHtml = composeModePanelHtml(postType, fields);
     var widePreviewLayout = !!(state.compose.preview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
+    var headRowClass = 'field-row blog-compose-head-row' + (state.compose.postTypeToolbarCollapsed ? ' is-type-collapsed' : '');
     var typeControlClass = state.compose.postTypeToolbarCollapsed ? 'compose-post-type-control is-collapsed' : 'compose-post-type-control';
     var editorBlockHtml = '' +
       '<div class="field-row">' +
@@ -2029,7 +2034,7 @@
     els.composeSlot.innerHTML = '' +
       '<article class="' + composeCardClass + '">' +
         '<div class="blog-compose-body">' +
-          '<div class="field-row blog-compose-head-row">' +
+          '<div class="' + headRowClass + '" data-compose-head-row>' +
             '<div class="' + typeControlClass + '" data-compose-type-control>' +
               '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
               '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +

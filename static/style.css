@@ -5594,8 +5594,11 @@ footer {
 
 .blog-compose-card .blog-compose-head-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "type type"
+    "targets preview";
+  align-items: end;
   gap: 0.56rem;
 }
 
@@ -5615,6 +5618,8 @@ footer {
   align-items: center;
   min-width: 0;
   gap: 0.34rem;
+  grid-area: type;
+  width: 100%;
 }
 
 .blog-compose-card .compose-post-type-current-btn {
@@ -5641,10 +5646,11 @@ footer {
 
 .blog-compose-card .compose-post-type-toolbar-wrap {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 100%;
+  max-height: 2.5rem;
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 240ms ease, transform 240ms ease;
+  transition: opacity 240ms ease, transform 240ms ease, max-height 240ms ease;
 }
 
 .blog-compose-card .compose-post-type-row {
@@ -5666,8 +5672,9 @@ footer {
 
 .blog-compose-card .compose-post-type-control.is-collapsed .compose-post-type-toolbar-wrap {
   opacity: 0;
-  transform: translateY(-5px);
-  max-width: 0;
+  transform: translateY(-8px);
+  max-height: 0;
+  width: 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -5735,6 +5742,23 @@ footer {
   align-items: center;
   gap: 0.34rem;
   min-width: 0;
+  grid-area: targets;
+}
+
+.blog-compose-card .blog-compose-preview-toggle {
+  grid-area: preview;
+  justify-self: end;
+}
+
+.blog-compose-card .blog-compose-head-row.is-type-collapsed {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "type targets preview";
+  align-items: center;
+}
+
+.blog-compose-card .blog-compose-head-row.is-type-collapsed .compose-post-type-control {
+  width: auto;
+  min-width: 2.06rem;
 }
 
 .blog-compose-card .nostr-target-pill {
@@ -6124,8 +6148,8 @@ footer {
   .blog-compose-card .blog-compose-head-row {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "type preview"
-      "pills pills";
+      "type type"
+      "targets preview";
     row-gap: 0.42rem;
   }
 
@@ -6134,7 +6158,7 @@ footer {
   }
 
   .blog-compose-card .compose-nostr-target-row {
-    grid-area: pills;
+    grid-area: targets;
   }
 
   .blog-compose-card .blog-compose-preview-toggle {
@@ -6147,8 +6171,9 @@ footer {
 }
 
 @media (max-width: 640px) {
-  .blog-compose-card .blog-compose-head-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .blog-compose-card .blog-compose-head-row.is-type-collapsed {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "type targets preview";
   }
 
   .blog-compose-card .blog-compose-title-row {

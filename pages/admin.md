@@ -2038,6 +2038,10 @@ body {
   gap: 0.32rem;
 }
 
+#compose-media-actions {
+  display: none !important;
+}
+
 .compose-media-btn {
   width: auto;
   min-width: 0;
