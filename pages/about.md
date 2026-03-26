@@ -19,4 +19,4 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nip23-page.js"></script>
+<script src="/static/nip23-page.js?v=20260326-pagefix3"></script>
