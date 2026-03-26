@@ -1682,6 +1682,13 @@
     }
     if (state.compose.open && els.composeSlot) {
       setTimeout(function () {
+        if (els.composeSlot && typeof els.composeSlot.scrollIntoView === 'function') {
+          try {
+            els.composeSlot.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+          } catch (_err) {
+            els.composeSlot.scrollIntoView(true);
+          }
+        }
         var title = els.composeSlot.querySelector('[data-compose-field="title"]');
         if (title && typeof title.focus === 'function') {
           title.focus();
@@ -1991,10 +1998,8 @@
           '</div>' +
         '</div>' +
       '</article>';
+    els.composeSlot.classList.add('is-open');
     requestAnimationFrame(function () {
-      if (els.composeSlot) {
-        els.composeSlot.classList.add('is-open');
-      }
       applyComposeModeEffects(postType);
     });
   }
