@@ -993,7 +993,7 @@
       platform = '';
     }
     var isApple = /Mac|iPhone|iPad|iPod/i.test(platform);
-    var multiKey = isApple ? 'Cmd' : 'Ctrl';
+    var multiKey = isApple ? '⌘' : 'Ctrl';
     var excludeKey = isApple ? 'Option' : 'Alt';
     return 'Click to filter. ' + multiKey + '-click to multi-select. ' + excludeKey + '-click to filter out.';
   }
