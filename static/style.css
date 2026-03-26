@@ -1185,7 +1185,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell {
-  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(120px, 180px) minmax(180px, 260px) minmax(136px, 190px);
+  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(220px, 2fr) minmax(180px, 260px) minmax(136px, 190px);
   width: 100%;
   max-width: 100%;
   margin: 1.25rem auto 2.4rem;
@@ -1944,7 +1944,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell[data-page-type="list"] {
-  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(130px, 190px) minmax(136px, 190px);
+  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(240px, 2fr) minmax(136px, 190px);
 }
 
 .list-entry-inline.is-active {
