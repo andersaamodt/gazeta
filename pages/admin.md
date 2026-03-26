@@ -1988,7 +1988,7 @@ body {
 .compose-post-type-pill.is-active {
   background: color-mix(in srgb, var(--admin-accent, var(--accent)) 22%, var(--admin-surface, var(--post-card-bg-single)) 78%);
   color: var(--admin-accent-strong, var(--admin-text, var(--text)));
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--admin-accent, var(--accent)) 34%, transparent);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--admin-accent, var(--accent)) 34%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--admin-accent, var(--accent)) 48%, transparent);
 }
 
 .compose-post-type-pill:focus-visible {
@@ -2061,11 +2061,15 @@ body {
 }
 
 .compose-shortform-meter {
-  margin-top: 0.2rem;
-  display: flex;
-  justify-content: flex-end;
+  margin-top: 0;
+  position: absolute;
+  left: 0.72rem;
+  bottom: 0.45rem;
+  display: inline-flex;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.28rem;
+  z-index: 3;
 }
 
 .compose-shortform-limit-button {
@@ -2189,7 +2193,7 @@ body {
   box-shadow: none;
   display: block;
   inline-size: 100%;
-  padding-bottom: 2.15rem;
+  padding-bottom: 2.35rem;
 }
 
 .editor-shell #post-content:focus {

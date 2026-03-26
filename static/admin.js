@@ -1689,16 +1689,20 @@
       return;
     }
     const shortform = normalizeComposePostType(state.composePostType) === 'shortform';
-    const limit = currentComposeShortformLimit();
-    if (shortform) {
-      enforceComposeShortformLimit();
+    if (!shortform) {
+      els.composeShortformMeter.hidden = true;
+      els.composeShortformLimitButton.hidden = true;
+      els.composeShortformLimitInput.hidden = true;
+      return;
     }
+    const limit = currentComposeShortformLimit();
+    enforceComposeShortformLimit();
     const count = String(els.postContent.value || '').length;
     els.composeShortformLimitButton.textContent = String(count) + '/' + String(limit);
     els.composeShortformLimitInput.value = String(limit);
-    els.composeShortformMeter.hidden = !shortform;
-    els.composeShortformLimitButton.hidden = !shortform || !!state.composeShortformLimitEditing;
-    els.composeShortformLimitInput.hidden = !shortform || !state.composeShortformLimitEditing;
+    els.composeShortformMeter.hidden = false;
+    els.composeShortformLimitButton.hidden = !!state.composeShortformLimitEditing;
+    els.composeShortformLimitInput.hidden = !state.composeShortformLimitEditing;
   }
 
   function setComposeShortformLimit(raw, opts) {
@@ -1749,11 +1753,22 @@
     const type = normalizeComposePostType(state.composePostType);
     const linkShare = type === 'link-share';
     if (els.composePostTypeToolbar) {
+      let activeCount = 0;
       Array.from(els.composePostTypeToolbar.querySelectorAll('[data-post-type]')).forEach(function (node) {
         const picked = normalizeComposePostType(node.getAttribute('data-post-type') || '');
         const active = picked === type;
         node.classList.toggle('is-active', active);
         node.setAttribute('aria-pressed', active ? 'true' : 'false');
+        if (active) {
+          activeCount += 1;
+        }
+      });
+      if (!activeCount) {
+        const fallback = els.composePostTypeToolbar.querySelector('[data-post-type="longform"]');
+        if (fallback instanceof HTMLElement) {
+          fallback.classList.add('is-active');
+          fallback.setAttribute('aria-pressed', 'true');
+        }
       });
     }
     if (els.composeMediaTools) {
