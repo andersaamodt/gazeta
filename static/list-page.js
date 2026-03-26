@@ -845,16 +845,19 @@
       hash = Math.imul(hash, 16777619);
     }
     var normalized = (hash >>> 0);
-    var hueBucketCount = 36;
-    var hueBucket = normalized % hueBucketCount;
-    var hue = (((hueBucket * 11) % hueBucketCount) * (360 / hueBucketCount)) + (((normalized >>> 9) % 5) - 2);
-    if (hue < 0) {
-      hue += 360;
-    }
-    var saturation = 50 + ((normalized >>> 6) % 6) * 5;
+    normalized ^= (normalized >>> 16);
+    normalized = Math.imul(normalized, 2246822507);
+    normalized ^= (normalized >>> 13);
+    normalized = Math.imul(normalized, 3266489909);
+    normalized ^= (normalized >>> 16);
+
+    var hue = ((normalized >>> 0) / 4294967296) * 360;
+    var saturation = 58 + ((normalized >>> 8) % 24);
+    var lightness = 86 + ((normalized >>> 17) % 7);
     return {
       hue: hue,
-      saturation: saturation
+      saturation: saturation,
+      lightness: lightness
     };
   }
 
@@ -938,7 +941,7 @@
         cls += ' is-exclude';
       }
       var markerColor = markerColorFromText(marker);
-      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;">' + escapeHtml(marker) + '</button>';
+      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;--marker-pill-l:' + String(markerColor.lightness) + '%;">' + escapeHtml(marker) + '</button>';
     });
     html += '</div>';
     html += '</section>';
@@ -1730,7 +1733,7 @@
       if (markerTokens.length) {
         markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
           var markerColor = markerColorFromText(marker);
-          return '<span class="list-entry-marker-pill" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;">' + escapeHtml(marker) + '</span>';
+          return '<span class="list-entry-marker-pill" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;--marker-pill-l:' + String(markerColor.lightness) + '%;">' + escapeHtml(marker) + '</span>';
         }).join('') + '</span>';
       }
     }
