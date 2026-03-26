@@ -19,6 +19,7 @@ blog_list_default_state_json() {
     description: "",
     publish_intro_to_nostr: false,
     show_marker_filters: false,
+    show_markers: false,
     group_by: "year",
     view_mode: "list",
     content: "",
@@ -178,6 +179,13 @@ blog_list_normalize_state_json() {
             ((.show_marker_filters == true) or ((.show_marker_filters | tostring | ascii_downcase) == "true"))
           end
         ),
+        show_markers: (
+          if (.show_markers // null) == null then
+            ((first_tag("show_markers") // "") | tostring | ascii_downcase) == "true"
+          else
+            ((.show_markers == true) or ((.show_markers | tostring | ascii_downcase) == "true"))
+          end
+        ),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         view_mode: norm_view_mode(.view_mode // first_tag("view_mode") // "list"),
         content: ((.content // "") | tostring),
@@ -193,6 +201,7 @@ blog_list_normalize_state_json() {
           (if (.title | length) > 0 then ["title", .title] else empty end),
           (if .publish_intro_to_nostr and (.description | length) > 0 then ["description", .description] else empty end),
           (if .show_marker_filters then ["show_marker_filters", "true"] else empty end),
+          (if .show_markers then ["show_markers", "true"] else empty end),
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end),
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
@@ -214,6 +223,7 @@ blog_list_state_signature_json() {
     description: (if (.publish_intro_to_nostr // false) then (.description // "") else "" end),
     publish_intro_to_nostr: (.publish_intro_to_nostr // false),
     show_marker_filters: (.show_marker_filters // false),
+    show_markers: (.show_markers // false),
     group_by: (.group_by // ""),
     view_mode: (.view_mode // "list"),
     content: (.content // ""),

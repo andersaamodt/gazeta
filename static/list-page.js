@@ -760,6 +760,7 @@
       description: String(s.description || ''),
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       show_marker_filters: !!s.show_marker_filters,
+      show_markers: !!s.show_markers,
       group_by: String(s.group_by || ''),
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
@@ -959,6 +960,7 @@
         description: state.draft.description,
         publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
         show_marker_filters: !!state.draft.show_marker_filters,
+        show_markers: !!state.draft.show_markers,
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
@@ -972,6 +974,7 @@
       description: String(src.description || ''),
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       show_marker_filters: !!src.show_marker_filters,
+      show_markers: !!src.show_markers,
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
@@ -1166,6 +1169,10 @@
     if (showMarkerFiltersInput instanceof HTMLInputElement) {
       state.draft.show_marker_filters = !!showMarkerFiltersInput.checked;
     }
+    var showMarkersInput = els.content ? els.content.querySelector('[data-list-show-markers]') : null;
+    if (showMarkersInput instanceof HTMLInputElement) {
+      state.draft.show_markers = !!showMarkersInput.checked;
+    }
   }
 
   async function refreshValidation() {
@@ -1214,6 +1221,7 @@
         description: state.draft.description || '',
         publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
         show_marker_filters: state.draft.show_marker_filters ? 'true' : 'false',
+        show_markers: state.draft.show_markers ? 'true' : 'false',
         group_by: state.draft.group_by || '',
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         content: state.draft.content || '',
@@ -1685,13 +1693,26 @@
     return '';
   }
 
-  function renderEntryReadOnly(entry, groupBy, sectionLabel) {
+  function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers) {
     var line = String(entry && entry.markdown || '').trim();
     var description = String(entry && entry.description || '').trim();
     var postUrl = String(entry && entry.post_url || '');
     var imageUrl = String(entry && entry.image_url || '').trim();
     var productSlug = entryProductSlug(entry);
     var datePill = datePillForEntryInSection(entry, groupBy, sectionLabel);
+    var markerPills = '';
+    if (showMarkers) {
+      var markerTokens = markerTokensFromEntry(entry);
+      if (markerTokens.length) {
+        markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
+          return '<span class="list-entry-marker-pill">' + escapeHtml(marker) + '</span>';
+        }).join('') + '</span>';
+      }
+    }
+    var rightMeta = '';
+    if (markerPills || datePill) {
+      rightMeta = '<span class="list-entry-meta-right">' + markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</span>';
+    }
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
       : '';
@@ -1705,18 +1726,18 @@
     }
     var cartButton = renderProductCartButton(productSlug, '');
     var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + cartButton + '</div></li>';
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + rightMeta + cartButton + '</div></li>';
   }
 
-  function renderEntryInner(entry, groupBy, sectionLabel) {
-    return renderEntryReadOnly(entry, groupBy, sectionLabel).replace(/^<li[^>]*>|<\/li>$/g, '');
+  function renderEntryInner(entry, groupBy, sectionLabel, showMarkers) {
+    return renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers).replace(/^<li[^>]*>|<\/li>$/g, '');
   }
 
   function placeholderHtml(label) {
     return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
-  function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel) {
+  function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel, showMarkers) {
     var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
     var openDepth = -1;
     var started = false;
@@ -1731,14 +1752,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
         return;
       }
 
@@ -1747,7 +1768,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
         return;
       }
 
@@ -1756,7 +1777,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
     });
 
     if (started) {
@@ -1847,14 +1868,14 @@
     return html;
   }
 
-  function renderReadOnlyByView(entries, viewMode, groupBy, sectionLabel) {
+  function renderReadOnlyByView(entries, viewMode, groupBy, sectionLabel, showMarkers) {
     if (normalizeViewMode(viewMode) === 'tile') {
       return renderTileReadOnly(entries);
     }
-    return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel);
+    return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel, showMarkers);
   }
 
-  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters) {
+  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers) {
     var html = '';
     var allEntries = Array.isArray(entries) ? entries : [];
     html += renderProductGalleryViewModeControl(viewMode);
@@ -1877,7 +1898,7 @@
         if (!bucket.length) {
           return;
         }
-        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel);
+        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel, showMarkers);
         html += '</section>';
         bucket = [];
       }
@@ -1897,7 +1918,7 @@
       return html;
     }
 
-    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '');
+    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '', showMarkers);
   }
 
   function renderExtraContent(text, format, role) {
@@ -2012,6 +2033,7 @@
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
     html += '<label class="list-marker-filter-setting"><span>Show marker-based filters</span><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '></label>';
+    html += '<label class="list-show-markers-setting"><span>Show markers</span><input type="checkbox" data-list-show-markers="true"' + (state.draft.show_markers ? ' checked' : '') + '></label>';
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
@@ -2110,7 +2132,7 @@
     var readViewMode = currentReadViewMode(s);
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, readViewMode, !!s.show_marker_filters) + afterContent;
+    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers) + afterContent;
     refreshProductCartButtons();
     renderAdmin();
   }
@@ -2651,6 +2673,12 @@
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-marker-filters')) {
         state.draft.show_marker_filters = !!target.checked;
+        queueAutosave(280);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-markers')) {
+        state.draft.show_markers = !!target.checked;
+        renderList();
         queueAutosave(280);
         return;
       }
