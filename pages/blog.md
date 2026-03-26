@@ -18,7 +18,7 @@ title: Blog
 </div>
 <div class="blog-main-column">
 <div class="list-page-head">
-<h1 id="blog-page-title">Blog</h1>
+<h1 id="blog-page-title" hidden></h1>
 <p id="blog-page-description" class="muted" hidden></p>
 </div>
 <div id="blog-page-admin" class="list-admin" hidden></div>

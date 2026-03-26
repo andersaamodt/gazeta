@@ -195,10 +195,22 @@
   }
 
   function renderHead() {
+    if (!state.initialPageStateLoaded) {
+      if (els.title) {
+        els.title.hidden = true;
+        els.title.innerHTML = '';
+      }
+      if (els.description) {
+        els.description.innerHTML = '';
+        els.description.hidden = true;
+      }
+      return;
+    }
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
     document.title = title;
     if (els.title) {
+      els.title.hidden = false;
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
     }
     if (!els.description) {
@@ -1470,6 +1482,11 @@
     if (!els.list || !els.empty) {
       return;
     }
+    if (!state.initialPostsLoaded) {
+      els.list.innerHTML = '';
+      els.empty.hidden = true;
+      return;
+    }
     var shown = filteredPosts();
 
     if (!shown.length) {
@@ -1644,12 +1661,12 @@
       csrf_token: auth.csrf_token
     }).then(function (data) {
       state.payload = data;
-      applyDefaultFilters();
-      renderAll();
     }).catch(function () {
-      renderAll();
+      // Keep existing optimistic state when page-state fetch fails.
     }).finally(function () {
       state.initialPageStateLoaded = true;
+      applyDefaultFilters();
+      renderAll();
       maybeMarkInitialContentPainted();
     });
   }
@@ -1671,6 +1688,8 @@
       })
       .finally(function () {
         state.initialPostsLoaded = true;
+        renderFilters();
+        renderList();
         maybeMarkInitialContentPainted();
       });
   }
