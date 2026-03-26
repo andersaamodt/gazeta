@@ -1,5 +1,5 @@
 #!/bin/sh
-# Update per-account settings (currently player display name).
+# Update per-account settings (player name + publish name).
 
 set -eu
 
@@ -15,26 +15,40 @@ if ! blog_require_session false true; then
 fi
 
 player_name=$(blog_param player_name)
+publish_name=$(blog_param publish_name)
 rename_authored_posts=$(blog_param rename_authored_posts)
 preview_rename=$(blog_param preview_rename)
 player_name=$(printf '%s' "$player_name" | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
+publish_name=$(printf '%s' "$publish_name" | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
+
+if [ -z "$player_name" ]; then
+  player_name=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+fi
+if [ -z "$publish_name" ]; then
+  publish_name=$(blog_get_publish_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$player_name")
+fi
 
 if ! blog_validate_player_name "$player_name"; then
   blog_json_error "Invalid player name. Use up to 40 letters/numbers/spaces/._-" "invalid_player_name"
   exit 0
 fi
+if ! blog_validate_player_name "$publish_name"; then
+  blog_json_error "Invalid publish name. Use up to 40 letters/numbers/spaces/._-" "invalid_publish_name"
+  exit 0
+fi
 
 old_player_name=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+old_publish_name=$(blog_get_publish_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$old_player_name")
 rename_candidate_count=0
 rename_aliases=""
-if [ "$old_player_name" != "$player_name" ]; then
-  aliases=$(blog_player_name_aliases "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s\n' "$BLOG_SESSION_USERNAME")
+if [ "$old_publish_name" != "$publish_name" ]; then
+  aliases=$(blog_publish_name_aliases "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s\n' "$old_publish_name")
   old_ifs=$IFS
   IFS='
 '
   for alias in $aliases; do
     [ -n "$alias" ] || continue
-    if [ "$alias" = "$player_name" ]; then
+    if [ "$alias" = "$publish_name" ]; then
       continue
     fi
     alias_count=$(blog_count_authored_posts_by_author "$alias")
@@ -57,20 +71,23 @@ if [ "$preview_rename" = "true" ]; then
   printf '"username":"%s",' "$(blog_json_escape "$BLOG_SESSION_USERNAME")"
   printf '"old_player_name":"%s",' "$(blog_json_escape "$old_player_name")"
   printf '"player_name":"%s",' "$(blog_json_escape "$player_name")"
+  printf '"old_publish_name":"%s",' "$(blog_json_escape "$old_publish_name")"
+  printf '"publish_name":"%s",' "$(blog_json_escape "$publish_name")"
   printf '"rename_candidate_count":%s' "$rename_candidate_count"
   printf '}\n'
   exit 0
 fi
 
 blog_set_player_name "$BLOG_SESSION_USERNAME" "$player_name"
+blog_set_publish_name "$BLOG_SESSION_USERNAME" "$publish_name"
 renamed_posts=0
-if [ "$rename_authored_posts" = "true" ] && [ "$rename_candidate_count" -gt 0 ] && [ "$old_player_name" != "$player_name" ]; then
+if [ "$rename_authored_posts" = "true" ] && [ "$rename_candidate_count" -gt 0 ] && [ "$old_publish_name" != "$publish_name" ]; then
   old_ifs=$IFS
   IFS='
 '
   for alias in $rename_aliases; do
     [ -n "$alias" ] || continue
-    renamed_count=$(blog_rename_authored_posts "$alias" "$player_name")
+    renamed_count=$(blog_rename_authored_posts "$alias" "$publish_name")
     case "$renamed_count" in ''|*[!0-9]*) renamed_count=0 ;; esac
     renamed_posts=$((renamed_posts + renamed_count))
   done
@@ -84,6 +101,8 @@ printf '{"success":true,'
 printf '"username":"%s",' "$(blog_json_escape "$BLOG_SESSION_USERNAME")"
 printf '"old_player_name":"%s",' "$(blog_json_escape "$old_player_name")"
 printf '"player_name":"%s",' "$(blog_json_escape "$player_name")"
+printf '"old_publish_name":"%s",' "$(blog_json_escape "$old_publish_name")"
+printf '"publish_name":"%s",' "$(blog_json_escape "$publish_name")"
 printf '"rename_candidate_count":%s,' "$rename_candidate_count"
 printf '"renamed_posts":%s' "$renamed_posts"
 printf '}\n'

@@ -1392,6 +1392,22 @@ blog_get_player_name() {
   printf '%s\n' "$player_name"
 }
 
+blog_get_publish_name() {
+  username=${1-}
+  if [ -z "$username" ]; then
+    return 1
+  fi
+  profile=$(blog_user_profile "$username")
+  publish_name=""
+  if [ -f "$profile" ]; then
+    publish_name=$(config-get "$profile" publish_name 2>/dev/null || printf '')
+  fi
+  if [ -z "$publish_name" ]; then
+    publish_name=$(blog_get_player_name "$username" 2>/dev/null || printf '%s' "$username")
+  fi
+  printf '%s\n' "$publish_name"
+}
+
 blog_set_player_name() {
   username=${1-}
   player_name=${2-}
@@ -1436,6 +1452,44 @@ blog_set_player_name() {
   config-set "$profile" updated_at "$(blog_now_iso)"
 }
 
+blog_set_publish_name() {
+  username=${1-}
+  publish_name=${2-}
+  if [ -z "$username" ] || [ -z "$publish_name" ]; then
+    return 1
+  fi
+  dir=$(blog_user_dir "$username")
+  profile=$(blog_user_profile "$username")
+  mkdir -p "$dir/delegates"
+  previous_name=$(blog_get_publish_name "$username" 2>/dev/null || printf '%s' "$username")
+  history_csv=$(config-get "$profile" publish_name_history 2>/dev/null || printf '')
+  if [ -n "$previous_name" ] && [ "$previous_name" != "$publish_name" ]; then
+    found=0
+    old_ifs=$IFS
+    IFS=','
+    for item in $history_csv; do
+      if [ "$item" = "$previous_name" ]; then
+        found=1
+        break
+      fi
+    done
+    IFS=$old_ifs
+    if [ "$found" -eq 0 ]; then
+      if [ -n "$history_csv" ]; then
+        history_csv="$history_csv,$previous_name"
+      else
+        history_csv="$previous_name"
+      fi
+    fi
+  fi
+  config-set "$profile" username "$username"
+  config-set "$profile" publish_name "$publish_name"
+  if [ -n "$history_csv" ]; then
+    config-set "$profile" publish_name_history "$history_csv"
+  fi
+  config-set "$profile" updated_at "$(blog_now_iso)"
+}
+
 blog_player_name_aliases() {
   username=${1-}
   if [ -z "$username" ]; then
@@ -1475,6 +1529,44 @@ $val"
   printf '%s\n' "$unique_list"
 }
 
+blog_publish_name_aliases() {
+  username=${1-}
+  if [ -z "$username" ]; then
+    return 1
+  fi
+  profile=$(blog_user_profile "$username")
+  current_name=$(blog_get_publish_name "$username" 2>/dev/null || printf '%s' "$username")
+  history_csv=$(config-get "$profile" publish_name_history 2>/dev/null || printf '')
+  unique_list=""
+  add_alias() {
+    val=${1-}
+    [ -n "$val" ] || return 0
+    case "
+$unique_list
+" in
+*"
+$val
+"*)
+      return 0
+      ;;
+    esac
+    if [ -z "$unique_list" ]; then
+      unique_list="$val"
+    else
+      unique_list="$unique_list
+$val"
+    fi
+  }
+  add_alias "$current_name"
+  old_ifs=$IFS
+  IFS=','
+  for item in $history_csv; do
+    add_alias "$item"
+  done
+  IFS=$old_ifs
+  printf '%s\n' "$unique_list"
+}
+
 blog_author_display_name() {
   raw_author=${1-}
   if [ -z "$raw_author" ]; then
@@ -1484,7 +1576,7 @@ blog_author_display_name() {
   if blog_validate_username "$raw_author"; then
     profile=$(blog_user_profile "$raw_author")
     if [ -f "$profile" ]; then
-      blog_get_player_name "$raw_author" 2>/dev/null || printf '%s\n' "$raw_author"
+      blog_get_publish_name "$raw_author" 2>/dev/null || printf '%s\n' "$raw_author"
       return 0
     fi
   fi

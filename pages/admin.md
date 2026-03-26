@@ -598,8 +598,17 @@ title: ""
 <label for="account-player-name"><strong>Player Name</strong></label>
 <div class="account-row">
 <input type="text" id="account-player-name" placeholder="Your name">
+</div>
+<p class="muted account-note">Short account name shown in nav/account UI.</p>
+</div>
+
+<div class="field-row">
+<label for="account-publish-name"><strong>Publish Name</strong></label>
+<div class="account-row">
+<input type="text" id="account-publish-name" placeholder="Name shown on blog posts">
 <button id="btn-save-account" type="button" class="primary">Save</button>
 </div>
+<p class="muted account-note">This is the author name shown on your published blog posts.</p>
 </div>
 
 <div class="field-row account-passkey-row">

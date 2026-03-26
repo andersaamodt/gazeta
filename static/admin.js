@@ -6,6 +6,7 @@
     csrfToken: localStorage.getItem('csrf_token') || '',
     username: '',
     playerName: '',
+    publishName: '',
     nostrPubkey: '',
     sshFingerprint: '',
     isAdmin: false,
@@ -199,6 +200,7 @@
     usersList: document.getElementById('users-list'),
     currentDraftLabel: document.getElementById('current-draft-label'),
     accountPlayerName: document.getElementById('account-player-name'),
+    accountPublishName: document.getElementById('account-publish-name'),
     accountNostrPubkey: document.getElementById('account-nostr-pubkey'),
     accountNostrPubkeyCopyButton: document.getElementById('btn-account-pubkey-copy'),
     accountNostrPubkeyToggleButton: document.getElementById('btn-account-pubkey-toggle'),
@@ -2381,6 +2383,7 @@
 
       state.username = data.username;
       state.playerName = data.player_name || data.username || '';
+      state.publishName = data.publish_name || state.playerName || data.username || '';
       state.nostrPubkey = data.nostr_pubkey || '';
       state.sshFingerprint = data.ssh_fingerprint || '';
       state.isAdmin = !!data.is_admin;
@@ -2389,6 +2392,9 @@
       setAuthMessage('', '');
       if (els.accountPlayerName) {
         els.accountPlayerName.value = state.playerName;
+      }
+      if (els.accountPublishName) {
+        els.accountPublishName.value = state.publishName;
       }
       if (els.accountNostrPubkey) {
         els.accountNostrPubkey.value = state.nostrPubkey;
@@ -3354,41 +3360,51 @@
   }
 
   async function saveAccount() {
-    if (!els.accountPlayerName) {
+    if (!els.accountPlayerName || !els.accountPublishName) {
       return;
     }
-    const nextName = els.accountPlayerName.value.trim();
-    const currentName = String(state.playerName || state.username || '').trim();
+    const nextPlayerName = els.accountPlayerName.value.trim();
+    const nextPublishName = els.accountPublishName.value.trim();
+    const currentPublishName = String(state.publishName || state.playerName || state.username || '').trim();
     let renameAuthoredPosts = false;
     try {
-      if (nextName && currentName && nextName !== currentName) {
+      if (nextPublishName && currentPublishName && nextPublishName !== currentPublishName) {
         const preview = await apiPost('/cgi/blog-update-account', {
-          player_name: nextName,
+          player_name: nextPlayerName,
+          publish_name: nextPublishName,
           preview_rename: 'true'
         }, true);
         if (!preview.success) {
           throw new Error(preview.error || 'Could not check authored posts');
         }
         const candidateCount = Number(preview.rename_candidate_count || 0);
-        const oldNameForPrompt = String(preview.old_player_name || currentName || '').trim();
+        const oldNameForPrompt = String(preview.old_publish_name || currentPublishName || '').trim();
         if (candidateCount > 0) {
           renameAuthoredPosts = window.confirm(
-            'Posts were found authored under your old name.\n\n' +
+            'Posts were found authored under your old publish name.\n\n' +
             'Would you like to update the author field of all these posts to your new name?\n\n' +
             'Old name: "' + oldNameForPrompt + '"\n' +
-            'New name: "' + nextName + '"\n' +
+            'New name: "' + nextPublishName + '"\n' +
             'Matching posts: ' + candidateCount
           );
         }
       }
       const data = await apiPost('/cgi/blog-update-account', {
-        player_name: nextName,
+        player_name: nextPlayerName,
+        publish_name: nextPublishName,
         rename_authored_posts: renameAuthoredPosts ? 'true' : 'false'
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save account');
       }
       state.playerName = data.player_name || state.username;
+      state.publishName = data.publish_name || state.playerName || state.username;
+      if (els.accountPlayerName) {
+        els.accountPlayerName.value = state.playerName;
+      }
+      if (els.accountPublishName) {
+        els.accountPublishName.value = state.publishName;
+      }
       const navName = document.getElementById('nav-user-name');
       if (navName) {
         navName.textContent = state.playerName;
@@ -3398,8 +3414,8 @@
         setOutput(
           els.outputAccount,
           renamedPosts > 0
-            ? ('Account updated. Author name updated on ' + renamedPosts + ' post' + (renamedPosts === 1 ? '' : 's') + '.')
-            : 'Account updated. No authored posts matched your old name.',
+            ? ('Account updated. Publish name updated on ' + renamedPosts + ' post' + (renamedPosts === 1 ? '' : 's') + '.')
+            : 'Account updated. No authored posts matched your old publish name.',
           'ok'
         );
       } else {

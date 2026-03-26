@@ -56,7 +56,7 @@ fi
 post_type=$(blog_normalize_post_type "$post_type")
 author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
 if [ -z "$author" ]; then
-  author=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+  author=$(blog_get_publish_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
 fi
 
 tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')

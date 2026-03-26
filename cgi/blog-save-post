@@ -90,7 +90,7 @@ summary=$(blog_auto_summary_from_content "$content")
 
 normalized_tags=$(blog_normalize_tags "$tags")
 post_type=$(blog_normalize_post_type "$post_type")
-author_name=$(blog_get_player_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+author_name=$(blog_get_publish_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
 
 case "$action" in
   publish_now)
