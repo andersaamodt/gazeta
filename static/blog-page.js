@@ -421,6 +421,51 @@
       layout.appendChild(mainCol);
     }
 
+    if (layout.firstElementChild !== filterCol) {
+      layout.insertBefore(filterCol, layout.firstChild);
+    }
+    if (mainCol.parentNode !== layout) {
+      layout.appendChild(mainCol);
+    }
+    if (filterCol.nextElementSibling !== mainCol) {
+      layout.insertBefore(mainCol, filterCol.nextSibling);
+    }
+
+    var orderedMainNodes = [];
+    var head = root.querySelector('.list-page-head');
+    if (head) {
+      orderedMainNodes.push(head);
+    }
+    if (els.admin) {
+      orderedMainNodes.push(els.admin);
+    }
+    if (els.validation) {
+      orderedMainNodes.push(els.validation);
+    }
+    if (els.content) {
+      orderedMainNodes.push(els.content);
+    }
+    if (els.panel) {
+      orderedMainNodes.push(els.panel);
+    }
+    if (els.list) {
+      orderedMainNodes.push(els.list);
+    }
+    if (els.empty) {
+      orderedMainNodes.push(els.empty);
+    }
+    orderedMainNodes.forEach(function (node) {
+      if (!node || node === mainCol) {
+        return;
+      }
+      if (node.parentNode !== mainCol) {
+        mainCol.appendChild(node);
+        return;
+      }
+      // Re-append to enforce stable order for legacy shells.
+      mainCol.appendChild(node);
+    });
+
     if (els.toggle.parentNode !== filterCol) {
       filterCol.appendChild(els.toggle);
     }

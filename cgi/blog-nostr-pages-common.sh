@@ -1057,7 +1057,11 @@ blog_nostr_page_template_is_current() {
     blog)
       grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="blog-page-content"' "$file" 2>/dev/null
+      grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
+      grep -q 'class="blog-layout"' "$file" 2>/dev/null &&
+      grep -q 'class="blog-filter-column"' "$file" 2>/dev/null &&
+      grep -q 'class="blog-main-column"' "$file" 2>/dev/null &&
+      grep -q 'id="blog-filter-toggle"' "$file" 2>/dev/null
       ;;
     nip23)
       grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
@@ -1304,7 +1308,7 @@ license: "CC BY 4.0"
 </div>
 </section>
 
-<script src="/static/blog-page.js?v=20260326-pagefix5"></script>
+<script src="/static/blog-page.js?v=20260326-pagefix6"></script>
 EOBLOG
       ;;
     public-ranking)
