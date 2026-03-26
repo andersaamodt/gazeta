@@ -2011,7 +2011,27 @@
   }
 
   function normalizeTagValue(tag) {
-    return String(tag || '').trim().replace(/\s+/g, '-');
+    let value = String(tag || '').trim();
+    if (!value) {
+      return '';
+    }
+    value = value.replace(/^\[+|\]+$/g, '');
+    value = value.replace(/^["']+|["']+$/g, '');
+    value = value.replace(/\\+/g, '');
+    value = value.replace(/\s+/g, '-');
+    value = value.replace(/^-+|-+$/g, '');
+    if (!/[A-Za-z0-9]/.test(value)) {
+      return '';
+    }
+    if (/[\[\]{}]/.test(value)) {
+      return '';
+    }
+    value = value.replace(/[^A-Za-z0-9._:+/-]/g, '');
+    value = value.replace(/^-+|-+$/g, '');
+    if (!value || value.length > 64) {
+      return '';
+    }
+    return value;
   }
 
   function setComposeTags(tags) {

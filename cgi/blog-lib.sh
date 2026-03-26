@@ -2050,7 +2050,30 @@ blog_read_markdown_body() {
 
 blog_normalize_tags() {
   tags=${1-}
-  printf '%s' "$tags" | tr '\n' ',' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | awk 'NF { if (!seen[$0]++) { if (out != "") out = out ", "; out = out $0; } } END { printf "%s", out }'
+  printf '%s' "$tags" | tr '\n' ',' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | awk '
+    function sanitize(s) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", s);
+      gsub(/^[[]+|[]]+$/, "", s);
+      gsub(/^["'"'"']+|["'"'"']+$/, "", s);
+      gsub(/\\+/, "", s);
+      gsub(/[[:space:]]+/, "-", s);
+      gsub(/^-+|-+$/, "", s);
+      gsub(/[^A-Za-z0-9._:+\/-]/, "", s);
+      gsub(/^-+|-+$/, "", s);
+      if (s !~ /[A-Za-z0-9]/) return "";
+      if (length(s) > 64) return "";
+      return s;
+    }
+    {
+      tag = sanitize($0);
+      if (tag == "") next;
+      if (!seen[tag]++) {
+        if (out != "") out = out ", ";
+        out = out tag;
+      }
+    }
+    END { printf "%s", out }
+  '
 }
 
 blog_normalize_post_type() {
