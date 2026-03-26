@@ -3775,6 +3775,44 @@ body.nav-cart-open {
   }
 }
 
+.nav-overflow-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-menu-btn.nav-overflow-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0 0.62rem;
+  min-width: 2.2rem;
+  height: 2.05rem;
+  width: auto;
+}
+
+.nav-menu-btn.nav-overflow-btn:hover,
+.nav-menu-btn.nav-overflow-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--light-bg);
+}
+
+.nav-overflow-panel {
+  right: 0;
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+}
+
+.nav-center a.is-nav-overflow-hidden {
+  display: none !important;
+}
+
 .nav-user-menu {
   position: relative;
   display: inline-flex;
@@ -6928,6 +6966,7 @@ nav.site-nav {
   nav.site-nav .nav-search button,
   nav.site-nav .btn-login,
   nav.site-nav .nav-login-split,
+  nav.site-nav .nav-overflow-menu,
   nav.site-nav .nav-user-menu,
   nav.site-nav .nav-menu-btn,
   nav.site-nav .nav-compose,

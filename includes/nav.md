@@ -57,6 +57,10 @@
 <a href="/" data-page="blog">Blog</a>
 </div>
 <div class="nav-right">
+<div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
+  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">More</button>
+  <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
+</div>
 <form class="nav-search" method="get" action="/pages/search.html">
 <input type="text" name="q" placeholder="Search..." />
 <button type="submit" aria-label="Search">
