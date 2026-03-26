@@ -47,6 +47,7 @@
       open: false,
       preview: false,
       draftId: '',
+      sourcePostPath: '',
       postTypeLocked: false,
       postTypeChosen: false,
       tags: [],
@@ -105,6 +106,7 @@
     if (typeof state.compose.open !== 'boolean') state.compose.open = false;
     if (typeof state.compose.preview !== 'boolean') state.compose.preview = false;
     if (typeof state.compose.draftId !== 'string') state.compose.draftId = '';
+    if (typeof state.compose.sourcePostPath !== 'string') state.compose.sourcePostPath = '';
     if (typeof state.compose.postTypeLocked !== 'boolean') state.compose.postTypeLocked = false;
     if (typeof state.compose.postTypeChosen !== 'boolean') state.compose.postTypeChosen = false;
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
@@ -1420,6 +1422,9 @@
   }
 
   function composePrimaryLabel(mode, destination) {
+    if (state.compose.postTypeLocked) {
+      return 'Publish Changes';
+    }
     if (mode === 'scheduled') {
       return 'Schedule Post';
     }
@@ -1433,6 +1438,9 @@
   }
 
   function composeModeAction(mode, destination) {
+    if (state.compose.postTypeLocked) {
+      return 'publish_now';
+    }
     if (mode === 'scheduled') {
       return 'queue_scheduled';
     }
@@ -1608,6 +1616,7 @@
     return {
       action: action,
       draft_id: String(state.compose.draftId || ''),
+      source_post_path: String(state.compose.sourcePostPath || ''),
       title: fields.title.trim(),
       tags: fields.tags.trim(),
       summary: '',
@@ -1641,6 +1650,7 @@
 
   function afterComposePublishSuccess() {
     state.compose.draftId = '';
+    state.compose.sourcePostPath = '';
     state.compose.postTypeLocked = false;
     state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
@@ -1743,6 +1753,7 @@
 
   function clearComposeFields() {
     state.compose.draftId = '';
+    state.compose.sourcePostPath = '';
     state.compose.postTypeLocked = false;
     state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
@@ -1844,10 +1855,12 @@
       clearComposePostTypeCollapseTimer();
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeLocked = false;
+      state.compose.sourcePostPath = '';
     } else {
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeChosen = false;
       state.compose.postTypeLocked = false;
+      state.compose.sourcePostPath = '';
     }
     try {
       renderComposeUi();
@@ -1938,6 +1951,7 @@
       state.compose.output = '';
       state.compose.outputTone = '';
       state.compose.draftId = String(draft.draft_id || id).trim();
+      state.compose.sourcePostPath = String(draft.source_post_path || '').trim();
       state.compose.postType = normalizeComposePostType(draft.post_type || 'longform');
       state.compose.postTypeChosen = true;
       state.compose.postTypeLocked = !!opts.lockPostType;

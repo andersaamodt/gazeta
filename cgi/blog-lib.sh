@@ -92,6 +92,7 @@ blog_write_draft_markdown() {
   updated_at=${12}
   content=${13}
   post_type=${14-longform}
+  source_post_path=${15-}
   post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$tags")
   tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-draft.XXXXXX")
@@ -102,6 +103,9 @@ blog_write_draft_markdown() {
     printf 'slug: "%s"\n' "$(blog_yaml_escape "$slug")"
     printf 'tags: %s\n' "$tags_yaml"
     printf 'post_type: "%s"\n' "$(blog_yaml_escape "$post_type")"
+    if [ -n "$source_post_path" ]; then
+      printf 'source_post_path: "%s"\n' "$(blog_yaml_escape "$source_post_path")"
+    fi
     printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
     printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
     printf 'publish_mode: "%s"\n' "$(blog_yaml_escape "$publish_mode")"
@@ -3230,6 +3234,7 @@ blog_save_draft() {
   scheduled_at=$8
   status=$9
   post_type=${10-longform}
+  source_post_path=${11-}
 
   draft_file=$(blog_draft_file_path "$draft_id")
   mkdir -p "$blog_drafts_dir"
@@ -3243,7 +3248,7 @@ blog_save_draft() {
   normalized_post_type=$(blog_normalize_post_type "$post_type")
   slug=$(blog_slugify "$title")
   now_iso=$(blog_now_iso)
-  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type"
+  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type" "$source_post_path"
   blog_file_sync_draft_refs "$draft_id" "$content"
 }
 
@@ -3286,7 +3291,7 @@ blog_compute_post_filename() {
 }
 
 blog_publish_content_markdown() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
   title=$1
   tags=$2
   summary=$3
@@ -3296,14 +3301,39 @@ blog_publish_content_markdown() {
   publish_mode=$7
   scheduled_at=$8
   post_type=${9-longform}
+  source_post_path=${10-}
 
-  filename=$(blog_compute_post_filename "$title")
-  post_path="$blog_posts_dir/$filename"
+  filename=
+  post_path=
+  if [ -n "$source_post_path" ]; then
+    safe_source=$(printf '%s' "$source_post_path" | sed -e 's#^/##' -e 's#^pages/##')
+    case "$safe_source" in
+      posts/*.md)
+        case "$safe_source" in
+          *'..'*|*'\\'*|*'//'*)
+            safe_source=""
+            ;;
+        esac
+        ;;
+      *)
+        safe_source=""
+        ;;
+    esac
+    if [ -n "$safe_source" ]; then
+      post_path="$blog_site_root/site/pages/$safe_source"
+      filename=${safe_source##*/}
+    fi
+  fi
+  if [ -z "$post_path" ]; then
+    filename=$(blog_compute_post_filename "$title")
+    post_path="$blog_posts_dir/$filename"
+  fi
   now_iso=$(blog_now_iso)
   normalized_tags=$(blog_normalize_tags "$tags")
   normalized_post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$normalized_tags")
   content_hash=$(printf '%s' "$content" | blog_sha256)
+  mkdir -p "$(dirname "$post_path")"
 
   {
     printf '%s\n' '---'
@@ -3334,7 +3364,7 @@ blog_publish_content_markdown() {
 }
 
 blog_publish_content_nostr() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
   title=$1
   tags=$2
   summary=$3
@@ -3385,7 +3415,7 @@ blog_publish_content_nostr() {
 }
 
 blog_publish_content() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at post_type
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
   if blog_nostr_bridge_enabled; then
     if out=$(blog_publish_content_nostr "$@" 2>/dev/null); then
       BLOG_PUBLISH_LAST_MODE="nostr"

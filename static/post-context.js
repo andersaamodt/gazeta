@@ -5,6 +5,20 @@
   var refreshInFlight = false;
   var submitInFlight = false;
   var postMenuBusy = false;
+  var inlineEditState = {
+    open: false,
+    busy: false,
+    draftId: '',
+    sourcePostPath: '',
+    postType: 'longform',
+    title: '',
+    content: '',
+    tags: '',
+    output: '',
+    outputTone: '',
+    autosaveTimer: null,
+    saveStatus: ''
+  };
 
   function isPostPage(pathname) {
     var path = String(pathname || '');
@@ -190,7 +204,7 @@
           if (!draftId) {
             throw new Error('Draft was created but no draft id was returned');
           }
-          window.location.href = '/pages/admin.html?draft_id=' + encodeURIComponent(draftId) + '&lock_post_type=1#compose';
+          return openInlineEditorForDraft(draftId);
         })
         .catch(function (err) {
           window.alert(err.message || 'Could not create draft from post');
@@ -434,6 +448,283 @@
       '<p class="post-end-tags-label">Tags</p>' +
       content +
       '</section>';
+  }
+
+  function normalizeInlinePostType(raw) {
+    var value = String(raw || '').trim().toLowerCase();
+    return value || 'longform';
+  }
+
+  function normalizeInlineTags(raw) {
+    var seen = {};
+    return String(raw || '')
+      .split(',')
+      .map(function (tag) { return String(tag || '').trim(); })
+      .filter(function (tag) {
+        if (!tag || seen[tag]) {
+          return false;
+        }
+        seen[tag] = true;
+        return true;
+      })
+      .join(', ');
+  }
+
+  function inlinePostTypeLabel(postType) {
+    var value = normalizeInlinePostType(postType);
+    if (value === 'shortform') return 'Shortform';
+    if (value === 'capture-media') return 'Capture Media';
+    if (value === 'upload-media') return 'Upload Media';
+    if (value === 'attachment') return 'Attachment';
+    if (value === 'audio-note') return 'Audio Note';
+    if (value === 'link-share') return 'Link Share';
+    if (value === 'go-live') return 'Go Live';
+    return 'Longform';
+  }
+
+  function inlineAuthPayload() {
+    return {
+      session_token: getSessionToken(),
+      csrf_token: getCsrfToken()
+    };
+  }
+
+  function ensureInlineEditorHost() {
+    var card = document.querySelector('.post-single-item');
+    if (!card) {
+      return null;
+    }
+    var existing = card.querySelector('.post-inline-editor-host');
+    if (existing) {
+      return existing;
+    }
+    var host = document.createElement('div');
+    host.className = 'post-inline-editor-host';
+    var body = card.querySelector('.post-single-body');
+    if (body && body.parentNode === card) {
+      card.insertBefore(host, body);
+    } else {
+      card.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderInlineEditor() {
+    var host = ensureInlineEditorHost();
+    if (!host) {
+      return;
+    }
+    if (!inlineEditState.open) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    var outputClass = 'output';
+    if (inlineEditState.outputTone) {
+      outputClass += ' ' + inlineEditState.outputTone;
+    }
+    host.innerHTML = '' +
+      '<article class="post-item blog-post-item blog-compose-card">' +
+        '<div class="blog-compose-body">' +
+          '<div class="field-row blog-compose-head-row is-type-collapsed">' +
+            '<div class="compose-nostr-target-row">' +
+              '<span class="nostr-target-pill is-pages-pill">Post type: ' + escapeHtml(inlinePostTypeLabel(inlineEditState.postType)) + ' (locked)</span>' +
+            '</div>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="close">Done</button>' +
+          '</div>' +
+          '<div class="field-row blog-compose-title-row">' +
+            '<input type="text" data-post-inline-field="title" placeholder="Post title" value="' + escapeHtml(inlineEditState.title) + '">' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<label><strong>Content</strong></label>' +
+            '<div class="editor-shell blog-compose-editor-shell">' +
+              '<textarea data-post-inline-field="content" rows="14" placeholder="# Write in Markdown">' + escapeHtml(inlineEditState.content) + '</textarea>' +
+            '</div>' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<label><strong>Tags</strong></label>' +
+            '<input type="text" data-post-inline-field="tags" value="' + escapeHtml(inlineEditState.tags) + '" placeholder="tag, tag, tag">' +
+          '</div>' +
+        '</div>' +
+        '<div class="compose-footer blog-compose-footer">' +
+          '<div class="compose-actions blog-compose-footer-actions">' +
+            '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-post-inline-action="delete"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Delete Draft</button>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="save"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Save Draft</button>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="publish"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Publish Changes</button>' +
+          '</div>' +
+          '<div class="blog-compose-status-row">' +
+            '<div class="autosave-indicator' + (inlineEditState.saveStatus === 'saving' ? ' is-saving' : '') + (inlineEditState.saveStatus === 'error' ? ' is-error' : '') + '"' + (inlineEditState.saveStatus ? '' : ' hidden') + '>' + (inlineEditState.saveStatus === 'saving' ? 'Saving...' : (inlineEditState.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
+            '<div class="' + outputClass + '">' + escapeHtml(inlineEditState.output) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>';
+  }
+
+  function setInlineOutput(message, tone) {
+    inlineEditState.output = String(message || '');
+    inlineEditState.outputTone = String(tone || '');
+  }
+
+  function inlineEditorPayload(action) {
+    return {
+      action: action,
+      draft_id: String(inlineEditState.draftId || ''),
+      source_post_path: String(inlineEditState.sourcePostPath || ''),
+      title: String(inlineEditState.title || '').trim(),
+      tags: normalizeInlineTags(inlineEditState.tags || ''),
+      summary: '',
+      content: String(inlineEditState.content || ''),
+      post_type: normalizeInlinePostType(inlineEditState.postType || 'longform'),
+      scheduled_at: '',
+      publish_mode: 'immediate',
+      publish_destination: 'local_only'
+    };
+  }
+
+  function saveInlineDraft(action) {
+    if (!inlineEditState.open || inlineEditState.busy) {
+      return Promise.resolve(false);
+    }
+    var auth = inlineAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      setInlineOutput('Sign in again to edit this post.', 'error');
+      renderInlineEditor();
+      return Promise.resolve(false);
+    }
+    var payload = inlineEditorPayload(action);
+    payload.session_token = auth.session_token;
+    payload.csrf_token = auth.csrf_token;
+    inlineEditState.busy = true;
+    if (action === 'autosave') {
+      inlineEditState.saveStatus = 'saving';
+    }
+    renderInlineEditor();
+    return postForm('/cgi/blog-save-post', payload).then(function (data) {
+      if (data && data.draft_id) {
+        inlineEditState.draftId = String(data.draft_id || '').trim();
+      }
+      inlineEditState.tags = normalizeInlineTags(inlineEditState.tags || '');
+      if (action === 'autosave' || action === 'save_draft') {
+        inlineEditState.saveStatus = 'saved';
+      }
+      if (action === 'publish_now') {
+        setInlineOutput('Published. Reloading post…', 'ok');
+        renderInlineEditor();
+        window.setTimeout(function () {
+          window.location.reload();
+        }, 350);
+      }
+      return true;
+    }).catch(function (err) {
+      if (action === 'autosave' || action === 'save_draft') {
+        inlineEditState.saveStatus = 'error';
+      } else {
+        setInlineOutput(err && err.message ? err.message : 'Save failed', 'error');
+      }
+      renderInlineEditor();
+      return false;
+    }).finally(function () {
+      inlineEditState.busy = false;
+      renderInlineEditor();
+    });
+  }
+
+  function queueInlineAutosave() {
+    if (!inlineEditState.open) {
+      return;
+    }
+    if (inlineEditState.autosaveTimer) {
+      window.clearTimeout(inlineEditState.autosaveTimer);
+    }
+    inlineEditState.saveStatus = 'saving';
+    renderInlineEditor();
+    inlineEditState.autosaveTimer = window.setTimeout(function () {
+      inlineEditState.autosaveTimer = null;
+      saveInlineDraft('autosave');
+    }, 1200);
+  }
+
+  function closeInlineEditor() {
+    if (inlineEditState.autosaveTimer) {
+      window.clearTimeout(inlineEditState.autosaveTimer);
+      inlineEditState.autosaveTimer = null;
+    }
+    inlineEditState.open = false;
+    inlineEditState.busy = false;
+    inlineEditState.draftId = '';
+    inlineEditState.sourcePostPath = '';
+    inlineEditState.postType = 'longform';
+    inlineEditState.title = '';
+    inlineEditState.content = '';
+    inlineEditState.tags = '';
+    inlineEditState.output = '';
+    inlineEditState.outputTone = '';
+    inlineEditState.saveStatus = '';
+    renderInlineEditor();
+  }
+
+  function deleteInlineDraft() {
+    if (!inlineEditState.draftId || inlineEditState.busy) {
+      closeInlineEditor();
+      return;
+    }
+    if (!window.confirm('Delete this draft?')) {
+      return;
+    }
+    var auth = inlineAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      setInlineOutput('Sign in again to delete this draft.', 'error');
+      renderInlineEditor();
+      return;
+    }
+    inlineEditState.busy = true;
+    renderInlineEditor();
+    postForm('/cgi/blog-delete-draft', {
+      draft_id: String(inlineEditState.draftId || ''),
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function () {
+      closeInlineEditor();
+    }).catch(function (err) {
+      inlineEditState.busy = false;
+      setInlineOutput(err && err.message ? err.message : 'Could not delete draft', 'error');
+      renderInlineEditor();
+    });
+  }
+
+  function openInlineEditorForDraft(draftId) {
+    var auth = inlineAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      return Promise.reject(new Error('Sign in as admin first.'));
+    }
+    return postForm('/cgi/blog-get-draft', {
+      draft_id: String(draftId || ''),
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      if (!data || !data.success || !data.draft) {
+        throw new Error((data && data.error) || 'Could not load draft');
+      }
+      var draft = data.draft || {};
+      inlineEditState.open = true;
+      inlineEditState.busy = false;
+      inlineEditState.draftId = String(draft.draft_id || draftId || '').trim();
+      inlineEditState.sourcePostPath = String(draft.source_post_path || '').trim();
+      inlineEditState.postType = normalizeInlinePostType(draft.post_type || 'longform');
+      inlineEditState.title = String(draft.title || '');
+      inlineEditState.content = String(draft.content || '');
+      inlineEditState.tags = normalizeInlineTags(draft.tags || '');
+      inlineEditState.output = '';
+      inlineEditState.outputTone = '';
+      inlineEditState.saveStatus = '';
+      renderInlineEditor();
+      var host = ensureInlineEditorHost();
+      if (host && typeof host.scrollIntoView === 'function') {
+        host.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+      }
+      return true;
+    });
   }
 
   function navColumn(label, post, cls) {
@@ -798,6 +1089,62 @@
     var menu = document.querySelector('.post-page-menu');
     if (menu && !menu.hidden && !menu.contains(target)) {
       closePostPageMenu();
+    }
+
+    var inlineAction = target.closest('[data-post-inline-action]');
+    if (inlineAction instanceof HTMLElement) {
+      event.preventDefault();
+      var actionName = String(inlineAction.getAttribute('data-post-inline-action') || '');
+      if (actionName === 'close') {
+        closeInlineEditor();
+      } else if (actionName === 'save') {
+        saveInlineDraft('save_draft');
+      } else if (actionName === 'publish') {
+        saveInlineDraft('publish_now');
+      } else if (actionName === 'delete') {
+        deleteInlineDraft();
+      }
+      return;
+    }
+  });
+
+  document.addEventListener('input', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    if (!inlineEditState.open) {
+      return;
+    }
+    var field = String(target.getAttribute('data-post-inline-field') || '');
+    if (!field) {
+      return;
+    }
+    if (field === 'title') {
+      inlineEditState.title = String(target.value || '');
+    } else if (field === 'content') {
+      inlineEditState.content = String(target.value || '');
+    } else if (field === 'tags') {
+      inlineEditState.tags = String(target.value || '');
+    }
+    queueInlineAutosave();
+  });
+
+  document.addEventListener('change', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (!inlineEditState.open) {
+      return;
+    }
+    if (!target.hasAttribute('data-post-inline-field')) {
+      return;
+    }
+    if (String(target.getAttribute('data-post-inline-field') || '') === 'tags') {
+      inlineEditState.tags = normalizeInlineTags(target.value || '');
+      target.value = inlineEditState.tags;
+      queueInlineAutosave();
     }
   });
 
