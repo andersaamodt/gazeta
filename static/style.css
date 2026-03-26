@@ -2545,8 +2545,8 @@ body.nav-cart-open {
   border-radius: 999px !important;
   border: 1px solid hsl(var(--marker-pill-h, 220), 42%, 74%) !important;
   background: hsl(var(--marker-pill-h, 220), 56%, 92%) !important;
-  color: hsl(var(--marker-pill-h, 220), 36%, 28%) !important;
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 36%, 28%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
   padding: 0.16rem 0.58rem !important;
   font-size: 0.79rem !important;
   font-weight: 500 !important;
@@ -2556,16 +2556,16 @@ body.nav-cart-open {
 .list-marker-filter-pill:hover:not(:disabled),
 .list-marker-filter-pill:focus-visible:not(:disabled) {
   background: hsl(var(--marker-pill-h, 220), 58%, 89%) !important;
-  color: hsl(var(--marker-pill-h, 220), 40%, 24%) !important;
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 40%, 24%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
   border-color: hsl(var(--marker-pill-h, 220), 46%, 66%) !important;
 }
 
 .list-marker-filter-pill.is-include {
   background: hsl(var(--marker-pill-h, 220), 66%, 79%) !important;
   border-color: hsl(var(--marker-pill-h, 220), 56%, 50%) !important;
-  color: hsl(var(--marker-pill-h, 220), 46%, 18%) !important;
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 46%, 18%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
   font-weight: 700 !important;
 }
 
@@ -2573,15 +2573,15 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-include:focus-visible:not(:disabled) {
   background: hsl(var(--marker-pill-h, 220), 66%, 79%) !important;
   border-color: hsl(var(--marker-pill-h, 220), 56%, 50%) !important;
-  color: hsl(var(--marker-pill-h, 220), 46%, 18%) !important;
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 46%, 18%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
 }
 
 .list-marker-filter-pill.is-exclude {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 70%, 80%) 42%, #ffb8b3 58%) !important;
   border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 58%, 52%) 36%, #a11b14 64%) !important;
-  color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 44%, 18%) 34%, #5f0f0f 66%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 44%, 18%) 34%, #5f0f0f 66%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
   font-weight: 700 !important;
 }
 
@@ -2589,8 +2589,8 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-exclude:focus-visible:not(:disabled) {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 70%, 80%) 42%, #ffb8b3 58%) !important;
   border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 58%, 52%) 36%, #a11b14 64%) !important;
-  color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 44%, 18%) 34%, #5f0f0f 66%) !important;
-  -webkit-text-fill-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 44%, 18%) 34%, #5f0f0f 66%) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448) !important;
 }
 
 .list-tiles {
