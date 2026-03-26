@@ -4994,7 +4994,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: auto;
   padding-top: 0.65rem;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
@@ -5003,6 +5003,12 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: 0;
   padding-top: 0;
   text-align: left;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .blog-post-item .post-card-comments-count {
@@ -5010,6 +5016,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   color: var(--light-text);
   font-size: 0.78rem;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .post-summary {
