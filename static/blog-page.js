@@ -1300,7 +1300,7 @@
       return 'Enqueue Post';
     }
     if (normalizeComposePublishDestination(destination) === 'local_only') {
-      return 'Save Local Draft';
+      return 'Publish to Server';
     }
     return 'Publish Now';
   }
@@ -2070,7 +2070,7 @@
           '<div class="field-row compose-destination-row">' +
             '<strong>Publish Destination</strong>' +
             '<div class="mode-row">' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Local only</label>' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
               '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
             '</div>' +
           '</div>' +
