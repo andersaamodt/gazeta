@@ -228,7 +228,7 @@ body.list-page-width-anim {
 }
 
 body.list-page-width-anim.list-page-wide {
-  max-width: min(1960px, calc(100vw - 0.5rem));
+  max-width: min(1640px, calc(100vw - 0.5rem));
   margin-left: auto;
   margin-right: auto;
 }
@@ -1205,7 +1205,7 @@ body.nav-cart-open {
 
 .list-page-shell.is-editing {
   width: 100%;
-  max-width: min(1920px, calc(100vw - 0.5rem));
+  max-width: min(1640px, calc(100vw - 0.5rem));
   margin-left: auto;
   margin-right: auto;
 }
@@ -1966,8 +1966,6 @@ body.nav-cart-open {
   gap: 0.32rem;
   align-items: center;
   margin: 0 0 0.46rem;
-  margin-left: var(--list-depth-indent);
-  width: calc(100% - var(--list-depth-indent));
   padding: 0 0.35rem;
   border: 0;
   border-radius: 0;
@@ -2021,6 +2019,7 @@ body.nav-cart-open {
 .list-entry-inline .list-inline-markdown {
   min-width: 0;
   overflow: hidden;
+  padding-left: var(--list-depth-indent);
 }
 
 .list-entry-inline .list-inline-markdown .list-inline-open {
