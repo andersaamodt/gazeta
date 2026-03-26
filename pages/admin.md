@@ -317,6 +317,19 @@ title: ""
 <input type="text" id="post-title" placeholder="Post title">
 </div>
 
+<div class="field-row compose-post-filename-row" id="compose-post-filename-row" hidden>
+<label><strong>Slug/Filename</strong></label>
+<div class="compose-post-filename-display" id="compose-post-filename-display">
+<code id="compose-post-filename-label" class="compose-post-filename-value">posts/post.md</code>
+<button type="button" id="btn-compose-post-filename-edit" class="list-inline-edit-link">Edit...</button>
+</div>
+<div class="compose-post-filename-edit-wrap" id="compose-post-filename-edit-wrap" hidden>
+<span class="compose-post-filename-prefix">posts/</span>
+<input type="text" id="compose-post-filename-input" inputmode="url" spellcheck="false" placeholder="my-post-slug">
+<span class="compose-post-filename-suffix">.md</span>
+</div>
+</div>
+
 <div id="compose-content-row" class="field-row">
 <label for="post-content"><strong>Content</strong></label>
 <div class="editor-shell">

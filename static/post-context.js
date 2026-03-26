@@ -10,6 +10,8 @@
     busy: false,
     draftId: '',
     sourcePostPath: '',
+    postFilename: '',
+    postFilenameEditing: false,
     postType: 'longform',
     title: '',
     content: '',
@@ -54,6 +56,28 @@
       return '';
     }
     return 'posts/' + value + '.md';
+  }
+
+  function normalizePostFilename(raw) {
+    var value = String(raw || '').trim();
+    if (!value) {
+      return '';
+    }
+    value = value
+      .replace(/^https?:\/\/[^/]+\//i, '')
+      .replace(/^\/+/, '')
+      .replace(/^pages\//i, '')
+      .replace(/^posts\//i, '');
+    if (value.indexOf('/') >= 0) {
+      value = value.split('/').pop();
+    }
+    value = value.replace(/\.html?$/i, '').replace(/\.md$/i, '');
+    value = value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    return value;
+  }
+
+  function filenameFromPostPath(rawPath) {
+    return normalizePostFilename(normalizePostMdPath(rawPath));
   }
 
   function escapeHtml(value) {
@@ -527,6 +551,29 @@
     if (inlineEditState.outputTone) {
       outputClass += ' ' + inlineEditState.outputTone;
     }
+    var hasEditableFilename = !!String(inlineEditState.sourcePostPath || '').trim();
+    var currentFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
+    if (!currentFilename) {
+      currentFilename = 'post';
+    }
+    var filenameDisplayHidden = inlineEditState.postFilenameEditing ? ' hidden' : '';
+    var filenameEditHidden = inlineEditState.postFilenameEditing ? '' : ' hidden';
+    var filenameRow = '';
+    if (hasEditableFilename) {
+      filenameRow = '' +
+        '<div class="field-row compose-post-filename-row">' +
+          '<label><strong>Slug/Filename</strong></label>' +
+          '<div class="compose-post-filename-display"' + filenameDisplayHidden + '>' +
+            '<code class="compose-post-filename-value">posts/' + escapeHtml(currentFilename) + '.md</code>' +
+            '<button type="button" class="list-inline-edit-link" data-post-inline-action="edit_filename">Edit...</button>' +
+          '</div>' +
+          '<div class="compose-post-filename-edit-wrap"' + filenameEditHidden + '>' +
+            '<span class="compose-post-filename-prefix">posts/</span>' +
+            '<input type="text" data-post-inline-field="post_filename" inputmode="url" spellcheck="false" value="' + escapeHtml(currentFilename) + '" placeholder="my-post-slug">' +
+            '<span class="compose-post-filename-suffix">.md</span>' +
+          '</div>' +
+        '</div>';
+    }
     host.innerHTML = '' +
       '<article class="post-item blog-post-item blog-compose-card">' +
         '<div class="blog-compose-body">' +
@@ -539,6 +586,7 @@
           '<div class="field-row blog-compose-title-row">' +
             '<input type="text" data-post-inline-field="title" placeholder="Post title" value="' + escapeHtml(inlineEditState.title) + '">' +
           '</div>' +
+          filenameRow +
           '<div class="field-row">' +
             '<label><strong>Content</strong></label>' +
             '<div class="editor-shell blog-compose-editor-shell">' +
@@ -574,6 +622,7 @@
       action: action,
       draft_id: String(inlineEditState.draftId || ''),
       source_post_path: String(inlineEditState.sourcePostPath || ''),
+      post_filename: String(inlineEditState.postFilename || ''),
       title: String(inlineEditState.title || '').trim(),
       tags: normalizeInlineTags(inlineEditState.tags || ''),
       summary: '',
@@ -608,6 +657,7 @@
         inlineEditState.draftId = String(data.draft_id || '').trim();
       }
       inlineEditState.tags = normalizeInlineTags(inlineEditState.tags || '');
+      inlineEditState.postFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
       if (action === 'autosave' || action === 'save_draft') {
         inlineEditState.saveStatus = 'saved';
       }
@@ -657,6 +707,8 @@
     inlineEditState.busy = false;
     inlineEditState.draftId = '';
     inlineEditState.sourcePostPath = '';
+    inlineEditState.postFilename = '';
+    inlineEditState.postFilenameEditing = false;
     inlineEditState.postType = 'longform';
     inlineEditState.title = '';
     inlineEditState.content = '';
@@ -713,7 +765,9 @@
       inlineEditState.open = true;
       inlineEditState.busy = false;
       inlineEditState.draftId = String(draft.draft_id || draftId || '').trim();
-      inlineEditState.sourcePostPath = String(draft.source_post_path || '').trim();
+      inlineEditState.sourcePostPath = normalizePostMdPath(draft.source_post_path || '');
+      inlineEditState.postFilename = normalizePostFilename(draft.post_filename || filenameFromPostPath(inlineEditState.sourcePostPath));
+      inlineEditState.postFilenameEditing = false;
       inlineEditState.postType = normalizeInlinePostType(draft.post_type || 'longform');
       inlineEditState.title = String(draft.title || '');
       inlineEditState.content = String(draft.content || '');
@@ -1106,6 +1160,18 @@
         saveInlineDraft('publish_now');
       } else if (actionName === 'delete') {
         deleteInlineDraft();
+      } else if (actionName === 'edit_filename') {
+        inlineEditState.postFilenameEditing = true;
+        renderInlineEditor();
+        window.setTimeout(function () {
+          var input = document.querySelector('[data-post-inline-field="post_filename"]');
+          if (input && typeof input.focus === 'function') {
+            input.focus();
+          }
+          if (input && typeof input.select === 'function') {
+            input.select();
+          }
+        }, 0);
       }
       return;
     }
@@ -1129,6 +1195,8 @@
       inlineEditState.content = String(target.value || '');
     } else if (field === 'tags') {
       inlineEditState.tags = String(target.value || '');
+    } else if (field === 'post_filename') {
+      inlineEditState.postFilename = normalizePostFilename(String(target.value || ''));
     }
     queueInlineAutosave();
   });
@@ -1144,9 +1212,22 @@
     if (!target.hasAttribute('data-post-inline-field')) {
       return;
     }
-    if (String(target.getAttribute('data-post-inline-field') || '') === 'tags') {
+    var changedField = String(target.getAttribute('data-post-inline-field') || '');
+    if (changedField === 'tags') {
       inlineEditState.tags = normalizeInlineTags(target.value || '');
       target.value = inlineEditState.tags;
+      queueInlineAutosave();
+      return;
+    }
+    if (changedField === 'post_filename') {
+      var nextFilename = normalizePostFilename(target.value || filenameFromPostPath(inlineEditState.sourcePostPath));
+      if (!nextFilename) {
+        nextFilename = filenameFromPostPath(inlineEditState.sourcePostPath) || 'post';
+      }
+      inlineEditState.postFilename = nextFilename;
+      inlineEditState.postFilenameEditing = false;
+      target.value = nextFilename;
+      renderInlineEditor();
       queueInlineAutosave();
     }
   });

@@ -27,6 +27,7 @@ visibility=$(blog_param visibility)
 existing_publish_mode=""
 existing_status=""
 source_post_path=$(blog_param source_post_path)
+post_filename=$(blog_param post_filename)
 
 if [ -z "$action" ]; then
   case "$visibility" in
@@ -74,6 +75,9 @@ if [ -n "$draft_id" ] && blog_draft_exists "$draft_id"; then
   if [ -z "$source_post_path" ]; then
     source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
   fi
+  if [ -z "$post_filename" ]; then
+    post_filename=$(blog_read_front_matter_value "$draft_file" post_filename 2>/dev/null || printf '')
+  fi
   existing_publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf '')
   existing_status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf '')
 fi
@@ -83,6 +87,31 @@ if [ -z "$title" ]; then
 fi
 if [ -z "$draft_id" ]; then
   draft_id=$(blog_new_draft_id)
+fi
+
+if [ -n "$source_post_path" ]; then
+  normalized_source_post_path=$(blog_normalize_post_source_path "$source_post_path" 2>/dev/null || printf '')
+  if [ -z "$normalized_source_post_path" ]; then
+    blog_json_error "Invalid source post path" "invalid_source_post_path"
+    exit 0
+  fi
+  source_post_path="$normalized_source_post_path"
+fi
+
+if [ -n "$post_filename" ]; then
+  normalized_post_filename=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
+  if [ -z "$normalized_post_filename" ]; then
+    blog_json_error "Invalid post filename/slug" "invalid_post_filename"
+    exit 0
+  fi
+  post_filename="$normalized_post_filename"
+  requested_rel_path="posts/${post_filename}.md"
+  if [ -f "$blog_site_root/site/pages/$requested_rel_path" ]; then
+    if [ -z "$source_post_path" ] || [ "$requested_rel_path" != "$source_post_path" ]; then
+      blog_json_error "Post filename already exists" "post_filename_exists"
+      exit 0
+    fi
+  fi
 fi
 
 # Summary is generated automatically from content for now.
@@ -99,7 +128,7 @@ case "$action" in
       exit 0
     fi
 
-    if ! filename=$(blog_publish_content "$title" "$normalized_tags" "$summary" "$content" "$author_name" "$draft_id" immediate "" "$post_type" "$source_post_path"); then
+    if ! filename=$(blog_publish_content "$title" "$normalized_tags" "$summary" "$content" "$author_name" "$draft_id" immediate "" "$post_type" "$source_post_path" "$post_filename"); then
       if blog_nostr_bridge_enabled; then
         reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
         if [ -n "$reason" ]; then
@@ -136,7 +165,7 @@ case "$action" in
       blog_json_error "Content is required" "content_required"
       exit 0
     fi
-    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" scheduled "$scheduled_at" scheduled "$post_type" "$source_post_path"
+    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" scheduled "$scheduled_at" scheduled "$post_type" "$source_post_path" "$post_filename"
     printf '{"success":true,"message":"Draft scheduled","draft_id":"%s","status":"scheduled"}\n' "$(blog_json_escape "$draft_id")"
     ;;
 
@@ -145,7 +174,7 @@ case "$action" in
       blog_json_error "Content is required" "content_required"
       exit 0
     fi
-    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" drip "" queued "$post_type" "$source_post_path"
+    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" drip "" queued "$post_type" "$source_post_path" "$post_filename"
     printf '{"success":true,"message":"Draft queued for drip","draft_id":"%s","status":"queued"}\n' "$(blog_json_escape "$draft_id")"
     ;;
 
@@ -169,7 +198,7 @@ case "$action" in
     if [ "$status" = "draft" ] && { [ "$publish_mode" = "scheduled" ] || [ "$publish_mode" = "drip" ]; }; then
       publish_mode=draft
     fi
-    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" "$publish_mode" "$scheduled_at" "$status" "$post_type" "$source_post_path"
+    blog_save_draft "$draft_id" "$title" "$normalized_tags" "$summary" "$content" "$author_name" "$publish_mode" "$scheduled_at" "$status" "$post_type" "$source_post_path" "$post_filename"
     printf '{"success":true,"message":"Draft saved","draft_id":"%s","status":"%s","autosaved":%s}\n' \
       "$(blog_json_escape "$draft_id")" "$status" "$( [ "$action" = "autosave" ] && printf true || printf false )"
     ;;

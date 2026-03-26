@@ -6538,6 +6538,48 @@ footer {
   column-gap: 0;
 }
 
+.blog-compose-card .compose-post-filename-row {
+  gap: 0.34rem;
+}
+
+.blog-compose-card .compose-post-filename-display {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.blog-compose-card .compose-post-filename-value {
+  display: inline-block;
+  padding: 0.14rem 0.46rem;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--border, #c7d2fe) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 88%, var(--light-bg, #eef3ff) 12%);
+  color: var(--light-text, #475569);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.blog-compose-card .compose-post-filename-edit-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  flex-wrap: nowrap;
+}
+
+.blog-compose-card .compose-post-filename-prefix,
+.blog-compose-card .compose-post-filename-suffix {
+  color: var(--light-text, #475569);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
+}
+
+.blog-compose-card .compose-post-filename-edit-wrap input[type="text"] {
+  width: min(24rem, 100%);
+  max-width: 100%;
+}
+
 .blog-compose-card input[type="text"],
 .blog-compose-card input[type="datetime-local"] {
   width: min(30rem, 100%);

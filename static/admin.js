@@ -17,6 +17,9 @@
     composeShortformLimitEditing: false,
     composeUploadBusy: false,
     currentDraftId: '',
+    composeSourcePostPath: '',
+    composePostFilename: '',
+    composePostFilenameEditing: false,
     autosaveTimer: null,
     suspendAutosave: false,
     previewVisible: localStorage.getItem('blog_admin_preview_hidden') !== '1',
@@ -143,6 +146,12 @@
     composeMediaActions: document.getElementById('compose-media-actions'),
     composeLinkFields: document.getElementById('compose-link-fields'),
     composeContentRow: document.getElementById('compose-content-row'),
+    composePostFilenameRow: document.getElementById('compose-post-filename-row'),
+    composePostFilenameDisplay: document.getElementById('compose-post-filename-display'),
+    composePostFilenameLabel: document.getElementById('compose-post-filename-label'),
+    composePostFilenameEditButton: document.getElementById('btn-compose-post-filename-edit'),
+    composePostFilenameEditWrap: document.getElementById('compose-post-filename-edit-wrap'),
+    composePostFilenameInput: document.getElementById('compose-post-filename-input'),
     composeLinkUrl: document.getElementById('compose-link-url'),
     composeLinkBody: document.getElementById('compose-link-body'),
     composeCaptureButton: document.getElementById('btn-compose-capture'),
@@ -1915,6 +1924,132 @@
     return out;
   }
 
+  function normalizeComposeSourcePostPath(raw) {
+    let value = String(raw || '').trim();
+    if (!value) {
+      return '';
+    }
+    value = value
+      .replace(/^https?:\/\/[^/]+\//i, '')
+      .replace(/^\/+/, '')
+      .replace(/^pages\//i, '')
+      .replace(/^posts\//i, '');
+    value = value.replace(/\.html?$/i, '').replace(/\.md$/i, '');
+    value = value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!value) {
+      return '';
+    }
+    return 'posts/' + value + '.md';
+  }
+
+  function normalizeComposePostFilename(raw) {
+    let value = String(raw || '').trim();
+    if (!value) {
+      return '';
+    }
+    value = value
+      .replace(/^https?:\/\/[^/]+\//i, '')
+      .replace(/^\/+/, '')
+      .replace(/^pages\//i, '')
+      .replace(/^posts\//i, '');
+    value = value.split('/').pop() || '';
+    value = value.replace(/\.html?$/i, '').replace(/\.md$/i, '');
+    value = value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    return value;
+  }
+
+  function composeFilenameFromPath(path) {
+    const normalized = normalizeComposeSourcePostPath(path);
+    if (!normalized) {
+      return '';
+    }
+    return normalizeComposePostFilename(normalized);
+  }
+
+  function beginComposePostFilenameEdit() {
+    if (!state.composeSourcePostPath) {
+      return;
+    }
+    state.composePostFilenameEditing = true;
+    syncComposePostFilenameUi();
+    if (els.composePostFilenameInput) {
+      els.composePostFilenameInput.focus();
+      els.composePostFilenameInput.select();
+    }
+  }
+
+  function cancelComposePostFilenameEdit() {
+    state.composePostFilenameEditing = false;
+    if (els.composePostFilenameInput) {
+      const fallback = state.composePostFilename || composeFilenameFromPath(state.composeSourcePostPath);
+      els.composePostFilenameInput.value = fallback || '';
+    }
+    syncComposePostFilenameUi();
+  }
+
+  function commitComposePostFilenameEdit() {
+    const currentSource = normalizeComposeSourcePostPath(state.composeSourcePostPath);
+    const fallbackFilename = composeFilenameFromPath(currentSource);
+    const entered = els.composePostFilenameInput ? els.composePostFilenameInput.value : state.composePostFilename;
+    const nextFilename = normalizeComposePostFilename(entered || fallbackFilename);
+    if (!nextFilename) {
+      setOutput(els.outputCompose, 'Slug/filename is required.', 'warn');
+      if (els.composePostFilenameInput) {
+        els.composePostFilenameInput.focus();
+        els.composePostFilenameInput.select();
+      }
+      return;
+    }
+    const previousFilename = normalizeComposePostFilename(state.composePostFilename || fallbackFilename);
+    state.composePostFilename = nextFilename;
+    state.composePostFilenameEditing = false;
+    if (els.composePostFilenameInput) {
+      els.composePostFilenameInput.value = nextFilename;
+    }
+    syncComposePostFilenameUi();
+    if (nextFilename !== previousFilename) {
+      queueAutosave('saving');
+    }
+  }
+
+  function syncComposePostFilenameUi() {
+    if (!els.composePostFilenameRow) {
+      return;
+    }
+    const sourcePath = normalizeComposeSourcePostPath(state.composeSourcePostPath);
+    state.composeSourcePostPath = sourcePath;
+    const show = !!sourcePath;
+    els.composePostFilenameRow.hidden = !show;
+    if (!show) {
+      state.composePostFilenameEditing = false;
+      state.composePostFilename = '';
+      if (els.composePostFilenameInput) {
+        els.composePostFilenameInput.value = '';
+      }
+      return;
+    }
+    const fallbackFilename = composeFilenameFromPath(sourcePath);
+    const filename = normalizeComposePostFilename(state.composePostFilename || fallbackFilename);
+    state.composePostFilename = filename || fallbackFilename;
+    const renderedFilename = state.composePostFilename || fallbackFilename || 'post';
+    if (els.composePostFilenameLabel) {
+      els.composePostFilenameLabel.textContent = 'posts/' + renderedFilename + '.md';
+    }
+    if (els.composePostFilenameInput) {
+      if (!state.composePostFilenameEditing) {
+        els.composePostFilenameInput.value = renderedFilename;
+      } else if (!els.composePostFilenameInput.value.trim()) {
+        els.composePostFilenameInput.value = renderedFilename;
+      }
+    }
+    if (els.composePostFilenameDisplay) {
+      els.composePostFilenameDisplay.hidden = !!state.composePostFilenameEditing;
+    }
+    if (els.composePostFilenameEditWrap) {
+      els.composePostFilenameEditWrap.hidden = !state.composePostFilenameEditing;
+    }
+  }
+
   function readComposer() {
     commitTagInput();
     const postType = normalizeComposePostType(state.composePostType);
@@ -1934,6 +2069,8 @@
     }
     return {
       draft_id: state.currentDraftId,
+      source_post_path: state.composeSourcePostPath,
+      post_filename: state.composePostFilename,
       title: els.postTitle.value.trim(),
       tags: els.postTags.value.trim(),
       summary: '',
@@ -1958,6 +2095,9 @@
 
     state.suspendAutosave = true;
     state.currentDraftId = draft.draft_id || '';
+    state.composeSourcePostPath = normalizeComposeSourcePostPath((draft && draft.source_post_path) || '');
+    state.composePostFilename = normalizeComposePostFilename((draft && draft.post_filename) || composeFilenameFromPath(state.composeSourcePostPath));
+    state.composePostFilenameEditing = false;
     state.composePostType = normalizeComposePostType((draft && draft.post_type) || 'longform');
     state.composeShortformLimitEditing = false;
     els.postTitle.value = draft.title || '';
@@ -1978,6 +2118,7 @@
       els.composeLinkBody.value = body;
     }
     els.postScheduleAt.value = isoToLocal(draft.scheduled_at || '');
+    syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode(mode || 'immediate');
     renderPreview();
@@ -1989,6 +2130,9 @@
 
   function resetComposer() {
     state.currentDraftId = '';
+    state.composeSourcePostPath = '';
+    state.composePostFilename = '';
+    state.composePostFilenameEditing = false;
     state.composePostType = 'longform';
     state.composePostTypeLocked = false;
     state.composeShortformLimitEditing = false;
@@ -2002,6 +2146,7 @@
       els.composeLinkBody.value = '';
     }
     els.postScheduleAt.value = '';
+    syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode('immediate');
     renderPreview();
@@ -5911,6 +6056,30 @@
           }
         } catch (_err) {
           // Browser may block programmatic picker open.
+        }
+      });
+    }
+
+    if (els.composePostFilenameEditButton) {
+      els.composePostFilenameEditButton.addEventListener('click', function () {
+        beginComposePostFilenameEdit();
+      });
+    }
+    if (els.composePostFilenameInput) {
+      els.composePostFilenameInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitComposePostFilenameEdit();
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cancelComposePostFilenameEdit();
+        }
+      });
+      els.composePostFilenameInput.addEventListener('blur', function () {
+        if (state.composePostFilenameEditing) {
+          commitComposePostFilenameEdit();
         }
       });
     }

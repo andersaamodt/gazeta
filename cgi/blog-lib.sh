@@ -93,6 +93,7 @@ blog_write_draft_markdown() {
   content=${13}
   post_type=${14-longform}
   source_post_path=${15-}
+  post_filename=${16-}
   post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$tags")
   tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-draft.XXXXXX")
@@ -105,6 +106,9 @@ blog_write_draft_markdown() {
     printf 'post_type: "%s"\n' "$(blog_yaml_escape "$post_type")"
     if [ -n "$source_post_path" ]; then
       printf 'source_post_path: "%s"\n' "$(blog_yaml_escape "$source_post_path")"
+    fi
+    if [ -n "$post_filename" ]; then
+      printf 'post_filename: "%s"\n' "$(blog_yaml_escape "$post_filename")"
     fi
     printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
     printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
@@ -270,6 +274,25 @@ blog_slugify() {
     slug="post"
   fi
   printf '%s\n' "$slug"
+}
+
+blog_normalize_post_filename() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##' -e 's#^posts/##')
+  raw=$(printf '%s' "$raw" | sed -e 's#.*/##' -e 's/\.[mM][dD]$//' -e 's/\.[hH][tT][mM][lL]\{0,1\}$//')
+  raw=$(printf '%s' "$raw" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  [ -n "$raw" ] || return 1
+  normalized=$(blog_slugify "$raw")
+  [ -n "$normalized" ] || return 1
+  printf '%s\n' "$normalized"
+}
+
+blog_normalize_post_source_path() {
+  raw=${1-}
+  [ -n "$raw" ] || return 1
+  filename=$(blog_normalize_post_filename "$raw" 2>/dev/null || printf '')
+  [ -n "$filename" ] || return 1
+  printf 'posts/%s.md\n' "$filename"
 }
 
 blog_random_token() {
@@ -3327,6 +3350,7 @@ blog_save_draft() {
   status=$9
   post_type=${10-longform}
   source_post_path=${11-}
+  post_filename=${12-}
 
   draft_file=$(blog_draft_file_path "$draft_id")
   mkdir -p "$blog_drafts_dir"
@@ -3339,8 +3363,21 @@ blog_save_draft() {
   normalized_tags=$(blog_normalize_tags "$tags")
   normalized_post_type=$(blog_normalize_post_type "$post_type")
   slug=$(blog_slugify "$title")
+  if [ -n "$post_filename" ]; then
+    normalized_post_filename=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
+    if [ -n "$normalized_post_filename" ]; then
+      slug="$normalized_post_filename"
+      post_filename="$normalized_post_filename"
+    fi
+  elif [ -n "$source_post_path" ]; then
+    inferred_post_filename=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
+    if [ -n "$inferred_post_filename" ]; then
+      slug="$inferred_post_filename"
+      post_filename="$inferred_post_filename"
+    fi
+  fi
   now_iso=$(blog_now_iso)
-  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type" "$source_post_path"
+  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type" "$source_post_path" "$post_filename"
   blog_file_sync_draft_refs "$draft_id" "$content"
 }
 
@@ -3383,7 +3420,7 @@ blog_compute_post_filename() {
 }
 
 blog_publish_content_markdown() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path post_filename
   title=$1
   tags=$2
   summary=$3
@@ -3394,29 +3431,31 @@ blog_publish_content_markdown() {
   scheduled_at=$8
   post_type=${9-longform}
   source_post_path=${10-}
+  post_filename=${11-}
 
   filename=
   post_path=
-  if [ -n "$source_post_path" ]; then
-    safe_source=$(printf '%s' "$source_post_path" | sed -e 's#^/##' -e 's#^pages/##')
-    case "$safe_source" in
-      posts/*.md)
-        case "$safe_source" in
-          *'..'*|*'\\'*|*'//'*)
-            safe_source=""
-            ;;
-        esac
-        ;;
-      *)
-        safe_source=""
-        ;;
-    esac
-    if [ -n "$safe_source" ]; then
-      post_path="$blog_site_root/site/pages/$safe_source"
-      filename=${safe_source##*/}
-    fi
+  current_rel_path=$(blog_normalize_post_source_path "$source_post_path" 2>/dev/null || printf '')
+  target_rel_path="$current_rel_path"
+  target_filename=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
+  if [ -n "$target_filename" ]; then
+    target_rel_path="posts/${target_filename}.md"
   fi
-  if [ -z "$post_path" ]; then
+
+  old_post_path=""
+  old_rel_html=""
+  if [ -n "$current_rel_path" ] && [ -n "$target_rel_path" ] && [ "$current_rel_path" != "$target_rel_path" ]; then
+    old_post_path="$blog_site_root/site/pages/$current_rel_path"
+    old_rel_html=${current_rel_path%.md}.html
+  fi
+
+  if [ -n "$target_rel_path" ]; then
+    post_path="$blog_site_root/site/pages/$target_rel_path"
+    filename=${target_rel_path##*/}
+    if [ -f "$post_path" ] && { [ -z "$current_rel_path" ] || [ "$target_rel_path" != "$current_rel_path" ]; }; then
+      return 1
+    fi
+  else
     filename=$(blog_compute_post_filename "$title")
     post_path="$blog_posts_dir/$filename"
   fi
@@ -3448,6 +3487,13 @@ blog_publish_content_markdown() {
     printf '%s\n\n' '---'
     printf '%s\n' "$content"
   } > "$post_path"
+
+  if [ -n "$old_post_path" ] && [ "$old_post_path" != "$post_path" ] && [ -f "$old_post_path" ]; then
+    rm -f "$old_post_path"
+    if [ -n "$old_rel_html" ]; then
+      rm -f "$blog_site_root/build/pages/$old_rel_html" 2>/dev/null || true
+    fi
+  fi
 
   rel_post_path=${post_path#"$blog_site_root/site/pages/"}
   blog_file_promote_refs_to_post "$draft_id" "$content" "$rel_post_path"
@@ -3733,12 +3779,14 @@ blog_run_scheduler() {
       summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
       author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
       post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+      post_filename=$(blog_read_front_matter_value "$draft_file" post_filename 2>/dev/null || printf '')
+      source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
       author=$(blog_author_display_name "$author")
       if [ -z "$author" ]; then
         author='author'
       fi
       content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
-      if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" scheduled "$now_iso" "$post_type"); then
+      if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" scheduled "$now_iso" "$post_type" "$source_post_path" "$post_filename"); then
         continue
       fi
       if [ -n "$published_file" ]; then
@@ -3776,12 +3824,14 @@ blog_run_scheduler() {
         summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
         author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
         post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+        post_filename=$(blog_read_front_matter_value "$draft_file" post_filename 2>/dev/null || printf '')
+        source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
         author=$(blog_author_display_name "$author")
         if [ -z "$author" ]; then
           author='author'
         fi
         content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
-        if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" drip "" "$post_type"); then
+        if ! published_file=$(blog_publish_content "$title" "$tags" "$summary" "$content" "$author" "$draft_id" drip "" "$post_type" "$source_post_path" "$post_filename"); then
           continue
         fi
         if [ -n "$published_file" ]; then
