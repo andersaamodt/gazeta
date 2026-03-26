@@ -2348,6 +2348,11 @@ body.nav-cart-open {
   padding-left: 1.2rem;
 }
 
+.list-page-shell .list-entries:not(.list-entries-inline) {
+  list-style: none;
+  padding-left: 0;
+}
+
 .list-entry-line {
   margin: 0 0 0.42rem;
 }
