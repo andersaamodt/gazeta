@@ -994,7 +994,7 @@
     }
     var isApple = /Mac|iPhone|iPad|iPod/i.test(platform);
     var multiKey = isApple ? '⌘' : 'Ctrl';
-    var excludeKey = isApple ? 'Option' : 'Alt';
+    var excludeKey = isApple ? '⌥' : 'Alt';
     return 'Click to filter. ' + multiKey + '-click to multi-select. ' + excludeKey + '-click to filter out.';
   }
 
