@@ -879,10 +879,13 @@
     normalized ^= (normalized >>> 13);
     normalized = Math.imul(normalized, 3266489909);
     normalized ^= (normalized >>> 16);
-
-    var hue = ((normalized >>> 0) / 4294967296) * 360;
-    var saturation = 58 + ((normalized >>> 8) % 24);
-    var lightness = 86 + ((normalized >>> 17) % 7);
+    var hueSequence = [8, 188, 98, 278, 38, 218, 128, 308, 68, 248, 158, 338, 23, 203, 113, 293, 53, 233, 143, 323, 83, 263, 173, 353];
+    var hue = hueSequence[normalized % hueSequence.length];
+    hue = (hue + (((normalized >>> 5) % 7) - 3) + 360) % 360;
+    var saturationBands = [62, 70, 78, 86];
+    var lightnessBands = [84, 88, 92];
+    var saturation = saturationBands[(normalized >>> 11) % saturationBands.length];
+    var lightness = lightnessBands[(normalized >>> 17) % lightnessBands.length];
     return {
       hue: hue,
       saturation: saturation,
