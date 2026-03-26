@@ -71,6 +71,7 @@
     }
   };
   var panelHideTimer = null;
+  var composeToggleGuardUntil = 0;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
 
@@ -469,7 +470,7 @@
       fab.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        setComposeOpen(!state.compose.open);
+        toggleComposeFromUi(!state.compose.open);
       });
       fab.hidden = true;
       root.appendChild(fab);
@@ -1697,6 +1698,15 @@
     }
   }
 
+  function toggleComposeFromUi(nextOpen) {
+    var now = Date.now();
+    if (now < composeToggleGuardUntil) {
+      return;
+    }
+    composeToggleGuardUntil = now + 120;
+    setComposeOpen(!!nextOpen);
+  }
+
   function composeToolbarAction(action) {
     if (!els.composeSlot) {
       return;
@@ -2422,7 +2432,8 @@
     var composeFab = event.target && event.target.closest('[data-blog-action="toggle-compose"]');
     if (composeFab) {
       event.preventDefault();
-      setComposeOpen(!state.compose.open);
+      event.stopPropagation();
+      toggleComposeFromUi(!state.compose.open);
       return;
     }
 
@@ -2544,6 +2555,23 @@
         openAdminPage();
       }
     }
+  });
+
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    var navCompose = target.closest('.nav-compose');
+    if (!navCompose) {
+      return;
+    }
+    if (!isAdmin()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    toggleComposeFromUi(true);
   });
 
   root.addEventListener('dblclick', function (event) {
