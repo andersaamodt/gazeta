@@ -4994,9 +4994,9 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: auto;
   padding-top: 0.65rem;
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   gap: 0.45rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .blog-post-item .post-card-footer .tags {
@@ -5012,7 +5012,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .blog-post-item .post-card-comments-count {
-  margin-left: auto;
+  margin-left: 0;
   color: var(--light-text);
   font-size: 0.78rem;
   white-space: nowrap;
