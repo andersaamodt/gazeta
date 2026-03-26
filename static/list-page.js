@@ -886,6 +886,35 @@
     });
   }
 
+  function selectedDefaultMarkerSet() {
+    var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude : [];
+    if (!include.length) {
+      return null;
+    }
+    var defaultMarkersRaw = '';
+    if (state.draft && typeof state.draft === 'object') {
+      defaultMarkersRaw = String(state.draft.default_markers || '');
+    } else if (state.payload && state.payload.state && typeof state.payload.state === 'object') {
+      defaultMarkersRaw = String(state.payload.state.default_markers || '');
+    }
+    var defaults = markerTokensFromText(defaultMarkersRaw);
+    if (!defaults.length) {
+      return null;
+    }
+    var defaultsSet = {};
+    defaults.forEach(function (marker) {
+      defaultsSet[String(marker)] = true;
+    });
+    var selectedDefaults = {};
+    include.forEach(function (marker) {
+      var token = compact(marker);
+      if (token && defaultsSet[token]) {
+        selectedDefaults[token] = true;
+      }
+    });
+    return Object.keys(selectedDefaults).length ? selectedDefaults : null;
+  }
+
   function markerHash32(text) {
     var src = String(text || '');
     var hash = 2166136261;
@@ -1922,6 +1951,12 @@
     var markerPills = '';
     if (showMarkers) {
       var markerTokens = markerTokensForDisplay(entry, !!alphabetizeMarkers);
+      var hiddenSelectedDefaults = selectedDefaultMarkerSet();
+      if (hiddenSelectedDefaults) {
+        markerTokens = markerTokens.filter(function (marker) {
+          return !hiddenSelectedDefaults[String(marker)];
+        });
+      }
       if (markerTokens.length) {
         markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
           var markerColor = markerColorFromText(marker);
