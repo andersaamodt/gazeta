@@ -382,7 +382,8 @@
       '<h1 id="main-content" class="post-title">' + escapeHtml(current.title || document.title || 'Untitled') + '</h1>' +
       '<div class="post-byline">' +
       '<span class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</span>' +
-      '<span class="post-meta"><span class="post-date">' + escapeHtml(current.published_date || '') + '</span> <span aria-hidden="true">•</span> <span class="post-context-reading">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span></span>' +
+      '<span class="post-context-reading post-reading-inline">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>' +
+      '<span class="post-date post-date-published">' + escapeHtml(current.published_date || '') + '</span>' +
       '</div>' +
       '</div>';
 

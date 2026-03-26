@@ -5326,6 +5326,20 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   white-space: nowrap;
 }
 
+.post-single-item .post-reading-inline {
+  color: var(--light-text);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.post-single-item .post-date-published {
+  margin-left: auto;
+  color: var(--light-text);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  text-align: right;
+}
+
 .post-page-menu {
   position: relative;
   align-self: flex-start;
