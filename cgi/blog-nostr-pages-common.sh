@@ -1347,7 +1347,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260324-listv4"></script>
+<script src="/static/list-page.js?v=20260326-listv5"></script>
 EOICONGALLERY
       ;;
     *)
@@ -1375,7 +1375,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260324-listv4"></script>
+<script src="/static/list-page.js?v=20260326-listv5"></script>
 EOLIST
       ;;
   esac

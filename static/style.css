@@ -229,7 +229,7 @@ body.list-page-width-anim {
 
 body.list-page-width-anim.list-page-wide {
   max-width: min(1820px, calc(100vw - 0.75rem));
-  margin-left: max(0.38rem, env(safe-area-inset-left));
+  margin-left: auto;
   margin-right: auto;
 }
 
@@ -1206,7 +1206,7 @@ body.nav-cart-open {
 .list-page-shell.is-editing {
   width: fit-content;
   max-width: min(1780px, calc(100vw - 1rem));
-  margin-left: 0;
+  margin-left: auto;
   margin-right: auto;
 }
 
