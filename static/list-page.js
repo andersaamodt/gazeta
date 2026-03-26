@@ -2046,6 +2046,10 @@
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
     var pendingUnedited = isPendingNewEntryUnedited();
+    var entryElements = (Array.isArray(elements) ? elements : []).filter(function (el) {
+      return isEntryType(String(el && el.type || 'entry'));
+    });
+    var workingElements = entryElements.slice();
     var addTitle = pendingUnedited ? 'Edit the new entry before adding another' : 'Add entry';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
@@ -2061,9 +2065,18 @@
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
+    if (state.draft.show_marker_filters) {
+      html += renderMarkerFilters(entryElements);
+      workingElements = applyMarkerFilters(entryElements);
+    }
 
-    if (!elements.length) {
+    if (!entryElements.length) {
       html += '<div class="list-inline-empty">No entries yet.</div>';
+      html += renderAfterContentEditor();
+      return html;
+    }
+    if (state.draft.show_marker_filters && !workingElements.length) {
+      html += '<div class="list-inline-empty">No entries match selected marker filters.</div>';
       html += renderAfterContentEditor();
       return html;
     }
@@ -2084,7 +2097,7 @@
     if (isGrouped) {
       var currentLabel = '__none__';
       var groupOpen = false;
-      elements.forEach(function (el) {
+      workingElements.forEach(function (el) {
         var label = groupLabelForEntry(el, state.draft.group_by);
         if (label !== currentLabel) {
           if (groupOpen) {
@@ -2109,7 +2122,7 @@
       }
     } else {
       html += '<ul class="list-entries list-entries-inline">';
-      elements.forEach(function (el) {
+      workingElements.forEach(function (el) {
         html += renderElementInline(el);
       });
       html += '</ul>';
@@ -2778,11 +2791,54 @@
     });
 
     els.content.addEventListener('click', function (event) {
-      if (state.editMode || !event.target) {
+      if (!event.target) {
         return;
       }
       var target = event.target;
       if (!(target instanceof Element)) {
+        return;
+      }
+      var filterButton = target.closest('[data-marker-filter-action="toggle"]');
+      if (filterButton instanceof HTMLElement) {
+        event.preventDefault();
+        var marker = String(filterButton.getAttribute('data-marker-filter-value') || '').trim();
+        if (!marker) {
+          return;
+        }
+        var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude.slice() : [];
+        var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude.slice() : [];
+        var isCtrlToggle = !!event.ctrlKey;
+        var isIncludeMulti = !!(event.metaKey || event.shiftKey);
+
+        if (isCtrlToggle) {
+          include = include.filter(function (item) { return item !== marker; });
+          if (exclude.indexOf(marker) >= 0) {
+            exclude = exclude.filter(function (item) { return item !== marker; });
+          } else {
+            exclude.push(marker);
+          }
+        } else if (isIncludeMulti) {
+          exclude = exclude.filter(function (item) { return item !== marker; });
+          if (include.indexOf(marker) >= 0) {
+            include = include.filter(function (item) { return item !== marker; });
+          } else {
+            include.push(marker);
+          }
+        } else {
+          exclude = exclude.filter(function (item) { return item !== marker; });
+          if (include.length === 1 && include[0] === marker) {
+            include = [];
+          } else {
+            include = [marker];
+          }
+        }
+
+        state.markerFilterInclude = include;
+        state.markerFilterExclude = exclude;
+        renderList();
+        return;
+      }
+      if (state.editMode) {
         return;
       }
       var cartButton = target.closest('[data-add-product-slug]');
@@ -2803,45 +2859,6 @@
         renderList();
         return;
       }
-      var filterButton = target.closest('[data-marker-filter-action="toggle"]');
-      if (!(filterButton instanceof HTMLElement)) {
-        return;
-      }
-      var marker = String(filterButton.getAttribute('data-marker-filter-value') || '').trim();
-      if (!marker) {
-        return;
-      }
-      var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude.slice() : [];
-      var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude.slice() : [];
-      var isCtrlToggle = !!event.ctrlKey;
-      var isIncludeMulti = !!(event.metaKey || event.shiftKey);
-
-      if (isCtrlToggle) {
-        include = include.filter(function (item) { return item !== marker; });
-        if (exclude.indexOf(marker) >= 0) {
-          exclude = exclude.filter(function (item) { return item !== marker; });
-        } else {
-          exclude.push(marker);
-        }
-      } else if (isIncludeMulti) {
-        exclude = exclude.filter(function (item) { return item !== marker; });
-        if (include.indexOf(marker) >= 0) {
-          include = include.filter(function (item) { return item !== marker; });
-        } else {
-          include.push(marker);
-        }
-      } else {
-        exclude = exclude.filter(function (item) { return item !== marker; });
-        if (include.length === 1 && include[0] === marker) {
-          include = [];
-        } else {
-          include = [marker];
-        }
-      }
-
-      state.markerFilterInclude = include;
-      state.markerFilterExclude = exclude;
-      renderList();
     });
 
     els.content.addEventListener('focusout', function (event) {
