@@ -2053,6 +2053,12 @@
     var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
     var openDepth = -1;
     var started = false;
+    var stripeIndex = 0;
+
+    function rowStripeClass() {
+      stripeIndex += 1;
+      return stripeIndex % 2 === 0 ? ' is-row-highlight' : '';
+    }
 
     (Array.isArray(elements) ? elements : []).forEach(function (el, idx) {
       var depth = Math.max(0, Number(el && el.depth || 0) || 0);
@@ -2064,14 +2070,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2080,7 +2086,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2089,7 +2095,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
     });
 
     if (started) {

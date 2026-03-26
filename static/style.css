@@ -2694,14 +2694,18 @@ body.nav-cart-open {
   padding-left: 1.35rem;
 }
 
-.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line > .list-entry-first-line,
-.list-page-shell .list-sub-entries > .list-entry-line > .list-entry-first-line {
-  border-radius: 6px;
+.list-page-shell .list-entry-line:not(.list-entry-inline) {
+  margin: 0;
+  padding: 0.09rem 0.24rem;
 }
 
-.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line:nth-child(even) > .list-entry-first-line,
-.list-page-shell .list-sub-entries > .list-entry-line:nth-child(even) > .list-entry-first-line {
-  background: color-mix(in srgb, var(--post-card-bg-single, #fff) 94%, var(--accent, #3158a4) 6%);
+.list-page-shell .list-entry-line:not(.list-entry-inline) > .list-entry-first-line {
+  border-radius: 7px;
+  padding: 0.14rem 0.22rem;
+}
+
+.list-page-shell .list-entry-line:not(.list-entry-inline).is-row-highlight > .list-entry-first-line {
+  background: color-mix(in srgb, var(--bg, #f3ebd7) 90%, #d9c7a5 10%);
 }
 
 .list-marker-filters {
