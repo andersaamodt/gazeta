@@ -6519,6 +6519,43 @@ footer {
   pointer-events: none;
 }
 
+.blog-compose-toolbar .tb-glyph {
+  display: inline-block;
+  line-height: 1;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: currentColor;
+  pointer-events: none;
+  user-select: none;
+}
+
+.blog-compose-toolbar .tb-glyph-italic {
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.blog-compose-toolbar .tb-glyph-heading {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.blog-compose-toolbar .tb-glyph-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.blog-compose-toolbar .tb-glyph-quote {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.blog-compose-toolbar .tb-glyph-list {
+  font-size: 0.78rem;
+}
+
 .blog-compose-editor-shell textarea[data-compose-field="content"] {
   width: 100%;
   border: 0;
