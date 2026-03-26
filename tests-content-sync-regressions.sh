@@ -532,6 +532,24 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-create-product-page"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
 
+# 10b) Legacy nostr-pages object-map configs remain compatible.
+legacy_cfg=$(jq -cn '{
+  "blog": {"type":"blog","show_in_nav":true,"placeholder_title":"Blog"},
+  "index": {"type":"nip23","show_in_nav":true,"placeholder_title":"Home"},
+  "about": {"type":"nip23","show_in_nav":true,"placeholder_title":"About"},
+  "list": {"type":"list","show_in_nav":true,"placeholder_title":"Oeuvre"},
+  "software": {"type":"nip23","show_in_nav":true,"placeholder_title":"Software"},
+  "reading-list": {"type":"list","show_in_nav":true,"placeholder_title":"Reading List"},
+  "contact": {"type":"contact","show_in_nav":true,"placeholder_title":"Contact"}
+}')
+legacy_norm=$(blog_nostr_pages_normalize_json "$legacy_cfg")
+legacy_slugs=$(printf '%s\n' "$legacy_norm" | jq -r '.pages[]?.slug' 2>/dev/null | tr '\n' ' ')
+assert_contains "$legacy_slugs" 'software' 'legacy object-map keeps software page'
+assert_contains "$legacy_slugs" 'reading-list' 'legacy object-map keeps reading-list page'
+assert_contains "$legacy_slugs" 'contact' 'legacy object-map keeps contact page'
+legacy_list_title=$(printf '%s\n' "$legacy_norm" | jq -r '.pages[]? | select(.slug=="list") | .placeholder_title // ""' 2>/dev/null | head -n 1)
+assert_eq "Oeuvre" "$legacy_list_title" 'legacy object-map preserves custom list title'
+
 # 11) Managed source-page sync invariants (unit layer).
 sync_cfg=$(jq -cn '{pages:[
   {slug:"about", type:"nip23", show_in_nav:true},

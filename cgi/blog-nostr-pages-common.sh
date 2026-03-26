@@ -156,7 +156,42 @@ blog_nostr_pages_normalize_json() {
       else ("/" + $slug)
       end;
 
-    ((if type=="object" then .pages else . end) // []) as $raw_pages
+    (
+      if type == "object" then
+        if ((.pages // null) | type) == "array" then
+          .pages
+        elif ((.pages // null) | type) == "object" then
+          (
+            .pages
+            | to_entries
+            | map(
+                (.key | tostring) as $k
+                | if (.value | type) == "object" then
+                  (.value + { slug: ((.value.slug // "") | tostring | if length > 0 then . else $k end) })
+                else
+                  empty
+                end
+              )
+          )
+        elif (has("slug") and (has("type") or has("page_type"))) then
+          [.]
+        else
+          (
+            to_entries
+            | map(
+                (.key | tostring) as $k
+                | if (.value | type) == "object" then
+                  (.value + { slug: ((.value.slug // "") | tostring | if length > 0 then . else $k end) })
+                else
+                  empty
+                end
+              )
+          )
+        end
+      else
+        .
+      end
+    ) as $raw_pages
     | ($raw_pages | if type=="array" then . else [] end
       | map({
           slug: norm_slug(.slug // .list_slug // ""),
