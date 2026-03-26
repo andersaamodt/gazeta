@@ -2926,6 +2926,49 @@
       focusInlineField(nextUid, nextField);
     });
 
+    els.content.addEventListener('keydown', function (event) {
+      if (!state.editMode || !isAdmin()) {
+        return;
+      }
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+        return;
+      }
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      var uid = String(target.getAttribute('data-element-uid') || '');
+      var field = String(target.getAttribute('data-inline-field') || '');
+      if (!uid || !field) {
+        return;
+      }
+      var rowNodes = Array.prototype.slice.call(els.content.querySelectorAll('.list-entry-inline[data-element-uid]'));
+      if (!rowNodes.length) {
+        return;
+      }
+      var rowUids = rowNodes.map(function (row) {
+        return String(row.getAttribute('data-element-uid') || '');
+      });
+      var rowIdx = rowUids.indexOf(uid);
+      if (rowIdx < 0) {
+        return;
+      }
+      var direction = event.key === 'ArrowUp' ? -1 : 1;
+      var nextUid = rowUids[(rowIdx + direction + rowUids.length) % rowUids.length] || '';
+      if (!nextUid) {
+        return;
+      }
+      event.preventDefault();
+      state.activeEntryUid = nextUid;
+      state.activeCellField = field;
+      renderList();
+      renderAdmin();
+      focusInlineField(nextUid, field);
+    });
+
     els.content.addEventListener('dragstart', function (event) {
       if (!state.editMode || !isAdmin()) {
         return;
