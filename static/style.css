@@ -1903,6 +1903,7 @@ body.nav-cart-open {
 
 .list-year-group {
   margin-bottom: 1.1rem;
+  width: 100%;
 }
 
 .list-year-heading {
@@ -1953,6 +1954,8 @@ body.nav-cart-open {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: block;
+  width: 100%;
 }
 
 .list-entries.list-entries-inline {
@@ -1973,7 +1976,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell[data-page-type="list"] {
-  --list-inline-grid-columns: 1.85rem 1.55rem minmax(420px, 4.6fr) minmax(190px, 1.25fr) minmax(96px, 0.65fr) minmax(300px, 1.8fr) minmax(82px, max-content);
+  --list-inline-grid-columns: 1.85rem 1.55rem minmax(0, 7fr) minmax(190px, 1.6fr) minmax(96px, 0.8fr) minmax(320px, 2.2fr) minmax(82px, max-content);
 }
 
 .list-page-shell[data-page-type="icon-gallery"] {
@@ -1991,6 +1994,8 @@ body.nav-cart-open {
 .list-entries-inline,
 .list-entry-inline {
   width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
 }
 
 .list-inline-cell {
