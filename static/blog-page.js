@@ -181,9 +181,13 @@
   }
 
   function maybeMarkInitialContentPainted() {
-    if (state.initialPageStateLoaded && state.initialPostsLoaded) {
+    if (isInitialContentReady()) {
       markInitialContentPainted();
     }
+  }
+
+  function isInitialContentReady() {
+    return !!(state.initialPageStateLoaded && state.initialPostsLoaded);
   }
 
   function escapeHtml(value) {
@@ -359,7 +363,7 @@
   }
 
   function renderHead() {
-    if (!state.initialPageStateLoaded) {
+    if (!isInitialContentReady()) {
       if (els.title) {
         els.title.hidden = true;
         els.title.innerHTML = '';
@@ -1913,7 +1917,7 @@
     if (!els.list || !els.empty) {
       return;
     }
-    if (!state.initialPostsLoaded) {
+    if (!isInitialContentReady()) {
       els.list.innerHTML = '';
       els.empty.hidden = true;
       return;

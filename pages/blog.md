@@ -50,4 +50,4 @@ title: Blog
 </div>
 </section>
 
-<script src="/static/blog-page.js?v=20260326-pagefix3"></script>
+<script src="/static/blog-page.js?v=20260326-pagefix4"></script>

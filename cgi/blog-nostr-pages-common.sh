@@ -1304,7 +1304,7 @@ license: "CC BY 4.0"
 </div>
 </section>
 
-<script src="/static/blog-page.js?v=20260326-pagefix3"></script>
+<script src="/static/blog-page.js?v=20260326-pagefix4"></script>
 EOBLOG
       ;;
     public-ranking)
