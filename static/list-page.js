@@ -2946,12 +2946,6 @@
         state.historyCellEditKey = editKey;
       }
       state.draft.elements[idx][field] = String(target.value || '');
-      if (field === 'marker') {
-        state.draft.elements[idx][field] = normalizeMarkerListText(state.draft.elements[idx][field]);
-        if (target.value !== state.draft.elements[idx][field]) {
-          target.value = state.draft.elements[idx][field];
-        }
-      }
       updatePendingNewEntryState();
       if (shouldAutosaveForUid(uid)) {
         queueAutosave(500);
@@ -3010,6 +3004,12 @@
         return;
       }
       state.draft.elements[idx][field] = String(target.value || '');
+      if (field === 'marker') {
+        state.draft.elements[idx][field] = normalizeMarkerListText(state.draft.elements[idx][field]);
+        if (target.value !== state.draft.elements[idx][field]) {
+          target.value = state.draft.elements[idx][field];
+        }
+      }
       updatePendingNewEntryState();
       if (field === 'date') {
         var beforeDate = captureEntryRects();
