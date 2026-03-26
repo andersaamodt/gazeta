@@ -2808,7 +2808,7 @@ body.nav-cart-open {
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
   text-shadow: none;
-  padding: 0.16rem 0.58rem !important;
+  padding: calc(0.16rem + 1px) 0.58rem calc(0.16rem - 1px) !important;
   font-size: 0.79rem !important;
   font-weight: 500 !important;
   line-height: 1.18 !important;
