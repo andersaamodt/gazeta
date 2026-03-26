@@ -1832,6 +1832,13 @@ body.nav-cart-open .nav-cart-drawer {
   gap: 0;
 }
 
+#list-page-title[hidden],
+#blog-page-title[hidden],
+#contact-page-title[hidden],
+#public-ranking-title[hidden] {
+  display: none !important;
+}
+
 #list-page-title .list-inline-edit-link,
 #blog-page-title .list-inline-edit-link,
 #contact-page-title .list-inline-edit-link,
