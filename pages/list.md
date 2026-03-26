@@ -21,4 +21,4 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/list.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260326-listv5"></script>
+<script src="/static/list-page.js?v=20260326-listv6"></script>

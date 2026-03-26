@@ -3,6 +3,8 @@
 
 set -eu
 
+blog_nostr_list_page_js_version='20260326-listv6'
+
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"
 }
@@ -1014,6 +1016,14 @@ blog_nostr_page_source_template_type() {
     printf 'list\n'
     return 0
   fi
+  if grep -q 'data-list-slug="' "$file" 2>/dev/null &&
+     grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
+     grep -q 'id="list-page-content"' "$file" 2>/dev/null; then
+    # Legacy generated list wrappers (for example id="<slug>-root") are still
+    # managed list pages and should be kept on the current template path.
+    printf 'list\n'
+    return 0
+  fi
   if grep -q 'id="icon-gallery-root"' "$file" 2>/dev/null; then
     printf 'icon-gallery\n'
     return 0
@@ -1064,13 +1074,15 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-content"' "$file" 2>/dev/null &&
-      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+      grep -q "/static/list-page.js?v=$blog_nostr_list_page_js_version" "$file" 2>/dev/null
       ;;
     icon-gallery)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-content"' "$file" 2>/dev/null &&
-      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+      grep -q "/static/list-page.js?v=$blog_nostr_list_page_js_version" "$file" 2>/dev/null
       ;;
     *)
       return 0
@@ -1347,7 +1359,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260326-listv5"></script>
+<script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
 EOICONGALLERY
       ;;
     *)
@@ -1375,7 +1387,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/list-page.js?v=20260326-listv5"></script>
+<script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
 EOLIST
       ;;
   esac
