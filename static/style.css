@@ -2398,6 +2398,7 @@ body.nav-cart-open {
 
 .list-entry-marker-pill {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   border-radius: 999px;
   border: 1px solid hsl(var(--marker-pill-h, 220), 42%, 74%);
@@ -2407,6 +2408,7 @@ body.nav-cart-open {
   padding: 0.08rem 0.44rem;
   font-size: 0.72rem;
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .list-entry-first-line.has-cart-button {
