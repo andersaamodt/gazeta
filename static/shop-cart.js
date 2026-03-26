@@ -161,11 +161,17 @@
       return;
     }
     var count = countItems();
+    if (count <= 0) {
+      closeDrawer(true);
+      els.toggle.hidden = true;
+      els.toggle.setAttribute('aria-hidden', 'true');
+      return;
+    }
     els.toggle.hidden = false;
     els.toggle.setAttribute('aria-hidden', 'false');
     if (els.count) {
       els.count.textContent = String(count);
-      els.count.hidden = count <= 0;
+      els.count.hidden = false;
     }
   }
 
