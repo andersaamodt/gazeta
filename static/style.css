@@ -711,15 +711,25 @@ body.nav-cart-open .nav-cart-drawer {
   line-height: 1.2;
 }
 
-#nav-cart-close {
-  border: 1px solid var(--border);
-  background: var(--surface-muted, #f3f5fb);
-  color: var(--text);
-  border-radius: 9px;
-  line-height: 1;
+.nav-cart-close-btn {
+  width: 2rem;
   min-width: 2rem;
   height: 2rem;
-  cursor: pointer;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.12rem;
+  color: var(--text);
+}
+
+.nav-cart-close-btn:hover:not(:disabled),
+.nav-cart-close-btn:focus-visible:not(:disabled) {
+  background: var(--surface-muted, #f3f5fb) !important;
+  color: var(--accent);
+  outline: 0;
 }
 
 .nav-cart-empty {

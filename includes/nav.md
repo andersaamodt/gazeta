@@ -247,7 +247,7 @@
 <aside id="nav-cart-drawer" class="nav-cart-drawer" hidden>
   <div class="nav-cart-drawer-head">
     <h2>Shopping Cart</h2>
-    <button id="nav-cart-close" type="button" aria-label="Close cart">&times;</button>
+    <button id="nav-cart-close" class="unobtrusive-icon-button nav-cart-close-btn" type="button" aria-label="Close cart" title="Close cart">&times;</button>
   </div>
   <p id="nav-cart-empty" class="nav-cart-empty">Your cart is empty.</p>
   <ul id="nav-cart-items" class="nav-cart-items"></ul>
