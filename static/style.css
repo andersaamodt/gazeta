@@ -5364,7 +5364,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   display: flex;
   align-items: flex-end;
   gap: 0.45rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .blog-post-item .post-card-footer .tags {
@@ -5375,16 +5375,17 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
-  flex: 1 1 auto;
+  flex: 1 1 16rem;
   min-width: 0;
 }
 
 .blog-post-item .post-card-comments-count {
-  margin-left: 0;
+  margin-left: auto;
   color: var(--light-text);
   font-size: 0.78rem;
   white-space: nowrap;
   flex: 0 0 auto;
+  order: 2;
 }
 
 .post-summary {
