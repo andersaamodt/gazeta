@@ -1063,7 +1063,9 @@
 
   function renderMarkerFilters(entries) {
     buildMarkerColorMap(entries);
-    var markers = uniqueMarkerValues(entries);
+    var markers = uniqueMarkerValues(entries).slice().sort(function (a, b) {
+      return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    });
     pruneMarkerFilters(markers);
     if (!markers.length) {
       return '';
