@@ -1889,6 +1889,8 @@ body.nav-cart-open {
   min-width: 12rem;
   max-width: min(38vw, 24rem);
   height: 2.05rem;
+  padding: 0.35rem 0.55rem;
+  line-height: 1.2;
 }
 
 .list-inline-edit-controls button {
