@@ -53,6 +53,13 @@ blog_list_normalize_state_json() {
     def norm_view_mode($v):
       (($v // "") | tostring | ascii_downcase) as $mode
       | if $mode == "tile" then "tile" else "list" end;
+    def norm_marker_list($v):
+      (($v // "") | tostring
+        | split(",")
+        | map(gsub("\\s+"; " ") | gsub("^\\s+|\\s+$"; "") | select(length > 0))
+      ) as $tokens
+      | reduce $tokens[] as $token ([]; if index($token) then . else . + [$token] end)
+      | join(", ");
     def flex($obj; $idx; $key):
       if ($obj | type) == "array" then ($obj[$idx] // "") else ($obj[$key] // "") end;
     def flex_markdown($obj):
@@ -109,7 +116,7 @@ blog_list_normalize_state_json() {
         type: $t,
         event_id: (flex(.; 1; "event_id") | tostring),
         relay_hint: (flex(.; 2; "relay_hint") | tostring),
-        marker: (flex(.; 3; "marker") | tostring),
+        marker: norm_marker_list(flex(.; 3; "marker")),
         date: (flex(.; 4; "date") | tostring),
         depth: (if $depth < 0 then 0 else $depth end),
         markdown: ($dm.markdown | tostring),
@@ -132,7 +139,7 @@ blog_list_normalize_state_json() {
             type: "entry",
             event_id: (flex(.; 1; "event_id") | tostring),
             relay_hint: (flex(.; 2; "relay_hint") | tostring),
-            marker: (flex(.; 3; "marker") | tostring),
+            marker: norm_marker_list(flex(.; 3; "marker")),
             date: (flex(.; 4; "date") | tostring),
             depth: (flex_depth(.) | tonumber? // 0),
             markdown: (flex_markdown(.)),
@@ -154,7 +161,7 @@ blog_list_normalize_state_json() {
         type: "entry",
         event_id: (flex(.; 1; "event_id") | tostring),
         relay_hint: (flex(.; 2; "relay_hint") | tostring),
-        marker: (flex(.; 3; "marker") | tostring),
+        marker: norm_marker_list(flex(.; 3; "marker")),
         date: (flex(.; 4; "date") | tostring),
         depth: ((if (.type == "subentry" or .type == "sub") then 1 else (.depth // 0) end) | tonumber? // 0),
         markdown: (flex_markdown(.)),

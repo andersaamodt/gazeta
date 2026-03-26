@@ -102,6 +102,24 @@
     return String(text || '').replace(/\s+/g, ' ').trim();
   }
 
+  function normalizeMarkerListText(text) {
+    var raw = String(text || '');
+    if (!raw.trim()) {
+      return '';
+    }
+    var seen = {};
+    var markers = [];
+    raw.split(',').forEach(function (part) {
+      var token = compact(part);
+      if (!token || seen[token]) {
+        return;
+      }
+      seen[token] = true;
+      markers.push(token);
+    });
+    return markers.join(', ');
+  }
+
   function markInitialContentPainted() {
     if (state.initialContentPainted) {
       return;
@@ -704,7 +722,7 @@
       type: type,
       event_id: String(raw && raw.event_id || ''),
       relay_hint: String(raw && raw.relay_hint || ''),
-      marker: String(raw && raw.marker || ''),
+      marker: normalizeMarkerListText(raw && raw.marker || ''),
       date: String(raw && raw.date || ''),
       depth: depth,
       markdown: String(raw && raw.markdown || ''),
@@ -743,7 +761,7 @@
       return {
         event_id: String(el && el.event_id || ''),
         relay_hint: String(el && el.relay_hint || ''),
-        marker: String(el && el.marker || ''),
+        marker: normalizeMarkerListText(el && el.marker || ''),
         date: String(el && el.date || ''),
         depth: Math.max(0, Number(el && el.depth || 0) || 0),
         markdown: String(el && el.markdown || ''),
@@ -2746,6 +2764,12 @@
       }
       state.activeEntryUid = uid;
       state.draft.elements[idx][field] = String(target.value || '');
+      if (field === 'marker') {
+        state.draft.elements[idx][field] = normalizeMarkerListText(state.draft.elements[idx][field]);
+        if (target.value !== state.draft.elements[idx][field]) {
+          target.value = state.draft.elements[idx][field];
+        }
+      }
       updatePendingNewEntryState();
       if (shouldAutosaveForUid(uid)) {
         queueAutosave(500);
