@@ -2420,6 +2420,48 @@ body.nav-cart-open {
   gap: 0.3rem;
 }
 
+.list-inline-history-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-right: 0.22rem;
+}
+
+.list-inline-history-icon-btn {
+  width: 1.95rem;
+  min-width: 1.95rem;
+  height: 1.95rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.list-inline-history-icon-btn:hover:not(:disabled),
+.list-inline-history-icon-btn:focus-visible:not(:disabled) {
+  background: var(--light-bg, #eef3ff) !important;
+  color: var(--text, #2a3448) !important;
+  -webkit-text-fill-color: var(--text, #2a3448);
+}
+
+.list-inline-history-icon-btn:active:not(:disabled) {
+  background: rgba(49, 103, 189, 0.12) !important;
+}
+
+.list-inline-history-icon-btn[disabled],
+.list-inline-history-icon-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .list-inline-toolbar-left {
   min-width: 0;
   flex: 1 1 auto;
@@ -2440,15 +2482,6 @@ body.nav-cart-open {
   justify-content: center;
   line-height: 1;
   font-size: 1.2rem;
-}
-
-.list-inline-toolbar-right .list-inline-history-btn {
-  width: auto;
-  min-width: 0;
-  padding: 0 0.56rem;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  line-height: 1.1;
 }
 
 .list-inline-toolbar-right button:hover:not(:disabled),

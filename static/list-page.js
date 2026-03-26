@@ -2146,6 +2146,10 @@
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
+    html += '<div class="list-inline-history-controls" role="group" aria-label="Edit history">';
+    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="undo" title="Undo" aria-label="Undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>↶</button>';
+    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>↷</button>';
+    html += '</div>';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
     html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
@@ -2158,8 +2162,6 @@
     html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span>Show marker-based filters</span></label>';
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right">';
-    html += '<button type="button" class="list-inline-history-btn" data-list-action="undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>Undo</button>';
-    html += '<button type="button" class="list-inline-history-btn" data-list-action="redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>Redo</button>';
     html += '<button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
     html += '</div>';
     html += '</div>';
