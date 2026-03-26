@@ -725,15 +725,14 @@
     }
     if (picked === 'upload-media') {
       return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<rect x="3.8" y="5.1" width="16.4" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/>' +
-        '<circle cx="9.1" cy="10.1" r="1.2" fill="currentColor"/>' +
-        '<path d="M6.1 16L10.5 11.8L12.9 14.2L15.3 12.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '<path d="M17.2 8.1V12.2M15.5 10.4L17.2 8.1L18.9 10.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="8.4" cy="9.7" r="1.4" fill="currentColor"/>' +
+        '<path d="M5.8 16.4L10.2 12.1L13.1 15L15.8 12.5L18.2 16.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>';
     }
     if (picked === 'attachment') {
       return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<path d="M9.2 12.8L14.4 7.6C15.8 6.2 18 6.2 19.4 7.6C20.8 9 20.8 11.2 19.4 12.6L11.2 20.8C8.9 23.1 5.2 23.1 2.9 20.8C0.6 18.5 0.6 14.8 2.9 12.5L11 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M21.4 11.1L12.9 19.6C10.6 21.9 6.8 21.9 4.5 19.6C2.2 17.3 2.2 13.5 4.5 11.2L13 2.8C14.6 1.2 17.1 1.2 18.7 2.8C20.2 4.4 20.2 6.9 18.7 8.5L10.2 16.9C9.3 17.8 7.8 17.8 6.9 16.9C6 16 6 14.5 6.9 13.6L14.8 5.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>';
     }
     if (picked === 'audio-note') {
@@ -744,14 +743,14 @@
     }
     if (picked === 'link-share') {
       return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<path d="M10.2 13.8L13.8 10.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
-        '<path d="M8.3 15.7L6.5 17.5C5 19 2.6 19 1.1 17.5C-0.4 16 -0.4 13.6 1.1 12.1L2.9 10.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
-        '<path d="M15.7 8.3L17.5 6.5C19 5 21.4 5 22.9 6.5C24.4 8 24.4 10.4 22.9 11.9L21.1 13.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<rect x="2.7" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="12.5" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M9.8 12H14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
       '</svg>';
     }
     return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-      '<circle cx="12" cy="12" r="2.4" fill="currentColor"/>' +
-      '<path d="M4.4 12H2.2M21.8 12H19.6M17.7 6.3L16.1 7.9M7.9 16.1L6.3 17.7M17.7 17.7L16.1 16.1M7.9 7.9L6.3 6.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/>' +
+      '<circle cx="12" cy="12" r="2.5" fill="currentColor"/>' +
     '</svg>';
   }
 
