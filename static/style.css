@@ -1866,6 +1866,14 @@ body.nav-cart-open {
   margin: 0;
 }
 
+.list-inline-edit-controls .list-alphabetize-markers-setting input[type="checkbox"] {
+  margin: 0;
+}
+
+.list-inline-edit-controls .list-alphabetize-markers-setting.is-disabled {
+  opacity: 0.55;
+}
+
 .list-inline-edit-controls select {
   width: auto !important;
   min-width: 0;

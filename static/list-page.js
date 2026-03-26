@@ -763,6 +763,7 @@
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       show_marker_filters: !!s.show_marker_filters,
       show_markers: !!s.show_markers,
+      alphabetize_markers: !!s.alphabetize_markers,
       group_by: String(s.group_by || ''),
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
@@ -835,6 +836,16 @@
       tokens.push(token);
     });
     return tokens;
+  }
+
+  function markerTokensForDisplay(entry, shouldAlphabetize) {
+    var tokens = markerTokensFromEntry(entry);
+    if (!shouldAlphabetize || tokens.length < 2) {
+      return tokens;
+    }
+    return tokens.slice().sort(function (a, b) {
+      return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    });
   }
 
   function markerColorFromText(text) {
@@ -988,6 +999,7 @@
         publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
         show_marker_filters: !!state.draft.show_marker_filters,
         show_markers: !!state.draft.show_markers,
+        alphabetize_markers: !!state.draft.alphabetize_markers,
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
@@ -1002,6 +1014,7 @@
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       show_marker_filters: !!src.show_marker_filters,
       show_markers: !!src.show_markers,
+      alphabetize_markers: !!src.alphabetize_markers,
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
@@ -1200,6 +1213,10 @@
     if (showMarkersInput instanceof HTMLInputElement) {
       state.draft.show_markers = !!showMarkersInput.checked;
     }
+    var alphabetizeMarkersInput = els.content ? els.content.querySelector('[data-list-alphabetize-markers]') : null;
+    if (alphabetizeMarkersInput instanceof HTMLInputElement) {
+      state.draft.alphabetize_markers = !!alphabetizeMarkersInput.checked;
+    }
   }
 
   async function refreshValidation() {
@@ -1249,6 +1266,7 @@
         publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
         show_marker_filters: state.draft.show_marker_filters ? 'true' : 'false',
         show_markers: state.draft.show_markers ? 'true' : 'false',
+        alphabetize_markers: state.draft.alphabetize_markers ? 'true' : 'false',
         group_by: state.draft.group_by || '',
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         content: state.draft.content || '',
@@ -1720,7 +1738,7 @@
     return '';
   }
 
-  function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers) {
+  function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
     var line = String(entry && entry.markdown || '').trim();
     var description = String(entry && entry.description || '').trim();
     var postUrl = String(entry && entry.post_url || '');
@@ -1729,7 +1747,7 @@
     var datePill = datePillForEntryInSection(entry, groupBy, sectionLabel);
     var markerPills = '';
     if (showMarkers) {
-      var markerTokens = markerTokensFromEntry(entry);
+      var markerTokens = markerTokensForDisplay(entry, !!alphabetizeMarkers);
       if (markerTokens.length) {
         markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
           var markerColor = markerColorFromText(marker);
@@ -1757,15 +1775,15 @@
     return '<li class="list-entry-line"><div class="' + firstLineClass + '"><span class="list-entry-main-inline">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
   }
 
-  function renderEntryInner(entry, groupBy, sectionLabel, showMarkers) {
-    return renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers).replace(/^<li[^>]*>|<\/li>$/g, '');
+  function renderEntryInner(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
+    return renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers).replace(/^<li[^>]*>|<\/li>$/g, '');
   }
 
   function placeholderHtml(label) {
     return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
-  function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel, showMarkers) {
+  function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
     var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
     var openDepth = -1;
     var started = false;
@@ -1780,14 +1798,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -1796,7 +1814,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -1805,7 +1823,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
     });
 
     if (started) {
@@ -1896,14 +1914,14 @@
     return html;
   }
 
-  function renderReadOnlyByView(entries, viewMode, groupBy, sectionLabel, showMarkers) {
+  function renderReadOnlyByView(entries, viewMode, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
     if (normalizeViewMode(viewMode) === 'tile') {
       return renderTileReadOnly(entries);
     }
-    return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel, showMarkers);
+    return renderStructuredReadOnly(entries, 'list-entries', groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
   }
 
-  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers) {
+  function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers, alphabetizeMarkers) {
     var html = '';
     var allEntries = Array.isArray(entries) ? entries : [];
     html += renderProductGalleryViewModeControl(viewMode);
@@ -1926,7 +1944,7 @@
         if (!bucket.length) {
           return;
         }
-        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel, showMarkers);
+        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel, showMarkers, alphabetizeMarkers);
         html += '</section>';
         bucket = [];
       }
@@ -1946,7 +1964,7 @@
       return html;
     }
 
-    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '', showMarkers);
+    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '', showMarkers, alphabetizeMarkers);
   }
 
   function renderExtraContent(text, format, role) {
@@ -2069,6 +2087,7 @@
     html += '<option value="marker"' + (state.draft.group_by === 'marker' ? ' selected' : '') + '>Marker</option>';
     html += '</select></label>';
     html += '<label class="list-show-markers-setting"><input type="checkbox" data-list-show-markers="true"' + (state.draft.show_markers ? ' checked' : '') + '><span>Show markers</span></label>';
+    html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '"><input type="checkbox" data-list-alphabetize-markers="true"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span>Alphabetize markers</span></label>';
     html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span>Show marker-based filters</span></label>';
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
@@ -2178,7 +2197,7 @@
     var readViewMode = currentReadViewMode(s);
     els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers) + afterContent;
+    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers) + afterContent;
     refreshProductCartButtons();
     renderAdmin();
   }
@@ -2756,6 +2775,12 @@
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-markers')) {
         state.draft.show_markers = !!target.checked;
+        renderList();
+        queueAutosave(280);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-alphabetize-markers')) {
+        state.draft.alphabetize_markers = !!target.checked;
         renderList();
         queueAutosave(280);
         return;
