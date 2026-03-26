@@ -2881,14 +2881,15 @@
   }
 
   root.addEventListener('click', function (event) {
-    var postCardMenuTrigger = event.target && event.target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]');
+    var target = event.target instanceof Element ? event.target : null;
+    var postCardMenuTrigger = target ? target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]') : null;
     if (postCardMenuTrigger) {
       event.preventDefault();
       togglePostCardMenu(postCardMenuTrigger);
       return;
     }
 
-    var postCardMenuAction = event.target && event.target.closest('[data-post-card-action]');
+    var postCardMenuAction = target ? target.closest('[data-post-card-action]') : null;
     if (postCardMenuAction instanceof HTMLElement) {
       event.preventDefault();
       closePostCardMenus();
@@ -2899,11 +2900,11 @@
       return;
     }
 
-    if (!(event.target instanceof Element) || !event.target.closest('.post-page-menu')) {
+    if (!target || !target.closest('.post-page-menu')) {
       closePostCardMenus();
     }
 
-    var composeFab = event.target && event.target.closest('[data-blog-action="toggle-compose"]');
+    var composeFab = target ? target.closest('[data-blog-action="toggle-compose"]') : null;
     if (composeFab) {
       event.preventDefault();
       event.stopPropagation();
@@ -2911,7 +2912,7 @@
       return;
     }
 
-    var composeAction = event.target && event.target.closest('[data-compose-action]');
+    var composeAction = target ? target.closest('[data-compose-action]') : null;
     if (composeAction) {
       event.preventDefault();
       var actionName = String(composeAction.getAttribute('data-compose-action') || '');
@@ -3015,7 +3016,7 @@
       }
     }
 
-    var composeToolbar = event.target && event.target.closest('[data-compose-toolbar]');
+    var composeToolbar = target ? target.closest('[data-compose-toolbar]') : null;
     if (composeToolbar) {
       event.preventDefault();
       composeToolbarAction(String(composeToolbar.getAttribute('data-compose-toolbar') || ''));
