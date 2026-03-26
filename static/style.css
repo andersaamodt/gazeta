@@ -654,10 +654,11 @@ header h1 {
 
 :root {
   --nav-cart-drawer-width: 420px;
+  --nav-cart-transition-ms: 220ms;
 }
 
 body :is(.skip-link, .site-nav, #main-content, #nav-top-toast-host, .auth-modal, #nostr-info-modal) {
-  transition: transform 0.2s ease;
+  transition: transform var(--nav-cart-transition-ms) ease;
 }
 
 body.nav-cart-open {
@@ -665,7 +666,7 @@ body.nav-cart-open {
 }
 
 body.nav-cart-open :is(.skip-link, .site-nav, #main-content, #nav-top-toast-host, .auth-modal, #nostr-info-modal) {
-  transform: translateX(-420px);
+  transform: translateX(calc(-1 * var(--nav-cart-drawer-width)));
 }
 
 .nav-cart-drawer {
@@ -683,6 +684,13 @@ body.nav-cart-open :is(.skip-link, .site-nav, #main-content, #nav-top-toast-host
   flex-direction: column;
   padding: 0.95rem 0.95rem 0.8rem;
   overflow: hidden;
+  transform: translateX(100%);
+  transition: transform var(--nav-cart-transition-ms) ease;
+  will-change: transform;
+}
+
+body.nav-cart-open .nav-cart-drawer {
+  transform: translateX(0);
 }
 
 #nav-cart-drawer[hidden] {

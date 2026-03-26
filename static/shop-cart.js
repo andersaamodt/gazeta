@@ -2,9 +2,12 @@
   'use strict';
 
   var STORAGE_KEY = 'nostr_blog_cart_v1';
+  var DRAWER_TRANSITION_MS = 220;
   var state = {
     items: []
   };
+  var drawerHideTimer = null;
+  var drawerOpenRaf = 0;
 
   var els = {
     toggle: document.getElementById('nav-cart-toggle'),
@@ -277,6 +280,22 @@
     render();
   }
 
+  function clearDrawerHideTimer() {
+    if (!drawerHideTimer) {
+      return;
+    }
+    window.clearTimeout(drawerHideTimer);
+    drawerHideTimer = null;
+  }
+
+  function clearDrawerOpenRaf() {
+    if (!drawerOpenRaf) {
+      return;
+    }
+    window.cancelAnimationFrame(drawerOpenRaf);
+    drawerOpenRaf = 0;
+  }
+
   function openDrawer() {
     if (!els.drawer) {
       return;
@@ -285,22 +304,41 @@
       window.location.href = '/pages/cart.html';
       return;
     }
+    clearDrawerHideTimer();
+    clearDrawerOpenRaf();
     els.drawer.hidden = false;
-    document.body.classList.add('nav-cart-open');
     if (els.toggle) {
       els.toggle.setAttribute('aria-expanded', 'true');
     }
+    drawerOpenRaf = window.requestAnimationFrame(function () {
+      drawerOpenRaf = 0;
+      document.body.classList.add('nav-cart-open');
+    });
   }
 
-  function closeDrawer() {
+  function closeDrawer(immediate) {
+    var closeImmediately = immediate === true;
     if (!els.drawer) {
       return;
     }
-    els.drawer.hidden = true;
+    clearDrawerHideTimer();
+    clearDrawerOpenRaf();
+    var wasOpen = document.body.classList.contains('nav-cart-open');
     document.body.classList.remove('nav-cart-open');
     if (els.toggle) {
       els.toggle.setAttribute('aria-expanded', 'false');
     }
+    if (closeImmediately || (!wasOpen && els.drawer.hidden)) {
+      els.drawer.hidden = true;
+      return;
+    }
+    els.drawer.hidden = false;
+    drawerHideTimer = window.setTimeout(function () {
+      drawerHideTimer = null;
+      if (!document.body.classList.contains('nav-cart-open')) {
+        els.drawer.hidden = true;
+      }
+    }, DRAWER_TRANSITION_MS);
   }
 
   function toApiProduct(raw) {
@@ -442,7 +480,7 @@
   loadCart();
   bindEvents();
   // Ensure drawer starts hidden even if markup hydration dropped the hidden attr.
-  closeDrawer();
+  closeDrawer(true);
   render();
 
   window.blogShopCart = {
