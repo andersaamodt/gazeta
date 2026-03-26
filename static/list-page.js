@@ -70,6 +70,9 @@
     markerFilterExclude: [],
     viewModeOverride: '',
     createProductBusyUid: '',
+    undoStack: [],
+    redoStack: [],
+    historyCellEditKey: '',
     settingsPanelReveal: false,
     productPriceBySlug: {},
     productPriceBatchPending: {},
@@ -2102,6 +2105,8 @@
       return isEntryType(String(el && el.type || 'entry'));
     });
     var workingElements = entryElements.slice();
+    var canUndo = state.undoStack.length > 0;
+    var canRedo = state.redoStack.length > 0;
     var addTitle = pendingUnedited ? 'Edit the new entry before adding another' : 'Add entry';
     html += '<section class="nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
@@ -2118,7 +2123,11 @@
     html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '"><input type="checkbox" data-list-alphabetize-markers="true"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span>Alphabetize markers</span></label>';
     html += '<label class="list-marker-filter-setting"><input type="checkbox" data-list-show-marker-filters="true"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span>Show marker-based filters</span></label>';
     html += '</div></div>';
-    html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
+    html += '<div class="list-inline-toolbar-right">';
+    html += '<button type="button" class="list-inline-history-btn" data-list-action="undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>Undo</button>';
+    html += '<button type="button" class="list-inline-history-btn" data-list-action="redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>Redo</button>';
+    html += '<button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
+    html += '</div>';
     html += '</div>';
     html += '</section>';
     if (state.draft.show_marker_filters) {
@@ -2404,12 +2413,120 @@
     }
     state.activeEntryUid = '';
     state.activeCellField = '';
+    state.historyCellEditKey = '';
     renderList();
     renderAdmin();
     if (shouldSave) {
       queueAutosave(Number(opts.delayMs) > 0 ? Number(opts.delayMs) : 120);
     }
     return true;
+  }
+
+  function historySignature(elements) {
+    return JSON.stringify((Array.isArray(elements) ? elements : []).map(function (el) {
+      return {
+        _uid: String(el && el._uid || ''),
+        type: String(el && el.type || 'entry'),
+        event_id: String(el && el.event_id || ''),
+        relay_hint: String(el && el.relay_hint || ''),
+        marker: String(el && el.marker || ''),
+        date: String(el && el.date || ''),
+        depth: Math.max(0, Number(el && el.depth || 0) || 0),
+        markdown: String(el && el.markdown || ''),
+        image_url: String(el && el.image_url || ''),
+        description: String(el && el.description || ''),
+        post_url: String(el && el.post_url || '')
+      };
+    }));
+  }
+
+  function historyRecordFromElements(elements) {
+    var snapshot = cloneEditableElements(elements || []);
+    return {
+      elements: snapshot,
+      signature: historySignature(snapshot)
+    };
+  }
+
+  function resetInlineHistory() {
+    state.undoStack = [];
+    state.redoStack = [];
+    state.historyCellEditKey = '';
+  }
+
+  function pushUndoHistoryFromElements(elements) {
+    if (!isAdmin() || !state.editMode || !state.draft) {
+      return false;
+    }
+    var record = historyRecordFromElements(elements);
+    var last = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
+    if (last && last.signature === record.signature) {
+      return false;
+    }
+    state.undoStack.push(record);
+    if (state.undoStack.length > 120) {
+      state.undoStack.shift();
+    }
+    state.redoStack = [];
+    return true;
+  }
+
+  function pushUndoHistorySnapshot() {
+    return pushUndoHistoryFromElements(state.draft && state.draft.elements ? state.draft.elements : []);
+  }
+
+  function pushRedoHistorySnapshotFromCurrent() {
+    var record = historyRecordFromElements(state.draft && state.draft.elements ? state.draft.elements : []);
+    var last = state.redoStack.length ? state.redoStack[state.redoStack.length - 1] : null;
+    if (last && last.signature === record.signature) {
+      return;
+    }
+    state.redoStack.push(record);
+    if (state.redoStack.length > 120) {
+      state.redoStack.shift();
+    }
+  }
+
+  function applyHistoryRecord(record) {
+    if (!record || !Array.isArray(record.elements) || !state.draft) {
+      return false;
+    }
+    state.draft.elements = cloneEditableElements(record.elements);
+    state.activeEntryUid = '';
+    state.activeCellField = '';
+    state.rowMenuOpenUid = '';
+    state.pendingNewEntry = null;
+    state.historyCellEditKey = '';
+    updatePendingNewEntryState();
+    renderList();
+    renderAdmin();
+    queueAutosave(120);
+    return true;
+  }
+
+  function undoInlineEdit() {
+    if (!state.editMode || !isAdmin() || !state.undoStack.length) {
+      return false;
+    }
+    pushRedoHistorySnapshotFromCurrent();
+    var previous = state.undoStack.pop();
+    return applyHistoryRecord(previous);
+  }
+
+  function redoInlineEdit() {
+    if (!state.editMode || !isAdmin() || !state.redoStack.length) {
+      return false;
+    }
+    var current = historyRecordFromElements(state.draft && state.draft.elements ? state.draft.elements : []);
+    var undoLast = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
+    if (!undoLast || undoLast.signature !== current.signature) {
+      state.undoStack.push(current);
+      if (state.undoStack.length > 120) {
+        state.undoStack.shift();
+      }
+    }
+    var next = state.redoStack.pop();
+    return applyHistoryRecord(next);
   }
 
   function bindAdminEvents() {
@@ -2441,6 +2558,14 @@
       var topAction = target.closest('[data-list-action]');
       if (topAction instanceof HTMLElement) {
         var topActionName = topAction.getAttribute('data-list-action');
+        if (topActionName === 'undo' && state.editMode) {
+          undoInlineEdit();
+          return;
+        }
+        if (topActionName === 'redo' && state.editMode) {
+          redoInlineEdit();
+          return;
+        }
         if (topActionName === 'toggle-edit') {
           var removedTransient = false;
           if (state.editMode) {
@@ -2449,6 +2574,7 @@
           state.editMode = !state.editMode;
           if (state.editMode) {
             state.settingsPanelReveal = true;
+            resetInlineHistory();
           }
           if (!state.editMode) {
             state.activeEntryUid = '';
@@ -2457,6 +2583,7 @@
             state.navTitleEditing = false;
             state.navTitleInput = '';
             state.settingsPanelReveal = false;
+            resetInlineHistory();
           }
           renderList();
           renderAdmin();
@@ -2519,6 +2646,7 @@
           if (isPendingNewEntryUnedited()) {
             return;
           }
+          pushUndoHistorySnapshot();
           var before = captureEntryRects();
           var newUid = addEntry('');
           renderListWithFlip(before);
@@ -2529,6 +2657,7 @@
           if (isPendingNewEntryUnedited()) {
             return;
           }
+          pushUndoHistorySnapshot();
           var prefill = String(listAction.getAttribute('data-prefill-year') || '').trim();
           var beforeYear = captureEntryRects();
           var yearUid = addEntry(prefill);
@@ -2554,6 +2683,7 @@
           state.rowMenuOpenUid = '';
           state.activeEntryUid = uid;
           state.activeCellField = String(inlineAction.getAttribute('data-inline-field') || '');
+          state.historyCellEditKey = '';
           renderList();
           focusInlineField(uid, state.activeCellField);
           return;
@@ -2577,6 +2707,7 @@
             renderList();
             return;
           }
+          pushUndoHistorySnapshot();
           state.draft.elements[eventIdx].event_id = String(nextEventId || '').trim();
           updatePendingNewEntryState();
           renderList();
@@ -2598,6 +2729,7 @@
           if (idx < 0) {
             return;
           }
+          pushUndoHistorySnapshot();
           var beforeRemove = captureEntryRects();
           state.draft.elements.splice(idx, 1);
           if (state.rowMenuOpenUid === uid) {
@@ -2622,6 +2754,7 @@
           if (depthIdx < 0) {
             return;
           }
+          pushUndoHistorySnapshot();
           var beforeDepth = captureEntryRects();
           var currentDepth = Math.max(0, Number(state.draft.elements[depthIdx].depth || 0) || 0);
           if (currentDepth > 0) {
@@ -2773,6 +2906,11 @@
         return;
       }
       state.activeEntryUid = uid;
+      var editKey = uid + ':' + field;
+      if (state.historyCellEditKey !== editKey) {
+        pushUndoHistorySnapshot();
+        state.historyCellEditKey = editKey;
+      }
       state.draft.elements[idx][field] = String(target.value || '');
       if (field === 'marker') {
         state.draft.elements[idx][field] = normalizeMarkerListText(state.draft.elements[idx][field]);
@@ -3238,6 +3376,7 @@
         }
       }
       if (state.dragMoved) {
+        pushUndoHistoryFromElements(state.dragStartElements || []);
         queueAutosave(120);
       }
     });
@@ -3278,6 +3417,7 @@
           state.createProductBusyUid = '';
           state.viewModeOverride = '';
           state.saveIndicatorVisible = false;
+          resetInlineHistory();
           if (!state.activeEntryUid && state.draft.elements.length) {
             state.activeEntryUid = state.draft.elements[0]._uid;
           }

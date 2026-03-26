@@ -2416,6 +2416,10 @@ body.nav-cart-open {
   align-items: center;
 }
 
+.list-inline-toolbar-right {
+  gap: 0.3rem;
+}
+
 .list-inline-toolbar-left {
   min-width: 0;
   flex: 1 1 auto;
@@ -2436,6 +2440,15 @@ body.nav-cart-open {
   justify-content: center;
   line-height: 1;
   font-size: 1.2rem;
+}
+
+.list-inline-toolbar-right .list-inline-history-btn {
+  width: auto;
+  min-width: 0;
+  padding: 0 0.56rem;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  line-height: 1.1;
 }
 
 .list-inline-toolbar-right button:hover:not(:disabled),
