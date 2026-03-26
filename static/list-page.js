@@ -137,6 +137,38 @@
     });
   }
 
+  function normalizeMarkerListForDisplay(text, shouldAlphabetize) {
+    var tokens = markerTokensFromText(text);
+    if (!tokens.length) {
+      return '';
+    }
+    if (shouldAlphabetize && tokens.length > 1) {
+      tokens = tokens.slice().sort(function (a, b) {
+        return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+      });
+    }
+    return tokens.join(', ');
+  }
+
+  function alphabetizeAllEntryMarkersInDraft() {
+    if (!state.draft || !Array.isArray(state.draft.elements)) {
+      return false;
+    }
+    var changed = false;
+    state.draft.elements.forEach(function (el) {
+      if (!isEntryType(String(el && el.type || 'entry'))) {
+        return;
+      }
+      var current = String(el && el.marker || '');
+      var next = normalizeMarkerListForDisplay(current, true);
+      if (next !== current) {
+        el.marker = next;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function markInitialContentPainted() {
     if (state.initialContentPainted) {
       return;
@@ -3175,7 +3207,14 @@
         return;
       }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-alphabetize-markers')) {
+        var enablingAlphabetize = !!target.checked && !state.draft.alphabetize_markers;
         state.draft.alphabetize_markers = !!target.checked;
+        if (enablingAlphabetize) {
+          var shouldAlphabetizeExisting = window.confirm('Alphabetize existing marker values in all rows now?');
+          if (shouldAlphabetizeExisting) {
+            alphabetizeAllEntryMarkersInDraft();
+          }
+        }
         renderList();
         queueAutosave(280);
         return;
@@ -3210,7 +3249,7 @@
       }
       state.draft.elements[idx][field] = String(target.value || '');
       if (field === 'marker') {
-        state.draft.elements[idx][field] = normalizeMarkerListText(state.draft.elements[idx][field]);
+        state.draft.elements[idx][field] = normalizeMarkerListForDisplay(state.draft.elements[idx][field], !!state.draft.alphabetize_markers);
         if (target.value !== state.draft.elements[idx][field]) {
           target.value = state.draft.elements[idx][field];
         }
