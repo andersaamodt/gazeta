@@ -2692,11 +2692,12 @@ body.nav-cart-open {
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-first-line {
-  align-items: baseline;
+  align-items: center;
   column-gap: 0.46rem;
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-main-inline {
+  align-items: center;
   gap: 0.32rem;
 }
 
@@ -2714,6 +2715,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-meta-right {
+  align-items: center;
   gap: 0.24rem;
 }
 
