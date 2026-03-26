@@ -1952,7 +1952,7 @@ body.nav-cart-open {
   gap: 0.32rem;
   align-items: center;
   margin: 0 0 0.46rem;
-  margin-left: calc(var(--list-depth, 0) * 2.1rem);
+  margin-left: 0;
   padding: 0 0.35rem;
   border: 0;
   border-radius: 0;
@@ -2018,6 +2018,10 @@ body.nav-cart-open {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.list-entry-inline[data-depth="1"] .list-inline-markdown {
+  padding-left: 1.1rem;
 }
 
 .list-entry-inline .list-inline-markdown a {
