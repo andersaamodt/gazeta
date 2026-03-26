@@ -1185,7 +1185,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell {
-  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 1fr) minmax(170px, 1fr) minmax(120px, 170px) minmax(220px, 2fr) minmax(180px, 260px) minmax(136px, 190px);
+  --list-inline-grid-columns: 1.85rem 1.55rem minmax(420px, 4.6fr) minmax(190px, 1.25fr) minmax(96px, 0.65fr) minmax(300px, 1.8fr) minmax(82px, max-content);
   width: 100%;
   max-width: 100%;
   margin: 1.25rem auto 2.4rem;
@@ -1960,7 +1960,11 @@ body.nav-cart-open {
 }
 
 .list-page-shell[data-page-type="list"] {
-  --list-inline-grid-columns: 1.85rem 1.55rem minmax(360px, 3fr) minmax(170px, 1.05fr) minmax(88px, 0.55fr) minmax(152px, 0.9fr) minmax(82px, max-content);
+  --list-inline-grid-columns: 1.85rem 1.55rem minmax(420px, 4.6fr) minmax(190px, 1.25fr) minmax(96px, 0.65fr) minmax(300px, 1.8fr) minmax(82px, max-content);
+}
+
+.list-page-shell[data-page-type="icon-gallery"] {
+  --list-inline-grid-columns: 2rem 2.1rem minmax(220px, 1.25fr) minmax(170px, 1fr) minmax(120px, 0.8fr) minmax(220px, 1.8fr) minmax(180px, 1.35fr) minmax(136px, max-content);
 }
 
 .list-entry-inline.is-active {
