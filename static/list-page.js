@@ -2213,10 +2213,6 @@
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
-    html += '<div class="list-inline-history-controls" role="group" aria-label="Edit history">';
-    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="undo" title="Undo" aria-label="Undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>↶</button>';
-    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>↷</button>';
-    html += '</div>';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
     html += '<option value=""' + (state.draft.group_by ? '' : ' selected') + '>None</option>';
     html += '<option value="year"' + (state.draft.group_by === 'year' ? ' selected' : '') + '>Year</option>';
@@ -2248,6 +2244,13 @@
       html += renderAfterContentEditor();
       return html;
     }
+
+    html += '<div class="list-inline-history-row">';
+    html += '<div class="list-inline-history-controls" role="group" aria-label="Edit history">';
+    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="undo" title="Undo" aria-label="Undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>↶</button>';
+    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>↷</button>';
+    html += '</div>';
+    html += '</div>';
 
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
