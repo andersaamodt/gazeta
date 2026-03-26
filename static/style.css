@@ -2412,10 +2412,10 @@ body.nav-cart-open {
   flex: 0 0 auto;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid hsl(var(--marker-pill-h, 220), 42%, 74%);
-  background: hsl(var(--marker-pill-h, 220), 56%, 92%);
-  color: hsl(var(--marker-pill-h, 220), 36%, 28%);
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 36%, 28%);
+  border: 1px solid hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), 72%);
+  background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), 92%);
+  color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 18%), 28%);
+  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 18%), 28%);
   padding: 0.08rem 0.44rem;
   font-size: 0.72rem;
   line-height: 1.15;
@@ -2543,8 +2543,8 @@ body.nav-cart-open {
 .list-marker-filter-pill {
   width: fit-content;
   border-radius: 999px !important;
-  border: 1px solid hsl(var(--marker-pill-h, 220), 42%, 74%) !important;
-  background: hsl(var(--marker-pill-h, 220), 56%, 92%) !important;
+  border: 1px solid hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), 72%) !important;
+  background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), 92%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
   padding: 0.16rem 0.58rem !important;
@@ -2555,15 +2555,15 @@ body.nav-cart-open {
 
 .list-marker-filter-pill:hover:not(:disabled),
 .list-marker-filter-pill:focus-visible:not(:disabled) {
-  background: hsl(var(--marker-pill-h, 220), 58%, 89%) !important;
+  background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 89%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
-  border-color: hsl(var(--marker-pill-h, 220), 46%, 66%) !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 3%), 66%) !important;
 }
 
 .list-marker-filter-pill.is-include {
-  background: hsl(var(--marker-pill-h, 220), 66%, 79%) !important;
-  border-color: hsl(var(--marker-pill-h, 220), 56%, 50%) !important;
+  background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
   font-weight: 700 !important;
@@ -2571,15 +2571,15 @@ body.nav-cart-open {
 
 .list-marker-filter-pill.is-include:hover:not(:disabled),
 .list-marker-filter-pill.is-include:focus-visible:not(:disabled) {
-  background: hsl(var(--marker-pill-h, 220), 66%, 79%) !important;
-  border-color: hsl(var(--marker-pill-h, 220), 56%, 50%) !important;
+  background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
 }
 
 .list-marker-filter-pill.is-exclude {
-  background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 70%, 80%) 42%, #ffb8b3 58%) !important;
-  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 58%, 52%) 36%, #a11b14 64%) !important;
+  background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
+  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
   font-weight: 700 !important;
@@ -2587,8 +2587,8 @@ body.nav-cart-open {
 
 .list-marker-filter-pill.is-exclude:hover:not(:disabled),
 .list-marker-filter-pill.is-exclude:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 70%, 80%) 42%, #ffb8b3 58%) !important;
-  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), 58%, 52%) 36%, #a11b14 64%) !important;
+  background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
+  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
 }

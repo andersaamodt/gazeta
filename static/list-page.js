@@ -836,18 +836,25 @@
     return tokens;
   }
 
-  function markerHueFromText(text) {
+  function markerColorFromText(text) {
     var src = String(text || '');
-    var hash = 0;
+    var hash = 2166136261;
     for (var i = 0; i < src.length; i += 1) {
-      hash = ((hash << 5) - hash) + src.charCodeAt(i);
-      hash |= 0;
+      hash ^= src.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
     }
-    var hue = Math.abs(hash % 360);
-    if (!isFinite(hue)) {
-      return 0;
+    var normalized = (hash >>> 0);
+    var hueBucketCount = 36;
+    var hueBucket = normalized % hueBucketCount;
+    var hue = (((hueBucket * 11) % hueBucketCount) * (360 / hueBucketCount)) + (((normalized >>> 9) % 5) - 2);
+    if (hue < 0) {
+      hue += 360;
     }
-    return hue;
+    var saturation = 50 + ((normalized >>> 6) % 6) * 5;
+    return {
+      hue: hue,
+      saturation: saturation
+    };
   }
 
   function uniqueMarkerValues(entries) {
@@ -929,8 +936,8 @@
       } else if (excluded) {
         cls += ' is-exclude';
       }
-      var hue = markerHueFromText(marker);
-      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(hue) + ';">' + escapeHtml(marker) + '</button>';
+      var markerColor = markerColorFromText(marker);
+      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;">' + escapeHtml(marker) + '</button>';
     });
     html += '</div>';
     html += '</section>';
@@ -1721,8 +1728,8 @@
       var markerTokens = markerTokensFromEntry(entry);
       if (markerTokens.length) {
         markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
-          var hue = markerHueFromText(marker);
-          return '<span class="list-entry-marker-pill" style="--marker-pill-h:' + String(hue) + ';">' + escapeHtml(marker) + '</span>';
+          var markerColor = markerColorFromText(marker);
+          return '<span class="list-entry-marker-pill" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;">' + escapeHtml(marker) + '</span>';
         }).join('') + '</span>';
       }
     }
