@@ -1977,6 +1977,30 @@ body.nav-cart-open {
   cursor: text;
 }
 
+.list-entry-inline .list-inline-markdown {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.list-entry-inline .list-inline-markdown .list-inline-open {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.list-entry-inline .list-inline-markdown .list-inline-value {
+  display: block;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.list-entry-inline .list-inline-markdown a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .list-inline-handle {
   color: #8ca0c7;
   cursor: move;
