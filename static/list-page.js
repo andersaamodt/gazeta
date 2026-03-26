@@ -812,16 +812,35 @@
     return '';
   }
 
+  function markerTokensFromEntry(entry) {
+    var raw = String(entry && entry.marker || '');
+    if (!raw.trim()) {
+      return [];
+    }
+    var seen = {};
+    var tokens = [];
+    raw.split(',').forEach(function (part) {
+      var token = compact(part);
+      if (!token || seen[token]) {
+        return;
+      }
+      seen[token] = true;
+      tokens.push(token);
+    });
+    return tokens;
+  }
+
   function uniqueMarkerValues(entries) {
     var seen = {};
     var markers = [];
     (Array.isArray(entries) ? entries : []).forEach(function (entry) {
-      var marker = String(entry && entry.marker || '').trim();
-      if (!marker || seen[marker]) {
-        return;
-      }
-      seen[marker] = true;
-      markers.push(marker);
+      markerTokensFromEntry(entry).forEach(function (marker) {
+        if (seen[marker]) {
+          return;
+        }
+        seen[marker] = true;
+        markers.push(marker);
+      });
     });
     return markers;
   }
@@ -845,12 +864,28 @@
     if (!include.length && !exclude.length) {
       return Array.isArray(entries) ? entries.slice() : [];
     }
+    var includeMap = {};
+    var excludeMap = {};
+    include.forEach(function (marker) {
+      includeMap[String(marker)] = true;
+    });
+    exclude.forEach(function (marker) {
+      excludeMap[String(marker)] = true;
+    });
     return (Array.isArray(entries) ? entries : []).filter(function (entry) {
-      var marker = String(entry && entry.marker || '').trim();
-      if (include.length && include.indexOf(marker) < 0) {
-        return false;
+      var markers = markerTokensFromEntry(entry);
+      if (include.length) {
+        var includeHit = markers.some(function (marker) {
+          return !!includeMap[marker];
+        });
+        if (!includeHit) {
+          return false;
+        }
       }
-      if (exclude.indexOf(marker) >= 0) {
+      var excludeHit = markers.some(function (marker) {
+        return !!excludeMap[marker];
+      });
+      if (excludeHit) {
         return false;
       }
       return true;
