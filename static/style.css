@@ -2160,9 +2160,36 @@ body.nav-cart-open {
   line-height: 1;
 }
 
+.list-entry-read-menu {
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.list-entry-read-menu .list-inline-row-menu-trigger {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+  font-size: 1.26rem;
+  line-height: 1;
+}
+
 .list-inline-actions .list-inline-row-menu-trigger:hover,
 .list-inline-actions .list-inline-row-menu-trigger:focus-visible,
 .list-inline-actions .list-inline-row-menu-trigger:active {
+  background: var(--light-bg, #eef3ff) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+}
+
+.list-entry-read-menu .list-inline-row-menu-trigger:hover,
+.list-entry-read-menu .list-inline-row-menu-trigger:focus-visible,
+.list-entry-read-menu .list-inline-row-menu-trigger:active {
   background: var(--light-bg, #eef3ff) !important;
   color: var(--text) !important;
   -webkit-text-fill-color: var(--text);

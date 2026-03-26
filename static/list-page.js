@@ -70,6 +70,7 @@
     markerFilterExclude: [],
     markerFilterInitialized: false,
     markerColorByToken: {},
+    readRowMenuOpenUid: '',
     viewModeOverride: '',
     createProductBusyUid: '',
     undoStack: [],
@@ -291,6 +292,7 @@
     state.markerFilterExclude = [];
     state.markerFilterInitialized = false;
     state.markerColorByToken = {};
+    state.readRowMenuOpenUid = '';
     state.createProductBusyUid = '';
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
@@ -2022,8 +2024,20 @@
       }
     }
     var rightMeta = '';
-    if (markerPills || datePill) {
-      rightMeta = '<span class="list-entry-meta-right">' + markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + '</span>';
+    var readMenu = '';
+    var rowUid = String(entry && entry._uid || '');
+    if (isAdmin() && !state.editMode && rowUid) {
+      var rowMenuOpen = state.readRowMenuOpenUid === rowUid;
+      readMenu = '' +
+        '<span class="list-entry-read-menu list-inline-row-menu-wrap">' +
+          '<button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋮</button>' +
+          '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>' +
+            '<button type="button" role="menuitem" data-list-read-action="edit-row" data-element-uid="' + escapeHtml(rowUid) + '">Edit</button>' +
+          '</div>' +
+        '</span>';
+    }
+    if (markerPills || datePill || readMenu) {
+      rightMeta = '<span class="list-entry-meta-right">' + markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + readMenu + '</span>';
     }
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
@@ -2922,6 +2936,37 @@
       }
 
       if (!state.editMode) {
+        var readMenuAction = target.closest('[data-list-read-action]');
+        if (readMenuAction instanceof HTMLElement) {
+          event.preventDefault();
+          var readActionType = String(readMenuAction.getAttribute('data-list-read-action') || '');
+          var readUid = String(readMenuAction.getAttribute('data-element-uid') || '');
+          if (!readUid) {
+            return;
+          }
+          if (readActionType === 'toggle-menu') {
+            state.readRowMenuOpenUid = state.readRowMenuOpenUid === readUid ? '' : readUid;
+            renderList();
+            return;
+          }
+          if (readActionType === 'edit-row') {
+            state.readRowMenuOpenUid = '';
+            state.editMode = true;
+            state.settingsPanelReveal = true;
+            state.activeEntryUid = readUid;
+            state.activeCellField = 'markdown';
+            state.historyCellEditKey = '';
+            renderList();
+            renderAdmin();
+            focusInlineField(readUid, 'markdown');
+            return;
+          }
+        }
+        if (state.readRowMenuOpenUid && (!target.closest || !target.closest('.list-entry-read-menu'))) {
+          state.readRowMenuOpenUid = '';
+          renderList();
+          return;
+        }
         return;
       }
 
