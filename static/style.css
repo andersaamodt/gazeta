@@ -5295,6 +5295,12 @@ footer {
   margin-top: 0;
 }
 
+#blog-empty.placeholder {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
 .blog-filter-toggle {
   display: inline-flex;
   align-items: center;
