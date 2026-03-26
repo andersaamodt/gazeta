@@ -1079,10 +1079,11 @@
   }
 
   function applyMarkerFilters(entries) {
+    var source = Array.isArray(entries) ? entries : [];
     var include = Array.isArray(state.markerFilterInclude) ? state.markerFilterInclude : [];
     var exclude = Array.isArray(state.markerFilterExclude) ? state.markerFilterExclude : [];
     if (!include.length && !exclude.length) {
-      return Array.isArray(entries) ? entries.slice() : [];
+      return source.slice();
     }
     var includeMap = {};
     var excludeMap = {};
@@ -1092,23 +1093,47 @@
     exclude.forEach(function (marker) {
       excludeMap[String(marker)] = true;
     });
-    return (Array.isArray(entries) ? entries : []).filter(function (entry) {
+    var parentIndexByRow = new Array(source.length);
+    var depthStack = [];
+    var keepRows = {};
+    source.forEach(function (entry, idx) {
+      var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
+      if (depth > depthStack.length) {
+        depth = depthStack.length;
+      }
+      if (depth < depthStack.length) {
+        depthStack.length = depth;
+      }
+      parentIndexByRow[idx] = depth > 0 ? Number(depthStack[depth - 1]) : -1;
+      depthStack[depth] = idx;
+      depthStack.length = depth + 1;
+
       var markers = markerTokensFromEntry(entry);
       if (include.length) {
         var includeHit = markers.some(function (marker) {
           return !!includeMap[marker];
         });
         if (!includeHit) {
-          return false;
+          return;
         }
       }
       var excludeHit = markers.some(function (marker) {
         return !!excludeMap[marker];
       });
       if (excludeHit) {
-        return false;
+        return;
       }
-      return true;
+      keepRows[idx] = true;
+      if (include.length) {
+        var parentIdx = parentIndexByRow[idx];
+        while (parentIdx >= 0) {
+          keepRows[parentIdx] = true;
+          parentIdx = parentIndexByRow[parentIdx];
+        }
+      }
+    });
+    return source.filter(function (_entry, idx) {
+      return !!keepRows[idx];
     });
   }
 
