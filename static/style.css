@@ -5375,8 +5375,9 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
-  flex: 1 1 16rem;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .blog-post-item .post-card-comments-count {
@@ -5385,7 +5386,6 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   font-size: 0.78rem;
   white-space: nowrap;
   flex: 0 0 auto;
-  order: 2;
 }
 
 .post-summary {
