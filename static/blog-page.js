@@ -2535,8 +2535,10 @@
       var tagsHtml = (post.tags || []).map(function (tag) {
         return '<button type="button" class="tag blog-inline-tag" data-inline-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
       }).join('');
+      var hasTags = !!tagsHtml;
       var comments = Number(post.comment_count || 0);
       var commentsLabel = comments === 1 ? '1 comment' : String(comments) + ' comments';
+      var commentsHtml = '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>';
       var author = String(post.author || '').trim();
       if (!author) {
         author = 'Blog Author';
@@ -2563,11 +2565,10 @@
             adminMenuHtml +
           '</div>' +
           (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
-          '<div class="blog-meta-row"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span></div>' +
-          '<div class="post-card-footer">' +
-            (tagsHtml ? '<div class="tags">' + tagsHtml + '</div>' : '') +
-            '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>' +
-          '</div>' +
+          '<div class="blog-meta-row' + (hasTags ? '' : ' blog-meta-row-with-comments') + '"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span>' + (hasTags ? '' : commentsHtml) + '</div>' +
+          (hasTags
+            ? '<div class="post-card-footer"><div class="tags">' + tagsHtml + '</div>' + commentsHtml + '</div>'
+            : '') +
         '</article>';
     }).join('');
   }

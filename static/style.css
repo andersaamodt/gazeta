@@ -5479,9 +5479,9 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: auto;
   padding-top: 0.65rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.45rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .blog-post-item .post-card-footer .tags {
@@ -6027,6 +6027,15 @@ footer {
   align-items: center;
   gap: 0.42rem;
   margin-top: 0.6rem;
+}
+
+.blog-post-item .blog-meta-row-with-comments {
+  display: flex;
+  width: 100%;
+}
+
+.blog-post-item .blog-meta-row-with-comments .post-card-comments-count {
+  margin-left: auto;
 }
 
 .blog-type-pill,
