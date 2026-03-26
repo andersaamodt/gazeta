@@ -882,20 +882,34 @@
     normalized ^= (normalized >>> 13);
     normalized = Math.imul(normalized, 3266489909);
     normalized ^= (normalized >>> 16);
-    var hueSequence = [8, 188, 98, 278, 38, 218, 128, 308, 68, 248, 158, 338, 23, 203, 113, 293, 53, 233, 143, 323, 83, 263, 173, 353];
-    var hue = hueSequence[normalized % hueSequence.length];
-    hue = (hue + (((normalized >>> 5) % 7) - 3) + 360) % 360;
-    var saturationBands = [60, 68, 76, 84];
-    var lightnessBands = [82, 86, 90];
-    var saturation = saturationBands[(normalized >>> 11) % saturationBands.length];
-    var lightness = lightnessBands[(normalized >>> 17) % lightnessBands.length];
-    if (hue >= 42 && hue <= 85) {
-      saturation += 4;
-      lightness -= 2;
-    } else if (hue >= 165 && hue <= 210) {
-      saturation += 2;
-      lightness -= 1;
-    }
+    var normalPalette = [
+      { hue: 222, saturation: 66, lightness: 86 }, // blue
+      { hue: 146, saturation: 56, lightness: 85 }, // green
+      { hue: 190, saturation: 60, lightness: 85 }, // cyan
+      { hue: 34, saturation: 64, lightness: 86 },  // orange
+      { hue: 348, saturation: 58, lightness: 87 }, // red
+      { hue: 272, saturation: 54, lightness: 87 }, // purple
+      { hue: 96, saturation: 58, lightness: 86 },  // lime
+      { hue: 206, saturation: 62, lightness: 86 }, // sky
+      { hue: 18, saturation: 58, lightness: 86 },  // terracotta
+      { hue: 166, saturation: 50, lightness: 86 }, // mint
+      { hue: 238, saturation: 52, lightness: 87 }, // indigo
+      { hue: 50, saturation: 60, lightness: 86 }   // amber
+    ];
+    var oddPalette = [
+      { hue: 316, saturation: 56, lightness: 87 }, // magenta pastel
+      { hue: 282, saturation: 50, lightness: 88 }, // lilac
+      { hue: 12, saturation: 56, lightness: 87 },  // salmon
+      { hue: 84, saturation: 52, lightness: 86 },  // olive pastel
+      { hue: 254, saturation: 50, lightness: 88 }, // violet blue
+      { hue: 168, saturation: 48, lightness: 87 }  // seafoam
+    ];
+    var preferNormal = ((normalized >>> 3) % 10) < 8; // 80% normal colors.
+    var palette = preferNormal ? normalPalette : oddPalette;
+    var swatch = palette[(normalized >>> 1) % palette.length];
+    var hue = swatch.hue;
+    var saturation = swatch.saturation;
+    var lightness = swatch.lightness;
     return {
       hue: hue,
       saturation: saturation,

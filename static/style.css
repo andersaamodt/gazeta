@@ -2526,7 +2526,7 @@ body.nav-cart-open {
   user-select: none;
   -webkit-user-select: none;
   border-radius: 999px;
-  border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 12%), calc(var(--marker-pill-l, 90%) - 12%));
+  border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 10%), calc(var(--marker-pill-l, 90%) - 20%));
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%));
   color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 20%), 24%);
   -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 20%), 24%);
@@ -2657,7 +2657,7 @@ body.nav-cart-open {
 .list-marker-filter-pill {
   width: fit-content;
   border-radius: 999px !important;
-  border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 12%), calc(var(--marker-pill-l, 90%) - 12%)) !important;
+  border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 10%), calc(var(--marker-pill-l, 90%) - 20%)) !important;
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%)) !important;
   color: var(--text, #2a3448) !important;
   -webkit-text-fill-color: var(--text, #2a3448) !important;
