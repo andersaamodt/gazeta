@@ -6116,8 +6116,9 @@ footer {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
-  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 88%, var(--light-bg, #eef3ff) 12%);
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 88%, var(--light-bg, #eef3ff) 12%) !important;
   opacity: 0;
   pointer-events: none;
   transform: scale(0.92);
@@ -6127,6 +6128,9 @@ footer {
 .blog-compose-card .compose-post-type-current-btn .compose-post-type-icon {
   width: 1.2rem;
   height: 1.2rem;
+  color: var(--text) !important;
+  stroke: currentColor;
+  fill: none;
 }
 
 .blog-compose-card .compose-post-type-toolbar-wrap {
