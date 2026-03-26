@@ -270,6 +270,30 @@ blog_nostr_page_type_for_slug() {
     printf 'blog\n'
     return 0
   fi
+
+  # Fallback for remote/site drift: infer type from an existing source or
+  # mounted page shell when nostr-pages.json is temporarily out of sync.
+  source_path=$(blog_nostr_page_source_path "$slug" 2>/dev/null || printf '')
+  if [ -n "$source_path" ] && [ -f "$source_path" ]; then
+    inferred_type=$(blog_nostr_page_source_template_type "$source_path" 2>/dev/null || printf '')
+    case "$inferred_type" in
+      nip23|blog|contact|public-ranking|list|icon-gallery)
+        printf '%s\n' "$inferred_type"
+        return 0
+        ;;
+    esac
+  fi
+
+  mount_path=$(blog_nostr_page_mount_path "$slug" 2>/dev/null || printf '')
+  if [ -n "$mount_path" ] && [ -f "$mount_path" ]; then
+    inferred_type=$(blog_nostr_page_source_template_type "$mount_path" 2>/dev/null || printf '')
+    case "$inferred_type" in
+      nip23|blog|contact|public-ranking|list|icon-gallery)
+        printf '%s\n' "$inferred_type"
+        return 0
+        ;;
+    esac
+  fi
   return 1
 }
 
