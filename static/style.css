@@ -5244,6 +5244,9 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: 0.18rem;
   font-size: 1.02rem;
   line-height: 1.74;
+  background: color-mix(in srgb, var(--post-card-bg-single, #fdfdfb) 86%, var(--bg, #ffffff) 14%);
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem 0.45rem;
 }
 
 .post-single-item .post-single-body > :first-child {
