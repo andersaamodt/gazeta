@@ -1780,11 +1780,12 @@
     }
     if (els.composeLinkFields) {
       els.composeLinkFields.hidden = !linkShare;
+      els.composeLinkFields.style.display = linkShare ? 'grid' : 'none';
     }
     if (els.composeContentRow) {
       els.composeContentRow.hidden = linkShare;
       els.composeContentRow.classList.toggle('is-hidden', linkShare);
-      els.composeContentRow.style.display = linkShare ? 'none' : '';
+      els.composeContentRow.style.display = linkShare ? 'none' : 'grid';
     }
     if (els.composeNostrTargetPill) {
       const label = composeNostrTargetLabel(type);

@@ -2056,6 +2056,8 @@ body {
   gap: 0.32rem;
 }
 
+#compose-link-fields[hidden],
+#compose-content-row[hidden],
 #compose-content-row.is-hidden {
   display: none !important;
 }
