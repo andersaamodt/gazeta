@@ -2359,13 +2359,43 @@
     return currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref;
   }
 
-  function isServerThemeHrefActive(themeLink) {
-    if (!themeLink) {
-      return false;
+  function normalizeThemeName(theme) {
+    return String(theme || '').trim().toLowerCase();
+  }
+
+  function isAllowedTheme(theme) {
+    switch (normalizeThemeName(theme)) {
+      case 'adept':
+      case 'alchemist':
+      case 'archmage':
+      case 'chronomancer':
+      case 'conjurer':
+      case 'druid':
+      case 'empath':
+      case 'enchanter':
+      case 'geomancer':
+      case 'hermeticist':
+      case 'hierophant':
+      case 'illusionist':
+      case 'lapidarist':
+      case 'lich':
+      case 'necromancer':
+      case 'pyromancer':
+      case 'seer':
+      case 'shaman':
+      case 'sorcerer':
+      case 'sorceress':
+      case 'technomancer':
+      case 'thaumaturge':
+      case 'thelemite':
+      case 'theurgist':
+      case 'wadjet':
+      case 'warlock':
+      case 'wizard':
+        return true;
+      default:
+        return false;
     }
-    var attrHref = String(themeLink.getAttribute('href') || '');
-    var resolvedHref = String(themeLink.href || '');
-    return attrHref.indexOf('/cgi/blog-theme.css') === 0 || resolvedHref.indexOf('/cgi/blog-theme.css') !== -1;
   }
 
   function updateThemeStylesheet(theme) {
@@ -2388,10 +2418,9 @@
           cacheSiteTitle(data.site_title);
         }
         if (data && data.theme) {
-          state.currentTheme = data.theme;
-          var themeLink = document.getElementById('theme-stylesheet');
-          if (!isServerThemeHrefActive(themeLink)) {
-            return updateThemeStylesheet(state.currentTheme);
+          var serverTheme = normalizeThemeName(data.theme);
+          if (isAllowedTheme(serverTheme)) {
+            state.currentTheme = serverTheme;
           }
         }
       })

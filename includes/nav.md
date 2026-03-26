@@ -340,7 +340,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260321-navfast3"></script>
+<script src="/static/nav-auth.js?v=20260326-navfast4"></script>
 <script src="/static/shop-cart.js?v=20260326-cartv4"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
