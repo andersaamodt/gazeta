@@ -2674,6 +2674,8 @@ body.nav-cart-open {
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-markdown :where(a) {
+  color: color-mix(in srgb, var(--accent, #3158a4) 76%, #2f3a52 24%);
+  -webkit-text-fill-color: color-mix(in srgb, var(--accent, #3158a4) 76%, #2f3a52 24%);
   line-height: 1.34;
   text-underline-offset: 0.06em;
   text-decoration-thickness: 1px;
@@ -2690,6 +2692,16 @@ body.nav-cart-open {
 
 .list-page-shell .list-sub-entries {
   padding-left: 1.35rem;
+}
+
+.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line > .list-entry-first-line,
+.list-page-shell .list-sub-entries > .list-entry-line > .list-entry-first-line {
+  border-radius: 6px;
+}
+
+.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line:nth-child(even) > .list-entry-first-line,
+.list-page-shell .list-sub-entries > .list-entry-line:nth-child(even) > .list-entry-first-line {
+  background: color-mix(in srgb, var(--post-card-bg-single, #fff) 94%, var(--accent, #3158a4) 6%);
 }
 
 .list-marker-filters {
