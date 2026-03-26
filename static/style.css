@@ -5320,7 +5320,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 
 .post-meta {
   color: var(--light-text);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   margin: 0;
   text-align: right;
   white-space: nowrap;
@@ -5328,14 +5328,14 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 
 .post-single-item .post-reading-inline {
   color: var(--light-text);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   white-space: nowrap;
 }
 
 .post-single-item .post-date-published {
   margin-left: auto;
   color: var(--light-text);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   white-space: nowrap;
   text-align: right;
 }
@@ -5408,6 +5408,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 .post-date {
   font-weight: 500;
   color: var(--light-text);
+  font-size: 0.84rem;
 }
 
 .blog-post-item .post-card-footer {
