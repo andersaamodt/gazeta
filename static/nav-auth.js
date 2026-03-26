@@ -66,6 +66,7 @@
     menuPanel: document.getElementById('nav-menu-panel'),
     navOverflowMenu: document.getElementById('nav-overflow-menu'),
     navOverflowBtn: document.getElementById('nav-overflow-btn'),
+    navOverflowCount: document.getElementById('nav-overflow-count'),
     navOverflowPanel: document.getElementById('nav-overflow-panel'),
     menuPrimaryLink: document.getElementById('nav-menu-primary-link'),
     menuLogoutBtn: document.getElementById('nav-menu-logout'),
@@ -1867,6 +1868,30 @@
     }
   }
 
+  function setNavOverflowButtonCount(hiddenCount) {
+    if (!els.navOverflowBtn) {
+      return;
+    }
+    var count = Number(hiddenCount || 0);
+    if (!isFinite(count) || count < 0) {
+      count = 0;
+    }
+    if (els.navOverflowCount) {
+      if (count > 0) {
+        els.navOverflowCount.textContent = String(count);
+        els.navOverflowCount.hidden = false;
+      } else {
+        els.navOverflowCount.textContent = '0';
+        els.navOverflowCount.hidden = true;
+      }
+    }
+    if (count > 0) {
+      els.navOverflowBtn.setAttribute('aria-label', 'More pages (' + String(count) + ' hidden)');
+    } else {
+      els.navOverflowBtn.setAttribute('aria-label', 'More pages');
+    }
+  }
+
   function syncNavOverflowMenuNow() {
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter || !els.navOverflowMenu || !els.navOverflowBtn || !els.navOverflowPanel) {
@@ -1880,7 +1905,7 @@
     closeNavOverflowMenu();
     els.navOverflowPanel.innerHTML = '';
     els.navOverflowMenu.hidden = true;
-    els.navOverflowBtn.textContent = 'More';
+    setNavOverflowButtonCount(0);
 
     if (!isCompactOverflowBreakpoint() || links.length < 2) {
       return;
@@ -1931,7 +1956,7 @@
       els.navOverflowPanel.appendChild(item);
     });
 
-    els.navOverflowBtn.textContent = 'More (' + String(hiddenLinks.length) + ')';
+    setNavOverflowButtonCount(hiddenLinks.length);
     els.navOverflowMenu.hidden = false;
   }
 

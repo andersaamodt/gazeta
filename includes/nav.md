@@ -58,7 +58,14 @@
 </div>
 <div class="nav-right">
 <div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
-  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">More</button>
+  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="3" cy="8" r="1.3" fill="currentColor"/>
+      <circle cx="8" cy="8" r="1.3" fill="currentColor"/>
+      <circle cx="13" cy="8" r="1.3" fill="currentColor"/>
+    </svg>
+    <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
+  </button>
   <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
 </div>
 <form class="nav-search" method="get" action="/pages/search.html">
