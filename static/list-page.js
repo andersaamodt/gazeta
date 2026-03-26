@@ -54,6 +54,7 @@
     autosaveQueued: false,
     saveIndicatorVisible: false,
     editMode: false,
+    rowMenuOpenUid: '',
     activeEntryUid: '',
     activeCellField: '',
     activeHeadField: '',
@@ -2011,22 +2012,22 @@
       }
     }
     html += '<div class="list-inline-cell list-inline-actions">';
+    var rowMenuOpen = state.rowMenuOpenUid === uid;
+    var eventMenuLabel = eventId ? 'Edit Nostr event_id...' : 'Add Nostr event_id...';
     if (isProductGalleryPage()) {
       html += '<button type="button" data-list-inline-action="create-product" data-element-uid="' + escapeHtml(uid) + '" title="' + (productReady ? (hasProductLink ? 'Update product page from this row' : 'Create product page from this row') : 'Add text first to create a product') + '"' + (productReady && !productBusy ? '' : ' disabled aria-disabled="true"') + '>' + (productBusy ? 'Creating...' : (hasProductLink ? 'Update Product' : 'Create Product')) + '</button>';
       if (hasProductLink) {
         html += '<a class="list-inline-action-link" href="' + escapeHtml(String(el && el.post_url || '')) + '" target="_blank" rel="noopener noreferrer" title="Open product page">↗</a>';
       }
     }
+    html += '<div class="list-inline-row-menu-wrap">';
+    html += '<button type="button" class="list-inline-row-menu-trigger" data-list-inline-action="toggle-menu" data-element-uid="' + escapeHtml(uid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋯</button>';
+    html += '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>';
+    html += '<button type="button" role="menuitem" data-list-inline-action="edit-event-id" data-element-uid="' + escapeHtml(uid) + '">' + eventMenuLabel + '</button>';
+    html += '</div>';
+    html += '</div>';
     html += '<button type="button" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Remove entry" title="Delete this entry">✕</button>';
     html += '</div>';
-    if (active) {
-      html += '<div class="list-inline-eventid">';
-      html += '<details class="list-admin-eventid-details"' + (activeField === 'event_id' ? ' open' : '') + '>';
-      html += '<summary>Add Nostr event_id</summary>';
-      html += '<label><span class="list-inline-eventid-label">event_id</span><input type="text" data-inline-field="event_id" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(eventId) + '"></label>';
-      html += '</details>';
-      html += '</div>';
-    }
 
     html += '</li>';
     return html;
@@ -2372,6 +2373,7 @@
           if (!state.editMode) {
             state.activeEntryUid = '';
             state.activeCellField = '';
+            state.rowMenuOpenUid = '';
             state.navTitleEditing = false;
             state.navTitleInput = '';
           }
@@ -2403,15 +2405,6 @@
           renderList();
           renderAdmin();
           return;
-        }
-      }
-
-      var eventSummary = target.closest('.list-admin-eventid-details summary');
-      if (eventSummary instanceof HTMLElement && state.editMode) {
-        var eventRow = eventSummary.closest('.list-entry-inline[data-element-uid]');
-        if (eventRow instanceof HTMLElement) {
-          state.activeEntryUid = String(eventRow.getAttribute('data-element-uid') || '');
-          state.activeCellField = 'event_id';
         }
       }
 
@@ -2477,10 +2470,38 @@
         }
         if (actionType === 'edit') {
           event.preventDefault();
+          state.rowMenuOpenUid = '';
           state.activeEntryUid = uid;
           state.activeCellField = String(inlineAction.getAttribute('data-inline-field') || '');
           renderList();
           focusInlineField(uid, state.activeCellField);
+          return;
+        }
+        if (actionType === 'toggle-menu') {
+          event.preventDefault();
+          state.rowMenuOpenUid = state.rowMenuOpenUid === uid ? '' : uid;
+          renderList();
+          return;
+        }
+        if (actionType === 'edit-event-id') {
+          event.preventDefault();
+          var eventIdx = findElementIndex(uid);
+          if (eventIdx < 0) {
+            return;
+          }
+          var currentEventId = String(state.draft.elements[eventIdx].event_id || '');
+          var nextEventId = window.prompt('Nostr event_id', currentEventId);
+          state.rowMenuOpenUid = '';
+          if (nextEventId === null) {
+            renderList();
+            return;
+          }
+          state.draft.elements[eventIdx].event_id = String(nextEventId || '').trim();
+          updatePendingNewEntryState();
+          renderList();
+          if (shouldAutosaveForUid(uid)) {
+            queueAutosave(180);
+          }
           return;
         }
         if (actionType === 'create-product') {
@@ -2498,6 +2519,9 @@
           }
           var beforeRemove = captureEntryRects();
           state.draft.elements.splice(idx, 1);
+          if (state.rowMenuOpenUid === uid) {
+            state.rowMenuOpenUid = '';
+          }
           if (state.activeEntryUid === uid) {
             state.activeEntryUid = '';
             state.activeCellField = '';
@@ -2540,6 +2564,11 @@
       }
       var target = event.target;
       if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (state.rowMenuOpenUid && !target.closest('.list-inline-row-menu-wrap')) {
+        state.rowMenuOpenUid = '';
+        renderList();
         return;
       }
       var row = target.closest('.list-entry-inline[data-element-uid]');
@@ -2919,15 +2948,10 @@
       var backward = !!event.shiftKey;
 
       var hasImageField = isProductGalleryPage();
-      if (field === 'event_id') {
-        nextField = backward ? (hasImageField ? 'image_url' : 'marker') : 'markdown';
-        if (!backward) {
-          nextUid = rowUids[(rowIdx + 1) % rowUids.length] || uid;
-        }
-      } else if (field === 'markdown') {
+      if (field === 'markdown') {
         if (backward) {
           nextUid = rowUids[(rowIdx - 1 + rowUids.length) % rowUids.length] || uid;
-          nextField = 'event_id';
+          nextField = hasImageField ? 'image_url' : 'marker';
         } else {
           nextField = 'description';
         }
@@ -3229,11 +3253,6 @@
     var activeFieldSelector = '[data-inline-field="' + String(state.activeCellField || '') + '"][data-element-uid="' + activeUid + '"]';
     var onActiveField = !!target.closest(activeFieldSelector);
     if (onActiveField) {
-      return;
-    }
-    var onActiveEventDetails = !!target.closest('.list-inline-eventid') &&
-      !!target.closest('.list-entry-inline[data-element-uid="' + activeUid + '"]');
-    if (onActiveEventDetails) {
       return;
     }
     closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });

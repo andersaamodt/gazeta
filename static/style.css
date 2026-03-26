@@ -2086,6 +2086,58 @@ body.nav-cart-open {
   gap: 0.24rem;
 }
 
+.list-inline-row-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.list-inline-actions .list-inline-row-menu-trigger {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+  font-size: 1.1rem;
+}
+
+.list-inline-actions .list-inline-row-menu-trigger:hover,
+.list-inline-actions .list-inline-row-menu-trigger:focus-visible,
+.list-inline-actions .list-inline-row-menu-trigger:active {
+  background: var(--light-bg, #eef3ff) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+}
+
+.list-inline-row-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 40;
+  min-width: 12rem;
+  padding: 0.24rem;
+  border: 1px solid var(--menu-border);
+  border-radius: 10px;
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+}
+
+.list-inline-row-menu button {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 0.44rem 0.56rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+  text-align: left;
+  line-height: 1.25;
+}
+
+.list-inline-row-menu button:hover,
+.list-inline-row-menu button:focus-visible {
+  background: var(--menu-hover-bg) !important;
+}
+
 .list-inline-actions button:hover,
 .list-inline-actions button:focus-visible {
   background: var(--danger-soft) !important;
