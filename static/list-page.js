@@ -929,7 +929,8 @@
       } else if (excluded) {
         cls += ' is-exclude';
       }
-      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '">' + escapeHtml(marker) + '</button>';
+      var hue = markerHueFromText(marker);
+      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(hue) + ';">' + escapeHtml(marker) + '</button>';
     });
     html += '</div>';
     html += '</section>';
