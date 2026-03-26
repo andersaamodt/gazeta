@@ -2705,7 +2705,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline).is-row-highlight > .list-entry-first-line {
-  background: color-mix(in srgb, var(--bg, #f3ebd7) 90%, #d9c7a5 10%);
+  background: color-mix(in srgb, var(--bg, #f3ebd7) 96%, #d9c7a5 4%);
 }
 
 .list-marker-filters {
