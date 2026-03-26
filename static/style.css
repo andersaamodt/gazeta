@@ -3802,6 +3802,10 @@ body.nav-cart-open {
   align-items: center;
 }
 
+.nav-overflow-menu[hidden] {
+  display: none !important;
+}
+
 .nav-menu-btn.nav-overflow-btn {
   border: 1px solid var(--border);
   border-radius: 999px;

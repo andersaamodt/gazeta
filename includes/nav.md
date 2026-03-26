@@ -61,8 +61,8 @@
   <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 4.25H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 8H10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 11.75H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 11.75H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
     <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
   </button>

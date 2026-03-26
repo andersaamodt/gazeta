@@ -1904,7 +1904,7 @@
     }
 
     var initialOverflowPx = navCenter.scrollWidth - navCenter.clientWidth;
-    if (initialOverflowPx <= 2) {
+    if (initialOverflowPx <= 22) {
       return;
     }
 
