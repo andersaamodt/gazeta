@@ -4892,6 +4892,18 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   font-size: 0.84rem;
 }
 
+.post-byline {
+  margin-top: 0.18rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.post-byline .post-author {
+  margin-top: 0;
+}
+
 .post-meta {
   color: var(--light-text);
   font-size: 0.78rem;
@@ -4968,6 +4980,19 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 .post-date {
   font-weight: 500;
   color: var(--light-text);
+}
+
+.blog-post-item .post-card-footer {
+  margin-top: auto;
+  padding-top: 0.65rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.blog-post-item .post-card-comments-count {
+  color: var(--light-text);
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .post-summary {
@@ -7113,8 +7138,9 @@ nav.site-nav {
     gap: 0.25rem;
   }
 
-  .post-meta {
-    text-align: left;
+  .post-byline {
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
   }
 }
 

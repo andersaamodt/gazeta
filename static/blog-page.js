@@ -2414,13 +2414,13 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
-              '<div class="post-author">' + escapeHtml(author) + '</div>' +
+              '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span></div>' +
             '</div>' +
-            '<div class="post-meta"><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span> <span class="post-comments-count">' + escapeHtml(commentsLabel) + '</span></div>' +
           '</div>' +
           (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
           '<div class="blog-meta-row"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span></div>' +
           (tagsHtml ? '<div class="tags">' + tagsHtml + '</div>' : '') +
+          '<div class="post-card-footer"><span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span></div>' +
         '</article>';
     }).join('');
   }
