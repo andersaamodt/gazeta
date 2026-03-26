@@ -663,6 +663,15 @@
     '</svg>';
   }
 
+  function composePreviewToggleIconSvg() {
+    return '<svg class="compose-preview-toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M7.2 3.8H13.4L18.9 9.3V18.5C18.9 19.4 18.2 20.1 17.3 20.1H7.2C6.3 20.1 5.6 19.4 5.6 18.5V5.4C5.6 4.5 6.3 3.8 7.2 3.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+      '<path d="M13.4 3.8V9.3H18.9" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+      '<circle cx="10.6" cy="13.8" r="2.1" stroke="currentColor" stroke-width="1.8"/>' +
+      '<path d="M12.1 15.3L14.3 17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
   function composeTypeButtonsHtml(activeType) {
     var current = normalizeComposePostType(activeType);
     function btn(type, label, disabled) {
@@ -2040,7 +2049,7 @@
               '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
             '</div>' +
             '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + '</div>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview">' + (state.compose.preview ? 'Edit' : 'Preview') + '</button>' +
+            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview" aria-label="' + (state.compose.preview ? 'Edit' : 'Preview') + '" title="' + (state.compose.preview ? 'Edit' : 'Preview') + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + (state.compose.preview ? 'Edit' : 'Preview') + '</span></button>' +
           '</div>' +
           '<div class="field-row blog-compose-title-row">' +
             '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +

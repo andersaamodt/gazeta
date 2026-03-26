@@ -5748,6 +5748,22 @@ footer {
 .blog-compose-card .blog-compose-preview-toggle {
   grid-area: preview;
   justify-self: end;
+  width: 2.18rem;
+  min-width: 2.18rem;
+  height: 2.18rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blog-compose-card .compose-preview-toggle-icon {
+  width: 1.02rem;
+  height: 1.02rem;
+  stroke: currentColor;
+  fill: none;
+  pointer-events: none;
 }
 
 .blog-compose-card .blog-compose-head-row.is-type-collapsed {
