@@ -5653,9 +5653,9 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-current-btn {
-  width: 2.06rem;
-  min-width: 2.06rem;
-  height: 2.06rem;
+  width: 2.24rem;
+  min-width: 2.24rem;
+  height: 2.24rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   display: inline-flex;
@@ -5670,8 +5670,8 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-current-btn .compose-post-type-icon {
-  width: 1.04rem;
-  height: 1.04rem;
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .blog-compose-card .compose-post-type-toolbar-wrap {
@@ -5679,8 +5679,10 @@ footer {
   flex: 1 1 100%;
   max-height: 2.5rem;
   opacity: 1;
+  transform-origin: left center;
   transform: translateY(0);
-  transition: opacity 240ms ease, transform 240ms ease, max-height 240ms ease;
+  transition: opacity 240ms ease, transform 240ms ease, max-height 240ms ease, max-width 240ms ease;
+  max-width: 100%;
 }
 
 .blog-compose-card .compose-post-type-row {
@@ -5702,9 +5704,10 @@ footer {
 
 .blog-compose-card .compose-post-type-control.is-collapsed .compose-post-type-toolbar-wrap {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateX(-10px) scaleX(0.92);
   max-height: 0;
   width: 0;
+  max-width: 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -5742,8 +5745,8 @@ footer {
 }
 
 .blog-compose-card .compose-post-type-pill .compose-post-type-icon {
-  width: 1.16rem;
-  height: 1.16rem;
+  width: 1.34rem;
+  height: 1.34rem;
   flex: 0 0 auto;
   stroke: currentColor;
   fill: none;
@@ -5778,9 +5781,9 @@ footer {
 .blog-compose-card .blog-compose-preview-toggle {
   grid-area: preview;
   justify-self: end;
-  width: 2.18rem;
-  min-width: 2.18rem;
-  height: 2.18rem;
+  width: 2.36rem;
+  min-width: 2.36rem;
+  height: 2.36rem;
   padding: 0;
   border-radius: 999px;
   display: inline-flex;
@@ -5789,11 +5792,39 @@ footer {
 }
 
 .blog-compose-card .compose-preview-toggle-icon {
-  width: 1.02rem;
-  height: 1.02rem;
+  width: 1.22rem;
+  height: 1.22rem;
   stroke: currentColor;
   fill: none;
   pointer-events: none;
+}
+
+.blog-compose-card.blog-compose-type-only .blog-compose-head-row {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "type";
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-control {
+  width: 100%;
+}
+
+.blog-compose-main-shell {
+  display: block;
+}
+
+.blog-compose-card.is-wide-preview .blog-compose-main-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+  gap: 0.78rem;
+  align-items: start;
+}
+
+.blog-compose-side-preview {
+  min-width: 0;
+}
+
+.blog-compose-side-preview .preview-box {
+  margin-top: 0.08rem;
 }
 
 .blog-compose-card .blog-compose-head-row.is-type-collapsed {

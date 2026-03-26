@@ -46,6 +46,7 @@
       open: false,
       preview: false,
       draftId: '',
+      postTypeChosen: false,
       tags: [],
       tagsOpen: false,
       postType: 'longform',
@@ -86,6 +87,7 @@
     if (typeof state.compose.open !== 'boolean') state.compose.open = false;
     if (typeof state.compose.preview !== 'boolean') state.compose.preview = false;
     if (typeof state.compose.draftId !== 'string') state.compose.draftId = '';
+    if (typeof state.compose.postTypeChosen !== 'boolean') state.compose.postTypeChosen = false;
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
     if (typeof state.compose.tagsOpen !== 'boolean') state.compose.tagsOpen = false;
     if (typeof state.compose.postType !== 'string') state.compose.postType = 'longform';
@@ -853,6 +855,7 @@
       return;
     }
     state.compose.postType = normalized;
+    state.compose.postTypeChosen = true;
     state.compose.postTypeToolbarCollapsed = false;
     if (!opts.skipRender) {
       renderComposeUi();
@@ -1595,6 +1598,7 @@
 
   function afterComposePublishSuccess() {
     state.compose.draftId = '';
+    state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
@@ -1695,6 +1699,7 @@
 
   function clearComposeFields() {
     state.compose.draftId = '';
+    state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
@@ -1795,7 +1800,7 @@
       state.compose.postTypeToolbarCollapsed = false;
     } else {
       state.compose.postTypeToolbarCollapsed = false;
-      scheduleComposePostTypeCollapse(3000);
+      state.compose.postTypeChosen = false;
     }
     try {
       renderComposeUi();
@@ -1830,9 +1835,14 @@
             els.composeSlot.scrollIntoView(true);
           }
         }
-        var title = els.composeSlot.querySelector('[data-compose-field="title"]');
-        if (title && typeof title.focus === 'function') {
-          title.focus();
+        var focusTarget = els.composeSlot.querySelector('[data-compose-action="toggle-post-type-toolbar"]');
+        if (!state.compose.postTypeChosen) {
+          focusTarget = els.composeSlot.querySelector('[data-compose-post-type]');
+        } else if (!focusTarget) {
+          focusTarget = els.composeSlot.querySelector('[data-compose-field="title"]');
+        }
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          focusTarget.focus();
         }
       }, 30);
     }
@@ -2031,6 +2041,30 @@
     state.compose.publishDestination = destination;
     state.compose.linkUrl = String(fields.linkUrl || '');
     state.compose.linkBody = String(fields.linkBody || '');
+    var waitingForPostType = !state.compose.postTypeChosen;
+    if (waitingForPostType) {
+      var chooseHeadRowClass = 'field-row blog-compose-head-row is-type-picker-only';
+      var chooseTypeControlClass = 'compose-post-type-control';
+      els.composeSlot.hidden = false;
+      els.composeSlot.innerHTML = '' +
+        '<article class="post-item blog-post-item blog-compose-card blog-compose-type-only">' +
+          '<div class="blog-compose-body">' +
+            '<div class="' + chooseHeadRowClass + '" data-compose-head-row>' +
+              '<div class="' + chooseTypeControlClass + '" data-compose-type-control>' +
+                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
+                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      els.composeSlot.classList.add('is-open');
+      requestAnimationFrame(function () {
+        if (els.composeSlot) {
+          els.composeSlot.classList.add('is-open');
+        }
+      });
+      return;
+    }
     if (postType === 'shortform') {
       enforceComposeShortformLimitOnFields(fields);
       var shortLimit = currentComposeShortformLimit();
@@ -2070,7 +2104,7 @@
       titlePlaceholder = 'Media title (optional)';
     }
     var mediaToolsHtml = composeModePanelHtml(postType, fields);
-    var widePreviewLayout = !!(state.compose.preview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
+    var previewIslandLayout = !!(state.compose.preview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
     var headRowClass = 'field-row blog-compose-head-row' + (state.compose.postTypeToolbarCollapsed ? ' is-type-collapsed' : '');
     var typeControlClass = state.compose.postTypeToolbarCollapsed ? 'compose-post-type-control is-collapsed' : 'compose-post-type-control';
     var editorBlockHtml = '' +
@@ -2083,18 +2117,9 @@
         (postType === 'shortform' ? composeShortformMeterHtml(fields.content) : '') +
       '</div>';
     var contentPaneHtml = '';
-    if (state.compose.preview && !widePreviewLayout) {
+    if (state.compose.preview && !previewIslandLayout) {
       contentPaneHtml = '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
         '<textarea data-compose-field="content" rows="14" hidden>' + escapeHtml(fields.content) + '</textarea>';
-    } else if (state.compose.preview && widePreviewLayout) {
-      contentPaneHtml = '' +
-        '<div class="blog-compose-preview-split">' +
-          '<div class="blog-compose-split-editor">' + editorBlockHtml + '</div>' +
-          '<div class="blog-compose-split-preview">' +
-            '<label><strong>Preview</strong></label>' +
-            '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
-          '</div>' +
-        '</div>';
     } else {
       contentPaneHtml = editorBlockHtml;
     }
@@ -2105,61 +2130,67 @@
     if (state.compose.outputTone) {
       outputClass += ' ' + state.compose.outputTone;
     }
-    var composeCardClass = 'post-item blog-post-item blog-compose-card' + (widePreviewLayout ? ' is-wide-preview' : '');
+    var composeCardClass = 'post-item blog-post-item blog-compose-card' + (previewIslandLayout ? ' is-wide-preview' : '');
+    var previewIslandHtml = previewIslandLayout
+      ? '<aside class="blog-compose-side-preview"><label><strong>Preview</strong></label><div class="preview-box blog-compose-preview">' + previewHtml + '</div></aside>'
+      : '';
 
     els.composeSlot.hidden = false;
     els.composeSlot.innerHTML = '' +
       '<article class="' + composeCardClass + '">' +
-        '<div class="blog-compose-body">' +
-          '<div class="' + headRowClass + '" data-compose-head-row>' +
-            '<div class="' + typeControlClass + '" data-compose-type-control>' +
-              '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
-              '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
+        '<div class="blog-compose-main-shell">' +
+          '<div class="blog-compose-body">' +
+            '<div class="' + headRowClass + '" data-compose-head-row>' +
+              '<div class="' + typeControlClass + '" data-compose-type-control>' +
+                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
+                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
+              '</div>' +
+              '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + '</div>' +
+              '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview" aria-label="' + (state.compose.preview ? 'Edit' : 'Preview') + '" title="' + (state.compose.preview ? 'Edit' : 'Preview') + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + (state.compose.preview ? 'Edit' : 'Preview') + '</span></button>' +
             '</div>' +
-            '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + '</div>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview" aria-label="' + (state.compose.preview ? 'Edit' : 'Preview') + '" title="' + (state.compose.preview ? 'Edit' : 'Preview') + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + (state.compose.preview ? 'Edit' : 'Preview') + '</span></button>' +
-          '</div>' +
-          '<div class="field-row blog-compose-title-row">' +
-            '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
-          '</div>' +
-          mediaToolsHtml +
-          contentPaneHtml +
-          '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
-          '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
-          '<input type="file" data-compose-field="file-upload" data-compose-upload="attachment" multiple hidden>' +
-          '<input type="file" data-compose-field="audio-upload" data-compose-upload="audio-note" accept="audio/*" multiple hidden>' +
-          '<div class="grid-two">' +
-            '<div class="field-row">' +
-              '<label><strong>Tags</strong></label>' +
-              '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
-              (state.compose.tagsOpen
-                ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
-                    '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
-                    '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
-                    '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
-                  '</div>'
-                : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
+            '<div class="field-row blog-compose-title-row">' +
+              '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
+            '</div>' +
+            mediaToolsHtml +
+            contentPaneHtml +
+            '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
+            '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
+            '<input type="file" data-compose-field="file-upload" data-compose-upload="attachment" multiple hidden>' +
+            '<input type="file" data-compose-field="audio-upload" data-compose-upload="audio-note" accept="audio/*" multiple hidden>' +
+            '<div class="grid-two">' +
+              '<div class="field-row">' +
+                '<label><strong>Tags</strong></label>' +
+                '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
+                (state.compose.tagsOpen
+                  ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
+                      '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
+                      '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
+                      '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
+                    '</div>'
+                  : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
+              '</div>' +
+            '</div>' +
+            '<div class="field-row compose-release-row">' +
+              '<strong>Release Mode</strong>' +
+              '<div class="mode-row">' +
+                '<label><input type="radio" name="blog-inline-compose-mode" value="immediate"' + (mode === 'immediate' ? ' checked' : '') + '> Immediate</label>' +
+                '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Scheduled Date</label>' +
+                '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Drip Queue</label>' +
+              '</div>' +
+            '</div>' +
+            '<div class="field-row compose-destination-row">' +
+              '<strong>Publish Destination</strong>' +
+              '<div class="mode-row">' +
+                '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
+                '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
+              '</div>' +
+            '</div>' +
+            '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
+              '<label><strong>Scheduled Release Date/Time</strong></label>' +
+              '<input type="datetime-local" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '">' +
             '</div>' +
           '</div>' +
-          '<div class="field-row compose-release-row">' +
-            '<strong>Release Mode</strong>' +
-            '<div class="mode-row">' +
-              '<label><input type="radio" name="blog-inline-compose-mode" value="immediate"' + (mode === 'immediate' ? ' checked' : '') + '> Immediate</label>' +
-              '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Scheduled Date</label>' +
-              '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Drip Queue</label>' +
-            '</div>' +
-          '</div>' +
-          '<div class="field-row compose-destination-row">' +
-            '<strong>Publish Destination</strong>' +
-            '<div class="mode-row">' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
-            '</div>' +
-          '</div>' +
-          '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
-            '<label><strong>Scheduled Release Date/Time</strong></label>' +
-            '<input type="datetime-local" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '">' +
-          '</div>' +
+          previewIslandHtml +
         '</div>' +
         '<div class="compose-footer blog-compose-footer">' +
           '<div class="compose-actions blog-compose-footer-actions">' +
@@ -2615,6 +2646,10 @@
         return;
       }
       if (actionName === 'toggle-post-type-toolbar') {
+        if (!state.compose.postTypeChosen) {
+          setComposePostTypeToolbarCollapsed(false);
+          return;
+        }
         if (state.compose.postTypeToolbarCollapsed) {
           setComposePostTypeToolbarCollapsed(false);
           scheduleComposePostTypeCollapse(2600);
@@ -2804,6 +2839,7 @@
         }
         if (composePostType() !== 'link-share') {
           state.compose.postType = 'link-share';
+          state.compose.postTypeChosen = true;
         }
       }
       if (target.matches('[data-compose-field="content"]') && composePostType() === 'shortform') {
