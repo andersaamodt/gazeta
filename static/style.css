@@ -2509,6 +2509,9 @@ body.nav-cart-open {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
   border-radius: 999px;
   border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 12%), calc(var(--marker-pill-l, 90%) - 12%));
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%));
