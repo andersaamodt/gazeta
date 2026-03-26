@@ -985,6 +985,19 @@
     });
   }
 
+  function markerFilterTooltipText() {
+    var platform = '';
+    try {
+      platform = String((window.navigator && window.navigator.platform) || (window.navigator && window.navigator.userAgent) || '');
+    } catch (_err) {
+      platform = '';
+    }
+    var isApple = /Mac|iPhone|iPad|iPod/i.test(platform);
+    var multiKey = isApple ? 'Cmd' : 'Ctrl';
+    var excludeKey = isApple ? 'Option' : 'Alt';
+    return 'Click to filter. ' + multiKey + '-click to multi-select. ' + excludeKey + '-click to filter out.';
+  }
+
   function renderMarkerFilters(entries) {
     var markers = uniqueMarkerValues(entries);
     pruneMarkerFilters(markers);
@@ -993,6 +1006,7 @@
     }
     var html = '<section class="list-marker-filters" aria-label="Marker filters">';
     html += '<div class="list-marker-filters-row">';
+    var tooltip = markerFilterTooltipText();
     markers.forEach(function (marker) {
       var included = (state.markerFilterInclude || []).indexOf(marker) >= 0;
       var excluded = (state.markerFilterExclude || []).indexOf(marker) >= 0;
@@ -1003,7 +1017,7 @@
         cls += ' is-exclude';
       }
       var markerColor = markerColorFromText(marker);
-      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;--marker-pill-l:' + String(markerColor.lightness) + '%;">' + escapeHtml(marker) + '</button>';
+      html += '<button type="button" class="' + cls + '" data-marker-filter-action="toggle" data-marker-filter-value="' + escapeHtml(marker) + '" title="' + escapeHtml(tooltip) + '" aria-label="' + escapeHtml(marker + '. ' + tooltip) + '" style="--marker-pill-h:' + String(markerColor.hue) + ';--marker-pill-s:' + String(markerColor.saturation) + '%;--marker-pill-l:' + String(markerColor.lightness) + '%;">' + escapeHtml(marker) + '</button>';
     });
     html += '</div>';
     html += '</section>';
