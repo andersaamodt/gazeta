@@ -1743,7 +1743,7 @@
     }
     var cartButton = renderProductCartButton(productSlug, '');
     var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + rightMeta + cartButton + '</div></li>';
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '"><span class="list-entry-main-inline">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel, showMarkers) {

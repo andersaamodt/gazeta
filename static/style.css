@@ -2374,19 +2374,30 @@ body.nav-cart-open {
 }
 
 .list-entry-first-line {
-  display: flex;
-  align-items: baseline;
-  gap: 0.38rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.38rem;
   min-width: 0;
 }
 
+.list-entry-main-inline {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+}
+
 .list-entry-meta-right {
-  margin-left: auto;
+  margin-left: 0;
   display: inline-flex;
   align-items: flex-start;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.32rem;
+  justify-self: end;
+  align-self: start;
 }
 
 .list-entry-marker-pills {
