@@ -29,6 +29,7 @@
 
   var state = {
     payload: null,
+    authSignature: '',
     posts: [],
     postsLoading: true,
     initialContentPainted: false,
@@ -80,6 +81,21 @@
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
+
+  function authSignature() {
+    var auth = authPayload();
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function maybeReloadForAuthChange() {
+    var nextSig = authSignature();
+    var lastSig = String(state.authSignature || '');
+    if (nextSig === lastSig) {
+      return;
+    }
+    state.authSignature = nextSig;
+    loadPageState({ deferRender: false, deferInitialFlags: true });
+  }
 
   function ensureComposeStateShape() {
     if (!state.compose || typeof state.compose !== 'object') {
@@ -2685,6 +2701,7 @@
       return Promise.resolve();
     }
     var auth = authPayload();
+    state.authSignature = String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: requestedSlug,
       session_token: auth.session_token,
@@ -3119,6 +3136,22 @@
       clearFilters();
     });
   }
+
+  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
+  window.addEventListener('storage', function (event) {
+    if (!event || !event.key) {
+      return;
+    }
+    if (event.key === 'session_token' || event.key === 'csrf_token') {
+      maybeReloadForAuthChange();
+    }
+  });
+  window.addEventListener('focus', maybeReloadForAuthChange);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      maybeReloadForAuthChange();
+    }
+  });
 
   window.addEventListener('beforeunload', function () {
     clearComposePostTypeCollapseTimer();
