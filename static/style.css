@@ -1649,19 +1649,26 @@ body.nav-cart-open {
 
 .list-page-admin-bar button:disabled {
   background: #cfd5df;
+  background-image: none !important;
+  border-image: none !important;
   border-color: #b6bfce;
   color: #717c92;
   -webkit-text-fill-color: #717c92;
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: none !important;
+  text-shadow: none;
   opacity: 0.78;
 }
 
 .list-page-admin-bar button:disabled:hover {
   background: #cfd5df;
+  background-image: none !important;
+  border-image: none !important;
   border-color: #b6bfce;
   color: #717c92;
   -webkit-text-fill-color: #717c92;
+  box-shadow: none !important;
+  text-shadow: none;
 }
 
 .list-inline-edit-link {
