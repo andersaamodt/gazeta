@@ -140,6 +140,13 @@
 html {
   /* Keep layout width stable across pages with/without vertical scrollbars. */
   scrollbar-gutter: stable;
+  overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+  html {
+    overflow-x: clip;
+  }
 }
 
 .sr-only {
@@ -221,6 +228,13 @@ body {
     radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
     var(--bg);
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+  body {
+    overflow-x: clip;
+  }
 }
 
 body.list-page-width-anim {
@@ -7637,6 +7651,15 @@ nav.site-nav {
   border-top: 1px solid var(--nav-border, var(--border));
   border-bottom: 1px solid var(--nav-border, var(--border)) !important;
   box-shadow: none !important;
+}
+
+@supports (width: 100dvw) {
+  nav.site-nav {
+    width: 100dvw;
+    max-width: 100dvw;
+    margin-left: calc(50% - 50dvw);
+    margin-right: calc(50% - 50dvw);
+  }
 }
 
 .nav-center {
