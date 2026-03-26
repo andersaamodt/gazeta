@@ -73,9 +73,9 @@ else
     printf '    </div>\n'
     printf '    <div class="post-meta"><span class="post-date">%s</span>' "$(blog_html_escape "$pub_date")"
     if [ "$comment_count" -gt 0 ]; then
-      printf ' <span class="post-comments-count">%s comments</span>' "$(blog_html_escape "$comment_count")"
+      printf '<span class="post-comments-count">%s comments</span>' "$(blog_html_escape "$comment_count")"
     else
-      printf ' <span class="post-comments-count">0 comments</span>'
+      printf '<span class="post-comments-count">0 comments</span>'
     fi
     printf '</div>\n'
     printf '  </div>\n'

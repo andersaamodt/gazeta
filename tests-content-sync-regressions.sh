@@ -511,6 +511,10 @@ assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-title-row {' 'i
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-btn {' 'in-blog compose preview/publish buttons are compact'
 assert_file_contains "$ROOT_DIR/static/style.css" '.blog-compose-delete {' 'in-blog compose has lower-left trash icon control style'
 assert_file_contains "$ROOT_DIR/static/style.css" '@keyframes blog-compose-fade-in {' 'in-blog compose fade-in animation exists'
+assert_file_contains "$ROOT_DIR/static/style.css" '.post-meta .post-comments-count {' 'post meta keeps comment count anchored below date'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "post.pub_date || 'Unknown date') + '</span><span class=\"post-comments-count\">" 'blog list card renders date and comment slots as stacked post-meta children'
+assert_file_contains "$ROOT_DIR/static/post-context.js" 'id="post-header-comments-count"' 'single post header renders comment slot alongside date'
+assert_file_contains "$ROOT_DIR/static/post-context.js" 'setHeaderCommentCount(payload.current.comment_count || 0);' 'single post header comment count initializes before comment fetch'
 assert_file_not_contains "$ROOT_DIR/includes/nav.md" 'if (!hasDynamicPageRoot() || pageReady)' 'hydration timeout fallback always unlocks the page'
 
 prune_hook_count=$(grep -Fc 'blog_nostr_pages_prune_stale_source_pages "$normalized"' "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" || printf '0')

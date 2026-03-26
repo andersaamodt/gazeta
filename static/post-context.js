@@ -339,7 +339,10 @@
       '<h1 id="main-content" class="post-title">' + escapeHtml(current.title || document.title || 'Untitled') + '</h1>' +
       '<div class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</div>' +
       '</div>' +
-      '<div class="post-meta"><span class="post-date">' + escapeHtml(current.published_date || '') + '</span> <span aria-hidden="true">•</span> <span class="post-context-reading">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span></div>';
+      '<div class="post-meta">' +
+      '<span class="post-date">' + escapeHtml(current.published_date || '') + '</span>' +
+      '<span id="post-header-comments-count" class="post-comments-count">0 comments</span>' +
+      '</div>';
 
     var body = document.createElement('div');
     body.className = 'post-single-body';
@@ -445,16 +448,37 @@
     container.innerHTML = list.map(renderCommentRow).join('');
   }
 
-  function setCommentCount(count) {
-    var badge = document.getElementById('post-comments-count');
-    if (!badge) {
-      return;
-    }
+  function normalizeCommentCount(count) {
     var n = Number(count || 0);
     if (!Number.isFinite(n) || n < 0) {
       n = 0;
     }
-    badge.textContent = String(n);
+    return n;
+  }
+
+  function formatCommentLabel(count) {
+    var n = normalizeCommentCount(count);
+    if (n === 1) {
+      return '1 comment';
+    }
+    return String(n) + ' comments';
+  }
+
+  function setHeaderCommentCount(count) {
+    var headerBadge = document.getElementById('post-header-comments-count');
+    if (!headerBadge) {
+      return;
+    }
+    headerBadge.textContent = formatCommentLabel(count);
+  }
+
+  function setCommentCount(count) {
+    var n = normalizeCommentCount(count);
+    var badge = document.getElementById('post-comments-count');
+    if (badge) {
+      badge.textContent = String(n);
+    }
+    setHeaderCommentCount(n);
   }
 
   function setCommentStatus(message, kind) {
@@ -697,6 +721,7 @@
 
     ensurePostPageMenu(layout);
     refreshPostPageMenuVisibility();
+    setHeaderCommentCount(payload.current.comment_count || 0);
 
     if (payload.current.nostr && !document.querySelector('.post-nostr-proof')) {
       currentNostrAddress = payload.current.nostr.address || '';

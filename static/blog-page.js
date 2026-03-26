@@ -1984,7 +1984,7 @@
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
               '<div class="post-author">' + escapeHtml(author) + '</div>' +
             '</div>' +
-            '<div class="post-meta"><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span> <span class="post-comments-count">' + escapeHtml(commentsLabel) + '</span></div>' +
+            '<div class="post-meta"><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span><span class="post-comments-count">' + escapeHtml(commentsLabel) + '</span></div>' +
           '</div>' +
           (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
           '<div class="blog-meta-row"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span></div>' +
