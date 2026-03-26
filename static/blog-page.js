@@ -47,6 +47,7 @@
       open: false,
       preview: false,
       draftId: '',
+      postTypeLocked: false,
       postTypeChosen: false,
       tags: [],
       tagsOpen: false,
@@ -104,6 +105,7 @@
     if (typeof state.compose.open !== 'boolean') state.compose.open = false;
     if (typeof state.compose.preview !== 'boolean') state.compose.preview = false;
     if (typeof state.compose.draftId !== 'string') state.compose.draftId = '';
+    if (typeof state.compose.postTypeLocked !== 'boolean') state.compose.postTypeLocked = false;
     if (typeof state.compose.postTypeChosen !== 'boolean') state.compose.postTypeChosen = false;
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
     if (typeof state.compose.tagsOpen !== 'boolean') state.compose.tagsOpen = false;
@@ -760,20 +762,23 @@
     '</svg>';
   }
 
-  function composeTypeButtonsHtml(activeType) {
+  function composeTypeButtonsHtml(activeType, opts) {
+    var options = opts || {};
+    var lockAll = !!options.lockAll;
     var current = normalizeComposePostType(activeType);
     function btn(type, label, disabled) {
+      var buttonDisabled = !!disabled || lockAll;
       var cls = 'compose-post-type-pill';
       if (type === current) {
         cls += ' is-active';
       }
-      if (disabled) {
+      if (buttonDisabled) {
         cls += ' is-disabled';
       }
       var icon = composePostTypeIconSvg(type);
-      var title = disabled ? ('Coming soon: ' + label) : label;
+      var title = disabled ? ('Coming soon: ' + label) : (buttonDisabled ? ('Post type locked: ' + label) : label);
       return '<button type="button" class="' + cls + '" data-compose-action="set-post-type" data-compose-post-type="' + escapeHtml(type) + '"' +
-        (disabled ? ' disabled aria-disabled="true"' : '') +
+        (buttonDisabled ? ' disabled aria-disabled="true"' : '') +
         ' aria-pressed="' + (type === current ? 'true' : 'false') + '"' +
         ' aria-label="' + escapeHtml(label) + '"' +
         ' title="' + escapeHtml(title) + '"' +
@@ -1636,6 +1641,7 @@
 
   function afterComposePublishSuccess() {
     state.compose.draftId = '';
+    state.compose.postTypeLocked = false;
     state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
@@ -1737,6 +1743,7 @@
 
   function clearComposeFields() {
     state.compose.draftId = '';
+    state.compose.postTypeLocked = false;
     state.compose.postTypeChosen = false;
     state.compose.saveStatus = '';
     state.compose.uploading = 0;
@@ -1836,9 +1843,11 @@
     if (!state.compose.open) {
       clearComposePostTypeCollapseTimer();
       state.compose.postTypeToolbarCollapsed = false;
+      state.compose.postTypeLocked = false;
     } else {
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeChosen = false;
+      state.compose.postTypeLocked = false;
     }
     try {
       renderComposeUi();
@@ -1893,6 +1902,94 @@
     }
     composeToggleGuardUntil = now + 120;
     setComposeOpen(!!nextOpen);
+  }
+
+  function parseComposeTags(raw) {
+    return String(raw || '')
+      .split(',')
+      .map(function (part) { return normalizeTagValue(part); })
+      .filter(Boolean);
+  }
+
+  function openComposeDraftInPlace(draftId, options) {
+    var opts = options || {};
+    var id = String(draftId || '').trim();
+    if (!id) {
+      return Promise.reject(new Error('Draft id is missing.'));
+    }
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      return Promise.reject(new Error('Sign in as admin first.'));
+    }
+    return apiPost('/cgi/blog-get-draft', {
+      draft_id: id,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      if (!data || !data.success || !data.draft) {
+        throw new Error((data && data.error) ? data.error : 'Could not load draft');
+      }
+      var draft = data.draft || {};
+      ensureComposeStateShape();
+      state.compose.open = true;
+      state.compose.preview = false;
+      state.compose.busy = false;
+      state.compose.saveStatus = '';
+      state.compose.output = '';
+      state.compose.outputTone = '';
+      state.compose.draftId = String(draft.draft_id || id).trim();
+      state.compose.postType = normalizeComposePostType(draft.post_type || 'longform');
+      state.compose.postTypeChosen = true;
+      state.compose.postTypeLocked = !!opts.lockPostType;
+      state.compose.postTypeToolbarCollapsed = true;
+      state.compose.tagsOpen = false;
+      state.compose.linkUrl = '';
+      state.compose.linkBody = '';
+      state.compose.shortformLimitEditing = false;
+      state.compose.publishDestination = 'local_only';
+      stopComposeCameraStream();
+      stopComposeAudioStream();
+      setComposeTags(parseComposeTags(draft.tags || ''));
+      if (els.composeSlot) {
+        els.composeSlot.innerHTML = '';
+      }
+      renderComposeUi();
+      if (els.composeSlot) {
+        var titleInput = els.composeSlot.querySelector('[data-compose-field="title"]');
+        var contentInput = els.composeSlot.querySelector('[data-compose-field="content"]');
+        var scheduleInput = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+        if (titleInput instanceof HTMLInputElement) {
+          titleInput.value = String(draft.title || '');
+        }
+        if (contentInput instanceof HTMLTextAreaElement) {
+          contentInput.value = String(draft.content || '');
+        }
+        if (scheduleInput instanceof HTMLInputElement) {
+          scheduleInput.value = String(draft.scheduled_at_local || '');
+        }
+      }
+      if (els.composeSlot && typeof els.composeSlot.scrollIntoView === 'function') {
+        try {
+          els.composeSlot.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+        } catch (_err) {
+          els.composeSlot.scrollIntoView(true);
+        }
+      }
+      window.setTimeout(function () {
+        if (!els.composeSlot) {
+          return;
+        }
+        var titleInput = els.composeSlot.querySelector('[data-compose-field="title"]');
+        if (titleInput && typeof titleInput.focus === 'function') {
+          titleInput.focus();
+          if (titleInput.setSelectionRange) {
+            var length = String(titleInput.value || '').length;
+            titleInput.setSelectionRange(length, length);
+          }
+        }
+      }, 30);
+      return true;
+    });
   }
 
   function composeToolbarAction(action) {
@@ -2079,7 +2176,8 @@
     state.compose.publishDestination = destination;
     state.compose.linkUrl = String(fields.linkUrl || '');
     state.compose.linkBody = String(fields.linkBody || '');
-    var waitingForPostType = !state.compose.postTypeChosen;
+    var postTypeLocked = !!state.compose.postTypeLocked;
+    var waitingForPostType = !state.compose.postTypeChosen && !postTypeLocked;
     if (waitingForPostType) {
       var chooseHeadRowClass = 'field-row blog-compose-head-row is-type-picker-only';
       var chooseTypeControlClass = 'compose-post-type-control';
@@ -2090,7 +2188,7 @@
             '<div class="' + chooseHeadRowClass + '" data-compose-head-row>' +
               '<div class="' + chooseTypeControlClass + '" data-compose-type-control>' +
                 '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
-                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
+                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -2180,10 +2278,10 @@
           '<div class="blog-compose-body">' +
             '<div class="' + headRowClass + '" data-compose-head-row>' +
               '<div class="' + typeControlClass + '" data-compose-type-control>' +
-                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
-                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType) + '</div></div>' +
+                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button"' + (postTypeLocked ? ' disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts"' : ' data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type"') + '>' + composePostTypeIconSvg(postType) + '</button>' +
+                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
               '</div>' +
-              '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + '</div>' +
+              '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + (postTypeLocked ? '<span class="nostr-target-pill">Post type locked</span>' : '') + '</div>' +
               '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview" aria-label="' + (state.compose.preview ? 'Edit' : 'Preview') + '" title="' + (state.compose.preview ? 'Edit' : 'Preview') + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + (state.compose.preview ? 'Edit' : 'Preview') + '</span></button>' +
             '</div>' +
             '<div class="field-row blog-compose-title-row">' +
@@ -2515,7 +2613,8 @@
         if (!draftId) {
           throw new Error('Draft was created but no draft id was returned');
         }
-        window.location.href = '/pages/admin.html?draft_id=' + encodeURIComponent(draftId) + '&lock_post_type=1#compose';
+        closePostCardMenus();
+        return openComposeDraftInPlace(draftId, { lockPostType: true });
       }).catch(function (err) {
         window.alert(err && err.message ? err.message : 'Could not create draft from post');
       }).finally(function () {
@@ -2808,10 +2907,16 @@
         return;
       }
       if (actionName === 'set-post-type') {
+        if (state.compose.postTypeLocked) {
+          return;
+        }
         setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''), { interactive: true });
         return;
       }
       if (actionName === 'toggle-post-type-toolbar') {
+        if (state.compose.postTypeLocked) {
+          return;
+        }
         if (!state.compose.postTypeChosen) {
           setComposePostTypeToolbarCollapsed(false);
           return;
