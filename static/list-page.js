@@ -883,22 +883,20 @@
     normalized = Math.imul(normalized, 3266489909);
     normalized ^= (normalized >>> 16);
     var normalPalette = [
-      { hue: 355, saturation: 58, lightness: 87 }, // red
-      { hue: 16, saturation: 60, lightness: 86 },  // terracotta
-      { hue: 30, saturation: 64, lightness: 86 },  // orange
-      { hue: 44, saturation: 66, lightness: 86 },  // amber
-      { hue: 58, saturation: 62, lightness: 86 },  // yellow
-      { hue: 82, saturation: 50, lightness: 86 },  // olive
-      { hue: 112, saturation: 54, lightness: 85 }, // green
-      { hue: 158, saturation: 50, lightness: 86 }, // mint
-      { hue: 186, saturation: 56, lightness: 85 }, // cyan
-      { hue: 218, saturation: 62, lightness: 86 }, // blue
-      { hue: 244, saturation: 52, lightness: 87 }, // indigo
-      { hue: 274, saturation: 54, lightness: 87 }, // purple
-      { hue: 308, saturation: 56, lightness: 87 }, // magenta
-      { hue: 334, saturation: 54, lightness: 87 }, // rose
-      { hue: 130, saturation: 48, lightness: 86 }, // leaf
-      { hue: 204, saturation: 54, lightness: 86 }  // sky
+      { hue: 354, saturation: 58, lightness: 87 }, // red
+      { hue: 18, saturation: 60, lightness: 86 },  // orange-red
+      { hue: 42, saturation: 62, lightness: 86 },  // amber
+      { hue: 66, saturation: 56, lightness: 86 },  // yellow-green
+      { hue: 94, saturation: 52, lightness: 86 },  // olive green
+      { hue: 122, saturation: 54, lightness: 85 }, // green
+      { hue: 154, saturation: 50, lightness: 86 }, // mint
+      { hue: 182, saturation: 56, lightness: 85 }, // cyan
+      { hue: 210, saturation: 60, lightness: 86 }, // blue
+      { hue: 238, saturation: 52, lightness: 87 }, // indigo
+      { hue: 266, saturation: 54, lightness: 87 }, // violet
+      { hue: 294, saturation: 56, lightness: 87 }, // purple-magenta
+      { hue: 322, saturation: 54, lightness: 87 }, // magenta-rose
+      { hue: 338, saturation: 54, lightness: 87 }  // rose
     ];
     var oddPalette = [
       { hue: 316, saturation: 56, lightness: 87 }, // magenta pastel
