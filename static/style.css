@@ -5293,6 +5293,36 @@ footer {
   min-width: 0;
 }
 
+#blog-page-admin {
+  overflow: hidden;
+}
+
+#blog-page-admin .blog-page-settings-panel {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: max-height 240ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+#blog-page-admin.is-open .blog-page-settings-panel {
+  max-height: 6.5rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#blog-page-admin .blog-page-settings-panel label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--muted-text, #4f617f);
+}
+
+#blog-page-admin .blog-page-settings-panel select {
+  width: auto;
+  min-width: 12rem;
+}
+
 .blog-main-column .post-list {
   margin-top: 0;
 }

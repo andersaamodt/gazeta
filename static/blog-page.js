@@ -36,6 +36,7 @@
     initialPostsLoaded: false,
     renderSignature: '',
     defaultFiltersApplied: false,
+    pageSettingsOpen: false,
     filters: {
       tags: new Set(),
       years: new Set(),
@@ -73,6 +74,7 @@
     }
   };
   var panelHideTimer = null;
+  var pageSettingsHideTimer = null;
   var composeToggleGuardUntil = 0;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
@@ -429,8 +431,58 @@
     els.validation.innerHTML = html;
   }
 
-  function openAdminPage() {
-    window.location.href = '/pages/admin.html#nostr-pages';
+  function pageSettingsTags() {
+    var seen = {};
+    var tags = [];
+    (Array.isArray(state.posts) ? state.posts : []).forEach(function (post) {
+      var list = Array.isArray(post && post.tags) ? post.tags : [];
+      list.forEach(function (raw) {
+        var tag = String(raw || '').trim();
+        if (!tag || seen[tag]) {
+          return;
+        }
+        seen[tag] = true;
+        tags.push(tag);
+      });
+    });
+    tags.sort(function (a, b) {
+      return a.localeCompare(b);
+    });
+    return tags;
+  }
+
+  function setPageSettingsOpen(open) {
+    if (!els.admin) {
+      return;
+    }
+    var next = !!open;
+    state.pageSettingsOpen = next;
+    var editToggle = document.querySelector('[data-blog-action="toggle-page-settings"]');
+    if (editToggle instanceof HTMLElement) {
+      editToggle.setAttribute('aria-expanded', next ? 'true' : 'false');
+    }
+    if (pageSettingsHideTimer) {
+      window.clearTimeout(pageSettingsHideTimer);
+      pageSettingsHideTimer = null;
+    }
+    if (next) {
+      els.admin.hidden = false;
+      els.admin.classList.remove('is-open');
+      void els.admin.offsetHeight;
+      window.requestAnimationFrame(function () {
+        if (els.admin) {
+          els.admin.classList.add('is-open');
+        }
+      });
+      return;
+    }
+    els.admin.classList.remove('is-open');
+    pageSettingsHideTimer = window.setTimeout(function () {
+      pageSettingsHideTimer = null;
+      if (els.admin && !state.pageSettingsOpen) {
+        els.admin.hidden = true;
+      }
+    }, 240);
   }
 
   function renderAdmin() {
@@ -442,15 +494,31 @@
       return;
     }
     if (!isAdmin()) {
+      state.pageSettingsOpen = false;
       els.admin.hidden = true;
       els.admin.innerHTML = '';
       return;
     }
     if (actionsHost) {
-      actionsHost.innerHTML = '<span class="list-page-admin-bar"><button type="button" class="list-admin-primary-btn" data-blog-action="open-admin">Edit</button></span>';
+      actionsHost.innerHTML = '<span class="list-page-admin-bar"><button type="button" class="list-admin-primary-btn" data-blog-action="toggle-page-settings" aria-expanded="' + (state.pageSettingsOpen ? 'true' : 'false') + '" aria-controls="blog-page-settings-panel">Edit</button></span>';
     }
-    els.admin.hidden = true;
-    els.admin.innerHTML = '';
+    var page = getRenderState();
+    var selectedTag = String(page.default_tag || '').trim();
+    var tags = pageSettingsTags();
+    var options = '<option value="">All posts</option>' + tags.map(function (tag) {
+      return '<option value="' + escapeHtml(tag) + '"' + (selectedTag === tag ? ' selected' : '') + '>' + escapeHtml(tag) + '</option>';
+    }).join('');
+    els.admin.innerHTML = '' +
+      '<div id="blog-page-settings-panel" class="blog-page-settings-panel' + (state.pageSettingsOpen ? ' is-open' : '') + '">' +
+        '<label><span>Show posts</span><select data-blog-setting="default-tag">' + options + '</select></label>' +
+      '</div>';
+    if (state.pageSettingsOpen) {
+      els.admin.hidden = false;
+      els.admin.classList.add('is-open');
+    } else {
+      els.admin.hidden = true;
+      els.admin.classList.remove('is-open');
+    }
   }
 
   function ensureComposeHosts() {
@@ -2656,10 +2724,33 @@
     var action = event.target && event.target.closest('[data-blog-action]');
     if (action) {
       event.preventDefault();
-      if (action.getAttribute('data-blog-action') === 'open-admin') {
-        openAdminPage();
+      if (action.getAttribute('data-blog-action') === 'toggle-page-settings') {
+        setPageSettingsOpen(!state.pageSettingsOpen);
       }
     }
+  });
+
+  root.addEventListener('change', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLSelectElement)) {
+      return;
+    }
+    if (!target.matches('[data-blog-setting="default-tag"]')) {
+      return;
+    }
+    var picked = String(target.value || '').trim();
+    if (state.payload && state.payload.state) {
+      state.payload.state.default_tag = picked;
+    }
+    state.defaultFiltersApplied = true;
+    state.filters.tags.clear();
+    state.filters.years.clear();
+    state.filters.types.clear();
+    if (picked) {
+      state.filters.tags.add(picked);
+    }
+    renderFilters();
+    renderList();
   });
 
   document.addEventListener('click', function (event) {
