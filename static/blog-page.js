@@ -1921,7 +1921,7 @@
     } else if (postType === 'audio-note') {
       contentPlaceholder = 'Optional note for uploaded audio...';
     }
-    var titlePlaceholder = 'My post';
+    var titlePlaceholder = 'Post title';
     if (postType === 'shortform') {
       titlePlaceholder = 'Short post';
     } else if (postType === 'link-share') {

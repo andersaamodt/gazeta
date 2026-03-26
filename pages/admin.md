@@ -314,7 +314,7 @@ title: ""
 
 <div class="field-row">
 <label for="post-title"><strong>Post Title</strong></label>
-<input type="text" id="post-title" placeholder="My post">
+<input type="text" id="post-title" placeholder="Post title">
 </div>
 
 <div class="field-row">

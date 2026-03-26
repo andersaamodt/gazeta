@@ -1742,7 +1742,7 @@
       } else if (type === 'capture-media' || type === 'upload-media') {
         els.postTitle.placeholder = 'Media post title (optional)';
       } else {
-        els.postTitle.placeholder = 'My post';
+        els.postTitle.placeholder = 'Post title';
       }
     }
     if (els.postContent) {
