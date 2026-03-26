@@ -767,7 +767,8 @@
   function composeTypeButtonsHtml(activeType, opts) {
     var options = opts || {};
     var lockAll = !!options.lockAll;
-    var current = normalizeComposePostType(activeType);
+    var noActive = !!options.noActive;
+    var current = noActive ? '' : normalizeComposePostType(activeType);
     function btn(type, label, disabled) {
       var buttonDisabled = !!disabled || lockAll;
       var cls = 'compose-post-type-pill';
@@ -2199,10 +2200,10 @@
       els.composeSlot.innerHTML = '' +
         '<article class="post-item blog-post-item blog-compose-card blog-compose-type-only">' +
           '<div class="blog-compose-body">' +
+            '<div class="blog-compose-type-title"><strong>Compose New Post</strong></div>' +
             '<div class="' + chooseHeadRowClass + '" data-compose-head-row>' +
-              '<div class="' + chooseTypeControlClass + '" data-compose-type-control>' +
-                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type">' + composePostTypeIconSvg(postType) + '</button>' +
-                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
+              '<div class="' + chooseTypeControlClass + ' is-choose-mode" data-compose-type-control>' +
+                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml('', { lockAll: postTypeLocked, noActive: true }) + '</div></div>' +
               '</div>' +
             '</div>' +
           '</div>' +

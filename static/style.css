@@ -6259,8 +6259,42 @@ footer {
   grid-template-areas: "type";
 }
 
+.blog-compose-card.blog-compose-type-only .blog-compose-type-title {
+  margin: 0 0 0.16rem;
+  font-size: 0.96rem;
+  color: var(--text);
+}
+
 .blog-compose-card.blog-compose-type-only .compose-post-type-control {
   width: 100%;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-control.is-choose-mode {
+  gap: 0;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-current-btn {
+  display: none;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-toolbar-wrap {
+  max-height: none;
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-row {
+  overflow-x: visible;
+  padding-bottom: 0;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-pill {
+  height: 2.62rem;
+}
+
+.blog-compose-card.blog-compose-type-only .compose-post-type-pill .compose-post-type-icon {
+  width: 1.62rem;
+  height: 1.62rem;
 }
 
 .blog-compose-main-shell {
