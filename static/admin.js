@@ -2103,7 +2103,7 @@
     syncAuthStateFromStorage();
     if (!state.sessionToken) {
       stopLocalDripWorker();
-      setAuthMessage('Not logged in. Use the Login button in the top navigation to sign in with Nostr.', 'error');
+      setAuthMessage('Not signed in. Use the Login button in the top navigation to sign in with Nostr.', 'warn');
       markInitialContentPainted();
       markHydrationPageReady();
       return;
@@ -2114,7 +2114,7 @@
       if (!data.authenticated) {
         clearStoredAuth();
         stopLocalDripWorker();
-        setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'error');
+        setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'warn');
         markInitialContentPainted();
         markHydrationPageReady();
         return;

@@ -86,7 +86,7 @@
 </svg>
 </a>
 </div>
-<button id="nav-cart-toggle" class="nav-cart-toggle" type="button" aria-label="Open cart" aria-expanded="false">
+<button id="nav-cart-toggle" class="nav-cart-toggle" type="button" aria-label="Open cart" aria-expanded="false" hidden aria-hidden="true">
 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M3 4H5L7 16H18L21 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="9" cy="20" r="1.7" fill="currentColor"/>
@@ -341,6 +341,6 @@
 </div>
 
 <script src="/static/nav-auth.js?v=20260321-navfast3"></script>
-<script src="/static/shop-cart.js?v=20260326-cartv3"></script>
+<script src="/static/shop-cart.js?v=20260326-cartv4"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

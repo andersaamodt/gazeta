@@ -713,12 +713,14 @@ body {
 }
 
 .admin-access-message {
-  margin: 0 0 0.75rem;
-  padding: 0.72rem 0.9rem;
-  border-radius: 12px;
+  margin: 0.48rem auto 0.9rem;
+  width: min(56rem, calc(100% - 1rem));
+  padding: 0.56rem 0.74rem;
+  border-radius: 10px;
   border: 1px solid #d8deec;
-  font-size: 0.93rem;
-  line-height: 1.4;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  box-sizing: border-box;
 }
 
 .admin-access-message.is-warn {
@@ -4504,21 +4506,21 @@ body {
 }
 
 .admin-access-message {
-  border-color: var(--admin-border, var(--border)) !important;
-  background: var(--admin-surface, var(--post-card-bg-single)) !important;
+  border-color: color-mix(in srgb, var(--admin-border, var(--border)) 82%, transparent) !important;
+  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 94%, transparent) !important;
   color: var(--admin-text, var(--text)) !important;
 }
 
 .admin-access-message.is-warn {
-  background: var(--status-warn-bg, #5a4516) !important;
-  border-color: var(--status-warn-border, #8a6a24) !important;
-  color: var(--status-warn-text, #f6f8ff) !important;
+  background: color-mix(in srgb, #f59e0b 14%, var(--admin-surface, var(--post-card-bg-single)) 86%) !important;
+  border-color: color-mix(in srgb, #b45309 42%, var(--admin-border, var(--border)) 58%) !important;
+  color: color-mix(in srgb, #6b3f00 80%, var(--admin-text, var(--text)) 20%) !important;
 }
 
 .admin-access-message.is-error {
-  background: var(--status-error-bg, #641925) !important;
-  border-color: var(--status-error-border, #96394d) !important;
-  color: var(--status-error-text, #f6f8ff) !important;
+  background: color-mix(in srgb, #dc2626 13%, var(--admin-surface, var(--post-card-bg-single)) 87%) !important;
+  border-color: color-mix(in srgb, #991b1b 44%, var(--admin-border, var(--border)) 56%) !important;
+  color: color-mix(in srgb, #7f1d1d 80%, var(--admin-text, var(--text)) 20%) !important;
 }
 
 .admin-sidebar,
