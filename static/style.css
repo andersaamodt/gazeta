@@ -2557,14 +2557,17 @@ body.nav-cart-open {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  position: relative;
+  z-index: 1;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
   border-radius: 999px;
   border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 10%), calc(var(--marker-pill-l, 90%) - 20%));
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%));
-  color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 20%), 24%);
-  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 20%), 24%);
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  text-shadow: none;
   padding: 0.08rem 0.44rem;
   font-size: 0.72rem;
   line-height: 1.15;
@@ -2694,8 +2697,9 @@ body.nav-cart-open {
   border-radius: 999px !important;
   border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 10%), calc(var(--marker-pill-l, 90%) - 20%)) !important;
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%)) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  text-shadow: none;
   padding: 0.16rem 0.58rem !important;
   font-size: 0.79rem !important;
   font-weight: 500 !important;
@@ -2705,16 +2709,16 @@ body.nav-cart-open {
 .list-marker-filter-pill:hover:not(:disabled),
 .list-marker-filter-pill:focus-visible:not(:disabled) {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), calc(var(--marker-pill-l, 90%) - 2%)) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
   border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 2%), calc(var(--marker-pill-l, 90%) - 18%)) !important;
 }
 
 .list-marker-filter-pill.is-include {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
   border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
   font-weight: 700 !important;
 }
 
@@ -2722,15 +2726,15 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-include:focus-visible:not(:disabled) {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
   border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
 }
 
 .list-marker-filter-pill.is-exclude {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
   border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
   font-weight: 700 !important;
 }
 
@@ -2738,8 +2742,8 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-exclude:focus-visible:not(:disabled) {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
   border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
-  color: var(--text, #2a3448) !important;
-  -webkit-text-fill-color: var(--text, #2a3448) !important;
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
 }
 
 .list-tiles {

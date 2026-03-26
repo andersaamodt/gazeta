@@ -68,6 +68,7 @@
     pendingNewEntry: null,
     markerFilterInclude: [],
     markerFilterExclude: [],
+    markerColorByToken: {},
     viewModeOverride: '',
     createProductBusyUid: '',
     undoStack: [],
@@ -869,7 +870,7 @@
     });
   }
 
-  function markerColorFromText(text) {
+  function markerHash32(text) {
     var src = String(text || '');
     var hash = 2166136261;
     for (var i = 0; i < src.length; i += 1) {
@@ -882,38 +883,102 @@
     normalized ^= (normalized >>> 13);
     normalized = Math.imul(normalized, 3266489909);
     normalized ^= (normalized >>> 16);
-    var normalPalette = [
-      { hue: 354, saturation: 58, lightness: 87 }, // red
-      { hue: 18, saturation: 60, lightness: 86 },  // orange-red
-      { hue: 42, saturation: 62, lightness: 86 },  // amber
-      { hue: 66, saturation: 56, lightness: 86 },  // yellow-green
-      { hue: 94, saturation: 52, lightness: 86 },  // olive green
-      { hue: 122, saturation: 54, lightness: 85 }, // green
-      { hue: 154, saturation: 50, lightness: 86 }, // mint
-      { hue: 182, saturation: 56, lightness: 85 }, // cyan
-      { hue: 210, saturation: 60, lightness: 86 }, // blue
-      { hue: 238, saturation: 52, lightness: 87 }, // indigo
-      { hue: 266, saturation: 54, lightness: 87 }, // violet
-      { hue: 294, saturation: 56, lightness: 87 }, // purple-magenta
-      { hue: 322, saturation: 54, lightness: 87 }, // magenta-rose
-      { hue: 338, saturation: 54, lightness: 87 }  // rose
+    return (normalized >>> 0);
+  }
+
+  function markerPaletteSwatches() {
+    return [
+      { hue: 8, saturation: 56, lightness: 88 },
+      { hue: 28, saturation: 58, lightness: 87 },
+      { hue: 48, saturation: 56, lightness: 88 },
+      { hue: 68, saturation: 52, lightness: 88 },
+      { hue: 92, saturation: 50, lightness: 87 },
+      { hue: 116, saturation: 52, lightness: 86 },
+      { hue: 138, saturation: 48, lightness: 87 },
+      { hue: 160, saturation: 46, lightness: 88 },
+      { hue: 184, saturation: 52, lightness: 87 },
+      { hue: 206, saturation: 56, lightness: 87 },
+      { hue: 226, saturation: 54, lightness: 88 },
+      { hue: 246, saturation: 50, lightness: 88 },
+      { hue: 266, saturation: 52, lightness: 88 },
+      { hue: 286, saturation: 52, lightness: 88 },
+      { hue: 306, saturation: 54, lightness: 88 },
+      { hue: 326, saturation: 52, lightness: 88 },
+      { hue: 346, saturation: 54, lightness: 88 },
+      { hue: 18, saturation: 50, lightness: 89 },
+      { hue: 58, saturation: 48, lightness: 89 },
+      { hue: 108, saturation: 46, lightness: 88 },
+      { hue: 168, saturation: 44, lightness: 89 },
+      { hue: 198, saturation: 48, lightness: 89 },
+      { hue: 238, saturation: 46, lightness: 89 },
+      { hue: 278, saturation: 46, lightness: 89 }
     ];
-    var oddPalette = [
-      { hue: 316, saturation: 56, lightness: 87 }, // magenta pastel
-      { hue: 282, saturation: 50, lightness: 88 }, // lilac
-      { hue: 12, saturation: 56, lightness: 87 },  // salmon
-      { hue: 84, saturation: 52, lightness: 86 },  // olive pastel
-      { hue: 254, saturation: 50, lightness: 88 }, // violet blue
-      { hue: 168, saturation: 48, lightness: 87 }, // seafoam
-      { hue: 36, saturation: 48, lightness: 88 },  // sand
-      { hue: 210, saturation: 48, lightness: 88 }  // steel pastel
-    ];
-    var preferNormal = ((normalized >>> 3) % 10) < 7; // 70% normal colors.
-    var palette = preferNormal ? normalPalette : oddPalette;
-    var swatch = palette[(normalized >>> 1) % palette.length];
-    var hue = swatch.hue;
-    var saturation = swatch.saturation;
-    var lightness = swatch.lightness;
+  }
+
+  function circularHueDistance(a, b) {
+    var x = Math.abs(Number(a) - Number(b)) % 360;
+    return x > 180 ? (360 - x) : x;
+  }
+
+  function buildMarkerColorMap(entries) {
+    var markers = uniqueMarkerValues(entries);
+    var palette = markerPaletteSwatches();
+    var used = {};
+    var map = {};
+    if (!markers.length || !palette.length) {
+      state.markerColorByToken = map;
+      return map;
+    }
+    markers.sort(function (a, b) {
+      var ah = markerHash32(a);
+      var bh = markerHash32(b);
+      if (ah !== bh) {
+        return ah - bh;
+      }
+      return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    });
+    markers.forEach(function (marker) {
+      var h = markerHash32(marker);
+      var desiredHue = h % 360;
+      var bestIdx = -1;
+      var bestScore = -1e9;
+      for (var i = 0; i < palette.length; i += 1) {
+        if (used[i]) {
+          continue;
+        }
+        var sw = palette[i];
+        var minSep = 180;
+        Object.keys(map).forEach(function (key) {
+          var color = map[key];
+          minSep = Math.min(minSep, circularHueDistance(sw.hue, color.hue));
+        });
+        var desiredScore = 180 - circularHueDistance(sw.hue, desiredHue);
+        var score = (minSep * 4) + (desiredScore * 0.55);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx < 0) {
+        bestIdx = h % palette.length;
+      }
+      used[bestIdx] = true;
+      map[marker] = palette[bestIdx];
+    });
+    state.markerColorByToken = map;
+    return map;
+  }
+
+  function markerColorFromText(text) {
+    var marker = String(text || '');
+    if (marker && state.markerColorByToken && state.markerColorByToken[marker]) {
+      return state.markerColorByToken[marker];
+    }
+    var palette = markerPaletteSwatches();
+    var fallback = palette[markerHash32(marker) % palette.length] || palette[0];
+    var hue = fallback.hue;
+    var saturation = fallback.saturation;
+    var lightness = fallback.lightness;
     return {
       hue: hue,
       saturation: saturation,
@@ -997,6 +1062,7 @@
   }
 
   function renderMarkerFilters(entries) {
+    buildMarkerColorMap(entries);
     var markers = uniqueMarkerValues(entries);
     pruneMarkerFilters(markers);
     if (!markers.length) {
@@ -1987,6 +2053,7 @@
   function renderGroupByReadOnly(entries, groupBy, viewMode, showMarkerFilters, showMarkers, alphabetizeMarkers) {
     var html = '';
     var allEntries = Array.isArray(entries) ? entries : [];
+    buildMarkerColorMap(allEntries);
     html += renderProductGalleryViewModeControl(viewMode);
     if (showMarkerFilters) {
       html += renderMarkerFilters(allEntries);
@@ -3448,6 +3515,7 @@
           state.pendingNewEntry = null;
           state.markerFilterInclude = [];
           state.markerFilterExclude = [];
+          state.markerColorByToken = {};
           state.createProductBusyUid = '';
           state.viewModeOverride = '';
           state.saveIndicatorVisible = false;
