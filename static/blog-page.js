@@ -15,6 +15,7 @@
     admin: document.getElementById('blog-page-admin'),
     validation: document.getElementById('blog-page-validation'),
     content: document.getElementById('blog-page-content'),
+    settings: document.getElementById('blog-page-settings'),
     toggle: document.getElementById('blog-filter-toggle'),
     panel: document.getElementById('blog-filter-panel'),
     tags: document.getElementById('blog-filter-tags'),
@@ -29,6 +30,18 @@
 
   var state = {
     payload: null,
+    draft: null,
+    editMode: false,
+    pendingToggleEditOff: false,
+    busy: false,
+    autosaveQueued: false,
+    saveTimer: null,
+    saveStatus: 'saved',
+    saveIndicatorVisible: false,
+    navTitle: '',
+    navTitleEditing: false,
+    navTitleInput: '',
+    navTitleBusy: false,
     posts: [],
     initialContentPainted: false,
     initialPageStateLoaded: false,
@@ -56,6 +69,7 @@
     }
   };
   var panelHideTimer = null;
+  var settingsHideTimer = null;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
 
   function removeLegacyTitleBlock() {
@@ -154,6 +168,10 @@
   }
 
   function getRenderState() {
+    if (isAdmin() && state.draft) {
+      state.draft = normalizePageState(state.draft);
+      return state.draft;
+    }
     if (state.payload && state.payload.state) {
       return normalizePageState(state.payload.state);
     }
@@ -162,6 +180,80 @@
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin);
+  }
+
+  function defaultNavbarTitle(renderState) {
+    var s = renderState || getRenderState();
+    var title = String((s && s.title) || titleizeSlug(slug)).trim();
+    return title || titleizeSlug(slug);
+  }
+
+  function currentNavbarTitle(renderState) {
+    var configured = String(state.navTitle || '').trim();
+    if (configured) {
+      return configured;
+    }
+    return defaultNavbarTitle(renderState);
+  }
+
+  function navbarTitleHost() {
+    var head = root.querySelector('.list-page-head');
+    if (!head || !els.title) {
+      return null;
+    }
+    var host = head.querySelector('[data-page-nav-title-host="true"]');
+    if (host instanceof HTMLElement) {
+      return host;
+    }
+    host = document.createElement('div');
+    host.setAttribute('data-page-nav-title-host', 'true');
+    host.className = 'list-page-nav-title-row-wrap';
+    if (els.title.nextSibling) {
+      head.insertBefore(host, els.title.nextSibling);
+    } else {
+      head.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderNavbarTitleRow(renderState) {
+    var host = navbarTitleHost();
+    if (!host) {
+      return;
+    }
+    if (!isAdmin() || !state.editMode) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    var current = currentNavbarTitle(renderState);
+    var editing = !!state.navTitleEditing;
+    var html = '<div class="list-page-nav-title-row">';
+    html += '<span class="list-page-nav-title-label">Navbar title</span>';
+    if (editing) {
+      var value = state.navTitleInput || current;
+      html += '<span class="list-page-nav-title-edit-wrap">';
+      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Navbar title">';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '</span>';
+    } else {
+      html += '<span class="list-page-nav-title-value">' + escapeHtml(current) + '</span>';
+      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="edit">Edit...</button>';
+    }
+    html += '</div>';
+    host.hidden = false;
+    host.innerHTML = html;
+    if (editing) {
+      requestAnimationFrame(function () {
+        var input = host.querySelector('[data-page-nav-title-input="true"]');
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+          if (typeof input.select === 'function') {
+            input.select();
+          }
+        }
+      });
+    }
   }
 
   function authPayload() {
@@ -204,6 +296,7 @@
         els.description.innerHTML = '';
         els.description.hidden = true;
       }
+      renderNavbarTitleRow(null);
       return;
     }
     var page = getRenderState();
@@ -224,6 +317,7 @@
       els.description.innerHTML = '';
       els.description.hidden = true;
     }
+    renderNavbarTitleRow(page);
   }
 
   function ensureFilterGutterLayout() {
@@ -297,8 +391,172 @@
     els.validation.innerHTML = html;
   }
 
-  function openAdminPage() {
-    window.location.href = '/pages/admin.html#nostr-pages';
+  function setSaveStatus(next) {
+    state.saveStatus = next;
+    var node = document.getElementById('blog-admin-save-status');
+    if (!node) {
+      return;
+    }
+    node.classList.toggle('is-error', next === 'error');
+    if (next === 'saving') {
+      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      return;
+    }
+    if (next === 'error') {
+      node.textContent = 'Save failed';
+      return;
+    }
+    node.textContent = 'Saved';
+  }
+
+  function queuePageAutosave(delayMs) {
+    if (!isAdmin() || !state.editMode) {
+      return;
+    }
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+    }
+    state.saveIndicatorVisible = true;
+    renderAdmin();
+    state.saveTimer = setTimeout(function () {
+      state.saveTimer = null;
+      persistDraft({ alertOnError: false });
+    }, Number(delayMs) > 0 ? Number(delayMs) : 500);
+  }
+
+  function saveNavbarTitle() {
+    if (!isAdmin() || state.navTitleBusy) {
+      return Promise.resolve(false);
+    }
+    var input = root.querySelector('[data-page-nav-title-input="true"]');
+    if (input instanceof HTMLInputElement) {
+      state.navTitleInput = String(input.value || '');
+    }
+    var nextTitle = String(state.navTitleInput || '').trim();
+    state.navTitleBusy = true;
+    var auth = authPayload();
+    return apiPost('/cgi/blog-update-nostr-page-nav-title', {
+      page_slug: slug,
+      nav_title: nextTitle,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      var updated = String((data && data.nav_title) || nextTitle || defaultNavbarTitle()).trim();
+      state.navTitle = updated;
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      if (state.payload && typeof state.payload === 'object') {
+        state.payload.nav_title = updated;
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+      } catch (_err) {
+        // Ignore navbar refresh dispatch failures.
+      }
+      renderHead();
+      return true;
+    }).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not save navbar title');
+      return false;
+    }).finally(function () {
+      state.navTitleBusy = false;
+      renderHead();
+    });
+  }
+
+  function persistDraft(opts) {
+    if (state.busy || !isAdmin()) {
+      if (isAdmin()) {
+        state.autosaveQueued = true;
+      }
+      return Promise.resolve(false);
+    }
+    var options = opts || {};
+    state.draft = normalizePageState(state.draft || getRenderState());
+    var serializedBeforeSave = JSON.stringify(state.draft || {});
+    state.busy = true;
+    setSaveStatus('saving');
+    var payload = authPayload();
+    return apiPost('/cgi/blog-save-nostr-page-draft', {
+      page_slug: slug,
+      state_json: JSON.stringify(state.draft || {}),
+      session_token: payload.session_token,
+      csrf_token: payload.csrf_token
+    }).then(function (data) {
+      if (!state.payload || typeof state.payload !== 'object') {
+        state.payload = {};
+      }
+      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      state.payload.draft_exists = true;
+      var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
+      state.payload.draft_differs = localChangedDuringSave;
+      if (!localChangedDuringSave) {
+        state.payload.state = data.state || state.payload.state;
+        state.draft = normalizePageState(data.state || state.draft);
+      } else {
+        state.payload.state = normalizePageState(state.draft || {});
+      }
+      setSaveStatus('saved');
+      if (state.editMode) {
+        renderHead();
+        renderAdmin();
+        renderValidation();
+        renderExtrasAfter();
+      } else {
+        renderAll();
+      }
+      return true;
+    }).catch(function (err) {
+      setSaveStatus('error');
+      if (options.alertOnError !== false) {
+        window.alert(err && err.message ? err.message : 'Could not save draft');
+      }
+      return false;
+    }).finally(function () {
+      state.busy = false;
+      if (state.autosaveQueued) {
+        state.autosaveQueued = false;
+        queuePageAutosave(500);
+      }
+      maybeFinalizeEditModeExit();
+    });
+  }
+
+  function exitEditModeNow() {
+    state.editMode = false;
+    state.pendingToggleEditOff = false;
+    state.navTitleEditing = false;
+    state.navTitleInput = '';
+    renderAll();
+  }
+
+  function maybeFinalizeEditModeExit() {
+    if (!state.pendingToggleEditOff) {
+      return;
+    }
+    if (state.busy || state.autosaveQueued || state.saveTimer) {
+      return;
+    }
+    exitEditModeNow();
+  }
+
+  function requestExitEditModeWithSave() {
+    if (!isAdmin() || !state.editMode) {
+      return;
+    }
+    state.pendingToggleEditOff = true;
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+      state.saveTimer = null;
+    }
+    state.saveIndicatorVisible = true;
+    renderAdmin();
+    if (state.busy) {
+      return;
+    }
+    persistDraft({ alertOnError: false }).then(function () {
+      maybeFinalizeEditModeExit();
+    });
   }
 
   function renderAdmin() {
@@ -310,15 +568,116 @@
       return;
     }
     if (!isAdmin()) {
+      if (state.saveTimer) {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = null;
+      }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
       return;
     }
+    var html = '<span class="list-page-admin-bar">';
+    if (state.saveIndicatorVisible) {
+      html += '<span id="blog-admin-save-status" class="list-admin-save-status" aria-live="polite">';
+      if (state.saveStatus === 'saving') {
+        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      } else if (state.saveStatus === 'error') {
+        html += 'Save failed';
+      } else {
+        html += 'Saved';
+      }
+      html += '</span>';
+    }
+    html += '<button type="button" class="list-admin-primary-btn" data-blog-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
+    html += '</span>';
     if (actionsHost) {
-      actionsHost.innerHTML = '<span class="list-page-admin-bar"><button type="button" class="list-admin-primary-btn" data-blog-action="open-admin">Edit</button></span>';
+      actionsHost.innerHTML = html;
     }
     els.admin.hidden = true;
     els.admin.innerHTML = '';
+  }
+
+  function ensureSettingsHost() {
+    if (els.settings instanceof HTMLElement) {
+      return els.settings;
+    }
+    if (!els.content || !els.content.parentNode) {
+      return null;
+    }
+    var host = document.createElement('div');
+    host.id = 'blog-page-settings';
+    host.className = 'blog-page-settings-slot';
+    host.hidden = true;
+    els.content.parentNode.insertBefore(host, els.content);
+    els.settings = host;
+    return host;
+  }
+
+  function setSettingsOpen(open) {
+    var host = ensureSettingsHost();
+    if (!host) {
+      return;
+    }
+    var isOpen = !!open;
+    if (settingsHideTimer) {
+      window.clearTimeout(settingsHideTimer);
+      settingsHideTimer = null;
+    }
+    if (isOpen) {
+      var wasHidden = !!host.hidden;
+      host.hidden = false;
+      if (wasHidden) {
+        host.classList.remove('is-open');
+        void host.offsetHeight;
+        window.requestAnimationFrame(function () {
+          host.classList.add('is-open');
+        });
+      } else {
+        host.classList.add('is-open');
+      }
+      return;
+    }
+    host.classList.remove('is-open');
+    settingsHideTimer = window.setTimeout(function () {
+      settingsHideTimer = null;
+      if (!host.classList.contains('is-open')) {
+        host.hidden = true;
+        host.innerHTML = '';
+      }
+    }, 260);
+  }
+
+  function renderPageSettings() {
+    var host = ensureSettingsHost();
+    if (!host) {
+      return;
+    }
+    if (!isAdmin() || !state.editMode) {
+      setSettingsOpen(false);
+      return;
+    }
+    var page = getRenderState();
+    host.innerHTML = '' +
+      '<section class="nostr-page-extras-editor" aria-label="Page settings">' +
+        '<h3 class="nostr-page-extras-heading">Page settings</h3>' +
+        '<label class="nostr-page-extra-edit">' +
+          '<span>Page name <span class="nostr-page-scope-pill is-nostr">Nostr</span></span>' +
+          '<input type="text" id="blog-settings-title-input" value="' + escapeHtml(page.title || '') + '">' +
+        '</label>' +
+        '<label class="nostr-page-extra-edit">' +
+          '<span>Description <span class="nostr-page-scope-pill is-nostr">Nostr</span></span>' +
+          '<textarea id="blog-settings-description-input" rows="4" placeholder="Short description under the page title">' + escapeHtml(page.content || '') + '</textarea>' +
+        '</label>' +
+        '<label class="nostr-page-extra-edit">' +
+          '<span>Default tag filter <span class="nostr-page-scope-pill is-nostr">Nostr</span></span>' +
+          '<input type="text" id="blog-settings-default-tag-input" placeholder="optional-tag" value="' + escapeHtml(page.default_tag || '') + '">' +
+        '</label>' +
+        '<label class="nostr-page-extra-edit">' +
+          '<span>After content <span class="nostr-page-scope-pill is-local">Local</span></span>' +
+          '<textarea id="blog-settings-outro-input" rows="5" placeholder="Optional local content shown after the post list">' + escapeHtml(page.extras_after || '') + '</textarea>' +
+        '</label>' +
+      '</section>';
+    setSettingsOpen(true);
   }
 
   function ensureComposeHosts() {
@@ -1527,6 +1886,7 @@
     renderHead();
     renderAdmin();
     renderValidation();
+    renderPageSettings();
     renderExtrasAfter();
     renderFilters();
     renderList();
@@ -1661,6 +2021,13 @@
       csrf_token: auth.csrf_token
     }).then(function (data) {
       state.payload = data;
+      state.draft = normalizePageState((data && data.state) || { title: titleizeSlug(slug) });
+      state.navTitle = String((data && data.nav_title) || '').trim();
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      state.navTitleBusy = false;
+      state.saveIndicatorVisible = false;
+      setSaveStatus('saved');
     }).catch(function () {
       // Keep existing optimistic state when page-state fetch fails.
     }).finally(function () {
@@ -1780,18 +2147,77 @@
       return;
     }
 
+    if (isAdmin() && state.editMode) {
+      var navTitleActionNode = event.target && event.target.closest('[data-page-nav-title-action]');
+      if (navTitleActionNode instanceof HTMLElement) {
+        event.preventDefault();
+        var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
+        if (navTitleAction === 'edit') {
+          state.navTitleEditing = true;
+          state.navTitleInput = currentNavbarTitle();
+          renderHead();
+          return;
+        }
+        if (navTitleAction === 'save') {
+          saveNavbarTitle();
+          return;
+        }
+      }
+    }
+
     var action = event.target && event.target.closest('[data-blog-action]');
     if (action) {
       event.preventDefault();
-      if (action.getAttribute('data-blog-action') === 'open-admin') {
-        openAdminPage();
+      if (action.getAttribute('data-blog-action') === 'toggle-edit') {
+        if (state.editMode) {
+          requestExitEditModeWithSave();
+        } else {
+          state.editMode = true;
+          state.pendingToggleEditOff = false;
+          state.saveIndicatorVisible = false;
+          renderAll();
+        }
       }
     }
   });
 
   root.addEventListener('input', function (event) {
     var target = event.target;
-    if (!(target instanceof HTMLElement) || !state.compose.open) {
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (isAdmin() && state.editMode) {
+      state.draft = normalizePageState(state.draft || getRenderState());
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input')) {
+        state.navTitleInput = String(target.value || '');
+        return;
+      }
+      if (target.id === 'blog-settings-title-input' && target instanceof HTMLInputElement) {
+        state.draft.title = String(target.value || '');
+        renderHead();
+        renderAdmin();
+        queuePageAutosave(500);
+        return;
+      }
+      if (target.id === 'blog-settings-description-input' && target instanceof HTMLTextAreaElement) {
+        state.draft.content = String(target.value || '');
+        renderHead();
+        queuePageAutosave(500);
+        return;
+      }
+      if (target.id === 'blog-settings-default-tag-input' && target instanceof HTMLInputElement) {
+        state.draft.default_tag = String(target.value || '').trim();
+        queuePageAutosave(400);
+        return;
+      }
+      if (target.id === 'blog-settings-outro-input' && target instanceof HTMLTextAreaElement) {
+        state.draft.extras_after = String(target.value || '');
+        renderExtrasAfter();
+        queuePageAutosave(500);
+        return;
+      }
+    }
+    if (!state.compose.open) {
       return;
     }
     if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"], [data-compose-field="link-url"], [data-compose-field="link-body"]')) {
@@ -1839,7 +2265,17 @@
 
   root.addEventListener('keydown', function (event) {
     var target = event.target;
-    if (!(target instanceof HTMLElement) || !state.compose.open) {
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (target instanceof HTMLInputElement && target.hasAttribute('data-page-nav-title-input')) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveNavbarTitle();
+      }
+      return;
+    }
+    if (!state.compose.open) {
       return;
     }
     if (target.matches('[data-compose-field="tags-input"]')) {
