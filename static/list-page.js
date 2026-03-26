@@ -2033,6 +2033,7 @@
           '<button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋮</button>' +
           '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>' +
             '<button type="button" role="menuitem" data-list-read-action="edit-row" data-element-uid="' + escapeHtml(rowUid) + '">Edit</button>' +
+            '<button type="button" role="menuitem" class="list-inline-row-menu-danger" data-list-read-action="remove-row" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Delete entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l.9 1.5H20a1 1 0 1 1 0 2h-1l-.7 11a2 2 0 0 1-2 1.9H7.7a2 2 0 0 1-2-1.9L5 7H4a1 1 0 1 1 0-2h4.1L9 3.5Zm-2 3.5.7 11h8.6L17 7H7Zm2.5 2a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm5 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" fill="currentColor"/></svg><span>Delete</span></button>' +
           '</div>' +
         '</span>';
     }
@@ -2959,6 +2960,25 @@
             renderList();
             renderAdmin();
             focusInlineField(readUid, 'markdown');
+            return;
+          }
+          if (readActionType === 'remove-row') {
+            var removeIdx = findElementIndex(readUid);
+            if (removeIdx < 0) {
+              return;
+            }
+            state.readRowMenuOpenUid = '';
+            var beforeRemoveRead = captureEntryRects();
+            state.draft.elements.splice(removeIdx, 1);
+            if (state.activeEntryUid === readUid) {
+              state.activeEntryUid = '';
+              state.activeCellField = '';
+            }
+            if (state.pendingNewEntry && state.pendingNewEntry.uid === readUid) {
+              state.pendingNewEntry = null;
+            }
+            renderListWithFlip(beforeRemoveRead);
+            queueAutosave(120);
             return;
           }
         }
