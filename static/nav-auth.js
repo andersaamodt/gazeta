@@ -18,6 +18,7 @@
   var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  var THEME_CACHE_KEY = 'wizardry_blog_theme_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
     blog: true,
@@ -159,6 +160,30 @@
   function cacheSiteTitle(title) {
     try {
       localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizeSiteTitle(title));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function readCachedTheme() {
+    try {
+      var raw = normalizeThemeName(localStorage.getItem(THEME_CACHE_KEY) || '');
+      if (isAllowedTheme(raw)) {
+        return raw;
+      }
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+    return '';
+  }
+
+  function cacheTheme(theme) {
+    var normalized = normalizeThemeName(theme);
+    if (!isAllowedTheme(normalized)) {
+      return;
+    }
+    try {
+      localStorage.setItem(THEME_CACHE_KEY, normalized);
     } catch (_err) {
       // Ignore storage failures.
     }
@@ -2399,7 +2424,7 @@
   }
 
   function updateThemeStylesheet(theme) {
-    var nextTheme = String(theme || '').trim() || 'adept';
+    var nextTheme = String(theme || '').trim() || 'archmage';
     var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
@@ -2413,21 +2438,46 @@
     return fetch('/cgi/blog-get-config', { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (data && data.site_title) {
-          updateNavSiteSignature(data.site_title);
-          cacheSiteTitle(data.site_title);
+        var cachedSiteTitle = '';
+        var cachedTheme = readCachedTheme();
+        try {
+          cachedSiteTitle = normalizeSiteTitle(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
+        } catch (_err) {
+          cachedSiteTitle = '';
         }
-        if (data && data.theme) {
-          var serverTheme = normalizeThemeName(data.theme);
-          if (isAllowedTheme(serverTheme)) {
-            state.currentTheme = serverTheme;
+        if (data && data.site_title) {
+          var incomingTitle = normalizeSiteTitle(data.site_title);
+          if (incomingTitle === 'Site' && cachedSiteTitle && cachedSiteTitle !== 'Site') {
+            updateNavSiteSignature(cachedSiteTitle);
+          } else {
+            updateNavSiteSignature(incomingTitle);
+            cacheSiteTitle(incomingTitle);
           }
         }
+        if (data && data.theme && isAllowedTheme(data.theme)) {
+          state.currentTheme = normalizeThemeName(data.theme);
+          cacheTheme(state.currentTheme);
+          return updateThemeStylesheet(state.currentTheme);
+        }
+        if (cachedTheme) {
+          state.currentTheme = cachedTheme;
+          return updateThemeStylesheet(cachedTheme);
+        }
+        state.currentTheme = 'archmage';
+        cacheTheme(state.currentTheme);
+        return updateThemeStylesheet(state.currentTheme);
       })
       .then(function () {
         updateThemeSelect();
       })
       .catch(function () {
+        var fallbackTheme = readCachedTheme() || state.currentTheme || 'archmage';
+        if (!isAllowedTheme(fallbackTheme)) {
+          fallbackTheme = 'archmage';
+        }
+        state.currentTheme = fallbackTheme;
+        cacheTheme(fallbackTheme);
+        updateThemeStylesheet(fallbackTheme);
         updateThemeSelect();
       });
   }
@@ -2465,6 +2515,7 @@
     function applySelectedTheme(nextTheme) {
       state.currentTheme = nextTheme;
       updateThemeStylesheet(nextTheme);
+      cacheTheme(nextTheme);
       saveTheme(nextTheme);
       preserveFocus();
     }
@@ -2751,18 +2802,25 @@
     var optimisticIsAdmin = false;
     var optimisticName = '';
     var optimisticSiteTitle = '';
+    var optimisticTheme = '';
     try {
       optimisticIsLoggedIn = hasStoredSessionToken();
       optimisticIsAdmin = String(localStorage.getItem('last_auth_is_admin') || '') === '1';
       optimisticName = String(localStorage.getItem('last_auth_player_name') || localStorage.getItem('last_auth_username') || '').trim();
       optimisticSiteTitle = String(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '').trim();
+      optimisticTheme = normalizeThemeName(localStorage.getItem(THEME_CACHE_KEY) || '');
     } catch (_err) {
       optimisticIsLoggedIn = false;
       optimisticIsAdmin = false;
       optimisticName = '';
       optimisticSiteTitle = '';
+      optimisticTheme = '';
     }
     updateNavSiteSignature(optimisticSiteTitle);
+    if (isAllowedTheme(optimisticTheme)) {
+      state.currentTheme = optimisticTheme;
+      updateThemeStylesheet(optimisticTheme);
+    }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
 

@@ -26,6 +26,8 @@ if [ -z "$page_type" ]; then
   blog_json_error "Unknown Nostr page slug" "unknown_page"
   exit 0
 fi
+# Self-heal stale generated shells when config and mounted pages drift.
+blog_nostr_page_ensure_source_page "$page_slug" "$page_type" >/dev/null 2>&1 || true
 kind=$(blog_nostr_page_kind_for_type "$page_type")
 nav_title=$(blog_nostr_page_placeholder_title "$page_slug" 2>/dev/null || printf '')
 if [ -z "$nav_title" ]; then

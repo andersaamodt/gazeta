@@ -119,7 +119,10 @@
 (function () {
   try {
     var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+    var CART_CACHE_KEY = 'nostr_blog_cart_v1';
     var siteSignature = document.getElementById('nav-site-signature');
+    var cartToggle = document.getElementById('nav-cart-toggle');
+    var cartCount = document.getElementById('nav-cart-count');
     function normalizeSiteTitle(value) {
       var text = String(value || '').replace(/\s+/g, ' ').trim();
       return text || 'Site';
@@ -137,6 +140,50 @@
     } catch (_siteTitleErr) {
       applySiteTitleSignature('Site');
     }
+
+    function cartItemCountFromCache() {
+      var total = 0;
+      try {
+        var raw = localStorage.getItem(CART_CACHE_KEY);
+        if (!raw) {
+          return 0;
+        }
+        var parsed = JSON.parse(raw);
+        var items = (parsed && Array.isArray(parsed.items)) ? parsed.items : [];
+        items.forEach(function (item) {
+          var qty = Number(item && item.qty);
+          if (!isFinite(qty)) {
+            return;
+          }
+          qty = Math.floor(qty);
+          if (qty > 0) {
+            total += qty;
+          }
+        });
+      } catch (_cartErr) {
+        total = 0;
+      }
+      return total;
+    }
+
+    function applyCartToggleState(count) {
+      if (!cartToggle) {
+        return;
+      }
+      if (count > 0) {
+        cartToggle.hidden = false;
+        cartToggle.setAttribute('aria-hidden', 'false');
+      } else {
+        cartToggle.hidden = true;
+        cartToggle.setAttribute('aria-hidden', 'true');
+      }
+      if (cartCount) {
+        cartCount.textContent = count > 0 ? String(count) : '0';
+        cartCount.hidden = count <= 0;
+      }
+    }
+
+    applyCartToggleState(cartItemCountFromCache());
 
     var token = String(localStorage.getItem('session_token') || '').trim();
     var hasToken = !!token && token !== 'null' && token !== 'undefined';
@@ -340,7 +387,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260326-navfast4"></script>
-<script src="/static/shop-cart.js?v=20260326-cartv4"></script>
+<script src="/static/nav-auth.js?v=20260326-navfast5"></script>
+<script src="/static/shop-cart.js?v=20260326-cartv5"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

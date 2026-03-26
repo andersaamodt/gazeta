@@ -44,10 +44,10 @@
   }
 
   var slug = String(
-    root.getAttribute('data-page-slug') ||
-    slugFromPathname(window.location.pathname) ||
     query.get('page_slug') ||
     query.get('slug') ||
+    slugFromPathname(window.location.pathname) ||
+    root.getAttribute('data-page-slug') ||
     'index'
   ).trim() || 'index';
 
@@ -78,6 +78,49 @@
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeTimer = 0;
   var markedUpgradeAttempts = 0;
+
+  function templateRefreshRequested() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get('__template_refresh') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function reloadForTemplateRefresh() {
+    try {
+      var next = new URL(window.location.href);
+      next.searchParams.set('__template_refresh', '1');
+      window.location.replace(next.toString());
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function clearTemplateRefreshParam() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('__template_refresh') !== '1') {
+        return;
+      }
+      url.searchParams.delete('__template_refresh');
+      var next = url.pathname;
+      var queryString = url.searchParams.toString();
+      if (queryString) {
+        next += '?' + queryString;
+      }
+      if (url.hash) {
+        next += url.hash;
+      }
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', next);
+      }
+    } catch (_err) {
+      // Ignore URL cleanup failures.
+    }
+  }
 
   function escapeHtml(text) {
     return String(text || '')
@@ -978,9 +1021,20 @@
         window.location.replace('/pages/blog.html');
         return;
       }
+      var payloadType = String((payload && payload.page_type) || '').trim().toLowerCase();
+      if (payloadType && payloadType !== 'nip23' && payloadType !== 'blog') {
+        if (!templateRefreshRequested() && reloadForTemplateRefresh()) {
+          return;
+        }
+        throw new Error('This page shell does not match its configured type. Reload failed.');
+      }
       if (!isExpectedPayload(payload)) {
+        if (!templateRefreshRequested() && reloadForTemplateRefresh()) {
+          return;
+        }
         throw new Error('Unexpected page payload for long-form page');
       }
+      clearTemplateRefreshParam();
       state.payload = payload;
       state.draft = normalizeDraftState(payload.state || { title: '', content: '' });
       state.navTitle = String(payload.nav_title || '').trim();
@@ -994,7 +1048,7 @@
       markInitialContentPainted();
     }).catch(function (err) {
       if (els.content) {
-        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load page') + '</p>';
+        els.content.innerHTML = '<div class="list-runtime-error" role="status"><strong>Could not load this page.</strong><span>' + escapeHtml(err.message || 'Please refresh and try again.') + '</span></div>';
       }
     }).finally(function () {
       markHydrationPageReady();

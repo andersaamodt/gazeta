@@ -66,12 +66,16 @@
     if (!slug) {
       return null;
     }
+    var rawQty = Math.floor(parseNumber(src && src.qty, 1));
+    if (!isFinite(rawQty) || rawQty <= 0) {
+      return null;
+    }
     var unitPrice = parseNumber(src && src.unit_price, 0);
     var unitCryptoPrice = parseNumber(src && src.unit_crypto_price, unitPrice);
     return {
       slug: slug,
       title: String(src && src.title || slug),
-      qty: clampQty(src && src.qty),
+      qty: clampQty(rawQty),
       unit_price: unitPrice,
       unit_crypto_price: unitCryptoPrice,
       currency: String(src && src.currency || 'USD').toUpperCase(),
@@ -165,6 +169,10 @@
       closeDrawer(true);
       els.toggle.hidden = true;
       els.toggle.setAttribute('aria-hidden', 'true');
+      if (els.count) {
+        els.count.textContent = '0';
+        els.count.hidden = true;
+      }
       return;
     }
     els.toggle.hidden = false;

@@ -98,6 +98,49 @@
   var markedUpgradeTimer = 0;
   var markedUpgradeAttempts = 0;
 
+  function templateRefreshRequested() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get('__template_refresh') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function reloadForTemplateRefresh() {
+    try {
+      var next = new URL(window.location.href);
+      next.searchParams.set('__template_refresh', '1');
+      window.location.replace(next.toString());
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function clearTemplateRefreshParam() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('__template_refresh') !== '1') {
+        return;
+      }
+      url.searchParams.delete('__template_refresh');
+      var next = url.pathname;
+      var queryString = url.searchParams.toString();
+      if (queryString) {
+        next += '?' + queryString;
+      }
+      if (url.hash) {
+        next += url.hash;
+      }
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', next);
+      }
+    } catch (_err) {
+      // Ignore URL cleanup failures.
+    }
+  }
+
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
@@ -2747,9 +2790,20 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
+      var payloadType = String((payload && payload.page_type) || '').trim().toLowerCase();
+      if (payloadType && payloadType !== 'list' && payloadType !== 'icon-gallery') {
+        if (!templateRefreshRequested() && reloadForTemplateRefresh()) {
+          return;
+        }
+        throw new Error('This page shell does not match its configured type. Reload failed.');
+      }
       if (!isExpectedPayload(payload)) {
+        if (!templateRefreshRequested() && reloadForTemplateRefresh()) {
+          return;
+        }
         throw new Error('Unexpected page payload for list page');
       }
+      clearTemplateRefreshParam();
       state.payload = payload;
       state.draft = readEditableStateFromPayload();
       state.navTitle = String(payload.nav_title || '').trim();
@@ -2773,7 +2827,7 @@
       markInitialContentPainted();
     } catch (err) {
       if (els.content) {
-        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err.message || 'Could not load list page') + '</p>';
+        els.content.innerHTML = '<div class="list-runtime-error" role="status"><strong>Could not load this page.</strong><span>' + escapeHtml(err.message || 'Please refresh and try again.') + '</span></div>';
       }
     } finally {
       markHydrationPageReady();

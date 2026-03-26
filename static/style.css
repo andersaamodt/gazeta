@@ -632,6 +632,11 @@ header h1 {
   cursor: pointer;
 }
 
+.nav-cart-toggle[hidden],
+.nav-cart-toggle[aria-hidden="true"] {
+  display: none !important;
+}
+
 .nav-cart-toggle:hover,
 .nav-cart-toggle:focus-visible {
   border-color: var(--accent);
@@ -650,6 +655,10 @@ header h1 {
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0 0.22rem;
+}
+
+.nav-cart-count[hidden] {
+  display: none !important;
 }
 
 :root {
@@ -1298,6 +1307,28 @@ body.nav-cart-open .nav-cart-drawer {
 
 .list-validation {
   margin: 1rem 0 0.9rem;
+}
+
+.list-runtime-error {
+  display: inline-grid;
+  gap: 0.25rem;
+  margin: 0.8rem 0 0;
+  padding: 0.62rem 0.74rem;
+  border: 1px solid var(--status-error-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--status-error-bg) 88%, #fff 12%);
+  color: var(--status-error-text);
+}
+
+.list-runtime-error strong {
+  color: var(--status-error-text);
+  line-height: 1.2;
+}
+
+.list-runtime-error span {
+  color: var(--status-error-text);
+  opacity: 0.95;
+  line-height: 1.35;
 }
 
 .list-validation-block {

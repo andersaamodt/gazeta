@@ -8,7 +8,36 @@
     return;
   }
 
-  var slug = String(root.getAttribute('data-blog-slug') || 'blog').trim() || 'blog';
+  function slugFromPathname(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path || path === '/' || path === '/pages/index' || path === '/pages/index.html') {
+      return '';
+    }
+    path = path.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!path) {
+      return '';
+    }
+    if (path.indexOf('pages/') === 0) {
+      path = path.slice('pages/'.length);
+      path = path.replace(/\.html?$/i, '');
+    }
+    path = path.replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    if (!path || path === 'index') {
+      return '';
+    }
+    return path;
+  }
+
+  var querySlug = '';
+  try {
+    var params = new URLSearchParams(window.location.search);
+    querySlug = String(params.get('page_slug') || params.get('slug') || '').trim();
+  } catch (_queryErr) {
+    querySlug = '';
+  }
+  var pathSlug = slugFromPathname(window.location.pathname || '');
+  var attrSlug = String(root.getAttribute('data-blog-slug') || root.getAttribute('data-page-slug') || '').trim();
+  var slug = String(querySlug || pathSlug || attrSlug || 'blog').trim() || 'blog';
   var els = {
     title: document.getElementById('blog-page-title'),
     description: document.getElementById('blog-page-description'),
@@ -71,6 +100,49 @@
   var panelHideTimer = null;
   var settingsHideTimer = null;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
+
+  function templateRefreshRequested() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get('__template_refresh') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function reloadForTemplateRefresh() {
+    try {
+      var next = new URL(window.location.href);
+      next.searchParams.set('__template_refresh', '1');
+      window.location.replace(next.toString());
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function clearTemplateRefreshParam() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('__template_refresh') !== '1') {
+        return;
+      }
+      url.searchParams.delete('__template_refresh');
+      var next = url.pathname;
+      var query = url.searchParams.toString();
+      if (query) {
+        next += '?' + query;
+      }
+      if (url.hash) {
+        next += url.hash;
+      }
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', next);
+      }
+    } catch (_err) {
+      // Ignore URL cleanup failures.
+    }
+  }
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -2020,6 +2092,14 @@
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     }).then(function (data) {
+      var payloadType = String((data && data.page_type) || '').trim().toLowerCase();
+      if (payloadType && payloadType !== 'blog') {
+        if (!templateRefreshRequested() && reloadForTemplateRefresh()) {
+          return;
+        }
+        throw new Error('This page shell does not match its configured type. Reload failed.');
+      }
+      clearTemplateRefreshParam();
       state.payload = data;
       state.draft = normalizePageState((data && data.state) || { title: titleizeSlug(slug) });
       state.navTitle = String((data && data.nav_title) || '').trim();
