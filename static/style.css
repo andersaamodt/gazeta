@@ -2347,10 +2347,10 @@ body.nav-cart-open {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid var(--tag-border, #c8d4f3);
-  background: var(--tag-muted-bg, #f6f8ff);
-  color: var(--tag-muted-text, #5f6f92);
-  -webkit-text-fill-color: var(--tag-muted-text, #5f6f92);
+  border: 1px solid hsl(var(--marker-pill-h, 220), 42%, 74%);
+  background: hsl(var(--marker-pill-h, 220), 56%, 92%);
+  color: hsl(var(--marker-pill-h, 220), 36%, 28%);
+  -webkit-text-fill-color: hsl(var(--marker-pill-h, 220), 36%, 28%);
   padding: 0.08rem 0.44rem;
   font-size: 0.72rem;
   line-height: 1.15;

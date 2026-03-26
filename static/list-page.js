@@ -835,6 +835,20 @@
     return tokens;
   }
 
+  function markerHueFromText(text) {
+    var src = String(text || '');
+    var hash = 0;
+    for (var i = 0; i < src.length; i += 1) {
+      hash = ((hash << 5) - hash) + src.charCodeAt(i);
+      hash |= 0;
+    }
+    var hue = Math.abs(hash % 360);
+    if (!isFinite(hue)) {
+      return 0;
+    }
+    return hue;
+  }
+
   function uniqueMarkerValues(entries) {
     var seen = {};
     var markers = [];
@@ -1705,7 +1719,8 @@
       var markerTokens = markerTokensFromEntry(entry);
       if (markerTokens.length) {
         markerPills = '<span class="list-entry-marker-pills">' + markerTokens.map(function (marker) {
-          return '<span class="list-entry-marker-pill">' + escapeHtml(marker) + '</span>';
+          var hue = markerHueFromText(marker);
+          return '<span class="list-entry-marker-pill" style="--marker-pill-h:' + String(hue) + ';">' + escapeHtml(marker) + '</span>';
         }).join('') + '</span>';
       }
     }
