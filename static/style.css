@@ -7063,6 +7063,10 @@ button.list-inline-edit-link:focus-visible:not(:disabled),
   display: inline-block !important;
 }
 
+.list-page-shell .list-entry-inline [role="button"].list-inline-open.list-inline-markdown {
+  padding-left: calc(0.1rem + var(--list-depth-indent)) !important;
+}
+
 .list-page-shell [role="button"].list-inline-open:hover,
 .list-page-shell [role="button"].list-inline-open:focus-visible,
 .list-page-shell [role="button"].list-inline-open:active {
