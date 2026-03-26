@@ -7386,6 +7386,61 @@ body.nostr-publish-dialog-open {
 }
 
 /* Final mobile nav safety: prevent search/actions from covering center links. */
+@media (max-width: 1100px) and (min-width: 701px) {
+  nav.site-nav {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto;
+    row-gap: 0.34rem;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  nav.site-nav .nav-site-signature {
+    display: none !important;
+  }
+
+  nav.site-nav .nav-right {
+    grid-row: 1;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.4rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav .nav-right::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav.site-nav .nav-search {
+    flex: 0 1 clamp(148px, 26vw, 240px) !important;
+    min-width: 132px !important;
+    max-width: 240px !important;
+    width: auto !important;
+  }
+
+  nav.site-nav .nav-center {
+    grid-row: 2;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav .nav-center::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Final mobile nav safety: prevent search/actions from covering center links. */
 @media (max-width: 700px) {
   nav.site-nav {
     display: grid !important;
