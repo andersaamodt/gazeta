@@ -298,7 +298,7 @@ title: ""
 </div>
 
 <div id="compose-media-tools" class="compose-media-tools" hidden>
-<div id="compose-media-actions" class="compose-media-actions">
+<div id="compose-media-actions" class="compose-media-actions" hidden aria-hidden="true">
 <button type="button" id="btn-compose-capture" class="unobtrusive-icon-button compose-media-btn">Take Photo/Video</button>
 <button type="button" id="btn-compose-upload-media" class="unobtrusive-icon-button compose-media-btn">Upload Photo/Video</button>
 <button type="button" id="btn-compose-upload-file" class="unobtrusive-icon-button compose-media-btn">Upload Attachment/File</button>
@@ -1940,7 +1940,8 @@ body {
 
 .compose-post-type-toolbar {
   display: flex;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   flex-wrap: nowrap;
   gap: 0;
   align-items: stretch;
@@ -1951,8 +1952,8 @@ body {
 }
 
 .compose-post-type-pill {
-  flex: 1 1 0;
-  min-width: 2.2rem;
+  flex: 0 0 3.2rem;
+  min-width: 3.2rem;
   height: 2.2rem;
   padding: 0;
   border: 0;
@@ -2049,6 +2050,10 @@ body {
 .compose-link-fields {
   display: grid;
   gap: 0.32rem;
+}
+
+#compose-content-row.is-hidden {
+  display: none !important;
 }
 
 .compose-shortform-meter {

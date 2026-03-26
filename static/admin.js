@@ -1714,6 +1714,37 @@
     }
   }
 
+  function openComposePickerForType(postType) {
+    const type = normalizeComposePostType(postType);
+    if (type === 'capture-media' && els.capturePicker) {
+      els.capturePicker.click();
+      return;
+    }
+    if (type === 'upload-media' && els.imagePicker) {
+      els.imagePicker.click();
+      return;
+    }
+    if (type === 'attachment' && els.filePicker) {
+      state.filePickerContext = 'compose-attachment';
+      els.filePicker.click();
+      return;
+    }
+    if (type === 'audio-note' && els.audioPicker) {
+      els.audioPicker.click();
+      return;
+    }
+    if (type === 'link-share' && els.composeLinkUrl) {
+      window.setTimeout(function () {
+        if (els.composeLinkUrl && typeof els.composeLinkUrl.focus === 'function') {
+          els.composeLinkUrl.focus();
+          if (typeof els.composeLinkUrl.select === 'function') {
+            els.composeLinkUrl.select();
+          }
+        }
+      }, 0);
+    }
+  }
+
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
     const linkShare = type === 'link-share';
@@ -1737,6 +1768,7 @@
     }
     if (els.composeContentRow) {
       els.composeContentRow.hidden = linkShare;
+      els.composeContentRow.classList.toggle('is-hidden', linkShare);
     }
     if (els.composeNostrTargetPill) {
       const label = composeNostrTargetLabel(type);
@@ -1796,6 +1828,9 @@
     }
     state.composePostType = normalized;
     syncComposePostTypeUi();
+    if (opts.interactive) {
+      openComposePickerForType(normalized);
+    }
     if (opts.queueAutosave !== false) {
       queueAutosave('saving');
     }
@@ -6807,7 +6842,7 @@
           return;
         }
         const nextType = String(button.getAttribute('data-post-type') || '');
-        setComposePostType(nextType, { queueAutosave: true, syncUi: true });
+        setComposePostType(nextType, { queueAutosave: true, syncUi: true, interactive: true });
       });
     }
     if (els.composeCaptureButton && els.capturePicker) {
