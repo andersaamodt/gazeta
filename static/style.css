@@ -1906,11 +1906,11 @@ body.nav-cart-open {
 .list-inline-head {
   display: grid;
   grid-template-columns: var(--list-inline-grid-columns);
-  gap: 0.45rem;
+  gap: 0.32rem;
   align-items: center;
   margin: 0 0 0.5rem;
   padding: 0 0.35rem;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   color: var(--muted-text, #4f617f);
   text-transform: none;
   letter-spacing: 0.01em;
@@ -1934,7 +1934,7 @@ body.nav-cart-open {
 .list-entry-inline {
   display: grid;
   grid-template-columns: var(--list-inline-grid-columns);
-  gap: 0.45rem;
+  gap: 0.32rem;
   align-items: center;
   margin: 0 0 0.46rem;
   margin-left: calc(var(--list-depth, 0) * 2.1rem);
@@ -1945,7 +1945,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell[data-page-type="list"] {
-  --list-inline-grid-columns: 2rem 2.1rem minmax(180px, 28rem) minmax(150px, 22rem) minmax(130px, 180px) minmax(240px, 2fr) minmax(136px, 190px);
+  --list-inline-grid-columns: 2rem 1.8rem minmax(240px, 1.9fr) minmax(170px, 1.2fr) minmax(92px, 0.62fr) minmax(160px, 1fr) minmax(84px, max-content);
 }
 
 .list-entry-inline.is-active {
@@ -1992,14 +1992,26 @@ body.nav-cart-open {
 .list-entry-inline .list-inline-markdown .list-inline-value {
   display: block;
   min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  font-size: 0.94rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-entry-inline .list-inline-markdown a {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  display: inline-block;
+  max-width: 100%;
+  font-size: 0.94rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-entry-inline .list-inline-markdown input[type="text"] {
+  font-size: 0.94rem;
+  line-height: 1.2;
 }
 
 .list-inline-handle {
