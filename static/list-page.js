@@ -882,10 +882,17 @@
     var hueSequence = [8, 188, 98, 278, 38, 218, 128, 308, 68, 248, 158, 338, 23, 203, 113, 293, 53, 233, 143, 323, 83, 263, 173, 353];
     var hue = hueSequence[normalized % hueSequence.length];
     hue = (hue + (((normalized >>> 5) % 7) - 3) + 360) % 360;
-    var saturationBands = [72, 80, 88, 94];
-    var lightnessBands = [78, 84, 88];
+    var saturationBands = [60, 68, 76, 84];
+    var lightnessBands = [82, 86, 90];
     var saturation = saturationBands[(normalized >>> 11) % saturationBands.length];
     var lightness = lightnessBands[(normalized >>> 17) % lightnessBands.length];
+    if (hue >= 42 && hue <= 85) {
+      saturation += 4;
+      lightness -= 2;
+    } else if (hue >= 165 && hue <= 210) {
+      saturation += 2;
+      lightness -= 1;
+    }
     return {
       hue: hue,
       saturation: saturation,
