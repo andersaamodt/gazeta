@@ -336,6 +336,7 @@
     document.title = title;
     if (els.title) {
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
+      els.title.hidden = false;
     }
     if (!els.description) {
       return;
