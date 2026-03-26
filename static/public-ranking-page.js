@@ -36,6 +36,7 @@
     payload: null,
     draft: null,
     editMode: false,
+    settingsPanelReveal: false,
     activeHeadField: '',
     navTitle: '',
     navTitleEditing: false,
@@ -1051,10 +1052,12 @@
     if (!isAdmin() || !state.editMode) {
       return '';
     }
+    var revealSettings = !!state.settingsPanelReveal;
+    state.settingsPanelReveal = false;
     var html = '';
     var cooldownMinutes = Math.max(1, Math.ceil((Number(renderState.vote_cooldown_seconds || 86400) || 86400) / 60));
-    html += '<section class="public-ranking-editor">';
-    html += '<h3>Ranking Settings</h3>';
+    html += '<section class="public-ranking-editor nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
+    html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="public-ranking-editor-grid">';
     html += '<label><span>Vote cooldown (minutes)</span><input type="number" id="public-ranking-edit-cooldown" min="1" step="1" value="' + escapeHtml(String(cooldownMinutes)) + '"></label>';
     html += '<label><span>Allow signed-in Nostr users to add entries</span><input type="checkbox" id="public-ranking-edit-allow-open"' + (normalizeSubmissionMode(renderState.submission_mode) === 'open' ? ' checked' : '') + '></label>';
@@ -1625,6 +1628,11 @@
             state.activeHeadField = '';
           }
           state.editMode = !state.editMode;
+          if (state.editMode) {
+            state.settingsPanelReveal = true;
+          } else {
+            state.settingsPanelReveal = false;
+          }
           if (!state.editMode) {
             state.navTitleEditing = false;
             state.navTitleInput = '';

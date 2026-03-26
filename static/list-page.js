@@ -70,6 +70,7 @@
     markerFilterExclude: [],
     viewModeOverride: '',
     createProductBusyUid: '',
+    settingsPanelReveal: false,
     productPriceBySlug: {},
     productPriceBatchPending: {},
     uidCounter: 1,
@@ -2046,11 +2047,15 @@
     var groupedModes = ['year', 'first_letter', 'month', 'marker'];
     var isGrouped = groupedModes.indexOf(String(state.draft.group_by || '')) >= 0;
     var pendingUnedited = isPendingNewEntryUnedited();
+    var revealSettings = !!state.settingsPanelReveal;
+    state.settingsPanelReveal = false;
     var entryElements = (Array.isArray(elements) ? elements : []).filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     });
     var workingElements = entryElements.slice();
     var addTitle = pendingUnedited ? 'Edit the new entry before adding another' : 'Add entry';
+    html += '<section class="nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
+    html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
     html += '<div class="list-inline-toolbar-left"><div class="list-inline-edit-controls">';
     html += '<label><span>Group by</span><select id="list-admin-group-by">';
@@ -2065,6 +2070,7 @@
     html += '</div></div>';
     html += '<div class="list-inline-toolbar-right"><button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></div>';
     html += '</div>';
+    html += '</section>';
     if (state.draft.show_marker_filters) {
       html += renderMarkerFilters(entryElements);
       workingElements = applyMarkerFilters(entryElements);
@@ -2391,12 +2397,16 @@
             removedTransient = pruneTransientEntries();
           }
           state.editMode = !state.editMode;
+          if (state.editMode) {
+            state.settingsPanelReveal = true;
+          }
           if (!state.editMode) {
             state.activeEntryUid = '';
             state.activeCellField = '';
             state.rowMenuOpenUid = '';
             state.navTitleEditing = false;
             state.navTitleInput = '';
+            state.settingsPanelReveal = false;
           }
           renderList();
           renderAdmin();
