@@ -21,6 +21,26 @@
 
   removeLegacyTitleBlock();
 
+  function slugFromPathname(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path || path === '/' || path === '/pages/index' || path === '/pages/index.html') {
+      return '';
+    }
+    path = path.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!path) {
+      return '';
+    }
+    if (path.indexOf('pages/') === 0) {
+      path = path.slice('pages/'.length);
+      path = path.replace(/\.html?$/i, '');
+    }
+    path = path.replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    if (!path || path === 'index') {
+      return '';
+    }
+    return path;
+  }
+
   var querySlug = '';
   try {
     var params = new URLSearchParams(window.location.search);
@@ -28,8 +48,10 @@
   } catch (_err) {
     querySlug = '';
   }
+  var pathSlug = slugFromPathname(window.location.pathname || '');
+  var attrSlug = String(root.getAttribute('data-list-slug') || '').trim();
 
-  var slug = String(root.getAttribute('data-list-slug') || querySlug || 'list').trim() || 'list';
+  var slug = String(querySlug || pathSlug || attrSlug || 'list').trim() || 'list';
   var els = {
     title: document.getElementById('list-page-title'),
     description: document.getElementById('list-page-description'),
