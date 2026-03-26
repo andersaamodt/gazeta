@@ -883,18 +883,22 @@
     normalized = Math.imul(normalized, 3266489909);
     normalized ^= (normalized >>> 16);
     var normalPalette = [
-      { hue: 222, saturation: 66, lightness: 86 }, // blue
-      { hue: 146, saturation: 56, lightness: 85 }, // green
-      { hue: 190, saturation: 60, lightness: 85 }, // cyan
-      { hue: 34, saturation: 64, lightness: 86 },  // orange
-      { hue: 348, saturation: 58, lightness: 87 }, // red
-      { hue: 272, saturation: 54, lightness: 87 }, // purple
-      { hue: 96, saturation: 58, lightness: 86 },  // lime
-      { hue: 206, saturation: 62, lightness: 86 }, // sky
-      { hue: 18, saturation: 58, lightness: 86 },  // terracotta
-      { hue: 166, saturation: 50, lightness: 86 }, // mint
-      { hue: 238, saturation: 52, lightness: 87 }, // indigo
-      { hue: 50, saturation: 60, lightness: 86 }   // amber
+      { hue: 355, saturation: 58, lightness: 87 }, // red
+      { hue: 16, saturation: 60, lightness: 86 },  // terracotta
+      { hue: 30, saturation: 64, lightness: 86 },  // orange
+      { hue: 44, saturation: 66, lightness: 86 },  // amber
+      { hue: 58, saturation: 62, lightness: 86 },  // yellow
+      { hue: 82, saturation: 50, lightness: 86 },  // olive
+      { hue: 112, saturation: 54, lightness: 85 }, // green
+      { hue: 158, saturation: 50, lightness: 86 }, // mint
+      { hue: 186, saturation: 56, lightness: 85 }, // cyan
+      { hue: 218, saturation: 62, lightness: 86 }, // blue
+      { hue: 244, saturation: 52, lightness: 87 }, // indigo
+      { hue: 274, saturation: 54, lightness: 87 }, // purple
+      { hue: 308, saturation: 56, lightness: 87 }, // magenta
+      { hue: 334, saturation: 54, lightness: 87 }, // rose
+      { hue: 130, saturation: 48, lightness: 86 }, // leaf
+      { hue: 204, saturation: 54, lightness: 86 }  // sky
     ];
     var oddPalette = [
       { hue: 316, saturation: 56, lightness: 87 }, // magenta pastel
@@ -902,9 +906,11 @@
       { hue: 12, saturation: 56, lightness: 87 },  // salmon
       { hue: 84, saturation: 52, lightness: 86 },  // olive pastel
       { hue: 254, saturation: 50, lightness: 88 }, // violet blue
-      { hue: 168, saturation: 48, lightness: 87 }  // seafoam
+      { hue: 168, saturation: 48, lightness: 87 }, // seafoam
+      { hue: 36, saturation: 48, lightness: 88 },  // sand
+      { hue: 210, saturation: 48, lightness: 88 }  // steel pastel
     ];
-    var preferNormal = ((normalized >>> 3) % 10) < 8; // 80% normal colors.
+    var preferNormal = ((normalized >>> 3) % 10) < 7; // 70% normal colors.
     var palette = preferNormal ? normalPalette : oddPalette;
     var swatch = palette[(normalized >>> 1) % palette.length];
     var hue = swatch.hue;
