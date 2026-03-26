@@ -1,23 +1,4 @@
-<link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css" data-theme-href="/static/themes/archmage.css" />
-<script>
-(function () {
-  try {
-    var theme = String(localStorage.getItem('wizardry_blog_theme_v1') || '').trim().toLowerCase();
-    if (!theme || !/^[a-z-]+$/.test(theme)) {
-      return;
-    }
-    var link = document.getElementById('theme-stylesheet');
-    if (!link) {
-      return;
-    }
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css';
-    link.href = href;
-    link.setAttribute('data-theme-href', href);
-  } catch (_err) {
-    // Keep default theme on storage failures.
-  }
-})();
-</script>
+<link id="theme-stylesheet" rel="stylesheet" href="/cgi/blog-theme.css" data-theme-href="/cgi/blog-theme.css" />
 <script defer src="/static/post-context.js"></script>
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
 <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />

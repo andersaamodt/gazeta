@@ -11,7 +11,7 @@
   function slugFromPathname(pathname) {
     var path = String(pathname || '').trim();
     if (!path || path === '/' || path === '/pages/index' || path === '/pages/index.html') {
-      return '';
+      return 'index';
     }
     path = path.replace(/^\/+/, '').replace(/\/+$/, '');
     if (!path) {
@@ -23,7 +23,7 @@
     }
     path = path.replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
     if (!path || path === 'index') {
-      return '';
+      return 'index';
     }
     return path;
   }
