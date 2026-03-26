@@ -5400,22 +5400,21 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   margin-top: auto;
   padding-top: 0.65rem;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.45rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .blog-post-item .post-card-footer .tags {
   margin-top: 0;
   padding-top: 0;
   text-align: left;
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 100%;
 }
 
 .blog-post-item .post-card-comments-count {
