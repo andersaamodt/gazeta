@@ -635,8 +635,7 @@ blog_nip23_validate_and_enrich_state_json() {
     | (.price // "" | tostring) as $price
     | (.currency // "USD" | tostring | ascii_upcase) as $currency
     | (.purchase_endpoint // "" | tostring) as $purchase_endpoint
-    {
-      errors: (
+    | (
         []
         + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
         + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
@@ -645,20 +644,11 @@ blog_nip23_validate_and_enrich_state_json() {
         + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
-      ),
+      ) as $errors
+    | {
+      errors: $errors,
       warnings: [],
-      can_publish: (
-        (
-          []
-          + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
-          + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
-          + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
-          + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
-          + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
-          + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
-          + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
-        ) | length
-      ) == 0
+      can_publish: (($errors | length) == 0)
     }
   ' 2>/dev/null || printf '{"errors":["Could not validate page state"],"warnings":[],"can_publish":false}\n'
 }

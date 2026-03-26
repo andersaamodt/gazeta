@@ -368,11 +368,23 @@ strong {
 .list-validation-block.is-error {
   background: #7d2b22;
   border-color: #ab4538;
+  color: #f9f1ef;
 }
 
 .list-validation-block.is-warn {
   background: #5f4a1b;
   border-color: #8d6a22;
+  color: #f7efd8;
+}
+
+.list-validation-block.is-error strong,
+.list-validation-block.is-error li {
+  color: #f9f1ef;
+}
+
+.list-validation-block.is-warn strong,
+.list-validation-block.is-warn li {
+  color: #f7efd8;
 }
 
 .list-entry-post-link {
