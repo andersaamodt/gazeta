@@ -2066,6 +2066,10 @@ body.nav-cart-open {
   gap: 0;
 }
 
+.list-entry-inline .list-inline-indent-controls {
+  transform: translateX(var(--list-depth-indent));
+}
+
 .list-inline-indent-btn {
   width: 2rem;
   min-width: 2rem;
