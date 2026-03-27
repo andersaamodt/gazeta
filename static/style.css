@@ -1988,7 +1988,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell[data-page-type="list"] {
-  --list-inline-grid-columns: 1.85rem 1.55rem minmax(0, 7fr) minmax(190px, 1.6fr) minmax(96px, 0.8fr) minmax(320px, 2.2fr) minmax(82px, max-content);
+  --list-inline-grid-columns: 1.85rem 1.55rem minmax(0, 7.9fr) minmax(190px, 1.5fr) minmax(96px, 0.75fr) minmax(320px, 2.15fr) minmax(2.2rem, max-content);
 }
 
 .list-page-shell[data-page-type="icon-gallery"] {
@@ -2154,9 +2154,11 @@ body.nav-cart-open {
 .list-inline-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.24rem;
+  width: 100%;
+  justify-self: end;
 }
 
 .list-inline-row-menu-wrap {
