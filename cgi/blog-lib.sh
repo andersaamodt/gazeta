@@ -3913,9 +3913,9 @@ blog_rel_post_url() {
   file=$1
   rel=${file#"$blog_posts_dir/"}
   rel_slug=${rel%.md}
-  # Route through the opener CGI so localhost/dev works without web-server
-  # rewrite rules while keeping extensionless post URLs.
-  printf '/cgi/blog-open-post/posts/%s\n' "$rel_slug"
+  # Route through opener CGI query arg for reliable localhost/dev behavior
+  # without web-server rewrite/PATH_INFO dependencies.
+  printf '/cgi/blog-open-post?path=posts/%s\n' "$rel_slug"
 }
 
 blog_rel_post_html_url() {
