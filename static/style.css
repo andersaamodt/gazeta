@@ -1964,8 +1964,13 @@ body.nav-cart-open {
 }
 
 .list-inline-head-depth {
+  display: block;
+}
+
+.list-inline-head-markdown {
   display: inline-flex;
   align-items: center;
+  gap: 0.42rem;
 }
 
 .list-entries-inline {
@@ -2499,7 +2504,7 @@ body.nav-cart-open {
 .list-inline-history-controls {
   display: inline-flex;
   align-items: center;
-  gap: 0.24rem;
+  gap: 0.2rem;
 }
 
 .list-inline-history-row {
@@ -2527,8 +2532,8 @@ body.nav-cart-open {
 }
 
 .list-inline-history-icon-btn svg {
-  width: 1.22rem;
-  height: 1.22rem;
+  width: 1.28rem;
+  height: 1.28rem;
   display: block;
 }
 
