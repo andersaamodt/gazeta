@@ -1174,6 +1174,36 @@
       });
   }
 
+  function resolveCurrentPostPathFromLocation() {
+    if (!isPostPage(window.location.pathname)) {
+      return '';
+    }
+    if (window.location.pathname === '/cgi/blog-open-post' || window.location.pathname.indexOf('/cgi/blog-open-post/') === 0) {
+      var query = new URLSearchParams(window.location.search || '');
+      var fromPathInfo = String(window.location.pathname || '').replace(/^\/cgi\/blog-open-post\/?/, '');
+      return normalizePostMdPath(query.get('path') || fromPathInfo || '');
+    }
+    return normalizePostMdPath(window.location.pathname || '');
+  }
+
+  function triggerEarlyPostRouteRepair() {
+    if (!isPostPage(window.location.pathname)) {
+      return false;
+    }
+    var blogRoot = document.getElementById('blog-page-root');
+    if (!blogRoot) {
+      return false;
+    }
+    var resolvedPath = resolveCurrentPostPathFromLocation();
+    if (!resolvedPath) {
+      return false;
+    }
+    currentRelPath = resolvedPath;
+    blogRoot.setAttribute('hidden', 'hidden');
+    maybeRepairWrongPostShell(currentRelPath);
+    return true;
+  }
+
   document.addEventListener('click', function (event) {
     var target = event.target;
     if (!(target instanceof Element)) {
@@ -1281,6 +1311,8 @@
     }
   });
 
-  document.addEventListener('DOMContentLoaded', loadPostContext);
-  window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);
+  if (!triggerEarlyPostRouteRepair()) {
+    document.addEventListener('DOMContentLoaded', loadPostContext);
+    window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);
+  }
 })();
