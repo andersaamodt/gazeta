@@ -5305,10 +5305,11 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .post-single-item .post-single-body {
+  --blog-post-body-measure: 82ch;
   margin-top: 0.18rem;
   margin-left: auto;
   margin-right: auto;
-  max-inline-size: 68ch;
+  max-inline-size: var(--blog-post-body-measure);
   font-size: clamp(1.06rem, 1.02rem + 0.22vw, 1.14rem);
   line-height: 1.82;
   color: color-mix(in srgb, var(--text, #0b132b) 94%, black 6%);
@@ -5556,6 +5557,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 
 .post-summary {
   margin: 0.95rem 0 0;
+  max-inline-size: 82ch;
   line-height: 1.6;
 }
 
