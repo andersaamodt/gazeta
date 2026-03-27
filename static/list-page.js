@@ -2283,6 +2283,17 @@
     return html;
   }
 
+  function listHistoryIconSvg(direction) {
+    if (String(direction || '') === 'redo') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+        '<path d="M13 6h3.7l-1.9-1.9a1 1 0 1 1 1.4-1.4l3.6 3.6a1 1 0 0 1 0 1.4l-3.6 3.6a1 1 0 1 1-1.4-1.4L16.7 8H13a6 6 0 1 0 5.8 7.4 1 1 0 1 1 1.95.45A8 8 0 1 1 13 6Z" fill="currentColor"/>' +
+      '</svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path d="M11 6H7.3l1.9-1.9a1 1 0 1 0-1.4-1.4L4.2 6.3a1 1 0 0 0 0 1.4l3.6 3.6a1 1 0 1 0 1.4-1.4L7.3 8H11a6 6 0 1 1-5.8 7.4 1 1 0 1 0-1.95.45A8 8 0 1 0 11 6Z" fill="currentColor"/>' +
+    '</svg>';
+  }
+
   function renderElementInline(el) {
     var uid = String(el && el._uid || '');
     var rowSelected = uid && uid === state.activeEntryUid;
@@ -2410,16 +2421,12 @@
       return html;
     }
 
-    html += '<div class="list-inline-history-row">';
-    html += '<div class="list-inline-history-controls" role="group" aria-label="Edit history">';
-    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="undo" title="Undo" aria-label="Undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>↶</button>';
-    html += '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>↷</button>';
-    html += '</div>';
-    html += '</div>';
-
     html += '<div class="list-inline-head">';
     html += '<span class="list-inline-head-handle"></span>';
-    html += '<span class="list-inline-head-depth" aria-hidden="true"></span>';
+    html += '<span class="list-inline-head-depth"><span class="list-inline-history-controls" role="group" aria-label="Edit history">' +
+      '<button type="button" class="list-inline-history-icon-btn" data-list-action="undo" title="Undo" aria-label="Undo"' + (canUndo ? '' : ' disabled aria-disabled="true"') + '>' + listHistoryIconSvg('undo') + '</button>' +
+      '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>' + listHistoryIconSvg('redo') + '</button>' +
+    '</span></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
     html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
