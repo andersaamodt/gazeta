@@ -79,6 +79,50 @@
     return value;
   }
 
+  function postSlugFromMdPath(mdPath) {
+    var normalized = normalizePostMdPath(mdPath);
+    if (!normalized) {
+      return '';
+    }
+    return normalized.replace(/^posts\//, '').replace(/\.md$/i, '');
+  }
+
+  function maybeRepairWrongPostShell(mdPath) {
+    var blogRoot = document.getElementById('blog-page-root');
+    if (!blogRoot) {
+      return false;
+    }
+    var slug = postSlugFromMdPath(mdPath);
+    if (!slug) {
+      return false;
+    }
+    if (window.__wizardryPostRouteRepairing) {
+      return true;
+    }
+    window.__wizardryPostRouteRepairing = true;
+    var endpoint = '/cgi/blog-open-post?path=' + encodeURIComponent(slug) + '&__route_repair=1';
+    fetch(endpoint, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('repair fetch failed');
+        }
+        return res.text();
+      })
+      .then(function (html) {
+        var text = String(html || '');
+        if (text.indexOf('<html') === -1) {
+          throw new Error('repair payload invalid');
+        }
+        document.open();
+        document.write(text);
+        document.close();
+      })
+      .catch(function () {
+        window.location.replace(endpoint);
+      });
+    return true;
+  }
+
   function filenameFromPostPath(rawPath) {
     return normalizePostFilename(normalizePostMdPath(rawPath));
   }
@@ -1114,6 +1158,9 @@
       currentRelPath = normalizePostMdPath(window.location.pathname || '');
     }
     if (!currentRelPath) {
+      return;
+    }
+    if (maybeRepairWrongPostShell(currentRelPath)) {
       return;
     }
     fetch('/cgi/blog-post-context?path=' + encodeURIComponent(currentRelPath), { credentials: 'same-origin' })

@@ -1,6 +1,24 @@
 (function () {
   'use strict';
 
+  function isPostRoute(pathname) {
+    var path = String(pathname || '');
+    if (/^\/posts\/[^/?#]+\/?$/.test(path)) {
+      return true;
+    }
+    if (/^\/pages\/posts\/[^/?#]+(?:\.html?)?\/?$/.test(path)) {
+      return true;
+    }
+    if (path === '/cgi/blog-open-post' || path.indexOf('/cgi/blog-open-post/') === 0) {
+      return true;
+    }
+    return false;
+  }
+
+  if (isPostRoute(window.location.pathname || '')) {
+    return;
+  }
+
   var CACHE_KEY = 'wizardry_blog_posts_v2';
   var POSTS_CACHE_MAX_AGE_MS = 15000;
   var root = document.getElementById('blog-page-root');
