@@ -3398,9 +3398,8 @@ blog_find_draft_files() {
 
 blog_compute_post_filename() {
   title=$1
-  date_prefix=$(date -u +%Y-%m-%d)
   slug=$(blog_slugify "$title")
-  base="${date_prefix}-${slug}"
+  base="$slug"
   file="$blog_posts_dir/${base}.md"
 
   if [ ! -f "$file" ]; then
