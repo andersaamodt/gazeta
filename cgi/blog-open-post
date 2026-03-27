@@ -79,7 +79,6 @@ fi
 
 rel_html=${rel_md%.md}.html
 rel_slug=${rel_md%.md}
-canonical_url="/posts/$rel_slug"
 html_file="$blog_site_root/build/pages/posts/$rel_html"
 wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
 wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
@@ -89,9 +88,10 @@ if [ ! -f "$html_file" ] && [ -n "$wizardry_dir" ]; then
 fi
 
 if [ -f "$html_file" ]; then
-  http-status 302 "Found"
-  http-header "Location" "$canonical_url"
+  http-status 200 "OK"
+  http-header "Content-Type" "text/html; charset=utf-8"
   http-end-headers
+  cat "$html_file"
   exit 0
 fi
 
