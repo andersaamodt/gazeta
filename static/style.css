@@ -2604,13 +2604,23 @@ body.nav-cart-open {
 
 .list-entry-meta-right {
   margin-left: 0;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: start;
+  justify-content: end;
+  column-gap: 0.26rem;
+  justify-self: end;
+  align-self: start;
+}
+
+.list-entry-meta-pills {
+  min-width: 0;
   display: inline-flex;
   align-items: flex-start;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.32rem;
-  justify-self: end;
-  align-self: start;
 }
 
 .list-entry-marker-pills {
@@ -2723,7 +2733,7 @@ body.nav-cart-open {
 }
 
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-meta-right {
-  align-items: center;
+  align-items: start;
   gap: 0.24rem;
 }
 

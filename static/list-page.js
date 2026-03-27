@@ -2039,7 +2039,8 @@
         '</span>';
     }
     if (markerPills || datePill || readMenu) {
-      rightMeta = '<span class="list-entry-meta-right">' + markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '') + readMenu + '</span>';
+      var metaPills = markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '');
+      rightMeta = '<span class="list-entry-meta-right">' + (metaPills ? '<span class="list-entry-meta-pills">' + metaPills + '</span>' : '') + readMenu + '</span>';
     }
     var linked = postUrl
       ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
