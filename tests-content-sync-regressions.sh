@@ -430,6 +430,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_pages_sy
 assert_file_contains "$ROOT_DIR/includes/head.html" 'meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"' 'document head sets no-store cache control meta'
 assert_file_contains "$ROOT_DIR/includes/head.html" "var ROUTE_REFRESH_PARAM = '__route_refresh';" 'document head defines stale route refresh sentinel'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'function slugsEquivalent(expected, root)' 'document head normalizes index/blog slug equivalence for route checks'
+assert_file_contains "$ROOT_DIR/includes/head.html" "(a === 'list' && b === 'oeuvre')" 'document head treats list and oeuvre slugs as equivalent routes'
 assert_file_contains "$ROOT_DIR/includes/head.html" "if (expectedSlug && rootSlug && !slugsEquivalent(expectedSlug, rootSlug))" 'document head detects route/root slug mismatch with slug-equivalence guard'
 assert_file_contains "$ROOT_DIR/includes/head.html" "document.getElementById('oeuvre-root')" 'document head route slug resolver preserves legacy oeuvre root support'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'showRouteLoadFailure();' 'document head shows explicit route load failure after retry mismatch'
@@ -477,7 +478,10 @@ assert_file_contains "$ROOT_DIR/static/list-page.js" "target.closest('[data-inli
 assert_file_contains "$ROOT_DIR/pages/index.md" 'data-page-slug="index"' 'index shell includes explicit source slug marker for sync'
 assert_file_contains "$ROOT_DIR/pages/list.md" 'data-page-type="list"' 'list source page shell marks list type'
 assert_file_contains "$ROOT_DIR/pages/list.md" 'data-page-type="list"' 'list source page shell marks list type'
+assert_file_contains "$ROOT_DIR/pages/oeuvre.md" 'id="oeuvre-root"' 'legacy oeuvre source page shell uses dedicated oeuvre root id'
+assert_file_contains "$ROOT_DIR/pages/oeuvre.md" '/static/oeuvre.js?v=20260326-pagefix5' 'legacy oeuvre source page shell uses oeuvre runtime alias'
 assert_file_contains "$ROOT_DIR/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
+assert_file_contains "$ROOT_DIR/static/style.css" 'card-bg: var(--post-card-bg-single);' 'shared card-bg token defaults to post-card surface color'
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1820px, calc(100vw - 0.75rem));' 'list page edit-mode body width cap expanded for full table fit'
 assert_file_contains "$ROOT_DIR/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
 assert_file_contains "$ROOT_DIR/static/style.css" 'max-width: min(1780px, calc(100vw - 1rem));' 'list page shell edit-mode max width expanded'
@@ -567,6 +571,32 @@ assert_contains "$legacy_slugs" 'reading-list' 'legacy object-map keeps reading-
 assert_contains "$legacy_slugs" 'contact' 'legacy object-map keeps contact page'
 legacy_list_title=$(printf '%s\n' "$legacy_norm" | jq -r '.pages[]? | select(.slug=="list") | .placeholder_title // ""' 2>/dev/null | head -n 1)
 assert_eq "Oeuvre" "$legacy_list_title" 'legacy object-map preserves custom list title'
+
+# 10c) Legacy pages-map string values and invalid-file load path remain non-destructive.
+legacy_pages_map_cfg=$(jq -cn '{
+  "pages": {
+    "software": "Software",
+    "reading-list": "Reading List",
+    "contact": {"type":"contact","show_in_nav":true,"placeholder_title":"Contact"}
+  }
+}')
+legacy_pages_map_norm=$(blog_nostr_pages_normalize_json "$legacy_pages_map_cfg")
+legacy_pages_map_slugs=$(printf '%s\n' "$legacy_pages_map_norm" | jq -r '.pages[]?.slug' 2>/dev/null | tr '\n' ' ')
+assert_contains "$legacy_pages_map_slugs" 'software' 'legacy pages-map string value keeps software page'
+assert_contains "$legacy_pages_map_slugs" 'reading-list' 'legacy pages-map string value keeps reading-list page'
+legacy_pages_map_software_type=$(printf '%s\n' "$legacy_pages_map_norm" | jq -r '.pages[]? | select(.slug=="software") | .type // ""' 2>/dev/null | head -n 1)
+assert_eq "nip23" "$legacy_pages_map_software_type" 'legacy pages-map string value defaults non-list pages to nip23'
+legacy_pages_map_software_title=$(printf '%s\n' "$legacy_pages_map_norm" | jq -r '.pages[]? | select(.slug=="software") | .placeholder_title // ""' 2>/dev/null | head -n 1)
+assert_eq "Software" "$legacy_pages_map_software_title" 'legacy pages-map string value preserves placeholder title text'
+
+nostr_pages_cfg_path=$(blog_nostr_pages_config_path)
+printf '%s\n' '{ "pages": [ ' > "$nostr_pages_cfg_path"
+invalid_before_cksum=$(cksum "$nostr_pages_cfg_path" | awk '{print $1 ":" $2}')
+invalid_loaded=$(blog_nostr_pages_load_json)
+invalid_after_cksum=$(cksum "$nostr_pages_cfg_path" | awk '{print $1 ":" $2}')
+assert_eq "$invalid_before_cksum" "$invalid_after_cksum" 'load_json does not overwrite invalid nostr-pages file contents'
+invalid_loaded_slugs=$(printf '%s\n' "$invalid_loaded" | jq -r '.pages[]?.slug' 2>/dev/null | tr '\n' ' ')
+assert_contains "$invalid_loaded_slugs" 'blog' 'invalid nostr-pages file still yields in-memory fallback pages'
 
 # 11) Managed source-page sync invariants (unit layer).
 sync_cfg=$(jq -cn '{pages:[

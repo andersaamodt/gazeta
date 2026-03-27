@@ -60,6 +60,7 @@
   --nav-border: var(--border);
   --post-card-bg: #fbfbf7;
   --post-card-bg-single: #fdfdfb;
+  --card-bg: var(--post-card-bg-single);
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.14);
   --danger-soft-strong: rgba(180, 35, 24, 0.2);

@@ -168,6 +168,13 @@ blog_nostr_pages_normalize_json() {
                 (.key | tostring) as $k
                 | if (.value | type) == "object" then
                   (.value + { slug: ((.value.slug // "") | tostring | if length > 0 then . else $k end) })
+                elif (.value | type) == "string" then
+                  {
+                    slug: $k,
+                    type: (if (($k | ascii_downcase) == "list" or ($k | ascii_downcase) == "oeuvre") then "list" else "nip23" end),
+                    show_in_nav: true,
+                    placeholder_title: (.value | tostring)
+                  }
                 else
                   empty
                 end
@@ -260,7 +267,9 @@ blog_nostr_pages_load_json() {
   fi
   normalized=$(blog_nostr_pages_normalize_json "$raw")
   normalized_norm=$(printf '%s\n' "$normalized" | jq -c '.' 2>/dev/null || printf '')
-  if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
+  if [ ! -f "$path" ]; then
+    blog_nostr_pages_save_json "$normalized"
+  elif [ -n "$raw_norm" ] && [ "$raw_norm" != "$normalized_norm" ]; then
     blog_nostr_pages_save_json "$normalized"
   fi
   printf '%s\n' "$normalized"
