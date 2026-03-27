@@ -64,36 +64,39 @@ else
       author="Blog Author"
     fi
 
-    printf '<article class="post-item">\n'
+    printf '<article class="post-item blog-post-item">\n'
     printf '  <div class="post-head">\n'
     printf '    <div class="post-head-main">\n'
     printf '      <h2 class="post-title"><a href="%s">%s</a></h2>\n' \
       "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
-    printf '      <div class="post-author">%s</div>\n' "$(blog_html_escape "$author")"
+    printf '      <div class="blog-post-byline"><div class="post-author">%s</div><span class="post-date">%s</span></div>\n' \
+      "$(blog_html_escape "$author")" "$(blog_html_escape "$pub_date")"
     printf '    </div>\n'
-    printf '    <div class="post-meta"><span class="post-date">%s</span>' "$(blog_html_escape "$pub_date")"
-    if [ "$comment_count" -gt 0 ]; then
-      printf '<span class="post-comments-count">%s comments</span>' "$(blog_html_escape "$comment_count")"
-    else
-      printf '<span class="post-comments-count">0 comments</span>'
-    fi
-    printf '</div>\n'
     printf '  </div>\n'
 
     if [ -n "$summary" ]; then
       printf '  <p class="post-summary">%s</p>\n' "$(blog_html_escape "$summary")"
     fi
 
+    printf '  <div class="blog-post-footer">\n'
     if [ -n "$tags" ]; then
-      printf '  <div class="tags">\n'
+      printf '    <div class="tags blog-post-tags">\n'
       printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
         clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
         [ -n "$clean" ] || continue
-        printf '    <a href="/pages/tags.html#%s" class="tag">%s</a>\n' \
+        printf '      <a href="/pages/tags.html#%s" class="tag">%s</a>\n' \
           "$(blog_html_escape "$clean")" "$(blog_html_escape "$clean")"
       done
-      printf '  </div>\n'
+      printf '    </div>\n'
+    else
+      printf '    <div class="blog-post-tags blog-post-tags-empty"></div>\n'
     fi
+    if [ "$comment_count" -gt 0 ]; then
+      printf '    <span class="post-comments-count">%s comments</span>\n' "$(blog_html_escape "$comment_count")"
+    else
+      printf '    <span class="post-comments-count">0 comments</span>\n'
+    fi
+    printf '  </div>\n'
 
     printf '</article>\n\n'
   done < "$posts_tmp"

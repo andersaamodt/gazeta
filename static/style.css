@@ -5448,6 +5448,54 @@ footer {
   margin-top: 0.6rem;
 }
 
+.blog-post-item .blog-post-byline {
+  margin-top: 0.18rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.62rem;
+}
+
+.blog-post-item .blog-post-byline .post-author {
+  margin-top: 0;
+}
+
+.blog-post-item .blog-post-byline .post-date {
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.blog-post-item .blog-post-footer {
+  margin-top: auto;
+  padding-top: 0.85rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.62rem;
+}
+
+.blog-post-item .blog-post-tags {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+}
+
+.blog-post-item .blog-post-tags .tag {
+  margin: 0;
+}
+
+.blog-post-item .blog-post-footer .post-comments-count {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--light-text);
+  font-size: 0.78rem;
+}
+
 .blog-type-pill,
 .blog-year-pill {
   display: inline-flex;
