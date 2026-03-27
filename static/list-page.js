@@ -307,6 +307,7 @@
     renderAdmin();
     renderValidation();
     markInitialContentPainted();
+    markHydrationPageReady();
     return true;
   }
 

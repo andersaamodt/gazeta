@@ -235,14 +235,29 @@
     }
   }
 
-  function renderFromBootstrapCache() {
-    var cachedPayload = readBootstrapCache();
-    if (!cachedPayload) {
+  function readPrerenderBootstrap() {
+    try {
+      var allPayloads = window.__wizardryNostrPageBootstrap;
+      if (!allPayloads || typeof allPayloads !== 'object') {
+        return null;
+      }
+      var payload = allPayloads[slug];
+      if (!isExpectedPayload(payload)) {
+        return null;
+      }
+      return payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function renderFromBootstrapPayload(payload) {
+    if (!payload || !isExpectedPayload(payload)) {
       return false;
     }
-    state.payload = cachedPayload;
-    state.draft = normalizeDraftState((cachedPayload && cachedPayload.state) || { title: '', description: '', rows: [] });
-    state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
+    state.payload = payload;
+    state.draft = normalizeDraftState((payload && payload.state) || { title: '', description: '', rows: [] });
+    state.navTitle = String((payload && payload.nav_title) || '').trim();
     state.navTitleEditing = false;
     state.navTitleInput = '';
     state.navTitleBusy = false;
@@ -254,6 +269,26 @@
     renderAll();
     markInitialContentPainted();
     markHydrationPageReady();
+    return true;
+  }
+
+  function renderFromBootstrapCache() {
+    var cachedPayload = readBootstrapCache();
+    if (!cachedPayload) {
+      return false;
+    }
+    return renderFromBootstrapPayload(cachedPayload);
+  }
+
+  function renderFromPrerenderBootstrap() {
+    var prerenderedPayload = readPrerenderBootstrap();
+    if (!prerenderedPayload) {
+      return false;
+    }
+    if (!renderFromBootstrapPayload(prerenderedPayload)) {
+      return false;
+    }
+    writeBootstrapCache(prerenderedPayload);
     return true;
   }
 
@@ -1871,6 +1906,8 @@
       maybeReloadForAuthChange();
     }
   });
-  renderFromBootstrapCache();
+  if (!renderFromBootstrapCache()) {
+    renderFromPrerenderBootstrap();
+  }
   load();
 })();

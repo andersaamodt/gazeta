@@ -2793,6 +2793,40 @@
     }
   }
 
+  function readPrerenderPageBootstrap() {
+    try {
+      var allPayloads = window.__wizardryNostrPageBootstrap;
+      if (!allPayloads || typeof allPayloads !== 'object') {
+        return null;
+      }
+      var payload = allPayloads[slug];
+      if (!payload || typeof payload !== 'object') {
+        return null;
+      }
+      var payloadType = String(payload.page_type || '').trim().toLowerCase();
+      if (payloadType !== 'blog') {
+        return null;
+      }
+      var payloadSlug = String(payload.slug || '').trim();
+      if (!payloadSlug || !slugsEquivalent(payloadSlug, slug)) {
+        return null;
+      }
+      return payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function readPrerenderPostsBootstrap(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    if (!Array.isArray(payload.bootstrap_posts)) {
+      return null;
+    }
+    return payload.bootstrap_posts.slice();
+  }
+
   function renderSignature() {
     function sortedSet(setObj) {
       return Array.from(setObj || []).sort();
@@ -3302,9 +3336,21 @@
   ensureFilterGutterLayout();
 
   (function bootstrapOnce() {
-    var cached = readCache();
-    if (cached) {
-      state.posts = cached;
+    var prerenderedPayload = readPrerenderPageBootstrap();
+    if (prerenderedPayload) {
+      state.payload = prerenderedPayload;
+      applyDefaultFilters();
+    }
+
+    var prerenderedPosts = readPrerenderPostsBootstrap(prerenderedPayload);
+    if (prerenderedPosts) {
+      state.posts = prerenderedPosts;
+      writeCache(prerenderedPosts);
+    } else {
+      var cached = readCache();
+      if (cached) {
+        state.posts = cached;
+      }
     }
     state.postsLoading = false;
     renderAll();
