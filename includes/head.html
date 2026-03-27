@@ -208,7 +208,7 @@
   });
 
   // Localhost dev servers may not rewrite /posts/<slug> to CGI routes.
-  // Keep hrefs pretty while routing clicks through opener CGI when needed.
+  // Keep hrefs and browser URL pretty while loading via opener CGI.
   document.addEventListener('click', function (event) {
     if (!event || event.defaultPrevented) {
       return;
@@ -234,7 +234,28 @@
     }
     event.preventDefault();
     var slugPath = hrefAttr.replace(/^\//, '').split('?')[0].split('#')[0];
-    window.location.assign('/cgi/blog-open-post?path=' + encodeURIComponent(slugPath));
+    var openerUrl = '/cgi/blog-open-post?path=' + encodeURIComponent(slugPath);
+    fetch(openerUrl, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (res) {
+        if (!res || !res.ok) {
+          throw new Error('open-post failed');
+        }
+        return res.text();
+      })
+      .then(function (html) {
+        try {
+          window.history.pushState(null, '', hrefAttr);
+        } catch (_pushErr) {
+          // Ignore history update failures.
+        }
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch(function () {
+        // Fallback for unexpected fetch/runtime failures.
+        window.location.assign(openerUrl);
+      });
   }, true);
 
   window.addEventListener('blog-page-initial-content-ready', function () {
