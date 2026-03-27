@@ -1053,22 +1053,26 @@ blog_nostr_page_template_is_current() {
     blog)
       grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="blog-page-content"' "$file" 2>/dev/null
+      grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     nip23)
       grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="nip23-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="nip23-page-content"' "$file" 2>/dev/null
+      grep -q 'id="nip23-page-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     public-ranking)
       grep -q 'id="public-ranking-title"' "$file" 2>/dev/null &&
       grep -q 'id="public-ranking-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="public-ranking-content"' "$file" 2>/dev/null
+      grep -q 'id="public-ranking-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     contact)
       grep -q 'id="contact-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="contact-page-admin"' "$file" 2>/dev/null &&
-      grep -q 'id="contact-page-content"' "$file" 2>/dev/null
+      grep -q 'id="contact-page-content"' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
     list)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
@@ -1214,6 +1218,7 @@ license: "CC BY 4.0"
 <div id="contact-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="/static/contact-page.js"></script>
 EOCONTACT
@@ -1239,6 +1244,7 @@ license: "CC BY 4.0"
 <div id="nip23-page-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nip23-page.js"></script>
@@ -1304,6 +1310,7 @@ license: "CC BY 4.0"
 </div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/blog-page.js"></script>
 EOBLOG
       ;;
@@ -1329,6 +1336,7 @@ license: "CC BY 4.0"
 <div id="public-ranking-content" class="list-page-content"></div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/public-ranking-page.js"></script>

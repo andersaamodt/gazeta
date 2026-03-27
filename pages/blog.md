@@ -50,4 +50,5 @@ title: Blog
 </div>
 </section>
 
+<script src="/static/nostr-page-bootstrap/blog.js"></script>
 <script src="/static/blog-page.js?v=20260326-blogv3"></script>

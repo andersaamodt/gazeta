@@ -14,13 +14,16 @@ blog_init
 bootstrap_dir="$blog_site_root/site/static/nostr-page-bootstrap"
 mkdir -p "$bootstrap_dir"
 
+sites_dir=${WIZARDRY_SITES_DIR:-$blog_sites_dir}
+site_name=${WIZARDRY_SITE_NAME:-$blog_site_name}
+
 manifest_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-manifest.XXXXXX")
 trap 'rm -f "$manifest_tmp"' EXIT HUP INT TERM
 : > "$manifest_tmp"
 
 is_prerender_type() {
   case "$1" in
-    list|icon-gallery)
+    list|icon-gallery|nip23|blog|contact|public-ranking)
       return 0
       ;;
   esac
@@ -39,8 +42,8 @@ render_payload_json() {
       "REQUEST_METHOD=GET" \
       "CONTENT_LENGTH=0" \
       "QUERY_STRING=page_slug=$slug" \
-      "WIZARDRY_SITES_DIR=$WIZARDRY_SITES_DIR" \
-      "WIZARDRY_SITE_NAME=$WIZARDRY_SITE_NAME" \
+      "WIZARDRY_SITES_DIR=$sites_dir" \
+      "WIZARDRY_SITE_NAME=$site_name" \
       "$SCRIPT_DIR/blog-get-nostr-page"
   ) > "$raw_tmp" 2>/dev/null || {
     rm -f "$raw_tmp" "$body_tmp"
@@ -68,7 +71,49 @@ render_payload_json() {
   if ! printf '%s\n' "$payload" | jq -e --arg slug "$slug" '
     (.success == true) and
     ((.slug // "") | tostring == $slug) and
-    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery"))
+    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery", "nip23", "blog", "contact", "public-ranking"))
+  ' >/dev/null 2>&1; then
+    return 1
+  fi
+
+  printf '%s\n' "$payload"
+}
+
+render_blog_posts_json() {
+  raw_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-posts-raw.XXXXXX")
+  body_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-posts-body.XXXXXX")
+  (
+    env \
+      "REQUEST_METHOD=GET" \
+      "CONTENT_LENGTH=0" \
+      "WIZARDRY_SITES_DIR=$sites_dir" \
+      "WIZARDRY_SITE_NAME=$site_name" \
+      "$SCRIPT_DIR/blog-list-public-posts"
+  ) > "$raw_tmp" 2>/dev/null || {
+    rm -f "$raw_tmp" "$body_tmp"
+    return 1
+  }
+
+  awk '
+    BEGIN { in_body = 0 }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      if (in_body == 1) {
+        print line
+      } else if (line == "") {
+        in_body = 1
+      }
+    }
+  ' "$raw_tmp" > "$body_tmp"
+  if [ ! -s "$body_tmp" ]; then
+    cp "$raw_tmp" "$body_tmp"
+  fi
+  payload=$(cat "$body_tmp")
+  rm -f "$raw_tmp" "$body_tmp"
+
+  if ! printf '%s\n' "$payload" | jq -e '
+    (.success == true) and ((.posts // null) != null) and ((.posts | type) == "array")
   ' >/dev/null 2>&1; then
     return 1
   fi
@@ -107,6 +152,12 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
   is_prerender_type "$page_type" || continue
   payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
   [ -n "$payload_json" ] || continue
+  if [ "$page_type" = "blog" ]; then
+    posts_json=$(render_blog_posts_json 2>/dev/null || printf '')
+    if [ -n "$posts_json" ]; then
+      payload_json=$(printf '%s\n' "$payload_json" | jq -c --argjson posts "$posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$payload_json")
+    fi
+  fi
   write_bootstrap_js "$slug" "$payload_json" || true
 done
 
