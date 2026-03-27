@@ -2556,6 +2556,10 @@
       var comments = Number(post.comment_count || 0);
       var commentsLabel = comments === 1 ? '1 comment' : String(comments) + ' comments';
       var commentsHtml = '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>';
+      var readMinutes = Number(post.reading_minutes || 0);
+      if (!Number.isFinite(readMinutes) || readMinutes < 1) {
+        readMinutes = 1;
+      }
       var author = String(post.author || '').trim();
       if (!author) {
         author = 'Blog Author';
@@ -2577,7 +2581,7 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
-              '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span></div>' +
+              '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span></div>' +
             '</div>' +
             adminMenuHtml +
           '</div>' +

@@ -49,6 +49,9 @@ else
     author=$(blog_read_front_matter_value "$post_file" author 2>/dev/null || printf '')
     published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
     summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
+    body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
+    word_count=$(blog_word_count "$body")
+    reading_minutes=$(blog_estimated_read_minutes "$word_count")
     tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
     tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
     tags=$(blog_normalize_tags "$tags_csv")
@@ -69,9 +72,10 @@ else
     printf '    <div class="post-head-main">\n'
     printf '      <h2 class="post-title"><a href="%s">%s</a></h2>\n' \
       "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
-    printf '      <div class="post-author">%s</div>\n' "$(blog_html_escape "$author")"
+    printf '      <div class="post-byline"><span class="post-author">%s</span><span class="post-reading-inline">%s min read</span><span class="post-date">%s</span></div>\n' \
+      "$(blog_html_escape "$author")" "$(blog_html_escape "$reading_minutes")" "$(blog_html_escape "$pub_date")"
     printf '    </div>\n'
-    printf '    <div class="post-meta"><span class="post-date">%s</span>' "$(blog_html_escape "$pub_date")"
+    printf '    <div class="post-meta">'
     if [ "$comment_count" -gt 0 ]; then
       printf ' <span class="post-comments-count">%s comments</span>' "$(blog_html_escape "$comment_count")"
     else

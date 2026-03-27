@@ -234,6 +234,7 @@
   let themeSwitchVisualTimer = null;
 
   const publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
+  const publishDestinationInputs = Array.from(document.querySelectorAll('input[name="publish-destination"]'));
   const COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   const COMPOSE_POST_TYPES_ENABLED = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share'];
   const ADMIN_SIDEBAR_COLLAPSED_KEY = 'blog_admin_sidebar_collapsed_v1';
@@ -1490,21 +1491,43 @@
     return 'immediate';
   }
 
+  function normalizeComposePublishDestination(destination) {
+    const raw = String(destination || '').trim().toLowerCase();
+    if (raw === 'nostr_now') {
+      return 'nostr_now';
+    }
+    return 'local_only';
+  }
+
+  function getPublishDestination() {
+    const picked = publishDestinationInputs.find(function (input) { return input.checked; });
+    return normalizeComposePublishDestination(picked ? picked.value : 'local_only');
+  }
+
   function setPublishMode(mode) {
     const normalized = normalizeComposePublishMode(mode);
     publishModeInputs.forEach(function (input) {
       input.checked = input.value === normalized;
     });
-    updatePrimaryPublishButton(normalized);
+    updatePrimaryPublishButton(normalized, getPublishDestination());
     updateScheduledRowVisibility(normalized);
     updateDripQueuePill(normalized);
   }
 
-  function updatePrimaryPublishButton(mode) {
+  function setPublishDestination(destination) {
+    const normalized = normalizeComposePublishDestination(destination);
+    publishDestinationInputs.forEach(function (input) {
+      input.checked = input.value === normalized;
+    });
+    updatePrimaryPublishButton(getPublishMode(), normalized);
+  }
+
+  function updatePrimaryPublishButton(mode, destination) {
     if (!els.publishNowButton) {
       return;
     }
     const picked = mode || getPublishMode();
+    const target = normalizeComposePublishDestination(destination || getPublishDestination());
     if (picked === 'scheduled') {
       els.publishNowButton.textContent = 'Schedule Post';
       return;
@@ -1513,7 +1536,7 @@
       els.publishNowButton.textContent = 'Enqueue Post';
       return;
     }
-    els.publishNowButton.textContent = 'Publish Now';
+    els.publishNowButton.textContent = target === 'local_only' ? 'Publish to Server' : 'Publish Now';
   }
 
   function updateScheduledRowVisibility(mode) {
@@ -2077,7 +2100,8 @@
       content: content,
       post_type: postType,
       scheduled_at: localToIso(els.postScheduleAt.value),
-      publish_mode: getPublishMode()
+      publish_mode: getPublishMode(),
+      publish_destination: getPublishDestination()
     };
   }
 
@@ -2121,6 +2145,7 @@
     syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode(mode || 'immediate');
+    setPublishDestination((draft && draft.publish_destination) || 'local_only');
     renderPreview();
     refreshDraftLabel();
     setTimeout(function () {
@@ -2149,6 +2174,7 @@
     syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode('immediate');
+    setPublishDestination('local_only');
     renderPreview();
     refreshDraftLabel();
   }
@@ -7260,6 +7286,12 @@
       input.addEventListener('change', function () {
         updatePrimaryPublishButton();
         queueAutosave('saving');
+      });
+    });
+
+    publishDestinationInputs.forEach(function (input) {
+      input.addEventListener('change', function () {
+        updatePrimaryPublishButton();
       });
     });
 

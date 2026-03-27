@@ -408,6 +408,14 @@ title: ""
 </div>
 </div>
 
+<div class="field-row compose-destination-row">
+<strong>Publish Destination</strong>
+<div class="mode-row">
+<label><input type="radio" name="publish-destination" value="local_only" checked> Publish to server only</label>
+<label><input type="radio" name="publish-destination" value="nostr_now"> Publish to Nostr now</label>
+</div>
+</div>
+
 <div class="field-row scheduled-row is-hidden" id="scheduled-row">
 <label for="post-scheduled-at"><strong>Scheduled Release Date/Time</strong></label>
 <div class="scheduled-picker-row">
