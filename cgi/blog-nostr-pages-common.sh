@@ -297,6 +297,15 @@ blog_nostr_page_type_for_slug() {
     printf 'list\n'
     return 0
   fi
+  if [ "$slug" = "oeuvre" ]; then
+    list_page=$(blog_nostr_page_entry_json "list" 2>/dev/null || printf '')
+    if [ -n "$list_page" ]; then
+      printf '%s\n' "$list_page" | jq -r '.type // "list"' 2>/dev/null || printf 'list\n'
+    else
+      printf 'list\n'
+    fi
+    return 0
+  fi
   if [ "$slug" = "index" ]; then
     printf 'nip23\n'
     return 0
@@ -1059,7 +1068,8 @@ blog_nostr_page_source_template_type() {
     printf 'public-ranking\n'
     return 0
   fi
-  if grep -q 'id="list-page-root"' "$file" 2>/dev/null; then
+  if grep -q 'id="list-page-root"' "$file" 2>/dev/null ||
+     grep -q 'id="oeuvre-root"' "$file" 2>/dev/null; then
     printf 'list\n'
     return 0
   fi

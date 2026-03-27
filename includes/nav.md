@@ -10,6 +10,8 @@
       document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
+      document.getElementById('icon-gallery-root') ||
+      document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
@@ -274,6 +276,8 @@
       document.getElementById('blog-page-root') ||
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
+      document.getElementById('icon-gallery-root') ||
+      document.getElementById('oeuvre-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||

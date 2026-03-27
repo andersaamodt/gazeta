@@ -1,10 +1,15 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root');
+  if (window.__wizardryListPageRuntimeBooted) {
+    return;
+  }
+
+  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('oeuvre-root');
   if (!root) {
     return;
   }
+  window.__wizardryListPageRuntimeBooted = true;
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -1182,7 +1187,7 @@
     if (!isAdmin()) {
       return '';
     }
-    var defaultMarker = slug === 'list' ? 'list' : '';
+    var defaultMarker = (slug === 'list' || slug === 'oeuvre') ? slug : '';
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
       _uid: nextUid(),
