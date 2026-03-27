@@ -207,6 +207,36 @@
     }
   });
 
+  // Localhost dev servers may not rewrite /posts/<slug> to CGI routes.
+  // Keep hrefs pretty while routing clicks through opener CGI when needed.
+  document.addEventListener('click', function (event) {
+    if (!event || event.defaultPrevented) {
+      return;
+    }
+    var isPlainLeftClick = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+    if (!isPlainLeftClick) {
+      return;
+    }
+    var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!link) {
+      return;
+    }
+    var host = String(window.location.hostname || '').toLowerCase();
+    if (!(host === 'localhost' || host === '127.0.0.1' || host === '::1')) {
+      return;
+    }
+    var hrefAttr = String(link.getAttribute('href') || '');
+    if (!hrefAttr || hrefAttr.indexOf('/posts/') !== 0) {
+      return;
+    }
+    if (/\.html?(?:$|[?#])/.test(hrefAttr)) {
+      return;
+    }
+    event.preventDefault();
+    var slugPath = hrefAttr.replace(/^\//, '').split('?')[0].split('#')[0];
+    window.location.assign('/cgi/blog-open-post?path=' + encodeURIComponent(slugPath));
+  }, true);
+
   window.addEventListener('blog-page-initial-content-ready', function () {
     cancelRouteLoadFailure();
   });
