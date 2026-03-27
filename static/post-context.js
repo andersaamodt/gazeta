@@ -594,6 +594,7 @@
             '<label><strong>Content</strong></label>' +
             '<div class="editor-shell blog-compose-editor-shell">' +
               '<textarea data-post-inline-field="content" rows="14" placeholder="# Write in Markdown">' + escapeHtml(inlineEditState.content) + '</textarea>' +
+              '<div class="autosave-indicator compose-editor-autosave' + (inlineEditState.saveStatus === 'saving' ? ' is-saving' : '') + (inlineEditState.saveStatus === 'error' ? ' is-error' : '') + '"' + (inlineEditState.saveStatus ? '' : ' hidden') + '>' + (inlineEditState.saveStatus === 'saving' ? 'Saving...' : (inlineEditState.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
             '</div>' +
           '</div>' +
           '<div class="field-row">' +
@@ -608,7 +609,6 @@
             '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="publish"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Publish Changes</button>' +
           '</div>' +
           '<div class="blog-compose-status-row">' +
-            '<div class="autosave-indicator' + (inlineEditState.saveStatus === 'saving' ? ' is-saving' : '') + (inlineEditState.saveStatus === 'error' ? ' is-error' : '') + '"' + (inlineEditState.saveStatus ? '' : ' hidden') + '>' + (inlineEditState.saveStatus === 'saving' ? 'Saving...' : (inlineEditState.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
             '<div class="' + outputClass + '">' + escapeHtml(inlineEditState.output) + '</div>' +
           '</div>' +
         '</div>' +
@@ -661,7 +661,7 @@
       }
       inlineEditState.tags = normalizeInlineTags(inlineEditState.tags || '');
       inlineEditState.postFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
-      if (action === 'autosave' || action === 'save_draft') {
+      if (action === 'autosave') {
         inlineEditState.saveStatus = 'saved';
       }
       if (action === 'publish_now') {
@@ -673,7 +673,7 @@
       }
       return true;
     }).catch(function (err) {
-      if (action === 'autosave' || action === 'save_draft') {
+      if (action === 'autosave') {
         inlineEditState.saveStatus = 'error';
       } else {
         setInlineOutput(err && err.message ? err.message : 'Save failed', 'error');

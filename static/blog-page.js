@@ -2263,6 +2263,7 @@
         '<div class="editor-shell blog-compose-editor-shell">' +
           composeToolbarHtml() +
           '<textarea data-compose-field="content" rows="' + String(composeTextareaRows(postType)) + '"' + (postType === 'shortform' ? (' maxlength="' + escapeHtml(String(currentComposeShortformLimit())) + '"') : '') + ' placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
+          '<div class="autosave-indicator compose-editor-autosave' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
         '</div>' +
         (postType === 'shortform' ? composeShortformMeterHtml(fields.content) : '') +
       '</div>';
@@ -2346,7 +2347,6 @@
           '<div class="compose-actions blog-compose-footer-actions">' +
             '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-compose-action="delete" aria-label="Delete draft" title="Delete draft"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + composeTrashIconSvg() + '</button>' +
             '<div class="blog-compose-publish-stack">' +
-              '<div class="autosave-indicator' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
               '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode, destination)) + '</button>' +
             '</div>' +
           '</div>' +
@@ -2382,7 +2382,7 @@
       output.textContent = state.compose.output || '';
       output.className = 'output' + (state.compose.outputTone ? (' ' + state.compose.outputTone) : '');
     }
-    var autosave = els.composeSlot.querySelector('.autosave-indicator');
+    var autosave = els.composeSlot.querySelector('.compose-editor-autosave');
     if (autosave) {
       var modeStatus = String(state.compose.saveStatus || '');
       if (state.compose.uploading > 0) {
@@ -2962,7 +2962,7 @@
         if (state.compose.postTypeLocked) {
           return;
         }
-        setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''), { interactive: true });
+        setComposePostType(String(composeAction.getAttribute('data-compose-post-type') || ''), { interactive: true, skipAutosave: true });
         return;
       }
       if (actionName === 'toggle-post-type-toolbar') {
@@ -2992,7 +2992,6 @@
       if (actionName === 'remove-tag') {
         removeComposeTag(String(composeAction.getAttribute('data-compose-tag') || ''));
         renderComposeUi();
-        queueComposeAutosave();
         return;
       }
       if (actionName === 'toggle-tags') {
@@ -3024,7 +3023,7 @@
           return;
         }
         var currentLimit = currentComposeShortformLimit();
-        setComposeShortformLimit(currentLimit === 280 ? 140 : 280, { editing: false });
+        setComposeShortformLimit(currentLimit === 280 ? 140 : 280, { editing: false, skipAutosave: true });
         return;
       }
       if (actionName === 'pick-capture-media' || actionName === 'pick-upload-media' || actionName === 'pick-upload-file' || actionName === 'pick-upload-audio') {
@@ -3184,7 +3183,6 @@
     }
     if (target.matches('input[name="blog-inline-compose-mode"], input[name="blog-inline-compose-destination"]')) {
       renderComposeUi();
-      queueComposeAutosave();
     }
   });
 

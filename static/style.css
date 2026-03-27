@@ -6660,6 +6660,7 @@ footer {
 }
 
 .blog-compose-editor-shell {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-raised-strong, #fff);
@@ -6745,13 +6746,27 @@ footer {
   font-size: 0.78rem;
 }
 
-.blog-compose-editor-shell textarea[data-compose-field="content"] {
+.blog-compose-editor-shell textarea[data-compose-field="content"],
+.blog-compose-editor-shell textarea[data-post-inline-field="content"] {
   width: 100%;
   border: 0;
   border-radius: 0;
   background: transparent;
   min-height: 16rem;
   resize: vertical;
+  padding-bottom: 1.7rem;
+}
+
+.blog-compose-editor-shell .compose-editor-autosave {
+  position: absolute;
+  right: 0.56rem;
+  bottom: 0.42rem;
+  margin: 0;
+  min-height: 0.88rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .blog-compose-card .grid-two {
@@ -6869,13 +6884,6 @@ footer {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.16rem;
-}
-
-.blog-compose-publish-stack .autosave-indicator {
-  margin: 0;
-  min-height: 0.88rem;
-  font-size: 0.72rem;
-  line-height: 1;
 }
 
 .blog-compose-delete {
