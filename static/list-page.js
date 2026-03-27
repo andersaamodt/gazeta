@@ -301,6 +301,9 @@
       slug: String(cachedPayload && cachedPayload.slug || ''),
       page_type: String(cachedPayload && cachedPayload.page_type || ''),
       nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
+      is_admin: !!(cachedPayload && cachedPayload.is_admin),
+      canonical_exists: !!(cachedPayload && cachedPayload.canonical_exists),
+      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
       state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
     });
     renderList();
@@ -3754,6 +3757,9 @@
             slug: String(payload && payload.slug || ''),
             page_type: String(payload && payload.page_type || ''),
             nav_title: String(payload && payload.nav_title || ''),
+            is_admin: !!(payload && payload.is_admin),
+            canonical_exists: !!(payload && payload.canonical_exists),
+            draft_differs: !!(payload && payload.draft_differs),
             state: (payload && payload.state) ? payload.state : null
           });
           var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
@@ -3783,6 +3789,10 @@
             renderAdmin();
             renderValidation();
             markInitialContentPainted();
+          } else {
+            renderHead();
+            renderAdmin();
+            renderValidation();
           }
           return;
         } catch (err) {
