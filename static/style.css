@@ -1957,6 +1957,11 @@ body.nav-cart-open {
   width: auto;
 }
 
+.list-inline-head-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
 .list-entries-inline {
   list-style: none;
   padding: 0;
@@ -2553,8 +2558,27 @@ body.nav-cart-open {
   font-size: 1.2rem;
 }
 
+.list-inline-head-add {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.2rem;
+}
+
 .list-inline-toolbar-right button:hover:not(:disabled),
 .list-inline-toolbar-right button:focus-visible:not(:disabled),
+.list-inline-head-add:hover:not(:disabled),
+.list-inline-head-add:focus-visible:not(:disabled),
 .list-year-add:hover:not(:disabled),
 .list-year-add:focus-visible:not(:disabled) {
   background: var(--light-bg, #eef3ff) !important;
@@ -2564,6 +2588,7 @@ body.nav-cart-open {
 }
 
 .list-inline-toolbar-right button:active:not(:disabled),
+.list-inline-head-add:active:not(:disabled),
 .list-year-add:active:not(:disabled) {
   background: rgba(49, 103, 189, 0.12) !important;
   color: var(--text) !important;
@@ -2573,6 +2598,8 @@ body.nav-cart-open {
 
 .list-inline-toolbar-right button[disabled],
 .list-inline-toolbar-right button[aria-disabled="true"],
+.list-inline-head-add[disabled],
+.list-inline-head-add[aria-disabled="true"],
 .list-year-add[disabled],
 .list-year-add[aria-disabled="true"] {
   opacity: 0.45;

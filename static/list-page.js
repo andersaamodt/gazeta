@@ -2289,7 +2289,7 @@
     var activeField = rowSelected ? String(state.activeCellField || '') : '';
     var active = !!activeField;
     var depth = Math.max(0, Number(el && el.depth || 0) || 0);
-    var guiDepth = depth > 0 ? 1 : 0;
+    var guiDepth = depth;
     var idx = findElementIndex(uid);
     var canToggle = !(idx === 0 && guiDepth === 0);
     var html = '';
@@ -2392,9 +2392,6 @@
     html += '<label class="list-marker-filter-setting" title="' + escapeHtml(showMarkerFiltersTip) + '"><input type="checkbox" data-list-show-marker-filters="true" title="' + escapeHtml(showMarkerFiltersTip) + '"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span title="' + escapeHtml(showMarkerFiltersTip) + '">Show marker-based filters</span></label>';
     html += '<label class="list-default-markers-setting" title="' + escapeHtml(defaultMarkersTip) + '"><span title="' + escapeHtml(defaultMarkersTip) + '">Default markers</span><input type="text" data-list-default-markers="true" title="' + escapeHtml(defaultMarkersTip) + '" value="' + escapeHtml(state.draft.default_markers || '') + '" placeholder="marker one, marker two"></label>';
     html += '</div></div>';
-    html += '<div class="list-inline-toolbar-right">';
-    html += '<button type="button" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
-    html += '</div>';
     html += '</div>';
     html += '</section>';
     if (state.draft.show_marker_filters) {
@@ -2430,7 +2427,7 @@
     if (isProductGalleryPage()) {
       html += '<span class="list-inline-head-image">Image URL</span>';
     }
-    html += '<span class="list-inline-head-actions"></span>';
+    html += '<span class="list-inline-head-actions"><button type="button" class="list-inline-head-add" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></span>';
     html += '</div>';
 
     if (isGrouped) {
@@ -3082,9 +3079,10 @@
           var beforeDepth = captureEntryRects();
           var currentDepth = Math.max(0, Number(state.draft.elements[depthIdx].depth || 0) || 0);
           if (currentDepth > 0) {
-            state.draft.elements[depthIdx].depth = 0;
+            state.draft.elements[depthIdx].depth = currentDepth - 1;
           } else if (depthIdx > 0) {
-            state.draft.elements[depthIdx].depth = 1;
+            var prevDepth = Math.max(0, Number(state.draft.elements[depthIdx - 1].depth || 0) || 0);
+            state.draft.elements[depthIdx].depth = Math.min(currentDepth + 1, prevDepth + 1);
           }
           renderListWithFlip(beforeDepth);
           updatePendingNewEntryState();
