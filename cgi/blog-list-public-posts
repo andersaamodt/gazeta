@@ -29,6 +29,7 @@ while IFS= read -r file || [ -n "$file" ]; do
   title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
   author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
   published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
+  published_date=$(blog_iso_to_human_date "$published_at")
   summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
   body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
   word_count=$(blog_word_count "$body")
@@ -77,6 +78,7 @@ while IFS= read -r file || [ -n "$file" ]; do
     --arg title "$title" \
     --arg author "$author" \
     --arg published_at "$published_at" \
+    --arg published_date "$published_date" \
     --arg pub_date "$pub_date" \
     --arg summary "$summary" \
     --arg post_type "$post_type" \
@@ -92,6 +94,7 @@ while IFS= read -r file || [ -n "$file" ]; do
       title: $title,
       author: $author,
       published_at: $published_at,
+      published_date: $published_date,
       pub_date: $pub_date,
       summary: $summary,
       type: $post_type,

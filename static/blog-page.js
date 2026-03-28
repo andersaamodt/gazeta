@@ -2617,7 +2617,7 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
-              '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span><span class="post-date">' + escapeHtml(post.pub_date || 'Unknown date') + '</span></div>' +
+              '<div class="post-byline"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span><span class="post-date">' + escapeHtml(post.published_date || post.pub_date || 'Unknown date') + '</span></div>' +
             '</div>' +
             adminMenuHtml +
           '</div>' +
