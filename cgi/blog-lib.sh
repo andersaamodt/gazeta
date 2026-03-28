@@ -838,7 +838,93 @@ blog_json_error() {
   printf '{"success":false,"error":"%s","code":"%s"}\n' "$esc" "$code"
 }
 
+blog_plugin_supported() {
+  key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  case "$key" in
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|btcpay|video_chat) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+blog_plugin_default_enabled() {
+  key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  case "$key" in
+    video_chat) printf 'false\n' ;;
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|btcpay) printf 'true\n' ;;
+    *) printf 'false\n' ;;
+  esac
+}
+
+blog_plugin_raw_enabled() {
+  key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  if ! blog_plugin_supported "$key"; then
+    printf 'false\n'
+    return 0
+  fi
+  cfg_key="plugin_$key"
+  value=$(config-get "$blog_site_conf" "$cfg_key" 2>/dev/null || printf '')
+  if [ -z "$value" ]; then
+    blog_plugin_default_enabled "$key"
+    return 0
+  fi
+  case "$value" in
+    true|1|yes|on) printf 'true\n' ;;
+    false|0|no|off) printf 'false\n' ;;
+    *) blog_plugin_default_enabled "$key" ;;
+  esac
+}
+
+blog_plugin_enabled() {
+  key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  if ! blog_plugin_supported "$key"; then
+    return 1
+  fi
+  enabled=$(blog_plugin_raw_enabled "$key")
+  if [ "$enabled" != "true" ]; then
+    return 1
+  fi
+  case "$key" in
+    nostr_login|nostr_bridge|nostr_posts|zaps)
+      support_enabled=$(blog_plugin_raw_enabled "nostr_support")
+      [ "$support_enabled" = "true" ] || return 1
+      ;;
+  esac
+  return 0
+}
+
+blog_plugin_enabled_json() {
+  key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  if blog_plugin_enabled "$key"; then
+    printf 'true\n'
+  else
+    printf 'false\n'
+  fi
+}
+
+blog_plugins_json() {
+  nostr_support=$(blog_plugin_enabled_json "nostr_support")
+  nostr_login=$(blog_plugin_enabled_json "nostr_login")
+  nostr_bridge=$(blog_plugin_enabled_json "nostr_bridge")
+  nostr_posts=$(blog_plugin_enabled_json "nostr_posts")
+  zaps=$(blog_plugin_enabled_json "zaps")
+  btcpay=$(blog_plugin_enabled_json "btcpay")
+  video_chat=$(blog_plugin_enabled_json "video_chat")
+  printf '{'
+  printf '"nostr_support":%s,' "$nostr_support"
+  printf '"nostr_login":%s,' "$nostr_login"
+  printf '"nostr_bridge":%s,' "$nostr_bridge"
+  printf '"nostr_posts":%s,' "$nostr_posts"
+  printf '"zaps":%s,' "$zaps"
+  printf '"btcpay":%s,' "$btcpay"
+  printf '"video_chat":%s' "$video_chat"
+  printf '}\n'
+}
+
 blog_zaps_enabled() {
+  if ! blog_plugin_enabled "zaps"; then
+    printf 'false\n'
+    return 0
+  fi
   enabled=$(config-get "$blog_site_conf" zaps_enabled 2>/dev/null || printf 'false')
   case "$enabled" in
     true|false) printf '%s\n' "$enabled" ;;
@@ -882,6 +968,9 @@ blog_zaps_config_json() {
 }
 
 blog_nostr_bridge_enabled() {
+  if ! blog_plugin_enabled "nostr_bridge"; then
+    return 1
+  fi
   enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
   case "$enabled" in
     true|1|yes|on) return 0 ;;

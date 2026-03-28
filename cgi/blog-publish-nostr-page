@@ -16,6 +16,10 @@ blog_send_json_headers
 if ! blog_require_session true true; then
   exit 0
 fi
+if ! blog_plugin_enabled "nostr_posts"; then
+  blog_json_error "Nostr-backed pages plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
 
 preview_only=false
 preview_only_raw=$(blog_param preview_only)

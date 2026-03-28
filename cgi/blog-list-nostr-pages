@@ -16,6 +16,10 @@ blog_send_json_headers
 if ! blog_require_session true; then
   exit 0
 fi
+if ! blog_plugin_enabled "nostr_posts"; then
+  blog_json_error "Nostr-backed pages plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
 
 cfg=$(blog_nostr_pages_load_json)
 if ! printf '%s\n' "$cfg" | jq -e '.pages | type=="array"' >/dev/null 2>&1; then

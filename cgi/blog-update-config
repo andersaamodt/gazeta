@@ -32,6 +32,13 @@ nostr_lists_update=$(blog_param nostr_lists_update)
 nostr_authors=$(blog_param nostr_authors)
 nostr_relays=$(blog_param nostr_relays)
 nostr_blocklist=$(blog_param nostr_blocklist)
+plugin_nostr_support=$(blog_param plugin_nostr_support)
+plugin_nostr_login=$(blog_param plugin_nostr_login)
+plugin_nostr_bridge=$(blog_param plugin_nostr_bridge)
+plugin_nostr_posts=$(blog_param plugin_nostr_posts)
+plugin_zaps=$(blog_param plugin_zaps)
+plugin_btcpay=$(blog_param plugin_btcpay)
+plugin_video_chat=$(blog_param plugin_video_chat)
 
 write_nostr_lines_file() {
   target_file=$1
@@ -146,6 +153,32 @@ if [ -n "$zaps_enabled" ]; then
   case "$zaps_enabled" in
     true|false) config-set "$blog_site_conf" zaps_enabled "$zaps_enabled" ;;
   esac
+fi
+
+set_plugin_flag() {
+  key=$1
+  value=$2
+  case "$value" in
+    true|false)
+      config-set "$blog_site_conf" "plugin_$key" "$value"
+      ;;
+  esac
+}
+
+set_plugin_flag "nostr_support" "$plugin_nostr_support"
+set_plugin_flag "nostr_login" "$plugin_nostr_login"
+set_plugin_flag "nostr_bridge" "$plugin_nostr_bridge"
+set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
+set_plugin_flag "zaps" "$plugin_zaps"
+set_plugin_flag "btcpay" "$plugin_btcpay"
+set_plugin_flag "video_chat" "$plugin_video_chat"
+
+nostr_support_raw=$(blog_plugin_raw_enabled "nostr_support")
+if [ "$nostr_support_raw" != "true" ]; then
+  config-set "$blog_site_conf" "plugin_nostr_login" "false"
+  config-set "$blog_site_conf" "plugin_nostr_bridge" "false"
+  config-set "$blog_site_conf" "plugin_nostr_posts" "false"
+  config-set "$blog_site_conf" "plugin_zaps" "false"
 fi
 
 case "$BLOG_REQUEST_BODY" in

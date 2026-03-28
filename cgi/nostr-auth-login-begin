@@ -10,6 +10,11 @@ blog_init
 blog_read_request_body
 blog_send_json_headers
 
+if ! blog_plugin_enabled "nostr_login"; then
+  blog_json_error "Nostr login plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
+
 pubkey_hint=$(blog_param pubkey_hint)
 if [ -z "$pubkey_hint" ]; then
   pubkey_hint=$(blog_param pubkey)

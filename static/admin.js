@@ -24,6 +24,16 @@
     suspendAutosave: false,
     previewVisible: localStorage.getItem('blog_admin_preview_hidden') !== '1',
     nostrBridgeEnabled: false,
+    plugins: {
+      nostr_support: true,
+      nostr_login: true,
+      nostr_bridge: true,
+      nostr_posts: true,
+      zaps: true,
+      btcpay: true,
+      video_chat: false
+    },
+    pluginsSaveTimer: null,
     lastLinkedSshKeyText: '',
     users: [],
     actorRank: 0,
@@ -112,6 +122,7 @@
     outputFiles: document.getElementById('output-files'),
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
+    outputPlugins: document.getElementById('output-plugins'),
     outputZaps: document.getElementById('output-zaps'),
     outputBtcpay: document.getElementById('output-btcpay'),
     outputUsers: document.getElementById('output-users'),
@@ -131,6 +142,13 @@
     nostrRelays: document.getElementById('nostr-relays'),
     nostrBlocklist: document.getElementById('nostr-blocklist'),
     zapsEnabled: document.getElementById('zaps-enabled'),
+    pluginNostrSupport: document.getElementById('plugin-nostr-support'),
+    pluginNostrLogin: document.getElementById('plugin-nostr-login'),
+    pluginNostrBridge: document.getElementById('plugin-nostr-bridge'),
+    pluginNostrPosts: document.getElementById('plugin-nostr-posts'),
+    pluginZaps: document.getElementById('plugin-zaps'),
+    pluginBtcpay: document.getElementById('plugin-btcpay'),
+    pluginVideoChat: document.getElementById('plugin-video-chat'),
     zapLud16: document.getElementById('zap-lud16'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
@@ -350,6 +368,12 @@
     if (!state.isAdmin && name !== 'account') {
       return 'account';
     }
+    if (state.isAdmin) {
+      const button = sectionButtonForName(name);
+      if (button && button.hidden) {
+        return 'plugins';
+      }
+    }
     return name;
   }
 
@@ -429,6 +453,9 @@
     if (key === 'btcpay') {
       return 'BTCPay';
     }
+    if (key === 'plugins') {
+      return 'Plugins';
+    }
     return 'Admin';
   }
 
@@ -438,7 +465,13 @@
   }
 
   function activateSection(name, updateHash) {
-    const sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
+    let sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
+    if (state.isAdmin) {
+      const targetButton = sectionButtonForName(sectionName);
+      if (targetButton && targetButton.hidden) {
+        sectionName = 'plugins';
+      }
+    }
     state.activeSection = sectionName;
     syncAdminDocumentTitle(sectionName);
     if (els.dropOverlay) {
@@ -496,6 +529,10 @@
         await loadConfig();
         return;
       }
+      if (section === 'plugins') {
+        await loadConfig();
+        return;
+      }
       if (section === 'nostr-bridge') {
         await loadNosterRuntime();
         return;
@@ -545,6 +582,10 @@
         setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
         return;
       }
+      if (section === 'plugins') {
+        setOutput(els.outputPlugins, 'Error: ' + err.message, 'error');
+        return;
+      }
       if (section === 'nostr-bridge') {
         setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
         return;
@@ -592,6 +633,10 @@
     const jobs = [
       {
         sections: ['settings'],
+        task: configTask
+      },
+      {
+        sections: ['plugins'],
         task: configTask
       },
       {
@@ -688,6 +733,9 @@
       button.hidden = !visible;
       button.setAttribute('aria-hidden', visible ? 'false' : 'true');
     });
+    if (!enabled) {
+      syncPluginControlledSections();
+    }
   }
 
   function readSidebarCollapsePreference() {
@@ -2647,6 +2695,129 @@
     }
   }
 
+  function normalizePlugins(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    const normalized = {
+      nostr_support: src.nostr_support !== false,
+      nostr_login: src.nostr_login !== false,
+      nostr_bridge: src.nostr_bridge !== false,
+      nostr_posts: src.nostr_posts !== false,
+      zaps: src.zaps !== false,
+      btcpay: src.btcpay !== false,
+      video_chat: src.video_chat === true
+    };
+    if (!normalized.nostr_support) {
+      normalized.nostr_login = false;
+      normalized.nostr_bridge = false;
+      normalized.nostr_posts = false;
+      normalized.zaps = false;
+    }
+    return normalized;
+  }
+
+  function setPluginCheckboxStates() {
+    const p = normalizePlugins(state.plugins || {});
+    state.plugins = p;
+    if (els.pluginNostrSupport) els.pluginNostrSupport.checked = !!p.nostr_support;
+    if (els.pluginNostrLogin) els.pluginNostrLogin.checked = !!p.nostr_login;
+    if (els.pluginNostrBridge) els.pluginNostrBridge.checked = !!p.nostr_bridge;
+    if (els.pluginNostrPosts) els.pluginNostrPosts.checked = !!p.nostr_posts;
+    if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
+    if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
+    if (els.pluginVideoChat) els.pluginVideoChat.checked = !!p.video_chat;
+    const nostrSupportOn = !!p.nostr_support;
+    [els.pluginNostrLogin, els.pluginNostrBridge, els.pluginNostrPosts, els.pluginZaps].forEach(function (input) {
+      if (!(input instanceof HTMLInputElement)) {
+        return;
+      }
+      input.disabled = !nostrSupportOn;
+    });
+  }
+
+  function sectionButtonForName(name) {
+    return els.sectionButtons.find(function (btn) {
+      return String(btn && btn.getAttribute ? btn.getAttribute('data-admin-nav') : '') === String(name || '');
+    }) || null;
+  }
+
+  function sectionNodeForName(name) {
+    return els.sections.find(function (section) {
+      return String(section && section.getAttribute ? section.getAttribute('data-admin-section') : '') === String(name || '');
+    }) || null;
+  }
+
+  function syncPluginControlledSections() {
+    const plugins = normalizePlugins(state.plugins || {});
+    state.plugins = plugins;
+    const sectionByPlugin = {
+      'nostr-bridge': !!plugins.nostr_bridge,
+      'zaps': !!plugins.zaps,
+      'btcpay': !!plugins.btcpay,
+      'nostr-pages': !!plugins.nostr_posts
+    };
+    Object.keys(sectionByPlugin).forEach(function (sectionName) {
+      const visible = !!sectionByPlugin[sectionName];
+      const button = sectionButtonForName(sectionName);
+      const section = sectionNodeForName(sectionName);
+      if (button) {
+        button.hidden = !visible;
+        button.setAttribute('aria-hidden', visible ? 'false' : 'true');
+      }
+      if (section) {
+        section.hidden = !visible || section.getAttribute('data-admin-section') !== state.activeSection;
+      }
+    });
+    if (state.isAdmin && state.activeSection && Object.prototype.hasOwnProperty.call(sectionByPlugin, state.activeSection) && !sectionByPlugin[state.activeSection]) {
+      activateSection('plugins', true);
+    }
+  }
+
+  function readPluginsFromUi() {
+    return normalizePlugins({
+      nostr_support: !!(els.pluginNostrSupport && els.pluginNostrSupport.checked),
+      nostr_login: !!(els.pluginNostrLogin && els.pluginNostrLogin.checked),
+      nostr_bridge: !!(els.pluginNostrBridge && els.pluginNostrBridge.checked),
+      nostr_posts: !!(els.pluginNostrPosts && els.pluginNostrPosts.checked),
+      zaps: !!(els.pluginZaps && els.pluginZaps.checked),
+      btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
+      video_chat: !!(els.pluginVideoChat && els.pluginVideoChat.checked)
+    });
+  }
+
+  async function savePluginsConfig() {
+    const plugins = readPluginsFromUi();
+    state.plugins = plugins;
+    setPluginCheckboxStates();
+    syncPluginControlledSections();
+    try {
+      const data = await apiPost('/cgi/blog-update-config', {
+        plugin_nostr_support: plugins.nostr_support ? 'true' : 'false',
+        plugin_nostr_login: plugins.nostr_login ? 'true' : 'false',
+        plugin_nostr_bridge: plugins.nostr_bridge ? 'true' : 'false',
+        plugin_nostr_posts: plugins.nostr_posts ? 'true' : 'false',
+        plugin_zaps: plugins.zaps ? 'true' : 'false',
+        plugin_btcpay: plugins.btcpay ? 'true' : 'false',
+        plugin_video_chat: plugins.video_chat ? 'true' : 'false'
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save plugins');
+      }
+      setOutput(els.outputPlugins, 'Plugins updated.', 'ok');
+      await loadConfig();
+    } catch (err) {
+      setOutput(els.outputPlugins, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  function queuePluginsSave(delayMs) {
+    if (state.pluginsSaveTimer) {
+      clearTimeout(state.pluginsSaveTimer);
+    }
+    state.pluginsSaveTimer = setTimeout(function () {
+      savePluginsConfig().catch(function () {});
+    }, Math.max(120, Number(delayMs || 220)));
+  }
+
   async function loadConfig() {
     state.isLoadingConfig = true;
     try {
@@ -2654,6 +2825,11 @@
       if (!data.success) {
         throw new Error(data.error || 'Failed to load configuration');
       }
+      state.plugins = normalizePlugins(data.plugins || {});
+      setPluginCheckboxStates();
+      syncPluginControlledSections();
+      window.__wizardryPlugins = state.plugins;
+      window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
       applyNavSiteTitle(els.siteTitle.value);
       if (els.adminTheme && data.theme) {
@@ -2690,7 +2866,8 @@
         els.newUsersAreAdmins.checked = !!data.new_users_are_admins;
       }
       if (els.zapsEnabled) {
-        els.zapsEnabled.checked = !!data.zaps_enabled;
+        els.zapsEnabled.checked = !!data.zaps_enabled && !!state.plugins.zaps;
+        els.zapsEnabled.disabled = !state.plugins.zaps;
       }
       if (els.zapLud16) {
         els.zapLud16.value = String(data.zap_lud16 || '');
@@ -3223,6 +3400,16 @@
 
   function syncZapsEnabledAvailability() {
     if (!els.zapsEnabled) {
+      return;
+    }
+    const zapsPluginEnabled = !!(state.plugins && state.plugins.zaps);
+    if (!zapsPluginEnabled) {
+      els.zapsEnabled.disabled = true;
+      const disabledRow = els.zapsEnabled.closest('.field-row');
+      if (disabledRow) {
+        disabledRow.classList.add('is-control-disabled');
+      }
+      els.zapsEnabled.setAttribute('title', 'Enable the Zaps plugin first.');
       return;
     }
     const info = state.zapsRuntimeInfo && typeof state.zapsRuntimeInfo === 'object'
@@ -6008,6 +6195,23 @@
 
   function bindEvents() {
     bindSettingsAutosave();
+    const pluginInputs = [
+      els.pluginNostrSupport,
+      els.pluginNostrLogin,
+      els.pluginNostrBridge,
+      els.pluginNostrPosts,
+      els.pluginZaps,
+      els.pluginBtcpay,
+      els.pluginVideoChat
+    ].filter(Boolean);
+    pluginInputs.forEach(function (input) {
+      input.addEventListener('change', function () {
+        state.plugins = readPluginsFromUi();
+        setPluginCheckboxStates();
+        syncPluginControlledSections();
+        queuePluginsSave(140);
+      });
+    });
     if (els.sidebarToggleButton) {
       els.sidebarToggleButton.addEventListener('click', function () {
         applySidebarCollapseState(!state.sidebarCollapsed, true);

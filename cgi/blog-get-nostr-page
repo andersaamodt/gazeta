@@ -26,6 +26,10 @@ if [ -z "$page_type" ]; then
   blog_json_error "Unknown Nostr page slug" "unknown_page"
   exit 0
 fi
+if ! blog_plugin_enabled "nostr_posts"; then
+  blog_json_error "Nostr-backed pages plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
 kind=$(blog_nostr_page_kind_for_type "$page_type")
 nav_title=$(blog_nostr_page_placeholder_title "$page_slug" 2>/dev/null || printf '')
 if [ -z "$nav_title" ]; then

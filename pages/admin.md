@@ -30,6 +30,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
 <button id="btn-admin-sidebar-reveal" type="button" class="unobtrusive-icon-button admin-sidebar-reveal" aria-label="Show admin sidebar" title="Show sidebar" hidden>
@@ -219,6 +220,53 @@ title: ""
 </div>
 
 <div id="output-btcpay" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="plugins" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Plugins</h3>
+<p class="muted">Toggle feature modules on or off. Disabled plugins hide their admin panel and disable related functionality across the site.</p>
+</div>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Feature Modules</h4>
+<div class="field-row checkbox-row" data-plugin-row="nostr_support">
+<div class="setting-label"><strong>Nostr Support</strong></div>
+<label class="checkbox-control" for="plugin-nostr-support"><input type="checkbox" id="plugin-nostr-support"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="nostr_login">
+<div class="setting-label"><strong>Nostr Login</strong></div>
+<label class="checkbox-control" for="plugin-nostr-login"><input type="checkbox" id="plugin-nostr-login"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="nostr_bridge">
+<div class="setting-label"><strong>Nostr Bridge (Stonr)</strong></div>
+<label class="checkbox-control" for="plugin-nostr-bridge"><input type="checkbox" id="plugin-nostr-bridge"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="nostr_posts">
+<div class="setting-label"><strong>Nostr-Backed Pages & Posts</strong></div>
+<label class="checkbox-control" for="plugin-nostr-posts"><input type="checkbox" id="plugin-nostr-posts"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="zaps">
+<div class="setting-label"><strong>Zaps</strong></div>
+<label class="checkbox-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="btcpay">
+<div class="setting-label"><strong>BTCPay</strong></div>
+<label class="checkbox-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label>
+</div>
+<div class="field-row checkbox-row" data-plugin-row="video_chat">
+<div class="setting-label"><strong>Video Calling</strong></div>
+<label class="checkbox-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label>
+</div>
+</section>
+</div>
+
+<div id="output-plugins" class="output"></div>
 </div>
 </section>
 

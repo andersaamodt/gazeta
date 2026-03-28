@@ -18,6 +18,7 @@
   var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  var PLUGINS_CACHE_KEY = 'wizardry_plugins_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
     blog: true,
@@ -30,6 +31,15 @@
   var state = {
     currentTheme: 'archmage',
     isAuthenticated: false,
+    plugins: {
+      nostr_support: true,
+      nostr_login: true,
+      nostr_bridge: true,
+      nostr_posts: true,
+      zaps: true,
+      btcpay: true,
+      video_chat: false
+    },
     manualChallenge: null,
     idbPromise: null,
     nip46: {
@@ -136,6 +146,81 @@
 
   function compact(text) {
     return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizePlugins(raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    var normalized = {
+      nostr_support: src.nostr_support !== false,
+      nostr_login: src.nostr_login !== false,
+      nostr_bridge: src.nostr_bridge !== false,
+      nostr_posts: src.nostr_posts !== false,
+      zaps: src.zaps !== false,
+      btcpay: src.btcpay !== false,
+      video_chat: src.video_chat === true
+    };
+    if (!normalized.nostr_support) {
+      normalized.nostr_login = false;
+      normalized.nostr_bridge = false;
+      normalized.nostr_posts = false;
+      normalized.zaps = false;
+    }
+    return normalized;
+  }
+
+  function cachePlugins(plugins) {
+    try {
+      localStorage.setItem(PLUGINS_CACHE_KEY, JSON.stringify(plugins || {}));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function readCachedPlugins() {
+    try {
+      var raw = localStorage.getItem(PLUGINS_CACHE_KEY);
+      if (!raw) {
+        return null;
+      }
+      return normalizePlugins(JSON.parse(raw));
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function publishPlugins(plugins) {
+    state.plugins = normalizePlugins(plugins);
+    cachePlugins(state.plugins);
+    window.__wizardryPlugins = state.plugins;
+    window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
+    try {
+      window.dispatchEvent(new CustomEvent('wizardry-plugins-ready', {
+        detail: { plugins: state.plugins }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch failures.
+    }
+  }
+
+  function syncPluginAuthUi() {
+    if (state.isAuthenticated) {
+      return;
+    }
+    var loginEnabled = !(state.plugins && state.plugins.nostr_login === false);
+    if (!loginEnabled) {
+      if (els.loginSplit) {
+        els.loginSplit.style.display = 'none';
+      } else if (els.loginBtn) {
+        els.loginBtn.style.display = 'none';
+      }
+      return;
+    }
+    if (els.loginSplit) {
+      els.loginSplit.style.display = '';
+    }
+    if (els.loginBtn) {
+      els.loginBtn.style.display = '';
+    }
   }
 
   function normalizeSiteTitle(value) {
@@ -1103,6 +1188,7 @@
       els.composeLink.style.display = 'none';
     }
     updateLogoutOtherSessionsUi(0);
+    syncPluginAuthUi();
     scheduleNavOverflowMenuSync();
   }
 
@@ -2376,14 +2462,23 @@
           state.currentTheme = data.theme;
           var themeLink = document.getElementById('theme-stylesheet');
           if (!isServerThemeHrefActive(themeLink)) {
+            publishPlugins(data.plugins || {});
+            syncPluginAuthUi();
             return updateThemeStylesheet(state.currentTheme);
           }
         }
+        publishPlugins((data && data.plugins) || {});
+        syncPluginAuthUi();
       })
       .then(function () {
         updateThemeSelect();
       })
       .catch(function () {
+        var cached = readCachedPlugins();
+        if (cached) {
+          publishPlugins(cached);
+          syncPluginAuthUi();
+        }
         updateThemeSelect();
       });
   }
@@ -2709,6 +2804,13 @@
       optimisticSiteTitle = '';
     }
     updateNavSiteSignature(optimisticSiteTitle);
+    var cachedPlugins = readCachedPlugins();
+    if (cachedPlugins) {
+      publishPlugins(cachedPlugins);
+    } else {
+      window.__wizardryPlugins = state.plugins;
+      window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
+    }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
 
