@@ -12,6 +12,7 @@
 <script>
 (function () {
   var ROUTE_REFRESH_PARAM = '__route_refresh';
+  var ROUTE_REPAIR_PARAM = '__route_repair';
   var routeFailureTimer = 0;
 
   function normalizeSlug(value) {
@@ -182,6 +183,7 @@
       var expectedSlug = slugFromPath(currentUrl.pathname || '/');
       var rootSlug = routeRootSlugFromDom();
       var hasRefreshParam = currentUrl.searchParams.get(ROUTE_REFRESH_PARAM) === '1';
+      var hasRepairParam = currentUrl.searchParams.get(ROUTE_REPAIR_PARAM) === '1';
       if (expectedSlug && rootSlug && !slugsEquivalent(expectedSlug, rootSlug)) {
         if (!hasRefreshParam) {
           currentUrl.searchParams.set(ROUTE_REFRESH_PARAM, '1');
@@ -190,8 +192,9 @@
         }
         scheduleRouteLoadFailure();
         return;
-      } else if (hasRefreshParam && window.history && typeof window.history.replaceState === 'function') {
+      } else if ((hasRefreshParam || hasRepairParam) && window.history && typeof window.history.replaceState === 'function') {
         currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
+        currentUrl.searchParams.delete(ROUTE_REPAIR_PARAM);
         var next = currentUrl.pathname;
         var query = currentUrl.searchParams.toString();
         if (query) {

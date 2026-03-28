@@ -295,6 +295,87 @@ blog_normalize_post_source_path() {
   printf 'posts/%s.md\n' "$filename"
 }
 
+blog_strip_post_date_prefix_from_slug() {
+  slug=${1-}
+  printf '%s' "$slug" | sed 's/^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//'
+}
+
+blog_public_post_slug_from_rel() {
+  rel_no_ext=${1-}
+  [ -n "$rel_no_ext" ] || return 1
+  dir_part=${rel_no_ext%/*}
+  base_part=${rel_no_ext##*/}
+  canonical_base=$(blog_strip_post_date_prefix_from_slug "$base_part")
+  if [ -z "$canonical_base" ]; then
+    canonical_base=$base_part
+  fi
+  if [ "$dir_part" = "$rel_no_ext" ]; then
+    printf '%s\n' "$canonical_base"
+    return 0
+  fi
+  printf '%s/%s\n' "$dir_part" "$canonical_base"
+}
+
+blog_resolve_post_markdown_file() {
+  raw=${1-}
+  [ -n "$raw" ] || return 1
+
+  requested=$(printf '%s' "$raw" | sed \
+    -e 's#^https\{0,1\}://[^/]*/##' \
+    -e 's#^[?].*$##' \
+    -e 's#^/##' \
+    -e 's#^cgi/blog-open-post/##' \
+    -e 's#^pages/posts/##' \
+    -e 's#^posts/##')
+  case "$requested" in
+    *'..'*|*'\\'*|*'//'*)
+      return 1
+      ;;
+  esac
+
+  case "$requested" in
+    *.html) rel_md=${requested%.html}.md ;;
+    *.md) rel_md=$requested ;;
+    *) rel_md="${requested}.md" ;;
+  esac
+
+  direct_file="$blog_posts_dir/$rel_md"
+  if [ -f "$direct_file" ]; then
+    printf '%s\n' "$direct_file"
+    return 0
+  fi
+
+  rel_no_ext=${rel_md%.md}
+  rel_dir=${rel_no_ext%/*}
+  rel_base=${rel_no_ext##*/}
+  canonical_base=$(blog_strip_post_date_prefix_from_slug "$rel_base")
+  if [ -z "$canonical_base" ]; then
+    canonical_base=$rel_base
+  fi
+  if [ "$rel_dir" = "$rel_no_ext" ]; then
+    canonical_rel="$canonical_base"
+    search_dir="$blog_posts_dir"
+  else
+    canonical_rel="$rel_dir/$canonical_base"
+    search_dir="$blog_posts_dir/$rel_dir"
+  fi
+
+  canonical_file="$blog_posts_dir/${canonical_rel}.md"
+  if [ -f "$canonical_file" ]; then
+    printf '%s\n' "$canonical_file"
+    return 0
+  fi
+
+  [ -d "$search_dir" ] || return 1
+  dated_match=$(find -L "$search_dir" -maxdepth 1 -type f -name "????-??-??-${canonical_base}.md" 2>/dev/null | sort -r | head -n 1)
+  if [ -n "$dated_match" ] && [ -f "$dated_match" ]; then
+    printf '%s\n' "$dated_match"
+    return 0
+  fi
+
+  return 1
+}
+
 blog_random_token() {
   bytes=${1:-24}
   if command -v openssl >/dev/null 2>&1; then
@@ -4000,7 +4081,8 @@ blog_base_url() {
 blog_rel_post_url() {
   file=$1
   rel=${file#"$blog_posts_dir/"}
-  rel_slug=${rel%.md}
+  rel_slug_raw=${rel%.md}
+  rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
   # Canonical public post URLs are pretty extensionless paths.
   printf '/posts/%s\n' "$rel_slug"
 }

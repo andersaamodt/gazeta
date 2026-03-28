@@ -102,6 +102,35 @@
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
 
+  function clearRouteRepairParam() {
+    var url;
+    try {
+      url = new URL(window.location.href);
+    } catch (_err) {
+      return;
+    }
+    if (url.searchParams.get('__route_repair') !== '1') {
+      return;
+    }
+    url.searchParams.delete('__route_repair');
+    if (!window.history || typeof window.history.replaceState !== 'function') {
+      return;
+    }
+    var next = url.pathname;
+    var query = url.searchParams.toString();
+    if (query) {
+      next += '?' + query;
+    }
+    if (url.hash) {
+      next += url.hash;
+    }
+    try {
+      window.history.replaceState(null, '', next);
+    } catch (_replaceErr) {
+      // Ignore history replacement failures.
+    }
+  }
+
   function authSignature() {
     var auth = authPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
@@ -211,6 +240,7 @@
     }
     var attempted = url.searchParams.get('__route_repair') === '1';
     if (attempted) {
+      clearRouteRepairParam();
       return;
     }
     url.searchParams.set('__route_repair', '1');
@@ -3359,6 +3389,7 @@
   });
 
   removeLegacyTitleBlock();
+  clearRouteRepairParam();
   ensureFilterGutterLayout();
 
   (function bootstrapOnce() {

@@ -18,23 +18,14 @@ if [ -z "$requested_path" ]; then
   exit 0
 fi
 
-requested_path=$(printf '%s' "$requested_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/posts/##' -e 's#^posts/##')
-case "$requested_path" in
-  *'..'*|*'\\'*|*'//'*)
-    blog_json_error "Invalid path" "invalid_path"
-    exit 0
-    ;;
-esac
-
-case "$requested_path" in
-  *.html) rel_md=${requested_path%.html}.md ;;
-  *.md) rel_md=$requested_path ;;
-  *) rel_md="${requested_path}.md" ;;
-esac
-
-current_file="$blog_posts_dir/$rel_md"
+current_file=$(blog_resolve_post_markdown_file "$requested_path" 2>/dev/null || printf '')
+if [ -z "$current_file" ]; then
+  blog_json_error "Invalid path" "invalid_path"
+  exit 0
+fi
 if [ ! -f "$current_file" ] && blog_nostr_bridge_enabled; then
   blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+  current_file=$(blog_resolve_post_markdown_file "$requested_path" 2>/dev/null || printf '')
 fi
 if [ ! -f "$current_file" ]; then
   blog_json_error "Post not found" "not_found"
@@ -86,7 +77,9 @@ post_json() {
   reading_minutes=$(blog_estimated_read_minutes "$word_count")
   url=$(blog_rel_post_html_url "$file")
   rel=${file#"$blog_posts_dir/"}
-  rel_path="posts/${rel%.md}"
+  rel_slug_raw=${rel%.md}
+  rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
+  rel_path="posts/${rel_slug}"
 
   printf '{'
   printf '"title":"%s",' "$(blog_json_escape "$title")"

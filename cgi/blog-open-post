@@ -30,32 +30,17 @@ if [ -z "$path" ]; then
   exit 0
 fi
 
-path=$(printf '%s' "$path" | sed \
-  -e 's#^https\{0,1\}://[^/]*/##' \
-  -e 's#^[?].*$##' \
-  -e 's#^/##' \
-  -e 's#^cgi/blog-open-post/##' \
-  -e 's#^pages/posts/##' \
-  -e 's#^posts/##')
-case "$path" in
-  *'..'*|*'\\'*|*'//'*)
-    http-status 400 "Bad Request"
-    http-header "Content-Type" "text/plain; charset=utf-8"
-    http-end-headers
-    printf 'Invalid path\n'
-    exit 0
-    ;;
-esac
-
-case "$path" in
-  *.html) rel_md=${path%.html}.md ;;
-  *.md) rel_md=$path ;;
-  *) rel_md="${path}.md" ;;
-esac
-
-md_file="$blog_posts_dir/$rel_md"
+md_file=$(blog_resolve_post_markdown_file "$path" 2>/dev/null || printf '')
+if [ -z "$md_file" ]; then
+  http-status 400 "Bad Request"
+  http-header "Content-Type" "text/plain; charset=utf-8"
+  http-end-headers
+  printf 'Invalid path\n'
+  exit 0
+fi
 if [ ! -f "$md_file" ] && blog_nostr_bridge_enabled; then
   blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+  md_file=$(blog_resolve_post_markdown_file "$path" 2>/dev/null || printf '')
 fi
 if [ ! -f "$md_file" ]; then
   http-status 404 "Not Found"
@@ -77,8 +62,8 @@ if [ "$visibility" != "public" ]; then
   exit 0
 fi
 
-rel_html=${rel_md%.md}.html
-rel_slug=${rel_md%.md}
+rel=${md_file#"$blog_posts_dir/"}
+rel_html=${rel%.md}.html
 html_file="$blog_site_root/build/pages/posts/$rel_html"
 
 if [ -f "$html_file" ]; then
@@ -191,7 +176,6 @@ cat <<HTML
 </body>
 </html>
 HTML
-
 
 
 
