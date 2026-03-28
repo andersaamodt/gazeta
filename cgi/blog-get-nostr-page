@@ -99,6 +99,12 @@ if [ -n "$draft_state_json" ]; then
   draft_exists=true
 fi
 
+# Treat an empty legacy Home/index page as non-existent.
+if [ "$page_slug" = "index" ] && [ "$page_type" = "nip23" ] && [ "$canonical_exists" != "true" ] && [ "$draft_exists" != "true" ]; then
+  blog_json_error "Unknown Nostr page slug" "unknown_page"
+  exit 0
+fi
+
 draft_local_json='{}'
 if [ -n "$draft_state_json" ]; then
   draft_local_json=$(printf '%s\n' "$draft_state_json" | jq -c '{

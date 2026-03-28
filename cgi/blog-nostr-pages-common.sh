@@ -97,30 +97,6 @@ blog_nostr_pages_default_json() {
         show_in_nav: true,
         placeholder_title: "Blog",
         path: "/blog"
-      },
-      {
-        slug: "index",
-        type: "nip23",
-        kind: 30023,
-        show_in_nav: true,
-        placeholder_title: "Home",
-        path: "/"
-      },
-      {
-        slug: "about",
-        type: "nip23",
-        kind: 30023,
-        show_in_nav: true,
-        placeholder_title: "About",
-        path: "/about"
-      },
-      {
-        slug: "list",
-        type: "list",
-        kind: 30004,
-        show_in_nav: true,
-        placeholder_title: "List",
-        path: "/list"
       }
     ]
   }'

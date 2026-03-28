@@ -72,40 +72,52 @@ done < "$all_pages_tmp"
 if [ "$cache_is_fresh" = "true" ]; then
   cat "$cache_file"
 else
-  nav_json=$(printf '%s\n' "$cfg" | jq -c '
-    def title_from_slug($s):
-      (($s // "") | tostring | gsub("-"; " ")) as $t
-      | if ($t | length) == 0 then
-          "Untitled"
-        else
-          (($t[0:1] | ascii_upcase) + ($t[1:]))
-        end;
-    {
-      success: true,
-      pages: [
-        .pages[]?
-        | (.slug // "" | tostring) as $slug
-        | select(($slug | length) > 0)
-        | select((if has("show_in_nav") then .show_in_nav else true end) == true)
-        | {
-            slug: $slug,
-            title: (
-              (.placeholder_title // "" | tostring) as $placeholder
-              | if ($placeholder | length) > 0 then
-                  $placeholder
-                elif $slug == "index" then
-                  "Home"
-                else
-                  title_from_slug($slug)
-                end
-            ),
-            path: (if $slug == "index" then "/" else ("/" + $slug) end),
-            type: (.type // "list" | tostring),
-            kind: ((.kind // 30004) | tonumber? // 30004)
-          }
-      ]
-    }
-  ' 2>/dev/null || printf '{"success":true,"pages":[]}')
+  nav_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages.XXXXXX")
+  printf '%s\n' "$cfg" | jq -r '.pages[]? | [(.slug // ""), (.type // "list"), (.placeholder_title // ""), (if has("show_in_nav") then .show_in_nav else true end)] | @tsv' 2>/dev/null > "$nav_pages_tmp"
+  nav_items_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-items.XXXXXX")
+  while IFS="$(printf '\t')" read -r raw_slug raw_type raw_title raw_show || [ -n "$raw_slug" ]; do
+    slug=$(blog_nostr_page_slug "$raw_slug")
+    [ -n "$slug" ] || continue
+    page_type=$(printf '%s' "$raw_type" | tr '[:upper:]' '[:lower:]')
+    case "$raw_show" in
+      false|FALSE|False|0) continue ;;
+      *) ;;
+    esac
+
+    if [ "$slug" = "index" ] && [ "$page_type" = "nip23" ]; then
+      index_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+      index_draft=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
+      if [ -z "$index_event" ] && [ -z "$index_draft" ]; then
+        continue
+      fi
+    fi
+
+    placeholder_title=$(printf '%s' "$raw_title" | tr -d '\r')
+    if [ -n "$placeholder_title" ]; then
+      title=$placeholder_title
+    else
+      title=$(blog_nostr_page_titleize_slug "$slug")
+    fi
+    if [ "$slug" = "index" ]; then
+      path='/'
+    else
+      path="/$slug"
+    fi
+    kind=$(blog_nostr_page_kind_for_type "$page_type")
+    jq -cn \
+      --arg slug "$slug" \
+      --arg title "$title" \
+      --arg path "$path" \
+      --arg type "$page_type" \
+      --argjson kind "$kind" \
+      '{slug:$slug,title:$title,path:$path,type:$type,kind:$kind}' >> "$nav_items_tmp"
+  done < "$nav_pages_tmp"
+
+  nav_json=$(jq -cn --slurpfile pages "$nav_items_tmp" '{success:true,pages: ($pages // [])}')
+  rm -f "$nav_pages_tmp" "$nav_items_tmp"
+  if [ -z "$nav_json" ]; then
+    nav_json='{"success":true,"pages":[]}'
+  fi
   printf '%s\n' "$nav_json"
 
   cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-cache.XXXXXX")
