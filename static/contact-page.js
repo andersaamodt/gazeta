@@ -57,8 +57,62 @@
     saveIndicatorVisible: false,
     initialContentPainted: false
   };
+  var videoChatScriptLoading = null;
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
+
+  function videoChatPluginEnabled() {
+    var plugins = window.__wizardryPlugins;
+    if (plugins && typeof plugins === 'object') {
+      return plugins.video_chat === true;
+    }
+    return window.__wizardryVideoChatEnabled === true;
+  }
+
+  function ensureVideoChatWidgetScript() {
+    if (window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function') {
+      return Promise.resolve(true);
+    }
+    if (videoChatScriptLoading) {
+      return videoChatScriptLoading;
+    }
+    videoChatScriptLoading = new Promise(function (resolve) {
+      var existing = document.querySelector('script[data-video-chat-widget="1"]');
+      if (existing) {
+        existing.addEventListener('load', function () {
+          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+        }, { once: true });
+        existing.addEventListener('error', function () { resolve(false); }, { once: true });
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = '/static/video-chat-widget.js';
+      script.async = true;
+      script.setAttribute('data-video-chat-widget', '1');
+      script.onload = function () {
+        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+      };
+      script.onerror = function () { resolve(false); };
+      document.head.appendChild(script);
+    });
+    return videoChatScriptLoading;
+  }
+
+  function maybeLoadVideoChatWidget() {
+    if (!videoChatPluginEnabled()) {
+      return;
+    }
+    ensureVideoChatWidgetScript().then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      if (window.VideoChatWidgetAutoMount && typeof window.VideoChatWidgetAutoMount.scan === 'function') {
+        window.VideoChatWidgetAutoMount.scan(document);
+      }
+    }).catch(function () {
+      // Keep contact page resilient even if widget bundle fails.
+    });
+  }
 
   function nextRowUid() {
     state.rowUidSeq = Number(state.rowUidSeq || 0) + 1;
@@ -1245,6 +1299,7 @@
     renderAdmin();
     renderContent();
     renderValidation();
+    maybeLoadVideoChatWidget();
   }
 
   function saveNavbarTitle() {
@@ -1901,6 +1956,7 @@
     }
   });
   window.addEventListener('focus', maybeReloadForAuthChange);
+  window.addEventListener('wizardry-plugins-ready', maybeLoadVideoChatWidget);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') {
       maybeReloadForAuthChange();

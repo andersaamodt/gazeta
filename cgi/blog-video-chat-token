@@ -1,0 +1,70 @@
+#!/bin/sh
+# Issue short-lived capability token/bootstrap metadata for video chat widget.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_plugin_enabled "video_chat"; then
+  blog_json_error "Video calling plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
+
+client_ip=$(blog_client_ip)
+if ! blog_rate_limit_check video_chat_token_ip "$client_ip" 80 300; then
+  blog_json_error "Too many token requests. Please try again in a minute." "rate_limited"
+  exit 0
+fi
+
+room_id=$(printf '%s' "$(blog_param room_id)" | tr '[:upper:]' '[:lower:]')
+if [ -z "$room_id" ]; then
+  room_id=$(printf '%s' "$(blog_param room)" | tr '[:upper:]' '[:lower:]')
+fi
+room_id=$(printf '%s' "$room_id" | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-\+//; s/-\+$//')
+if [ -z "$room_id" ]; then
+  room_id=$(printf '%s' "$(blog_random_token 6)" | cut -c1-12 | tr '[:upper:]' '[:lower:]')
+fi
+
+participant_limit=$(config-get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
+case "$participant_limit" in
+  ''|*[!0-9]*) participant_limit=6 ;;
+esac
+if [ "$participant_limit" -lt 2 ]; then
+  participant_limit=2
+fi
+if [ "$participant_limit" -gt 24 ]; then
+  participant_limit=24
+fi
+
+ttl_seconds=$(config-get "$blog_site_conf" video_chat_token_ttl_seconds 2>/dev/null || printf '3600')
+case "$ttl_seconds" in
+  ''|*[!0-9]*) ttl_seconds=3600 ;;
+esac
+if [ "$ttl_seconds" -lt 60 ]; then
+  ttl_seconds=60
+fi
+if [ "$ttl_seconds" -gt 86400 ]; then
+  ttl_seconds=86400
+fi
+
+issued_at=$(blog_now_epoch)
+expires_at=$((issued_at + ttl_seconds))
+capability_token=$(blog_random_token 24)
+janus_ws=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
+signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
+
+printf '{'
+printf '"success":true,'
+printf '"room_id":"%s",' "$(blog_json_escape "$room_id")"
+printf '"token":"%s",' "$(blog_json_escape "$capability_token")"
+printf '"issued_at":%s,' "$issued_at"
+printf '"expires_at":%s,' "$expires_at"
+printf '"participant_limit":%s,' "$participant_limit"
+printf '"janus_wss":"%s",' "$(blog_json_escape "$janus_ws")"
+printf '"signaling_wss":"%s"' "$(blog_json_escape "$signaling_endpoint")"
+printf '}\n'

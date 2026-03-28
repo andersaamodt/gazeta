@@ -5,6 +5,7 @@ A single-author Nostr-focused blog for wizardry web with optional bridge support
 ## Features
 
 - **Full admin panel**: Compose, edit, delete, schedule, drip-queue, and publish
+- **Plugin toggles**: Enable or disable Nostr support, Nostr login, Nostr bridge, Nostr-backed pages/posts, Zaps, BTCPay, and Video Calling from Admin → Plugins
 - **Smart Markdown editing**: Selection-aware toolbar + live preview
 - **Autosave drafts**: Debounced autosave with draft persistence
 - **Local drip queue**: Publish one queued post per interval while an admin browser tab remains open (optional jitter)
@@ -15,6 +16,7 @@ A single-author Nostr-focused blog for wizardry web with optional bridge support
 - **Archive index**: Month-grouped archive view with per-month counts
 - **Post context UX**: Read-time card, tags, and automatic older/newer links
 - **Nostr-first auth**: Nostr challenge login with optional delegated device sessions and optional SSH link
+- **Video chat widget**: Self-contained Shadow-DOM WebRTC widget with Janus videoroom support, data-attribute auto-mount, manual init API, and iframe embed route
 
 ## Post Model
 
@@ -315,9 +317,109 @@ Access admin panel (if in blog-admin group)
 - `blog-list-queue` - List scheduled + drip queue
 - `blog-run-scheduler` - Trigger scheduler tick
 - `blog-nostr-mirror` - Mirror Nostr posts/comments from configured relays
+- `blog-video-chat-token` - Issue short-lived capability token/bootstrap payload for video chat widget
 - `blog-upload-media` - Upload images for markdown embedding
 - `blog-draft-asset` - Serve draft-local files for relative-path preview rendering
 - `blog-archive` - Render month-grouped archive listing
+
+## Plugin System
+
+- Admin has a dedicated `Plugins` section for feature switches.
+- Plugin toggles are file-backed in `site.conf` as `plugin_<name>=true|false`.
+- `nostr_support` is a master switch for:
+  - `nostr_login`
+  - `nostr_bridge`
+  - `nostr_posts`
+  - `zaps`
+- Disabling a plugin hides its related admin panel and blocks related CGI actions.
+- Plugin enablement does not install system packages; it only controls availability in UI/CGI behavior.
+
+## Video Chat Widget
+
+### What it provides
+
+- Single-file widget bundle: `/static/video-chat-widget.js`
+- Shadow DOM UI isolation (no host CSS collisions)
+- Global initializer: `initVideoChatWidget(target, options)`
+- Auto-mount for any `[data-video-chat]` node
+- Deferred mount support for dynamically injected content (MutationObserver scan)
+- Janus `videoroom` integration over WSS, including SDP/ICE flow
+- In-widget controls: mic, camera, leave, copy invite link
+- Lifecycle hooks: `onJoin`, `onLeave`, `onError`
+- Metrics callback hook: `onMetric` or `metricsCallback`
+- Feature flag support via plugin state and per-widget `featureEnabled` option
+
+### Contact page loading
+
+- Contact page loads the widget script lazily when the `video_chat` plugin is enabled.
+- Media initialization is always gated behind explicit user action in-widget.
+
+### Integration pattern: Data-attribute mount (CMS)
+
+```html
+<div
+  data-video-chat
+  data-video-chat-token-endpoint="/cgi/blog-video-chat-token"
+  data-video-chat-janus-endpoint="wss://janus.example.com/janus"
+  data-video-chat-signaling-endpoint="wss://signal.example.com/ws"
+  data-video-chat-participant-limit="6"
+  data-video-chat-max-participants="6"
+  data-video-chat-room-policy="open">
+</div>
+<script src="/static/video-chat-widget.js" defer></script>
+```
+
+### Integration pattern: Manual init
+
+```html
+<div id="video-chat-host"></div>
+<script src="/static/video-chat-widget.js" defer></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    initVideoChatWidget('#video-chat-host', {
+      tokenEndpoint: '/cgi/blog-video-chat-token',
+      janusEndpoint: 'wss://janus.example.com/janus',
+      signalingEndpoint: 'wss://signal.example.com/ws',
+      participantLimit: 6,
+      maxParticipants: 6,
+      roomPolicy: 'open',
+      onMetric: function (metric) {
+        console.log('video metric', metric);
+      }
+    });
+  });
+</script>
+```
+
+### Integration pattern: iframe embed
+
+- Zero-JS host integration route:
+  - `/embed/video-chat`
+- Example:
+
+```html
+<iframe
+  src="/embed/video-chat?room=demo-room&participant_limit=6"
+  title="Video chat"
+  width="100%"
+  height="520"
+  loading="lazy"
+  allow="camera; microphone; fullscreen">
+</iframe>
+```
+
+### CSP notes
+
+Set CSP to allow:
+
+- `connect-src`:
+  - your origin (`'self'`)
+  - capability token endpoint origin (if external)
+  - Janus WSS endpoint
+  - signaling WSS endpoint
+- `media-src`:
+  - `'self'`
+  - `blob:`
 - `blog-post-context` - Return post metadata + older/newer navigation context
 
 **Public Nostr Read/Refresh Endpoints:**
@@ -377,7 +479,6 @@ See `.github/MUD_BLOG_INTEGRATION.md` for complete documentation.
 ## License
 
 Part of the wizardry project.
-
 
 
 
