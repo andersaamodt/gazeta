@@ -30,6 +30,9 @@ while IFS= read -r file || [ -n "$file" ]; do
   author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
   published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
   summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+  body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
+  word_count=$(blog_word_count "$body")
+  reading_minutes=$(blog_estimated_read_minutes "$word_count")
   post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
   if [ -z "$post_type" ]; then
     post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
@@ -76,6 +79,8 @@ while IFS= read -r file || [ -n "$file" ]; do
     --arg year "$year" \
     --arg source "$source" \
     --arg tags_csv "$tags" \
+    --argjson word_count "$word_count" \
+    --argjson reading_minutes "$reading_minutes" \
     --argjson comment_count "${comment_count:-0}" \
     '{
       path: $path,
@@ -88,6 +93,8 @@ while IFS= read -r file || [ -n "$file" ]; do
       type: $post_type,
       year: $year,
       source: $source,
+      word_count: $word_count,
+      reading_minutes: $reading_minutes,
       tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),
       comment_count: $comment_count
     }'
