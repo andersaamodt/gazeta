@@ -234,7 +234,7 @@ body {
 body:has(#blog-page-root),
 body:has(.post-single-item),
 body:has(.post-list > .post-item) {
-  max-width: 840px;
+  max-width: 800px;
 }
 
 body.list-page-width-anim {

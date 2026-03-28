@@ -1240,7 +1240,7 @@ blog_auto_summary_from_content() {
     printf '%s\n' ''
     return 0
   fi
-  max_words=28
+  max_words=48
   summary=$(printf '%s\n' "$plain" | awk -v n="$max_words" '{ for (i=1; i<=NF && i<=n; i++) { printf "%s%s", $i, (i<n && i<NF ? " " : "") } }')
   if [ -n "$summary" ] && [ "$(printf '%s\n' "$plain" | wc -w | tr -d ' ')" -gt "$max_words" ]; then
     summary="$summary..."
