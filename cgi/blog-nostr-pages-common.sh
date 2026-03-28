@@ -193,6 +193,45 @@ blog_nostr_pages_normalize_json() {
   ' 2>/dev/null || blog_nostr_pages_default_json
 }
 
+blog_nostr_pages_prune_legacy_empty_home_json() {
+  cfg_json=${1-}
+  [ -n "$cfg_json" ] || {
+    blog_nostr_pages_default_json
+    return 0
+  }
+  has_legacy_index=$(printf '%s\n' "$cfg_json" | jq -r '
+    [
+      .pages[]?
+      | select((.slug // "" | tostring) == "index")
+      | select((.type // "list" | tostring | ascii_downcase) == "nip23")
+    ] | length
+  ' 2>/dev/null || printf '0')
+  case "$has_legacy_index" in
+    ''|*[!0-9]*) has_legacy_index=0 ;;
+  esac
+  if [ "$has_legacy_index" -le 0 ]; then
+    printf '%s\n' "$cfg_json"
+    return 0
+  fi
+
+  index_event=$(blog_nostr_nip23_latest_event_json "index" 2>/dev/null || printf '')
+  index_draft=$(blog_nostr_page_load_draft_state_json "index" "nip23" 2>/dev/null || printf '')
+  if [ -n "$index_event" ] || [ -n "$index_draft" ]; then
+    printf '%s\n' "$cfg_json"
+    return 0
+  fi
+
+  printf '%s\n' "$cfg_json" | jq -c '
+    .pages = [
+      .pages[]?
+      | select(
+          ((.slug // "" | tostring) != "index")
+          or ((.type // "list" | tostring | ascii_downcase) != "nip23")
+        )
+    ]
+  ' 2>/dev/null || printf '%s\n' "$cfg_json"
+}
+
 blog_nostr_pages_load_json() {
   path=$(blog_nostr_pages_config_path)
   raw=''
@@ -202,6 +241,7 @@ blog_nostr_pages_load_json() {
     raw_norm=$(printf '%s\n' "$raw" | jq -c '.' 2>/dev/null || printf '')
   fi
   normalized=$(blog_nostr_pages_normalize_json "$raw")
+  normalized=$(blog_nostr_pages_prune_legacy_empty_home_json "$normalized")
   normalized_norm=$(printf '%s\n' "$normalized" | jq -c '.' 2>/dev/null || printf '')
   if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
     blog_nostr_pages_save_json "$normalized"
