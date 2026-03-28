@@ -2532,6 +2532,12 @@
       return;
     }
 
+    if (state.postsLoading && !state.posts.length) {
+      els.list.innerHTML = '';
+      els.empty.hidden = true;
+      return;
+    }
+
     var shown = filteredPosts();
     var hasFilters = state.filters.tags.size || state.filters.years.size || state.filters.types.size;
 
@@ -3356,6 +3362,7 @@
   ensureFilterGutterLayout();
 
   (function bootstrapOnce() {
+    var hasWarmPosts = false;
     var prerenderedPayload = readPrerenderPageBootstrap();
     if (prerenderedPayload) {
       state.payload = prerenderedPayload;
@@ -3366,13 +3373,15 @@
     if (prerenderedPosts) {
       state.posts = prerenderedPosts;
       writeCache(prerenderedPosts);
+      hasWarmPosts = true;
     } else {
       var cached = readCache();
       if (cached) {
         state.posts = cached;
+        hasWarmPosts = true;
       }
     }
-    state.postsLoading = false;
+    state.postsLoading = !hasWarmPosts;
     renderAll();
     state.renderSignature = renderSignature();
     state.initialPageStateLoaded = true;
