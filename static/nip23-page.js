@@ -414,7 +414,7 @@
       state.draft = normalizeDraftState(state.draft);
       return state.draft;
     }
-    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Home', content: '' });
+    return normalizeDraftState((state.payload && state.payload.state) || { title: '', content: '' });
   }
 
   function defaultNavbarTitle(renderState) {

@@ -109,10 +109,7 @@ blog_nostr_pages_normalize_json() {
     return 0
   fi
 
-  legacy_blog_title=$(config-get "$blog_site_conf" blog_page_title 2>/dev/null || printf '')
-  [ -n "$legacy_blog_title" ] || legacy_blog_title='Blog'
-
-  printf '%s\n' "$raw_json" | jq -c --arg legacy_blog_title "$legacy_blog_title" '
+  printf '%s\n' "$raw_json" | jq -c '
     def title_from_slug($s):
       (($s // "") | tostring | gsub("-";" ")) as $t
       | if ($t | length) == 0 then "Untitled" else (($t[0:1] | ascii_upcase) + ($t[1:])) end;
@@ -153,22 +150,10 @@ blog_nostr_pages_normalize_json() {
       | map(select((.slug | length) > 0))
     ) as $pages
     | (reduce $pages[] as $p ([];
-        if any(.[]; .slug == $p.slug) then . else . + [$p] end
-      )) as $unique
-    | (
-        if any($unique[]?; .type == "blog") then
-          $unique
-        else
-          ([{
-            slug: "blog",
-            type: "blog",
-            show_in_nav: true,
-            placeholder_title: (($legacy_blog_title // "") | tostring),
-            path: "/blog"
-          }] + $unique)
-        end
-      ) as $with_blog
-    | $with_blog as $with_required_pages
+        # Last one wins for duplicate slugs so explicit user edits override
+        # stale legacy rows (for example old index/Home entries).
+        ([.[] | select(.slug != $p.slug)] + [$p])
+      )) as $with_required_pages
     | {
         pages:
           (if ($with_required_pages | length) == 0 then
@@ -274,18 +259,6 @@ blog_nostr_page_type_for_slug() {
   page=$(blog_nostr_page_entry_json "$slug" 2>/dev/null || printf '')
   if [ -n "$page" ]; then
     printf '%s\n' "$page" | jq -r '.type // "list"' 2>/dev/null || printf 'list\n'
-    return 0
-  fi
-  if [ "$slug" = "list" ]; then
-    printf 'list\n'
-    return 0
-  fi
-  if [ "$slug" = "index" ]; then
-    printf 'nip23\n'
-    return 0
-  fi
-  if [ "$slug" = "blog" ]; then
-    printf 'blog\n'
     return 0
   fi
   return 1

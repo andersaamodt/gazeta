@@ -4653,12 +4653,22 @@
       focusNostrPageSlugInput(index);
       return;
     }
-    if (nextSlug !== prevSlug && state.nostrPages.some(function (row, i) {
-      return i !== index && String(row.slug || '') === nextSlug;
-    })) {
-      setOutput(els.outputNostrPages, 'A page with this slug already exists.', 'warn');
-      focusNostrPageSlugInput(index);
-      return;
+    let conflictingIndex = -1;
+    if (nextSlug !== prevSlug) {
+      conflictingIndex = state.nostrPages.findIndex(function (row, i) {
+        return i !== index && String(row.slug || '') === nextSlug;
+      });
+      if (conflictingIndex >= 0) {
+        const conflicting = state.nostrPages[conflictingIndex] || {};
+        const currentType = String(page.type || '').trim().toLowerCase();
+        const conflictingType = String(conflicting.type || '').trim().toLowerCase();
+        const replacingLegacyHome = nextSlug === 'index' && currentType === 'blog' && conflictingType !== 'blog';
+        if (!replacingLegacyHome) {
+          setOutput(els.outputNostrPages, 'A page with this slug already exists.', 'warn');
+          focusNostrPageSlugInput(index);
+          return;
+        }
+      }
     }
     state.nostrPagesEditingSlugIndex = -1;
     state.nostrPagesEditingSlugValue = '';
@@ -4668,7 +4678,14 @@
     }
     const before = state.nostrPages.slice();
     const next = state.nostrPages.slice();
-    next[index] = Object.assign({}, next[index], {
+    let targetIndex = index;
+    if (conflictingIndex >= 0) {
+      next.splice(conflictingIndex, 1);
+      if (conflictingIndex < targetIndex) {
+        targetIndex -= 1;
+      }
+    }
+    next[targetIndex] = Object.assign({}, next[targetIndex], {
       slug: nextSlug,
       path: nextPath
     });
