@@ -228,7 +228,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Plugins</h3>
-<p class="muted">Toggle feature modules on or off. Disabled plugins hide their admin panel and disable related functionality across the site.</p>
+<p class="muted">Toggle feature modules on or off (data is not deleted). Disabled plugins hide their admin panel and disable related functionality across the site.</p>
 </div>
 </div>
 
@@ -236,32 +236,32 @@ title: ""
 <section class="sub-card">
 <h4>Feature Modules</h4>
 <div class="field-row checkbox-row" data-plugin-row="nostr_support">
-<div class="setting-label"><strong>Nostr Support</strong></div>
-<label class="checkbox-control" for="plugin-nostr-support"><input type="checkbox" id="plugin-nostr-support"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Support</strong><span class="plugin-setting-help">Core Nostr features and shared signing/event capabilities.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-support"><input type="checkbox" id="plugin-nostr-support"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="nostr_login">
-<div class="setting-label"><strong>Nostr Login</strong></div>
-<label class="checkbox-control" for="plugin-nostr-login"><input type="checkbox" id="plugin-nostr-login"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Login</strong><span class="plugin-setting-help">Sign in with Nostr keys/extensions and session bridging.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-login"><input type="checkbox" id="plugin-nostr-login"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="nostr_bridge">
-<div class="setting-label"><strong>Nostr Bridge (Stonr)</strong></div>
-<label class="checkbox-control" for="plugin-nostr-bridge"><input type="checkbox" id="plugin-nostr-bridge"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Bridge (Stonr)</strong><span class="plugin-setting-help">Mirrors events/comments through the Stonr bridge pipeline.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-bridge"><input type="checkbox" id="plugin-nostr-bridge"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="nostr_posts">
-<div class="setting-label"><strong>Nostr-Backed Pages & Posts</strong></div>
-<label class="checkbox-control" for="plugin-nostr-posts"><input type="checkbox" id="plugin-nostr-posts"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr-Backed Pages & Posts</strong><span class="plugin-setting-help">Enables Nostr-sourced page/post state and related admin tools.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-posts"><input type="checkbox" id="plugin-nostr-posts"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="zaps">
-<div class="setting-label"><strong>Zaps</strong></div>
-<label class="checkbox-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Zaps</strong><span class="plugin-setting-help">Nostr Lightning tips and zap metadata across posts/pages.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="btcpay">
-<div class="setting-label"><strong>BTCPay</strong></div>
-<label class="checkbox-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay</strong><span class="plugin-setting-help">Self-hosted checkout, invoices, and payment runtime controls.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label>
 </div>
 <div class="field-row checkbox-row" data-plugin-row="video_chat">
-<div class="setting-label"><strong>Video Calling</strong></div>
-<label class="checkbox-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label>
+<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Video Calling</strong><span class="plugin-setting-help">Embeddable WebRTC/Janus video chat widget and iframe endpoint.</span></div>
+<label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label>
 </div>
 </section>
 </div>
@@ -1386,6 +1386,43 @@ body {
 [data-admin-section="nostr-bridge"] .checkbox-row .checkbox-control.checkbox-control-plain span {
   font-weight: 500;
   color: #1f335f;
+}
+
+[data-admin-section="plugins"] [data-plugin-row] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.2rem 0.82rem;
+}
+
+[data-admin-section="plugins"] .plugin-setting-main {
+  display: grid;
+  gap: 0.08rem;
+  align-items: start;
+}
+
+[data-admin-section="plugins"] .plugin-setting-name {
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+[data-admin-section="plugins"] .plugin-setting-help {
+  color: var(--admin-muted, var(--light-text));
+  font-size: 0.73rem;
+  line-height: 1.22;
+  font-weight: 500;
+}
+
+[data-admin-section="plugins"] .plugin-enabled-control {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-self: end;
+  gap: 0.4rem;
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: #1d3566;
+  white-space: nowrap;
 }
 
 .inline-tip {
@@ -5159,6 +5196,15 @@ body {
   [data-admin-section="account"] .field-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  [data-admin-section="plugins"] [data-plugin-row] {
+    grid-template-columns: 1fr;
+    gap: 0.22rem;
+  }
+
+  [data-admin-section="plugins"] .plugin-enabled-control {
+    justify-self: start;
   }
 
   [data-admin-section="account"] .account-ssh-row > .account-ssh-optional {
