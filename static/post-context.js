@@ -451,11 +451,13 @@
     head.innerHTML =
       '<div class="post-head-main">' +
       '<h1 id="main-content" class="post-title">' + escapeHtml(current.title || document.title || 'Untitled') + '</h1>' +
-      '<div class="post-head-divider" aria-hidden="true"></div>' +
-      '<div class="post-byline">' +
+      '<div class="post-byline post-byline-top">' +
       '<span class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</span>' +
-      '<span class="post-reading-inline">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>' +
       '<span class="post-date">' + escapeHtml(current.published_date || '') + '</span>' +
+      '</div>' +
+      '<div class="post-head-divider" aria-hidden="true"></div>' +
+      '<div class="post-byline post-byline-bottom">' +
+      '<span class="post-reading-inline">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>' +
       '</div>' +
       '</div>';
 
