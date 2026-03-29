@@ -116,6 +116,38 @@
 </nav>
 <script>
 (function () {
+  function dedupeTopLevelNav() {
+    try {
+      var navs = document.querySelectorAll('nav.site-nav');
+      if (navs && navs.length > 1) {
+        for (var i = 1; i < navs.length; i += 1) {
+          var node = navs[i];
+          if (node && node.parentNode) {
+            node.parentNode.removeChild(node);
+          }
+        }
+      }
+      var skips = document.querySelectorAll('.skip-link');
+      if (skips && skips.length > 1) {
+        for (var j = 1; j < skips.length; j += 1) {
+          var skip = skips[j];
+          if (skip && skip.parentNode) {
+            skip.parentNode.removeChild(skip);
+          }
+        }
+      }
+    } catch (_dedupeErr) {
+      // Ignore non-fatal nav dedupe issues.
+    }
+  }
+
+  dedupeTopLevelNav();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', dedupeTopLevelNav, { once: true });
+  } else {
+    setTimeout(dedupeTopLevelNav, 0);
+  }
+
   try {
     var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
     var siteSignature = document.getElementById('nav-site-signature');
