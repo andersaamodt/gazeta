@@ -60,7 +60,7 @@
   --nav-border: var(--border);
   --post-card-bg: #fbfbf7;
   --post-card-bg-single: #fdfdfb;
-  --post-card-shell-bg: color-mix(in srgb, var(--post-card-bg-single) 86%, var(--bg) 14%);
+  --post-card-shell-bg: var(--post-card-bg);
   --post-body-bg: var(--post-card-bg-single);
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.14);
@@ -143,6 +143,9 @@ html {
   /* Keep layout width stable across pages with/without vertical scrollbars. */
   scrollbar-gutter: stable;
   overflow-x: hidden;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
+    var(--bg);
 }
 
 @supports (overflow: clip) {
@@ -226,9 +229,7 @@ body {
   flex-direction: column;
   line-height: 1.7;
   color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
-    var(--bg);
+  background: transparent;
   min-height: 100vh;
 }
 
@@ -5334,7 +5335,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   max-width: 100%;
   min-height: 22rem;
   padding: 1.35rem 1.45rem 1.1rem;
-  background: var(--bg);
+  background: var(--post-card-bg, var(--bg));
   border-color: color-mix(in srgb, var(--border, #c7d2fe) 78%, var(--bg, #ffffff) 22%);
   box-shadow:
     0 14px 28px rgba(15, 23, 42, 0.07),
