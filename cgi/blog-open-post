@@ -118,6 +118,7 @@ if command -v pandoc >/dev/null 2>&1; then
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
+  <style>html,body{background:#f3e9d7;color:#2f2517;}</style>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/idiomorph-ext.min.js"></script>
@@ -179,6 +180,7 @@ cat <<HTML
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
+  <style>html,body{background:#f3e9d7;color:#2f2517;}</style>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -191,7 +193,6 @@ cat <<HTML
 </body>
 </html>
 HTML
-
 
 
 
