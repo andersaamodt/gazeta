@@ -27,9 +27,9 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
 <button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-offline">Not Installed</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
@@ -1010,6 +1010,24 @@ body {
   border: 1px solid #d0d9eb;
   color: #5e6d86;
   background: #f4f7fc;
+}
+
+.admin-nav-status-pill.is-loading {
+  margin-left: auto;
+  min-width: 0.92rem;
+  min-height: 0.92rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-nav-status-spinner {
+  width: 0.82rem;
+  height: 0.82rem;
+  border: 2px solid #92a6cc;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: admin-spin 0.75s linear infinite;
 }
 
 .admin-nav-status-pill.is-connected {

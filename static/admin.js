@@ -3052,8 +3052,21 @@
     });
   }
 
-  function setNosterNavStatus(runtime) {
+  function setAdminNavStatusLoading(target) {
+    if (!target) {
+      return;
+    }
+    target.className = 'admin-nav-status-pill is-loading';
+    target.innerHTML = '<span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span>';
+    target.setAttribute('aria-label', 'Loading status');
+  }
+
+  function setNosterNavStatus(runtime, loading) {
     if (!els.navNosterStatus) {
+      return;
+    }
+    if (loading) {
+      setAdminNavStatusLoading(els.navNosterStatus);
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
@@ -3073,10 +3086,15 @@
     }
     els.navNosterStatus.textContent = label;
     els.navNosterStatus.className = 'admin-nav-status-pill ' + statusClass;
+    els.navNosterStatus.setAttribute('aria-label', label);
   }
 
-  function setZapsNavStatus(runtime) {
+  function setZapsNavStatus(runtime, loading) {
     if (!els.navZapsStatus) {
+      return;
+    }
+    if (loading) {
+      setAdminNavStatusLoading(els.navZapsStatus);
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
@@ -3094,10 +3112,15 @@
     }
     els.navZapsStatus.textContent = label;
     els.navZapsStatus.className = 'admin-nav-status-pill ' + statusClass;
+    els.navZapsStatus.setAttribute('aria-label', label);
   }
 
-  function setBtcpayNavStatus(runtime) {
+  function setBtcpayNavStatus(runtime, loading) {
     if (!els.navBtcpayStatus) {
+      return;
+    }
+    if (loading) {
+      setAdminNavStatusLoading(els.navBtcpayStatus);
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
@@ -3114,6 +3137,7 @@
     }
     els.navBtcpayStatus.textContent = label;
     els.navBtcpayStatus.className = 'admin-nav-status-pill ' + statusClass;
+    els.navBtcpayStatus.setAttribute('aria-label', label);
   }
 
   function setNosterButtonsBusy(isBusy) {
@@ -3298,6 +3322,7 @@
     if (!els.nosterRuntime) {
       return;
     }
+    setNosterNavStatus(null, true);
     setNosterButtonsBusy(true);
     try {
       const data = await apiPost('/cgi/blog-manage-noster', { action: 'status' }, true);
@@ -3515,6 +3540,7 @@
     if (!els.zapsRuntime) {
       return;
     }
+    setZapsNavStatus(null, true);
     setZapsButtonsBusy(true);
     try {
       const data = await apiPost('/cgi/blog-manage-zaps', { action: 'status' }, true);
@@ -3662,6 +3688,7 @@
     if (!els.btcpayRuntime) {
       return;
     }
+    setBtcpayNavStatus(null, true);
     setBtcpayButtonsBusy(true);
     try {
       const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
