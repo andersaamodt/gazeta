@@ -806,12 +806,15 @@ body {
 }
 
 .admin-access-message {
-  margin: 0 0 0.75rem;
+  width: min(44rem, calc(100% - 1.4rem));
+  margin: 0.72rem auto 0.95rem;
   padding: 0.72rem 0.9rem;
   border-radius: 12px;
   border: 1px solid #d8deec;
   font-size: 0.93rem;
   line-height: 1.4;
+  box-sizing: border-box;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
 }
 
 .admin-access-message.is-warn {
