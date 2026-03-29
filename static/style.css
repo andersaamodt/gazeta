@@ -8649,3 +8649,13 @@ nav.site-nav .nav-center a.active.allow-active-click:focus-visible {
   border-color: var(--button-primary-border, var(--border)) !important;
   text-decoration: none !important;
 }
+
+/* Absolute final guard: any active nav item must stay in button-blue on hover/focus. */
+nav.site-nav .nav-center a.active,
+nav.site-nav .nav-center a.active:hover,
+nav.site-nav .nav-center a.active:focus-visible {
+  background: linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text)) !important;
+  text-decoration: none !important;
+}
