@@ -224,8 +224,11 @@
     if (!link) {
       return;
     }
-    var host = String(window.location.hostname || '').toLowerCase();
-    if (!(host === 'localhost' || host === '127.0.0.1' || host === '::1')) {
+    if (link.hasAttribute('download')) {
+      return;
+    }
+    var target = String(link.getAttribute('target') || '').trim().toLowerCase();
+    if (target && target !== '_self') {
       return;
     }
     var hrefAttr = String(link.getAttribute('href') || '');
@@ -235,10 +238,22 @@
     if (/\.html?(?:$|[?#])/.test(hrefAttr)) {
       return;
     }
+    var absoluteUrl;
+    try {
+      absoluteUrl = new URL(hrefAttr, window.location.href);
+    } catch (_urlErr) {
+      return;
+    }
+    if (absoluteUrl.origin !== window.location.origin) {
+      return;
+    }
+    var host = String(window.location.hostname || '').toLowerCase();
+    var isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
     event.preventDefault();
     var slugPath = hrefAttr.replace(/^\//, '').split('?')[0].split('#')[0];
     var openerUrl = '/cgi/blog-open-post?path=' + encodeURIComponent(slugPath);
-    fetch(openerUrl, { credentials: 'same-origin', cache: 'no-store' })
+    var fetchUrl = isLocalhost ? openerUrl : absoluteUrl.toString();
+    fetch(fetchUrl, { credentials: 'same-origin', cache: 'no-store' })
       .then(function (res) {
         if (!res || !res.ok) {
           throw new Error('open-post failed');
@@ -257,7 +272,7 @@
       })
       .catch(function () {
         // Fallback for unexpected fetch/runtime failures.
-        window.location.assign(openerUrl);
+        window.location.assign(fetchUrl);
       });
   }, true);
 
