@@ -8630,3 +8630,14 @@ body.nostr-publish-dialog-open {
     margin: 0 !important;
   }
 }
+
+/* Keep clickable active nav pills in lapis button styling even under late hover rules. */
+nav.site-nav .nav-center a.active.allow-active-click,
+nav.site-nav .nav-center a.active.allow-active-click:hover,
+nav.site-nav .nav-center a.active.allow-active-click:focus-visible {
+  background: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text)) !important;
+  border-color: var(--button-primary-border, var(--border)) !important;
+  text-decoration: none !important;
+}
