@@ -245,6 +245,7 @@
     dropOverlay: document.getElementById('drop-overlay'),
     sidebarToggleButton: document.getElementById('btn-admin-sidebar-toggle'),
     sidebarRevealButton: document.getElementById('btn-admin-sidebar-reveal'),
+    navPluginSeparator: document.getElementById('admin-nav-plugin-separator'),
     adminContent: document.querySelector('.admin-content'),
     sectionButtons: Array.from(document.querySelectorAll('[data-admin-nav]')),
     sections: Array.from(document.querySelectorAll('[data-admin-section]'))
@@ -733,6 +734,9 @@
       button.hidden = !visible;
       button.setAttribute('aria-hidden', visible ? 'false' : 'true');
     });
+    if (els.navPluginSeparator) {
+      els.navPluginSeparator.hidden = !!enabled;
+    }
     if (!enabled) {
       syncPluginControlledSections();
     }
