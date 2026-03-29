@@ -1418,23 +1418,35 @@ body {
 
 [data-admin-section="plugins"] .plugin-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
   border-spacing: 0;
   margin-top: 0.1rem;
+  border: 1px solid var(--admin-border, #cdbd95);
+  background: transparent;
+  overflow: hidden;
 }
 
 [data-admin-section="plugins"] .plugin-table th,
 [data-admin-section="plugins"] .plugin-table td {
-  padding: 0.46rem 0.56rem;
+  padding: 0.5rem 0.58rem;
   vertical-align: top;
-  border-bottom: 1px solid color-mix(in srgb, var(--admin-border, var(--border)) 85%, transparent);
+  border: 0;
 }
 
 [data-admin-section="plugins"] .plugin-table thead th {
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   text-transform: none;
   color: var(--admin-muted, var(--light-text));
+  line-height: 1.1;
+  border-bottom: 1px solid var(--admin-border, #cdbd95);
+}
+
+[data-admin-section="plugins"] .plugin-table tbody tr,
+[data-admin-section="plugins"] .plugin-table tbody td {
+  border: 0;
+  box-shadow: none;
 }
 
 [data-admin-section="plugins"] .plugin-table th:first-child,
@@ -1449,7 +1461,11 @@ body {
 }
 
 [data-admin-section="plugins"] .plugin-table tbody tr:nth-child(odd) {
-  background: color-mix(in srgb, var(--admin-surface-alt, var(--post-card-bg)) 84%, transparent);
+  background: #f5f8ff;
+}
+
+[data-admin-section="plugins"] .plugin-table tbody tr:nth-child(even) {
+  background: #fff;
 }
 
 [data-admin-section="plugins"] .plugin-setting-main {
