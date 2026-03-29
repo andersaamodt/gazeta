@@ -189,11 +189,11 @@ html.app-hydrating #admin-panel {
   visibility: hidden;
 }
 
-/* Reveal nav + page together once hydration gate opens. */
+/* Keep nav visible during hydration so route changes do not flash it out. */
 html.app-hydrating nav.site-nav,
 html.app-hydrating .skip-link,
 html.app-hydrating #nav-top-toast-host {
-  visibility: hidden;
+  visibility: visible;
 }
 
 .route-load-failure {
