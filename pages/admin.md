@@ -234,35 +234,45 @@ title: ""
 
 <div class="settings-stack">
 <section class="sub-card">
-<h4>Feature Modules</h4>
-<div class="field-row checkbox-row" data-plugin-row="nostr_support">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Support</strong><span class="plugin-setting-help">Core Nostr features and shared signing/event capabilities.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-support"><input type="checkbox" id="plugin-nostr-support"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="nostr_login">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Login</strong><span class="plugin-setting-help">Sign in with Nostr keys/extensions and session bridging.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-login"><input type="checkbox" id="plugin-nostr-login"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="nostr_bridge">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr Bridge (Stonr)</strong><span class="plugin-setting-help">Mirrors events/comments through the Stonr bridge pipeline.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-bridge"><input type="checkbox" id="plugin-nostr-bridge"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="nostr_posts">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr-Backed Pages & Posts</strong><span class="plugin-setting-help">Enables Nostr-sourced page/post state and related admin tools.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-nostr-posts"><input type="checkbox" id="plugin-nostr-posts"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="zaps">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Zaps</strong><span class="plugin-setting-help">Nostr Lightning tips and zap metadata across posts/pages.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="btcpay">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay</strong><span class="plugin-setting-help">Self-hosted checkout, invoices, and payment runtime controls.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label>
-</div>
-<div class="field-row checkbox-row" data-plugin-row="video_chat">
-<div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Video Calling</strong><span class="plugin-setting-help">Embeddable WebRTC/Janus video chat widget and iframe endpoint.</span></div>
-<label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label>
-</div>
+<h4>Feature module</h4>
+<table class="plugin-table" aria-label="Feature modules">
+<thead>
+<tr>
+<th scope="col">Feature Module</th>
+<th scope="col">Enabled</th>
+</tr>
+</thead>
+<tbody>
+<tr data-plugin-row="nostr_support">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr support</strong><span class="plugin-setting-help">Core Nostr features and shared signing/event capabilities.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-nostr-support"><input type="checkbox" id="plugin-nostr-support" disabled title="Required for current site operation"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="nostr_login">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr login</strong><span class="plugin-setting-help">Sign in with Nostr keys/extensions and session bridging.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-nostr-login"><input type="checkbox" id="plugin-nostr-login" disabled title="Required so you do not lock yourself out"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="nostr_posts">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr-backed pages & posts</strong><span class="plugin-setting-help">Enables Nostr-sourced page/post state and related admin tools.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-nostr-posts"><input type="checkbox" id="plugin-nostr-posts"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="nostr_bridge">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Nostr bridge (Stonr)</strong><span class="plugin-setting-help">Mirrors events/comments through the Stonr bridge pipeline.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-nostr-bridge"><input type="checkbox" id="plugin-nostr-bridge"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="zaps">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Zaps</strong><span class="plugin-setting-help">Nostr Lightning tips and zap metadata across posts/pages.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="btcpay">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay</strong><span class="plugin-setting-help">Self-hosted checkout, invoices, and payment runtime controls.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="video_chat">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Video calling</strong><span class="plugin-setting-help">Embeddable WebRTC/Janus video chat widget and iframe endpoint.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label></td>
+</tr>
+</tbody>
+</table>
 </section>
 </div>
 
@@ -1388,11 +1398,40 @@ body {
   color: #1f335f;
 }
 
-[data-admin-section="plugins"] [data-plugin-row] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 0.2rem 0.82rem;
+[data-admin-section="plugins"] .plugin-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-top: 0.1rem;
+}
+
+[data-admin-section="plugins"] .plugin-table th,
+[data-admin-section="plugins"] .plugin-table td {
+  padding: 0.46rem 0.56rem;
+  vertical-align: top;
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-border, var(--border)) 85%, transparent);
+}
+
+[data-admin-section="plugins"] .plugin-table thead th {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: none;
+  color: var(--admin-muted, var(--light-text));
+}
+
+[data-admin-section="plugins"] .plugin-table th:first-child,
+[data-admin-section="plugins"] .plugin-table td:first-child {
+  text-align: left;
+}
+
+[data-admin-section="plugins"] .plugin-table th:last-child,
+[data-admin-section="plugins"] .plugin-table td:last-child {
+  width: 7.5rem;
+  text-align: right;
+}
+
+[data-admin-section="plugins"] .plugin-table tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--admin-surface-alt, var(--post-card-bg)) 84%, transparent);
 }
 
 [data-admin-section="plugins"] .plugin-setting-main {
@@ -1423,6 +1462,10 @@ body {
   font-weight: 600;
   color: #1d3566;
   white-space: nowrap;
+}
+
+[data-admin-section="plugins"] .plugin-enabled-control input[disabled] + span {
+  opacity: 0.72;
 }
 
 .inline-tip {
@@ -5198,9 +5241,9 @@ body {
     align-items: start;
   }
 
-  [data-admin-section="plugins"] [data-plugin-row] {
-    grid-template-columns: 1fr;
-    gap: 0.22rem;
+  [data-admin-section="plugins"] .plugin-table th:last-child,
+  [data-admin-section="plugins"] .plugin-table td:last-child {
+    width: auto;
   }
 
   [data-admin-section="plugins"] .plugin-enabled-control {

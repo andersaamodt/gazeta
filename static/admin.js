@@ -2698,20 +2698,14 @@
   function normalizePlugins(raw) {
     const src = raw && typeof raw === 'object' ? raw : {};
     const normalized = {
-      nostr_support: src.nostr_support !== false,
-      nostr_login: src.nostr_login !== false,
+      nostr_support: true,
+      nostr_login: true,
       nostr_bridge: src.nostr_bridge !== false,
       nostr_posts: src.nostr_posts !== false,
       zaps: src.zaps !== false,
       btcpay: src.btcpay !== false,
       video_chat: src.video_chat === true
     };
-    if (!normalized.nostr_support) {
-      normalized.nostr_login = false;
-      normalized.nostr_bridge = false;
-      normalized.nostr_posts = false;
-      normalized.zaps = false;
-    }
     return normalized;
   }
 
@@ -2725,8 +2719,10 @@
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
     if (els.pluginVideoChat) els.pluginVideoChat.checked = !!p.video_chat;
+    if (els.pluginNostrSupport) els.pluginNostrSupport.disabled = true;
+    if (els.pluginNostrLogin) els.pluginNostrLogin.disabled = true;
     const nostrSupportOn = !!p.nostr_support;
-    [els.pluginNostrLogin, els.pluginNostrBridge, els.pluginNostrPosts, els.pluginZaps].forEach(function (input) {
+    [els.pluginNostrBridge, els.pluginNostrPosts, els.pluginZaps].forEach(function (input) {
       if (!(input instanceof HTMLInputElement)) {
         return;
       }
