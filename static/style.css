@@ -8661,3 +8661,13 @@ nav.site-nav .nav-center a.active:focus-visible {
   color: var(--button-primary-text, var(--nav-active-text)) !important;
   text-decoration: none !important;
 }
+
+/* If active class is ever missing, aria-current still forces lapis active styling. */
+nav.site-nav .nav-center a[aria-current="page"],
+nav.site-nav .nav-center a[aria-current="page"]:hover,
+nav.site-nav .nav-center a[aria-current="page"]:focus-visible {
+  background: linear-gradient(128deg, #3d73cb 0%, var(--lapis, #2f5fb8) 34%, #2a569f 72%, #234b8f 100%) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(128deg, #3d73cb 0%, var(--lapis, #2f5fb8) 34%, #2a569f 72%, #234b8f 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text, #fff)) !important;
+  text-decoration: none !important;
+}
