@@ -265,6 +265,25 @@ strong {
   color: var(--button-primary-text);
 }
 
+.nav-center a.active.allow-active-click,
+.nav-center a.active.allow-active-click:hover,
+.nav-center a.active.allow-active-click:focus-visible {
+  background-image:
+    var(--button-primary-overlay),
+    linear-gradient(
+      128deg,
+      #3d73cb 0%,
+      var(--lapis) 34%,
+      #2a569f 72%,
+      #234b8f 100%
+    );
+  color: var(--button-primary-text);
+  text-decoration: none;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
+    0 1px 0 rgba(182, 139, 53, 0.26);
+}
+
 .nav-menu-btn:hover,
 .nav-menu-btn:focus-visible {
   background: rgba(106, 79, 163, 0.14);
