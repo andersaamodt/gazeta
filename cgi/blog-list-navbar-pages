@@ -39,38 +39,28 @@ if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && 
 fi
 
 cfg=$(blog_nostr_pages_load_json)
-all_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-all-pages.XXXXXX")
-printf '%s\n' "$cfg" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null > "$all_pages_tmp"
 
-# Keep mounted/source page templates aligned with configured types before
-# deciding whether a rebuild is needed.
-blog_nostr_pages_sync_source_pages "$cfg" >/dev/null 2>&1 || true
-
-needs_build=false
-while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
-  slug=$(blog_nostr_page_slug "$raw_slug")
-  [ -n "$slug" ] || continue
-  case "$slug" in
-    index) html_file="$blog_site_root/build/pages/index.html" ;;
-    *) html_file="$blog_site_root/build/pages/$slug.html" ;;
-  esac
-  if [ ! -f "$html_file" ]; then
-    needs_build=true
-    break
+trigger_maintenance_async() {
+  trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
+  now_trigger=$(date +%s 2>/dev/null || printf '0')
+  last_epoch=$(sed -n '1p' "$trigger_stamp" 2>/dev/null | tr -cd '0-9' || printf '0')
+  if [ -z "$last_epoch" ]; then
+    last_epoch=0
   fi
-  src_file=$(blog_nostr_page_mount_path "$slug" 2>/dev/null || printf '')
-  if [ -n "$src_file" ] && [ -f "$src_file" ]; then
-    src_mtime=$(file_mtime_epoch "$src_file")
-    html_mtime=$(file_mtime_epoch "$html_file")
-    if [ -n "$src_mtime" ] && [ -n "$html_mtime" ] && [ "$src_mtime" -gt "$html_mtime" ]; then
-      needs_build=true
-      break
-    fi
+  # Throttle expensive sync/build maintenance while keeping responses fast.
+  if [ $((now_trigger - last_epoch)) -lt 30 ]; then
+    return 0
   fi
-done < "$all_pages_tmp"
+  printf '%s\n' "$now_trigger" > "$trigger_stamp" 2>/dev/null || true
+  (
+    blog_nostr_pages_sync_source_pages "$cfg" >/dev/null 2>&1 || true
+    blog_run_build_async >/dev/null 2>&1 || true
+  ) >/dev/null 2>&1 &
+}
 
 if [ "$cache_is_fresh" = "true" ]; then
   cat "$cache_file"
+  trigger_maintenance_async
 else
   nav_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages.XXXXXX")
   printf '%s\n' "$cfg" | jq -r '.pages[]? | [(.slug // ""), (.type // "list"), (.placeholder_title // ""), (if has("show_in_nav") then .show_in_nav else true end)] | @tsv' 2>/dev/null > "$nav_pages_tmp"
@@ -124,23 +114,5 @@ else
   printf '%s\n' "$nav_json" > "$cache_tmp"
   mv "$cache_tmp" "$cache_file"
   chmod 644 "$cache_file" 2>/dev/null || true
+  trigger_maintenance_async
 fi
-
-if [ "$needs_build" = "true" ]; then
-  trigger_stamp="$blog_state_dir/navbar-build-trigger.epoch"
-  now_epoch=$(date +%s 2>/dev/null || printf '0')
-  last_epoch=$(sed -n '1p' "$trigger_stamp" 2>/dev/null | tr -cd '0-9' || printf '0')
-  if [ -z "$last_epoch" ]; then
-    last_epoch=0
-  fi
-  # Avoid hot-loop build spawning from public traffic when output is temporarily missing.
-  if [ $((now_epoch - last_epoch)) -ge 30 ]; then
-    printf '%s\n' "$now_epoch" > "$trigger_stamp" 2>/dev/null || true
-    (
-      blog_nostr_pages_sync_source_pages "$cfg" >/dev/null 2>&1 || true
-      blog_run_build_async >/dev/null 2>&1 || true
-    ) >/dev/null 2>&1 &
-  fi
-fi
-
-rm -f "$all_pages_tmp"
