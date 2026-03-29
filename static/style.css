@@ -305,6 +305,10 @@ header h1 {
 
 /* Site Navigation */
 .site-nav {
+  --nav-pill-font-size: 0.9rem;
+  --nav-pill-line-height: 1.15;
+  --nav-pill-pad-y: 0.36rem;
+  --nav-pill-pad-x: 0.92rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -348,9 +352,9 @@ header h1 {
   color: var(--text);
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.36rem 0.92rem;
-  line-height: 1.15;
+  font-size: var(--nav-pill-font-size);
+  padding: var(--nav-pill-pad-y) var(--nav-pill-pad-x);
+  line-height: var(--nav-pill-line-height);
   border-radius: var(--nav-pill-radius);
   transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
@@ -4558,6 +4562,13 @@ body.nav-cart-open {
   border: 1px solid var(--button-primary-border);
 }
 
+nav.site-nav .btn-login {
+  font-size: var(--nav-pill-font-size);
+  line-height: var(--nav-pill-line-height);
+  /* Match active nav pill total height: nav pills have no border, login has 1px border. */
+  padding-block: calc(var(--nav-pill-pad-y) - 1px);
+}
+
 .btn-login:hover {
   background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
   text-decoration: none;
@@ -4574,11 +4585,11 @@ body.nav-cart-open {
 
 .btn-login-main {
   border-radius: 6px 0 0 6px;
-  height: 2.05rem;
+  height: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  line-height: var(--nav-pill-line-height);
   padding: 0 1rem;
 }
 
@@ -4586,8 +4597,8 @@ body.nav-cart-open {
   border-radius: 0 6px 6px 0;
   min-width: 1.42rem;
   width: 1.48rem;
-  height: 2.05rem;
-  padding: 0;
+  height: auto;
+  padding: calc(var(--nav-pill-pad-y) - 1px) 0;
   border-left: 1px solid var(--button-primary-end);
   font-size: 0.69rem;
   font-weight: 700;
@@ -8514,9 +8525,15 @@ body.nostr-publish-dialog-open {
 }
 
 @media (max-width: 920px) {
+  nav.site-nav {
+    --nav-pill-font-size: 0.84rem;
+    --nav-pill-pad-y: 0.3rem;
+    --nav-pill-pad-x: 0.64rem;
+  }
+
   nav.site-nav .nav-center a {
-    padding: 0.3rem 0.64rem;
-    font-size: 0.84rem;
+    padding: var(--nav-pill-pad-y) var(--nav-pill-pad-x);
+    font-size: var(--nav-pill-font-size);
   }
 
   nav.site-nav .nav-search {
