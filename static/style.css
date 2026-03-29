@@ -5399,15 +5399,15 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.85rem;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.05rem;
+  margin-bottom: 0.18rem;
 }
 
 .post-head-main {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .post-title {
@@ -5419,6 +5419,12 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 
 .post-title a {
   color: var(--primary);
+}
+
+.post-head-divider {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  margin: 0.4rem 0 0.34rem;
 }
 
 .blog-post-item .post-title {
@@ -5434,7 +5440,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .post-byline {
-  margin-top: 0.22rem;
+  margin-top: 0;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   width: 100%;
