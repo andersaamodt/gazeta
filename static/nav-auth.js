@@ -2303,6 +2303,7 @@
         var isBlogLink = normalizeNavPath(link.getAttribute('href') || '') === '/';
         var keepClickable = active && isBlogLink && isBlogPostRoute;
         link.classList.toggle('active', active);
+        link.classList.toggle('allow-active-click', !!keepClickable);
         if (active) {
           link.setAttribute('aria-current', 'page');
           if (!keepClickable) {

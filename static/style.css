@@ -377,6 +377,11 @@ header h1 {
   pointer-events: none;
 }
 
+.nav-center a.active.allow-active-click {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .nav-center a.active:hover,
 .nav-center a.active:focus-visible,
 .nav-username.active:hover,
