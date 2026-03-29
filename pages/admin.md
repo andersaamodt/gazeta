@@ -26,8 +26,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="files" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Files</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
-<button type="button" class="admin-nav-item is-active" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<div id="admin-nav-plugin-separator" class="admin-nav-separator" role="separator" aria-hidden="true"></div>
+<button type="button" class="admin-nav-item is-active admin-nav-divider-after" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
@@ -1113,23 +1112,6 @@ body {
   left: 0;
   right: 0;
   bottom: -1px;
-  border-bottom: 1px solid var(--admin-border, var(--border, #d4c19c));
-  pointer-events: none;
-}
-
-#admin-panel .admin-nav-list .admin-nav-separator {
-  position: relative;
-  width: 100%;
-  height: 0;
-  margin: 0.16rem 0 0.34rem;
-}
-
-#admin-panel .admin-nav-list .admin-nav-separator::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
   border-bottom: 1px solid var(--admin-border, var(--border, #d4c19c));
   pointer-events: none;
 }
