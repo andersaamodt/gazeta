@@ -60,6 +60,8 @@
   --nav-border: var(--border);
   --post-card-bg: #fbfbf7;
   --post-card-bg-single: #fdfdfb;
+  --post-card-shell-bg: color-mix(in srgb, var(--post-card-bg-single) 86%, var(--bg) 14%);
+  --post-body-bg: var(--post-card-bg-single);
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.14);
   --danger-soft-strong: rgba(180, 35, 24, 0.2);
@@ -5317,7 +5319,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   padding: 1.15rem 1.2rem 0.55rem;
   border: 1px solid #b7bfce;
   border-radius: 16px;
-  background: var(--post-card-bg);
+  background: var(--post-card-shell-bg, var(--post-card-bg));
   display: flex;
   flex-direction: column;
   min-height: 210px;
@@ -5332,8 +5334,8 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   max-width: 100%;
   min-height: 22rem;
   padding: 1.35rem 1.45rem 1.1rem;
-  background: var(--post-card-bg-single);
-  border-color: color-mix(in srgb, var(--border, #c7d2fe) 72%, var(--post-card-bg-single, #fdfdfb) 28%);
+  background: var(--post-card-shell-bg, var(--post-card-bg-single, #fdfdfb));
+  border-color: color-mix(in srgb, var(--border, #c7d2fe) 72%, var(--post-card-shell-bg, #f3f0e7) 28%);
   box-shadow:
     0 14px 28px rgba(15, 23, 42, 0.07),
     0 1px 0 rgba(255, 255, 255, 0.82) inset;
@@ -5354,7 +5356,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   line-height: 1.82;
   color: color-mix(in srgb, var(--text, #0b132b) 94%, black 6%);
   text-wrap: pretty;
-  background: color-mix(in srgb, var(--post-card-bg-single, #fdfdfb) 86%, var(--bg, #ffffff) 14%);
+  background: var(--post-body-bg, var(--post-card-bg-single, #fdfdfb));
   border-radius: 12px;
   padding: 0.85rem 0.95rem 0.72rem;
 }
