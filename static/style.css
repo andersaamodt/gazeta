@@ -380,6 +380,16 @@ header h1 {
 .nav-center a.active.allow-active-click {
   pointer-events: auto;
   cursor: pointer;
+  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text)) !important;
+  text-decoration: none !important;
+}
+
+.nav-center a.active.allow-active-click:hover,
+.nav-center a.active.allow-active-click:focus-visible {
+  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%) !important;
+  color: var(--button-primary-text, var(--nav-active-text)) !important;
+  text-decoration: none !important;
 }
 
 .nav-center a.active:hover,
