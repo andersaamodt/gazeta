@@ -74,75 +74,90 @@ if [ -f "$html_file" ]; then
   exit 0
 fi
 
-# Fallback: render page on-demand via CGI so links remain functional.
+# Fallback: render page on-demand via CGI so links remain functional and
+# already match the final post-card structure on first paint.
 if command -v pandoc >/dev/null 2>&1; then
   tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/blog-open-post.XXXXXX")
   trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-
-  htmx_header="$tmp_dir/htmx-header.html"
-  out_html="$tmp_dir/post.html"
-  cat > "$htmx_header" <<'HTMX_HEADER'
-<script src="/static/js/htmx.min.js"></script>
-<script src="/static/js/idiomorph-ext.min.js"></script>
-HTMX_HEADER
 
   includes_dir="$blog_site_root/site/includes"
   nav_file="$includes_dir/nav.md"
   footer_file="$includes_dir/footer.md"
   head_file="$includes_dir/head.html"
-
-  head_arg=""
-  if [ -f "$head_file" ]; then
-    head_arg="--include-in-header=$head_file"
-  fi
+  body_md="$tmp_dir/body.md"
+  body_html_file="$tmp_dir/body.html"
+  blog_read_markdown_body "$md_file" > "$body_md"
 
   pandoc \
-    --from markdown+yaml_metadata_block+raw_html \
+    --from markdown+raw_html \
     --to html5 \
-    --standalone \
-    --css=/static/style.css \
-    --include-in-header="$htmx_header" \
-    $head_arg \
-    --output="$out_html" \
-    "$md_file" >/dev/null 2>&1 || true
+    --output="$body_html_file" \
+    "$body_md" >/dev/null 2>&1 || true
 
-  if [ -f "$out_html" ]; then
-    if [ -f "$nav_file" ]; then
-      with_nav="$tmp_dir/post-nav.html"
-      awk -v nav_file="$nav_file" '
-        /<body>/ {
-          print
-          while ((getline line < nav_file) > 0) {
-            print line
-          }
-          close(nav_file)
-          next
-        }
-        { print }
-      ' "$out_html" > "$with_nav"
-      mv "$with_nav" "$out_html"
-    fi
+  if [ -f "$body_html_file" ]; then
+    title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf 'Untitled')
+    author=$(blog_read_front_matter_value "$md_file" author 2>/dev/null || printf 'Blog Author')
+    published_at=$(blog_read_front_matter_value "$md_file" published_at 2>/dev/null || printf '')
+    published_date=$(blog_iso_to_human_date "$published_at")
+    body_plain=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
+    word_count=$(blog_word_count "$body_plain")
+    reading_minutes=$(blog_estimated_read_minutes "$word_count")
 
-    if [ -f "$footer_file" ]; then
-      with_footer="$tmp_dir/post-footer.html"
-      awk -v footer_file="$footer_file" '
-        /<\/body>/ {
-          while ((getline line < footer_file) > 0) {
-            print line
-          }
-          close(footer_file)
-          print
-          next
-        }
-        { print }
-      ' "$out_html" > "$with_footer"
-      mv "$with_footer" "$out_html"
-    fi
+    safe_title=$(blog_html_escape "$title")
+    safe_author=$(blog_html_escape "$author")
+    safe_date=$(blog_html_escape "$published_date")
+    safe_read_minutes=$(blog_html_escape "$reading_minutes")
 
     http-status 200 "OK"
     http-header "Content-Type" "text/html; charset=utf-8"
     http-end-headers
-    cat "$out_html"
+    cat <<HTML
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$safe_title</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/idiomorph-ext.min.js"></script>
+HTML
+    if [ -f "$head_file" ]; then
+      cat "$head_file"
+    fi
+    cat <<HTML
+</head>
+<body>
+HTML
+    if [ -f "$nav_file" ]; then
+      cat "$nav_file"
+    fi
+    cat <<HTML
+  <article class="post-item post-single-item">
+    <div class="post-head">
+      <div class="post-head-main">
+        <h1 id="main-content" class="post-title">$safe_title</h1>
+        <div class="post-byline">
+          <span class="post-author">$safe_author</span>
+          <span class="post-reading-inline">$safe_read_minutes min read</span>
+          <span class="post-date">$safe_date</span>
+        </div>
+      </div>
+    </div>
+    <div class="post-single-body">
+HTML
+    cat "$body_html_file"
+    cat <<HTML
+    </div>
+  </article>
+HTML
+    if [ -f "$footer_file" ]; then
+      cat "$footer_file"
+    fi
+    cat <<HTML
+</body>
+</html>
+HTML
     exit 0
   fi
 fi
@@ -176,7 +191,6 @@ cat <<HTML
 </body>
 </html>
 HTML
-
 
 
 
