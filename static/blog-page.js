@@ -50,6 +50,7 @@
     authSignature: '',
     posts: [],
     postsLoading: true,
+    softNavigating: false,
     initialContentPainted: false,
     initialPageStateLoaded: false,
     initialPostsLoaded: false,
@@ -101,6 +102,68 @@
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
+
+  function isPlainLeftClick(event) {
+    return !!event &&
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey;
+  }
+
+  function canSoftNavigateAnchor(anchor, event) {
+    if (!(anchor instanceof HTMLAnchorElement) || !isPlainLeftClick(event)) {
+      return false;
+    }
+    if (anchor.hasAttribute('download')) {
+      return false;
+    }
+    var target = String(anchor.getAttribute('target') || '').trim().toLowerCase();
+    if (target && target !== '_self') {
+      return false;
+    }
+    var href = String(anchor.getAttribute('href') || '').trim();
+    if (!href || href.charAt(0) === '#') {
+      return false;
+    }
+    var url;
+    try {
+      url = new URL(href, window.location.href);
+    } catch (_err) {
+      return false;
+    }
+    if (url.origin !== window.location.origin) {
+      return false;
+    }
+    return /^\/posts\/[^/?#]+\/?$/.test(url.pathname);
+  }
+
+  function softNavigateTo(url) {
+    if (!url || state.softNavigating) {
+      return;
+    }
+    state.softNavigating = true;
+    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('Navigation failed');
+        }
+        return res.text();
+      })
+      .then(function (html) {
+        var text = String(html || '');
+        if (text.indexOf('<html') === -1) {
+          throw new Error('Invalid document');
+        }
+        document.open();
+        document.write(text);
+        document.close();
+      })
+      .catch(function () {
+        window.location.assign(url);
+      });
+  }
 
   function clearRouteRepairParam() {
     var url;
@@ -2977,6 +3040,13 @@
 
   root.addEventListener('click', function (event) {
     var target = event.target instanceof Element ? event.target : null;
+    var link = target ? target.closest('a[href]') : null;
+    if (link && canSoftNavigateAnchor(link, event)) {
+      event.preventDefault();
+      softNavigateTo(link.href);
+      return;
+    }
+
     var postCardMenuTrigger = target ? target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]') : null;
     if (postCardMenuTrigger) {
       event.preventDefault();
