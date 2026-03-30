@@ -240,6 +240,13 @@ body:has(.post-list > .post-item) {
   max-width: 800px;
 }
 
+/* Keep blog-listing canvas uniform across html/body even when themes paint backgrounds. */
+html:has(#blog-page-root),
+body:has(#blog-page-root) {
+  background: var(--bg) !important;
+  background-image: none !important;
+}
+
 body.list-page-width-anim {
   transition: max-width 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
