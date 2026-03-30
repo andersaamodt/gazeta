@@ -5490,7 +5490,8 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 .post-byline-bottom .post-reading-inline,
 .post-single-item .post-reading-inline {
   color: var(--light-text);
-  font-size: 0.82rem;
+  font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
+  font-size: 0.74rem;
   font-weight: 400;
   line-height: 1.25;
   white-space: nowrap;
