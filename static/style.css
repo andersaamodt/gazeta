@@ -5908,6 +5908,14 @@ footer {
 
 .blog-page {
   margin-top: 0.65rem;
+  background: transparent;
+  background-image: none;
+}
+
+#blog-page-root,
+.blog-layout {
+  background: transparent;
+  background-image: none;
 }
 
 .blog-layout {
