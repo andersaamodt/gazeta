@@ -5444,6 +5444,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   color: var(--light-text);
   font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
   font-size: 0.84rem;
+  font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
 }
@@ -5475,6 +5476,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   color: var(--light-text);
   font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
   font-size: 0.84rem;
+  font-weight: 500;
   margin: 0;
   text-align: right;
   white-space: nowrap;
@@ -5485,6 +5487,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   color: var(--light-text);
   font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
   font-size: 0.84rem;
+  font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
   text-align: center;
@@ -5496,6 +5499,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   color: var(--light-text);
   font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
   font-size: 0.84rem;
+  font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
   text-align: right;
@@ -5567,9 +5571,11 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .post-date {
+  font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
   font-weight: 500;
   color: var(--light-text);
   font-size: 0.84rem;
+  line-height: 1.25;
 }
 
 .blog-post-item .post-card-footer {
