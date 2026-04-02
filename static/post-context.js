@@ -600,6 +600,7 @@
       outputClass += ' ' + inlineEditState.outputTone;
     }
     var hasEditableFilename = !!String(inlineEditState.sourcePostPath || '').trim();
+    var showTitleField = normalizeInlinePostType(inlineEditState.postType) !== 'shortform';
     var currentFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
     if (!currentFilename) {
       currentFilename = 'post';
@@ -631,7 +632,7 @@
             '</div>' +
             '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="close">Done</button>' +
           '</div>' +
-          '<div class="field-row blog-compose-title-row">' +
+          '<div class="field-row blog-compose-title-row"' + (showTitleField ? '' : ' hidden aria-hidden="true"') + '>' +
             '<input type="text" data-post-inline-field="title" placeholder="Post title" value="' + escapeHtml(inlineEditState.title) + '">' +
           '</div>' +
           filenameRow +
@@ -666,16 +667,17 @@
   }
 
   function inlineEditorPayload(action) {
+    var postType = normalizeInlinePostType(inlineEditState.postType || 'longform');
     return {
       action: action,
       draft_id: String(inlineEditState.draftId || ''),
       source_post_path: String(inlineEditState.sourcePostPath || ''),
       post_filename: String(inlineEditState.postFilename || ''),
-      title: String(inlineEditState.title || '').trim(),
+      title: postType === 'shortform' ? '' : String(inlineEditState.title || '').trim(),
       tags: normalizeInlineTags(inlineEditState.tags || ''),
       summary: '',
       content: String(inlineEditState.content || ''),
-      post_type: normalizeInlinePostType(inlineEditState.postType || 'longform'),
+      post_type: postType,
       scheduled_at: '',
       publish_mode: 'immediate',
       publish_destination: 'local_only'
@@ -1209,6 +1211,9 @@
   }
 
   document.addEventListener('click', function (event) {
+    if (!isPostPage(window.location.pathname)) {
+      return;
+    }
     var target = event.target;
     if (!(target instanceof Element)) {
       return;

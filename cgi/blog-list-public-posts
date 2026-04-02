@@ -53,7 +53,7 @@ while IFS= read -r file || [ -n "$file" ]; do
     *) continue ;;
   esac
 
-  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
   author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
   published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
   published_date=$(blog_iso_to_human_date "$published_at")
@@ -72,6 +72,7 @@ while IFS= read -r file || [ -n "$file" ]; do
   if [ -z "$post_type" ]; then
     post_type='post'
   fi
+  title=$(blog_effective_post_title "$title" "$body" "$post_type")
 
   tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
   tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")

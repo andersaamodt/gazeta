@@ -3,8 +3,41 @@
 
 set -eu
 
-blog_site_name=${WIZARDRY_SITE_NAME:-default}
 blog_sites_dir=${WIZARDRY_SITES_DIR:-$HOME/sites}
+blog_site_name=${WIZARDRY_SITE_NAME-}
+
+# Recover the site context from host/path when launcher env is missing.
+blog_request_host=${HTTP_HOST:-${SERVER_NAME:-}}
+blog_request_host=${blog_request_host%%,*}
+blog_request_host=$(printf '%s' "$blog_request_host" | tr '[:upper:]' '[:lower:]')
+blog_request_host=${blog_request_host%%:*}
+blog_request_host=$(printf '%s' "$blog_request_host" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+case "$blog_request_host" in
+  ''|localhost|127.0.0.1|::1|*/*|*\\*|*:*|*[!abcdefghijklmnopqrstuvwxyz0123456789._-]*)
+    blog_request_host=''
+    ;;
+esac
+if [ -z "$blog_site_name" ] && [ -n "$blog_request_host" ]; then
+  if [ -d "$blog_sites_dir/$blog_request_host" ] || [ -d "$blog_sites_dir/.sitedata/$blog_request_host" ]; then
+    blog_site_name=$blog_request_host
+  fi
+fi
+if [ -z "$blog_site_name" ]; then
+  blog_script_path=${SCRIPT_FILENAME-}
+  if [ -z "$blog_script_path" ]; then
+    blog_script_path=${SCRIPT_NAME-}
+  fi
+  case "$blog_script_path" in
+    "$blog_sites_dir"/*/site/cgi/*)
+      blog_site_name=${blog_script_path#"$blog_sites_dir"/}
+      blog_site_name=${blog_site_name%%/site/cgi/*}
+      ;;
+  esac
+fi
+if [ -z "$blog_site_name" ]; then
+  blog_site_name=default
+fi
+
 blog_site_root="$blog_sites_dir/$blog_site_name"
 blog_site_data="$blog_sites_dir/.sitedata/$blog_site_name"
 blog_site_conf="$blog_site_root/site.conf"
@@ -265,6 +298,52 @@ blog_url_encode() {
 
 blog_yaml_escape() {
   printf '%s' "${1-}" | sed 's/"/\\"/g'
+}
+
+blog_trim_whitespace() {
+  printf '%s' "${1-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+blog_slug_seed_text() {
+  # args: title content post_type
+  title=$(blog_trim_whitespace "${1-}")
+  content=${2-}
+  post_type=$(blog_normalize_post_type "${3-}")
+  if [ -n "$title" ]; then
+    printf '%s\n' "$title"
+    return 0
+  fi
+  fallback=$(blog_auto_summary_from_content "$content")
+  fallback=$(blog_trim_whitespace "$fallback")
+  if [ -n "$fallback" ]; then
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  case "$post_type" in
+    shortform) printf 'shortform-post\n' ;;
+    *) printf 'post\n' ;;
+  esac
+}
+
+blog_effective_post_title() {
+  # args: title content post_type
+  title=$(blog_trim_whitespace "${1-}")
+  content=${2-}
+  post_type=$(blog_normalize_post_type "${3-}")
+  if [ -n "$title" ]; then
+    printf '%s\n' "$title"
+    return 0
+  fi
+  fallback=$(blog_auto_summary_from_content "$content")
+  fallback=$(blog_trim_whitespace "$fallback")
+  if [ -n "$fallback" ]; then
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  case "$post_type" in
+    shortform) printf 'Short post\n' ;;
+    *) printf 'Untitled\n' ;;
+  esac
 }
 
 blog_slugify() {
@@ -2738,6 +2817,9 @@ blog_nostr_sign_post_event() {
   content=$4
   published_iso=$5
   post_type=$(blog_normalize_post_type "${6-longform}")
+  if [ "$post_type" = "shortform" ]; then
+    title=''
+  fi
 
   if ! command -v jq >/dev/null 2>&1; then
     return 1
@@ -2749,7 +2831,8 @@ blog_nostr_sign_post_event() {
   fi
 
   created_at=$(blog_now_epoch)
-  d_tag=$(blog_slugify "$title")
+  d_seed=$(blog_slug_seed_text "$title" "$content" "$post_type")
+  d_tag=$(blog_slugify "$d_seed")
   if [ -z "$d_tag" ]; then
     d_tag="post-$created_at"
   fi
@@ -3019,7 +3102,7 @@ blog_nostr_write_projection_posts() {
     [ -n "$row" ] || continue
     slug=$(printf '%s\n' "$row" | jq -r '.slug // empty' 2>/dev/null || printf '')
     [ -n "$slug" ] || continue
-    title=$(printf '%s\n' "$row" | jq -r '.title // "Untitled"' 2>/dev/null || printf 'Untitled')
+    title=$(printf '%s\n' "$row" | jq -r '.title // ""' 2>/dev/null || printf '')
     summary=$(printf '%s\n' "$row" | jq -r '.summary // ""' 2>/dev/null || printf '')
     published_at=$(printf '%s\n' "$row" | jq -r '.published_at // ""' 2>/dev/null || printf '')
     content=$(printf '%s\n' "$row" | jq -r '.content // ""' 2>/dev/null || printf '')
@@ -3032,6 +3115,11 @@ blog_nostr_write_projection_posts() {
     uri=$(printf '%s\n' "$row" | jq -r '.uri // ""' 2>/dev/null || printf '')
     tags_csv=$(printf '%s\n' "$row" | jq -r '.tags // [] | join(", ")' 2>/dev/null || printf '')
     tags_yaml=$(blog_tags_to_yaml_array "$tags_csv")
+    if [ "$post_type" = "shortform" ]; then
+      title=''
+    else
+      title=$(blog_effective_post_title "$title" "$content" "$post_type")
+    fi
     content_hash=$(printf '%s' "$content" | blog_sha256)
     author_label=$(printf '%s' "$pubkey" | cut -c1-16)
 
@@ -3532,7 +3620,11 @@ blog_save_draft() {
 
   normalized_tags=$(blog_normalize_tags "$tags")
   normalized_post_type=$(blog_normalize_post_type "$post_type")
-  slug=$(blog_slugify "$title")
+  if [ "$normalized_post_type" = "shortform" ]; then
+    title=''
+  fi
+  slug_seed=$(blog_slug_seed_text "$title" "$content" "$normalized_post_type")
+  slug=$(blog_slugify "$slug_seed")
   if [ -n "$post_filename" ]; then
     normalized_post_filename=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
     if [ -n "$normalized_post_filename" ]; then
@@ -3567,8 +3659,11 @@ blog_find_draft_files() {
 }
 
 blog_compute_post_filename() {
-  title=$1
-  slug=$(blog_slugify "$title")
+  title=${1-}
+  content=${2-}
+  post_type=${3-}
+  seed=$(blog_slug_seed_text "$title" "$content" "$post_type")
+  slug=$(blog_slugify "$seed")
   base="$slug"
   file="$blog_posts_dir/${base}.md"
 
@@ -3601,6 +3696,10 @@ blog_publish_content_markdown() {
   post_type=${9-longform}
   source_post_path=${10-}
   post_filename=${11-}
+  normalized_post_type=$(blog_normalize_post_type "$post_type")
+  if [ "$normalized_post_type" = "shortform" ]; then
+    title=''
+  fi
 
   filename=
   post_path=
@@ -3625,12 +3724,11 @@ blog_publish_content_markdown() {
       return 1
     fi
   else
-    filename=$(blog_compute_post_filename "$title")
+    filename=$(blog_compute_post_filename "$title" "$content" "$normalized_post_type")
     post_path="$blog_posts_dir/$filename"
   fi
   now_iso=$(blog_now_iso)
   normalized_tags=$(blog_normalize_tags "$tags")
-  normalized_post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$normalized_tags")
   content_hash=$(printf '%s' "$content" | blog_sha256)
   mkdir -p "$(dirname "$post_path")"

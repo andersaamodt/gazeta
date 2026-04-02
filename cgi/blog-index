@@ -45,11 +45,17 @@ else
       continue
     fi
 
-    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf 'Untitled')
+    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf '')
     author=$(blog_read_front_matter_value "$post_file" author 2>/dev/null || printf '')
     published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
     summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
     body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
+    post_type=$(blog_read_front_matter_value "$post_file" post_type 2>/dev/null || printf '')
+    if [ -z "$post_type" ]; then
+      post_type=$(blog_read_front_matter_value "$post_file" type 2>/dev/null || printf '')
+    fi
+    post_type=$(blog_normalize_post_type "$post_type")
+    title=$(blog_effective_post_title "$title" "$body" "$post_type")
     word_count=$(blog_word_count "$body")
     reading_minutes=$(blog_estimated_read_minutes "$word_count")
     tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')

@@ -23,6 +23,7 @@ drip_randomness=$(blog_param drip_randomness_minutes)
 drip_jitter_legacy=$(blog_param drip_jitter_minutes)
 feed_full_text=$(blog_param feed_full_text)
 feed_items=$(blog_param feed_items)
+append_site_title_to_page_title=$(blog_param append_site_title_to_page_title)
 nostr_bridge_enabled=$(blog_param nostr_bridge_enabled)
 new_users_are_admins=$(blog_param new_users_are_admins)
 zaps_enabled=$(blog_param zaps_enabled)
@@ -129,6 +130,12 @@ if [ -n "$feed_items" ]; then
       fi
       config-set "$blog_site_conf" feed_items "$feed_items"
       ;;
+  esac
+fi
+
+if [ -n "$append_site_title_to_page_title" ]; then
+  case "$append_site_title_to_page_title" in
+    true|false) config-set "$blog_site_conf" append_site_title_to_page_title "$append_site_title_to_page_title" ;;
   esac
 fi
 

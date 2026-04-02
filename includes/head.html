@@ -13,7 +13,109 @@
 (function () {
   var ROUTE_REFRESH_PARAM = '__route_refresh';
   var ROUTE_REPAIR_PARAM = '__route_repair';
+  var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var routeFailureTimer = 0;
+  var cachedBasePageTitle = '';
+
+  function normalizeSiteTitle(value) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text || 'Site';
+  }
+
+  function normalizeAppendSiteTitleEnabled(value) {
+    if (value === true || value === 1 || value === '1') {
+      return true;
+    }
+    if (typeof value === 'string') {
+      var text = value.trim().toLowerCase();
+      return text === 'true' || text === 'yes' || text === 'on';
+    }
+    return false;
+  }
+
+  function readCachedSiteTitle() {
+    try {
+      return normalizeSiteTitle(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
+    } catch (_err) {
+      return 'Site';
+    }
+  }
+
+  function readCachedAppendSiteTitleEnabled() {
+    try {
+      return normalizeAppendSiteTitleEnabled(localStorage.getItem(APPEND_SITE_TITLE_CACHE_KEY) || '');
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function titleConfig(overrides) {
+    var opts = overrides && typeof overrides === 'object' ? overrides : {};
+    var siteTitle = Object.prototype.hasOwnProperty.call(opts, 'siteTitle')
+      ? normalizeSiteTitle(opts.siteTitle)
+      : readCachedSiteTitle();
+    var appendSiteTitle = Object.prototype.hasOwnProperty.call(opts, 'appendSiteTitle')
+      ? normalizeAppendSiteTitleEnabled(opts.appendSiteTitle)
+      : readCachedAppendSiteTitleEnabled();
+    return {
+      siteTitle: siteTitle,
+      appendSiteTitle: appendSiteTitle
+    };
+  }
+
+  function renderPageTitle(baseTitle, config) {
+    var base = String(baseTitle || '').trim();
+    var siteTitle = normalizeSiteTitle(config && config.siteTitle);
+    if (!base) {
+      return base;
+    }
+    if (!config || config.appendSiteTitle !== true) {
+      return base;
+    }
+    if (!siteTitle) {
+      return base;
+    }
+    if (base.toLowerCase() === siteTitle.toLowerCase()) {
+      return base;
+    }
+    var suffix = ' - ' + siteTitle;
+    if (base.slice(-suffix.length) === suffix) {
+      return base;
+    }
+    return base + suffix;
+  }
+
+  function applyPageTitle(baseTitle, overrides) {
+    if (typeof baseTitle !== 'undefined' && baseTitle !== null) {
+      cachedBasePageTitle = String(baseTitle).trim();
+    } else if (!cachedBasePageTitle) {
+      cachedBasePageTitle = String(document.title || '').trim();
+    }
+    var nextTitle = renderPageTitle(cachedBasePageTitle, titleConfig(overrides));
+    if (document.title !== nextTitle) {
+      document.title = nextTitle;
+    }
+    return nextTitle;
+  }
+
+  window.__wizardryApplyPageTitle = function (baseTitle) {
+    return applyPageTitle(baseTitle);
+  };
+
+  window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
+    var normalizedSiteTitle = normalizeSiteTitle(siteTitle);
+    var enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
+    try {
+      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
+      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+    return applyPageTitle(undefined, { siteTitle: normalizedSiteTitle, appendSiteTitle: enabled });
+  };
+
+  applyPageTitle(document.title);
 
   function normalizeSlug(value) {
     return String(value || '')

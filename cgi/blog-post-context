@@ -48,7 +48,12 @@ post_json() {
     return 0
   fi
 
-  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
   author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
   if [ -z "$author" ]; then
     author='Blog Author'
@@ -73,6 +78,7 @@ post_json() {
     nostr_uri="nostr:$nostr_address"
   fi
   body=$(blog_read_markdown_body "$file")
+  title=$(blog_effective_post_title "$title" "$body" "$post_type")
   word_count=$(blog_word_count "$body")
   reading_minutes=$(blog_estimated_read_minutes "$word_count")
   url=$(blog_rel_post_html_url "$file")

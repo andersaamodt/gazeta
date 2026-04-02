@@ -52,12 +52,19 @@ else
   printf '  <h2>Found %s result(s) for <strong>%s</strong></h2>\n' "$(blog_html_escape "$count")" "$(blog_html_escape "$query")"
   printf '  <div class="post-list">\n'
   while IFS= read -r post_file; do
-    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf 'Untitled')
+    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf '')
     published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
     summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
     tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
     tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
     tags=$(blog_normalize_tags "$tags_csv")
+    post_type=$(blog_read_front_matter_value "$post_file" post_type 2>/dev/null || printf '')
+    if [ -z "$post_type" ]; then
+      post_type=$(blog_read_front_matter_value "$post_file" type 2>/dev/null || printf '')
+    fi
+    post_type=$(blog_normalize_post_type "$post_type")
+    body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
+    title=$(blog_effective_post_title "$title" "$body" "$post_type")
     url=$(blog_rel_post_html_url "$post_file")
     post_address=$(blog_post_nostr_address_for_file "$post_file")
     comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")

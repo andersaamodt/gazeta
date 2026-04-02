@@ -17,6 +17,7 @@ drip_interval_minutes=$(blog_drip_interval_minutes)
 drip_randomness=$(blog_drip_randomness_minutes)
 feed_full_text=$(config-get "$blog_site_conf" feed_full_text 2>/dev/null || printf 'true')
 feed_items=$(config-get "$blog_site_conf" feed_items 2>/dev/null || printf '50')
+append_site_title_to_page_title=$(config-get "$blog_site_conf" append_site_title_to_page_title 2>/dev/null || printf 'false')
 nostr_bridge_enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
 new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
 nostr_authors=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file")
@@ -32,6 +33,7 @@ case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; e
 [ -n "$theme" ] || theme='archmage'
 case "$feed_full_text" in true|false) ;; *) feed_full_text=true ;; esac
 case "$feed_items" in ''|*[!0-9]*) feed_items=50 ;; esac
+case "$append_site_title_to_page_title" in true|false) ;; *) append_site_title_to_page_title=false ;; esac
 case "$nostr_bridge_enabled" in true|false) ;; *) nostr_bridge_enabled=false ;; esac
 case "$new_users_are_admins" in true|false) ;; *) new_users_are_admins=true ;; esac
 
@@ -45,6 +47,7 @@ printf '"drip_randomness_minutes":%s,' "$drip_randomness"
 printf '"drip_jitter_minutes":%s,' "$drip_randomness"
 printf '"feed_full_text":%s,' "$feed_full_text"
 printf '"feed_items":%s,' "$feed_items"
+printf '"append_site_title_to_page_title":%s,' "$append_site_title_to_page_title"
 printf '"nostr_bridge_enabled":%s,' "$nostr_bridge_enabled"
 printf '"new_users_are_admins":%s,' "$new_users_are_admins"
 printf '"zaps_enabled":%s,' "$zaps_enabled"

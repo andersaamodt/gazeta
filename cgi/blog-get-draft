@@ -26,7 +26,7 @@ if [ -z "$draft_file" ] || [ ! -f "$draft_file" ]; then
   exit 0
 fi
 
-title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
 tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
 summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
 post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')

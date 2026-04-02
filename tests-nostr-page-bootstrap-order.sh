@@ -7,18 +7,27 @@ ROOT_DIR=$SCRIPT_DIR
 check_script_then_marked() {
   file=$1
   local_script=$2
-  local_line=$(awk -v needle="$local_script" 'index($0, needle) { print NR; exit }' "$file")
-  [ -n "$local_line" ] || {
+  matched_lines=$(awk -v needle="$local_script" 'index($0, needle) { print NR }' "$file")
+  [ -n "$matched_lines" ] || {
     printf '%s\n' "missing $local_script in $file" >&2
     return 1
   }
-  start_line=$((local_line - 3))
-  end_line=$((local_line + 3))
-  if [ "$start_line" -lt 1 ]; then
-    start_line=1
-  fi
-  marked_nearby=$(sed -n "${start_line},${end_line}p" "$file" | awk '/marked@11\.0\.0\/marked\.min\.js/ { print "yes"; exit }')
-  [ "$marked_nearby" = "yes" ] || {
+
+  found_nearby=no
+  for local_line in $matched_lines; do
+    start_line=$((local_line - 3))
+    end_line=$((local_line + 3))
+    if [ "$start_line" -lt 1 ]; then
+      start_line=1
+    fi
+    marked_nearby=$(sed -n "${start_line},${end_line}p" "$file" | awk '/marked@11\.0\.0\/marked\.min\.js/ { print "yes"; exit }')
+    if [ "$marked_nearby" = "yes" ]; then
+      found_nearby=yes
+      break
+    fi
+  done
+
+  [ "$found_nearby" = "yes" ] || {
     printf '%s\n' "expected marked include adjacent to $local_script in $file" >&2
     return 1
   }

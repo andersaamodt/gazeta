@@ -29,10 +29,18 @@ while IFS= read -r file || [ -n "$file" ]; do
     *) continue ;;
   esac
 
-  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
   published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
   author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
   publish_mode=$(blog_read_front_matter_value "$file" publish_mode 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
+  body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
+  content_excerpt=$(blog_auto_summary_from_content "$body")
+  title=$(blog_effective_post_title "$title" "$body" "$post_type")
   nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
   nostr_address=$(blog_post_nostr_address_for_file "$file")
   open_url=$(blog_rel_post_html_url "$file")
@@ -60,6 +68,7 @@ while IFS= read -r file || [ -n "$file" ]; do
   printf '"title":"%s",' "$(blog_json_escape "$title")"
   printf '"published_at":"%s",' "$(blog_json_escape "$published_at")"
   printf '"author":"%s",' "$(blog_json_escape "$author")"
+  printf '"content_excerpt":"%s",' "$(blog_json_escape "$content_excerpt")"
   printf '"publish_mode":"%s",' "$(blog_json_escape "$publish_mode")"
   printf '"source":"%s",' "$(blog_json_escape "$source")"
   printf '"nostr_address":"%s",' "$(blog_json_escape "$nostr_address")"

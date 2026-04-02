@@ -27,18 +27,25 @@ while IFS="$tab" read -r _ draft_file; do
   [ -f "$draft_file" ] || continue
   draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
   [ -n "$draft_id" ] || continue
-  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
   tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
   summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
   publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
   status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
   scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
   created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
   updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '')
+  content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
   if [ "$status" != "draft" ] || [ "$publish_mode" != "draft" ]; then
     continue
   fi
-  content_excerpt=$(blog_auto_summary_from_content "$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')")
+  content_excerpt=$(blog_auto_summary_from_content "$content")
+  title=$(blog_effective_post_title "$title" "$content" "$post_type")
 
   if [ "$first" -eq 0 ]; then
     printf ','

@@ -549,7 +549,11 @@
   function renderHead() {
     var s = getRenderState();
     if (s && s.title) {
-      document.title = String(s.title);
+      if (typeof window.__wizardryApplyPageTitle === 'function') {
+        window.__wizardryApplyPageTitle(String(s.title));
+      } else {
+        document.title = String(s.title);
+      }
     }
     if (els.title) {
       if (isAdmin()) {

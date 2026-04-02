@@ -4,6 +4,7 @@
 set -eu
 
 blog_nostr_list_page_js_version='20260326-listv6'
+blog_nostr_blog_page_js_version='20260401-blogv4'
 
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"
@@ -1043,7 +1044,8 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
-      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+      grep -q "/static/blog-page.js?v=$blog_nostr_blog_page_js_version" "$file" 2>/dev/null
       ;;
     nip23)
       grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
@@ -1300,7 +1302,7 @@ license: "CC BY 4.0"
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/blog-page.js"></script>
+<script src="/static/blog-page.js?v=$blog_nostr_blog_page_js_version"></script>
 EOBLOG
       ;;
     public-ranking)

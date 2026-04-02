@@ -1904,7 +1904,11 @@
   function renderHead() {
     var s = getRenderState();
     if (s && s.title) {
-      document.title = String(s.title);
+      if (typeof window.__wizardryApplyPageTitle === 'function') {
+        window.__wizardryApplyPageTitle(String(s.title));
+      } else {
+        document.title = String(s.title);
+      }
     }
     if (els.title) {
       if (isAdmin()) {
@@ -2400,7 +2404,7 @@
     html += '</select></label>';
     html += '<label class="list-show-markers-setting" title="' + escapeHtml(showMarkersTip) + '"><input type="checkbox" data-list-show-markers="true" title="' + escapeHtml(showMarkersTip) + '"' + (state.draft.show_markers ? ' checked' : '') + '><span title="' + escapeHtml(showMarkersTip) + '">Show markers</span></label>';
     html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '" title="' + escapeHtml(alphabetizeMarkersTip) + '"><input type="checkbox" data-list-alphabetize-markers="true" title="' + escapeHtml(alphabetizeMarkersTip) + '"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span title="' + escapeHtml(alphabetizeMarkersTip) + '">Alphabetize markers</span></label>';
-    html += '<label class="list-marker-filter-setting" title="' + escapeHtml(showMarkerFiltersTip) + '"><input type="checkbox" data-list-show-marker-filters="true" title="' + escapeHtml(showMarkerFiltersTip) + '"' + (state.draft.show_marker_filters ? ' checked' : '') + '><span title="' + escapeHtml(showMarkerFiltersTip) + '">Show marker-based filters</span></label>';
+    html += '<label class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true" title="' + escapeHtml(showMarkerFiltersTip) + '"' + (state.draft.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label class="list-default-markers-setting" title="' + escapeHtml(defaultMarkersTip) + '"><span title="' + escapeHtml(defaultMarkersTip) + '">Default markers</span><input type="text" data-list-default-markers="true" title="' + escapeHtml(defaultMarkersTip) + '" value="' + escapeHtml(state.draft.default_markers || '') + '" placeholder="marker one, marker two"></label>';
     html += '</div></div>';
     html += '</div>';

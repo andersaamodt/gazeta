@@ -18,6 +18,7 @@
   var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var PLUGINS_CACHE_KEY = 'wizardry_plugins_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
@@ -243,6 +244,18 @@
   function cacheSiteTitle(title) {
     try {
       localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizeSiteTitle(title));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function normalizeAppendSiteTitleEnabled(value) {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  }
+
+  function cacheAppendSiteTitleEnabled(enabled) {
+    try {
+      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, normalizeAppendSiteTitleEnabled(enabled) ? '1' : '0');
     } catch (_err) {
       // Ignore storage failures.
     }
@@ -2455,9 +2468,16 @@
     return fetch('/cgi/blog-get-config', { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
+        var appendSiteTitle = normalizeAppendSiteTitleEnabled(data && data.append_site_title_to_page_title);
         if (data && data.site_title) {
           updateNavSiteSignature(data.site_title);
           cacheSiteTitle(data.site_title);
+        }
+        cacheAppendSiteTitleEnabled(appendSiteTitle);
+        if (typeof window.__wizardrySetPageTitleConfig === 'function') {
+          window.__wizardrySetPageTitleConfig((data && data.site_title) || '', appendSiteTitle);
+        } else if (typeof window.__wizardryApplyPageTitle === 'function') {
+          window.__wizardryApplyPageTitle();
         }
         if (data && data.theme) {
           state.currentTheme = data.theme;

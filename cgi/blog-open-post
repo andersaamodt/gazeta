@@ -95,11 +95,17 @@ if command -v pandoc >/dev/null 2>&1; then
     "$body_md" >/dev/null 2>&1 || true
 
   if [ -f "$body_html_file" ]; then
-    title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf 'Untitled')
+    title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf '')
     author=$(blog_read_front_matter_value "$md_file" author 2>/dev/null || printf 'Blog Author')
     published_at=$(blog_read_front_matter_value "$md_file" published_at 2>/dev/null || printf '')
     published_date=$(blog_iso_to_human_date "$published_at")
+    post_type=$(blog_read_front_matter_value "$md_file" post_type 2>/dev/null || printf '')
+    if [ -z "$post_type" ]; then
+      post_type=$(blog_read_front_matter_value "$md_file" type 2>/dev/null || printf '')
+    fi
+    post_type=$(blog_normalize_post_type "$post_type")
     body_plain=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
+    title=$(blog_effective_post_title "$title" "$body_plain" "$post_type")
     word_count=$(blog_word_count "$body_plain")
     reading_minutes=$(blog_estimated_read_minutes "$word_count")
 
@@ -168,8 +174,14 @@ fi
 
 # Final fallback: render a minimal HTML page without pandoc/build so
 # post links never break while markdown exists.
-title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf 'Untitled')
+title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf '')
+post_type=$(blog_read_front_matter_value "$md_file" post_type 2>/dev/null || printf '')
+if [ -z "$post_type" ]; then
+  post_type=$(blog_read_front_matter_value "$md_file" type 2>/dev/null || printf '')
+fi
+post_type=$(blog_normalize_post_type "$post_type")
 body=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
+title=$(blog_effective_post_title "$title" "$body" "$post_type")
 safe_title=$(printf '%s' "$title" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 safe_body=$(printf '%s' "$body" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 
@@ -196,4 +208,3 @@ cat <<HTML
 </body>
 </html>
 HTML
-

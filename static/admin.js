@@ -1,5 +1,6 @@
 (function () {
   const SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  const APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
 
   const state = {
     sessionToken: localStorage.getItem('session_token') || '',
@@ -156,6 +157,7 @@
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
+    appendSiteTitleToPageTitle: document.getElementById('append-site-title-to-page-title'),
     newUsersAreAdmins: document.getElementById('new-users-are-admins'),
     postTitle: document.getElementById('post-title'),
     composePostTypeToolbar: document.getElementById('compose-post-type-toolbar'),
@@ -461,7 +463,12 @@
 
   function syncAdminDocumentTitle(sectionName) {
     const sectionTitle = adminSectionDisplayTitle(sectionName);
-    document.title = sectionTitle === 'Admin' ? 'Admin' : (sectionTitle + ' · Admin');
+    const pageTitle = sectionTitle === 'Admin' ? 'Admin' : (sectionTitle + ' · Admin');
+    if (typeof window.__wizardryApplyPageTitle === 'function') {
+      window.__wizardryApplyPageTitle(pageTitle);
+    } else {
+      document.title = pageTitle;
+    }
   }
 
   function activateSection(name, updateHash) {
@@ -1136,6 +1143,10 @@
     return text || 'Site';
   }
 
+  function normalizeAppendSiteTitleEnabled(value) {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  }
+
   function applyNavSiteTitle(value) {
     const title = normalizeSiteTitle(value);
     const node = document.getElementById('nav-site-signature');
@@ -1147,6 +1158,24 @@
       localStorage.setItem(SITE_TITLE_CACHE_KEY, title);
     } catch (_err) {
       // Ignore storage failures.
+    }
+  }
+
+  function applyPageTitleConfig(siteTitle, appendSiteTitle) {
+    const normalizedSiteTitle = normalizeSiteTitle(siteTitle);
+    const enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
+    if (typeof window.__wizardrySetPageTitleConfig === 'function') {
+      window.__wizardrySetPageTitleConfig(normalizedSiteTitle, enabled);
+      return;
+    }
+    try {
+      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
+      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+    if (typeof window.__wizardryApplyPageTitle === 'function') {
+      window.__wizardryApplyPageTitle();
     }
   }
 
@@ -1870,6 +1899,7 @@
   function syncComposePostTypeUi() {
     const type = normalizeComposePostType(state.composePostType);
     const linkShare = type === 'link-share';
+    const showTitleField = type !== 'shortform';
     const locked = !!state.composePostTypeLocked;
     if (els.composePostTypeToolbar) {
       let activeCount = 0;
@@ -1917,6 +1947,11 @@
       els.composeNostrTargetPill.setAttribute('title', label);
     }
     if (els.postTitle) {
+      const titleRow = typeof els.postTitle.closest === 'function' ? els.postTitle.closest('.field-row') : null;
+      if (titleRow instanceof HTMLElement) {
+        titleRow.hidden = !showTitleField;
+        titleRow.classList.toggle('is-hidden', !showTitleField);
+      }
       if (type === 'shortform') {
         els.postTitle.placeholder = 'Short post';
       } else if (type === 'link-share') {
@@ -2124,6 +2159,7 @@
   function readComposer() {
     commitTagInput();
     const postType = normalizeComposePostType(state.composePostType);
+    const titleValue = els.postTitle ? String(els.postTitle.value || '').trim() : '';
     if (postType === 'shortform') {
       enforceComposeShortformLimit();
     }
@@ -2142,7 +2178,7 @@
       draft_id: state.currentDraftId,
       source_post_path: state.composeSourcePostPath,
       post_filename: state.composePostFilename,
-      title: els.postTitle.value.trim(),
+      title: postType === 'shortform' ? '' : titleValue,
       tags: els.postTags.value.trim(),
       summary: '',
       content: content,
@@ -2861,6 +2897,13 @@
       if (els.newUsersAreAdmins) {
         els.newUsersAreAdmins.checked = !!data.new_users_are_admins;
       }
+      if (els.appendSiteTitleToPageTitle) {
+        els.appendSiteTitleToPageTitle.checked = normalizeAppendSiteTitleEnabled(data.append_site_title_to_page_title);
+      }
+      applyPageTitleConfig(
+        data.site_title,
+        els.appendSiteTitleToPageTitle ? els.appendSiteTitleToPageTitle.checked : normalizeAppendSiteTitleEnabled(data.append_site_title_to_page_title)
+      );
       if (els.zapsEnabled) {
         els.zapsEnabled.checked = !!data.zaps_enabled && !!state.plugins.zaps;
         els.zapsEnabled.disabled = !state.plugins.zaps;
@@ -2888,8 +2931,10 @@
         els.siteTitle.value = normalizedSiteTitle;
       }
       applyNavSiteTitle(normalizedSiteTitle);
+      const appendSiteTitleToPageTitle = !!(els.appendSiteTitleToPageTitle && els.appendSiteTitleToPageTitle.checked);
       const data = await apiPost('/cgi/blog-update-config', {
         site_title: normalizedSiteTitle,
+        append_site_title_to_page_title: appendSiteTitleToPageTitle ? 'true' : 'false',
         theme: els.adminTheme ? els.adminTheme.value : '',
         registration_enabled: els.registrationEnabled.checked ? 'true' : 'false',
         drip_interval_hours: els.dripInterval.value.trim(),
@@ -2910,6 +2955,7 @@
       if (shouldRefreshQueue) {
         await loadQueue();
       }
+      applyPageTitleConfig(normalizedSiteTitle, appendSiteTitleToPageTitle);
     } catch (err) {
       setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
     }
@@ -3019,7 +3065,7 @@
       els.registrationEnabled,
       els.feedFullText,
       els.feedItems,
-      els.newUsersAreAdmins,
+      els.appendSiteTitleToPageTitle,
       els.zapsEnabled,
       els.zapLud16,
       els.zapDefaultAmountSats,
@@ -3040,6 +3086,22 @@
       field.addEventListener('change', function () { queueConfigAutosave(220); });
       field.addEventListener('blur', function () { queueConfigAutosave(180); });
     });
+
+    if (els.newUsersAreAdmins) {
+      els.newUsersAreAdmins.addEventListener('change', function () {
+        if (state.isLoadingConfig) {
+          return;
+        }
+        if (els.newUsersAreAdmins.checked) {
+          const confirmed = window.confirm('Enable admin-by-default for new registrations? This grants full admin access to every new account.');
+          if (!confirmed) {
+            els.newUsersAreAdmins.checked = false;
+            return;
+          }
+        }
+        queueConfigAutosave(200);
+      });
+    }
 
     if (els.nostrBridgeEnabled) {
       els.nostrBridgeEnabled.addEventListener('change', function () { queueNostrBridgeAutosave(180); });
@@ -3992,6 +4054,18 @@
     }
   }
 
+  function postListDisplayTitle(primary, fallback) {
+    const title = String(primary || '').trim();
+    if (title) {
+      return title;
+    }
+    const excerpt = String(fallback || '').trim();
+    if (excerpt) {
+      return excerpt;
+    }
+    return 'Untitled';
+  }
+
   function renderDraftList(drafts) {
     if (!drafts.length) {
       els.draftsList.innerHTML = '<div class="draft-rows"><p class="placeholder table-empty">No drafts yet.</p></div>';
@@ -4000,7 +4074,7 @@
 
     let html = '<div class="draft-rows">';
     drafts.forEach(function (draft) {
-      const title = String(draft.title || 'Untitled');
+      const title = postListDisplayTitle(draft.title, draft.content_excerpt);
       const excerpt = String(draft.content_excerpt || '').trim();
       const draftId = escapeAttr(draft.draft_id || '');
       html += '<div class="draft-row" data-draft-id="' + draftId + '">';
@@ -4036,9 +4110,10 @@
     let html = '<div class="queue-rows">';
     queue.forEach(function (item) {
       const rowClass = (item && item.publish_mode === 'drip') ? ' queue-row queue-row-drip' : ' queue-row queue-row-scheduled';
+      const title = postListDisplayTitle(item && item.title, item && item.content_excerpt);
       html += '<div class="' + rowClass + '">';
       html += '<div class="queue-row-main">';
-      html += '<div class="queue-row-title"><button type="button" class="queue-row-open" data-queue-action="edit" data-draft-id="' + escapeAttr(item.draft_id || '') + '">' + escapeHtml(item.title || 'Untitled') + '</button></div>';
+      html += '<div class="queue-row-title"><button type="button" class="queue-row-open" data-queue-action="edit" data-draft-id="' + escapeAttr(item.draft_id || '') + '">' + escapeHtml(title) + '</button></div>';
       if (item.scheduled_at) {
         html += '<div class="muted">Scheduled: ' + escapeHtml(item.scheduled_at) + '</div>';
       }
@@ -4080,7 +4155,7 @@
     });
     state.dripQueueItemCount = dripQueue.length;
     syncRunSchedulerButtonUi();
-    state.nextDripTitle = dripQueue.length ? String(dripQueue[0].title || 'Untitled') : '';
+    state.nextDripTitle = dripQueue.length ? postListDisplayTitle(dripQueue[0].title, dripQueue[0].content_excerpt) : '';
     state.nextDripExcerpt = dripQueue.length ? String(dripQueue[0].content_excerpt || '').trim() : '';
     let ahead = dripQueue.length;
     if (state.currentDraftId) {
@@ -4154,7 +4229,7 @@
 
     let html = '';
     posts.forEach(function (post) {
-      const title = String(post.title || 'Untitled');
+      const title = postListDisplayTitle(post.title, post.content_excerpt);
       const path = String(post.path || '');
       const source = String(post.source || 'local');
       const author = String(post.author || '').trim();

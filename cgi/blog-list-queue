@@ -32,12 +32,19 @@ schedule_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-queue.XXXXXX")
 blog_find_draft_files | while IFS= read -r draft_file; do
   draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
   [ -n "$draft_id" ] || continue
-  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf 'Untitled')
+  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
   mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
   status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
   created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
   scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
-  content_excerpt=$(blog_auto_summary_from_content "$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')")
+  content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
+  content_excerpt=$(blog_auto_summary_from_content "$content")
+  title=$(blog_effective_post_title "$title" "$content" "$post_type")
 
   case "$mode:$status" in
     scheduled:scheduled)

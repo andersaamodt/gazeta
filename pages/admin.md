@@ -54,6 +54,15 @@ title: ""
 <label for="site-title" title="Public title shown in your blog header and feeds."><strong title="Public title shown in your blog header and feeds.">Site Title</strong></label>
 <input type="text" id="site-title" placeholder="Site" title="Public title shown in your blog header and feeds.">
 </div>
+<div id="settings-row-append-site-title" class="field-row checkbox-row">
+<div class="setting-label" title="When enabled, page tab/window titles include the site title suffix.">
+<strong title="When enabled, page tab/window titles include the site title suffix.">Append site title to page titles</strong>
+</div>
+<label class="checkbox-control" for="append-site-title-to-page-title" title="Adds - Site Name to page titles in browser tabs.">
+<input type="checkbox" id="append-site-title-to-page-title" title="Adds - Site Name to page titles in browser tabs.">
+<span title="Adds - Site Name to page titles in browser tabs.">Enabled</span>
+</label>
+</div>
 <div id="settings-row-theme" class="field-row settings-inline-control-row">
 <label for="admin-theme" title="Visual theme for your public site and admin interface accents."><strong title="Visual theme for your public site and admin interface accents.">Theme</strong></label>
 <select id="admin-theme" title="Visual theme for your public site and admin interface accents.">

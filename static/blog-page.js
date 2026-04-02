@@ -81,6 +81,8 @@
       cameraStream: null,
       cameraStarting: false,
       cameraError: '',
+      cameraFullscreen: false,
+      cameraReturnToChooser: false,
       audioStream: null,
       audioRecorder: null,
       audioChunks: [],
@@ -169,6 +171,8 @@
     if (typeof state.compose.cameraStarting !== 'boolean') state.compose.cameraStarting = false;
     if (typeof state.compose.cameraError !== 'string') state.compose.cameraError = '';
     if (typeof state.compose.cameraStream === 'undefined') state.compose.cameraStream = null;
+    if (typeof state.compose.cameraFullscreen !== 'boolean') state.compose.cameraFullscreen = false;
+    if (typeof state.compose.cameraReturnToChooser !== 'boolean') state.compose.cameraReturnToChooser = false;
     if (typeof state.compose.audioStream === 'undefined') state.compose.audioStream = null;
     if (typeof state.compose.audioRecorder === 'undefined') state.compose.audioRecorder = null;
     if (!Array.isArray(state.compose.audioChunks)) state.compose.audioChunks = [];
@@ -365,8 +369,24 @@
     return normalizePageState({ title: titleizeSlug(slug) });
   }
 
+  function hasAuthTokens() {
+    var auth = authPayload();
+    return !!(auth.session_token && auth.csrf_token);
+  }
+
+  function cachedAdminFlag() {
+    try {
+      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
   function isAdmin() {
-    return !!(state.payload && state.payload.is_admin);
+    if (state.payload && state.payload.is_admin) {
+      return true;
+    }
+    return hasAuthTokens() && cachedAdminFlag();
   }
 
   function authPayload() {
@@ -402,7 +422,11 @@
   function renderHead() {
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
-    document.title = title;
+    if (typeof window.__wizardryApplyPageTitle === 'function') {
+      window.__wizardryApplyPageTitle(title);
+    } else {
+      document.title = title;
+    }
     if (els.title) {
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
       els.title.hidden = false;
@@ -593,32 +617,82 @@
     }
   }
 
-  function ensureComposeHosts() {
-    if (!els.list || !els.list.parentNode) {
+  function resolveComposeListHost() {
+    if (els.list && els.list.isConnected && els.list.parentNode) {
+      return els.list;
+    }
+    var nextList = document.getElementById('blog-post-list');
+    if (!nextList) {
+      nextList = root.querySelector('#blog-post-list') || root.querySelector('.post-list');
+    }
+    if (!nextList || !nextList.parentNode) {
+      return null;
+    }
+    els.list = nextList;
+    return nextList;
+  }
+
+  function bindComposeFabListener(fab) {
+    if (!fab || fab.__composeFabBound) {
       return;
     }
-    if (!els.composeSlot) {
+    fab.__composeFabBound = true;
+    fab.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleComposeFromUi(!state.compose.open);
+    });
+  }
+
+  function eventTargetElement(target) {
+    if (target instanceof Element) {
+      return target;
+    }
+    if (target && target.parentElement instanceof Element) {
+      return target.parentElement;
+    }
+    return null;
+  }
+
+  function ensureComposeHosts() {
+    var listHost = resolveComposeListHost();
+    if (!listHost) {
+      return;
+    }
+    if (!els.composeSlot || !els.composeSlot.isConnected) {
       var slot = document.createElement('div');
       slot.className = 'blog-compose-slot';
       slot.hidden = true;
-      els.list.parentNode.insertBefore(slot, els.list);
+      listHost.parentNode.insertBefore(slot, listHost);
       els.composeSlot = slot;
     }
-    if (!els.composeFab) {
+    if (!els.composeFab || !els.composeFab.isConnected) {
+      var existingFab = root.querySelector('.blog-compose-fab[data-blog-action="toggle-compose"]');
+      if (existingFab instanceof HTMLButtonElement) {
+        els.composeFab = existingFab;
+      }
+    }
+    if (!els.composeFab || !els.composeFab.isConnected) {
       var fab = document.createElement('button');
       fab.type = 'button';
       fab.className = 'blog-compose-fab list-admin-primary-btn';
       fab.setAttribute('data-blog-action', 'toggle-compose');
       fab.setAttribute('aria-label', 'Compose');
       fab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span>';
-      fab.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toggleComposeFromUi(!state.compose.open);
-      });
       fab.hidden = true;
       root.appendChild(fab);
       els.composeFab = fab;
+    }
+    if (els.composeFab instanceof HTMLButtonElement) {
+      els.composeFab.type = 'button';
+      els.composeFab.setAttribute('data-blog-action', 'toggle-compose');
+      if (!els.composeFab.getAttribute('aria-label')) {
+        els.composeFab.setAttribute('aria-label', 'Compose');
+      }
+      if (!els.composeFab.querySelector('.blog-compose-fab-icon')) {
+        els.composeFab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span>';
+      }
+      bindComposeFabListener(els.composeFab);
     }
   }
 
@@ -692,13 +766,36 @@
     return 'Go Live';
   }
 
+  function composePostKindPillText(postType) {
+    var type = normalizeComposePostType(postType);
+    var target = composeNostrTarget(type);
+    if (type === 'longform') return 'Long-form Content (kind ' + target.kind + ')';
+    if (type === 'shortform') return 'Shortform Post (kind ' + target.kind + ')';
+    if (type === 'capture-media') return 'Media Capture (kind ' + target.kind + ')';
+    if (type === 'upload-media') return 'Media Upload (kind ' + target.kind + ')';
+    if (type === 'attachment') return 'Attachment (kind ' + target.kind + ')';
+    if (type === 'audio-note') return 'Audio Note (kind ' + target.kind + ')';
+    if (type === 'link-share') return 'Link Share (kind ' + target.kind + ')';
+    return 'Go Live (kind ' + target.kind + ')';
+  }
+
+  function composePostKindPillClass(postType) {
+    var type = normalizeComposePostType(postType);
+    if (type === 'longform') return 'is-type-nip23';
+    if (type === 'capture-media' || type === 'upload-media') return 'is-type-icon-gallery';
+    if (type === 'audio-note') return 'is-type-public-ranking';
+    if (type === 'attachment') return 'is-type-contact';
+    if (type === 'link-share') return 'is-type-blog';
+    if (type === 'shortform') return 'is-type-list';
+    return 'is-type-public-ranking';
+  }
+
   function composeNostrPillsHtml(postType) {
     var type = normalizeComposePostType(postType);
     var target = composeNostrTarget(type);
-    var typeLabel = composePostTypeLabel(type);
-    var kindLabel = 'kind ' + target.kind;
-    var combined = typeLabel + ' · ' + kindLabel;
-    return '<span class="nostr-target-pill is-pages-pill" title="' + escapeHtml(combined + ' · ' + target.tags) + '">' + escapeHtml(combined) + '</span>';
+    var kindText = composePostKindPillText(type);
+    var badgeClass = composePostKindPillClass(type);
+    return '<span class="nostr-page-kind-badge ' + badgeClass + '" title="' + escapeHtml(kindText + ' · ' + target.tags) + '">' + escapeHtml(kindText) + '</span>';
   }
 
   function clearComposePostTypeCollapseTimer() {
@@ -755,8 +852,8 @@
   function composePostTypeIconSvg(type) {
     var picked = normalizeComposePostType(type);
     if (picked === 'shortform') {
-      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-        '<path d="M5 8H15M5 12H13M5 16H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      return '<svg class="compose-post-type-icon" viewBox="0 0 96.314 100" fill="none" aria-hidden="true">' +
+        '<path fill="currentColor" stroke="none" d="M84.39,11.825C83.396,8.452,80.595,5,75.097,5c-5.605,0-16.216,3.389-16.216,16.216c0,2.613-1.786,3.205-3.243,3.243c-27.467,0-47.354,32.62-48.187,34.006L5,62.549l4.7,0.785c14.088,2.349,26.242,3.646,36.208,3.879V95h6.486V67.204c1.035-0.03,2.055-0.068,3.041-0.127V95h6.486V66.438c15.209-2.16,22.906-8.613,22.906-19.276V24.459h6.486v-3.243C91.314,17.868,89.414,13.124,84.39,11.825z M78.34,47.162c0,3.367,0,13.606-29.252,13.606c-9.03,0-20.227-1.017-33.326-3.031c6.043-8.383,21.414-26.792,39.876-26.792c3.908,0,9.729-2.591,9.729-9.729c0-9.157,8.12-9.711,9.729-9.73c2.609,0,3.205,1.783,3.243,3.243V47.162z M75.446,17.837c0,1.384-1.128,2.505-2.509,2.505s-2.508-1.121-2.508-2.505c0-1.384,1.127-2.505,2.508-2.505S75.446,16.453,75.446,17.837z"/>' +
       '</svg>';
     }
     if (picked === 'longform') {
@@ -808,6 +905,13 @@
       '<path d="M13.4 3.8V9.3H18.9" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
       '<circle cx="10.6" cy="13.8" r="2.1" stroke="currentColor" stroke-width="1.8"/>' +
       '<path d="M12.1 15.3L14.3 17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
+  function composeCloseIconSvg() {
+    return '<svg class="compose-close-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M7 7L17 17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>' +
+      '<path d="M17 7L7 17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>' +
     '</svg>';
   }
 
@@ -922,9 +1026,35 @@
   function setComposePostType(nextType, options) {
     var opts = options || {};
     var normalized = normalizeComposePostType(nextType);
+    var wasChosen = !!state.compose.postTypeChosen;
     if (normalized === 'go-live') {
       setComposeOutput('Go Live is a future feature.', 'warn');
       renderComposeStatusOnly();
+      return;
+    }
+    // For initial media selection, keep chooser mode until capture/file pick completes.
+    if (opts.interactive && normalized === 'capture-media') {
+      state.compose.postType = normalized;
+      state.compose.postTypeChosen = wasChosen;
+      state.compose.postTypeToolbarCollapsed = false;
+      if (!opts.skipRender) {
+        renderComposeUi();
+      }
+      setTimeout(function () {
+        openComposeCameraCapture({ returnToChooser: !wasChosen });
+      }, 0);
+      return;
+    }
+    if (opts.interactive && normalized === 'upload-media' && !wasChosen) {
+      state.compose.postType = normalized;
+      state.compose.postTypeChosen = false;
+      state.compose.postTypeToolbarCollapsed = false;
+      if (!opts.skipRender) {
+        renderComposeUi();
+      }
+      setTimeout(function () {
+        openComposePickerForType(normalized);
+      }, 0);
       return;
     }
     state.compose.postType = normalized;
@@ -942,7 +1072,7 @@
         setTimeout(function () {
           openComposePickerForType(normalized);
         }, 0);
-      } else if (normalized === 'capture-media' || normalized === 'audio-note') {
+      } else if (normalized === 'capture-media') {
         setTimeout(function () {
           applyComposeModeEffects(normalized);
         }, 0);
@@ -1099,6 +1229,10 @@
     if (!list.length) {
       return Promise.resolve();
     }
+    var normalizedPreferredType = normalizeComposePostType(preferredType);
+    if (normalizedPreferredType === 'capture-media' || normalizedPreferredType === 'upload-media') {
+      state.compose.preview = true;
+    }
     if (preferredType) {
       setComposePostType(preferredType, { skipAutosave: true });
     }
@@ -1154,6 +1288,79 @@
     return true;
   }
 
+  function composeCameraOverlayHtml() {
+    var status = state.compose.cameraStarting
+      ? 'Requesting camera access...'
+      : (state.compose.cameraError ? escapeHtml(state.compose.cameraError) : 'Frame your shot and capture.');
+    return '' +
+      '<div class="blog-compose-camera-overlay-shell">' +
+        '<div class="blog-compose-camera-overlay-stage">' +
+          '<video class="blog-compose-camera-overlay-video" data-compose-camera-fullscreen-preview playsinline autoplay muted></video>' +
+        '</div>' +
+        '<div class="blog-compose-camera-overlay-controls">' +
+          '<button type="button" class="unobtrusive-icon-button blog-compose-camera-control" data-compose-action="cancel-camera-capture">Cancel</button>' +
+          '<button type="button" class="list-admin-primary-btn blog-compose-camera-capture" data-compose-action="capture-photo">Capture Photo</button>' +
+        '</div>' +
+        '<div class="blog-compose-camera-overlay-status">' + status + '</div>' +
+      '</div>';
+  }
+
+  function renderComposeCameraOverlay() {
+    if (!root) {
+      return;
+    }
+    var shouldShow = !!(state.compose.open && state.compose.cameraFullscreen);
+    var overlay = root.querySelector('.blog-compose-camera-overlay');
+    if (!shouldShow) {
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      if (document && document.body) {
+        document.body.classList.remove('blog-camera-mode-active');
+      }
+      return;
+    }
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'blog-compose-camera-overlay';
+      root.appendChild(overlay);
+    }
+    overlay.innerHTML = composeCameraOverlayHtml();
+    if (document && document.body) {
+      document.body.classList.add('blog-camera-mode-active');
+    }
+    attachComposeCameraPreview();
+  }
+
+  function openComposeCameraCapture(options) {
+    ensureComposeStateShape();
+    var opts = options || {};
+    state.compose.postType = 'capture-media';
+    state.compose.cameraFullscreen = true;
+    state.compose.cameraReturnToChooser = !!opts.returnToChooser;
+    if (opts.returnToChooser) {
+      state.compose.postTypeChosen = false;
+      state.compose.postTypeToolbarCollapsed = false;
+    }
+    renderComposeUi();
+    ensureComposeCameraStream();
+    attachComposeCameraPreview();
+  }
+
+  function closeComposeCameraCapture(options) {
+    ensureComposeStateShape();
+    var opts = options || {};
+    var shouldReturnToChooser = !!opts.returnToChooser || !!state.compose.cameraReturnToChooser;
+    state.compose.cameraFullscreen = false;
+    state.compose.cameraReturnToChooser = false;
+    stopComposeCameraStream();
+    if (shouldReturnToChooser) {
+      state.compose.postTypeChosen = false;
+      state.compose.postTypeToolbarCollapsed = false;
+    }
+    renderComposeUi();
+  }
+
   function stopComposeCameraStream() {
     ensureComposeStateShape();
     var stream = state.compose.cameraStream;
@@ -1169,21 +1376,23 @@
   }
 
   function attachComposeCameraPreview() {
-    if (!els.composeSlot) {
+    if (!root) {
       return;
     }
-    var video = els.composeSlot.querySelector('[data-compose-camera-preview]');
-    if (!(video instanceof HTMLVideoElement)) {
-      return;
-    }
-    if (state.compose.cameraStream && video.srcObject !== state.compose.cameraStream) {
-      video.srcObject = state.compose.cameraStream;
-    }
-    if (video.srcObject) {
-      video.play().catch(function () {
-        // Ignore autoplay restrictions; controls are still available.
-      });
-    }
+    var previews = root.querySelectorAll('[data-compose-camera-preview], [data-compose-camera-fullscreen-preview]');
+    Array.prototype.forEach.call(previews, function (video) {
+      if (!(video instanceof HTMLVideoElement)) {
+        return;
+      }
+      if (state.compose.cameraStream && video.srcObject !== state.compose.cameraStream) {
+        video.srcObject = state.compose.cameraStream;
+      }
+      if (video.srcObject) {
+        video.play().catch(function () {
+          // Ignore autoplay restrictions; controls are still available.
+        });
+      }
+    });
   }
 
   function ensureComposeCameraStream() {
@@ -1199,6 +1408,7 @@
     }
     state.compose.cameraStarting = true;
     state.compose.cameraError = '';
+    renderComposeUi();
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
       .catch(function () {
         return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -1257,6 +1467,7 @@
     }
     state.compose.audioStarting = true;
     state.compose.audioError = '';
+    renderComposeUi();
     return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       .then(function (stream) {
         state.compose.audioStream = stream || null;
@@ -1270,6 +1481,25 @@
         state.compose.audioStarting = false;
         renderComposeUi();
       });
+  }
+
+  function preferredComposeAudioMimeType() {
+    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+      return '';
+    }
+    var candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/mp4'
+    ];
+    for (var idx = 0; idx < candidates.length; idx += 1) {
+      if (MediaRecorder.isTypeSupported(candidates[idx])) {
+        return candidates[idx];
+      }
+    }
+    return '';
   }
 
   function startComposeAudioRecording() {
@@ -1287,8 +1517,9 @@
         return;
       }
       var recorder;
+      var preferredMime = preferredComposeAudioMimeType();
       try {
-        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        recorder = preferredMime ? new MediaRecorder(stream, { mimeType: preferredMime }) : new MediaRecorder(stream);
       } catch (_err) {
         try {
           recorder = new MediaRecorder(stream);
@@ -1318,7 +1549,7 @@
           renderComposeUi();
           return;
         }
-        var mime = (chunks[0] && chunks[0].type) ? String(chunks[0].type) : 'audio/webm';
+        var mime = (chunks[0] && chunks[0].type) ? String(chunks[0].type) : String(recorder.mimeType || preferredMime || 'audio/webm');
         var blob = new Blob(chunks, { type: mime });
         var ext = mime.indexOf('ogg') >= 0 ? 'ogg' : (mime.indexOf('mp4') >= 0 ? 'm4a' : 'webm');
         var file = new File([blob], 'voice-note-' + Date.now() + '.' + ext, { type: mime });
@@ -1327,12 +1558,19 @@
       };
       try {
         recorder.start(250);
-        state.compose.audioRecording = true;
       } catch (err) {
-        state.compose.audioRecorder = null;
-        state.compose.audioRecording = false;
-        state.compose.audioError = String((err && err.message) || 'Could not start recording.');
+        try {
+          recorder.start();
+        } catch (fallbackStartErr) {
+          state.compose.audioRecorder = null;
+          state.compose.audioRecording = false;
+          state.compose.audioError = String((fallbackStartErr && fallbackStartErr.message) || 'Could not start recording.');
+          renderComposeUi();
+          return;
+        }
       }
+      state.compose.audioRecording = true;
+      state.compose.audioError = '';
       renderComposeUi();
     });
   }
@@ -1353,10 +1591,10 @@
   }
 
   function capturePhotoFromComposeCamera() {
-    if (!els.composeSlot) {
+    if (!root) {
       return;
     }
-    var video = els.composeSlot.querySelector('[data-compose-camera-preview]');
+    var video = root.querySelector('[data-compose-camera-fullscreen-preview]') || root.querySelector('[data-compose-camera-preview]');
     if (!(video instanceof HTMLVideoElement)) {
       setComposeOutput('Camera preview is not ready yet.', 'warn');
       renderComposeStatusOnly();
@@ -1386,6 +1624,13 @@
         return;
       }
       var file = new File([blob], 'capture-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+      state.compose.cameraFullscreen = false;
+      state.compose.cameraReturnToChooser = false;
+      state.compose.postType = 'capture-media';
+      state.compose.postTypeChosen = true;
+      state.compose.preview = true;
+      stopComposeCameraStream();
+      renderComposeUi();
       handleComposeUploads([file], 'capture-media');
     }, 'image/jpeg', 0.92);
   }
@@ -1501,6 +1746,41 @@
     return 'publish_now';
   }
 
+  function openComposeScheduledPicker() {
+    if (!els.composeSlot || !state.compose.open) {
+      return;
+    }
+    if (composePublishMode() !== 'scheduled') {
+      return;
+    }
+    var scheduleInput = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+    if (!(scheduleInput instanceof HTMLInputElement)) {
+      return;
+    }
+    try {
+      if (typeof scheduleInput.showPicker === 'function') {
+        scheduleInput.showPicker();
+      } else {
+        scheduleInput.focus();
+        scheduleInput.click();
+      }
+    } catch (_err) {
+      try {
+        scheduleInput.focus();
+      } catch (_focusErr) {
+        // Ignore picker focus errors.
+      }
+    }
+  }
+
+  function composeScheduledDisplayValue(rawValue) {
+    var value = String(rawValue || '').trim();
+    if (!value) {
+      return 'No schedule selected';
+    }
+    return value.replace('T', ' ');
+  }
+
   function composeToolbarButtonHtml(action, label, icon) {
     return '<button type="button" class="unobtrusive-icon-button toolbar-button" data-compose-toolbar="' + escapeHtml(action) + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '">' + icon + '</button>';
   }
@@ -1528,17 +1808,12 @@
     if (type === 'capture-media') {
       return '' +
         '<div class="compose-media-tools compose-mode-panel compose-camera-panel">' +
-          '<div class="compose-camera-shell">' +
-            '<video class="compose-camera-preview" data-compose-camera-preview playsinline autoplay muted></video>' +
-          '</div>' +
           '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="capture-photo">Capture Photo</button>' +
+            '<button type="button" class="list-admin-primary-btn compose-media-btn compose-media-btn-primary" data-compose-action="open-camera-capture">Open Camera</button>' +
             '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="capture-media">Use Camera App / Upload</button>' +
           '</div>' +
           '<div class="compose-camera-status">' +
-            (state.compose.cameraStarting
-              ? 'Requesting camera access...'
-              : (state.compose.cameraError ? escapeHtml(state.compose.cameraError) : 'Camera is live. Capture a frame or upload media.')) +
+            (state.compose.cameraError ? escapeHtml(state.compose.cameraError) : 'Open camera for fullscreen capture, or upload from device.') +
           '</div>' +
         '</div>';
     }
@@ -1565,7 +1840,9 @@
             ? 'Requesting microphone access...'
             : (state.compose.audioError
                 ? escapeHtml(state.compose.audioError)
-                : 'Microphone is ready. Press Record to capture audio.'));
+                : (state.compose.audioStream
+                    ? 'Microphone is ready. Press Start Recording.'
+                    : 'Press Start Recording to request microphone access.')));
       return '' +
         '<div class="compose-media-tools compose-mode-panel compose-audio-panel">' +
           '<div class="compose-media-actions">' +
@@ -1592,7 +1869,7 @@
   function applyComposeModeEffects(postType) {
     var type = normalizeComposePostType(postType);
     root.classList.remove('blog-camera-mode');
-    if (!state.compose.open || type !== 'capture-media') {
+    if (!state.compose.open || !state.compose.cameraFullscreen) {
       stopComposeCameraStream();
     } else {
       ensureComposeCameraStream();
@@ -1600,8 +1877,6 @@
     }
     if (!state.compose.open || type !== 'audio-note') {
       stopComposeAudioStream();
-    } else {
-      ensureComposeAudioStream();
     }
   }
 
@@ -1665,7 +1940,7 @@
       action: action,
       draft_id: String(state.compose.draftId || ''),
       source_post_path: String(state.compose.sourcePostPath || ''),
-      title: fields.title.trim(),
+      title: fields.postType === 'shortform' ? '' : fields.title.trim(),
       tags: fields.tags.trim(),
       summary: '',
       content: payloadContent,
@@ -1845,7 +2120,8 @@
 
   function deleteComposeDraft() {
     var fields = readComposeFields() || { title: '', content: '' };
-    var hasContent = !!String(fields.title || '').trim() ||
+    var hasTitle = composePostType() === 'shortform' ? false : !!String(fields.title || '').trim();
+    var hasContent = hasTitle ||
       !!String(fields.content || '').trim() ||
       !!String(fields.linkUrl || '').trim() ||
       !!String(fields.linkBody || '').trim() ||
@@ -1904,11 +2180,15 @@
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeLocked = false;
       state.compose.sourcePostPath = '';
+      state.compose.cameraFullscreen = false;
+      state.compose.cameraReturnToChooser = false;
     } else {
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeChosen = false;
       state.compose.postTypeLocked = false;
       state.compose.sourcePostPath = '';
+      state.compose.cameraFullscreen = false;
+      state.compose.cameraReturnToChooser = false;
     }
     try {
       renderComposeUi();
@@ -1947,7 +2227,9 @@
         if (!state.compose.postTypeChosen) {
           focusTarget = els.composeSlot.querySelector('[data-compose-post-type]');
         } else if (!focusTarget) {
-          focusTarget = els.composeSlot.querySelector('[data-compose-field="title"]');
+          focusTarget = composePostType() === 'shortform'
+            ? els.composeSlot.querySelector('[data-compose-field="content"]')
+            : els.composeSlot.querySelector('[data-compose-field="title"]');
         }
         if (focusTarget && typeof focusTarget.focus === 'function') {
           focusTarget.focus();
@@ -2041,12 +2323,15 @@
         if (!els.composeSlot) {
           return;
         }
-        var titleInput = els.composeSlot.querySelector('[data-compose-field="title"]');
-        if (titleInput && typeof titleInput.focus === 'function') {
-          titleInput.focus();
-          if (titleInput.setSelectionRange) {
-            var length = String(titleInput.value || '').length;
-            titleInput.setSelectionRange(length, length);
+        var postType = normalizeComposePostType(state.compose.postType);
+        var focusInput = postType === 'shortform'
+          ? els.composeSlot.querySelector('[data-compose-field="content"]')
+          : els.composeSlot.querySelector('[data-compose-field="title"]');
+        if (focusInput && typeof focusInput.focus === 'function') {
+          focusInput.focus();
+          if (focusInput.setSelectionRange) {
+            var length = String(focusInput.value || '').length;
+            focusInput.setSelectionRange(length, length);
           }
         }
       }, 30);
@@ -2191,6 +2476,7 @@
     ensureComposeStateShape();
     ensureComposeHosts();
     if (!els.composeSlot || !els.composeFab) {
+      renderComposeCameraOverlay();
       return;
     }
     var admin = isAdmin();
@@ -2201,6 +2487,7 @@
       els.composeSlot.hidden = true;
       els.composeSlot.classList.remove('is-open');
       els.composeSlot.innerHTML = '';
+      renderComposeCameraOverlay();
       return;
     }
     els.composeFab.classList.toggle('is-open', state.compose.open);
@@ -2215,8 +2502,37 @@
           els.composeSlot.hidden = true;
           els.composeSlot.innerHTML = '';
         }
-      }, 240);
+      }, 300);
+      renderComposeCameraOverlay();
       return;
+    }
+    var composeSlotWasVisible = !els.composeSlot.hidden && els.composeSlot.classList.contains('is-open');
+    function setComposeSlotOpenHeight() {
+      if (!els.composeSlot) {
+        return;
+      }
+      var measuredHeight = Math.ceil(els.composeSlot.scrollHeight || 0);
+      var openHeight = Math.max(120, measuredHeight + 8);
+      els.composeSlot.style.setProperty('--compose-slot-open-max-height', String(openHeight) + 'px');
+    }
+    function openComposeSlotAnimated() {
+      if (!els.composeSlot) {
+        return;
+      }
+      setComposeSlotOpenHeight();
+      if (composeSlotWasVisible) {
+        els.composeSlot.classList.add('is-open');
+        return;
+      }
+      els.composeSlot.classList.remove('is-open');
+      // Force Firefox to commit the collapsed style before opening.
+      void els.composeSlot.offsetHeight;
+      requestAnimationFrame(function () {
+        if (els.composeSlot && state.compose.open) {
+          setComposeSlotOpenHeight();
+          els.composeSlot.classList.add('is-open');
+        }
+      });
     }
 
     var fields = readComposeFields() || {
@@ -2231,6 +2547,7 @@
     var mode = composePublishMode();
     var destination = composePublishDestination();
     var postType = normalizeComposePostType(fields.postType);
+    var showTitleField = postType !== 'shortform';
     if (postType !== 'shortform') {
       state.compose.shortformLimitEditing = false;
     }
@@ -2253,14 +2570,12 @@
                 '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml('', { lockAll: postTypeLocked, noActive: true }) + '</div></div>' +
               '</div>' +
             '</div>' +
+            '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
+            '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
           '</div>' +
         '</article>';
-      els.composeSlot.classList.add('is-open');
-      requestAnimationFrame(function () {
-        if (els.composeSlot) {
-          els.composeSlot.classList.add('is-open');
-        }
-      });
+      openComposeSlotAnimated();
+      renderComposeCameraOverlay();
       return;
     }
     if (postType === 'shortform') {
@@ -2277,7 +2592,8 @@
         previewContent = linkPreview;
       }
     }
-    var previewHtml = renderComposePreviewHtml(fields.title, previewContent);
+    var previewTitle = showTitleField ? fields.title : '';
+    var previewHtml = renderComposePreviewHtml(previewTitle, previewContent);
     var contentLabel = composePostTypeIsTextual(postType) ? 'Content' : 'Body';
     var contentPlaceholder = '# Write in Markdown';
     if (postType === 'shortform') {
@@ -2302,7 +2618,9 @@
       titlePlaceholder = 'Media title (optional)';
     }
     var mediaToolsHtml = composeModePanelHtml(postType, fields);
-    var previewIslandLayout = !!(state.compose.preview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
+    var forcePreview = postType === 'capture-media' || postType === 'upload-media';
+    var showPreview = forcePreview || !!state.compose.preview;
+    var previewIslandLayout = !!(showPreview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
     var headRowClass = 'field-row blog-compose-head-row' + (state.compose.postTypeToolbarCollapsed ? ' is-type-collapsed' : '');
     var typeControlClass = state.compose.postTypeToolbarCollapsed ? 'compose-post-type-control is-collapsed' : 'compose-post-type-control';
     var editorBlockHtml = '' +
@@ -2316,9 +2634,13 @@
         (postType === 'shortform' ? composeShortformMeterHtml(fields.content) : '') +
       '</div>';
     var contentPaneHtml = '';
-    if (state.compose.preview && !previewIslandLayout) {
-      contentPaneHtml = '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
-        '<textarea data-compose-field="content" rows="14" hidden>' + escapeHtml(fields.content) + '</textarea>';
+    if (showPreview && !previewIslandLayout) {
+      if (forcePreview) {
+        contentPaneHtml = editorBlockHtml + '<div class="preview-box blog-compose-preview blog-compose-inline-preview">' + previewHtml + '</div>';
+      } else {
+        contentPaneHtml = '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
+          '<textarea data-compose-field="content" rows="14" hidden>' + escapeHtml(fields.content) + '</textarea>';
+      }
     } else {
       contentPaneHtml = editorBlockHtml;
     }
@@ -2329,67 +2651,67 @@
     if (state.compose.outputTone) {
       outputClass += ' ' + state.compose.outputTone;
     }
-    var composeCardClass = 'post-item blog-post-item blog-compose-card' + (previewIslandLayout ? ' is-wide-preview' : '');
-    var previewIslandHtml = previewIslandLayout
-      ? '<aside class="blog-compose-side-preview"><label><strong>Preview</strong></label><div class="preview-box blog-compose-preview">' + previewHtml + '</div></aside>'
-      : '';
-
-    els.composeSlot.hidden = false;
-    els.composeSlot.innerHTML = '' +
+    var composeCardClass = 'post-item blog-post-item blog-compose-card';
+    var previewActionLabel = 'Preview';
+    var previewToggleTitle = state.compose.preview ? 'Preview is on' : 'Preview';
+    var previewTogglePressed = state.compose.preview ? 'true' : 'false';
+    var previewToggleClass = 'unobtrusive-icon-button blog-compose-preview-toggle' + (state.compose.preview ? ' is-active' : '');
+    var previewToggleHtml = forcePreview
+      ? ''
+      : ('<button type="button" class="' + previewToggleClass + '" data-compose-action="toggle-preview" aria-label="' + previewActionLabel + '" aria-pressed="' + previewTogglePressed + '" title="' + previewToggleTitle + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + previewActionLabel + '</span></button>');
+    var composeCardHtml = '' +
       '<article class="' + composeCardClass + '">' +
-        '<div class="blog-compose-main-shell">' +
-          '<div class="blog-compose-body">' +
-            '<div class="' + headRowClass + '" data-compose-head-row>' +
-              '<div class="' + typeControlClass + '" data-compose-type-control>' +
-                '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button"' + (postTypeLocked ? ' disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts"' : ' data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type"') + '>' + composePostTypeIconSvg(postType) + '</button>' +
-                '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
-              '</div>' +
-              '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + (postTypeLocked ? '<span class="nostr-target-pill">Post type locked</span>' : '') + '</div>' +
-              '<button type="button" class="list-admin-primary-btn blog-compose-preview-toggle blog-compose-btn" data-compose-action="toggle-preview" aria-label="' + (state.compose.preview ? 'Edit' : 'Preview') + '" title="' + (state.compose.preview ? 'Edit' : 'Preview') + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + (state.compose.preview ? 'Edit' : 'Preview') + '</span></button>' +
+        '<div class="blog-compose-body">' +
+          '<div class="' + headRowClass + '" data-compose-head-row>' +
+            '<div class="' + typeControlClass + '" data-compose-type-control>' +
+              '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button"' + (postTypeLocked ? ' disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts"' : ' data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type"') + '>' + composePostTypeIconSvg(postType) + '</button>' +
+              '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
             '</div>' +
-            '<div class="field-row blog-compose-title-row">' +
-              '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
+            '<div class="blog-compose-head-actions">' +
+              previewToggleHtml +
+              '<button type="button" class="unobtrusive-icon-button blog-compose-close" data-compose-action="close-compose" aria-label="Close compose" title="Close compose">' + composeCloseIconSvg() + '<span class="sr-only">Close compose</span></button>' +
             '</div>' +
-            mediaToolsHtml +
-            contentPaneHtml +
-            '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
-            '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
-            '<input type="file" data-compose-field="file-upload" data-compose-upload="attachment" multiple hidden>' +
-            '<input type="file" data-compose-field="audio-upload" data-compose-upload="audio-note" accept="audio/*" multiple hidden>' +
-            '<div class="grid-two">' +
-              '<div class="field-row">' +
-                '<label><strong>Tags</strong></label>' +
-                '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
-                (state.compose.tagsOpen
-                  ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
-                      '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
-                      '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
-                      '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
-                    '</div>'
-                  : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
-              '</div>' +
-            '</div>' +
-            '<div class="field-row compose-release-row">' +
-              '<strong>Release Mode</strong>' +
-              '<div class="mode-row">' +
-                '<label><input type="radio" name="blog-inline-compose-mode" value="immediate"' + (mode === 'immediate' ? ' checked' : '') + '> Immediate</label>' +
-                '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Scheduled Date</label>' +
-                '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Drip Queue</label>' +
-              '</div>' +
-            '</div>' +
-            '<div class="field-row compose-destination-row">' +
-              '<strong>Publish Destination</strong>' +
-              '<div class="mode-row">' +
-                '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
-                '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
-              '</div>' +
-            '</div>' +
-            '<div class="field-row scheduled-row' + (mode === 'scheduled' ? '' : ' is-hidden') + '">' +
-              '<label><strong>Scheduled Release Date/Time</strong></label>' +
-              '<input type="datetime-local" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '">' +
+            '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + (postTypeLocked ? '<span class="nostr-target-pill">Post type locked</span>' : '') + '</div>' +
+          '</div>' +
+          '<div class="field-row blog-compose-title-row"' + (showTitleField ? '' : ' hidden aria-hidden="true"') + '>' +
+            '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
+          '</div>' +
+          mediaToolsHtml +
+          contentPaneHtml +
+          '<input type="file" data-compose-field="capture-upload" data-compose-upload="capture-media" accept="image/*,video/*" capture="environment" multiple hidden>' +
+          '<input type="file" data-compose-field="media-upload" data-compose-upload="upload-media" accept="image/*,video/*" multiple hidden>' +
+          '<input type="file" data-compose-field="file-upload" data-compose-upload="attachment" multiple hidden>' +
+          '<input type="file" data-compose-field="audio-upload" data-compose-upload="audio-note" accept="audio/*" multiple hidden>' +
+          '<div class="grid-two">' +
+            '<div class="field-row">' +
+              '<label><strong>Tags</strong></label>' +
+              '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
+              (state.compose.tagsOpen
+                ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
+                    '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
+                    '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
+                    '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
+                  '</div>'
+                : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
             '</div>' +
           '</div>' +
-          previewIslandHtml +
+          '<div class="field-row compose-release-row">' +
+            '<strong>When</strong>' +
+            '<div class="mode-row">' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="immediate"' + (mode === 'immediate' ? ' checked' : '') + '> Now</label>' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="drip"' + (mode === 'drip' ? ' checked' : '') + '> Queue</label>' +
+              '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Schedule...</label>' +
+            '</div>' +
+            '<div class="compose-scheduled-value" data-compose-scheduled-value' + (mode === 'scheduled' ? '' : ' hidden') + '>' + escapeHtml(composeScheduledDisplayValue(fields.scheduledAt)) + '</div>' +
+            '<input type="datetime-local" class="compose-scheduled-picker-hidden" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '" aria-label="Scheduled release date and time">' +
+          '</div>' +
+          '<div class="field-row compose-destination-row">' +
+            '<strong>Publish Destination</strong>' +
+            '<div class="mode-row">' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
+              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
         '<div class="compose-footer blog-compose-footer">' +
           '<div class="compose-actions blog-compose-footer-actions">' +
@@ -2403,10 +2725,19 @@
           '</div>' +
         '</div>' +
       '</article>';
-    els.composeSlot.classList.add('is-open');
+    var previewCardHtml = previewIslandLayout
+      ? '<article class="post-item blog-post-item blog-compose-preview-card"><div class="blog-compose-preview-card-body"><label><strong>Preview</strong></label><div class="preview-box blog-compose-preview">' + previewHtml + '</div></div></article>'
+      : '';
+
+    els.composeSlot.hidden = false;
+    els.composeSlot.innerHTML = previewIslandLayout
+      ? ('<div class="blog-compose-islands">' + composeCardHtml + previewCardHtml + '</div>')
+      : composeCardHtml;
+    openComposeSlotAnimated();
     requestAnimationFrame(function () {
       applyComposeModeEffects(postType);
     });
+    renderComposeCameraOverlay();
   }
 
   function renderComposeStatusOnly() {
@@ -2421,14 +2752,15 @@
       publishBtn.textContent = composePrimaryLabel(mode, destination);
       publishBtn.disabled = !!state.compose.busy || state.compose.uploading > 0;
     }
-    var scheduledRow = els.composeSlot.querySelector('.scheduled-row');
-    if (scheduledRow) {
-      scheduledRow.classList.toggle('is-hidden', mode !== 'scheduled');
-    }
     var output = els.composeSlot.querySelector('.output');
     if (output) {
       output.textContent = state.compose.output || '';
       output.className = 'output' + (state.compose.outputTone ? (' ' + state.compose.outputTone) : '');
+    }
+    var scheduleValue = els.composeSlot.querySelector('[data-compose-scheduled-value]');
+    if (scheduleValue) {
+      scheduleValue.hidden = mode !== 'scheduled';
+      scheduleValue.textContent = composeScheduledDisplayValue((readComposeFields() || {}).scheduledAt || '');
     }
     var autosave = els.composeSlot.querySelector('.compose-editor-autosave');
     if (autosave) {
@@ -2584,6 +2916,10 @@
 
     els.empty.hidden = true;
     els.list.innerHTML = shown.map(function (post) {
+      var postTitle = String(post.title || '').trim();
+      if (!postTitle) {
+        postTitle = String(post.summary || '').trim() || 'Untitled';
+      }
       var postPath = String(post.path || '').trim();
       var tagsHtml = (post.tags || []).map(function (tag) {
         return '<button type="button" class="tag blog-inline-tag" data-inline-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
@@ -2616,7 +2952,7 @@
         '<article class="post-item blog-post-item">' +
           '<div class="post-head">' +
             '<div class="post-head-main">' +
-              '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(post.title || 'Untitled') + '</a></h2>' +
+              '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
               '<div class="post-byline post-byline-top"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-date">' + escapeHtml(post.published_date || post.pub_date || 'Unknown date') + '</span></div>' +
               '<div class="post-head-divider" aria-hidden="true"></div>' +
               '<div class="post-byline post-byline-bottom"><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span></div>' +
@@ -2923,6 +3259,13 @@
         return;
       }
       state.payload = data;
+      try {
+        if (typeof data.is_admin !== 'undefined') {
+          localStorage.setItem('last_auth_is_admin', data.is_admin ? '1' : '0');
+        }
+      } catch (_storageErr) {
+        // Ignore storage sync failures.
+      }
       applyDefaultFilters();
       if (!opts.deferRender) {
         renderAll();
@@ -2978,7 +3321,7 @@
   }
 
   root.addEventListener('click', function (event) {
-    var target = event.target instanceof Element ? event.target : null;
+    var target = eventTargetElement(event.target);
     var postCardMenuTrigger = target ? target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]') : null;
     if (postCardMenuTrigger) {
       event.preventDefault();
@@ -3016,6 +3359,10 @@
       if (actionName === 'toggle-preview') {
         state.compose.preview = !state.compose.preview;
         renderComposeUi();
+        return;
+      }
+      if (actionName === 'close-compose') {
+        toggleComposeFromUi(false);
         return;
       }
       if (actionName === 'set-post-type') {
@@ -3061,6 +3408,14 @@
       }
       if (actionName === 'open-mode-picker') {
         openComposePickerForType(String(composeAction.getAttribute('data-compose-mode-target') || composePostType()));
+        return;
+      }
+      if (actionName === 'open-camera-capture') {
+        openComposeCameraCapture({ returnToChooser: false });
+        return;
+      }
+      if (actionName === 'cancel-camera-capture') {
+        closeComposeCameraCapture({});
         return;
       }
       if (actionName === 'capture-photo') {
@@ -3111,6 +3466,10 @@
         return;
       }
     }
+    var scheduledModeClick = target ? target.closest('input[name="blog-inline-compose-mode"][value="scheduled"]') : null;
+    if (scheduledModeClick instanceof HTMLInputElement) {
+      setTimeout(openComposeScheduledPicker, 0);
+    }
 
     var composeToolbar = target ? target.closest('[data-compose-toolbar]') : null;
     if (composeToolbar) {
@@ -3119,7 +3478,7 @@
       return;
     }
 
-    var toggle = event.target && event.target.closest('[data-filter-group][data-filter-value]');
+    var toggle = target ? target.closest('[data-filter-group][data-filter-value]') : null;
     if (toggle) {
       event.preventDefault();
       toggleFilter(
@@ -3130,7 +3489,7 @@
       return;
     }
 
-    var inlineTag = event.target && event.target.closest('[data-inline-tag]');
+    var inlineTag = target ? target.closest('[data-inline-tag]') : null;
     if (inlineTag) {
       event.preventDefault();
       setPanelOpen(true);
@@ -3138,7 +3497,7 @@
       return;
     }
 
-    var action = event.target && event.target.closest('[data-blog-action]');
+    var action = target ? target.closest('[data-blog-action]') : null;
     if (action) {
       event.preventDefault();
       if (action.getAttribute('data-blog-action') === 'toggle-page-settings') {
@@ -3171,8 +3530,8 @@
   });
 
   document.addEventListener('click', function (event) {
-    var target = event.target;
-    if (!(target instanceof Element)) {
+    var target = eventTargetElement(event.target);
+    if (!target) {
       return;
     }
     var navCompose = target.closest('.nav-compose');
@@ -3242,13 +3601,22 @@
       return;
     }
     if (target.matches('input[name="blog-inline-compose-mode"], input[name="blog-inline-compose-destination"]')) {
+      var shouldOpenSchedulePicker = target.matches('input[name="blog-inline-compose-mode"][value="scheduled"]') && target.checked;
       renderComposeUi();
+      if (shouldOpenSchedulePicker) {
+        setTimeout(openComposeScheduledPicker, 0);
+      }
     }
   });
 
   root.addEventListener('change', function (event) {
     var target = event.target;
     if (!(target instanceof HTMLInputElement) || !state.compose.open) {
+      return;
+    }
+    if (target.matches('[data-compose-field="scheduled-at"]')) {
+      queueComposeAutosave();
+      renderComposeStatusOnly();
       return;
     }
     if (target.matches('[data-compose-field="shortform-limit"]')) {
@@ -3271,6 +3639,11 @@
   root.addEventListener('keydown', function (event) {
     var target = event.target;
     if (!(target instanceof HTMLElement) || !state.compose.open) {
+      return;
+    }
+    if (state.compose.cameraFullscreen && event.key === 'Escape') {
+      event.preventDefault();
+      closeComposeCameraCapture({});
       return;
     }
     if (target.matches('[data-compose-field="shortform-limit"]')) {
