@@ -184,6 +184,53 @@ blog_secure_chat_mapping_json() {
     | jq -c '.[0] // empty' 2>/dev/null
 }
 
+blog_secure_chat_account_info_json() {
+  session_pubkey=$(blog_validate_nostr_pubkey "${1-}" 2>/dev/null || printf '')
+  [ -n "$session_pubkey" ] || {
+    printf '{}\n'
+    return 0
+  }
+  if ! command -v jq >/dev/null 2>&1; then
+    printf '{}\n'
+    return 0
+  fi
+
+  db_path=$(blog_secure_chat_db_path)
+  socket_path=$(blog_secure_chat_socket_path)
+  if [ ! -f "$db_path" ] && [ ! -S "$socket_path" ]; then
+    printf '{"simplex_contact_info":"","simplex_status":"not_provisioned"}\n'
+    return 0
+  fi
+
+  payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-account.XXXXXX")
+  jq -cn \
+    --arg sessionPubkey "$session_pubkey" \
+    '{sessionPubkey:$sessionPubkey,sinceSeq:0,admin:false}' > "$payload_file" 2>/dev/null || {
+      rm -f "$payload_file"
+      printf '{}\n'
+      return 0
+    }
+
+  response=$(blog_secure_chat_service_request POST /state "$payload_file" application/json 2>/dev/null || printf '')
+  rm -f "$payload_file"
+  [ -n "$response" ] || {
+    printf '{"simplex_contact_info":"","simplex_status":"unavailable"}\n'
+    return 0
+  }
+
+  printf '%s\n' "$response" | jq -c '{
+    simplex_contact_info: (.mapping.simplex_contact_id // ""),
+    simplex_status: (
+      if (.mapping.simplex_contact_id // "") != "" then (.mapping.status // "active")
+      elif (.mapping.status // "") != "" then .mapping.status
+      elif (.service.transport_status // "") == "connected" then "not_provisioned"
+      elif (.service.transport_status // "") != "" then ("transport_" + (.service.transport_status | tostring))
+      else "not_provisioned"
+      end
+    )
+  }' 2>/dev/null || printf '{}\n'
+}
+
 blog_request_is_localhost() {
   host=${HTTP_HOST:-${SERVER_NAME:-}}
   host=$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')

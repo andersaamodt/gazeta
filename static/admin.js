@@ -9,6 +9,8 @@
     playerName: '',
     publishName: '',
     nostrPubkey: '',
+    simplexContactInfo: '',
+    simplexStatus: '',
     sshFingerprint: '',
     isAdmin: false,
     composeTags: [],
@@ -237,6 +239,9 @@
     accountNostrPubkey: document.getElementById('account-nostr-pubkey'),
     accountNostrPubkeyCopyButton: document.getElementById('btn-account-pubkey-copy'),
     accountNostrPubkeyToggleButton: document.getElementById('btn-account-pubkey-toggle'),
+    accountSimplexContact: document.getElementById('account-simplex-contact'),
+    accountSimplexContactCopyButton: document.getElementById('btn-account-simplex-copy'),
+    accountSimplexContactToggleButton: document.getElementById('btn-account-simplex-toggle'),
     accountSshPublicKey: document.getElementById('account-ssh-public-key'),
     autosaveStatus: document.getElementById('autosave-status'),
     publishNowButton: document.getElementById('btn-publish-now'),
@@ -1079,6 +1084,49 @@
     }
     if (els.accountNostrPubkeyToggleButton) {
       els.accountNostrPubkeyToggleButton.disabled = !hasKey;
+    }
+  }
+
+  function lockSimplexContactField() {
+    if (!els.accountSimplexContact) {
+      return;
+    }
+    const lockedValue = String(els.accountSimplexContact.value || '');
+    els.accountSimplexContact.readOnly = true;
+    els.accountSimplexContact.setAttribute('readonly', 'readonly');
+    els.accountSimplexContact.setAttribute('aria-readonly', 'true');
+    els.accountSimplexContact.addEventListener('beforeinput', function (event) {
+      event.preventDefault();
+    });
+    els.accountSimplexContact.addEventListener('input', function () {
+      if (els.accountSimplexContact.value !== lockedValue) {
+        els.accountSimplexContact.value = lockedValue;
+      }
+    });
+    setSimplexContactVisibility(false);
+    syncSimplexContactActionState();
+  }
+
+  function setSimplexContactVisibility(visible) {
+    if (!els.accountSimplexContact) {
+      return;
+    }
+    const shown = !!visible;
+    els.accountSimplexContact.classList.toggle('is-visible', shown);
+    if (els.accountSimplexContactToggleButton) {
+      els.accountSimplexContactToggleButton.classList.toggle('is-visible', shown);
+      els.accountSimplexContactToggleButton.setAttribute('aria-label', shown ? 'Hide SimpleX contact' : 'Show SimpleX contact');
+      els.accountSimplexContactToggleButton.setAttribute('title', shown ? 'Hide SimpleX contact' : 'Show SimpleX contact');
+    }
+  }
+
+  function syncSimplexContactActionState() {
+    const hasValue = !!(els.accountSimplexContact && String(els.accountSimplexContact.value || '').trim());
+    if (els.accountSimplexContactCopyButton) {
+      els.accountSimplexContactCopyButton.disabled = !hasValue;
+    }
+    if (els.accountSimplexContactToggleButton) {
+      els.accountSimplexContactToggleButton.disabled = !hasValue;
     }
   }
 
@@ -2644,6 +2692,8 @@
       state.playerName = data.player_name || data.username || '';
       state.publishName = data.publish_name || state.playerName || data.username || '';
       state.nostrPubkey = data.nostr_pubkey || '';
+      state.simplexContactInfo = data.simplex_contact_info || '';
+      state.simplexStatus = data.simplex_status || '';
       state.sshFingerprint = data.ssh_fingerprint || '';
       state.isAdmin = !!data.is_admin;
       state.csrfToken = data.csrf_token || state.csrfToken;
@@ -2658,6 +2708,13 @@
       if (els.accountNostrPubkey) {
         els.accountNostrPubkey.value = state.nostrPubkey;
         lockNostrPubkeyField();
+      }
+      if (els.accountSimplexContact) {
+        els.accountSimplexContact.value = state.simplexContactInfo;
+        els.accountSimplexContact.placeholder = state.simplexStatus === 'not_provisioned'
+          ? 'Not provisioned yet'
+          : (state.simplexStatus === 'unavailable' ? 'Unavailable' : 'Not provisioned yet');
+        lockSimplexContactField();
       }
       if (els.accountSshPublicKey) {
         els.accountSshPublicKey.placeholder = state.sshFingerprint
@@ -7389,6 +7446,20 @@
       els.accountNostrPubkeyToggleButton.addEventListener('click', function () {
         const currentlyVisible = !!(els.accountNostrPubkey && els.accountNostrPubkey.classList.contains('is-visible'));
         setNostrPubkeyVisibility(!currentlyVisible);
+      });
+    }
+    if (els.accountSimplexContactCopyButton) {
+      els.accountSimplexContactCopyButton.addEventListener('click', function () {
+        copyTextToClipboard(els.accountSimplexContact ? els.accountSimplexContact.value : '')
+          .then(function (ok) {
+            setOutput(els.outputAccount, ok ? 'SimpleX contact copied.' : 'Could not copy SimpleX contact.', ok ? 'ok' : 'warn');
+          });
+      });
+    }
+    if (els.accountSimplexContactToggleButton) {
+      els.accountSimplexContactToggleButton.addEventListener('click', function () {
+        const currentlyVisible = !!(els.accountSimplexContact && els.accountSimplexContact.classList.contains('is-visible'));
+        setSimplexContactVisibility(!currentlyVisible);
       });
     }
 

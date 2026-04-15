@@ -5,6 +5,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/ssh-auth-lib.sh"
+. "$SCRIPT_DIR/blog-secure-chat-common.sh"
 
 blog_init
 blog_read_request_body
@@ -35,6 +36,14 @@ ssh_fingerprint=''
 if [ -f "$profile" ]; then
   ssh_fingerprint=$(config-get "$profile" ssh_fingerprint 2>/dev/null || printf '')
 fi
+
+simplex_pubkey="$session_user_pubkey"
+if [ -z "$simplex_pubkey" ]; then
+  simplex_pubkey="$nostr_pubkey"
+fi
+simplex_info_json=$(blog_secure_chat_account_info_json "$simplex_pubkey" 2>/dev/null || printf '{}')
+simplex_contact_info=$(printf '%s\n' "$simplex_info_json" | jq -r '.simplex_contact_info // ""' 2>/dev/null || printf '')
+simplex_status=$(printf '%s\n' "$simplex_info_json" | jq -r '.simplex_status // ""' 2>/dev/null || printf '')
 
 now_epoch=$(blog_now_epoch)
 other_web_sessions=0
@@ -100,6 +109,8 @@ printf '"session_delegation_id":"%s",' "$(blog_json_escape "$session_delegation_
 printf '"session_auth_method":"%s",' "$(blog_json_escape "$session_auth_method")"
 printf '"session_force_interactive":"%s",' "$(blog_json_escape "$session_force_interactive")"
 printf '"ssh_fingerprint":"%s",' "$(blog_json_escape "$ssh_fingerprint")"
+printf '"simplex_contact_info":"%s",' "$(blog_json_escape "$simplex_contact_info")"
+printf '"simplex_status":"%s",' "$(blog_json_escape "$simplex_status")"
 printf '"fingerprint":"%s",' "$(blog_json_escape "$BLOG_SESSION_FINGERPRINT")"
 printf '"other_web_sessions":%s,' "$other_web_sessions"
 printf '"other_delegated_sessions":%s,' "$other_delegated_sessions"

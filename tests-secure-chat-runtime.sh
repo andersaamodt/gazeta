@@ -218,6 +218,8 @@ assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-s
 assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-send' 'contact page sends secure chat messages'
 assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-upload' 'contact page uploads secure chat attachments'
 assert_file_contains "$ROOT_DIR/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
+assert_file_contains "$ROOT_DIR/cgi/ssh-auth-check-session" 'simplex_contact_info' 'session bootstrap exposes SimpleX account info'
+assert_file_contains "$ROOT_DIR/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

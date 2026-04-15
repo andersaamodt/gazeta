@@ -661,17 +661,17 @@ title: ""
 
 <div class="field-row">
 <label for="account-nostr-pubkey"><strong>Nostr Pubkey</strong></label>
-<div class="account-row account-nostr-row">
-<div class="account-pubkey-field">
+<div class="account-row account-key-row">
+<div class="account-key-field">
 <input type="text" id="account-nostr-pubkey" readonly>
-<button id="btn-account-pubkey-toggle" type="button" class="unobtrusive-icon-button account-pubkey-visibility" aria-label="Show Nostr pubkey" title="Show Nostr pubkey">
+<button id="btn-account-pubkey-toggle" type="button" class="unobtrusive-icon-button account-key-visibility" aria-label="Show Nostr pubkey" title="Show Nostr pubkey">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path class="eye-open" d="M2.2 12C4.5 8.1 8 6 12 6s7.5 2.1 9.8 6c-2.3 3.9-5.8 6-9.8 6s-7.5-2.1-9.8-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
 <circle class="eye-open" cx="12" cy="12" r="2.9" stroke="currentColor" stroke-width="1.8"/>
 <path class="eye-closed" d="M3 3l18 18M4.1 12c2.2-3.8 5.7-6 9.9-6 1.6 0 3.1.3 4.5 1M19.9 12c-2.2 3.8-5.7 6-9.9 6-1.6 0-3.1-.3-4.5-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
 </button>
-<button id="btn-account-pubkey-copy" type="button" class="unobtrusive-icon-button" aria-label="Copy Nostr pubkey" title="Copy Nostr pubkey">
+<button id="btn-account-pubkey-copy" type="button" class="unobtrusive-icon-button account-key-copy" aria-label="Copy Nostr pubkey" title="Copy Nostr pubkey">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
 <path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -680,6 +680,29 @@ title: ""
 </div>
 </div>
 <p class="muted account-note">Your account ID is your Nostr pubkey. It cannot be changed.</p>
+</div>
+
+<div class="field-row">
+<label for="account-simplex-contact"><strong>SimpleX Contact</strong></label>
+<div class="account-row account-key-row">
+<div class="account-key-field">
+<input type="text" id="account-simplex-contact" readonly placeholder="Not provisioned yet">
+<button id="btn-account-simplex-toggle" type="button" class="unobtrusive-icon-button account-key-visibility" aria-label="Show SimpleX contact" title="Show SimpleX contact">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path class="eye-open" d="M2.2 12C4.5 8.1 8 6 12 6s7.5 2.1 9.8 6c-2.3 3.9-5.8 6-9.8 6s-7.5-2.1-9.8-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+<circle class="eye-open" cx="12" cy="12" r="2.9" stroke="currentColor" stroke-width="1.8"/>
+<path class="eye-closed" d="M3 3l18 18M4.1 12c2.2-3.8 5.7-6 9.9-6 1.6 0 3.1.3 4.5 1M19.9 12c-2.2 3.8-5.7 6-9.9 6-1.6 0-3.1-.3-4.5-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</button>
+<button id="btn-account-simplex-copy" type="button" class="unobtrusive-icon-button account-key-copy" aria-label="Copy SimpleX contact" title="Copy SimpleX contact">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+<path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>
+</button>
+</div>
+</div>
+<p class="muted account-note">Provisioned on first Secure Chat use. This is the server-side SimpleX routing handle tied to your Nostr account.</p>
 </div>
 
 <div class="field-row">
@@ -1894,6 +1917,7 @@ body {
 }
 
 [data-admin-section="account"] #account-nostr-pubkey,
+[data-admin-section="account"] #account-simplex-contact,
 [data-admin-section="account"] #account-ssh-public-key {
   inline-size: min(100%, 42rem);
 }
@@ -1903,7 +1927,8 @@ body {
   grid-column: 2;
 }
 
-[data-admin-section="account"] #account-nostr-pubkey {
+[data-admin-section="account"] #account-nostr-pubkey,
+[data-admin-section="account"] #account-simplex-contact {
   background: #eef2fb;
   color: #334155;
   border-style: dashed;
@@ -1912,11 +1937,12 @@ body {
   transition: filter 0.15s ease;
 }
 
-[data-admin-section="account"] #account-nostr-pubkey.is-visible {
+[data-admin-section="account"] #account-nostr-pubkey.is-visible,
+[data-admin-section="account"] #account-simplex-contact.is-visible {
   filter: none;
 }
 
-[data-admin-section="account"] .account-nostr-row {
+[data-admin-section="account"] .account-key-row {
   display: flex;
   width: min(100%, 42rem);
   max-width: 100%;
@@ -1924,7 +1950,7 @@ body {
   gap: 0.36rem;
 }
 
-[data-admin-section="account"] .account-pubkey-field {
+[data-admin-section="account"] .account-key-field {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
@@ -1932,13 +1958,14 @@ body {
   max-width: 100%;
 }
 
-[data-admin-section="account"] .account-nostr-row #account-nostr-pubkey {
+[data-admin-section="account"] .account-key-row #account-nostr-pubkey,
+[data-admin-section="account"] .account-key-row #account-simplex-contact {
   width: 100%;
   min-width: 0;
   padding-right: 4rem;
 }
 
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button {
+#admin-panel .account-key-visibility.unobtrusive-icon-button {
   position: absolute;
   right: 2.2rem;
   top: 50%;
@@ -1956,26 +1983,26 @@ body {
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:hover,
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button:focus-visible {
+#admin-panel .account-key-visibility.unobtrusive-icon-button:hover,
+#admin-panel .account-key-visibility.unobtrusive-icon-button:focus-visible {
   background: rgba(247, 245, 238, 0.96) !important;
   border-color: rgba(160, 146, 116, 0.34);
   color: var(--admin-text, var(--text));
 }
 
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button .eye-closed {
+#admin-panel .account-key-visibility.unobtrusive-icon-button .eye-closed {
   display: none;
 }
 
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button.is-visible .eye-open {
+#admin-panel .account-key-visibility.unobtrusive-icon-button.is-visible .eye-open {
   display: none;
 }
 
-#admin-panel #btn-account-pubkey-toggle.unobtrusive-icon-button.is-visible .eye-closed {
+#admin-panel .account-key-visibility.unobtrusive-icon-button.is-visible .eye-closed {
   display: block;
 }
 
-#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button {
+#admin-panel .account-key-copy.unobtrusive-icon-button {
   position: absolute;
   right: 0.34rem;
   top: 50%;
@@ -1993,20 +2020,20 @@ body {
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:hover {
+#admin-panel .account-key-copy.unobtrusive-icon-button:hover {
   background: rgba(247, 245, 238, 0.96) !important;
   border-color: rgba(160, 146, 116, 0.34);
   color: var(--admin-text, var(--text));
 }
 
-#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button:focus-visible {
+#admin-panel .account-key-copy.unobtrusive-icon-button:focus-visible {
   outline: none;
   background: rgba(247, 245, 238, 0.96) !important;
   border-color: rgba(160, 146, 116, 0.4);
   box-shadow: 0 0 0 2px rgba(198, 181, 145, 0.28);
 }
 
-#admin-panel #btn-account-pubkey-copy.unobtrusive-icon-button svg {
+#admin-panel .account-key-copy.unobtrusive-icon-button svg {
   width: 0.86rem;
   height: 0.86rem;
 }
