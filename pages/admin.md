@@ -2739,16 +2739,22 @@ body {
 }
 
 #admin-panel button:disabled {
-  opacity: 0.64;
+  opacity: 0.56;
   transform: none;
   cursor: default;
+  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 66%, var(--admin-surface-alt, var(--post-card-bg)) 34%);
+  border-color: color-mix(in srgb, var(--admin-border, var(--border)) 78%, #a9b4cc 22%);
+  color: color-mix(in srgb, var(--admin-muted, var(--light-text)) 90%, #7f8aa3 10%);
+  box-shadow: none;
+  filter: saturate(0.58) contrast(0.92);
 }
 
 #admin-panel button:disabled:hover {
-  background: inherit;
-  border-color: inherit;
-  color: inherit;
+  background: color-mix(in srgb, var(--admin-surface, var(--post-card-bg-single)) 66%, var(--admin-surface-alt, var(--post-card-bg)) 34%);
+  border-color: color-mix(in srgb, var(--admin-border, var(--border)) 78%, #a9b4cc 22%);
+  color: color-mix(in srgb, var(--admin-muted, var(--light-text)) 90%, #7f8aa3 10%);
   transform: none;
+  box-shadow: none;
 }
 
 .notice {
