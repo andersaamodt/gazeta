@@ -206,6 +206,17 @@ emit_failure() {
     "$(blog_json_escape "$log_text")"
 }
 
+log_has_sudo_tty_failure() {
+  log_path=${1-}
+  [ -n "$log_path" ] || return 1
+  [ -f "$log_path" ] || return 1
+  if rg -q 'sudo: a terminal is required to read the password|sudo: a password is required' "$log_path" 2>/dev/null; then
+    return 0
+  fi
+  grep -q 'sudo: a terminal is required to read the password' "$log_path" 2>/dev/null && return 0
+  grep -q 'sudo: a password is required' "$log_path" 2>/dev/null
+}
+
 ensure_wizardry() {
   if wizardry_installed; then
     return 0
@@ -318,6 +329,10 @@ case "$action" in
     fi
     printf 'Running %s\n' "$spell" >> "$log_file"
     if ! run_install_spell "$spell" 6 "$log_file"; then
+      if log_has_sudo_tty_failure "$log_file"; then
+        emit_failure "Bitcoin install needs sudo on this server. Web installs cannot enter a password; run it in a terminal, grant passwordless sudo for the install account, or add a non-sudo install path in Wizardry." "bitcoin_install_requires_sudo" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+        exit 0
+      fi
       emit_failure "Bitcoin install failed. Check the log output." "bitcoin_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
       exit 0
     fi
