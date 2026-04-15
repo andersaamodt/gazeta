@@ -26,6 +26,8 @@ fi
 wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
 wizardry_install_url=$(config-get "$blog_site_conf" wizardry_install_url 2>/dev/null || printf '')
 [ -n "$wizardry_install_url" ] || wizardry_install_url=${WIZARDRY_INSTALL_URL:-}
+wizardry_repo_url=${WIZARDRY_REMOTE_REPO:-https://github.com/andersaamodt/wizardry.git}
+wizardry_remote_cache_ttl=${WIZARDRY_REMOTE_CACHE_TTL:-900}
 
 find_web_wizardry_bin() {
   bin=$(command -v web-wizardry 2>/dev/null || printf '')
@@ -116,6 +118,55 @@ lightning_installed() {
   command -v lightning-cli >/dev/null 2>&1
 }
 
+wizardry_git_repo() {
+  refresh_wizardry_runtime
+  command -v git >/dev/null 2>&1 || return 1
+  git -C "$wizardry_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
+wizardry_local_revision() {
+  wizardry_git_repo || return 1
+  git -C "$wizardry_dir" rev-parse HEAD 2>/dev/null
+}
+
+wizardry_remote_cache_file() {
+  printf '%s/zaps-wizardry-remote-main.sha\n' "$blog_state_dir"
+}
+
+wizardry_remote_revision() {
+  command -v git >/dev/null 2>&1 || return 1
+  cache_file=$(wizardry_remote_cache_file)
+  now_epoch=$(date +%s 2>/dev/null || printf '')
+  if [ -n "$now_epoch" ] && [ -f "$cache_file" ]; then
+    cache_mtime=$(stat -f %m "$cache_file" 2>/dev/null || stat -c %Y "$cache_file" 2>/dev/null || printf '')
+    if [ -n "$cache_mtime" ]; then
+      cache_age=$((now_epoch - cache_mtime))
+      if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt "$wizardry_remote_cache_ttl" ]; then
+        sed -n '1p' "$cache_file"
+        return 0
+      fi
+    fi
+  fi
+  remote_sha=$(git ls-remote "$wizardry_repo_url" refs/heads/main 2>/dev/null | awk 'NR == 1 { print $1 }')
+  case "$remote_sha" in
+    ''|*[!0-9a-f]*) return 1 ;;
+  esac
+  mkdir -p "$blog_state_dir" >/dev/null 2>&1 || true
+  tmp_cache_file="$cache_file.tmp.$$"
+  if printf '%s\n' "$remote_sha" > "$tmp_cache_file" 2>/dev/null; then
+    mv "$tmp_cache_file" "$cache_file" 2>/dev/null || rm -f "$tmp_cache_file"
+  fi
+  printf '%s\n' "$remote_sha"
+}
+
+wizardry_update_available() {
+  local_sha=$(wizardry_local_revision 2>/dev/null || printf '')
+  remote_sha=$(wizardry_remote_revision 2>/dev/null || printf '')
+  [ -n "$local_sha" ] || return 1
+  [ -n "$remote_sha" ] || return 1
+  [ "$local_sha" != "$remote_sha" ]
+}
+
 bool_json() {
   if "$@"; then
     printf 'true'
@@ -129,6 +180,7 @@ runtime_json() {
   printf '{'
   printf '"wizardry_installed":%s,' "$(bool_json wizardry_installed)"
   printf '"wizardry_path":"%s",' "$(blog_json_escape "$wizardry_dir")"
+  printf '"wizardry_update_available":%s,' "$(bool_json wizardry_update_available)"
   printf '"bitcoin_installed":%s,' "$(bool_json bitcoin_installed)"
   printf '"lightning_installed":%s' "$(bool_json lightning_installed)"
   printf '}'
@@ -185,6 +237,7 @@ run_install_spell() {
   spell_path=$1
   newline_count=$2
   log_file=$3
+  wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
 
   input_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-input.XXXXXX")
   i=0
@@ -195,12 +248,12 @@ run_install_spell() {
 
   if command -v timeout >/dev/null 2>&1; then
     set +e
-    timeout 1800 sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
+    timeout 1800 sh -c 'PATH="$1" WIZARDRY_DIR="$2" HOME="$3" "$4" < "$5"' sh "$wizardry_path" "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
     status=$?
     set -e
   else
     set +e
-    sh -c 'WIZARDRY_DIR="$1" HOME="$2" "$3" < "$4"' sh "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
+    sh -c 'PATH="$1" WIZARDRY_DIR="$2" HOME="$3" "$4" < "$5"' sh "$wizardry_path" "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
     status=$?
     set -e
   fi
@@ -224,6 +277,11 @@ esac
 log_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-log.XXXXXX")
 trap 'rm -f "$log_file"' EXIT HUP INT TERM
 
+wizardry_was_installed=0
+if wizardry_installed; then
+  wizardry_was_installed=1
+fi
+
 printf 'Ensuring Wizardry is installed at %s\n' "$wizardry_dir" >> "$log_file"
 if ! ensure_wizardry >> "$log_file" 2>&1; then
   emit_failure "Could not install or locate Wizardry." "wizardry_bootstrap_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
@@ -232,7 +290,25 @@ fi
 
 case "$action" in
   install_wizardry)
-    emit_success "Wizardry install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+    if [ "$wizardry_was_installed" -eq 0 ]; then
+      emit_success "Wizardry install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    if wizardry_update_available; then
+      spell="$wizardry_dir/spells/.wizardry/update-wizardry"
+      if [ ! -x "$spell" ]; then
+        emit_failure "Wizardry updater was not found." "missing_wizardry_updater" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+        exit 0
+      fi
+      printf 'Running %s\n' "$spell" >> "$log_file"
+      if ! run_install_spell "$spell" 0 "$log_file"; then
+        emit_failure "Wizardry update failed. Check the log output." "wizardry_update_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+        exit 0
+      fi
+      emit_success "Wizardry update completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
+      exit 0
+    fi
+    emit_success "Wizardry is already up to date." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
     ;;
   install_bitcoin)
     spell="$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin"
