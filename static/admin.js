@@ -3684,6 +3684,11 @@
     const label = picked === 'install_wizardry'
       ? (((state.zapsRuntimeInfo && state.zapsRuntimeInfo.wizardry_installed) ? 'Wizardry update' : 'Wizardry install'))
       : (picked === 'install_bitcoin' ? 'Bitcoin' : (picked === 'install_lightning' ? 'Lightning' : ''));
+    const runningMessage = picked === 'install_wizardry'
+      ? (((state.zapsRuntimeInfo && state.zapsRuntimeInfo.wizardry_installed) ? 'Running Wizardry update...' : 'Running Wizardry installer...'))
+      : (picked === 'install_bitcoin'
+        ? 'Running Bitcoin installer...'
+        : (picked === 'install_lightning' ? 'Running Lightning installer...' : ''));
     if (!label) {
       return;
     }
@@ -3700,7 +3705,7 @@
     state.zapsActionInFlight = true;
     state.zapsActionPending = picked;
     setZapsButtonsBusy(true);
-    setZapsRuntimeFeedback('Running ' + label + '...', '');
+    setZapsRuntimeFeedback(runningMessage || ('Running ' + label + '...'), '');
     renderZapsRuntime(state.zapsRuntimeInfo || {}, undefined, undefined);
     try {
       const data = await apiPost('/cgi/blog-manage-zaps', { action: picked }, true);
