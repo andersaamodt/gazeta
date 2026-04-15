@@ -278,77 +278,12 @@ case "$action" in
     emit_success "Zap runtime loaded."
     exit 0
     ;;
-  install_wizardry|install_bitcoin|install_lightning) ;;
+  install_wizardry|install_bitcoin|install_lightning)
+    emit_failure "Software installation is managed outside the site admin." "managed_externally"
+    exit 0
+    ;;
   *)
     emit_failure "Unknown action" "invalid_action"
     exit 0
-    ;;
-esac
-
-log_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-log.XXXXXX")
-trap 'rm -f "$log_file"' EXIT HUP INT TERM
-
-wizardry_was_installed=0
-if wizardry_installed; then
-  wizardry_was_installed=1
-fi
-
-printf 'Ensuring Wizardry is installed at %s\n' "$wizardry_dir" >> "$log_file"
-if ! ensure_wizardry >> "$log_file" 2>&1; then
-  emit_failure "Could not install or locate Wizardry." "wizardry_bootstrap_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-  exit 0
-fi
-
-case "$action" in
-  install_wizardry)
-    if [ "$wizardry_was_installed" -eq 0 ]; then
-      emit_success "Wizardry install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    if wizardry_update_available; then
-      spell="$wizardry_dir/spells/.wizardry/update-wizardry"
-      if [ ! -x "$spell" ]; then
-        emit_failure "Wizardry updater was not found." "missing_wizardry_updater" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-        exit 0
-      fi
-      printf 'Running %s\n' "$spell" >> "$log_file"
-      if ! run_install_spell "$spell" 0 "$log_file"; then
-        emit_failure "Wizardry update failed. Check the log output." "wizardry_update_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-        exit 0
-      fi
-      emit_success "Wizardry update completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    emit_success "Wizardry is already up to date." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-    ;;
-  install_bitcoin)
-    spell="$wizardry_dir/spells/.arcana/bitcoin/install-bitcoin"
-    if [ ! -x "$spell" ]; then
-      emit_failure "Wizardry Bitcoin installer was not found." "missing_bitcoin_installer" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    printf 'Running %s\n' "$spell" >> "$log_file"
-    if ! run_install_spell "$spell" 6 "$log_file"; then
-      if log_has_sudo_tty_failure "$log_file"; then
-        emit_failure "Bitcoin install needs sudo on this server. Web installs cannot enter a password; run it in a terminal, grant passwordless sudo for the install account, or add a non-sudo install path in Wizardry." "bitcoin_install_requires_sudo" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-        exit 0
-      fi
-      emit_failure "Bitcoin install failed. Check the log output." "bitcoin_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    emit_success "Bitcoin install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-    ;;
-  install_lightning)
-    spell="$wizardry_dir/spells/.arcana/lightning/install-lightning"
-    if [ ! -x "$spell" ]; then
-      emit_failure "Wizardry Lightning installer was not found." "missing_lightning_installer" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    printf 'Running %s\n' "$spell" >> "$log_file"
-    if ! run_install_spell "$spell" 4 "$log_file"; then
-      emit_failure "Lightning install failed. Check the log output." "lightning_install_failed" "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
-      exit 0
-    fi
-    emit_success "Lightning install completed." "$(tail -n 120 "$log_file" 2>/dev/null || printf '')"
     ;;
 esac

@@ -3487,13 +3487,6 @@
     }, 10000);
   }
 
-  function setZapsButtonsBusy(isBusy) {
-    const cardButtons = els.zapsRuntime ? Array.from(els.zapsRuntime.querySelectorAll('button[data-zaps-action]')) : [];
-    cardButtons.filter(Boolean).forEach(function (button) {
-      button.disabled = !!isBusy;
-    });
-  }
-
   function syncZapsEnabledAvailability() {
     if (!els.zapsEnabled) {
       return;
@@ -3567,70 +3560,19 @@
     const runtimeLog = typeof logText === 'string' ? logText : state.zapsRuntimeLog;
     const showChecking = !!state.zapsRuntimeLoading && !state.zapsRuntimeReady && !state.zapsActionInFlight;
     const wizardryReady = !!info.wizardry_installed;
-    const wizardryUpdateAvailable = !!info.wizardry_update_available;
     const bitcoinReady = !!info.bitcoin_installed;
     const lightningReady = !!info.lightning_installed;
     const wizardryPath = String(info.wizardry_path || '').trim();
-    const lightningBlocked = !bitcoinReady && !lightningReady;
+    const checkingValueHtml = '<div class="zaps-runtime-value">Checking... <span class="loading-spinner" aria-hidden="true"></span></div>';
     const wizardryControl = showChecking
-      ? runtimeActionButtonHtml({
-        action: 'install_wizardry',
-        label: 'Install Wizardry',
-        dataAttr: 'zaps-action',
-        disabled: true,
-        loading: true,
-        busyLabel: 'Checking...',
-        spinnerAfter: true
-      })
-      : ((wizardryReady && !wizardryUpdateAvailable)
-        ? ('<div class="zaps-runtime-value is-ok">' + escapeHtml(wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') + '</div>')
-        : runtimeActionButtonHtml({
-          action: 'install_wizardry',
-          label: wizardryReady ? 'Update Wizardry' : 'Install Wizardry',
-          dataAttr: 'zaps-action',
-          disabled: state.zapsActionInFlight,
-          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_wizardry',
-          busyLabel: wizardryReady ? 'Updating...' : 'Installing...'
-        }));
+      ? checkingValueHtml
+      : ('<div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(wizardryReady ? (wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') : 'Not installed') + '</div>');
     const bitcoinControl = showChecking
-      ? runtimeActionButtonHtml({
-        action: 'install_bitcoin',
-        label: 'Install (~500 MB)',
-        dataAttr: 'zaps-action',
-        disabled: true,
-        loading: true,
-        busyLabel: 'Checking...',
-        spinnerAfter: true
-      })
-      : (bitcoinReady
-        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : runtimeActionButtonHtml({
-          action: 'install_bitcoin',
-          label: 'Install (~500 MB)',
-          dataAttr: 'zaps-action',
-          disabled: state.zapsActionInFlight,
-          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_bitcoin'
-        }));
+      ? checkingValueHtml
+      : ('<div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(bitcoinReady ? 'Installed' : 'Not installed') + '</div>');
     const lightningControl = showChecking
-      ? runtimeActionButtonHtml({
-        action: 'install_lightning',
-        label: 'Install (~150 MB)',
-        dataAttr: 'zaps-action',
-        disabled: true,
-        loading: true,
-        busyLabel: 'Checking...',
-        spinnerAfter: true
-      })
-      : (lightningReady
-        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : runtimeActionButtonHtml({
-          action: 'install_lightning',
-          label: 'Install (~150 MB)',
-          dataAttr: 'zaps-action',
-          disabled: state.zapsActionInFlight || lightningBlocked,
-          loading: state.zapsActionInFlight && state.zapsActionPending === 'install_lightning',
-          title: lightningBlocked ? 'Install Bitcoin first.' : ''
-        }));
+      ? checkingValueHtml
+      : ('<div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(lightningReady ? 'Installed' : 'Not installed') + '</div>');
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
       + wizardryControl
@@ -3673,58 +3615,6 @@
       state.zapsRuntimeLoading = false;
       renderZapsRuntime(state.zapsRuntimeInfo || {}, undefined, undefined);
       setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
-    }
-  }
-
-  async function runZapsInstall(action) {
-    const picked = String(action || '').trim();
-    if (!picked) {
-      return;
-    }
-    const label = picked === 'install_wizardry'
-      ? (((state.zapsRuntimeInfo && state.zapsRuntimeInfo.wizardry_installed) ? 'Wizardry update' : 'Wizardry install'))
-      : (picked === 'install_bitcoin' ? 'Bitcoin' : (picked === 'install_lightning' ? 'Lightning' : ''));
-    const runningMessage = picked === 'install_wizardry'
-      ? (((state.zapsRuntimeInfo && state.zapsRuntimeInfo.wizardry_installed) ? 'Running Wizardry update...' : 'Running Wizardry installer...'))
-      : (picked === 'install_bitcoin'
-        ? 'Running Bitcoin installer...'
-        : (picked === 'install_lightning' ? 'Running Lightning installer...' : ''));
-    if (!label) {
-      return;
-    }
-    if (picked === 'install_lightning') {
-      const runtimeInfo = state.zapsRuntimeInfo && typeof state.zapsRuntimeInfo === 'object' ? state.zapsRuntimeInfo : {};
-      if (!runtimeInfo.bitcoin_installed) {
-        setOutput(els.outputZaps, 'Install Bitcoin first before installing Lightning.', 'warn');
-        return;
-      }
-    }
-    if (!window.confirm('Run the ' + label + ' on this server now?')) {
-      return;
-    }
-    state.zapsActionInFlight = true;
-    state.zapsActionPending = picked;
-    setZapsButtonsBusy(true);
-    setZapsRuntimeFeedback(runningMessage || ('Running ' + label + '...'), '');
-    renderZapsRuntime(state.zapsRuntimeInfo || {}, undefined, undefined);
-    try {
-      const data = await apiPost('/cgi/blog-manage-zaps', { action: picked }, true);
-      if (!data.success) {
-        setZapsRuntimeFeedback(label + ' failed.', data.log || '');
-        renderZapsRuntime(data.runtime || {}, undefined, undefined);
-        throw new Error(data.error || (label + ' install failed'));
-      }
-      setZapsRuntimeFeedback(data.message || (label + ' completed.'), data.log || '');
-      state.zapsRuntimeReady = true;
-      state.zapsRuntimeLoading = false;
-      renderZapsRuntime(data.runtime || {}, undefined, undefined);
-      setOutput(els.outputZaps, data.message || (label + ' install completed.'), 'ok');
-    } catch (err) {
-      setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
-    } finally {
-      state.zapsActionInFlight = false;
-      state.zapsActionPending = '';
-      renderZapsRuntime(state.zapsRuntimeInfo || {}, undefined, undefined);
     }
   }
 
@@ -6621,25 +6511,6 @@
           return;
         }
         queueNosterSettingsAutosave(120);
-      });
-    }
-    if (els.zapsRuntime) {
-      els.zapsRuntime.addEventListener('click', function (event) {
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return;
-        }
-        const actionButton = target.closest('button[data-zaps-action]');
-        if (!actionButton) {
-          return;
-        }
-        const action = String(actionButton.getAttribute('data-zaps-action') || '').trim();
-        if (!action) {
-          return;
-        }
-        runZapsInstall(action).catch(function (err) {
-          setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
-        });
       });
     }
     if (els.btcpayRuntime) {

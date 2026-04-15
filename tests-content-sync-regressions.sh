@@ -632,10 +632,11 @@ else
   pass
 fi
 assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel #posts-list > .placeholder.table-empty {' 'posts empty-state placeholder remains centered'
-assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="zaps"] .runtime-settings-list .field-row > button {' 'zaps runtime action buttons are fit-to-content aligned'
-assert_file_contains "$ROOT_DIR/static/admin.js" "zapsRuntimeReady: false" 'zaps runtime tracks first successful load before enabling install actions'
-assert_file_contains "$ROOT_DIR/static/admin.js" "busyLabel: 'Checking...'" 'zaps runtime buttons show checking state while initial status is loading'
+assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-section="zaps"] .runtime-settings-list .field-row > button {' 'zaps runtime shared button layout rule remains fit-to-content aligned'
+assert_file_contains "$ROOT_DIR/static/admin.js" "zapsRuntimeReady: false" 'zaps runtime tracks first successful load before showing resolved statuses'
+assert_file_contains "$ROOT_DIR/static/admin.js" 'Checking... <span class="loading-spinner"' 'zaps runtime shows checking state while initial status is loading'
 assert_file_contains "$ROOT_DIR/static/admin.js" "renderZapsRuntime(data.runtime || {}, undefined, undefined);" 'zaps runtime polling preserves inline feedback instead of clearing it on refresh'
+assert_file_not_contains "$ROOT_DIR/static/admin.js" 'button[data-zaps-action]' 'zaps runtime no longer exposes in-app install buttons'
 assert_file_contains "$ROOT_DIR/pages/admin.md" 'data-admin-nav="btcpay"' 'admin nav includes BTCPay section entry'
 assert_file_contains "$ROOT_DIR/pages/admin.md" 'id="admin-nav-btcpay-status"' 'admin nav includes BTCPay status pill'
 assert_file_contains "$ROOT_DIR/pages/admin.md" 'data-admin-section="btcpay"' 'admin includes BTCPay section scaffold'
@@ -648,7 +649,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_installed"' 'bt
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_host"' 'btcpay cgi runtime emits host key'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_url"' 'btcpay cgi runtime emits URL key'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" '"wizardry_update_available"' 'zaps cgi runtime emits wizardry update availability'
-assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" 'PATH="$wizardry_path"' 'zaps installer runs spells with Wizardry helper path available'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" 'Software installation is managed outside the site admin.' 'zaps cgi reports external software management boundary'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'bitcoin=optional' 'server requirements declare Bitcoin as optional installable software'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'lightning=optional' 'server requirements declare Lightning as optional installable software'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'btcpay=optional' 'server requirements declare BTCPay as optional installable software'
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
 assert_success test -x "$ROOT_DIR/cgi/blog-payments"
 assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
