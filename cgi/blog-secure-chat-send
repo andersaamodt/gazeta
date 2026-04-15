@@ -1,0 +1,32 @@
+#!/bin/sh
+# Send a Secure Chat message or create attachment upload tickets.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-secure-chat-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_secure_chat_require_authenticated_request; then
+  exit 0
+fi
+
+message=$(blog_param message)
+attachments_json=$(blog_param attachments_json)
+attachments_json=$(printf '%s\n' "$attachments_json" | jq -c '.' 2>/dev/null || printf '[]')
+
+payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-send.XXXXXX")
+trap 'rm -f "$payload_file"' EXIT HUP INT TERM
+jq -cn \
+  --arg sessionPubkey "$BLOG_SESSION_USER_PUBKEY" \
+  --arg text "$message" \
+  --argjson attachments "$attachments_json" \
+  '{sessionPubkey:$sessionPubkey,text:$text,attachments:$attachments}' > "$payload_file"
+
+if ! blog_secure_chat_service_request POST /send "$payload_file" application/json; then
+  blog_json_error "Secure Chat message dispatch failed" "dispatch_failed"
+fi

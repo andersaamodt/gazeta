@@ -1,0 +1,41 @@
+#!/bin/sh
+# Stream one Secure Chat attachment upload to the local daemon.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-secure-chat-common.sh"
+
+blog_init
+blog_send_json_headers
+
+if ! blog_secure_chat_require_authenticated_request; then
+  exit 0
+fi
+
+upload_id=${HTTP_X_UPLOAD_ID-}
+file_name=${HTTP_X_FILE_NAME-attachment.bin}
+
+if [ -z "$upload_id" ]; then
+  blog_json_error "Missing upload ticket" "upload_ticket_required"
+  exit 0
+fi
+
+if ! blog_secure_chat_service_start; then
+  blog_json_error "Secure Chat service is unavailable" "service_unavailable"
+  exit 0
+fi
+
+socket=$(blog_secure_chat_socket_path)
+if ! curl --silent --show-error --fail \
+  --unix-socket "$socket" \
+  --request POST \
+  --header "Content-Type: ${CONTENT_TYPE-application/octet-stream}" \
+  --header "X-Upload-Id: $upload_id" \
+  --header "X-File-Name: $file_name" \
+  --header "X-Session-Pubkey: $BLOG_SESSION_USER_PUBKEY" \
+  --data-binary @- \
+  http://localhost/upload; then
+  blog_json_error "Secure Chat upload failed" "upload_failed"
+fi

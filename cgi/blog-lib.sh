@@ -984,11 +984,28 @@ blog_send_json_headers() {
   http-header "Cache-Control" "no-store, no-cache, must-revalidate, max-age=0"
   http-header "Pragma" "no-cache"
   http-header "Expires" "0"
+  blog_send_security_headers
   http-end-headers
 }
 
 blog_send_html_headers() {
   http-ok-html
+}
+
+blog_send_security_headers() {
+  secure=false
+  case "${HTTPS-}" in
+    on|ON|1|true|TRUE|yes|YES) secure=true ;;
+  esac
+  case "${REQUEST_SCHEME-}" in
+    https|HTTPS) secure=true ;;
+  esac
+  case "${SERVER_PORT-}" in
+    443) secure=true ;;
+  esac
+  if [ "$secure" = "true" ]; then
+    http-header "Strict-Transport-Security" "max-age=31536000; includeSubDomains; preload"
+  fi
 }
 
 blog_json_error() {

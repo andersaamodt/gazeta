@@ -1,0 +1,36 @@
+#!/bin/sh
+# Return current Secure Chat state and low-latency message updates.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-secure-chat-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_secure_chat_require_authenticated_request; then
+  exit 0
+fi
+
+since_seq=$(blog_param since_seq)
+include_admin=$(blog_param include_admin)
+case "$since_seq" in ''|*[!0-9]*) since_seq=0 ;; esac
+case "$include_admin" in true|1|yes|on) include_admin=true ;; *) include_admin=false ;; esac
+if [ "$BLOG_SESSION_IS_ADMIN" != "true" ]; then
+  include_admin=false
+fi
+
+payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-state.XXXXXX")
+trap 'rm -f "$payload_file"' EXIT HUP INT TERM
+jq -cn \
+  --arg sessionPubkey "$BLOG_SESSION_USER_PUBKEY" \
+  --argjson sinceSeq "$since_seq" \
+  --argjson admin "$( [ "$include_admin" = "true" ] && printf true || printf false )" \
+  '{sessionPubkey:$sessionPubkey,sinceSeq:$sinceSeq,admin:$admin}' > "$payload_file"
+
+if ! blog_secure_chat_service_request POST /state "$payload_file" application/json; then
+  blog_json_error "Secure Chat service is unavailable" "service_unavailable"
+fi

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Admin-only Secure Chat contact mapping controls.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-secure-chat-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true false; then
+  exit 0
+fi
+
+action=$(blog_param action)
+npub=$(blog_param npub)
+
+payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-admin.XXXXXX")
+trap 'rm -f "$payload_file"' EXIT HUP INT TERM
+jq -cn \
+  --arg action "$action" \
+  --arg npub "$npub" \
+  '{action:(if ($action | length) > 0 then $action else "status" end),npub:$npub}' > "$payload_file"
+
+if ! blog_secure_chat_service_request POST /admin "$payload_file" application/json; then
+  blog_json_error "Secure Chat admin service is unavailable" "service_unavailable"
+fi
