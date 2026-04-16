@@ -9,24 +9,150 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 blog_send_json_headers
 
-registration_enabled=$(config-get "$blog_site_conf" registration_enabled 2>/dev/null || printf 'true')
-site_title=$(config-get "$blog_site_conf" site_title 2>/dev/null || printf '')
-theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf '')
-drip_interval_hours=$(blog_drip_interval_hours)
-drip_interval_minutes=$(blog_drip_interval_minutes)
-drip_randomness=$(blog_drip_randomness_minutes)
-feed_full_text=$(config-get "$blog_site_conf" feed_full_text 2>/dev/null || printf 'true')
-feed_items=$(config-get "$blog_site_conf" feed_items 2>/dev/null || printf '50')
-append_site_title_to_page_title=$(config-get "$blog_site_conf" append_site_title_to_page_title 2>/dev/null || printf 'false')
-nostr_bridge_enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
-new_users_are_admins=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
+registration_enabled='true'
+site_title=''
+theme=''
+drip_interval_hours_raw=''
+drip_interval_minutes_raw='240'
+drip_randomness_raw=''
+drip_jitter_raw='0'
+feed_full_text='true'
+feed_items='50'
+append_site_title_to_page_title='false'
+nostr_bridge_enabled='false'
+new_users_are_admins='true'
+zaps_enabled_raw='false'
+zap_lud16=''
+zap_default_amount_sats="$blog_zaps_default_amount_sats"
+plugin_nostr_support_raw=''
+plugin_nostr_login_raw=''
+plugin_nostr_bridge_raw=''
+plugin_nostr_posts_raw=''
+plugin_zaps_raw=''
+plugin_btcpay_raw=''
+plugin_video_chat_raw=''
+
+load_site_conf_values() {
+  conf_file=$1
+  [ -f "$conf_file" ] || return 0
+  cr=$(printf '\r')
+  while IFS= read -r conf_line || [ -n "$conf_line" ]; do
+    case "$conf_line" in
+      ''|'#'*) continue ;;
+      *=*)
+        conf_key=${conf_line%%=*}
+        conf_value=${conf_line#*=}
+        conf_value=${conf_value%"$cr"}
+        case "$conf_key" in
+          registration_enabled) registration_enabled=$conf_value ;;
+          site_title) site_title=$conf_value ;;
+          theme) theme=$conf_value ;;
+          drip_interval_hours) drip_interval_hours_raw=$conf_value ;;
+          drip_interval_minutes) drip_interval_minutes_raw=$conf_value ;;
+          drip_randomness_minutes) drip_randomness_raw=$conf_value ;;
+          drip_jitter_minutes) drip_jitter_raw=$conf_value ;;
+          feed_full_text) feed_full_text=$conf_value ;;
+          feed_items) feed_items=$conf_value ;;
+          append_site_title_to_page_title) append_site_title_to_page_title=$conf_value ;;
+          nostr_bridge_enabled) nostr_bridge_enabled=$conf_value ;;
+          new_users_are_admins) new_users_are_admins=$conf_value ;;
+          zaps_enabled) zaps_enabled_raw=$conf_value ;;
+          zap_lud16) zap_lud16=$conf_value ;;
+          zap_default_amount_sats) zap_default_amount_sats=$conf_value ;;
+          plugin_nostr_support) plugin_nostr_support_raw=$conf_value ;;
+          plugin_nostr_login) plugin_nostr_login_raw=$conf_value ;;
+          plugin_nostr_bridge) plugin_nostr_bridge_raw=$conf_value ;;
+          plugin_nostr_posts) plugin_nostr_posts_raw=$conf_value ;;
+          plugin_zaps) plugin_zaps_raw=$conf_value ;;
+          plugin_btcpay) plugin_btcpay_raw=$conf_value ;;
+          plugin_video_chat) plugin_video_chat_raw=$conf_value ;;
+        esac
+        ;;
+    esac
+  done < "$conf_file"
+}
+
+normalize_bool_with_default() {
+  raw_value=${1-}
+  default_value=${2-}
+  case "$raw_value" in
+    true|1|yes|on) printf 'true\n' ;;
+    false|0|no|off) printf 'false\n' ;;
+    '') printf '%s\n' "$default_value" ;;
+    *) printf '%s\n' "$default_value" ;;
+  esac
+}
+
+plugin_enabled_json() {
+  plugin_key=$1
+  plugin_raw=$2
+  plugin_default=$3
+  support_enabled=$4
+  enabled=$(normalize_bool_with_default "$plugin_raw" "$plugin_default")
+  if [ "$enabled" != "true" ]; then
+    printf 'false\n'
+    return 0
+  fi
+  case "$plugin_key" in
+    nostr_login|nostr_bridge|nostr_posts|zaps)
+      if [ "$support_enabled" != "true" ]; then
+        printf 'false\n'
+        return 0
+      fi
+      ;;
+  esac
+  printf 'true\n'
+}
+
+load_site_conf_values "$blog_site_conf"
+
+if blog_is_positive_decimal "$drip_interval_hours_raw"; then
+  drip_interval_hours=$drip_interval_hours_raw
+else
+  case "$drip_interval_minutes_raw" in ''|*[!0-9]*) drip_interval_minutes_raw=240 ;; esac
+  if [ "$drip_interval_minutes_raw" -lt 1 ]; then
+    drip_interval_minutes_raw=1
+  fi
+  drip_interval_hours=$(awk -v m="$drip_interval_minutes_raw" 'BEGIN { printf "%.4f", m / 60 }')
+fi
+normalized_drip_hours=$(awk -v h="$drip_interval_hours" 'BEGIN { min_h = 1.0 / 60.0; x = h + 0; if (x < min_h) x = min_h; printf "%.4f", x }')
+drip_interval_hours=$(blog_format_decimal "$normalized_drip_hours")
+drip_interval_minutes=$(awk -v h="$drip_interval_hours" 'BEGIN { m = int(h * 60 + 0.5); if (m < 1) m = 1; print m }')
+
+if [ -n "$drip_randomness_raw" ]; then
+  drip_randomness=$drip_randomness_raw
+else
+  drip_randomness=$drip_jitter_raw
+fi
+case "$drip_randomness" in ''|*[!0-9]*) drip_randomness=0 ;; esac
+if [ "$drip_randomness" -lt 0 ]; then
+  drip_randomness=0
+fi
+
 nostr_authors=$(blog_nostr_list_file_to_json_array "$blog_nostr_authors_file")
 nostr_relays=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
 nostr_blocklist=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
-zaps_enabled=$(blog_zaps_enabled)
-zap_lud16=$(blog_zap_lud16)
-zap_default_amount_sats=$(blog_zap_default_amount_sats)
-plugins_json=$(blog_plugins_json)
+plugin_nostr_support=$(plugin_enabled_json "nostr_support" "$plugin_nostr_support_raw" 'true' 'true')
+plugin_nostr_login=$(plugin_enabled_json "nostr_login" "$plugin_nostr_login_raw" 'true' "$plugin_nostr_support")
+plugin_nostr_bridge=$(plugin_enabled_json "nostr_bridge" "$plugin_nostr_bridge_raw" 'true' "$plugin_nostr_support")
+plugin_nostr_posts=$(plugin_enabled_json "nostr_posts" "$plugin_nostr_posts_raw" 'true' "$plugin_nostr_support")
+plugin_zaps=$(plugin_enabled_json "zaps" "$plugin_zaps_raw" 'true' "$plugin_nostr_support")
+plugin_btcpay=$(plugin_enabled_json "btcpay" "$plugin_btcpay_raw" 'true' "$plugin_nostr_support")
+plugin_video_chat=$(plugin_enabled_json "video_chat" "$plugin_video_chat_raw" 'false' "$plugin_nostr_support")
+plugins_json=$(printf '{"nostr_support":%s,"nostr_login":%s,"nostr_bridge":%s,"nostr_posts":%s,"zaps":%s,"btcpay":%s,"video_chat":%s}\n' \
+  "$plugin_nostr_support" "$plugin_nostr_login" "$plugin_nostr_bridge" "$plugin_nostr_posts" "$plugin_zaps" "$plugin_btcpay" "$plugin_video_chat")
+if [ "$plugin_zaps" = 'true' ]; then
+  zaps_enabled=$(normalize_bool_with_default "$zaps_enabled_raw" 'false')
+else
+  zaps_enabled='false'
+fi
+zap_lud16=$(printf '%s' "$zap_lud16" | tr -d '\r\n[:space:]')
+case "$zap_default_amount_sats" in
+  ''|*[!0-9]*) zap_default_amount_sats=$blog_zaps_default_amount_sats ;;
+esac
+if [ "$zap_default_amount_sats" -lt 1 ]; then
+  zap_default_amount_sats=1
+fi
 
 case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; esac
 [ -n "$site_title" ] || site_title='Site'

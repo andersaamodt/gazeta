@@ -1169,28 +1169,35 @@ blog_nostr_list_file_lines() {
 
 blog_nostr_list_file_to_json_array() {
   file=${1-}
-  json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-list.XXXXXX")
-  blog_nostr_list_file_lines "$file" | awk '{
-    gsub(/\\/,"\\\\");
-    gsub(/"/,"\\\"");
-    printf "\"%s\"\n", $0;
-  }' > "$json_tmp"
-  if [ ! -s "$json_tmp" ]; then
-    rm -f "$json_tmp"
+  if [ -z "$file" ] || [ ! -f "$file" ]; then
     printf '[]'
     return 0
   fi
-  printf '['
-  first=1
-  while IFS= read -r line || [ -n "$line" ]; do
-    if [ "$first" -eq 0 ]; then
-      printf ','
-    fi
-    first=0
-    printf '%s' "$line"
-  done < "$json_tmp"
-  printf ']'
-  rm -f "$json_tmp"
+  awk '
+    BEGIN {
+      first = 1
+      printf "["
+    }
+    {
+      line = $0
+      sub(/#.*/, "", line)
+      sub(/[[:space:]]+$/, "", line)
+      sub(/^[[:space:]]+/, "", line)
+      if (line == "") {
+        next
+      }
+      gsub(/\\/, "\\\\", line)
+      gsub(/"/, "\\\"", line)
+      if (first == 0) {
+        printf ","
+      }
+      printf "\"%s\"", line
+      first = 0
+    }
+    END {
+      printf "]"
+    }
+  ' "$file"
 }
 
 blog_nostr_list_has_value() {

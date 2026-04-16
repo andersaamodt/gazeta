@@ -258,6 +258,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_require_session
 assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_nostr_pages_sync_source_pages "$normalized"' 'nav-title update refreshes source mounts'
 assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_run_build_async' 'nav-title update triggers rebuild'
 assert_file_contains "$ROOT_DIR/cgi/blog-update-config" 'blog_run_build_async >/dev/null 2>&1 || true' 'config update queues rebuild for static bootstrap refresh'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-config" 'load_site_conf_values "$blog_site_conf"' 'blog-get-config parses site.conf in one pass'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-get-config" 'config-get "$blog_site_conf"' 'blog-get-config avoids repeated config-get subprocesses'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -499,7 +501,38 @@ assert_file_contains "$ROOT_DIR/static/style.css" 'overflow-x: auto;' 'navbar ce
 assert_file_contains "$ROOT_DIR/static/style.css" 'min-width: max-content;' 'navbar right lane preserves intrinsic width so search/actions do not intrude into center links'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
-# 9) Broader static checks to guard accidental cache regression in targeted fetches.
+# 9) blog-get-config runtime output stays correct with direct site.conf parsing.
+cat > "$blog_site_conf" <<'EOF_SITE_CONF'
+registration_enabled=true
+site_title=Fixture Site
+theme=lapidarist
+drip_interval_hours=4
+drip_interval_minutes=240
+drip_randomness_minutes=0
+feed_full_text=true
+feed_items=50
+append_site_title_to_page_title=false
+nostr_bridge_enabled=true
+new_users_are_admins=false
+plugin_nostr_support=true
+plugin_nostr_login=true
+plugin_nostr_bridge=true
+plugin_nostr_posts=true
+plugin_zaps=true
+plugin_btcpay=true
+plugin_video_chat=false
+zaps_enabled=false
+zap_lud16=
+zap_default_amount_sats=210
+EOF_SITE_CONF
+printf '%s\n' 'wss://relay.example.com' > "$blog_nostr_relays_file"
+blog_get_config_out=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-get-config")
+assert_contains "$blog_get_config_out" '"site_title":"Fixture Site"' 'blog-get-config returns parsed site title'
+assert_contains "$blog_get_config_out" '"theme":"lapidarist"' 'blog-get-config returns parsed theme'
+assert_contains "$blog_get_config_out" '"plugins":{"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"video_chat":false}' 'blog-get-config returns normalized plugins json'
+assert_contains "$blog_get_config_out" '"nostr_relays":["wss://relay.example.com"]' 'blog-get-config returns relay list json'
+
+# 10) Broader static checks to guard accidental cache regression in targeted fetches.
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "cache: 'no-store'" 'nav-auth has no-store directives'
 assert_file_contains "$ROOT_DIR/static/admin.js" "cache: 'no-store'" 'admin has no-store directives'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "cache: 'no-store'" 'blog-page has no-store directives'
@@ -524,8 +557,9 @@ assert_file_not_contains "$ROOT_DIR/includes/nav.md" 'if (!hasDynamicPageRoot() 
 prune_hook_count=$(grep -Fc 'blog_nostr_pages_prune_stale_source_pages "$normalized"' "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" || printf '0')
 assert_eq "1" "$prune_hook_count" 'nostr page prune hook only runs on save path'
 
-# 10) Ensure scripts are syntactically valid after changes.
+# 11) Ensure scripts are syntactically valid after changes.
 assert_success sh -n "$ROOT_DIR/cgi/blog-lib.sh"
+assert_success sh -n "$ROOT_DIR/cgi/blog-get-config"
 assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
@@ -540,7 +574,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-create-product-page"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
 
-# 11) Managed source-page sync invariants (unit layer).
+# 12) Managed source-page sync invariants (unit layer).
 sync_cfg=$(jq -cn '{pages:[
   {slug:"about", type:"nip23", show_in_nav:true},
   {slug:"contact", type:"contact", show_in_nav:true},
@@ -582,7 +616,7 @@ printf '%s\n' 'custom page body' > "$custom_mount"
 blog_nostr_page_sync_mount "$custom_slug" "list" >/dev/null 2>&1 || true
 assert_file_contains "$custom_mount" 'custom page body' 'custom mount remains untouched by managed sync'
 
-# 12) Rebuild trigger invariant for navbar page listing (integration layer).
+# 13) Rebuild trigger invariant for navbar page listing (integration layer).
 wizardry_dir="$TMP_ROOT/wizardry"
 mkdir -p "$wizardry_dir/spells/web"
 build_marker="$TMP_ROOT/build-marker"
@@ -627,7 +661,7 @@ assert_contains "$navbar_out_no_build" '"success":true' 'navbar listing returns 
 sleep 0.2
 assert_file_missing "$build_marker" 'navbar listing skips build queue when mounted html already exists'
 
-# 13) Pre-build emits a static bootstrap bundle for first paint.
+# 14) Pre-build emits a static bootstrap bundle for first paint.
 printf '%s\n' 'site_title=Example Site' > "$blog_site_conf"
 printf '%s\n' 'theme=seer' >> "$blog_site_conf"
 printf '%s\n' 'append_site_title_to_page_title=true' >> "$blog_site_conf"
@@ -640,7 +674,7 @@ assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap 
 assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
 assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
 
-# 14) UI invariant for Nostr nav icon gutter alignment rule.
+# 15) UI invariant for Nostr nav icon gutter alignment rule.
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel.sidebar-collapsed .admin-content {' 'collapsed admin keeps a left gutter for reveal icon'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'section.hidden = !active;' 'admin section toggling remains direct visibility toggle'
