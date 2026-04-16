@@ -132,6 +132,9 @@
   --action-soft-active-bg: #e8c9b3;
   --action-soft-active-border: #a86442;
   --action-soft-active-text: #4d2614;
+  --page-canvas-bg:
+    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
+    var(--bg);
 }
 
 
@@ -143,9 +146,8 @@ html {
   /* Keep layout width stable across pages with/without vertical scrollbars. */
   scrollbar-gutter: stable;
   overflow-x: hidden;
-  background:
-    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
-    var(--bg);
+  background: var(--page-canvas-bg);
+  background-attachment: fixed;
 }
 
 @supports (overflow: clip) {
@@ -229,7 +231,8 @@ body {
   flex-direction: column;
   line-height: 1.7;
   color: var(--text);
-  background: transparent;
+  background: var(--page-canvas-bg);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 

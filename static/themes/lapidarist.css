@@ -125,18 +125,21 @@
   --amethyst: #6a4fa3;
   --vermilion: #a73b2f;
   --gold-leaf: #b68b35;
-}
-
-html {
-  background:
+  --page-canvas-bg:
     radial-gradient(1300px 540px at 18% -16%, rgba(190, 152, 67, 0.12) 0%, rgba(190, 152, 67, 0) 56%),
     radial-gradient(900px 400px at 87% -7%, rgba(47, 95, 184, 0.08) 0%, rgba(47, 95, 184, 0) 60%),
     linear-gradient(180deg, #f6eddc 0%, #efe3cc 100%);
 }
 
+html {
+  background: var(--page-canvas-bg);
+  background-attachment: fixed;
+}
+
 body {
   color: var(--text);
-  background: transparent;
+  background: var(--page-canvas-bg);
+  background-attachment: fixed;
 }
 
 h1,
