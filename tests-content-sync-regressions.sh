@@ -251,6 +251,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sy
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_public_posts_catalog_write_artifacts' 'pre-build writes static public post catalog'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_run_build_async' 'save-nostr-pages triggers rebuild'
@@ -260,6 +261,9 @@ assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_run_
 assert_file_contains "$ROOT_DIR/cgi/blog-update-config" 'blog_run_build_async >/dev/null 2>&1 || true' 'config update queues rebuild for static bootstrap refresh'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-config" 'load_site_conf_values "$blog_site_conf"' 'blog-get-config parses site.conf in one pass'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-get-config" 'config-get "$blog_site_conf"' 'blog-get-config avoids repeated config-get subprocesses'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-public-posts" 'blog_public_posts_catalog_static_path' 'public posts endpoint reads prebuilt catalog first'
+assert_file_contains "$ROOT_DIR/cgi/blog-index" 'blog_public_posts_catalog_static_path' 'blog index reads prebuilt catalog first'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-index" 'blog_collect_public_posts "$posts_tmp"' 'blog index no longer rescans posts on each request'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -275,7 +279,8 @@ assert_file_contains "$ROOT_DIR/static/blog-page.js" 'POSTS_CACHE_MAX_AGE_MS = 1
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "data-blog-action=\"toggle-compose\"" 'blog page exposes inline compose toggle action'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "data-compose-action=\"publish\"" 'blog page inline composer exposes publish action'
 assert_file_contains "$ROOT_DIR/static/blog-page.js" "'/cgi/blog-save-post'" 'blog inline composer uses canonical blog-save-post endpoint'
-assert_file_contains "$ROOT_DIR/static/blog-page.js" "fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })" 'blog posts fetch no-store'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "return fetchPostsJson('/static/public-posts.json')" 'blog posts prefer static catalog fetch'
+assert_file_contains "$ROOT_DIR/static/blog-page.js" "return fetchPostsJson('/cgi/blog-list-public-posts')" 'blog posts fall back to CGI catalog fetch'
 assert_file_contains "$ROOT_DIR/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "Object.assign({ cache: 'no-store' }, options || {})" 'nav-auth fetch default no-store'
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "fetch('/cgi/blog-get-nostr-page', {" 'nav-auth prefetch call exists'
@@ -421,6 +426,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_cont
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip23_latest_event_json() {' 'nip23 latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_navbar_pages_json() {' 'shared navbar json helper exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_build_json() {' 'shared public post catalog builder exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_write_artifacts() {' 'shared public post catalog writer exists'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
@@ -673,6 +680,9 @@ assert_file_contains "$site_bootstrap_file" 'window.__wizardrySiteBootstrap = bo
 assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap captures site title'
 assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
 assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
+public_posts_file="$blog_site_root/site/static/public-posts.json"
+assert_success test -f "$public_posts_file"
+assert_file_contains "$public_posts_file" '"success":true' 'pre-build public post catalog is generated'
 
 # 15) UI invariant for Nostr nav icon gutter alignment rule.
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'

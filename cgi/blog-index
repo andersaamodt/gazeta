@@ -17,12 +17,18 @@ if [ "$page" -lt 1 ]; then
 fi
 
 posts_per_page=10
-posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-index-posts.XXXXXX")
-comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-index-comment-counts.XXXXXX")
-blog_collect_public_posts "$posts_tmp"
-blog_nostr_comment_counts_build "$comment_counts_tmp"
+catalog_file=$(blog_public_posts_catalog_static_path)
+cache_file=$(blog_public_posts_catalog_cache_path)
+if [ ! -f "$catalog_file" ] && [ -f "$cache_file" ]; then
+  catalog_file=$cache_file
+fi
+if [ ! -f "$catalog_file" ]; then
+  blog_public_posts_catalog_write_artifacts
+  catalog_file=$(blog_public_posts_catalog_static_path)
+fi
 
-total_posts=$(wc -l < "$posts_tmp" | tr -d ' ')
+total_posts=$(jq '.posts | length' "$catalog_file" 2>/dev/null || printf '0')
+case "$total_posts" in ''|*[!0-9]*) total_posts=0 ;; esac
 total_pages=$(( (total_posts + posts_per_page - 1) / posts_per_page ))
 if [ "$total_pages" -lt 1 ]; then
   total_pages=1
@@ -38,34 +44,21 @@ printf '<div class="post-list">\n'
 if [ "$total_posts" -eq 0 ]; then
   printf '<p>No posts published yet.</p>\n'
 else
-  n=0
-  while IFS= read -r post_file; do
-    n=$((n + 1))
-    if [ "$n" -lt "$start" ] || [ "$n" -gt "$end" ]; then
-      continue
-    fi
-
-    title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf '')
-    author=$(blog_read_front_matter_value "$post_file" author 2>/dev/null || printf '')
-    published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
-    summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
-    body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
-    post_type=$(blog_read_front_matter_value "$post_file" post_type 2>/dev/null || printf '')
-    if [ -z "$post_type" ]; then
-      post_type=$(blog_read_front_matter_value "$post_file" type 2>/dev/null || printf '')
-    fi
-    post_type=$(blog_normalize_post_type "$post_type")
-    title=$(blog_effective_post_title "$title" "$body" "$post_type")
-    word_count=$(blog_word_count "$body")
-    reading_minutes=$(blog_estimated_read_minutes "$word_count")
-    tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
-    tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
-    tags=$(blog_normalize_tags "$tags_csv")
-
-    url=$(blog_rel_post_html_url "$post_file")
-    post_address=$(blog_post_nostr_address_for_file "$post_file")
-    comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
-    pub_date=${published_at%%T*}
+  jq -r \
+    --argjson start_index $((start - 1)) \
+    --argjson end_index "$end" \
+    '.posts[$start_index:$end_index][] |
+      [
+        (.url // ""),
+        (.title // ""),
+        (.author // ""),
+        ((.reading_minutes // 1) | tostring),
+        (.pub_date // ""),
+        ((.comment_count // 0) | tostring),
+        (.summary // ""),
+        ((.tags // []) | join(","))
+      ] | @tsv' \
+    "$catalog_file" 2>/dev/null | while IFS="$(printf '\t')" read -r url title author reading_minutes pub_date comment_count summary tags_csv || [ -n "$url" ]; do
     if [ -z "$pub_date" ]; then
       pub_date="Unknown date"
     fi
@@ -94,9 +87,9 @@ else
       printf '  <p class="post-summary">%s</p>\n' "$(blog_html_escape "$summary")"
     fi
 
-    if [ -n "$tags" ]; then
+    if [ -n "$tags_csv" ]; then
       printf '  <div class="tags">\n'
-      printf '%s\n' "$tags" | tr ',' '\n' | while IFS= read -r tag; do
+      printf '%s\n' "$tags_csv" | tr ',' '\n' | while IFS= read -r tag; do
         clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
         [ -n "$clean" ] || continue
         printf '    <a href="/tags#%s" class="tag">%s</a>\n' \
@@ -106,7 +99,7 @@ else
     fi
 
     printf '</article>\n\n'
-  done < "$posts_tmp"
+  done
 fi
 printf '</div>\n'
 
@@ -129,5 +122,3 @@ if [ "$total_posts" -gt 0 ] && [ "$total_pages" -gt 1 ]; then
   fi
   printf '</div>\n'
 fi
-
-rm -f "$posts_tmp" "$comment_counts_tmp"

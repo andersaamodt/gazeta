@@ -4190,6 +4190,142 @@ blog_collect_public_posts() {
   rm -f "$temp" "$candidates_tmp"
 }
 
+blog_public_posts_catalog_static_path() {
+  printf '%s/site/static/public-posts.json\n' "$blog_site_root"
+}
+
+blog_public_posts_catalog_cache_path() {
+  printf '%s/public-posts-cache.json\n' "$blog_state_dir"
+}
+
+blog_public_posts_catalog_build_json() {
+  posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts.XXXXXX")
+  comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-post-comments.XXXXXX")
+  json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts-json.XXXXXX")
+
+  blog_collect_public_posts "$posts_tmp"
+  blog_nostr_comment_counts_build "$comment_counts_tmp"
+
+  {
+    printf '{"success":true,"posts":['
+    first=1
+    while IFS= read -r file || [ -n "$file" ]; do
+      [ -n "$file" ] || continue
+      [ -f "$file" ] || continue
+
+      rel=${file#"$blog_site_root/site/pages/"}
+      case "$rel" in
+        posts/*.md) ;;
+        *) continue ;;
+      esac
+
+      title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+      author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+      published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
+      published_date=$(blog_iso_to_human_date "$published_at")
+      summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+      body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
+      word_count=$(blog_word_count "$body")
+      reading_minutes=$(blog_estimated_read_minutes "$word_count")
+      post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+      if [ -z "$post_type" ]; then
+        post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+      fi
+      if [ -z "$post_type" ]; then
+        post_type='post'
+      fi
+      post_type=$(printf '%s' "$post_type" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
+      if [ -z "$post_type" ]; then
+        post_type='post'
+      fi
+      title=$(blog_effective_post_title "$title" "$body" "$post_type")
+
+      tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
+      tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+      tags=$(blog_normalize_tags "$tags_csv")
+
+      rel_slug_raw=${rel#posts/}
+      rel_slug_raw=${rel_slug_raw%.md}
+      rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
+      url=$(blog_rel_post_html_url "$file")
+      public_path="posts/${rel_slug}"
+      post_address=$(blog_post_nostr_address_for_file "$file")
+      comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
+      pub_date=${published_at%%T*}
+      year=$(printf '%s' "$pub_date" | cut -c1-4)
+      case "$year" in ''|*[!0-9]*) year='Unknown' ;; esac
+
+      nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
+      source='local'
+      case "$nostr_projection" in
+        true|1|yes|on) source='nostr' ;;
+      esac
+
+      if [ "$first" -eq 0 ]; then
+        printf ','
+      fi
+      first=0
+
+      jq -cn \
+        --arg path "$public_path" \
+        --arg url "$url" \
+        --arg title "$title" \
+        --arg author "$author" \
+        --arg published_at "$published_at" \
+        --arg published_date "$published_date" \
+        --arg pub_date "$pub_date" \
+        --arg summary "$summary" \
+        --arg post_type "$post_type" \
+        --arg year "$year" \
+        --arg source "$source" \
+        --arg tags_csv "$tags" \
+        --argjson word_count "$word_count" \
+        --argjson reading_minutes "$reading_minutes" \
+        --argjson comment_count "${comment_count:-0}" \
+        '{
+          path: $path,
+          url: $url,
+          title: $title,
+          author: $author,
+          published_at: $published_at,
+          published_date: $published_date,
+          pub_date: $pub_date,
+          summary: $summary,
+          type: $post_type,
+          year: $year,
+          source: $source,
+          word_count: $word_count,
+          reading_minutes: $reading_minutes,
+          tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),
+          comment_count: $comment_count
+        }'
+    done < "$posts_tmp"
+    printf ']}'
+    printf '\n'
+  } > "$json_tmp"
+
+  cat "$json_tmp"
+  rm -f "$posts_tmp" "$comment_counts_tmp" "$json_tmp"
+}
+
+blog_public_posts_catalog_write_artifacts() {
+  catalog_json=$(blog_public_posts_catalog_build_json)
+  static_path=$(blog_public_posts_catalog_static_path)
+  cache_path=$(blog_public_posts_catalog_cache_path)
+  static_dir=$(dirname "$static_path")
+  mkdir -p "$static_dir"
+
+  static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts-static.XXXXXX")
+  printf '%s\n' "$catalog_json" > "$static_tmp"
+  mv "$static_tmp" "$static_path"
+  chmod 644 "$static_path" 2>/dev/null || true
+
+  cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts-cache.XXXXXX")
+  printf '%s\n' "$catalog_json" > "$cache_tmp"
+  mv "$cache_tmp" "$cache_path"
+  chmod 644 "$cache_path" 2>/dev/null || true
+}
+
 blog_base_url() {
   domain=$(config-get "$blog_site_conf" domain 2>/dev/null || printf 'localhost')
   use_https=$(config-get "$blog_site_conf" https 2>/dev/null || printf 'false')

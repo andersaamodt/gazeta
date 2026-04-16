@@ -3292,8 +3292,19 @@
     if (!opts.deferRender) {
       renderList();
     }
-    return fetch('/cgi/blog-list-public-posts', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (res) { return res.json(); })
+    function fetchPostsJson(url) {
+      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (res) {
+          if (!res.ok) {
+            throw new Error('Post catalog request failed: ' + res.status);
+          }
+          return res.json();
+        });
+    }
+    return fetchPostsJson('/static/public-posts.json')
+      .catch(function () {
+        return fetchPostsJson('/cgi/blog-list-public-posts');
+      })
       .then(function (data) {
         if (!data || !data.success || !Array.isArray(data.posts)) {
           return;
