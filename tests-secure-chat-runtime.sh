@@ -2,6 +2,7 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+SITE_SOURCE_ROOT="$ROOT_DIR/site"
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -229,12 +230,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" 'blog_secure_chat_r
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_require_session true' 'admin endpoint requires admin session'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service uses sqlite-backed storage'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new WebSocket(' 'service opens local SimpleX websocket transport'
-assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-state' 'contact page polls secure chat state'
-assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-send' 'contact page sends secure chat messages'
-assert_file_contains "$ROOT_DIR/static/contact-page.js" '/cgi/blog-secure-chat-upload' 'contact page uploads secure chat attachments'
-assert_file_contains "$ROOT_DIR/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-state' 'contact page polls secure chat state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-send' 'contact page sends secure chat messages'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-upload' 'contact page uploads secure chat attachments'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
 assert_file_contains "$ROOT_DIR/cgi/ssh-auth-check-session" 'simplex_contact_info' 'session bootstrap exposes SimpleX account info'
-assert_file_contains "$ROOT_DIR/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
+assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

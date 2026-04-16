@@ -13,11 +13,12 @@ trap 'cleanup' EXIT INT TERM
 export WIZARDRY_SITES_DIR="$tmp_root/sites"
 export WIZARDRY_SITE_NAME="testsite"
 site_root="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
+canonical_root="$site_root/site"
 state_root="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
 
 mkdir -p "$site_root"
 cp -R "$ROOT_DIR/cgi" "$site_root/"
-mkdir -p "$site_root/includes" "$site_root/pages/embed" "$site_root/static" "$state_root"
+mkdir -p "$canonical_root/includes" "$canonical_root/pages/embed" "$canonical_root/static" "$state_root"
 
 cat > "$site_root/site.conf" <<'EOFCONF'
 template=blog
@@ -26,20 +27,20 @@ site_title=Example Site
 append_site_title_to_page_title=false
 EOFCONF
 
-cat > "$site_root/includes/head.html" <<'EOFHEAD'
+cat > "$canonical_root/includes/head.html" <<'EOFHEAD'
 <script src="/static/site-bootstrap.js"></script>
 <script defer src="/static/post-context.js"></script>
 EOFHEAD
 
-cat > "$site_root/includes/nav.md" <<'EOFNAV'
+cat > "$canonical_root/includes/nav.md" <<'EOFNAV'
 <nav class="site-nav">Example Nav</nav>
 EOFNAV
 
-cat > "$site_root/includes/footer.md" <<'EOFFOOT'
+cat > "$canonical_root/includes/footer.md" <<'EOFFOOT'
 <footer class="site-footer">Example Footer</footer>
 EOFFOOT
 
-cat > "$site_root/pages/admin.md" <<'EOFPAGE'
+cat > "$canonical_root/pages/admin.md" <<'EOFPAGE'
 ---
 title: Admin
 ---
@@ -47,7 +48,7 @@ title: Admin
 Admin page
 EOFPAGE
 
-cat > "$site_root/pages/embed/video-chat.md" <<'EOPEMBED'
+cat > "$canonical_root/pages/embed/video-chat.md" <<'EOPEMBED'
 ---
 title: Video Chat
 ---
@@ -55,11 +56,11 @@ title: Video Chat
 Video chat page
 EOPEMBED
 
-cat > "$site_root/static/style.css" <<'EOFSTYLE'
+cat > "$canonical_root/static/style.css" <<'EOFSTYLE'
 body { background: #fff; }
 EOFSTYLE
 
-cat > "$site_root/static/nav-auth.js" <<'EOFNAVAUTH'
+cat > "$canonical_root/static/nav-auth.js" <<'EOFNAVAUTH'
 console.log('nav');
 EOFNAVAUTH
 
@@ -96,49 +97,53 @@ blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_i
 
 "$site_root/cgi/pre-build"
 
-[ -f "$site_root/site/includes/head.html" ] || {
-  printf '%s\n' "missing staged head include" >&2
+[ -f "$canonical_root/includes/head.html" ] || {
+  printf '%s\n' "missing canonical head include" >&2
   exit 1
 }
-[ -f "$site_root/site/includes/nav.md" ] || {
-  printf '%s\n' "missing staged nav include" >&2
+[ -f "$canonical_root/includes/nav.md" ] || {
+  printf '%s\n' "missing canonical nav include" >&2
   exit 1
 }
-[ -f "$site_root/site/pages/admin.md" ] || {
-  printf '%s\n' "missing staged admin page" >&2
+[ -f "$canonical_root/pages/admin.md" ] || {
+  printf '%s\n' "missing canonical admin page" >&2
   exit 1
 }
-[ -f "$site_root/site/pages/embed/video-chat.md" ] || {
-  printf '%s\n' "missing staged nested page" >&2
+[ -f "$canonical_root/pages/embed/video-chat.md" ] || {
+  printf '%s\n' "missing canonical nested page" >&2
   exit 1
 }
-[ -f "$site_root/site/pages/contact.md" ] || {
+[ -f "$canonical_root/pages/contact.md" ] || {
   printf '%s\n' "missing generated contact page" >&2
   exit 1
 }
-[ -f "$site_root/site/static/style.css" ] || {
-  printf '%s\n' "missing staged stylesheet" >&2
+[ -f "$canonical_root/static/style.css" ] || {
+  printf '%s\n' "missing canonical stylesheet" >&2
   exit 1
 }
-[ -f "$site_root/site/static/nav-auth.js" ] || {
-  printf '%s\n' "missing staged static script" >&2
+[ -f "$canonical_root/static/nav-auth.js" ] || {
+  printf '%s\n' "missing canonical static script" >&2
   exit 1
 }
-[ -f "$site_root/site/static/navbar-pages.json" ] || {
+[ -f "$canonical_root/static/navbar-pages.json" ] || {
   printf '%s\n' "missing generated navbar pages bootstrap" >&2
   exit 1
 }
-[ -f "$site_root/site/static/site-bootstrap.js" ] || {
+[ -f "$canonical_root/static/site-bootstrap.js" ] || {
   printf '%s\n' "missing generated site bootstrap" >&2
   exit 1
 }
 
-cmp -s "$site_root/includes/head.html" "$site_root/site/includes/head.html" || {
-  printf '%s\n' "staged head include does not match canonical include" >&2
+grep -Fq '/static/site-bootstrap.js' "$canonical_root/includes/head.html" || {
+  printf '%s\n' "canonical head include lost site bootstrap script" >&2
   exit 1
 }
-cmp -s "$site_root/static/style.css" "$site_root/site/static/style.css" || {
-  printf '%s\n' "staged stylesheet does not match canonical stylesheet" >&2
+grep -Fq 'body { background: #fff; }' "$canonical_root/static/style.css" || {
+  printf '%s\n' "canonical stylesheet changed unexpectedly" >&2
+  exit 1
+}
+[ ! -e "$canonical_root/.repo-pages-manifest" ] || {
+  printf '%s\n' "legacy staging manifest should not be written" >&2
   exit 1
 }
 

@@ -3,6 +3,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$SCRIPT_DIR
+SITE_SOURCE_ROOT="$ROOT_DIR/site"
 
 check_script_then_marked() {
   file=$1
@@ -78,10 +79,10 @@ EOS
   trap - EXIT INT TERM
 }
 
-check_script_present "$ROOT_DIR/pages/index.md" '/static/blog-page.js'
-check_script_then_marked "$ROOT_DIR/pages/about.md" '/static/nip23-page.js'
-check_script_present "$ROOT_DIR/pages/list.md" '/static/nostr-page-bootstrap/list.js'
-check_script_then_marked "$ROOT_DIR/pages/list.md" '/static/list-page.js'
+check_script_present "$SITE_SOURCE_ROOT/pages/index.md" '/static/blog-page.js'
+check_script_then_marked "$SITE_SOURCE_ROOT/pages/about.md" '/static/nip23-page.js'
+check_script_present "$SITE_SOURCE_ROOT/pages/list.md" '/static/nostr-page-bootstrap/list.js'
+check_script_then_marked "$SITE_SOURCE_ROOT/pages/list.md" '/static/list-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/contact-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/nip23-page.js'
 check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/public-ranking-page.js'

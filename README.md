@@ -69,13 +69,19 @@ States are inferred from metadata and filesystem visibility.
 ```
 blog/
 ├── site/
-│   └── pages/
-│       ├── admin.md              # Application/admin page (template-owned)
-│       ├── login-security.md     # Application/help page (template-owned)
-│       ├── blog.md -> .../blog/content/pages/blog.md
-│       ├── list.md -> .../blog/content/pages/list.md
-│       ├── reading-list.md -> .../blog/content/pages/reading-list.md
-│       └── posts -> .../blog/content/posts
+│   ├── includes/
+│   │   ├── head.html             # Shared document head shell
+│   │   ├── nav.md                # Shared site navigation shell
+│   │   └── footer.md             # Shared footer shell
+│   ├── pages/
+│   │   ├── admin.md              # Application/admin page (template-owned)
+│   │   ├── login-security.md     # Application/help page (template-owned)
+│   │   ├── blog.md -> .../blog/content/pages/blog.md
+│   │   ├── list.md -> .../blog/content/pages/list.md
+│   │   ├── reading-list.md -> .../blog/content/pages/reading-list.md
+│   │   └── posts -> .../blog/content/posts
+│   └── static/
+│       └── style.css             # Shared blog styling and page bundles
 │
 ├── .sitedata/<site>/blog/content/
 │   ├── posts/                    # Canonical post markdown
@@ -85,8 +91,6 @@ blog/
 ├── .sitedata/<site>/nostr/events/ # Canonical mirrored/signed event JSON files
 ├── .sitedata/<site>/nostr/derived/# Disposable indexes generated from events
 └── .sitedata/<site>/nostr/state/  # Authors, relays, blocklist, hidden posts, key
-static/
-    └── style.css            # Blog styling
 ```
 
 ## Navigation
@@ -203,6 +207,7 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - `site/pages/posts` and managed public page files in `site/pages/*.md` are mounts generated from that content directory.
 - Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/blog/content/`.
 - That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
+- Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
 
 ## Authentication
 
@@ -479,7 +484,6 @@ See `.github/MUD_BLOG_INTEGRATION.md` for complete documentation.
 ## License
 
 Part of the wizardry project.
-
 
 
 
