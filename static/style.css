@@ -5675,41 +5675,20 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .post-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.85rem;
+  position: relative;
+  display: block;
   margin-bottom: 0.18rem;
 }
 
 .post-head-main {
-  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Keep blog-card title clear of the menu while letting byline/divider span full width. */
-.blog-post-item .post-head {
-  position: relative;
-  display: block;
-}
-
-.blog-post-item .post-head-main {
-  width: 100%;
-  max-width: 100%;
-}
-
-.blog-post-item .post-head-main .post-title {
+.post-head-main .post-title {
   padding-right: 2.45rem;
-}
-
-.blog-post-item .post-page-menu {
-  position: absolute;
-  top: 0;
-  right: 0;
-  align-self: auto;
 }
 
 .post-title {
@@ -5797,8 +5776,10 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
 }
 
 .post-page-menu {
-  position: relative;
-  align-self: flex-start;
+  position: absolute;
+  top: 0;
+  right: 0;
+  align-self: auto;
 }
 
 .post-page-menu-trigger {
@@ -8446,11 +8427,6 @@ nav.site-nav {
 
   .btn-login {
     margin-left: auto;
-  }
-
-  .post-head {
-    flex-direction: column;
-    gap: 0.25rem;
   }
 
   .post-byline-top {
