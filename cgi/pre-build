@@ -35,14 +35,20 @@ case "$append_site_title_to_page_title" in
 esac
 
 site_bootstrap_dir="$blog_site_root/site/static"
+build_bootstrap_dir="$blog_site_root/build/static"
 navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
+build_navbar_json_path="$build_bootstrap_dir/navbar-pages.json"
+build_site_bootstrap_path="$build_bootstrap_dir/site-bootstrap.js"
 mkdir -p "$site_bootstrap_dir"
+mkdir -p "$build_bootstrap_dir"
 navbar_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages-json.XXXXXX")
 site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")
 printf '%s\n' "$navbar_json" > "$navbar_json_tmp"
 mv "$navbar_json_tmp" "$navbar_json_path"
 chmod 644 "$navbar_json_path" 2>/dev/null || true
+cp "$navbar_json_path" "$build_navbar_json_path"
+chmod 644 "$build_navbar_json_path" 2>/dev/null || true
 cat > "$site_bootstrap_tmp" <<EOF
 (function () {
   var bootstrap = {
@@ -68,6 +74,8 @@ cat > "$site_bootstrap_tmp" <<EOF
 EOF
 mv "$site_bootstrap_tmp" "$site_bootstrap_path"
 chmod 644 "$site_bootstrap_path" 2>/dev/null || true
+cp "$site_bootstrap_path" "$build_site_bootstrap_path"
+chmod 644 "$build_site_bootstrap_path" 2>/dev/null || true
 
 if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
