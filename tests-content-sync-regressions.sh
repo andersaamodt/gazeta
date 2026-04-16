@@ -264,6 +264,9 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-get-config" 'config-get "$blog_site
 assert_file_contains "$ROOT_DIR/cgi/blog-list-public-posts" 'blog_public_posts_catalog_static_path' 'public posts endpoint reads prebuilt catalog first'
 assert_file_contains "$ROOT_DIR/cgi/blog-index" 'blog_public_posts_catalog_static_path' 'blog index reads prebuilt catalog first'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-index" 'blog_collect_public_posts "$posts_tmp"' 'blog index no longer rescans posts on each request'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-list-common.sh"' 'navbar endpoint avoids unrelated list library parse cost'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-public-ranking-common.sh"' 'navbar endpoint avoids unrelated ranking library parse cost'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -433,9 +436,10 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint no longer manages rebuild throttle state'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-pages-cache.json' 'navbar endpoint uses short-lived response cache'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'site/static/navbar-pages.json' 'navbar endpoint serves prebuilt static navbar payload first'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'cache_ttl_seconds=600' 'navbar endpoint uses longer cache ttl after moving rebuilds out of hot path'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'exit 0' 'navbar endpoint exits immediately on fresh cache'
-cfg_line=$(grep -n 'cfg=$(blog_nostr_pages_load_json)' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
+cfg_line=$(grep -n 'cfg=$(blog_nostr_pages_load_json_fast)' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
 cache_cat_line=$(grep -n 'cat "$cache_file"' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
 if [ "${cfg_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -lt "${cfg_line:-0}" ]; then
   pass
@@ -680,6 +684,10 @@ assert_file_contains "$site_bootstrap_file" 'window.__wizardrySiteBootstrap = bo
 assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap captures site title'
 assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
 assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
+navbar_json_file="$blog_site_root/site/static/navbar-pages.json"
+assert_success test -f "$navbar_json_file"
+assert_file_contains "$navbar_json_file" '"success":true' 'pre-build static navbar json is generated'
+assert_file_contains "$navbar_json_file" '"slug":"about"' 'pre-build static navbar json captures page list'
 public_posts_file="$blog_site_root/site/static/public-posts.json"
 assert_success test -f "$public_posts_file"
 assert_file_contains "$public_posts_file" '"success":true' 'pre-build public post catalog is generated'

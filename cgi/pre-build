@@ -29,9 +29,14 @@ case "$append_site_title_to_page_title" in
 esac
 
 site_bootstrap_dir="$blog_site_root/site/static"
+navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
 mkdir -p "$site_bootstrap_dir"
+navbar_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages-json.XXXXXX")
 site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")
+printf '%s\n' "$navbar_json" > "$navbar_json_tmp"
+mv "$navbar_json_tmp" "$navbar_json_path"
+chmod 644 "$navbar_json_path" 2>/dev/null || true
 cat > "$site_bootstrap_tmp" <<EOF
 (function () {
   var bootstrap = {

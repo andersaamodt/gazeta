@@ -5,13 +5,12 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
-. "$SCRIPT_DIR/blog-list-common.sh"
-. "$SCRIPT_DIR/blog-public-ranking-common.sh"
 . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_send_json_headers
 
+static_file="$blog_site_root/site/static/navbar-pages.json"
 cache_file="$blog_state_dir/navbar-pages-cache.json"
 cache_ttl_seconds=600
 now_epoch=$(date +%s 2>/dev/null || printf '0')
@@ -43,7 +42,12 @@ if [ "$cache_is_fresh" = "true" ]; then
   exit 0
 fi
 
-cfg=$(blog_nostr_pages_load_json)
+if [ -f "$static_file" ]; then
+  cat "$static_file"
+  exit 0
+fi
+
+cfg=$(blog_nostr_pages_load_json_fast)
 nav_json=$(blog_nostr_navbar_pages_json "$cfg")
 printf '%s\n' "$nav_json"
 

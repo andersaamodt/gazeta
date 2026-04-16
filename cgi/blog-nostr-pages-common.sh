@@ -235,6 +235,17 @@ blog_nostr_pages_load_json() {
   printf '%s\n' "$normalized"
 }
 
+blog_nostr_pages_load_json_fast() {
+  path=$(blog_nostr_pages_config_path)
+  raw=''
+  if [ -f "$path" ]; then
+    raw=$(cat "$path" 2>/dev/null || printf '')
+  fi
+  normalized=$(blog_nostr_pages_normalize_json "$raw")
+  normalized=$(blog_nostr_pages_prune_legacy_empty_home_json "$normalized")
+  printf '%s\n' "$normalized"
+}
+
 blog_nostr_pages_save_json() {
   raw_json=${1-}
   [ -n "$raw_json" ] || return 1
@@ -250,51 +261,68 @@ blog_nostr_pages_save_json() {
 blog_nostr_navbar_pages_json() {
   cfg_json=${1-}
   if [ -z "$cfg_json" ]; then
-    cfg_json=$(blog_nostr_pages_load_json)
+    cfg_json=$(blog_nostr_pages_load_json_fast)
   fi
 
-  nav_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages.XXXXXX")
-  nav_items_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-items.XXXXXX")
+  nav_json=$(printf '%s\n' "$cfg_json" | jq -c '
+    def title_from_slug($slug):
+      (($slug // "") | tostring | gsub("-";" ")) as $text
+      | if ($text | length) == 0 then "Untitled"
+        else (($text[0:1] | ascii_upcase) + ($text[1:]))
+        end;
+    def norm_slug($value):
+      (($value // "") | tostring | ascii_downcase
+        | gsub("[^a-z0-9-]"; "-")
+        | gsub("-+"; "-")
+        | gsub("(^-+|-+$)"; ""));
+    def norm_type($value):
+      (($value // "") | tostring | ascii_downcase) as $type
+      | if $type == "contact" then "contact"
+        elif ($type == "public-ranking" or $type == "public_ranking" or $type == "ranking") then "public-ranking"
+        elif ($type == "icon-gallery" or $type == "icon_gallery" or $type == "gallery") then "icon-gallery"
+        elif ($type == "blog" or $type == "blog-index" or $type == "blog_index") then "blog"
+        elif ($type == "nip23" or $type == "article" or $type == "document") then "nip23"
+        else "list"
+        end;
+    def norm_kind($page_type; $value):
+      if ($value | type) == "number" then $value
+      elif $page_type == "contact" then 0
+      elif $page_type == "public-ranking" then 30040
+      elif ($page_type == "nip23" or $page_type == "blog") then 30023
+      else 30004
+      end;
+    def norm_path($slug; $value):
+      (($value // "") | tostring) as $path
+      | if ($path | length) > 0 then $path
+        elif $slug == "index" then "/"
+        else ("/" + $slug)
+        end;
 
-  printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list"), (.placeholder_title // ""), (if has("show_in_nav") then .show_in_nav else true end)] | @tsv' 2>/dev/null > "$nav_pages_tmp"
-
-  while IFS="$(printf '\t')" read -r raw_slug raw_type raw_title raw_show || [ -n "$raw_slug" ]; do
-    slug=$(blog_nostr_page_slug "$raw_slug")
-    [ -n "$slug" ] || continue
-    page_type=$(printf '%s' "$raw_type" | tr '[:upper:]' '[:lower:]')
-    case "$raw_show" in
-      false|FALSE|False|0) continue ;;
-      *) ;;
-    esac
-
-    if [ "$slug" = "index" ] && [ "$page_type" = "nip23" ]; then
-      index_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
-      index_draft=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
-      if [ -z "$index_event" ] && [ -z "$index_draft" ]; then
-        continue
-      fi
-    fi
-
-    placeholder_title=$(printf '%s' "$raw_title" | tr -d '\r')
-    if [ -n "$placeholder_title" ]; then
-      title=$placeholder_title
-    else
-      title=$(blog_nostr_page_default_title "$slug" "$page_type")
-    fi
-
-    path=$(blog_nostr_page_public_path "$slug")
-    kind=$(blog_nostr_page_kind_for_type "$page_type")
-    jq -cn \
-      --arg slug "$slug" \
-      --arg title "$title" \
-      --arg path "$path" \
-      --arg type "$page_type" \
-      --argjson kind "$kind" \
-      '{slug:$slug,title:$title,path:$path,type:$type,kind:$kind}' >> "$nav_items_tmp"
-  done < "$nav_pages_tmp"
-
-  nav_json=$(jq -cn --slurpfile pages "$nav_items_tmp" '{success:true,pages: ($pages // [])}')
-  rm -f "$nav_pages_tmp" "$nav_items_tmp"
+    {
+      success: true,
+      pages: [
+        .pages[]?
+        | .slug = norm_slug(.slug // "")
+        | select((.slug | length) > 0)
+        | .type = norm_type(.type // .page_type // "list")
+        | select((if has("show_in_nav") then .show_in_nav else true end) != false)
+        | {
+            slug: .slug,
+            title: (
+              ((.placeholder_title // .title // "") | tostring | gsub("\r"; "")) as $title
+              | if ($title | length) > 0 then $title
+                elif .slug == "index" and .type == "blog" then "Blog"
+                elif .slug == "index" then "Home"
+                else title_from_slug(.slug)
+                end
+            ),
+            path: norm_path(.slug; .path),
+            type: .type,
+            kind: norm_kind(.type; .kind)
+          }
+      ]
+    }
+  ' 2>/dev/null || printf '')
   if [ -z "$nav_json" ]; then
     nav_json='{"success":true,"pages":[]}'
   fi
