@@ -40,6 +40,15 @@ fi
 
 blog_site_root="$blog_sites_dir/$blog_site_name"
 blog_site_data="$blog_sites_dir/.sitedata/$blog_site_name"
+blog_site_root_parent=$blog_site_root
+case "$blog_site_root" in
+  */releases/*)
+    blog_site_root_parent=${blog_site_root%/releases/*}
+    ;;
+esac
+if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_site_root_parent/.sitedata/site" ]; then
+  blog_site_data="$blog_site_root_parent/.sitedata/site"
+fi
 blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"
 blog_posts_dir="$blog_site_root/site/pages/posts"

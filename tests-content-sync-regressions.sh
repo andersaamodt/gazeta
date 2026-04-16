@@ -431,6 +431,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_navb
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_build_json() {' 'shared public post catalog builder exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_write_artifacts() {' 'shared public post catalog writer exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '*/releases/*' 'blog lib detects managed releases path when resolving shared site data'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
@@ -797,6 +798,17 @@ if [ "${tree_line:-0}" -gt 0 ] && [ "${submit_line:-0}" -gt "${tree_line:-0}" ];
 else
   fail 'public ranking add-entry composer renders after ranking list content'
 fi
+
+managed_home="$TMP_ROOT/managed-site"
+managed_release_root="$managed_home/releases/20260416000000"
+managed_shared_data="$managed_home/.sitedata/site"
+mkdir -p "$managed_release_root" "$managed_shared_data"
+managed_site_data=$(
+  WIZARDRY_SITES_DIR="$managed_home/releases" \
+  WIZARDRY_SITE_NAME="20260416000000" \
+  sh -c '. "$1/cgi/blog-lib.sh"; printf "%s\n" "$blog_site_data"' sh "$ROOT_DIR"
+)
+assert_eq "$managed_shared_data" "$managed_site_data" 'managed releases resolve shared site data root'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
