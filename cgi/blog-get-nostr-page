@@ -4,6 +4,12 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
+  script_site_root=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+  : "${WIZARDRY_SITES_DIR:=$(dirname "$script_site_root")}"
+  : "${WIZARDRY_SITE_NAME:=$(basename "$script_site_root")}"
+  export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
+fi
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
 . "$SCRIPT_DIR/blog-public-ranking-common.sh"
