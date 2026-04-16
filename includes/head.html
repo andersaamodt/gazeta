@@ -1,4 +1,28 @@
-<link id="theme-stylesheet" rel="stylesheet" href="/cgi/blog-theme.css" />
+<script src="/static/site-bootstrap.js"></script>
+<script>
+(function () {
+  var theme = 'archmage';
+  try {
+    var bootstrap = window.__wizardrySiteBootstrap || {};
+    var config = bootstrap && bootstrap.config && typeof bootstrap.config === 'object' ? bootstrap.config : {};
+    var cachedTheme = localStorage.getItem('wizardry_blog_theme_v1') || '';
+    var nextTheme = String(config.theme || cachedTheme || '').trim();
+    if (nextTheme) {
+      theme = nextTheme;
+    }
+  } catch (_err) {
+    // Ignore storage failures.
+  }
+  var href = '/static/themes/' + encodeURIComponent(theme) + '.css';
+  var link = document.createElement('link');
+  link.id = 'theme-stylesheet';
+  link.rel = 'stylesheet';
+  link.href = href;
+  link.setAttribute('data-theme-href', href);
+  (document.head || document.documentElement).appendChild(link);
+})();
+</script>
+<noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css" data-theme-href="/static/themes/archmage.css" /></noscript>
 <script defer src="/static/post-context.js"></script>
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
 <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />

@@ -9,6 +9,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 blog_read_request_body
 blog_send_json_headers
+config_before=$(cat "$blog_site_conf" 2>/dev/null || printf '')
 
 if ! blog_require_session true true; then
   exit 0
@@ -218,6 +219,11 @@ if [ "$nostr_lists_update" = "true" ]; then
   if blog_nostr_bridge_enabled; then
     blog_nostr_rebuild_derived >/dev/null 2>&1 || true
   fi
+fi
+
+config_after=$(cat "$blog_site_conf" 2>/dev/null || printf '')
+if [ "$config_after" != "$config_before" ]; then
+  blog_run_build_async >/dev/null 2>&1 || true
 fi
 
 printf '{"success":true,"message":"Configuration updated"}\n'

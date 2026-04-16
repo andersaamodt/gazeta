@@ -12,6 +12,51 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 pages_json=$(blog_nostr_pages_load_json)
 blog_nostr_pages_sync_source_pages "$pages_json"
+
+site_title=$(config-get "$blog_site_conf" site_title 2>/dev/null || printf '')
+theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf '')
+append_site_title_to_page_title=$(config-get "$blog_site_conf" append_site_title_to_page_title 2>/dev/null || printf 'false')
+plugins_json=$(blog_plugins_json)
+navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
+navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
+
+[ -n "$site_title" ] || site_title='Site'
+[ -n "$theme" ] || theme='archmage'
+case "$append_site_title_to_page_title" in
+  true|false) ;;
+  *) append_site_title_to_page_title=false ;;
+esac
+
+site_bootstrap_dir="$blog_site_root/site/static"
+site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
+mkdir -p "$site_bootstrap_dir"
+site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")
+cat > "$site_bootstrap_tmp" <<EOF
+(function () {
+  var bootstrap = {
+    config: {
+      site_title: "$(blog_json_escape "$site_title")",
+      append_site_title_to_page_title: $append_site_title_to_page_title,
+      theme: "$(blog_json_escape "$theme")",
+      plugins: $plugins_json
+    },
+    navbar_pages: $navbar_pages_json
+  };
+  window.__wizardrySiteBootstrap = bootstrap;
+  try {
+    localStorage.setItem('wizardry_blog_site_title_v1', bootstrap.config.site_title || 'Site');
+    localStorage.setItem('wizardry_blog_append_site_title_to_page_title_v1', bootstrap.config.append_site_title_to_page_title ? '1' : '0');
+    localStorage.setItem('wizardry_blog_theme_v1', bootstrap.config.theme || 'archmage');
+    localStorage.setItem('wizardry_plugins_v1', JSON.stringify(bootstrap.config.plugins || {}));
+    localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(bootstrap.navbar_pages || []));
+  } catch (_err) {
+    // Ignore storage failures.
+  }
+})();
+EOF
+mv "$site_bootstrap_tmp" "$site_bootstrap_path"
+chmod 644 "$site_bootstrap_path" 2>/dev/null || true
+
 if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
 fi

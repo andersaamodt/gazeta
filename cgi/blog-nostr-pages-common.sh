@@ -247,6 +247,60 @@ blog_nostr_pages_save_json() {
   blog_nostr_pages_prune_stale_source_pages "$normalized"
 }
 
+blog_nostr_navbar_pages_json() {
+  cfg_json=${1-}
+  if [ -z "$cfg_json" ]; then
+    cfg_json=$(blog_nostr_pages_load_json)
+  fi
+
+  nav_pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages.XXXXXX")
+  nav_items_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-items.XXXXXX")
+
+  printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list"), (.placeholder_title // ""), (if has("show_in_nav") then .show_in_nav else true end)] | @tsv' 2>/dev/null > "$nav_pages_tmp"
+
+  while IFS="$(printf '\t')" read -r raw_slug raw_type raw_title raw_show || [ -n "$raw_slug" ]; do
+    slug=$(blog_nostr_page_slug "$raw_slug")
+    [ -n "$slug" ] || continue
+    page_type=$(printf '%s' "$raw_type" | tr '[:upper:]' '[:lower:]')
+    case "$raw_show" in
+      false|FALSE|False|0) continue ;;
+      *) ;;
+    esac
+
+    if [ "$slug" = "index" ] && [ "$page_type" = "nip23" ]; then
+      index_event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
+      index_draft=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
+      if [ -z "$index_event" ] && [ -z "$index_draft" ]; then
+        continue
+      fi
+    fi
+
+    placeholder_title=$(printf '%s' "$raw_title" | tr -d '\r')
+    if [ -n "$placeholder_title" ]; then
+      title=$placeholder_title
+    else
+      title=$(blog_nostr_page_default_title "$slug" "$page_type")
+    fi
+
+    path=$(blog_nostr_page_public_path "$slug")
+    kind=$(blog_nostr_page_kind_for_type "$page_type")
+    jq -cn \
+      --arg slug "$slug" \
+      --arg title "$title" \
+      --arg path "$path" \
+      --arg type "$page_type" \
+      --argjson kind "$kind" \
+      '{slug:$slug,title:$title,path:$path,type:$type,kind:$kind}' >> "$nav_items_tmp"
+  done < "$nav_pages_tmp"
+
+  nav_json=$(jq -cn --slurpfile pages "$nav_items_tmp" '{success:true,pages: ($pages // [])}')
+  rm -f "$nav_pages_tmp" "$nav_items_tmp"
+  if [ -z "$nav_json" ]; then
+    nav_json='{"success":true,"pages":[]}'
+  fi
+  printf '%s\n' "$nav_json"
+}
+
 blog_nostr_page_entry_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   [ -n "$slug" ] || return 1

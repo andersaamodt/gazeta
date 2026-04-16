@@ -19,6 +19,7 @@
   var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
   var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
+  var THEME_CACHE_KEY = 'wizardry_blog_theme_v1';
   var PLUGINS_CACHE_KEY = 'wizardry_plugins_v1';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
@@ -229,6 +230,11 @@
     return text || 'Site';
   }
 
+  function normalizeThemeName(value) {
+    var text = compact(value);
+    return text || 'archmage';
+  }
+
   function updateNavSiteSignature(title) {
     var node = document.getElementById('nav-site-signature');
     if (!node) {
@@ -259,6 +265,59 @@
     } catch (_err) {
       // Ignore storage failures.
     }
+  }
+
+  function cacheTheme(theme) {
+    try {
+      localStorage.setItem(THEME_CACHE_KEY, normalizeThemeName(theme));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function readSiteBootstrap() {
+    var bootstrap = window.__wizardrySiteBootstrap;
+    if (!bootstrap || typeof bootstrap !== 'object') {
+      return null;
+    }
+    return bootstrap;
+  }
+
+  function readBootstrapConfig() {
+    var bootstrap = readSiteBootstrap();
+    if (!bootstrap || !bootstrap.config || typeof bootstrap.config !== 'object') {
+      return null;
+    }
+    return bootstrap.config;
+  }
+
+  function readBootstrapNavbarPages() {
+    var bootstrap = readSiteBootstrap();
+    if (!bootstrap || !Array.isArray(bootstrap.navbar_pages) || !bootstrap.navbar_pages.length) {
+      return null;
+    }
+    return bootstrap.navbar_pages;
+  }
+
+  function applySiteConfig(data) {
+    var next = data && typeof data === 'object' ? data : {};
+    var appendSiteTitle = normalizeAppendSiteTitleEnabled(next.append_site_title_to_page_title);
+    updateNavSiteSignature(next.site_title || '');
+    cacheSiteTitle(next.site_title || '');
+    cacheAppendSiteTitleEnabled(appendSiteTitle);
+    if (typeof window.__wizardrySetPageTitleConfig === 'function') {
+      window.__wizardrySetPageTitleConfig(next.site_title || '', appendSiteTitle);
+    } else if (typeof window.__wizardryApplyPageTitle === 'function') {
+      window.__wizardryApplyPageTitle();
+    }
+    if (Object.prototype.hasOwnProperty.call(next, 'theme')) {
+      state.currentTheme = normalizeThemeName(next.theme);
+      cacheTheme(state.currentTheme);
+    }
+    if (Object.prototype.hasOwnProperty.call(next, 'plugins')) {
+      publishPlugins(next.plugins || {});
+    }
+    syncPluginAuthUi();
   }
 
   function composeIconSvgPaths() {
@@ -2145,9 +2204,24 @@
     scheduleNavOverflowMenuSync();
   }
 
-  function loadNavbarNostrPages() {
+  function loadNavbarNostrPages(options) {
+    var opts = options && typeof options === 'object' ? options : {};
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter) {
+      return Promise.resolve();
+    }
+
+    var bootstrapPages = opts.useBootstrap === false ? null : readBootstrapNavbarPages();
+    if (bootstrapPages) {
+      try {
+        localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(bootstrapPages));
+      } catch (_bootstrapCacheErr) {
+        // Ignore storage failures.
+      }
+      renderNavbarNostrPages(bootstrapPages);
+      if (!hasStoredSessionToken()) {
+        warmNavbarNostrPagePrefetch();
+      }
       return Promise.resolve();
     }
 
@@ -2200,7 +2274,7 @@
         return;
       }
     }
-    loadNavbarNostrPages().catch(function () {
+    loadNavbarNostrPages({ useBootstrap: false }).catch(function () {
       // Keep current navbar when refresh fails.
     });
   });
@@ -2444,17 +2518,8 @@
     return currentHref === absoluteHref || currentRequested === href || currentRequested === absoluteHref;
   }
 
-  function isServerThemeHrefActive(themeLink) {
-    if (!themeLink) {
-      return false;
-    }
-    var attrHref = String(themeLink.getAttribute('href') || '');
-    var resolvedHref = String(themeLink.href || '');
-    return attrHref.indexOf('/cgi/blog-theme.css') === 0 || resolvedHref.indexOf('/cgi/blog-theme.css') !== -1;
-  }
-
   function updateThemeStylesheet(theme) {
-    var nextTheme = String(theme || '').trim() || 'adept';
+    var nextTheme = normalizeThemeName(theme);
     var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
@@ -2465,31 +2530,25 @@
   }
 
   function loadTheme() {
+    var bootstrapConfig = readBootstrapConfig();
+    if (bootstrapConfig) {
+      applySiteConfig(bootstrapConfig);
+      return updateThemeStylesheet(state.currentTheme)
+        .then(function () {
+          updateThemeSelect();
+        })
+        .catch(function () {
+          updateThemeSelect();
+        });
+    }
+
     return fetch('/cgi/blog-get-config', { cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        var appendSiteTitle = normalizeAppendSiteTitleEnabled(data && data.append_site_title_to_page_title);
-        if (data && data.site_title) {
-          updateNavSiteSignature(data.site_title);
-          cacheSiteTitle(data.site_title);
-        }
-        cacheAppendSiteTitleEnabled(appendSiteTitle);
-        if (typeof window.__wizardrySetPageTitleConfig === 'function') {
-          window.__wizardrySetPageTitleConfig((data && data.site_title) || '', appendSiteTitle);
-        } else if (typeof window.__wizardryApplyPageTitle === 'function') {
-          window.__wizardryApplyPageTitle();
-        }
+        applySiteConfig(data);
         if (data && data.theme) {
-          state.currentTheme = data.theme;
-          var themeLink = document.getElementById('theme-stylesheet');
-          if (!isServerThemeHrefActive(themeLink)) {
-            publishPlugins(data.plugins || {});
-            syncPluginAuthUi();
-            return updateThemeStylesheet(state.currentTheme);
-          }
+          return updateThemeStylesheet(state.currentTheme);
         }
-        publishPlugins((data && data.plugins) || {});
-        syncPluginAuthUi();
       })
       .then(function () {
         updateThemeSelect();
@@ -2535,9 +2594,10 @@
     }
 
     function applySelectedTheme(nextTheme) {
-      state.currentTheme = nextTheme;
-      updateThemeStylesheet(nextTheme);
-      saveTheme(nextTheme);
+      state.currentTheme = normalizeThemeName(nextTheme);
+      cacheTheme(state.currentTheme);
+      updateThemeStylesheet(state.currentTheme);
+      saveTheme(state.currentTheme);
       preserveFocus();
     }
 

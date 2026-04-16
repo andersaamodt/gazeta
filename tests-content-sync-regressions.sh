@@ -250,12 +250,14 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" '. "$SCRIPT_DIR/blog
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync hook present'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_run_build_async' 'save-nostr-pages triggers rebuild'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_require_session true;' 'save-nostr-pages allows delegated admin sessions without interactive signer requirement'
 assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_nostr_pages_sync_source_pages "$normalized"' 'nav-title update refreshes source mounts'
 assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_run_build_async' 'nav-title update triggers rebuild'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar page maintenance triggers rebuild when config normalizes'
+assert_file_contains "$ROOT_DIR/cgi/blog-update-config" 'blog_run_build_async >/dev/null 2>&1 || true' 'config update queues rebuild for static bootstrap refresh'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$ROOT_DIR/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -278,6 +280,8 @@ assert_file_contains "$ROOT_DIR/static/nav-auth.js" "fetch('/cgi/blog-get-nostr-
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token), { cache: 'no-store' })" 'nav-auth check-session no-store'
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' })" 'nav-auth navbar no-store'
 assert_file_contains "$ROOT_DIR/static/nav-auth.js" "fetch('/cgi/blog-get-config', { cache: 'no-store' })" 'nav-auth config no-store'
+assert_file_contains "$ROOT_DIR/static/nav-auth.js" 'readBootstrapNavbarPages' 'nav-auth can hydrate navbar from static bootstrap'
+assert_file_contains "$ROOT_DIR/static/nav-auth.js" 'readBootstrapConfig' 'nav-auth can hydrate config from static bootstrap'
 
 # Seed author allowlist for deterministic canonical selection tests.
 printf '%s\n' "$KEY_A" "$KEY_B" > "$blog_nostr_authors_file"
@@ -413,20 +417,24 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'http-header "Pragma" "no-cache
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'http-header "Expires" "0"' 'cgi expires no-cache persists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_contact_latest_event_json() {' 'contact latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip23_latest_event_json() {' 'nip23 latest selector function exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_navbar_pages_json() {' 'shared navbar json helper exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint throttles rebuild trigger storms'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint no longer manages rebuild throttle state'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-pages-cache.json' 'navbar endpoint uses short-lived response cache'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'cache_is_fresh=false' 'navbar endpoint tracks cache freshness without early exit'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'cache_ttl_seconds=600' 'navbar endpoint uses longer cache ttl after moving rebuilds out of hot path'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'exit 0' 'navbar endpoint exits immediately on fresh cache'
 cfg_line=$(grep -n 'cfg=$(blog_nostr_pages_load_json)' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
 cache_cat_line=$(grep -n 'cat "$cache_file"' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
-if [ "${cfg_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -gt "${cfg_line:-0}" ]; then
+if [ "${cfg_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -lt "${cfg_line:-0}" ]; then
   pass
 else
-  fail 'navbar cache response must happen after config/health-check load path'
+  fail 'navbar cache response must happen before config load on fresh-cache hits'
 fi
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_pages_sync_source_pages "$cfg"' 'navbar rebuild path self-heals missing managed source pages'
+assert_file_contains "$ROOT_DIR/includes/head.html" '/static/site-bootstrap.js' 'document head loads static site bootstrap before app code'
+assert_file_not_contains "$ROOT_DIR/includes/head.html" '/cgi/blog-theme.css' 'document head no longer depends on CGI theme css for startup'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"' 'document head sets no-store cache control meta'
 assert_file_contains "$ROOT_DIR/includes/head.html" "var ROUTE_REFRESH_PARAM = '__route_refresh';" 'document head defines stale route refresh sentinel'
 assert_file_contains "$ROOT_DIR/includes/head.html" 'function slugsEquivalent(expected, root)' 'document head normalizes index/blog slug equivalence for route checks'
@@ -598,12 +606,9 @@ if [ "$navbar_status" -eq 0 ]; then
 else
   fail "navbar listing command failed while testing build queueing (status: $navbar_status, output: $navbar_out)"
 fi
-assert_contains "$navbar_out" '"success":true' 'navbar listing still returns success when build queueing'
-if wait_for_file "$build_marker" 60; then
-  pass
-else
-  fail 'navbar listing triggers async build when mounted html is missing'
-fi
+assert_contains "$navbar_out" '"success":true' 'navbar listing still returns success without build side effects'
+sleep 0.2
+assert_file_missing "$build_marker" 'navbar listing does not trigger async build from public request path'
 
 mkdir -p "$blog_site_root/build/pages"
 printf '%s\n' '<!doctype html>' > "$blog_site_root/build/pages/about.html"
@@ -622,7 +627,20 @@ assert_contains "$navbar_out_no_build" '"success":true' 'navbar listing returns 
 sleep 0.2
 assert_file_missing "$build_marker" 'navbar listing skips build queue when mounted html already exists'
 
-# 13) UI invariant for Nostr nav icon gutter alignment rule.
+# 13) Pre-build emits a static bootstrap bundle for first paint.
+printf '%s\n' 'site_title=Example Site' > "$blog_site_conf"
+printf '%s\n' 'theme=seer' >> "$blog_site_conf"
+printf '%s\n' 'append_site_title_to_page_title=true' >> "$blog_site_conf"
+blog_nostr_pages_save_json "$(jq -cn '{pages:[{slug:"about", type:"nip23", show_in_nav:true, placeholder_title:"About"}]}')"
+assert_success "$ROOT_DIR/cgi/pre-build"
+site_bootstrap_file="$blog_site_root/site/static/site-bootstrap.js"
+assert_success test -f "$site_bootstrap_file"
+assert_file_contains "$site_bootstrap_file" 'window.__wizardrySiteBootstrap = bootstrap;' 'pre-build bootstrap publishes global site bootstrap'
+assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap captures site title'
+assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
+assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
+
+# 14) UI invariant for Nostr nav icon gutter alignment rule.
 assert_file_contains "$ROOT_DIR/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
 assert_file_contains "$ROOT_DIR/pages/admin.md" '#admin-panel.sidebar-collapsed .admin-content {' 'collapsed admin keeps a left gutter for reveal icon'
 assert_file_contains "$ROOT_DIR/static/admin.js" 'section.hidden = !active;' 'admin section toggling remains direct visibility toggle'
