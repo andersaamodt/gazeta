@@ -2082,7 +2082,11 @@
     var hiddenLinks = [];
     var safety = 0;
     var activeLink = links.find(function (link) { return link.classList.contains('active'); }) || null;
-    while (navCenter.scrollWidth > ((navCenter.clientWidth - reservePx) + 2) && safety < links.length) {
+    while (safety < links.length) {
+      var currentReservePx = hiddenLinks.length ? reservePx : 0;
+      if (navCenter.scrollWidth <= ((navCenter.clientWidth - currentReservePx) + 2)) {
+        break;
+      }
       var candidate = null;
       for (var i = links.length - 1; i >= 0; i -= 1) {
         var link = links[i];
@@ -2933,6 +2937,13 @@
     setTimeout(scheduleNavOverflowMenuSync, 180);
     window.blogAuth = window.blogAuth || {};
     window.blogAuth.openLoginModal = showAuthModal;
+    window.blogAuth.startLogin = function () {
+      return startDesktopSignerLogin(false, '').catch(function (err) {
+        showNavToast(err && err.message ? err.message : 'Desktop signer login failed.', 'info', 4200);
+        openLoginMenu();
+        throw err;
+      });
+    };
     window.blogAuth.showToast = showNavToast;
     flushRememberedNavToast();
   }

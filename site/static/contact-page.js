@@ -1978,8 +1978,12 @@
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
-          if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-            window.blogAuth.openLoginModal();
+          if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
+            window.blogAuth.startLogin().catch(function () {
+              // Shared nav auth flow already surfaced feedback.
+            });
+          } else if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+            window.blogAuth.openLoginModal('phone');
           }
           return;
         }
