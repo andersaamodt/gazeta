@@ -9027,7 +9027,9 @@ body.nostr-publish-dialog-open {
   }
 
   nav.site-nav .nav-site-signature {
-    display: none !important;
+    margin-left: 0.2rem;
+    margin-right: 0.15rem;
+    font-size: 0.98rem;
   }
 
   nav.site-nav .nav-center {
@@ -9084,6 +9086,12 @@ body.nostr-publish-dialog-open {
   nav.site-nav .nav-compose,
   nav.site-nav .nav-username {
     flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  nav.site-nav .nav-site-signature {
+    display: none !important;
   }
 }
 
