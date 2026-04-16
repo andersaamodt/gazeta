@@ -51,6 +51,7 @@ if [ -z "$mime_type" ]; then
   mime_type=$(blog_file_content_type "$file_path" application/octet-stream)
 fi
 safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf 'download.bin')
+storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
 size_bytes=$(blog_file_size_bytes "$file_path" 2>/dev/null || printf '')
 disposition='inline'
 case "$mime_type" in
@@ -60,10 +61,18 @@ esac
 
 http-status 200 "OK"
 http-header "Content-Type" "$mime_type"
-http-header "Cache-Control" "public, max-age=300"
+if blog_file_is_public_effective "$file_id"; then
+  http-header "Cache-Control" "public, max-age=31536000, immutable"
+else
+  http-header "Cache-Control" "private, no-store"
+fi
 http-header "Content-Disposition" "$disposition; filename=\"$safe_name\""
-if [ -n "$size_bytes" ]; then
+if [ -n "$storage_rel" ]; then
+  http-header "X-Accel-Redirect" "/__site-files/$storage_rel"
+elif [ -n "$size_bytes" ]; then
   http-header "Content-Length" "$size_bytes"
 fi
 http-end-headers
-cat "$file_path"
+if [ -z "$storage_rel" ]; then
+  cat "$file_path"
+fi
