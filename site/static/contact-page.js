@@ -401,7 +401,8 @@
 
   function hasSecureChatSession() {
     var auth = authPayload();
-    return !!(auth.session_token && auth.csrf_token);
+    var authMethod = String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
+    return !!(auth.session_token && auth.csrf_token && authMethod === 'nostr');
   }
 
   function encodeBase64Utf8(text) {
@@ -758,7 +759,7 @@
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2><p class="secure-chat-kicker">Signed Nostr session required.</p></div>';
     if (!hasSecureChatSession()) {
-      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Log In With Nostr</button>';
+      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     }
     html += '</div>';
     if (!hasSecureChatSession()) {

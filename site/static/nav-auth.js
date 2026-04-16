@@ -946,6 +946,7 @@
   function rememberAuth(data) {
     localStorage.setItem('session_token', data.session_token || '');
     localStorage.setItem('csrf_token', data.csrf_token || '');
+    localStorage.setItem('last_auth_method', 'nostr');
     if (data.player_name) {
       localStorage.setItem('last_auth_player_name', data.player_name);
     }
@@ -961,6 +962,7 @@
   function clearLocalStorageAuth() {
     localStorage.removeItem('session_token');
     localStorage.removeItem('csrf_token');
+    localStorage.removeItem('last_auth_method');
     emitAuthChanged();
   }
 
@@ -1303,6 +1305,13 @@
         }
         if (data.nostr_pubkey) {
           localStorage.setItem('last_auth_pubkey', data.nostr_pubkey);
+        }
+        if (data.session_auth_method) {
+          localStorage.setItem('last_auth_method', data.session_auth_method);
+        } else if (data.nostr_pubkey) {
+          localStorage.setItem('last_auth_method', 'nostr');
+        } else {
+          localStorage.removeItem('last_auth_method');
         }
         if (data.player_name) {
           localStorage.setItem('last_auth_player_name', data.player_name);
