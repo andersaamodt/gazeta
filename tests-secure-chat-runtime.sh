@@ -205,6 +205,21 @@ else
   pass
 fi
 
+request_url_from_script=$(
+  HTTP_HOST='localhost:8093' \
+  SCRIPT_FILENAME="$ROOT_DIR/cgi/blog-secure-chat-state" \
+  blog_secure_chat_request_url
+)
+assert_eq "http://localhost:8093/cgi/blog-secure-chat-state" "$request_url_from_script" 'request url falls back to script filename when request uri is missing'
+
+request_url_from_origin=$(
+  SERVER_NAME='new.andersaamodt.com' \
+  HTTP_ORIGIN='http://localhost:8093' \
+  SCRIPT_FILENAME="$ROOT_DIR/cgi/blog-secure-chat-state" \
+  blog_secure_chat_request_url
+)
+assert_eq "http://localhost:8093/cgi/blog-secure-chat-state" "$request_url_from_origin" 'request url prefers browser origin when host is rewritten by managed server config'
+
 headers_out=$(HTTPS=on blog_send_json_headers)
 assert_contains "$headers_out" 'HEADER:Strict-Transport-Security=max-age=31536000; includeSubDomains; preload' 'json headers emit HSTS on secure requests'
 

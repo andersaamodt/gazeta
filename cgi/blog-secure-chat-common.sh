@@ -241,6 +241,21 @@ blog_request_is_localhost() {
   return 1
 }
 
+blog_secure_chat_origin_base() {
+  origin=${HTTP_ORIGIN-}
+  if [ -n "$origin" ]; then
+    printf '%s\n' "$origin"
+    return 0
+  fi
+  referer=${HTTP_REFERER-}
+  if [ -n "$referer" ]; then
+    printf '%s\n' "$referer" |
+      sed 's/[?#].*$//; s#^\([a-zA-Z][a-zA-Z0-9+.-]*://[^/]*\)/.*$#\1#'
+    return 0
+  fi
+  printf '%s\n' ''
+}
+
 blog_secure_chat_request_is_secure() {
   case "${HTTPS-}" in
     on|ON|1|true|TRUE|yes|YES) return 0 ;;
@@ -258,6 +273,13 @@ blog_secure_chat_request_is_secure() {
 }
 
 blog_secure_chat_request_scheme() {
+  origin_base=$(blog_secure_chat_origin_base)
+  if [ -n "$origin_base" ]; then
+    case "$origin_base" in
+      https://*) printf 'https\n'; return 0 ;;
+      http://*) printf 'http\n'; return 0 ;;
+    esac
+  fi
   if blog_secure_chat_request_is_secure && ! blog_request_is_localhost; then
     printf 'https\n'
     return 0
@@ -272,22 +294,60 @@ blog_secure_chat_request_scheme() {
 }
 
 blog_secure_chat_request_host() {
-  host=${HTTP_HOST:-${SERVER_NAME:-}}
+  host=${HTTP_HOST-}
+  if [ -z "$host" ]; then
+    origin_base=$(blog_secure_chat_origin_base)
+    case "$origin_base" in
+      *://*)
+        host=${origin_base#*://}
+        ;;
+      *)
+        host=${SERVER_NAME:-}
+        ;;
+    esac
+  fi
   host=${host%%,*}
   host=$(printf '%s' "$host" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   printf '%s\n' "$host"
 }
 
-blog_secure_chat_request_url() {
-  scheme=$(blog_secure_chat_request_scheme)
-  host=$(blog_secure_chat_request_host)
+blog_secure_chat_request_uri() {
   uri=${REQUEST_URI-}
-  if [ -z "$uri" ]; then
-    uri=${SCRIPT_NAME-}
+  if [ -n "$uri" ]; then
+    printf '%s\n' "$uri"
+    return 0
+  fi
+  uri=${SCRIPT_NAME-}
+  if [ -n "$uri" ]; then
     if [ -n "${QUERY_STRING-}" ]; then
       uri="$uri?${QUERY_STRING}"
     fi
+    printf '%s\n' "$uri"
+    return 0
   fi
+  script_file=${SCRIPT_FILENAME-}
+  if [ -n "$script_file" ]; then
+    script_name=${script_file##*/}
+    case "$script_name" in
+      '')
+        ;;
+      *)
+        uri="/cgi/$script_name"
+        if [ -n "${QUERY_STRING-}" ]; then
+          uri="$uri?${QUERY_STRING}"
+        fi
+        printf '%s\n' "$uri"
+        return 0
+        ;;
+    esac
+  fi
+  printf '%s\n' ''
+}
+
+blog_secure_chat_request_url() {
+  scheme=$(blog_secure_chat_request_scheme)
+  host=$(blog_secure_chat_request_host)
+  uri=$(blog_secure_chat_request_uri)
   printf '%s://%s%s\n' "$scheme" "$host" "$uri"
 }
 
