@@ -757,13 +757,12 @@
   function renderSecureChatPanel() {
     var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
-    html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2><p class="secure-chat-kicker">Signed Nostr session required.</p></div>';
+    html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     if (!hasSecureChatSession()) {
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     }
     html += '</div>';
     if (!hasSecureChatSession()) {
-      html += '<p class="secure-chat-empty">Secure Chat is only available after Nostr sign-in.</p>';
       html += '</section>';
       return html;
     }
