@@ -1,0 +1,145 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+ROOT_DIR=$SCRIPT_DIR
+
+tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/pre-build-site-layout.XXXXXX")
+cleanup() {
+  rm -rf "$tmp_root"
+}
+trap 'cleanup' EXIT INT TERM
+
+export WIZARDRY_SITES_DIR="$tmp_root/sites"
+export WIZARDRY_SITE_NAME="testsite"
+site_root="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
+state_root="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
+
+mkdir -p "$site_root"
+cp -R "$ROOT_DIR/cgi" "$site_root/"
+mkdir -p "$site_root/includes" "$site_root/pages/embed" "$site_root/static" "$state_root"
+
+cat > "$site_root/site.conf" <<'EOFCONF'
+template=blog
+theme=lapidarist
+site_title=Example Site
+append_site_title_to_page_title=false
+EOFCONF
+
+cat > "$site_root/includes/head.html" <<'EOFHEAD'
+<script src="/static/site-bootstrap.js"></script>
+<script defer src="/static/post-context.js"></script>
+EOFHEAD
+
+cat > "$site_root/includes/nav.md" <<'EOFNAV'
+<nav class="site-nav">Example Nav</nav>
+EOFNAV
+
+cat > "$site_root/includes/footer.md" <<'EOFFOOT'
+<footer class="site-footer">Example Footer</footer>
+EOFFOOT
+
+cat > "$site_root/pages/admin.md" <<'EOFPAGE'
+---
+title: Admin
+---
+
+Admin page
+EOFPAGE
+
+cat > "$site_root/pages/embed/video-chat.md" <<'EOPEMBED'
+---
+title: Video Chat
+---
+
+Video chat page
+EOPEMBED
+
+cat > "$site_root/static/style.css" <<'EOFSTYLE'
+body { background: #fff; }
+EOFSTYLE
+
+cat > "$site_root/static/nav-auth.js" <<'EOFNAVAUTH'
+console.log('nav');
+EOFNAVAUTH
+
+mkdir -p "$tmp_root/bin"
+cat > "$tmp_root/bin/config-get" <<'EOFCONFIG'
+#!/bin/sh
+set -eu
+file=$1
+key=$2
+awk -F= -v wanted="$key" '
+  $1 == wanted {
+    value=$0
+    sub(/^[^=]*=/, "", value)
+    print value
+    found=1
+    exit
+  }
+  END {
+    if (!found) {
+      exit 1
+    }
+  }
+' "$file"
+EOFCONFIG
+chmod +x "$tmp_root/bin/config-get"
+PATH="$tmp_root/bin:$PATH"
+export PATH
+
+. "$site_root/cgi/blog-lib.sh"
+. "$site_root/cgi/blog-nostr-pages-common.sh"
+
+blog_init
+blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"}]}'
+
+"$site_root/cgi/pre-build"
+
+[ -f "$site_root/site/includes/head.html" ] || {
+  printf '%s\n' "missing staged head include" >&2
+  exit 1
+}
+[ -f "$site_root/site/includes/nav.md" ] || {
+  printf '%s\n' "missing staged nav include" >&2
+  exit 1
+}
+[ -f "$site_root/site/pages/admin.md" ] || {
+  printf '%s\n' "missing staged admin page" >&2
+  exit 1
+}
+[ -f "$site_root/site/pages/embed/video-chat.md" ] || {
+  printf '%s\n' "missing staged nested page" >&2
+  exit 1
+}
+[ -f "$site_root/site/pages/contact.md" ] || {
+  printf '%s\n' "missing generated contact page" >&2
+  exit 1
+}
+[ -f "$site_root/site/static/style.css" ] || {
+  printf '%s\n' "missing staged stylesheet" >&2
+  exit 1
+}
+[ -f "$site_root/site/static/nav-auth.js" ] || {
+  printf '%s\n' "missing staged static script" >&2
+  exit 1
+}
+[ -f "$site_root/site/static/navbar-pages.json" ] || {
+  printf '%s\n' "missing generated navbar pages bootstrap" >&2
+  exit 1
+}
+[ -f "$site_root/site/static/site-bootstrap.js" ] || {
+  printf '%s\n' "missing generated site bootstrap" >&2
+  exit 1
+}
+
+cmp -s "$site_root/includes/head.html" "$site_root/site/includes/head.html" || {
+  printf '%s\n' "staged head include does not match canonical include" >&2
+  exit 1
+}
+cmp -s "$site_root/static/style.css" "$site_root/site/static/style.css" || {
+  printf '%s\n' "staged stylesheet does not match canonical stylesheet" >&2
+  exit 1
+}
+
+printf '%s\n' 'ok'

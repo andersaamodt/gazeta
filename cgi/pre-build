@@ -15,7 +15,70 @@ fi
 . "$SCRIPT_DIR/blog-public-ranking-common.sh"
 . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
+stage_repo_dir_tree() {
+  src_dir=$1
+  dest_dir=$2
+
+  [ -d "$src_dir" ] || return 0
+  rm -rf "$dest_dir"
+  mkdir -p "$dest_dir"
+  cp -R "$src_dir"/. "$dest_dir"/
+}
+
+stage_repo_pages_tree() {
+  src_dir=$1
+  dest_dir=$2
+  manifest_path=$3
+
+  [ -d "$src_dir" ] || return 0
+
+  mkdir -p "$dest_dir"
+
+  new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-repo-pages-manifest.XXXXXX")
+  old_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-repo-pages-old-manifest.XXXXXX")
+
+  if [ -f "$manifest_path" ]; then
+    cat "$manifest_path" > "$old_manifest"
+  fi
+
+  find "$src_dir" \
+    \( -path "$src_dir/posts" -o -path "$src_dir/posts/*" \) -prune \
+    -o -type f -print | sort | while IFS= read -r src_file; do
+      [ -n "$src_file" ] || continue
+      rel_path=${src_file#"$src_dir"/}
+      dest_file="$dest_dir/$rel_path"
+      mkdir -p "$(dirname "$dest_file")"
+      cp "$src_file" "$dest_file"
+      printf '%s\n' "$rel_path" >> "$new_manifest"
+    done
+
+  if [ -s "$old_manifest" ]; then
+    while IFS= read -r rel_path; do
+      [ -n "$rel_path" ] || continue
+      if ! grep -Fxq "$rel_path" "$new_manifest" 2>/dev/null; then
+        rm -f "$dest_dir/$rel_path"
+      fi
+    done < "$old_manifest"
+  fi
+
+  mv "$new_manifest" "$manifest_path"
+  rm -f "$old_manifest"
+}
+
+stage_repo_site_tree() {
+  site_stage_root="$blog_site_root/site"
+  repo_includes_dir="$blog_site_root/includes"
+  repo_pages_dir="$blog_site_root/pages"
+  repo_static_dir="$blog_site_root/static"
+
+  mkdir -p "$site_stage_root"
+  stage_repo_dir_tree "$repo_includes_dir" "$site_stage_root/includes"
+  stage_repo_pages_tree "$repo_pages_dir" "$site_stage_root/pages" "$site_stage_root/.repo-pages-manifest"
+  stage_repo_dir_tree "$repo_static_dir" "$site_stage_root/static"
+}
+
 blog_init
+stage_repo_site_tree
 pages_json=$(blog_nostr_pages_load_json)
 blog_nostr_pages_sync_source_pages "$pages_json"
 blog_public_posts_catalog_write_artifacts
