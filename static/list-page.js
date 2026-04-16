@@ -453,6 +453,13 @@
     return normalized;
   }
 
+  function galleryImageAttrs() {
+    if (isProductGalleryPage()) {
+      return ' loading="eager" decoding="async" fetchpriority="high"';
+    }
+    return ' loading="lazy" decoding="async"';
+  }
+
   function productGalleryViewStorageKey() {
     return 'nostr_product_gallery_view_v1:' + slug;
   }
@@ -2054,7 +2061,7 @@
       : '';
     var listIcon = '';
     if (isProductGalleryPage() && imageUrl) {
-      listIcon = '<img class="list-entry-list-icon" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async">';
+      listIcon = '<img class="list-entry-list-icon" src="' + escapeHtml(imageUrl) + '" alt=""' + galleryImageAttrs() + '>';
     }
     var descriptionInline = '';
     if (isProductGalleryPage() && description) {
@@ -2191,7 +2198,7 @@
       html += '<li class="list-tile">';
       html += '<div class="list-tile-content">';
       if (imageUrl) {
-        html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>';
+        html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt=""' + galleryImageAttrs() + '></div>';
       }
       if (dateText) {
         html += '<div class="list-tile-date">' + escapeHtml(dateText) + '</div>';
