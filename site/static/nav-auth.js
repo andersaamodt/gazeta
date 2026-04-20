@@ -58,7 +58,8 @@
       seenEvents: {}
     },
     prefetchedNostrPageSlugs: {},
-    navOverflowRaf: 0
+    navOverflowRaf: 0,
+    navOverflowTimer: 0
   };
 
   var els = {
@@ -2071,7 +2072,7 @@
     }
 
     var initialOverflowPx = navCenter.scrollWidth - navCenter.clientWidth;
-    if (initialOverflowPx <= 22) {
+    if (initialOverflowPx <= 1) {
       return;
     }
 
@@ -2098,6 +2099,16 @@
         }
         candidate = link;
         break;
+      }
+      if (!candidate && activeLink) {
+        for (var j = links.length - 1; j >= 0; j -= 1) {
+          var fallback = links[j];
+          if (fallback.classList.contains('is-nav-overflow-hidden')) {
+            continue;
+          }
+          candidate = fallback;
+          break;
+        }
       }
       if (!candidate) {
         break;
@@ -2128,18 +2139,25 @@
   }
 
   function scheduleNavOverflowMenuSync() {
+    if (state.navOverflowTimer) {
+      window.clearTimeout(state.navOverflowTimer);
+      state.navOverflowTimer = 0;
+    }
     if (state.navOverflowRaf && typeof window.cancelAnimationFrame === 'function') {
       window.cancelAnimationFrame(state.navOverflowRaf);
       state.navOverflowRaf = 0;
     }
-    if (typeof window.requestAnimationFrame === 'function') {
-      state.navOverflowRaf = window.requestAnimationFrame(function () {
-        state.navOverflowRaf = 0;
-        syncNavOverflowMenuNow();
-      });
-      return;
-    }
-    syncNavOverflowMenuNow();
+    state.navOverflowTimer = window.setTimeout(function () {
+      state.navOverflowTimer = 0;
+      if (typeof window.requestAnimationFrame === 'function') {
+        state.navOverflowRaf = window.requestAnimationFrame(function () {
+          state.navOverflowRaf = 0;
+          syncNavOverflowMenuNow();
+        });
+        return;
+      }
+      syncNavOverflowMenuNow();
+    }, 60);
   }
 
   function markHydrationNavReady() {
@@ -2930,6 +2948,13 @@
     loadTheme();
     window.addEventListener('hashchange', highlightCurrentPage);
     window.addEventListener('resize', scheduleNavOverflowMenuSync);
+    if (document.fonts && typeof document.fonts.ready === 'object' && typeof document.fonts.ready.then === 'function') {
+      document.fonts.ready.then(function () {
+        scheduleNavOverflowMenuSync();
+      }).catch(function () {
+        // Ignore font readiness errors.
+      });
+    }
     bindThemeSelect();
     bindUiEvents();
     bindNavbarNostrPagePrefetch();

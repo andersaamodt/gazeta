@@ -351,6 +351,7 @@ header h1 {
   user-select: none;
   pointer-events: none;
   transform: translateY(1px);
+  min-width: max-content;
 }
 
 .nav-center {
@@ -422,7 +423,10 @@ header h1 {
 
 @media (max-width: 900px) {
   .nav-site-signature {
-    display: none;
+    display: inline-flex;
+    font-size: 0.94rem;
+    margin-left: 0.2rem;
+    margin-right: 0.15rem;
   }
 }
 
@@ -9056,9 +9060,15 @@ body.nostr-publish-dialog-open {
   }
 
   nav.site-nav .nav-site-signature {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
     margin-left: 0.2rem;
     margin-right: 0.15rem;
     font-size: 0.98rem;
+    white-space: nowrap;
+    color: var(--text) !important;
+    opacity: 0.92;
   }
 
   nav.site-nav .nav-center {
@@ -9069,7 +9079,7 @@ body.nostr-publish-dialog-open {
     align-items: center;
     justify-content: flex-start;
     gap: 0.4rem;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     overflow-y: hidden !important;
     white-space: nowrap;
     scrollbar-width: none;
@@ -9080,6 +9090,7 @@ body.nostr-publish-dialog-open {
   }
 
   nav.site-nav .nav-center a {
+    flex: 0 0 auto;
     white-space: nowrap;
   }
 
@@ -9095,8 +9106,8 @@ body.nostr-publish-dialog-open {
   }
 
   nav.site-nav .nav-search {
-    flex: 0 1 clamp(132px, 21vw, 220px) !important;
-    min-width: 112px !important;
+    flex: 0 1 clamp(116px, 20vw, 220px) !important;
+    min-width: 96px !important;
     max-width: 220px !important;
     width: auto !important;
     margin: 0 !important;
@@ -9115,12 +9126,6 @@ body.nostr-publish-dialog-open {
   nav.site-nav .nav-compose,
   nav.site-nav .nav-username {
     flex: 0 0 auto !important;
-  }
-}
-
-@media (max-width: 1100px) {
-  nav.site-nav .nav-site-signature {
-    display: none !important;
   }
 }
 
@@ -9163,48 +9168,6 @@ body.nostr-publish-dialog-open {
   }
 }
 
-/* Final mobile nav safety: prevent search/actions from covering center links. */
-@media (max-width: 700px) {
-  nav.site-nav {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-items: center;
-    gap: 0.34rem;
-    padding: 0.22rem 0.42rem;
-  }
-
-  nav.site-nav .nav-center {
-    grid-row: 1;
-    grid-column: 1;
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    white-space: nowrap;
-  }
-
-  nav.site-nav .nav-right {
-    grid-row: 2;
-    grid-column: 1;
-    min-width: 0;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.38rem;
-    flex-wrap: nowrap;
-  }
-
-  nav.site-nav .nav-search {
-    flex: 1 1 12rem !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
-  }
-}
-
 /* Keep clickable active nav pills in lapis button styling even under late hover rules. */
 nav.site-nav .nav-center a.active.allow-active-click,
 nav.site-nav .nav-center a.active.allow-active-click:hover,
@@ -9237,4 +9200,104 @@ nav.site-nav .nav-center a[aria-current="page"]:focus-visible {
   background-color: var(--lapis, var(--accent, #2f5fb8)) !important;
   color: var(--nav-active-text, #fff) !important;
   text-decoration: none !important;
+}
+
+/* Final nav overflow lock: keep site title visible and collapse links into left overflow one-by-one. */
+nav.site-nav {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.45rem !important;
+  overflow: hidden !important;
+}
+
+nav.site-nav > .nav-overflow-menu {
+  order: 0;
+  flex: 0 0 auto !important;
+  margin-right: 0.08rem;
+}
+
+nav.site-nav > .nav-site-signature {
+  order: 1;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+}
+
+nav.site-nav > .nav-center {
+  order: 2;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.45rem !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  scrollbar-width: none !important;
+}
+
+nav.site-nav > .nav-center::-webkit-scrollbar {
+  display: none !important;
+}
+
+nav.site-nav > .nav-center a {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+nav.site-nav > .nav-right {
+  order: 3;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.4rem !important;
+}
+
+nav.site-nav > .nav-right .nav-search {
+  flex: 0 1 clamp(118px, 20vw, 220px) !important;
+  min-width: 92px !important;
+  max-width: 220px !important;
+  margin: 0 !important;
+}
+
+nav.site-nav > .nav-right .nav-search input[type="text"] {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+nav.site-nav > .nav-right .nav-search button,
+nav.site-nav > .nav-right .btn-login,
+nav.site-nav > .nav-right .nav-login-split,
+nav.site-nav > .nav-right .nav-user-menu,
+nav.site-nav > .nav-right .nav-menu-btn,
+nav.site-nav > .nav-right .nav-compose,
+nav.site-nav > .nav-right .nav-username {
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 780px) {
+  nav.site-nav > .nav-right .nav-search {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  nav.site-nav > .nav-right .nav-search input[type="text"] {
+    display: none !important;
+  }
+
+  nav.site-nav > .nav-right .nav-search button {
+    width: 40px !important;
+    min-width: 40px !important;
+    padding: 0 !important;
+    border-left: 1px solid var(--nav-border, var(--border));
+    border-radius: 20px !important;
+  }
 }

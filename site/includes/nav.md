@@ -52,11 +52,6 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
-<div class="nav-center">
-<a href="/" data-page="blog">Blog</a>
-</div>
-<div class="nav-right">
 <div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
   <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -68,6 +63,11 @@
   </button>
   <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
 </div>
+<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
+<div class="nav-center">
+<a href="/" data-page="blog">Blog</a>
+</div>
+<div class="nav-right">
 <form class="nav-search" method="get" action="/search">
 <input type="text" name="q" placeholder="Search..." />
 <button type="submit" aria-label="Search">
