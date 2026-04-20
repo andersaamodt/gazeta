@@ -3,6 +3,7 @@ set -eu
 
 STONR_REPO_URL=${STONR_REPO_URL:-https://github.com/andersaamodt/stonr.git}
 STONR_COMMIT=${STONR_COMMIT:-189bb48f3c0e38e20b432e06f4fac3b3fb24f825}
+CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -100,7 +101,7 @@ git clone "$STONR_REPO_URL" "$tmp_dir/stonr"
 (
   cd "$tmp_dir/stonr"
   git checkout "$STONR_COMMIT"
-  cargo build --release -p stonr
+  cargo build --release -j "$CARGO_BUILD_JOBS" -p stonr
   run_root install -m 0755 -o root -g root "target/release/stonr" /usr/local/bin/stonr
 )
 
