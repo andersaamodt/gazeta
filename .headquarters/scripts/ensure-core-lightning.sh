@@ -89,6 +89,7 @@ run_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
   jq \
   libffi-dev \
   libsodium-dev \
+  libssl-dev \
   libsqlite3-dev \
   libtool \
   lowdown \
