@@ -2,7 +2,7 @@
 set -eu
 
 STONR_REPO_URL=${STONR_REPO_URL:-https://github.com/andersaamodt/stonr.git}
-STONR_COMMIT=${STONR_COMMIT:-b020dc1e1b1799910f329f531b60a5d2b714ea41}
+STONR_COMMIT=${STONR_COMMIT:-189bb48f3c0e38e20b432e06f4fac3b3fb24f825}
 
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
