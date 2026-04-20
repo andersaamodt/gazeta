@@ -195,7 +195,7 @@ title: ""
 <span class="field-unit">sats</span>
 </div>
 </div>
-<p class="muted">Public zap buttons use your site signer pubkey and this Lightning address. If you want outside Nostr clients to discover the same address automatically, publish a matching <code>lud16</code> value on your contact page.</p>
+<p class="muted">Public zap buttons use your site signer pubkey and this Lightning address. Your contact page mirrors this as <code>lud16</code> automatically; publish the Contact page after changing it so outside Nostr clients pick up the update.</p>
 </section>
 
 <section class="sub-card">

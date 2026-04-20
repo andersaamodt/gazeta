@@ -525,6 +525,48 @@
       '</section>';
   }
 
+  function ensureZapHost(layout) {
+    if (!layout || !layout.card) {
+      return null;
+    }
+    var existing = layout.card.querySelector('.post-zap-host');
+    if (existing) {
+      return existing;
+    }
+    var body = layout.card.querySelector('.post-single-body');
+    if (!body || body.parentNode !== layout.card) {
+      return null;
+    }
+    var host = document.createElement('div');
+    host.className = 'post-zap-host';
+    layout.card.insertBefore(host, body);
+    return host;
+  }
+
+  function renderPostZapUi(payload, layout) {
+    if (!window.blogZapUi || typeof window.blogZapUi.render !== 'function') {
+      return;
+    }
+    var host = ensureZapHost(layout);
+    if (!host) {
+      return;
+    }
+    var current = payload && payload.current ? payload.current : null;
+    var nostr = current && current.nostr ? current.nostr : null;
+    window.blogZapUi.render(host, {
+      zapConfig: payload ? payload.zap_config : null,
+      title: current ? current.title : '',
+      target: {
+        label: 'post',
+        title: current ? current.title : '',
+        recipientPubkey: nostr ? nostr.pubkey : '',
+        eventId: nostr ? nostr.id : '',
+        address: nostr ? nostr.address : '',
+        kind: nostr ? nostr.kind : ''
+      }
+    });
+  }
+
   function normalizeInlinePostType(raw) {
     var value = String(raw || '').trim().toLowerCase();
     return value || 'longform';
@@ -1130,6 +1172,7 @@
 
     ensurePostPageMenu(layout);
     refreshPostPageMenuVisibility();
+    renderPostZapUi(payload, layout);
 
     if (payload.current.nostr && !document.querySelector('.post-nostr-proof')) {
       currentNostrAddress = payload.current.nostr.address || '';

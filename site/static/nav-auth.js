@@ -1981,6 +1981,99 @@
     return Promise.reject(new Error('Fresh signer approval is required. Use Login or the phone signer flow first.'));
   }
 
+  function sharedSignerUnavailableMessage() {
+    return 'No Nostr signer detected. Use a browser signer or pair a phone signer from Sign In.';
+  }
+
+  function resolveSharedNostrSigner(opts) {
+    var options = opts && typeof opts === 'object' ? opts : {};
+    var silent = !!options.silent;
+
+    if (typeof window.nostr !== 'undefined' && window.nostr && typeof window.nostr.signEvent === 'function') {
+      var browserSigner = getBrowserSigner();
+      return Promise.resolve({
+        method: 'browser',
+        signEvent: function (template) {
+          return Promise.resolve(browserSigner.signEvent(template));
+        },
+        getPublicKey: function () {
+          if (typeof browserSigner.getPublicKey === 'function') {
+            return Promise.resolve(browserSigner.getPublicKey()).then(function (value) {
+              return normalizePubkeyHex(value);
+            });
+          }
+          return Promise.resolve(normalizePubkeyHex(localStorage.getItem('last_auth_pubkey') || ''));
+        }
+      });
+    }
+
+    if (!hasNostrTools()) {
+      if (silent) {
+        return Promise.resolve(null);
+      }
+      return Promise.reject(new Error(sharedSignerUnavailableMessage()));
+    }
+
+    return initNip46Pairing().catch(function (err) {
+      if (silent) {
+        return null;
+      }
+      throw err;
+    }).then(function () {
+      var pairedPubkey = normalizePubkeyHex(state.nip46.signerPubkey || '');
+      if (!pairedPubkey) {
+        if (silent) {
+          return null;
+        }
+        throw new Error(sharedSignerUnavailableMessage());
+      }
+      return {
+        method: 'nip46',
+        signEvent: function (template) {
+          return nip46SignEvent(template);
+        },
+        getPublicKey: function () {
+          return Promise.resolve(pairedPubkey);
+        }
+      };
+    });
+  }
+
+  function exposeSharedNostrSigner() {
+    if (window.blogNostrSigner && window.blogNostrSigner.__wizardryShared === true) {
+      return;
+    }
+    window.blogNostrSigner = {
+      __wizardryShared: true,
+      signEvent: function (template) {
+        return resolveSharedNostrSigner().then(function (signer) {
+          return signer.signEvent(template);
+        });
+      },
+      getPublicKey: function () {
+        return resolveSharedNostrSigner().then(function (signer) {
+          return signer.getPublicKey();
+        });
+      },
+      getStatus: function () {
+        return resolveSharedNostrSigner({ silent: true }).then(function (signer) {
+          if (!signer) {
+            return { available: false, method: '', pubkey: '' };
+          }
+          return Promise.resolve(signer.getPublicKey()).then(function (pubkey) {
+            return {
+              available: true,
+              method: String(signer.method || ''),
+              pubkey: normalizePubkeyHex(pubkey || '')
+            };
+          });
+        });
+      }
+    };
+  }
+
+  exposeSharedNostrSigner();
+
   function isAccountAreaPath() {
     var path = String(window.location.pathname || '').replace(/\/+$/, '') || '/';
     return path === '/pages/admin.html' ||

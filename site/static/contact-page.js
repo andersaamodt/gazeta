@@ -1743,6 +1743,42 @@
     return html;
   }
 
+  function managedLightningNoteHtml() {
+    var zapConfig = state.payload && state.payload.zap_config && typeof state.payload.zap_config === 'object'
+      ? state.payload.zap_config
+      : null;
+    if (!isAdmin() || !state.editMode || !zapConfig || !zapConfig.enabled || !zapConfig.lud16) {
+      return '';
+    }
+    return '<p class="contact-managed-lightning-note">Lightning zaps use <code>' + escapeHtml(String(zapConfig.lud16 || '')) + '</code> from Admin &gt; Zaps. Publish this page after changes to sync the profile metadata you share on Nostr.</p>';
+  }
+
+  function renderContactZapUi() {
+    if (!els.content || !window.blogZapUi || typeof window.blogZapUi.render !== 'function') {
+      return;
+    }
+    var host = els.content.querySelector('.contact-zap-host');
+    if (!host) {
+      return;
+    }
+    var canonicalEvent = state.payload && state.payload.canonical_event && typeof state.payload.canonical_event === 'object'
+      ? state.payload.canonical_event
+      : null;
+    var renderState = getRenderState();
+    window.blogZapUi.render(host, {
+      zapConfig: state.payload ? state.payload.zap_config : null,
+      title: String((renderState && renderState.title) || 'this profile'),
+      target: {
+        label: 'profile',
+        title: String((renderState && renderState.title) || 'this profile'),
+        recipientPubkey: canonicalEvent ? canonicalEvent.pubkey : '',
+        eventId: '',
+        address: '',
+        kind: ''
+      }
+    });
+  }
+
   function renderContent() {
     if (!els.content) {
       return;
@@ -1757,7 +1793,7 @@
     }
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    els.content.innerHTML = renderReadOnly(rows, inlineMode) + afterContent + renderSecureChatPanel();
+    els.content.innerHTML = '<div class="contact-zap-host"></div>' + managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent + renderSecureChatPanel();
     if (state.pendingFlipPositions) {
       playRowFlipAnimation(state.pendingFlipPositions);
       state.pendingFlipPositions = null;
@@ -1765,6 +1801,7 @@
     if (inlineMode) {
       focusActiveInlineFieldSoon();
     }
+    renderContactZapUi();
     renderSecureChatThreadState();
   }
 

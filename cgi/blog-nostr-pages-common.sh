@@ -783,6 +783,22 @@ blog_nostr_sign_nip23_event() {
   printf '%s\n' "$event_json"
 }
 
+blog_contact_managed_lud16() {
+  if [ "$(blog_zaps_enabled 2>/dev/null || printf 'false')" != "true" ]; then
+    printf '\n'
+    return 0
+  fi
+  lud16=$(blog_zap_lud16 2>/dev/null || printf '')
+  case "$lud16" in
+    *@*)
+      printf '%s\n' "$(printf '%s' "$lud16" | tr '[:upper:]' '[:lower:]')"
+      ;;
+    *)
+      printf '\n'
+      ;;
+  esac
+}
+
 blog_contact_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   title=$(blog_nostr_page_titleize_slug "$slug")
@@ -808,14 +824,16 @@ blog_contact_normalize_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   raw_json=${2-}
   fallback_title=$(blog_nostr_page_titleize_slug "$slug")
+  site_lud16=$(blog_contact_managed_lud16)
 
   if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
     blog_contact_default_state_json "$slug"
     return 0
   fi
 
-  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg site_lud16 "$site_lud16" '
     def qualifiers: ["preferred","unpreferred","public","primary","secondary","emergency","archive"];
+    def lightning_aliases: ["lightning","lightningaddress","ln","lud16","lnurlp"];
     def norm_extra_format($v):
       (($v // "") | tostring | ascii_downcase) as $f
       | if $f == "html" then "html" else "markdown" end;
@@ -824,23 +842,37 @@ blog_contact_normalize_state_json() {
       | gsub("[^a-z0-9/]+";"")
       | gsub("/+";"/")
       | gsub("^/+|/+$";""));
+    def transport_key($v):
+      (norm_transport($v) | gsub("[^a-z0-9]+";""));
+    def is_lightning_transport($v):
+      (lightning_aliases | index(transport_key($v))) != null;
     def norm_qual($v):
       (($v // "") | tostring | ascii_downcase) as $q
       | if (qualifiers | index($q)) then $q else "" end;
+    def norm_lud16($v):
+      (($v // "") | tostring | gsub("^\\s+|\\s+$";"") | ascii_downcase);
+    def is_lud16($v):
+      ((norm_lud16($v) | test("^[^@[:space:]]+@[^@[:space:]]+$")));
     def parse_content_rows($obj):
       [ ($obj | to_entries[]) as $pair
         | ($pair.key | tostring) as $k
         | select($k != "title" and $k != "description")
         | ($pair.value | tostring) as $v
-        | if ($k | contains("_")) then
+        | if ($k == "lud16") then
+            { transport: "lightning", qualifier: "preferred", value: (norm_lud16($v)) }
+          elif ($k | contains("_")) then
             ($k | split("_")) as $parts
             | ($parts[0] // "") as $base
             | ($parts[1:] | join("_")) as $suffix
-            | if (qualifiers | index(($suffix | ascii_downcase))) then
+            | if is_lightning_transport($base) then
+                { transport: "lightning", qualifier: (if (qualifiers | index(($suffix | ascii_downcase))) then ($suffix | ascii_downcase) else "preferred" end), value: $v }
+              elif (qualifiers | index(($suffix | ascii_downcase))) then
                 { transport: $base, qualifier: ($suffix | ascii_downcase), value: $v }
               else
                 { transport: $k, qualifier: "", value: $v }
               end
+          elif is_lightning_transport($k) then
+            { transport: "lightning", qualifier: "preferred", value: $v }
           else
             { transport: $k, qualifier: "", value: $v }
           end
@@ -851,6 +883,27 @@ blog_contact_normalize_state_json() {
       else {}
      end) as $content_obj
     | (if (.rows | type) == "array" and ((.rows | length) > 0) then .rows else parse_content_rows($content_obj) end) as $rows_raw
+    | (if is_lud16($site_lud16) then norm_lud16($site_lud16) else "" end) as $configured_lud16
+    | ($rows_raw
+      | if type=="array" then . else [] end
+      | map({
+          transport: norm_transport(.transport // ""),
+          value: ((.value // "") | tostring),
+          qualifier: norm_qual(.qualifier // "")
+        })
+      | map(select((.transport | length) > 0 or (.value | length) > 0))
+      | if ($configured_lud16 | length) > 0 then
+          ([ .[] | select((is_lightning_transport(.transport) | not)) ]
+            + [{ transport: "lightning", value: $configured_lud16, qualifier: "preferred" }])
+        else
+          .
+        end
+      ) as $rows
+    | (($rows
+        | map(select((is_lightning_transport(.transport)) and is_lud16(.value)))
+        | map(norm_lud16(.value))
+        | first) // "") as $row_lud16
+    | (if ($configured_lud16 | length) > 0 then $configured_lud16 else $row_lud16 end) as $effective_lud16
     | {
         slug: $slug,
         type: "contact",
@@ -867,24 +920,16 @@ blog_contact_normalize_state_json() {
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
         extras_after_format: "markdown",
-        rows: (
-          $rows_raw
-          | if type=="array" then . else [] end
-          | map({
-              transport: norm_transport(.transport // ""),
-              value: ((.value // "") | tostring),
-              qualifier: norm_qual(.qualifier // "")
-            })
-          | map(select((.transport | length) > 0 or (.value | length) > 0))
-        )
+        rows: $rows
       }
     | .content_json = (
         ({
           title: .title
         }
-        + (if .publish_intro_to_nostr then {description: .description} else {} end))
+        + (if .publish_intro_to_nostr then {description: .description} else {} end)
+        + (if ($effective_lud16 | length) > 0 then {lud16: $effective_lud16} else {} end))
         + (reduce .rows[] as $r ({};
-            if (($r.transport | length) > 0 and ($r.value | length) > 0) then
+            if (($r.transport | length) > 0 and ($r.value | length) > 0 and (is_lightning_transport($r.transport) | not)) then
               . + { (($r.transport + (if ($r.qualifier | length) > 0 then ("_" + $r.qualifier) else "" end))): $r.value }
             else
               .
@@ -923,32 +968,59 @@ blog_contact_state_signature_json() {
 blog_contact_validate_and_enrich_state_json() {
   state_json=${1-}
   strict_publish=${2-false}
+  site_lud16=$(blog_contact_managed_lud16)
   if [ -z "$state_json" ]; then
     printf '{"rows":[],"errors":["Missing contact state"],"warnings":[],"can_publish":false,"content_json":{}}\n'
     return 0
   fi
 
-  printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" '
+  printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" --arg site_lud16 "$site_lud16" '
     def qualifiers: ["preferred","unpreferred","public","primary","secondary","emergency","archive"];
+    def lightning_aliases: ["lightning","lightningaddress","ln","lud16","lnurlp"];
+    def norm_transport($v):
+      (($v // "") | tostring | ascii_downcase
+        | gsub("[^a-z0-9/]+";"")
+        | gsub("/+";"/")
+        | gsub("^/+|/+$";""));
+    def transport_key($v):
+      (norm_transport($v) | gsub("[^a-z0-9]+";""));
+    def is_lightning_transport($v):
+      (lightning_aliases | index(transport_key($v))) != null;
+    def norm_lud16($v):
+      (($v // "") | tostring | gsub("^\\s+|\\s+$";"") | ascii_downcase);
+    def is_lud16($v):
+      ((norm_lud16($v) | test("^[^@[:space:]]+@[^@[:space:]]+$")));
     def key_for($r):
       (($r.transport // "") + (if (($r.qualifier // "") | length) > 0 then ("_" + ($r.qualifier // "")) else "" end));
 
     (.rows // []) as $rows0
+    | (if is_lud16($site_lud16) then norm_lud16($site_lud16) else "" end) as $configured_lud16
     | ($rows0 | if type=="array" then . else [] end
       | map({
-          transport: ((.transport // "") | tostring | ascii_downcase
-            | gsub("[^a-z0-9/]+";"")
-            | gsub("/+";"/")
-            | gsub("^/+|/+$";"")),
+          transport: norm_transport(.transport // ""),
           value: ((.value // "") | tostring),
           qualifier: ((.qualifier // "") | tostring | ascii_downcase)
-        })) as $rows
+        })
+      | if ($configured_lud16 | length) > 0 then
+          ([ .[] | select((is_lightning_transport(.transport) | not)) ]
+            + [{ transport: "lightning", value: $configured_lud16, qualifier: "preferred" }])
+        else
+          .
+        end
+      ) as $rows
+    | (($rows
+        | map(select((is_lightning_transport(.transport)) and is_lud16(.value)))
+        | map(norm_lud16(.value))
+        | first) // "") as $row_lud16
+    | (if ($configured_lud16 | length) > 0 then $configured_lud16 else $row_lud16 end) as $effective_lud16
     | ([ range(0; ($rows|length)) as $i
           | ($rows[$i]) as $r
           | if (($r.qualifier|length) > 0 and ((qualifiers | index($r.qualifier)) == null)) then
               "Row \(($i+1)) has invalid qualifier: \($r.qualifier)"
             elif (($r.transport|length) == 0 and ($r.value|length) > 0) then
               "Row \(($i+1)) is missing transport"
+            elif ((is_lightning_transport($r.transport)) and (is_lud16($r.value) | not)) then
+              "Row \(($i+1)) needs a valid lightning address"
             else empty end
        ]) as $errors0
     | ([ range(0; ($rows|length)) as $i
@@ -958,7 +1030,7 @@ blog_contact_validate_and_enrich_state_json() {
             else empty end
        ]) as $warnings0
     | (reduce $rows[] as $r ({};
-         if (($r.transport|length) > 0 and ($r.value|length) > 0) then
+         if (($r.transport|length) > 0 and ($r.value|length) > 0 and (is_lightning_transport($r.transport) | not)) then
            . + { (key_for($r)): ((. [key_for($r)] // 0) + 1) }
          else . end
       )) as $key_counts
@@ -972,9 +1044,10 @@ blog_contact_validate_and_enrich_state_json() {
           ({
             title: ((.title // "") | tostring)
           }
-          + (if (.publish_intro_to_nostr // false) then { description: ((.description // "") | tostring) } else {} end))
+          + (if (.publish_intro_to_nostr // false) then { description: ((.description // "") | tostring) } else {} end)
+          + (if ($effective_lud16 | length) > 0 then { lud16: $effective_lud16 } else {} end))
           + (reduce $rows[] as $r ({};
-              if (($r.transport|length) > 0 and ($r.value|length) > 0) then
+              if (($r.transport|length) > 0 and ($r.value|length) > 0 and (is_lightning_transport($r.transport) | not)) then
                 . + { (key_for($r)): $r.value }
               else
                 .
