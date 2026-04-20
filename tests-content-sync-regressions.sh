@@ -722,9 +722,13 @@ assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_host"' 'btcpay 
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-btcpay" '"btcpay_url"' 'btcpay cgi runtime emits URL key'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" '"wizardry_update_available"' 'zaps cgi runtime emits wizardry update availability'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" 'Software installation is managed outside the site admin.' 'zaps cgi reports external software management boundary'
-assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'bitcoin=optional' 'server requirements declare Bitcoin as optional installable software'
-assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'lightning=optional' 'server requirements declare Lightning as optional installable software'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'bitcoin=required' 'server requirements declare Bitcoin as required installable software'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'lightning=required' 'server requirements declare Lightning as required installable software'
+assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'stonr=required' 'server requirements declare Stonr as required installable software'
 assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'btcpay=optional' 'server requirements declare BTCPay as optional installable software'
+assert_file_contains "$ROOT_DIR/.headquarters/requirements/bitcoin.conf" 'install_script=.headquarters/scripts/ensure-bitcoin-core.sh' 'site headquarters config wires Bitcoin install script'
+assert_file_contains "$ROOT_DIR/.headquarters/requirements/lightning.conf" 'install_script=.headquarters/scripts/ensure-core-lightning.sh' 'site headquarters config wires Core Lightning install script'
+assert_file_contains "$ROOT_DIR/.headquarters/requirements/stonr.conf" 'install_script=.headquarters/scripts/ensure-stonr.sh' 'site headquarters config wires Stonr install script'
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
 assert_success test -x "$ROOT_DIR/cgi/blog-payments"
 assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
