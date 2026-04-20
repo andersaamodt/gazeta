@@ -5,11 +5,19 @@ STONR_REPO_URL=${STONR_REPO_URL:-https://github.com/andersaamodt/stonr.git}
 STONR_COMMIT=${STONR_COMMIT:-b020dc1e1b1799910f329f531b60a5d2b714ea41}
 
 run_root() {
-  if command -v run_sudo_cmd >/dev/null 2>&1; then
-    run_sudo_cmd "$@"
-  else
+  if [ "$(id -u)" -eq 0 ]; then
     "$@"
+    return 0
   fi
+  if [ -n "${HQ_REMOTE_SUDO_PASSWORD-}" ] && command -v sudo >/dev/null 2>&1; then
+    printf '%s\n' "$HQ_REMOTE_SUDO_PASSWORD" | sudo -S -p '' "$@"
+    return $?
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+    return $?
+  fi
+  "$@"
 }
 
 status_ok() {
