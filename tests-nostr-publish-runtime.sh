@@ -26,6 +26,17 @@ assert_contains() {
   fi
 }
 
+assert_equals() {
+  actual=$1
+  expected=$2
+  label=$3
+  if [ "$actual" = "$expected" ]; then
+    pass
+  else
+    fail "$label (expected: $expected, actual: $actual)"
+  fi
+}
+
 assert_file_exists() {
   path=$1
   label=$2
@@ -270,9 +281,21 @@ tags: ["nostr", "zaps"]
 Hello from a synced authored post.
 EOS
 
+cat > "$SITE_ROOT/site/pages/posts/2026-04-20-dated-example-post.md" <<'EOS'
+---
+title: "Dated Example Post"
+summary: "Dated example summary"
+published_at: "2026-04-20T00:00:00Z"
+visibility: "public"
+post_type: "longform"
+tags: ["nostr", "dated"]
+---
+Hello from a dated authored post.
+EOS
+
 sync_output=$("$ROOT_DIR/cgi/blog-sync-authored-nostr")
 assert_contains "$sync_output" 'contact=ok' 'authored sync publishes contact metadata'
-assert_contains "$sync_output" 'posts_synced=1' 'authored sync processes the local public post'
+assert_contains "$sync_output" 'posts_synced=2' 'authored sync processes local public posts'
 
 contact_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
 contact_content=$(printf '%s\n' "$contact_event" | jq -c 'try (.content | fromjson) catch {}' 2>/dev/null || printf '{}')
@@ -294,6 +317,16 @@ fi
 post_context_output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
 assert_contains "$post_context_output" '"nostr":{"id":"' 'post context falls back to stored authored nostr metadata'
 assert_contains "$post_context_output" '"address":"30023:1111111111111111111111111111111111111111111111111111111111111111:example-post"' 'post context exposes the authored address'
+
+dated_post_record=$(blog_nostr_post_record_for_slug "dated-example-post" 2>/dev/null || printf '')
+assert_contains "$dated_post_record" '"slug":"dated-example-post"' 'dated authored sync uses the canonical public slug'
+
+dated_event_json=$(blog_nostr_build_post_event_json_for_file "$SITE_ROOT/site/pages/posts/2026-04-20-dated-example-post.md" 2>/dev/null || printf '')
+dated_d_tag=$(printf '%s\n' "$dated_event_json" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // ""' 2>/dev/null || printf '')
+assert_equals "$dated_d_tag" 'dated-example-post' 'dated authored events strip the filename date prefix from the d tag'
+
+dated_context_output=$(QUERY_STRING='path=posts/dated-example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
+assert_contains "$dated_context_output" '"address":"30023:1111111111111111111111111111111111111111111111111111111111111111:dated-example-post"' 'dated post context resolves the canonical authored address'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

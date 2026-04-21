@@ -388,6 +388,18 @@ blog_strip_post_date_prefix_from_slug() {
   printf '%s' "$slug" | sed 's/^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//'
 }
 
+blog_canonical_post_slug_from_source() {
+  raw=${1-}
+  [ -n "$raw" ] || return 1
+  slug=$(blog_normalize_post_filename "$raw" 2>/dev/null || printf '')
+  [ -n "$slug" ] || return 1
+  canonical_slug=$(blog_strip_post_date_prefix_from_slug "$slug")
+  if [ -z "$canonical_slug" ]; then
+    canonical_slug=$slug
+  fi
+  printf '%s\n' "$canonical_slug"
+}
+
 blog_public_post_slug_from_rel() {
   rel_no_ext=${1-}
   [ -n "$rel_no_ext" ] || return 1
@@ -3194,10 +3206,10 @@ blog_nostr_sign_post_event() {
   created_at=$(blog_now_epoch)
   d_tag=''
   if [ -n "$post_filename" ]; then
-    d_tag=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
+    d_tag=$(blog_canonical_post_slug_from_source "$post_filename" 2>/dev/null || printf '')
   fi
   if [ -z "$d_tag" ] && [ -n "$source_post_path" ]; then
-    d_tag=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
+    d_tag=$(blog_canonical_post_slug_from_source "$source_post_path" 2>/dev/null || printf '')
   fi
   if [ -z "$d_tag" ]; then
     d_seed=$(blog_slug_seed_text "$title" "$content" "$post_type")
@@ -3743,7 +3755,7 @@ blog_nostr_build_post_event_json_for_file() {
   content=$(blog_read_markdown_body "$file")
   title=$(blog_effective_post_title "$title" "$content" "$post_type")
   source_post_path=${file#"$blog_site_root/site/pages/"}
-  post_filename=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
+  post_filename=$(blog_canonical_post_slug_from_source "$source_post_path" 2>/dev/null || printf '')
 
   blog_nostr_sign_post_event "$title" "$tags_csv" "$summary" "$content" "$published_iso" "$post_type" "$source_post_path" "$post_filename"
 }
@@ -3763,7 +3775,7 @@ blog_nostr_post_existing_event_json_for_file() {
     fi
   fi
 
-  slug=$(blog_normalize_post_filename "$file" 2>/dev/null || printf '')
+  slug=$(blog_canonical_post_slug_from_source "$file" 2>/dev/null || printf '')
   [ -n "$slug" ] || return 1
   record_json=$(blog_nostr_post_record_for_slug "$slug" 2>/dev/null || printf '')
   [ -n "$record_json" ] || return 1
