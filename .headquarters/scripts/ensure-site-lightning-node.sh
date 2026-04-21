@@ -64,6 +64,10 @@ lightning_conf_file() {
   printf '%s/config\n' "$(lightning_root)"
 }
 
+lightning_network_dir() {
+  printf '%s/bitcoin\n' "$(lightning_root)"
+}
+
 service_name() {
   printf 'headquarters-lightningd-%s\n' "$site_user"
 }
@@ -182,6 +186,19 @@ wait_for_rpc() {
   return 1
 }
 
+journal_has_chain_rewind() {
+  command -v journalctl >/dev/null 2>&1 || return 1
+  run_root sh -eu -c '
+journalctl -u "$1" -n 120 --no-pager 2>/dev/null | grep -Fq "bitcoind has gone backwards"
+' sh "$(service_name)"
+}
+
+repair_chain_rewind() {
+  run_root systemctl stop "$(service_name)" >/dev/null 2>&1 || true
+  run_root rm -rf "$(lightning_network_dir)"
+  run_root systemctl start "$(service_name)"
+}
+
 check_status() {
   require_site_context
   lightningd_bin=$(lightningd_binary)
@@ -234,6 +251,11 @@ write_conf_file
 write_service_file
 run_root systemctl daemon-reload
 run_root systemctl enable --now "$(service_name)"
+if ! wait_for_rpc; then
+  if journal_has_chain_rewind; then
+    repair_chain_rewind
+  fi
+fi
 if ! wait_for_rpc; then
   status_bad "Core Lightning did not become ready after provisioning."
   exit 1
