@@ -54,10 +54,11 @@ SITE_NAME=testsite
 SITES_DIR="$TMP_ROOT/sites"
 SITE_ROOT="$SITES_DIR/$SITE_NAME"
 BIN_DIR="$TMP_ROOT/bin"
+APP_CGI_BIN="$SITE_ROOT/app/cgi-bin"
 
-mkdir -p "$SITE_ROOT/site/pages/posts" "$SITES_DIR/.sitedata/$SITE_NAME" "$BIN_DIR"
+mkdir -p "$SITE_ROOT/site/pages/posts" "$SITES_DIR/.sitedata/$SITE_NAME" "$BIN_DIR" "$APP_CGI_BIN"
 
-cat > "$BIN_DIR/config-get" <<'EOS'
+cat > "$APP_CGI_BIN/config-get" <<'EOS'
 #!/bin/sh
 set -eu
 file=${1-}
@@ -67,9 +68,9 @@ line=$(grep -E "^${key}=" "$file" 2>/dev/null | tail -n 1 || true)
 [ -n "$line" ] || exit 1
 printf '%s\n' "${line#*=}"
 EOS
-chmod +x "$BIN_DIR/config-get"
+chmod +x "$APP_CGI_BIN/config-get"
 
-cat > "$BIN_DIR/config-set" <<'EOS'
+cat > "$APP_CGI_BIN/config-set" <<'EOS'
 #!/bin/sh
 set -eu
 file=${1-}
@@ -84,7 +85,7 @@ fi
 printf '%s=%s\n' "$key" "$val" >> "$file.tmp"
 mv "$file.tmp" "$file"
 EOS
-chmod +x "$BIN_DIR/config-set"
+chmod +x "$APP_CGI_BIN/config-set"
 
 cat > "$BIN_DIR/nostril" <<'EOS'
 #!/bin/sh

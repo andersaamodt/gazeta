@@ -94,6 +94,31 @@ BLOG_SESSION_DELEGATION_ID=${BLOG_SESSION_DELEGATION_ID-}
 BLOG_SESSION_AUTH_METHOD=${BLOG_SESSION_AUTH_METHOD-}
 BLOG_SESSION_FORCE_INTERACTIVE=${BLOG_SESSION_FORCE_INTERACTIVE-}
 
+blog_ensure_support_bin_path() {
+  if command -v config-get >/dev/null 2>&1 && command -v config-set >/dev/null 2>&1; then
+    return 0
+  fi
+
+  for candidate_dir in \
+    "$blog_sites_dir/app/cgi-bin" \
+    "$blog_sites_dir/site/cgi-bin" \
+    "$blog_site_root/app/cgi-bin" \
+    "$blog_site_root/site/cgi-bin" \
+    "$HOME/app/cgi-bin" \
+    "$HOME/site/cgi-bin" \
+    "$HOME/.wizardry/spells/.imps/fs"
+  do
+    [ -d "$candidate_dir" ] || continue
+    if [ -x "$candidate_dir/config-get" ] || [ -x "$candidate_dir/config-set" ]; then
+      PATH="$candidate_dir:$PATH"
+      export PATH
+      return 0
+    fi
+  done
+}
+
+blog_ensure_support_bin_path
+
 blog_ensure_posts_mount() {
   pages_dir=$(dirname "$blog_posts_dir")
   mkdir -p "$pages_dir" "$blog_posts_store_dir"
