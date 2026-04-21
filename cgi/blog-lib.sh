@@ -1124,6 +1124,40 @@ blog_zap_lud16() {
   printf '%s\n' "$lud16"
 }
 
+blog_zap_demo_lud16() {
+  site_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+  [ -n "$site_npub" ] || return 1
+  printf '%s@npub.cash\n' "$site_npub"
+}
+
+blog_zap_effective_lud16() {
+  lud16=$(blog_zap_lud16 2>/dev/null || printf '')
+  if [ -n "$lud16" ]; then
+    printf '%s\n' "$(printf '%s' "$lud16" | tr '[:upper:]' '[:lower:]')"
+    return 0
+  fi
+  fallback=$(blog_zap_demo_lud16 2>/dev/null || printf '')
+  if [ -n "$fallback" ]; then
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  printf '\n'
+}
+
+blog_zap_lud16_source() {
+  lud16=$(blog_zap_lud16 2>/dev/null || printf '')
+  if [ -n "$lud16" ]; then
+    printf 'configured\n'
+    return 0
+  fi
+  fallback=$(blog_zap_demo_lud16 2>/dev/null || printf '')
+  if [ -n "$fallback" ]; then
+    printf 'demo\n'
+    return 0
+  fi
+  printf 'unavailable\n'
+}
+
 blog_zap_default_amount_sats() {
   sats=$(config-get "$blog_site_conf" zap_default_amount_sats 2>/dev/null || printf "$blog_zaps_default_amount_sats")
   case "$sats" in
@@ -1137,9 +1171,16 @@ blog_zap_default_amount_sats() {
 
 blog_zaps_config_json() {
   enabled=$(blog_zaps_enabled)
-  lud16=$(blog_zap_lud16)
+  lud16=$(blog_zap_effective_lud16)
+  lud16_source=$(blog_zap_lud16_source)
   amount_sats=$(blog_zap_default_amount_sats)
   relays_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
+  site_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+  if [ -n "$site_npub" ]; then
+    demo_wallet_available=true
+  else
+    demo_wallet_available=false
+  fi
 
   if [ -z "$lud16" ]; then
     enabled=false
@@ -1148,7 +1189,12 @@ blog_zaps_config_json() {
   printf '{'
   printf '"enabled":%s,' "$enabled"
   printf '"lud16":"%s",' "$(blog_json_escape "$lud16")"
+  printf '"lud16_source":"%s",' "$(blog_json_escape "$lud16_source")"
   printf '"default_amount_sats":%s,' "$amount_sats"
+  printf '"demo_wallet_available":%s,' "$demo_wallet_available"
+  if [ -n "$site_npub" ]; then
+    printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$site_npub")"
+  fi
   printf '"relays":%s' "$relays_json"
   printf '}\n'
 }
@@ -2582,6 +2628,126 @@ blog_nostr_secret_key() {
     return 1
   fi
   printf '%s\n' "$secret"
+}
+
+blog_validate_nostr_npub() {
+  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
+  case "$value" in
+    npub1*) printf '%s\n' "$value" ;;
+    *) return 1 ;;
+  esac
+}
+
+blog_nostr_pubkey_to_npub() {
+  pubkey=$(blog_validate_nostr_pubkey "${1-}" 2>/dev/null || printf '')
+  [ -n "$pubkey" ] || return 1
+
+  if command -v nak >/dev/null 2>&1; then
+    encoded=$(nak encode npub "$pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
+    encoded=$(blog_validate_nostr_npub "$encoded" 2>/dev/null || printf '')
+    if [ -n "$encoded" ]; then
+      printf '%s\n' "$encoded"
+      return 0
+    fi
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    encoded=$(python3 - "$pubkey" <<'PY' 2>/dev/null
+import sys
+
+alphabet = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+
+def bech32_polymod(values):
+    chk = 1
+    for value in values:
+        top = chk >> 25
+        chk = ((chk & 0x1FFFFFF) << 5) ^ value
+        for i, gen in enumerate(generator):
+            if (top >> i) & 1:
+                chk ^= gen
+    return chk
+
+def hrp_expand(hrp):
+    return [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp]
+
+def create_checksum(hrp, data):
+    values = hrp_expand(hrp) + data + [0, 0, 0, 0, 0, 0]
+    polymod = bech32_polymod(values) ^ 1
+    return [(polymod >> (5 * (5 - i))) & 31 for i in range(6)]
+
+def convertbits(data, from_bits, to_bits, pad=True):
+    acc = 0
+    bits = 0
+    out = []
+    maxv = (1 << to_bits) - 1
+    for value in data:
+        acc = (acc << from_bits) | value
+        bits += from_bits
+        while bits >= to_bits:
+            bits -= to_bits
+            out.append((acc >> bits) & maxv)
+    if pad and bits:
+        out.append((acc << (to_bits - bits)) & maxv)
+    return out
+
+pubkey = sys.argv[1].strip().lower()
+if len(pubkey) != 64 or any(ch not in "0123456789abcdef" for ch in pubkey):
+    raise SystemExit(1)
+words = convertbits(bytes.fromhex(pubkey), 8, 5, True)
+checksum = create_checksum("npub", words)
+print("npub1" + "".join(alphabet[v] for v in words + checksum))
+PY
+)
+    encoded=$(blog_validate_nostr_npub "$encoded" 2>/dev/null || printf '')
+    if [ -n "$encoded" ]; then
+      printf '%s\n' "$encoded"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+blog_nostr_site_npub() {
+  cache_file="$blog_nostr_state_dir/site_npub"
+  if [ -f "$cache_file" ]; then
+    cached=$(sed -n '1p' "$cache_file" 2>/dev/null | tr -d '\r\n[:space:]')
+    cached=$(blog_validate_nostr_npub "$cached" 2>/dev/null || printf '')
+    if [ -n "$cached" ]; then
+      printf '%s\n' "$cached"
+      return 0
+    fi
+  fi
+
+  pubkey=''
+  if [ -f "$blog_nostr_state_dir/site_pubkey" ]; then
+    pubkey=$(sed -n '1p' "$blog_nostr_state_dir/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
+    pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
+  fi
+  if [ -z "$pubkey" ]; then
+    secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+    if [ -n "$secret" ] && command -v nostril >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+      tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-npub.XXXXXX")
+      set +e
+      nostril --sec "$secret" --kind 1 --created-at "$(blog_now_epoch)" --content "" > "$tmp" 2>/dev/null
+      sign_status=$?
+      set -e
+      if [ "$sign_status" -eq 0 ]; then
+        pubkey=$(jq -r '.pubkey // ""' "$tmp" 2>/dev/null || printf '')
+        pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
+      fi
+      rm -f "$tmp"
+    fi
+  fi
+  [ -n "$pubkey" ] || return 1
+
+  encoded=$(blog_nostr_pubkey_to_npub "$pubkey" 2>/dev/null || printf '')
+  [ -n "$encoded" ] || return 1
+  mkdir -p "$blog_nostr_state_dir" >/dev/null 2>&1 || true
+  printf '%s\n' "$encoded" > "$cache_file"
+  chmod 600 "$cache_file" 2>/dev/null || true
+  printf '%s\n' "$encoded"
 }
 
 blog_nostr_relays_args() {

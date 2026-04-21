@@ -147,6 +147,19 @@ else
   zaps_enabled='false'
 fi
 zap_lud16=$(printf '%s' "$zap_lud16" | tr -d '\r\n[:space:]')
+zap_effective_lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
+zap_lud16_source=$(blog_zap_lud16_source 2>/dev/null || printf 'unavailable')
+zap_demo_wallet_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+if [ -n "$zap_demo_wallet_npub" ]; then
+  zap_demo_wallet_available=true
+else
+  zap_demo_wallet_available=false
+fi
+if [ "$zap_lud16_source" = "demo" ]; then
+  zap_demo_wallet_active=true
+else
+  zap_demo_wallet_active=false
+fi
 case "$zap_default_amount_sats" in
   ''|*[!0-9]*) zap_default_amount_sats=$blog_zaps_default_amount_sats ;;
 esac
@@ -178,6 +191,11 @@ printf '"nostr_bridge_enabled":%s,' "$nostr_bridge_enabled"
 printf '"new_users_are_admins":%s,' "$new_users_are_admins"
 printf '"zaps_enabled":%s,' "$zaps_enabled"
 printf '"zap_lud16":"%s",' "$(blog_json_escape "$zap_lud16")"
+printf '"zap_effective_lud16":"%s",' "$(blog_json_escape "$zap_effective_lud16")"
+printf '"zap_lud16_source":"%s",' "$(blog_json_escape "$zap_lud16_source")"
+printf '"zap_demo_wallet_available":%s,' "$zap_demo_wallet_available"
+printf '"zap_demo_wallet_active":%s,' "$zap_demo_wallet_active"
+printf '"zap_demo_wallet_npub":"%s",' "$(blog_json_escape "$zap_demo_wallet_npub")"
 printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"plugins":%s,' "$plugins_json"
 printf '"nostr_authors":%s,' "$nostr_authors"

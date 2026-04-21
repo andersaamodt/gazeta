@@ -109,6 +109,7 @@
     zapsRuntimeLog: '',
     zapsActionInFlight: false,
     zapsActionPending: '',
+    zapWalletInfo: null,
     btcpayRuntimeInfo: null,
     btcpayActionInFlight: false,
     btcpayActionPending: '',
@@ -157,6 +158,7 @@
     pluginBtcpay: document.getElementById('plugin-btcpay'),
     pluginVideoChat: document.getElementById('plugin-video-chat'),
     zapLud16: document.getElementById('zap-lud16'),
+    zapWalletSummary: document.getElementById('zap-wallet-summary'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
     btcpayRuntime: document.getElementById('btcpay-runtime'),
@@ -2972,6 +2974,7 @@
       if (els.zapLud16) {
         els.zapLud16.value = String(data.zap_lud16 || '');
       }
+      renderZapWalletSummary(data);
       if (els.zapDefaultAmountSats) {
         els.zapDefaultAmountSats.value = String(data.zap_default_amount_sats || 210);
       }
@@ -3016,6 +3019,18 @@
       if (shouldRefreshQueue) {
         await loadQueue();
       }
+      renderZapWalletSummary({
+        zap_lud16: els.zapLud16 ? els.zapLud16.value.trim() : '',
+        zap_effective_lud16: (els.zapLud16 && els.zapLud16.value.trim())
+          ? els.zapLud16.value.trim()
+          : String((state.zapWalletInfo && state.zapWalletInfo.zap_effective_lud16) || ''),
+        zap_lud16_source: (els.zapLud16 && els.zapLud16.value.trim())
+          ? 'configured'
+          : String((state.zapWalletInfo && state.zapWalletInfo.zap_lud16_source) || ''),
+        zap_demo_wallet_available: !!(state.zapWalletInfo && state.zapWalletInfo.zap_demo_wallet_available),
+        zap_demo_wallet_active: !(els.zapLud16 && els.zapLud16.value.trim()) && !!(state.zapWalletInfo && state.zapWalletInfo.zap_demo_wallet_available),
+        zap_demo_wallet_npub: String((state.zapWalletInfo && state.zapWalletInfo.zap_demo_wallet_npub) || '')
+      });
       applyPageTitleConfig(normalizedSiteTitle, appendSiteTitleToPageTitle);
     } catch (err) {
       setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
@@ -3236,6 +3251,33 @@
     els.navZapsStatus.textContent = label;
     els.navZapsStatus.className = 'admin-nav-status-pill ' + statusClass;
     els.navZapsStatus.setAttribute('aria-label', label);
+  }
+
+  function renderZapWalletSummary(info) {
+    const data = info && typeof info === 'object' ? info : {};
+    state.zapWalletInfo = data;
+    if (!els.zapWalletSummary) {
+      return;
+    }
+    const configured = String(data.zap_lud16 || '').trim();
+    const effective = String(data.zap_effective_lud16 || configured || '').trim();
+    const source = String(data.zap_lud16_source || '').trim().toLowerCase();
+    const npub = String(data.zap_demo_wallet_npub || '').trim();
+    const demoAvailable = !!data.zap_demo_wallet_available;
+    const demoActive = !!data.zap_demo_wallet_active;
+    if (configured && effective) {
+      els.zapWalletSummary.innerHTML = 'Active Lightning Address: <code>' + escapeHtml(effective) + '</code>. Clear this field to fall back to the demo wallet.';
+      return;
+    }
+    if (effective && (demoActive || source === 'demo')) {
+      els.zapWalletSummary.innerHTML = 'Using the automatic demo wallet <code>' + escapeHtml(effective) + '</code>' + (npub ? (' from site signer <code>' + escapeHtml(npub) + '</code>.') : '.');
+      return;
+    }
+    if (demoAvailable && npub) {
+      els.zapWalletSummary.innerHTML = 'Leave this blank to use the automatic demo wallet <code>' + escapeHtml(npub + '@npub.cash') + '</code> while you test.';
+      return;
+    }
+    els.zapWalletSummary.textContent = 'Complete site Nostr identity provisioning first so the automatic demo wallet can be derived from the site signer.';
   }
 
   function setBtcpayNavStatus(runtime, loading) {

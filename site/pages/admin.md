@@ -188,6 +188,7 @@ title: ""
 <div class="field-row">
 <label for="zap-lud16"><strong>Lightning Address</strong></label>
 <input type="text" id="zap-lud16" inputmode="email" placeholder="you@example.com">
+<p id="zap-wallet-summary" class="muted">Leave this blank to use the site's automatic demo wallet while you test. Enter your real Lightning Address later to replace it.</p>
 </div>
 <div class="field-row">
 <label for="zap-default-amount-sats"><strong>Default Amount</strong></label>
@@ -195,7 +196,7 @@ title: ""
 <span class="field-unit">sats</span>
 </div>
 </div>
-<p class="muted">Public zap buttons use your site signer pubkey and this Lightning address. Your contact page mirrors this as <code>lud16</code> automatically; publish the Contact page after changing it so outside Nostr clients pick up the update.</p>
+<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Your contact page mirrors this as <code>lud16</code> automatically; publish the Contact page after changing it so outside Nostr clients pick up the update.</p>
 </section>
 
 <section class="sub-card">

@@ -79,7 +79,7 @@ blog_init
 config-set "$blog_site_conf" plugin_nostr_support true
 config-set "$blog_site_conf" plugin_zaps true
 config-set "$blog_site_conf" zaps_enabled true
-config-set "$blog_site_conf" zap_lud16 "demo@wallet.example"
+printf '%s\n' 'npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' > "$blog_nostr_state_dir/site_npub"
 
 normalized=$(blog_contact_normalize_state_json "contact" '{
   "slug":"contact",
@@ -89,11 +89,11 @@ normalized=$(blog_contact_normalize_state_json "contact" '{
   ]
 }')
 assert_contains "$normalized" '"transport":"lightning"' 'contact normalize keeps a lightning row when zaps are enabled'
-assert_contains "$normalized" '"value":"demo@wallet.example"' 'contact normalize replaces lightning row with configured lud16'
+assert_contains "$normalized" '"value":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact normalize replaces lightning row with the demo lud16 when no manual address is configured'
 assert_contains "$normalized" '"transport":"email"' 'contact normalize keeps non-lightning rows'
 
 enriched=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
-assert_contains "$enriched" '"lud16":"demo@wallet.example"' 'contact validation publishes managed lud16'
+assert_contains "$enriched" '"lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact validation publishes managed demo lud16'
 assert_contains "$enriched" '"email_public":"hello@example.com"' 'contact validation preserves normal contact rows'
 if printf '%s' "$enriched" | grep -Fq 'lightning_preferred'; then
   fail 'contact validation should not serialize lightning rows as generic contact keys'
@@ -102,7 +102,11 @@ else
 fi
 
 page_payload=$(printf '%s\n' "$normalized" | jq -c '.')
-assert_contains "$page_payload" '"content_json":{"title":"Contact","lud16":"demo@wallet.example"' 'normalized contact state includes managed lud16 in content_json'
+assert_contains "$page_payload" '"content_json":{"title":"Contact","lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'normalized contact state includes managed demo lud16 in content_json'
+assert_contains "$(blog_zap_effective_lud16)" 'npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash' 'effective zap lud16 falls back to the demo wallet'
+
+config-set "$blog_site_conf" zap_lud16 "demo@wallet.example"
+assert_contains "$(blog_zap_effective_lud16)" 'demo@wallet.example' 'configured lud16 overrides the demo wallet'
 
 assert_contains "$(cat "$ROOT_DIR/site/includes/head.html")" '/static/zap-ui.js' 'head includes shared zap UI bundle'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'blogZapUi.render' 'post pages mount shared zap UI'

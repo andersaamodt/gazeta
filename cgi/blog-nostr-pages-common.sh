@@ -788,7 +788,7 @@ blog_contact_managed_lud16() {
     printf '\n'
     return 0
   fi
-  lud16=$(blog_zap_lud16 2>/dev/null || printf '')
+  lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
   case "$lud16" in
     *@*)
       printf '%s\n' "$(printf '%s' "$lud16" | tr '[:upper:]' '[:lower:]')"
