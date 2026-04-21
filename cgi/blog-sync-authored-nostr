@@ -9,14 +9,18 @@ blog_init
 blog_nostr_rebuild_derived >/dev/null 2>&1 || true
 
 check_only=false
+count_only=false
 case "${1-}" in
   --check)
     check_only=true
     ;;
+  --count-public-posts)
+    count_only=true
+    ;;
   '')
     ;;
   *)
-    printf 'usage: %s [--check]\n' "$0" >&2
+    printf 'usage: %s [--check|--count-public-posts]\n' "$0" >&2
     exit 2
     ;;
 esac
@@ -44,6 +48,11 @@ contact_ok=0
 posts_total=$(awk 'NF { count += 1 } END { print count + 0 }' "$posts_tmp" 2>/dev/null || printf '0')
 posts_synced=0
 posts_updated=0
+
+if [ "$count_only" = "true" ]; then
+  printf 'posts_total=%s\n' "$posts_total"
+  exit 0
+fi
 
 if [ "$check_only" = "true" ]; then
   if blog_nostr_contact_metadata_in_sync >/dev/null 2>&1; then

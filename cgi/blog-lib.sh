@@ -3528,17 +3528,38 @@ blog_nostr_clear_projection_posts() {
   done
 }
 
+blog_nostr_authored_post_slugs() {
+  if [ ! -d "$blog_posts_dir" ] && [ ! -L "$blog_posts_dir" ]; then
+    return 0
+  fi
+  find -L "$blog_posts_dir" -type f -name '*.md' 2>/dev/null | sort | while IFS= read -r post_file; do
+    [ -f "$post_file" ] || continue
+    marker=$(blog_read_front_matter_value "$post_file" nostr_projection 2>/dev/null || printf '')
+    if [ "$marker" = "true" ]; then
+      continue
+    fi
+    slug=$(blog_canonical_post_slug_from_source "$post_file" 2>/dev/null || printf '')
+    [ -n "$slug" ] || continue
+    printf '%s\n' "$slug"
+  done | awk 'NF && !seen[$0]++ { print }'
+}
+
 blog_nostr_write_projection_posts() {
   posts_index=${1-}
   [ -f "$posts_index" ] || return 0
 
   blog_nostr_clear_projection_posts
   mkdir -p "$blog_posts_dir"
+  authored_slugs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-authored-slugs.XXXXXX")
+  blog_nostr_authored_post_slugs > "$authored_slugs_tmp" 2>/dev/null || true
 
   jq -c '.[]' "$posts_index" 2>/dev/null | while IFS= read -r row || [ -n "$row" ]; do
     [ -n "$row" ] || continue
     slug=$(printf '%s\n' "$row" | jq -r '.slug // empty' 2>/dev/null || printf '')
     [ -n "$slug" ] || continue
+    if grep -Fqx "$slug" "$authored_slugs_tmp" 2>/dev/null; then
+      continue
+    fi
     title=$(printf '%s\n' "$row" | jq -r '.title // ""' 2>/dev/null || printf '')
     summary=$(printf '%s\n' "$row" | jq -r '.summary // ""' 2>/dev/null || printf '')
     published_at=$(printf '%s\n' "$row" | jq -r '.published_at // ""' 2>/dev/null || printf '')
@@ -3586,6 +3607,7 @@ blog_nostr_write_projection_posts() {
     } > "$out_path"
     chmod 644 "$out_path" 2>/dev/null || true
   done
+  rm -f "$authored_slugs_tmp"
 }
 
 blog_nostr_rebuild_derived() {

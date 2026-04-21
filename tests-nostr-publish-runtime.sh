@@ -303,6 +303,11 @@ sync_output=$("$ROOT_DIR/cgi/blog-sync-authored-nostr")
 assert_contains "$sync_output" 'contact=ok' 'authored sync publishes contact metadata'
 assert_contains "$sync_output" 'posts_synced=2' 'authored sync processes local public posts'
 
+count_output=$("$ROOT_DIR/cgi/blog-sync-authored-nostr" --count-public-posts)
+assert_contains "$count_output" 'posts_total=2' 'authored sync can count local public posts without publishing'
+example_projection=$(blog_read_front_matter_value "$SITE_ROOT/site/pages/posts/example-post.md" nostr_projection 2>/dev/null || printf '')
+assert_equals "$example_projection" '' 'authored sync does not overwrite local posts with projection copies'
+
 contact_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
 contact_content=$(printf '%s\n' "$contact_event" | jq -c 'try (.content | fromjson) catch {}' 2>/dev/null || printf '{}')
 assert_contains "$contact_event" '"kind":0' 'contact sync stores a kind 0 event locally'
