@@ -3253,56 +3253,56 @@ blog_nostr_sign_post_event() {
   event_json=''
 
   if command -v nostril >/dev/null 2>&1; then
-    set -- nostril --sec "$secret" --kind "$event_kind" --created-at "$created_at" --content "$content" --tag "d=$d_tag" --tag "t=blog" --tag "post_type=$post_type"
+    set -- nostril --sec "$secret" --kind "$event_kind" --created-at "$created_at" --content "$content" --tag d "$d_tag" --tag t blog --tag post_type "$post_type"
     if [ -n "$alt_text" ]; then
-      set -- "$@" --tag "alt=$alt_text"
+      set -- "$@" --tag alt "$alt_text"
     fi
     case "$post_type" in
       shortform)
-        set -- "$@" --tag "t=short"
+        set -- "$@" --tag t short
         ;;
       longform)
-        set -- "$@" --tag "title=$title" --tag "published_at=$published_iso"
+        set -- "$@" --tag title "$title" --tag published_at "$published_iso"
         if [ -n "$summary" ]; then
-          set -- "$@" --tag "summary=$summary"
+          set -- "$@" --tag summary "$summary"
         fi
         ;;
       link-share)
         if [ -n "$title" ]; then
-          set -- "$@" --tag "title=$title"
+          set -- "$@" --tag title "$title"
         fi
         if [ -n "$summary" ]; then
-          set -- "$@" --tag "summary=$summary"
+          set -- "$@" --tag summary "$summary"
         fi
         if [ -n "$link_url" ]; then
-          set -- "$@" --tag "r=$link_url"
+          set -- "$@" --tag r "$link_url"
         fi
         if [ -n "$image_url" ]; then
-          set -- "$@" --tag "image=$image_url"
+          set -- "$@" --tag image "$image_url"
         fi
         ;;
       attachment|audio-note|capture-media|upload-media)
         if [ -n "$primary_file_url" ]; then
-          set -- "$@" --tag "url=$primary_file_url"
+          set -- "$@" --tag url "$primary_file_url"
         fi
         if [ -n "$primary_file_mime" ]; then
-          set -- "$@" --tag "m=$primary_file_mime"
+          set -- "$@" --tag m "$primary_file_mime"
         fi
         if [ -n "$primary_file_size" ]; then
-          set -- "$@" --tag "size=$primary_file_size"
+          set -- "$@" --tag size "$primary_file_size"
         fi
         if [ -n "$primary_file_ox" ]; then
-          set -- "$@" --tag "ox=$primary_file_ox"
+          set -- "$@" --tag ox "$primary_file_ox"
         fi
         if [ -n "$primary_file_dim" ]; then
-          set -- "$@" --tag "dim=$primary_file_dim"
+          set -- "$@" --tag dim "$primary_file_dim"
         fi
         if [ -n "$primary_file_duration" ]; then
-          set -- "$@" --tag "duration=$primary_file_duration"
+          set -- "$@" --tag duration "$primary_file_duration"
         fi
         ;;
       go-live)
-        set -- "$@" --tag "streaming=true" --tag "starts=$published_iso" --tag "status=live"
+        set -- "$@" --tag streaming true --tag starts "$published_iso" --tag status live
         ;;
     esac
 
@@ -3313,7 +3313,7 @@ blog_nostr_sign_post_event() {
     done > "$sign_tmp.tags"
     while IFS= read -r tag_line || [ -n "$tag_line" ]; do
       [ -n "$tag_line" ] || continue
-      set -- "$@" --tag "t=$tag_line"
+      set -- "$@" --tag t "$tag_line"
     done < "$sign_tmp.tags"
 
     set +e

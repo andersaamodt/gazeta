@@ -114,11 +114,16 @@ while [ "$#" -gt 0 ]; do
       content=${2-}
       shift 2
       ;;
-    --tag|-t)
-      tag=${2-}
+    --tag)
+      key=${2-}
+      value=${3-}
+      shift 3
+      tags_json=$(printf '%s\n' "$tags_json" | jq -c --arg key "$key" --arg value "$value" '. + [[$key, $value]]')
+      ;;
+    -t)
+      value=${2-}
       shift 2
-      key=$(printf '%s' "$tag" | sed 's/=.*$//')
-      value=$(printf '%s' "$tag" | sed 's/^[^=]*=//')
+      key=t
       tags_json=$(printf '%s\n' "$tags_json" | jq -c --arg key "$key" --arg value "$value" '. + [[$key, $value]]')
       ;;
     -d)
