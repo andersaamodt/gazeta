@@ -5,11 +5,13 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_read_request_body
 blog_send_json_headers
 config_before=$(cat "$blog_site_conf" 2>/dev/null || printf '')
+zaps_config_changed=false
 
 if ! blog_require_session true true; then
   exit 0
@@ -64,6 +66,12 @@ case "$BLOG_REQUEST_BODY" in
     else
       config-set "$blog_site_conf" site_title "Site"
     fi
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *zaps_enabled=*|*zap_lud16=*|*plugin_zaps=*|*plugin_nostr_support=*)
+    zaps_config_changed=true
     ;;
 esac
 
@@ -223,6 +231,9 @@ fi
 
 config_after=$(cat "$blog_site_conf" 2>/dev/null || printf '')
 if [ "$config_after" != "$config_before" ]; then
+  if [ "$zaps_config_changed" = "true" ] && blog_plugin_enabled "nostr_support"; then
+    blog_nostr_sync_contact_metadata >/dev/null 2>&1 || true
+  fi
   blog_run_build_async >/dev/null 2>&1 || true
 fi
 

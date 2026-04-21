@@ -336,8 +336,8 @@ if [ "$preview_only" = "true" ]; then
   exit 0
 fi
 
-if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
-  blog_json_error "Could not store published event" "store_failed"
+if ! blog_nostr_publish_and_store_event_json "$event_json" >/dev/null 2>&1; then
+  blog_json_error "Could not publish page event to upstream relays" "nostr_publish_failed"
   exit 0
 fi
 

@@ -1092,6 +1092,70 @@ blog_nostr_sign_contact_event() {
   printf '%s\n' "$event_json"
 }
 
+blog_nostr_contact_desired_state_json() {
+  state_json=$(blog_nostr_page_load_draft_state_json "contact" "contact" 2>/dev/null || printf '')
+  if [ -n "$state_json" ] && printf '%s\n' "$state_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
+    blog_contact_normalize_state_json "contact" "$state_json"
+    return 0
+  fi
+
+  canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+  if [ -n "$canonical_event" ]; then
+    blog_contact_state_from_event_json "contact" "$canonical_event"
+    return 0
+  fi
+
+  blog_contact_default_state_json "contact"
+}
+
+blog_nostr_contact_desired_event_json() {
+  desired_state=$(blog_nostr_contact_desired_state_json 2>/dev/null || printf '')
+  [ -n "$desired_state" ] || return 1
+  validation_json=$(blog_contact_validate_and_enrich_state_json "$desired_state" false)
+  can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
+  [ "$can_publish" = "true" ] || return 1
+  content_json=$(printf '%s\n' "$validation_json" | jq -c '.content_json // {}' 2>/dev/null || printf '')
+  [ -n "$content_json" ] || return 1
+  blog_nostr_sign_contact_event "$content_json"
+}
+
+blog_nostr_contact_metadata_in_sync() {
+  desired_event_json=$(blog_nostr_contact_desired_event_json 2>/dev/null || printf '')
+  existing_event_json=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+  [ -n "$desired_event_json" ] || return 1
+  [ -n "$existing_event_json" ] || return 1
+  desired_signature=$(blog_nostr_event_signature_json "$desired_event_json" 2>/dev/null || printf '')
+  existing_signature=$(blog_nostr_event_signature_json "$existing_event_json" 2>/dev/null || printf '')
+  [ -n "$desired_signature" ] || return 1
+  [ -n "$existing_signature" ] || return 1
+  [ "$desired_signature" = "$existing_signature" ]
+}
+
+blog_nostr_sync_contact_metadata() {
+  desired_state=$(blog_nostr_contact_desired_state_json 2>/dev/null || printf '')
+  [ -n "$desired_state" ] || return 1
+  validation_json=$(blog_contact_validate_and_enrich_state_json "$desired_state" false)
+  can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
+  [ "$can_publish" = "true" ] || return 1
+  content_json=$(printf '%s\n' "$validation_json" | jq -c '.content_json // {}' 2>/dev/null || printf '')
+  [ -n "$content_json" ] || return 1
+
+  desired_event_json=$(blog_nostr_sign_contact_event "$content_json" 2>/dev/null || printf '')
+  [ -n "$desired_event_json" ] || return 1
+  existing_event_json=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+  desired_signature=$(blog_nostr_event_signature_json "$desired_event_json" 2>/dev/null || printf '')
+  existing_signature=$(blog_nostr_event_signature_json "$existing_event_json" 2>/dev/null || printf '')
+  event_to_publish=$desired_event_json
+  if [ -n "$existing_signature" ] && [ "$existing_signature" = "$desired_signature" ]; then
+    event_to_publish=$existing_event_json
+  fi
+  if ! blog_nostr_publish_and_store_event_json "$event_to_publish" >/dev/null 2>&1; then
+    return 1
+  fi
+  blog_nostr_page_save_draft_state_json "contact" "contact" "$desired_state"
+  printf '%s\n' "$event_to_publish"
+}
+
 blog_nostr_page_canonical_title() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')

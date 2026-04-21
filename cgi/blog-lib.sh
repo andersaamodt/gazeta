@@ -2764,6 +2764,58 @@ blog_nostr_relays_args() {
   rm -f "$relays_tmp"
 }
 
+blog_nostr_normalize_relay_url() {
+  relay=${1-}
+  relay=$(printf '%s' "$relay" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's#/$##')
+  [ -n "$relay" ] || return 1
+  case "$relay" in
+    ws://*|wss://*)
+      printf '%s\n' "$relay"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+blog_nostr_relay_identity() {
+  relay=$(blog_nostr_normalize_relay_url "${1-}" 2>/dev/null || printf '')
+  [ -n "$relay" ] || return 1
+  printf '%s\n' "${relay#*://}" | tr '[:upper:]' '[:lower:]'
+}
+
+blog_nostr_site_relay_url() {
+  base_url=$(blog_base_url 2>/dev/null || printf '')
+  [ -n "$base_url" ] || return 1
+  relay=$(printf '%s' "$base_url" | sed -e 's#^https://#wss://#' -e 's#^http://#ws://#' -e 's#/$##')
+  blog_nostr_normalize_relay_url "$relay"
+}
+
+blog_nostr_upstream_relays() {
+  upstream_relays_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-upstream-relays.XXXXXX")
+  upstream_seen_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-upstream-seen.XXXXXX")
+  upstream_site_identity=$(blog_nostr_relay_identity "$(blog_nostr_site_relay_url 2>/dev/null || printf '')" 2>/dev/null || printf '')
+  if ! blog_nostr_relays_args > "$upstream_relays_tmp" 2>/dev/null; then
+    rm -f "$upstream_relays_tmp" "$upstream_seen_tmp"
+    return 1
+  fi
+  while IFS= read -r relay || [ -n "$relay" ]; do
+    relay=$(blog_nostr_normalize_relay_url "$relay" 2>/dev/null || printf '')
+    [ -n "$relay" ] || continue
+    upstream_relay_identity=$(blog_nostr_relay_identity "$relay" 2>/dev/null || printf '')
+    [ -n "$upstream_relay_identity" ] || continue
+    if [ -n "$upstream_site_identity" ] && [ "$upstream_relay_identity" = "$upstream_site_identity" ]; then
+      continue
+    fi
+    if grep -Fqx "$upstream_relay_identity" "$upstream_seen_tmp" 2>/dev/null; then
+      continue
+    fi
+    printf '%s\n' "$upstream_relay_identity" >> "$upstream_seen_tmp"
+    printf '%s\n' "$relay"
+  done < "$upstream_relays_tmp"
+  rm -f "$upstream_relays_tmp" "$upstream_seen_tmp"
+}
+
 blog_nostr_verify_event_json() {
   event_json=${1-}
   if [ -z "$event_json" ]; then
@@ -2793,6 +2845,37 @@ blog_nostr_verify_event_json() {
   fi
 
   return 1
+}
+
+blog_nostr_event_signature_json() {
+  event_json=${1-}
+  [ -n "$event_json" ] || return 1
+  printf '%s\n' "$event_json" | jq -c '{
+    kind: (.kind // 0),
+    pubkey: (.pubkey // ""),
+    content: (.content // ""),
+    tags: (.tags // [])
+  }' 2>/dev/null || return 1
+}
+
+blog_nostr_event_file_path() {
+  pubkey=${1-}
+  kind=${2-}
+  event_id=${3-}
+  [ -n "$pubkey" ] || return 1
+  [ -n "$kind" ] || return 1
+  [ -n "$event_id" ] || return 1
+  printf '%s/%s/%s/%s.json\n' "$blog_nostr_events_dir" "$pubkey" "$kind" "$event_id"
+}
+
+blog_nostr_event_json_by_parts() {
+  pubkey=${1-}
+  kind=${2-}
+  event_id=${3-}
+  path=$(blog_nostr_event_file_path "$pubkey" "$kind" "$event_id" 2>/dev/null || printf '')
+  [ -n "$path" ] || return 1
+  [ -f "$path" ] || return 1
+  jq -c '.' "$path" 2>/dev/null || return 1
 }
 
 blog_nostr_verifier_available() {
@@ -2844,6 +2927,83 @@ blog_nostr_store_event_json() {
   mv "$tmp_path" "$event_path"
   chmod 644 "$event_path" 2>/dev/null || true
   printf '%s\n' "$event_path"
+}
+
+blog_nostr_relay_has_event() {
+  relay=$(blog_nostr_normalize_relay_url "${1-}" 2>/dev/null || printf '')
+  event_id=$(printf '%s' "${2-}" | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+  [ -n "$relay" ] || return 1
+  [ -n "$event_id" ] || return 1
+  command -v nak >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  out_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-relay-has-event.XXXXXX")
+  set +e
+  nak req --limit 1 --id "$event_id" "$relay" > "$out_tmp" 2>/dev/null
+  req_status=$?
+  set -e
+  if [ "$req_status" -ne 0 ]; then
+    rm -f "$out_tmp"
+    return 1
+  fi
+  if jq -e --arg id "$event_id" 'select(type=="object" and (.id // "") == $id)' "$out_tmp" >/dev/null 2>&1; then
+    rm -f "$out_tmp"
+    return 0
+  fi
+  rm -f "$out_tmp"
+  return 1
+}
+
+blog_nostr_publish_event_json() {
+  event_json=${1-}
+  [ -n "$event_json" ] || return 1
+  command -v nak >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  event_compact=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+  [ -n "$event_compact" ] || return 1
+  if ! blog_nostr_verify_event_json "$event_compact"; then
+    return 1
+  fi
+  event_id=$(printf '%s\n' "$event_compact" | jq -r '.id // empty' 2>/dev/null || printf '')
+  [ -n "$event_id" ] || return 1
+
+  publish_relays_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-publish-relays.XXXXXX")
+  if ! blog_nostr_upstream_relays > "$publish_relays_tmp" 2>/dev/null; then
+    rm -f "$publish_relays_tmp"
+    return 1
+  fi
+  if [ ! -s "$publish_relays_tmp" ]; then
+    rm -f "$publish_relays_tmp"
+    return 1
+  fi
+
+  success_count=0
+  while IFS= read -r relay || [ -n "$relay" ]; do
+    [ -n "$relay" ] || continue
+    set +e
+    printf '%s\n' "$event_compact" | nak event "$relay" >/dev/null 2>&1
+    publish_status=$?
+    set -e
+    if [ "$publish_status" -eq 0 ] || blog_nostr_relay_has_event "$relay" "$event_id"; then
+      success_count=$((success_count + 1))
+    fi
+  done < "$publish_relays_tmp"
+  rm -f "$publish_relays_tmp"
+
+  if [ "$success_count" -lt 1 ]; then
+    return 1
+  fi
+  printf '%s\n' "$success_count"
+}
+
+blog_nostr_publish_and_store_event_json() {
+  event_json=${1-}
+  [ -n "$event_json" ] || return 1
+  if ! blog_nostr_publish_event_json "$event_json" >/dev/null 2>&1; then
+    return 1
+  fi
+  blog_nostr_store_event_json "$event_json"
 }
 
 blog_nostr_author_allowed() {
@@ -3009,13 +3169,15 @@ blog_nostr_alt_for_post_type() {
 }
 
 blog_nostr_sign_post_event() {
-  # args: title tags_csv summary content published_iso post_type
+  # args: title tags_csv summary content published_iso post_type source_post_path post_filename
   title=$1
   tags_csv=$2
   summary=$3
   content=$4
   published_iso=$5
   post_type=$(blog_normalize_post_type "${6-longform}")
+  source_post_path=${7-}
+  post_filename=${8-}
   if [ "$post_type" = "shortform" ]; then
     title=''
   fi
@@ -3030,8 +3192,17 @@ blog_nostr_sign_post_event() {
   fi
 
   created_at=$(blog_now_epoch)
-  d_seed=$(blog_slug_seed_text "$title" "$content" "$post_type")
-  d_tag=$(blog_slugify "$d_seed")
+  d_tag=''
+  if [ -n "$post_filename" ]; then
+    d_tag=$(blog_normalize_post_filename "$post_filename" 2>/dev/null || printf '')
+  fi
+  if [ -z "$d_tag" ] && [ -n "$source_post_path" ]; then
+    d_tag=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
+  fi
+  if [ -z "$d_tag" ]; then
+    d_seed=$(blog_slug_seed_text "$title" "$content" "$post_type")
+    d_tag=$(blog_slugify "$d_seed")
+  fi
   if [ -z "$d_tag" ]; then
     d_tag="post-$created_at"
   fi
@@ -3260,6 +3431,11 @@ blog_nostr_publish_diagnostic() {
     return 0
   fi
 
+  if ! command -v nak >/dev/null 2>&1; then
+    printf 'nak is not installed. Install the Nostr support tools from Headquarters.\n'
+    return 0
+  fi
+
   if ! command -v nostril >/dev/null 2>&1; then
     printf 'nostril is not installed. Install nostril from the Nostr install menu.\n'
     return 0
@@ -3275,7 +3451,32 @@ blog_nostr_publish_diagnostic() {
     return 0
   fi
 
+  relay_count=$(blog_nostr_upstream_relays 2>/dev/null | awk 'NF { count += 1 } END { print count + 0 }')
+  if [ "${relay_count:-0}" -lt 1 ]; then
+    printf 'No upstream Nostr relays are configured. Add at least one public relay in Admin > Nostr.\n'
+    return 0
+  fi
+
   printf 'signing or policy checks failed (author allowlist, key validity, or event verification).\n'
+}
+
+blog_nostr_mark_content_files_public() {
+  content=${1-}
+  draft_id=${2-}
+  if [ -z "$content" ]; then
+    return 0
+  fi
+  now_iso=$(blog_now_iso)
+  blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
+    [ -n "$file_id" ] || continue
+    record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+    [ -f "$record_path" ] || continue
+    config-set "$record_path" explicit_public true
+    if [ -n "$draft_id" ]; then
+      config-set "$record_path" draft_id ""
+    fi
+    config-set "$record_path" updated_at "$now_iso"
+  done
 }
 
 blog_nostr_clear_projection_posts() {
@@ -3500,6 +3701,121 @@ blog_nostr_post_record_for_event_id() {
     return 1
   fi
   jq -c --arg id "$event_id" '.[] | select(.id == $id) | . ' "$blog_nostr_posts_index" 2>/dev/null | head -n 1
+}
+
+blog_nostr_event_json_from_record() {
+  record_json=${1-}
+  [ -n "$record_json" ] || return 1
+  event_id=$(printf '%s\n' "$record_json" | jq -r '.id // empty' 2>/dev/null || printf '')
+  pubkey=$(printf '%s\n' "$record_json" | jq -r '.pubkey // empty' 2>/dev/null || printf '')
+  kind=$(printf '%s\n' "$record_json" | jq -r '.kind // empty' 2>/dev/null || printf '')
+  [ -n "$event_id" ] || return 1
+  [ -n "$pubkey" ] || return 1
+  [ -n "$kind" ] || return 1
+  blog_nostr_event_json_by_parts "$pubkey" "$kind" "$event_id"
+}
+
+blog_nostr_build_post_event_json_for_file() {
+  file=${1-}
+  [ -f "$file" ] || return 1
+
+  visibility=$(blog_read_front_matter_value "$file" visibility 2>/dev/null || printf 'public')
+  if [ -z "$visibility" ]; then
+    visibility=public
+  fi
+  if [ "$visibility" != "public" ]; then
+    return 1
+  fi
+
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
+  published_iso=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
+  if [ -z "$published_iso" ]; then
+    published_iso=$(blog_now_iso)
+  fi
+  summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+  tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
+  tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+  content=$(blog_read_markdown_body "$file")
+  title=$(blog_effective_post_title "$title" "$content" "$post_type")
+  source_post_path=${file#"$blog_site_root/site/pages/"}
+  post_filename=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
+
+  blog_nostr_sign_post_event "$title" "$tags_csv" "$summary" "$content" "$published_iso" "$post_type" "$source_post_path" "$post_filename"
+}
+
+blog_nostr_post_existing_event_json_for_file() {
+  file=${1-}
+  [ -f "$file" ] || return 1
+
+  event_id=$(blog_read_front_matter_value "$file" nostr_event_id 2>/dev/null || printf '')
+  pubkey=$(blog_read_front_matter_value "$file" nostr_pubkey 2>/dev/null || printf '')
+  kind=$(blog_read_front_matter_value "$file" nostr_kind 2>/dev/null || printf '')
+  if [ -n "$event_id" ] && [ -n "$pubkey" ] && [ -n "$kind" ]; then
+    existing_event_json=$(blog_nostr_event_json_by_parts "$pubkey" "$kind" "$event_id" 2>/dev/null || printf '')
+    if [ -n "$existing_event_json" ]; then
+      printf '%s\n' "$existing_event_json"
+      return 0
+    fi
+  fi
+
+  slug=$(blog_normalize_post_filename "$file" 2>/dev/null || printf '')
+  [ -n "$slug" ] || return 1
+  record_json=$(blog_nostr_post_record_for_slug "$slug" 2>/dev/null || printf '')
+  [ -n "$record_json" ] || return 1
+  blog_nostr_event_json_from_record "$record_json"
+}
+
+blog_nostr_post_markdown_file_in_sync() {
+  file=${1-}
+  desired_event_json=$(blog_nostr_build_post_event_json_for_file "$file" 2>/dev/null || printf '')
+  existing_event_json=$(blog_nostr_post_existing_event_json_for_file "$file" 2>/dev/null || printf '')
+  [ -n "$desired_event_json" ] || return 1
+  [ -n "$existing_event_json" ] || return 1
+  desired_signature=$(blog_nostr_event_signature_json "$desired_event_json" 2>/dev/null || printf '')
+  existing_signature=$(blog_nostr_event_signature_json "$existing_event_json" 2>/dev/null || printf '')
+  [ -n "$desired_signature" ] || return 1
+  [ -n "$existing_signature" ] || return 1
+  [ "$desired_signature" = "$existing_signature" ]
+}
+
+blog_nostr_sync_post_markdown_file() {
+  file=${1-}
+  [ -f "$file" ] || return 1
+
+  visibility=$(blog_read_front_matter_value "$file" visibility 2>/dev/null || printf 'public')
+  if [ -z "$visibility" ]; then
+    visibility=public
+  fi
+  if [ "$visibility" != "public" ]; then
+    return 1
+  fi
+
+  content=$(blog_read_markdown_body "$file")
+  desired_event_json=$(blog_nostr_build_post_event_json_for_file "$file" 2>/dev/null || printf '')
+  [ -n "$desired_event_json" ] || return 1
+  existing_event_json=$(blog_nostr_post_existing_event_json_for_file "$file" 2>/dev/null || printf '')
+  desired_signature=$(blog_nostr_event_signature_json "$desired_event_json" 2>/dev/null || printf '')
+  existing_signature=$(blog_nostr_event_signature_json "$existing_event_json" 2>/dev/null || printf '')
+
+  if [ -n "$existing_signature" ] && [ "$existing_signature" = "$desired_signature" ]; then
+    if ! blog_nostr_publish_event_json "$existing_event_json" >/dev/null 2>&1; then
+      return 1
+    fi
+    blog_nostr_mark_content_files_public "$content" ""
+    printf 'unchanged\n'
+    return 0
+  fi
+
+  if ! blog_nostr_publish_and_store_event_json "$desired_event_json" >/dev/null 2>&1; then
+    return 1
+  fi
+  blog_nostr_mark_content_files_public "$content" ""
+  printf 'updated\n'
 }
 
 blog_list_normalize_slug() {
@@ -3968,7 +4284,7 @@ blog_publish_content_markdown() {
 }
 
 blog_publish_content_nostr() {
-  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
+  # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path post_filename
   title=$1
   tags=$2
   summary=$3
@@ -3978,9 +4294,11 @@ blog_publish_content_nostr() {
   _publish_mode=$7
   _scheduled_at=$8
   _post_type=${9-}
+  source_post_path=${10-}
+  post_filename=${11-}
 
   published_iso=$(blog_now_iso)
-  event_json=$(blog_nostr_sign_post_event "$title" "$tags" "$summary" "$content" "$published_iso" "$_post_type" 2>/dev/null || printf '')
+  event_json=$(blog_nostr_sign_post_event "$title" "$tags" "$summary" "$content" "$published_iso" "$_post_type" "$source_post_path" "$post_filename" 2>/dev/null || printf '')
   if [ -z "$event_json" ]; then
     return 1
   fi
@@ -3999,20 +4317,11 @@ blog_publish_content_nostr() {
     return 1
   fi
 
-  if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
+  if ! blog_nostr_publish_and_store_event_json "$event_json" >/dev/null 2>&1; then
     return 1
   fi
   blog_nostr_rebuild_derived >/dev/null 2>&1 || true
-  blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
-    [ -n "$file_id" ] || continue
-    record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
-    [ -f "$record_path" ] || continue
-    config-set "$record_path" explicit_public true
-    if [ -n "$draft_id" ]; then
-      config-set "$record_path" draft_id ""
-    fi
-    config-set "$record_path" updated_at "$(blog_now_iso)"
-  done
+  blog_nostr_mark_content_files_public "$content" "$draft_id"
 
   slug=$(blog_slugify "$d_tag")
   printf '%s.md\n' "$slug"

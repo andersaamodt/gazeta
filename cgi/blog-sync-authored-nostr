@@ -1,0 +1,99 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+
+check_only=false
+case "${1-}" in
+  --check)
+    check_only=true
+    ;;
+  '')
+    ;;
+  *)
+    printf 'usage: %s [--check]\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-authored-posts.XXXXXX")
+trap 'rm -f "$posts_tmp"' EXIT HUP INT TERM
+
+find -L "$blog_posts_dir" -type f -name '*.md' 2>/dev/null | sort | while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  visibility=$(blog_read_front_matter_value "$file" visibility 2>/dev/null || printf 'public')
+  if [ -z "$visibility" ]; then
+    visibility=public
+  fi
+  if [ "$visibility" != "public" ]; then
+    continue
+  fi
+  projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf '')
+  if [ "$projection" = "true" ]; then
+    continue
+  fi
+  printf '%s\n' "$file"
+done > "$posts_tmp"
+
+contact_ok=0
+posts_total=$(awk 'NF { count += 1 } END { print count + 0 }' "$posts_tmp" 2>/dev/null || printf '0')
+posts_synced=0
+posts_updated=0
+
+if [ "$check_only" = "true" ]; then
+  if blog_nostr_contact_metadata_in_sync >/dev/null 2>&1; then
+    contact_ok=1
+  fi
+else
+  if blog_nostr_sync_contact_metadata >/dev/null 2>&1; then
+    contact_ok=1
+  else
+    printf 'contact=stale\n' >&2
+    exit 1
+  fi
+fi
+
+while IFS= read -r post_file || [ -n "$post_file" ]; do
+  [ -n "$post_file" ] || continue
+  if [ "$check_only" = "true" ]; then
+    if blog_nostr_post_markdown_file_in_sync "$post_file" >/dev/null 2>&1; then
+      posts_synced=$((posts_synced + 1))
+    fi
+    continue
+  fi
+
+  sync_result=$(blog_nostr_sync_post_markdown_file "$post_file" 2>/dev/null || printf '')
+  if [ -z "$sync_result" ]; then
+    printf 'post_sync_failed=%s\n' "$post_file" >&2
+    exit 1
+  fi
+  posts_synced=$((posts_synced + 1))
+  if [ "$sync_result" = "updated" ]; then
+    posts_updated=$((posts_updated + 1))
+  fi
+done < "$posts_tmp"
+
+if [ "$check_only" = "true" ]; then
+  if [ "$contact_ok" -ne 1 ] || [ "$posts_synced" -ne "$posts_total" ]; then
+    printf 'contact=%s\n' "$(if [ "$contact_ok" -eq 1 ]; then printf ok; else printf stale; fi)"
+    printf 'posts_synced=%s\n' "$posts_synced"
+    printf 'posts_total=%s\n' "$posts_total"
+    exit 1
+  fi
+  printf 'contact=ok\n'
+  printf 'posts_synced=%s\n' "$posts_synced"
+  printf 'posts_total=%s\n' "$posts_total"
+  exit 0
+fi
+
+blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+
+printf 'contact=ok\n'
+printf 'posts_synced=%s\n' "$posts_synced"
+printf 'posts_updated=%s\n' "$posts_updated"
+printf 'posts_total=%s\n' "$posts_total"

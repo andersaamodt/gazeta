@@ -196,7 +196,7 @@ title: ""
 <span class="field-unit">sats</span>
 </div>
 </div>
-<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Your contact page mirrors this as <code>lud16</code> automatically; publish the Contact page after changing it so outside Nostr clients pick up the update.</p>
+<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Wallet changes re-sync your public <code>lud16</code> automatically, and publishing the Contact page still updates the rest of the contact content you share on Nostr.</p>
 </section>
 
 <section class="sub-card">

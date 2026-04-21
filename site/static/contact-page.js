@@ -1750,7 +1750,7 @@
     if (!isAdmin() || !state.editMode || !zapConfig || !zapConfig.enabled || !zapConfig.lud16) {
       return '';
     }
-    return '<p class="contact-managed-lightning-note">Lightning zaps use <code>' + escapeHtml(String(zapConfig.lud16 || '')) + '</code> from Admin &gt; Zaps. Publish this page after changes to sync the profile metadata you share on Nostr.</p>';
+    return '<p class="contact-managed-lightning-note">Lightning zaps use <code>' + escapeHtml(String(zapConfig.lud16 || '')) + '</code> from Admin &gt; Zaps. Wallet changes sync your public Nostr profile automatically; publish this page after editing the contact content itself.</p>';
   }
 
   function renderContactZapUi() {

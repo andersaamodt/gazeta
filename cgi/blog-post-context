@@ -70,6 +70,15 @@ post_json() {
   nostr_kind=$(blog_read_front_matter_value "$file" nostr_kind 2>/dev/null || printf '')
   nostr_d=$(blog_read_front_matter_value "$file" nostr_d 2>/dev/null || printf '')
   nostr_uri=$(blog_read_front_matter_value "$file" nostr_uri 2>/dev/null || printf '')
+  if [ -z "$nostr_event_id$nostr_pubkey$nostr_kind$nostr_d$nostr_uri" ] && blog_nostr_bridge_enabled; then
+    existing_nostr_event=$(blog_nostr_post_existing_event_json_for_file "$file" 2>/dev/null || printf '')
+    if [ -n "$existing_nostr_event" ]; then
+      nostr_event_id=$(printf '%s\n' "$existing_nostr_event" | jq -r '.id // empty' 2>/dev/null || printf '')
+      nostr_pubkey=$(printf '%s\n' "$existing_nostr_event" | jq -r '.pubkey // empty' 2>/dev/null || printf '')
+      nostr_kind=$(printf '%s\n' "$existing_nostr_event" | jq -r '.kind // empty' 2>/dev/null || printf '')
+      nostr_d=$(printf '%s\n' "$existing_nostr_event" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // empty' 2>/dev/null || printf '')
+    fi
+  fi
   nostr_address=''
   if [ -n "$nostr_pubkey" ] && [ -n "$nostr_kind" ] && [ -n "$nostr_d" ]; then
     nostr_address=$(blog_nostr_event_address "$nostr_kind" "$nostr_pubkey" "$nostr_d")
