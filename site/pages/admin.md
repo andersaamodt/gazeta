@@ -168,7 +168,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Zaps</h3>
-<p class="muted">Manage site-level zap settings and install Bitcoin or Lightning on this server through Wizardry.</p>
+<p class="muted">Manage site-level zap settings here while BTCPay + CLN provisioning stays in Headquarters.</p>
 </div>
 </div>
 
@@ -188,7 +188,7 @@ title: ""
 <div class="field-row">
 <label for="zap-lud16"><strong>Lightning Address</strong></label>
 <input type="text" id="zap-lud16" inputmode="email" placeholder="you@example.com">
-<p id="zap-wallet-summary" class="muted">Leave this blank to use the site's automatic demo wallet while you test. Enter your real Lightning Address later to replace it.</p>
+<p id="zap-wallet-summary" class="muted">Leave this blank to use the site's automatic demo wallet while you test. Once BTCPay publishes your canonical address, keep that address here unless you intentionally want to override it.</p>
 </div>
 <div class="field-row">
 <label for="zap-default-amount-sats"><strong>Default Amount</strong></label>
@@ -196,7 +196,7 @@ title: ""
 <span class="field-unit">sats</span>
 </div>
 </div>
-<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Wallet changes re-sync your public <code>lud16</code> automatically, and publishing the Contact page still updates the rest of the contact content you share on Nostr.</p>
+<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Keep the BTCPay-backed address here if you want one canonical zap identity for both onsite and offsite readers.</p>
 </section>
 
 <section class="sub-card">
@@ -216,7 +216,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>BTCPay Server</h3>
-<p class="muted">Install and check BTCPay Server runtime on this server through Wizardry.</p>
+<p class="muted">BTCPay + CLN are provisioned in Headquarters. Use this panel to confirm the public host, console URL, and Lightning Address endpoint.</p>
 </div>
 </div>
 

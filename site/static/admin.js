@@ -3236,15 +3236,16 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
-    const wizardryReady = !!info.wizardry_installed;
-    const bitcoinReady = !!info.bitcoin_installed;
-    const lightningReady = !!info.lightning_installed;
-    let label = 'Not Installed';
+    const zapsEnabled = !!info.zaps_enabled;
+    const signerReady = !!info.site_signer_ready;
+    const endpointReady = !!info.zap_endpoint_ready;
+    const activeAddress = String(info.effective_lud16 || '').trim();
+    let label = 'Offline';
     let statusClass = 'is-offline';
-    if (lightningReady) {
+    if (zapsEnabled && signerReady && activeAddress && endpointReady) {
       label = 'Ready';
       statusClass = 'is-connected';
-    } else if (wizardryReady || bitcoinReady) {
+    } else if (signerReady || activeAddress || endpointReady || !!info.btcpay_online) {
       label = 'Partial';
       statusClass = 'is-installed';
     }
@@ -3266,7 +3267,7 @@
     const demoAvailable = !!data.zap_demo_wallet_available;
     const demoActive = !!data.zap_demo_wallet_active;
     if (configured && effective) {
-      els.zapWalletSummary.innerHTML = 'Active Lightning Address: <code>' + escapeHtml(effective) + '</code>. Clear this field to fall back to the demo wallet.';
+      els.zapWalletSummary.innerHTML = 'Active Lightning Address: <code>' + escapeHtml(effective) + '</code>. This is the address used in your site metadata and zap buttons.';
       return;
     }
     if (effective && (demoActive || source === 'demo')) {
@@ -3289,20 +3290,36 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
-    const btcpayInstalled = !!info.btcpay_installed;
-    const btcpayRunning = !!info.btcpay_running;
-    let label = 'Not Installed';
+    const btcpayOnline = !!info.btcpay_online;
+    const endpointReady = !!info.zap_endpoint_ready;
+    const btcpayConfigured = !!info.btcpay_configured;
+    let label = 'Offline';
     let statusClass = 'is-offline';
-    if (btcpayRunning) {
+    if (btcpayOnline && endpointReady) {
+      label = 'Ready';
+      statusClass = 'is-connected';
+    } else if (btcpayOnline) {
       label = 'Online';
       statusClass = 'is-online';
-    } else if (btcpayInstalled) {
-      label = 'Installed';
+    } else if (btcpayConfigured) {
+      label = 'Configured';
       statusClass = 'is-installed';
     }
     els.navBtcpayStatus.textContent = label;
     els.navBtcpayStatus.className = 'admin-nav-status-pill ' + statusClass;
     els.navBtcpayStatus.setAttribute('aria-label', label);
+  }
+
+  function statusValueHtml(ok, okLabel, badLabel) {
+    return '<div class="zaps-runtime-value ' + (ok ? 'is-ok' : 'is-warn') + '">' + escapeHtml(ok ? okLabel : badLabel) + '</div>';
+  }
+
+  function runtimeLinkHtml(url, fallback) {
+    const href = String(url || '').trim();
+    if (!href) {
+      return '<span class="zaps-runtime-value is-warn">' + escapeHtml(fallback || 'Unavailable') + '</span>';
+    }
+    return '<a href="' + escapeAttr(href) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(href) + '</a>';
   }
 
   function setNosterButtonsBusy(isBusy) {
@@ -3603,7 +3620,7 @@
     const info = state.zapsRuntimeInfo && typeof state.zapsRuntimeInfo === 'object'
       ? state.zapsRuntimeInfo
       : {};
-    const canEnable = !!info.bitcoin_installed && !!info.lightning_installed;
+    const canEnable = !!String(info.effective_lud16 || '').trim() || !!info.demo_wallet_available;
     els.zapsEnabled.disabled = !canEnable;
     const row = els.zapsEnabled.closest('.field-row');
     if (row) {
@@ -3613,7 +3630,7 @@
       els.zapsEnabled.removeAttribute('title');
       return;
     }
-    els.zapsEnabled.setAttribute('title', 'Install both Bitcoin and Lightning to enable zaps.');
+    els.zapsEnabled.setAttribute('title', 'Provision a site signer or Lightning Address first.');
   }
 
   function stopZapsPolling() {
@@ -3657,31 +3674,38 @@
     setZapsNavStatus(info);
     const runtimeMessage = typeof message === 'string' ? message : state.zapsRuntimeMessage;
     const runtimeLog = typeof logText === 'string' ? logText : state.zapsRuntimeLog;
-    const showChecking = !!state.zapsRuntimeLoading && !state.zapsRuntimeReady && !state.zapsActionInFlight;
-    const wizardryReady = !!info.wizardry_installed;
-    const bitcoinReady = !!info.bitcoin_installed;
-    const lightningReady = !!info.lightning_installed;
-    const wizardryPath = String(info.wizardry_path || '').trim();
+    const showChecking = !!state.zapsRuntimeLoading && !state.zapsRuntimeReady;
     const checkingValueHtml = '<div class="zaps-runtime-value">Checking... <span class="loading-spinner" aria-hidden="true"></span></div>';
-    const wizardryControl = showChecking
-      ? checkingValueHtml
-      : ('<div class="zaps-runtime-value ' + (wizardryReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(wizardryReady ? (wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') : 'Not installed') + '</div>');
-    const bitcoinControl = showChecking
-      ? checkingValueHtml
-      : ('<div class="zaps-runtime-value ' + (bitcoinReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(bitcoinReady ? 'Installed' : 'Not installed') + '</div>');
-    const lightningControl = showChecking
-      ? checkingValueHtml
-      : ('<div class="zaps-runtime-value ' + (lightningReady ? 'is-ok' : 'is-warn') + '">' + escapeHtml(lightningReady ? 'Installed' : 'Not installed') + '</div>');
+    const signerReady = !!info.site_signer_ready;
+    const zapsEnabled = !!info.zaps_enabled;
+    const endpointReady = !!info.zap_endpoint_ready;
+    const effectiveLud16 = String(info.effective_lud16 || '').trim();
+    const btcpayUrl = String(info.btcpay_url || '').trim();
+    const endpointUrl = String(info.zap_endpoint_url || '').trim();
+    const lud16Source = String(info.lud16_source || '').trim().toLowerCase();
     let html = '';
-    html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
-      + wizardryControl
+    html += '<div class="field-row"><div class="setting-label"><strong>Provisioning</strong></div><div class="zaps-runtime-value">Managed in Headquarters</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Zap feature</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(zapsEnabled, 'Enabled', 'Disabled'))
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Bitcoin</strong></div>'
-      + bitcoinControl
+    html += '<div class="field-row"><div class="setting-label"><strong>Site signer</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(signerReady, 'Ready', 'Missing'))
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Lightning</strong></div>'
-      + lightningControl
+    html += '<div class="field-row"><div class="setting-label"><strong>Active Lightning Address</strong></div>'
+      + '<div class="zaps-runtime-value">' + (effectiveLud16 ? ('<code>' + escapeHtml(effectiveLud16) + '</code>') : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
       + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Address source</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(lud16Source ? lud16Source : 'unavailable')
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Lightning Address endpoint</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(endpointReady, 'Live', 'Pending'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Endpoint URL</strong></div><div class="zaps-runtime-value">'
+      + runtimeLinkHtml(endpointUrl, 'Unavailable')
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>BTCPay console</strong></div><div class="zaps-runtime-value">'
+      + runtimeLinkHtml(btcpayUrl, 'Unavailable')
+      + '</div></div>';
     if (runtimeMessage) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(runtimeMessage)) + (runtimeLog ? '\n\n' + escapeHtml(String(runtimeLog)) : '') + '</pre>';
     } else if (runtimeLog) {
@@ -3717,13 +3741,6 @@
     }
   }
 
-  function setBtcpayButtonsBusy(isBusy) {
-    const cardButtons = els.btcpayRuntime ? Array.from(els.btcpayRuntime.querySelectorAll('button[data-btcpay-action]')) : [];
-    cardButtons.filter(Boolean).forEach(function (button) {
-      button.disabled = !!isBusy;
-    });
-  }
-
   function stopBtcpayPolling() {
     if (state.btcpayPollTimer) {
       clearInterval(state.btcpayPollTimer);
@@ -3748,7 +3765,7 @@
         stopBtcpayPolling();
         return;
       }
-      if (document.visibilityState !== 'visible' || state.btcpayActionInFlight) {
+      if (document.visibilityState !== 'visible') {
         return;
       }
       loadBtcpayRuntime().catch(function () {});
@@ -3762,35 +3779,36 @@
     const info = runtime && typeof runtime === 'object' ? runtime : {};
     state.btcpayRuntimeInfo = info;
     setBtcpayNavStatus(info);
-
-    const wizardryReady = !!info.wizardry_installed;
-    const btcpayReady = !!info.btcpay_installed;
-    const btcpayRunning = !!info.btcpay_running;
-    const wizardryPath = String(info.wizardry_path || '').trim();
+    const btcpayConfigured = !!info.btcpay_configured;
+    const btcpayOnline = !!info.btcpay_online;
     const btcpayHost = String(info.btcpay_host || '').trim();
     const btcpayUrl = String(info.btcpay_url || '').trim();
+    const effectiveLud16 = String(info.effective_lud16 || '').trim();
+    const endpointUrl = String(info.zap_endpoint_url || '').trim();
+    const endpointReady = !!info.zap_endpoint_ready;
 
     let html = '';
-    html += '<div class="field-row"><div class="setting-label"><strong>Wizardry</strong></div>'
-      + (wizardryReady
-        ? ('<div class="zaps-runtime-value is-ok">' + escapeHtml(wizardryPath ? ('Installed to ' + wizardryPath) : 'Installed') + '</div>')
-        : '<div class="zaps-runtime-value is-warn">Not installed</div>')
+    html += '<div class="field-row"><div class="setting-label"><strong>Provisioning</strong></div><div class="zaps-runtime-value">Managed in Headquarters</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Stack</strong></div>'
+      + statusValueHtml(btcpayConfigured, 'Configured', 'Not configured')
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>BTCPay Server</strong></div>'
-      + (btcpayReady
-        ? '<div class="zaps-runtime-value is-ok">Installed</div>'
-        : (state.btcpayActionInFlight && state.btcpayActionPending === 'install_btcpay'
-          ? '<button type="button" class="zaps-runtime-action is-loading" data-btcpay-action="install_btcpay" disabled aria-disabled="true" aria-busy="true"><span class="loading-spinner" aria-hidden="true"></span><span>Installing...</span></button>'
-          : '<button type="button" class="zaps-runtime-action" data-btcpay-action="install_btcpay"' + (state.btcpayActionInFlight ? ' disabled aria-disabled="true"' : '') + '>Install</button>'))
-      + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Process</strong></div>'
-      + '<div class="zaps-runtime-value ' + (btcpayRunning ? 'is-ok' : 'is-warn') + '">' + (btcpayRunning ? 'Running' : 'Stopped') + '</div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Public status</strong></div>'
+      + statusValueHtml(btcpayOnline, 'Online', 'Offline')
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Host</strong></div>'
       + '<div class="zaps-runtime-value">' + (btcpayHost ? escapeHtml(btcpayHost) : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>URL</strong></div>'
-      + '<div class="zaps-runtime-value">' + (btcpayUrl ? ('<a href="' + escapeAttr(btcpayUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(btcpayUrl) + '</a>') : '<span class="zaps-runtime-value is-warn">Unavailable</span>') + '</div>'
+      + '<div class="zaps-runtime-value">' + runtimeLinkHtml(btcpayUrl, 'Unavailable') + '</div>'
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Published zap address</strong></div>'
+      + '<div class="zaps-runtime-value">' + (effectiveLud16 ? ('<code>' + escapeHtml(effectiveLud16) + '</code>') : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Lightning Address endpoint</strong></div>'
+      + statusValueHtml(endpointReady, 'Live', 'Pending')
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Endpoint URL</strong></div>'
+      + '<div class="zaps-runtime-value">' + runtimeLinkHtml(endpointUrl, 'Unavailable') + '</div>'
       + '</div>';
     if (message) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + (logText ? '\n\n' + escapeHtml(String(logText)) : '') + '</pre>';
@@ -3805,7 +3823,6 @@
       return;
     }
     setBtcpayNavStatus(null, true);
-    setBtcpayButtonsBusy(true);
     try {
       const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
       if (!data.success) {
@@ -3818,41 +3835,6 @@
     } catch (err) {
       renderBtcpayRuntime({}, '', '');
       setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
-    } finally {
-      setBtcpayButtonsBusy(false);
-    }
-  }
-
-  async function runBtcpayAction(action) {
-    const picked = String(action || '').trim();
-    if (!picked) {
-      return;
-    }
-    if (picked !== 'install_btcpay' && picked !== 'uninstall_btcpay') {
-      return;
-    }
-    const label = picked === 'install_btcpay' ? 'BTCPay Server installer' : 'BTCPay Server uninstall';
-    if (!window.confirm('Run the ' + label + ' on this server now?')) {
-      return;
-    }
-    state.btcpayActionInFlight = true;
-    state.btcpayActionPending = picked;
-    setBtcpayButtonsBusy(true);
-    renderBtcpayRuntime(state.btcpayRuntimeInfo || {}, '', 'Running ' + label + '...');
-    try {
-      const data = await apiPost('/cgi/blog-manage-btcpay', { action: picked }, true);
-      if (!data.success) {
-        renderBtcpayRuntime(data.runtime || {}, data.log || '', 'BTCPay action failed.');
-        throw new Error(data.error || 'BTCPay action failed');
-      }
-      renderBtcpayRuntime(data.runtime || {}, data.log || '', data.message || '');
-      setOutput(els.outputBtcpay, data.message || 'BTCPay updated.', 'ok');
-    } catch (err) {
-      setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
-    } finally {
-      state.btcpayActionInFlight = false;
-      state.btcpayActionPending = '';
-      setBtcpayButtonsBusy(false);
     }
   }
 
@@ -6610,25 +6592,6 @@
           return;
         }
         queueNosterSettingsAutosave(120);
-      });
-    }
-    if (els.btcpayRuntime) {
-      els.btcpayRuntime.addEventListener('click', function (event) {
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return;
-        }
-        const actionButton = target.closest('button[data-btcpay-action]');
-        if (!actionButton) {
-          return;
-        }
-        const action = String(actionButton.getAttribute('data-btcpay-action') || '').trim();
-        if (!action) {
-          return;
-        }
-        runBtcpayAction(action).catch(function (err) {
-          setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
-        });
       });
     }
     if (els.moderationList) {

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Manage site zap settings runtime and Wizardry-backed Bitcoin/Lightning installs.
+# Report zap readiness for a site whose BTCPay + CLN stack is managed in Headquarters.
 
 set -eu
 
@@ -19,171 +19,153 @@ if ! blog_plugin_enabled "zaps"; then
 fi
 
 action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
-if [ -z "$action" ]; then
-  action=status
-fi
+[ -n "$action" ] || action=status
 
-wizardry_dir=${WIZARDRY_DIR:-${HOME:-}/.wizardry}
-wizardry_install_url=$(config-get "$blog_site_conf" wizardry_install_url 2>/dev/null || printf '')
-[ -n "$wizardry_install_url" ] || wizardry_install_url=${WIZARDRY_INSTALL_URL:-}
-wizardry_repo_url=${WIZARDRY_REMOTE_REPO:-https://github.com/andersaamodt/wizardry.git}
-wizardry_remote_cache_ttl=${WIZARDRY_REMOTE_CACHE_TTL:-900}
-
-find_web_wizardry_bin() {
-  bin=$(command -v web-wizardry 2>/dev/null || printf '')
-  if [ -n "$bin" ] && [ -x "$bin" ]; then
-    printf '%s\n' "$bin"
-    return 0
-  fi
-  for candidate in /usr/local/bin/web-wizardry /opt/homebrew/bin/web-wizardry /usr/bin/web-wizardry /bin/web-wizardry; do
-    if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  return 1
+normalize_host() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  raw=$(printf '%s' "$raw" | sed -e 's#^https\{0,1\}://##' -e 's#/.*$##' -e 's/:[0-9][0-9]*$//')
+  printf '%s\n' "$raw"
 }
 
-resolve_wizardry_dir() {
-  configured=${WIZARDRY_DIR-}
-  if [ -n "$configured" ] && [ -x "$configured/spells/web/build" ]; then
+valid_public_host() {
+  candidate=${1-}
+  [ -n "$candidate" ] || return 1
+  printf '%s' "$candidate" | grep -Eq '^[A-Za-z0-9.-]+$' || return 1
+  printf '%s' "$candidate" | grep -q '\.' || return 1
+  case "$candidate" in
+    localhost|*.local|*..*|.*|*.) return 1 ;;
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 1 ;;
+  esac
+  return 0
+}
+
+configured_btcpay_host() {
+  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
+  configured=$(normalize_host "$configured")
+  if valid_public_host "$configured"; then
     printf '%s\n' "$configured"
     return 0
   fi
-  resolved=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
-  if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
-    printf '%s\n' "$resolved"
+  printf '\n'
+}
+
+derived_btcpay_host() {
+  source_host=$(normalize_host "${HTTP_HOST:-${SERVER_NAME:-}}")
+  if ! valid_public_host "$source_host"; then
+    source_host=$(normalize_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+  fi
+  if ! valid_public_host "$source_host"; then
+    printf '\n'
     return 0
   fi
-  if [ -n "${HOME-}" ] && [ -x "$HOME/.wizardry/spells/web/build" ]; then
-    printf '%s\n' "$HOME/.wizardry"
+  printf 'pay.%s\n' "$source_host"
+}
+
+resolve_btcpay_host() {
+  configured=$(configured_btcpay_host)
+  if [ -n "$configured" ]; then
+    printf '%s\n' "$configured"
     return 0
   fi
-  for candidate in /usr/local/share/wizardry /opt/homebrew/share/wizardry /usr/share/wizardry; do
-    if [ -x "$candidate/spells/web/build" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  web_wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
-  if [ -n "$web_wizardry_bin" ]; then
-    resolved=$(CDPATH= cd -- "$(dirname "$web_wizardry_bin")/../.." 2>/dev/null && pwd -P)
-    if [ -n "$resolved" ] && [ -x "$resolved/spells/web/build" ]; then
-      printf '%s\n' "$resolved"
-      return 0
-    fi
-  fi
-  return 1
-}
-
-refresh_wizardry_runtime() {
-  resolved=$(resolve_wizardry_dir 2>/dev/null || printf '')
-  if [ -n "$resolved" ]; then
-    wizardry_dir=$resolved
-  fi
-  wizardry_bin=$(find_web_wizardry_bin 2>/dev/null || printf '')
-  if [ ! -x "$wizardry_dir/spells/web/build" ] && [ -n "$wizardry_bin" ]; then
-    inferred_dir=$(CDPATH= cd -- "$(dirname "$wizardry_bin")/../.." 2>/dev/null && pwd -P)
-    if [ -n "$inferred_dir" ]; then
-      wizardry_dir=$inferred_dir
-    fi
-  fi
-}
-
-wizardry_installed() {
-  refresh_wizardry_runtime
-  if [ -x "$wizardry_dir/spells/web/build" ]; then
+  derived=$(derived_btcpay_host)
+  if [ -n "$derived" ] && valid_public_host "$derived"; then
+    printf '%s\n' "$derived"
     return 0
   fi
-  [ -n "$wizardry_bin" ]
+  printf '\n'
 }
 
-bitcoin_installed() {
-  refresh_wizardry_runtime
-  if [ -x "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" ]; then
-    wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
-    PATH="$wizardry_path" WIZARDRY_DIR="$wizardry_dir" HOME="${HOME-}" "$wizardry_dir/spells/.arcana/bitcoin/is-bitcoin-installed" >/dev/null 2>&1
-    return $?
+btcpay_url_for_host() {
+  host=${1-}
+  if [ -z "$host" ]; then
+    printf '\n'
+    return 0
   fi
-  command -v bitcoin-cli >/dev/null 2>&1
+  printf 'https://%s\n' "$host"
 }
 
-lightning_installed() {
-  refresh_wizardry_runtime
-  if [ -x "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" ]; then
-    wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
-    PATH="$wizardry_path" WIZARDRY_DIR="$wizardry_dir" HOME="${HOME-}" "$wizardry_dir/spells/.arcana/lightning/is-lightning-installed" >/dev/null 2>&1
-    return $?
-  fi
-  command -v lightning-cli >/dev/null 2>&1
-}
-
-wizardry_git_repo() {
-  refresh_wizardry_runtime
-  command -v git >/dev/null 2>&1 || return 1
-  git -C "$wizardry_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1
-}
-
-wizardry_local_revision() {
-  wizardry_git_repo || return 1
-  git -C "$wizardry_dir" rev-parse HEAD 2>/dev/null
-}
-
-wizardry_remote_cache_file() {
-  printf '%s/zaps-wizardry-remote-main.sha\n' "$blog_state_dir"
-}
-
-wizardry_remote_revision() {
-  command -v git >/dev/null 2>&1 || return 1
-  cache_file=$(wizardry_remote_cache_file)
-  now_epoch=$(date +%s 2>/dev/null || printf '')
-  if [ -n "$now_epoch" ] && [ -f "$cache_file" ]; then
-    cache_mtime=$(stat -f %m "$cache_file" 2>/dev/null || stat -c %Y "$cache_file" 2>/dev/null || printf '')
-    if [ -n "$cache_mtime" ]; then
-      cache_age=$((now_epoch - cache_mtime))
-      if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt "$wizardry_remote_cache_ttl" ]; then
-        sed -n '1p' "$cache_file"
-        return 0
-      fi
-    fi
-  fi
-  remote_sha=$(git ls-remote "$wizardry_repo_url" refs/heads/main 2>/dev/null | awk 'NR == 1 { print $1 }')
-  case "$remote_sha" in
-    ''|*[!0-9a-f]*) return 1 ;;
+bool_json_value() {
+  case "${1-}" in
+    true|1|yes|on|ok) printf 'true' ;;
+    *) printf 'false' ;;
   esac
-  mkdir -p "$blog_state_dir" >/dev/null 2>&1 || true
-  tmp_cache_file="$cache_file.tmp.$$"
-  if printf '%s\n' "$remote_sha" > "$tmp_cache_file" 2>/dev/null; then
-    mv "$tmp_cache_file" "$cache_file" 2>/dev/null || rm -f "$tmp_cache_file"
-  fi
-  printf '%s\n' "$remote_sha"
 }
 
-wizardry_update_available() {
-  local_sha=$(wizardry_local_revision 2>/dev/null || printf '')
-  remote_sha=$(wizardry_remote_revision 2>/dev/null || printf '')
-  [ -n "$local_sha" ] || return 1
-  [ -n "$remote_sha" ] || return 1
-  [ "$local_sha" != "$remote_sha" ]
+http_head_ok() {
+  url=${1-}
+  [ -n "$url" ] || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -fsSI --max-time 8 "$url" >/dev/null 2>&1
 }
 
-bool_json() {
-  if "$@"; then
-    printf 'true'
-  else
-    printf 'false'
+lud16_localpart() {
+  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
+  case "$value" in
+    *@*) printf '%s\n' "${value%@*}" ;;
+    *) return 1 ;;
+  esac
+}
+
+lud16_domain() {
+  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
+  case "$value" in
+    *@*) printf '%s\n' "${value#*@}" | tr '[:upper:]' '[:lower:]' ;;
+    *) return 1 ;;
+  esac
+}
+
+zap_endpoint_url_for_lud16() {
+  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
+  localpart=$(lud16_localpart "$value" 2>/dev/null || printf '')
+  domain=$(lud16_domain "$value" 2>/dev/null || printf '')
+  if [ -z "$localpart" ] || ! valid_public_host "$domain"; then
+    printf '\n'
+    return 0
   fi
+  printf 'https://%s/.well-known/lnurlp/%s\n' "$domain" "$localpart"
+}
+
+zap_endpoint_live() {
+  endpoint_url=${1-}
+  [ -n "$endpoint_url" ] || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -fsS --max-time 8 "$endpoint_url" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"'
 }
 
 runtime_json() {
-  refresh_wizardry_runtime
+  zaps_enabled=$(blog_zaps_enabled 2>/dev/null || printf 'false')
+  configured_lud16=$(blog_zap_lud16 2>/dev/null || printf '')
+  effective_lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
+  lud16_source=$(blog_zap_lud16_source 2>/dev/null || printf 'unavailable')
+  demo_wallet_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+  btcpay_host=$(resolve_btcpay_host)
+  btcpay_url=$(btcpay_url_for_host "$btcpay_host")
+  btcpay_online=false
+  zap_endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")
+  zap_endpoint_ready=false
+  if http_head_ok "$btcpay_url"; then
+    btcpay_online=true
+  fi
+  if zap_endpoint_live "$zap_endpoint_url"; then
+    zap_endpoint_ready=true
+  fi
+
   printf '{'
-  printf '"wizardry_installed":%s,' "$(bool_json wizardry_installed)"
-  printf '"wizardry_path":"%s",' "$(blog_json_escape "$wizardry_dir")"
-  printf '"wizardry_update_available":%s,' "$(bool_json wizardry_update_available)"
-  printf '"bitcoin_installed":%s,' "$(bool_json bitcoin_installed)"
-  printf '"lightning_installed":%s' "$(bool_json lightning_installed)"
-  printf '}'
+  printf '"headquarters_managed":true,'
+  printf '"zaps_enabled":%s,' "$(bool_json_value "$zaps_enabled")"
+  printf '"configured_lud16":"%s",' "$(blog_json_escape "$configured_lud16")"
+  printf '"effective_lud16":"%s",' "$(blog_json_escape "$effective_lud16")"
+  printf '"lud16_source":"%s",' "$(blog_json_escape "$lud16_source")"
+  printf '"demo_wallet_available":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
+  printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$demo_wallet_npub")"
+  printf '"site_signer_ready":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
+  printf '"btcpay_host":"%s",' "$(blog_json_escape "$btcpay_host")"
+  printf '"btcpay_url":"%s",' "$(blog_json_escape "$btcpay_url")"
+  printf '"btcpay_online":%s,' "$(bool_json_value "$btcpay_online")"
+  printf '"zap_endpoint_url":"%s",' "$(blog_json_escape "$zap_endpoint_url")"
+  printf '"zap_endpoint_ready":%s' "$(bool_json_value "$zap_endpoint_ready")"
+  printf '}\n'
 }
 
 emit_success() {
@@ -206,80 +188,13 @@ emit_failure() {
     "$(blog_json_escape "$log_text")"
 }
 
-log_has_sudo_tty_failure() {
-  log_path=${1-}
-  [ -n "$log_path" ] || return 1
-  [ -f "$log_path" ] || return 1
-  if rg -q 'sudo: a terminal is required to read the password|sudo: a password is required' "$log_path" 2>/dev/null; then
-    return 0
-  fi
-  grep -q 'sudo: a terminal is required to read the password' "$log_path" 2>/dev/null && return 0
-  grep -q 'sudo: a password is required' "$log_path" 2>/dev/null
-}
-
-ensure_wizardry() {
-  if wizardry_installed; then
-    return 0
-  fi
-
-  if [ -z "$wizardry_install_url" ]; then
-    printf 'Wizardry install URL is not configured. Set wizardry_install_url in site.conf or WIZARDRY_INSTALL_URL.\n' >&2
-    return 1
-  fi
-
-  tmp_installer=$(mktemp "${TMPDIR:-/tmp}/wizardry-install.XXXXXX")
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$wizardry_install_url" -o "$tmp_installer"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO "$tmp_installer" "$wizardry_install_url"
-  else
-    rm -f "$tmp_installer"
-    printf 'curl or wget is required to bootstrap Wizardry.\n' >&2
-    return 1
-  fi
-
-  sh "$tmp_installer"
-  rm -f "$tmp_installer"
-  refresh_wizardry_runtime
-  wizardry_installed
-}
-
-run_install_spell() {
-  spell_path=$1
-  newline_count=$2
-  log_file=$3
-  wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
-
-  input_file=$(mktemp "${TMPDIR:-/tmp}/blog-zaps-input.XXXXXX")
-  i=0
-  while [ "$i" -lt "$newline_count" ]; do
-    printf '\n' >> "$input_file"
-    i=$((i + 1))
-  done
-
-  if command -v timeout >/dev/null 2>&1; then
-    set +e
-    timeout 1800 sh -c 'PATH="$1" WIZARDRY_DIR="$2" HOME="$3" "$4" < "$5"' sh "$wizardry_path" "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
-    status=$?
-    set -e
-  else
-    set +e
-    sh -c 'PATH="$1" WIZARDRY_DIR="$2" HOME="$3" "$4" < "$5"' sh "$wizardry_path" "$wizardry_dir" "$HOME" "$spell_path" "$input_file" >> "$log_file" 2>&1
-    status=$?
-    set -e
-  fi
-
-  rm -f "$input_file"
-  return "$status"
-}
-
 case "$action" in
   status)
     emit_success "Zap runtime loaded."
     exit 0
     ;;
   install_wizardry|install_bitcoin|install_lightning)
-    emit_failure "Software installation is managed outside the site admin." "managed_externally"
+    emit_failure "Provision BTCPay + CLN and the Lightning Address endpoint from Headquarters." "managed_externally"
     exit 0
     ;;
   *)
