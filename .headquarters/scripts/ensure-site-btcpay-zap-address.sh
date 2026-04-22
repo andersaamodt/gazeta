@@ -50,6 +50,19 @@ print_runtime_fields() {
   else
     printf 'site_hook_installed=false\n'
   fi
+  if [ "$alias_domain" = "$site_domain" ]; then
+    if [ -f "$(server_hook_file)" ]; then
+      printf 'alias_hook_installed=true\n'
+    else
+      printf 'alias_hook_installed=false\n'
+    fi
+  else
+    if [ -f "$(alias_server_hook_file)" ]; then
+      printf 'alias_hook_installed=true\n'
+    else
+      printf 'alias_hook_installed=false\n'
+    fi
+  fi
 }
 
 require_site_context() {
@@ -77,6 +90,18 @@ release_site_conf() {
 
 server_hook_file() {
   printf '/etc/nginx/headquarters-site/%s/server.d/btcpay-zap-address.conf\n' "$site_user"
+}
+
+alias_server_hook_dir() {
+  printf '/etc/nginx/headquarters-domain/%s/server.d\n' "$(zap_alias_domain)"
+}
+
+alias_server_hook_file() {
+  printf '%s/btcpay-zap-address.conf\n' "$(alias_server_hook_dir)"
+}
+
+alias_domain_vhost_file() {
+  printf '/etc/nginx/sites-available/%s\n' "$(zap_alias_domain)"
 }
 
 read_conf_value() {
@@ -211,6 +236,73 @@ EOF_HOOK
   rm -f "$tmp"
 }
 
+write_alias_server_hook() {
+  upstream=$(btcpay_proxy_upstream)
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-zap-alias-hook.XXXXXX")
+  cat > "$tmp" <<EOF_HOOK
+location ^~ /.well-known/lnurlp/ {
+  proxy_http_version 1.1;
+  proxy_set_header Host \$http_host;
+  proxy_set_header X-Forwarded-Proto \$scheme;
+  proxy_set_header X-Real-IP \$remote_addr;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_pass http://$upstream;
+}
+
+location = /.well-known/nostr.json {
+  proxy_http_version 1.1;
+  proxy_set_header Host \$http_host;
+  proxy_set_header X-Forwarded-Proto \$scheme;
+  proxy_set_header X-Real-IP \$remote_addr;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_pass http://$upstream;
+}
+EOF_HOOK
+  run_root install -d -m 755 "$(alias_server_hook_dir)"
+  run_root install -m 0644 -o root -g root "$tmp" "$(alias_server_hook_file)"
+  rm -f "$tmp"
+}
+
+ensure_alias_domain_include() {
+  vhost_file=$(alias_domain_vhost_file)
+  [ -f "$vhost_file" ] || {
+    status_bad "The apex nginx vhost $vhost_file does not exist yet."
+    exit 1
+  }
+  include_line="  include $(alias_server_hook_dir)/*.conf;"
+  if run_root grep -Fq "$include_line" "$vhost_file"; then
+    return 0
+  fi
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-zap-vhost.XXXXXX")
+  run_root awk -v include_line="$include_line" '
+    { lines[NR] = $0 }
+    END {
+      close_idx = 0
+      for (i = NR; i >= 1; i--) {
+        if (lines[i] ~ /^[[:space:]]*}[[:space:]]*$/) {
+          close_idx = i
+          break
+        }
+      }
+      if (close_idx == 0) {
+        exit 1
+      }
+      for (i = 1; i <= NR; i++) {
+        if (i == close_idx) {
+          print include_line
+        }
+        print lines[i]
+      }
+    }
+  ' "$vhost_file" > "$tmp" || {
+    rm -f "$tmp"
+    status_bad "Could not patch $vhost_file with the BTCPay well-known include."
+    exit 1
+  }
+  run_root install -m 0644 -o root -g root "$tmp" "$vhost_file"
+  rm -f "$tmp"
+}
+
 reload_nginx() {
   run_root nginx -t
   run_root systemctl reload nginx 2>/dev/null || run_root service nginx reload 2>/dev/null || true
@@ -245,6 +337,10 @@ check_status() {
   fi
   if [ "$(zap_alias_domain)" = "$site_domain" ] && [ ! -f "$(server_hook_file)" ]; then
     status_bad "The site's nginx well-known hook for BTCPay zaps is missing."
+    return 0
+  fi
+  if [ "$(zap_alias_domain)" != "$site_domain" ] && [ ! -f "$(alias_server_hook_file)" ]; then
+    status_bad "The apex nginx well-known hook for $(zap_alias_domain) is missing."
     return 0
   fi
   if ! btcpay_public_ready; then
@@ -290,6 +386,10 @@ write_conf_value "$(release_site_conf)" zap_lud16 "$(desired_zap_lud16)"
 
 if [ "$(zap_alias_domain)" = "$site_domain" ]; then
   write_server_hook
+  reload_nginx
+else
+  write_alias_server_hook
+  ensure_alias_domain_include
   reload_nginx
 fi
 
