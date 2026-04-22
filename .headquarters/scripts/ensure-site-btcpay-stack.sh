@@ -321,11 +321,9 @@ git reset --hard FETCH_HEAD >/dev/null 2>&1 || true
 
 write_custom_fragment() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-local-proxy-fragment.XXXXXX")
-  cat > "$tmp" <<EOF_FRAGMENT
-services:
-  btcpayserver:
-    ports:
-      - "127.0.0.1:\${REVERSEPROXY_HTTP_PORT:-$(btcpay_http_port)}:49392"
+  cat > "$tmp" <<'EOF_FRAGMENT'
+# Headquarters now drives the local BTCPay port through NOREVERSEPROXY_HTTP_PORT.
+# This file remains as an owned placeholder so the managed checkout stays self-describing.
 EOF_FRAGMENT
   run_root install -d -m 755 "$(dirname "$(btcpay_custom_fragment_file)")"
   run_root install -m 0644 -o root -g root "$tmp" "$(btcpay_custom_fragment_file)"
@@ -503,7 +501,7 @@ ensure_btcpay_https_cert() {
 
 run_btcpay_install() {
   btcpay_host=$(resolve_btcpay_host)
-  additional_fragments='opt-save-storage-s;opt-save-memory;headquarters-local-proxy.custom'
+  additional_fragments='opt-save-storage-s;opt-save-memory'
   exclude_fragments='nginx-https;opt-add-tor'
   input_file=$(mktemp "${TMPDIR:-/tmp}/btcpay-setup-input.XXXXXX")
   i=0
@@ -522,6 +520,7 @@ BTCPAY_HOST=$3 \
 REVERSEPROXY_DEFAULT_HOST=$3 \
 BTCPAY_ROOTPATH=$4 \
 REVERSEPROXY_HTTP_PORT=$5 \
+NOREVERSEPROXY_HTTP_PORT=$5 \
 BTCPAY_BASE_DIR=$6 \
 BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
@@ -544,6 +543,7 @@ BTCPAY_HOST=$3 \
 REVERSEPROXY_DEFAULT_HOST=$3 \
 BTCPAY_ROOTPATH=$4 \
 REVERSEPROXY_HTTP_PORT=$5 \
+NOREVERSEPROXY_HTTP_PORT=$5 \
 BTCPAY_BASE_DIR=$6 \
 BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
