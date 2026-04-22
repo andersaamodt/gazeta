@@ -246,7 +246,7 @@
     if (embedUrl) {
       embedHtml = '<iframe class="checkout-provider-embed" src="' + escapeHtml(embedUrl) + '" title="' + escapeHtml(provider) + ' checkout panel"></iframe>';
     } else if (provider === 'btcpay') {
-      embedHtml = '<p class="checkout-provider-placeholder">BTCPay host is not configured yet. Set <code>btcpay_host</code> in site config or run BTCPay install in admin.</p>';
+      embedHtml = '<p class="checkout-provider-placeholder">BTCPay is not configured yet. Set <code>btcpay_host</code> and, if needed, <code>btcpay_rootpath</code> in site config or finish BTCPay provisioning in Headquarters.</p>';
     } else if (provider === 'paybis') {
       embedHtml = '<p class="checkout-provider-placeholder">Paybis embed is available as a stub until partner credentials are configured.</p>';
     } else {

@@ -199,6 +199,9 @@ assert_contains "$status_out" '"btcpay_host":"pay.blog.example.com"' 'payments s
 assert_contains "$status_out" '"btcpay_url":"https://pay.blog.example.com"' 'payments status emits btcpay url'
 assert_contains "$status_out" '"ramp_host_api_key":' 'payments status includes ramp runtime key'
 assert_contains "$status_out" '"paybis_partner_id":' 'payments status includes paybis runtime key'
+config-set "$blog_site_conf" btcpay_rootpath /btcpay
+status_rootpath_out=$(run_payments_cgi 'action=status')
+assert_contains "$status_rootpath_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'payments status includes btcpay root path'
 
 # 2) Product lookup works for cart bootstrap.
 product_out=$(run_product_cgi 'slug=sample-product')
@@ -233,6 +236,7 @@ assert_contains "$simulate_auth" '"/download/sample-product?token=' 'simulate_pa
 create_out_2=$(run_payments_cgi "action=create_order&payment_method=crypto&provider=btcpay&items_json=$(blog_url_encode "$items_json")")
 order_id_2=$(printf '%s\n' "$create_out_2" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id_2" 'second create_order returns order_id'
+assert_contains "$create_out_2" '"provider_url":"https://pay.blog.example.com/btcpay/invoice?' 'btcpay provider URL respects configured root path'
 assert_contains "$create_out_2" 'amount=45.00' 'btcpay provider URL uses discounted crypto total amount'
 webhook_out=$(run_payments_cgi "action=webhook&order_id=$order_id_2&provider=btcpay&payment_status=paid" POST)
 assert_contains "$webhook_out" '"success":true' 'webhook paid succeeds'

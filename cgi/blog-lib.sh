@@ -119,6 +119,108 @@ blog_ensure_support_bin_path() {
 
 blog_ensure_support_bin_path
 
+blog_normalize_public_host() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  raw=$(printf '%s' "$raw" | sed -e 's#^https\{0,1\}://##' -e 's#/.*$##' -e 's/:[0-9][0-9]*$//')
+  printf '%s\n' "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+}
+
+blog_valid_public_host() {
+  candidate=${1-}
+  [ -n "$candidate" ] || return 1
+  printf '%s' "$candidate" | grep -Eq '^[A-Za-z0-9.-]+$' || return 1
+  printf '%s' "$candidate" | grep -q '\.' || return 1
+  case "$candidate" in
+    localhost|*.local|*..*|.*|*.) return 1 ;;
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 1 ;;
+  esac
+  return 0
+}
+
+blog_normalize_btcpay_rootpath() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  case "$raw" in
+    ''|'/')
+      printf '/\n'
+      return 0
+      ;;
+    *://*)
+      raw=$(printf '%s' "$raw" | sed -e 's#^[A-Za-z][A-Za-z0-9+.-]*://[^/]*##')
+      ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's/[?#].*$//')
+  case "$raw" in
+    '') raw='/' ;;
+    /*) ;;
+    *) raw="/$raw" ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's#//*#/#g' -e 's#/$##')
+  [ -n "$raw" ] || raw='/'
+  printf '%s\n' "$raw"
+}
+
+blog_configured_btcpay_host() {
+  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
+  configured=$(blog_normalize_public_host "$configured")
+  if blog_valid_public_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  printf '\n'
+}
+
+blog_derived_btcpay_host() {
+  source_host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
+  if ! blog_valid_public_host "$source_host"; then
+    source_host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+  fi
+  if ! blog_valid_public_host "$source_host"; then
+    printf '\n'
+    return 0
+  fi
+  printf 'pay.%s\n' "$source_host"
+}
+
+blog_resolve_btcpay_host() {
+  configured=$(blog_configured_btcpay_host)
+  if [ -n "$configured" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  derived=$(blog_derived_btcpay_host)
+  if [ -n "$derived" ] && blog_valid_public_host "$derived"; then
+    printf '%s\n' "$derived"
+    return 0
+  fi
+  printf '\n'
+}
+
+blog_resolve_btcpay_rootpath() {
+  configured=$(config-get "$blog_site_conf" btcpay_rootpath 2>/dev/null || printf '')
+  printf '%s\n' "$(blog_normalize_btcpay_rootpath "$configured")"
+}
+
+blog_btcpay_url_for_host() {
+  host=${1-}
+  rootpath=${2-/}
+  rootpath=$(blog_normalize_btcpay_rootpath "$rootpath")
+  if [ -z "$host" ]; then
+    printf '\n'
+    return 0
+  fi
+  if [ "$rootpath" = "/" ]; then
+    printf 'https://%s\n' "$host"
+    return 0
+  fi
+  printf 'https://%s%s\n' "$host" "$rootpath"
+}
+
+blog_btcpay_url() {
+  printf '%s\n' "$(blog_btcpay_url_for_host "$(blog_resolve_btcpay_host)" "$(blog_resolve_btcpay_rootpath)")"
+}
+
 blog_ensure_posts_mount() {
   pages_dir=$(dirname "$blog_posts_dir")
   mkdir -p "$pages_dir" "$blog_posts_store_dir"

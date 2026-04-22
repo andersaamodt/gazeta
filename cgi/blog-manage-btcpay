@@ -21,70 +21,6 @@ fi
 action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
 [ -n "$action" ] || action=status
 
-normalize_host() {
-  raw=${1-}
-  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
-  raw=$(printf '%s' "$raw" | sed -e 's#^https\{0,1\}://##' -e 's#/.*$##' -e 's/:[0-9][0-9]*$//')
-  printf '%s\n' "$raw"
-}
-
-valid_public_host() {
-  candidate=${1-}
-  [ -n "$candidate" ] || return 1
-  printf '%s' "$candidate" | grep -Eq '^[A-Za-z0-9.-]+$' || return 1
-  printf '%s' "$candidate" | grep -q '\.' || return 1
-  case "$candidate" in
-    localhost|*.local|*..*|.*|*.) return 1 ;;
-    [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 1 ;;
-  esac
-  return 0
-}
-
-configured_btcpay_host() {
-  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
-  configured=$(normalize_host "$configured")
-  if valid_public_host "$configured"; then
-    printf '%s\n' "$configured"
-    return 0
-  fi
-  printf '\n'
-}
-
-derived_btcpay_host() {
-  source_host=$(normalize_host "${HTTP_HOST:-${SERVER_NAME:-}}")
-  if ! valid_public_host "$source_host"; then
-    source_host=$(normalize_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
-  fi
-  if ! valid_public_host "$source_host"; then
-    printf '\n'
-    return 0
-  fi
-  printf 'pay.%s\n' "$source_host"
-}
-
-resolve_btcpay_host() {
-  configured=$(configured_btcpay_host)
-  if [ -n "$configured" ]; then
-    printf '%s\n' "$configured"
-    return 0
-  fi
-  derived=$(derived_btcpay_host)
-  if [ -n "$derived" ] && valid_public_host "$derived"; then
-    printf '%s\n' "$derived"
-    return 0
-  fi
-  printf '\n'
-}
-
-btcpay_url_for_host() {
-  host=${1-}
-  if [ -z "$host" ]; then
-    printf '\n'
-    return 0
-  fi
-  printf 'https://%s\n' "$host"
-}
-
 bool_json_value() {
   case "${1-}" in
     true|1|yes|on|ok) printf 'true' ;;
@@ -119,7 +55,7 @@ zap_endpoint_url_for_lud16() {
   value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
   localpart=$(lud16_localpart "$value" 2>/dev/null || printf '')
   domain=$(lud16_domain "$value" 2>/dev/null || printf '')
-  if [ -z "$localpart" ] || ! valid_public_host "$domain"; then
+  if [ -z "$localpart" ] || ! blog_valid_public_host "$domain"; then
     printf '\n'
     return 0
   fi
@@ -134,8 +70,8 @@ zap_endpoint_live() {
 }
 
 runtime_json() {
-  btcpay_host=$(resolve_btcpay_host)
-  btcpay_url=$(btcpay_url_for_host "$btcpay_host")
+  btcpay_host=$(blog_resolve_btcpay_host)
+  btcpay_url=$(blog_btcpay_url_for_host "$btcpay_host" "$(blog_resolve_btcpay_rootpath)")
   configured_lud16=$(blog_zap_lud16 2>/dev/null || printf '')
   effective_lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
   zap_endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")

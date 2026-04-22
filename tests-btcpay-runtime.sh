@@ -109,6 +109,13 @@ case "$url" in
     fi
     exit 22
     ;;
+  https://pay.blog.example.com/btcpay|https://pay.blog.example.com/btcpay/)
+    if [ "${MOCK_BTCPAY_ONLINE-0}" = "1" ]; then
+      printf 'HTTP/1.1 200 OK\n'
+      exit 0
+    fi
+    exit 22
+    ;;
   https://blog.example.com/.well-known/lnurlp/zap)
     if [ "${MOCK_ZAP_ENDPOINT_READY-0}" = "1" ]; then
       printf '{"callback":"https://pay.blog.example.com/callback","allowsNostr":true}\n'
@@ -174,7 +181,12 @@ assert_contains "$status_out" '"effective_lud16":"zap@blog.example.com"' 'status
 assert_contains "$status_out" '"zap_endpoint_ready":false' 'status reports Lightning Address endpoint pending'
 assert_contains "$status_out" '"site_signer_ready":true' 'status reports site signer readiness from cached npub'
 
-# 4) status reports live BTCPay + Lightning Address endpoint when the public URLs answer.
+# 4) status appends a configured BTCPay root path to the public URL.
+config-set "$blog_site_conf" btcpay_rootpath /btcpay
+path_out=$(run_btcpay_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+assert_contains "$path_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'status includes BTCPay root path when configured'
+
+# 5) status reports live BTCPay + Lightning Address endpoint when the public URLs answer.
 MOCK_BTCPAY_ONLINE=1
 MOCK_ZAP_ENDPOINT_READY=1
 export MOCK_BTCPAY_ONLINE MOCK_ZAP_ENDPOINT_READY
@@ -183,7 +195,7 @@ assert_contains "$live_out" '"btcpay_online":true' 'status reports BTCPay online
 assert_contains "$live_out" '"zap_endpoint_ready":true' 'status reports Lightning Address endpoint live'
 assert_contains "$live_out" '"zap_endpoint_url":"https://blog.example.com/.well-known/lnurlp/zap"' 'status emits Lightning Address endpoint URL'
 
-# 5) install actions are blocked because provisioning moved to Headquarters.
+# 6) install actions are blocked because provisioning moved to Headquarters.
 managed_out=$(run_btcpay_cgi "action=install_btcpay&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
 assert_contains "$managed_out" '"success":false' 'install action returns failure in site admin'
 assert_contains "$managed_out" '"code":"managed_externally"' 'install action reports external management boundary'

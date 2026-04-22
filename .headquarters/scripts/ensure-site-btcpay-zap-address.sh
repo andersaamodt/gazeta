@@ -32,10 +32,12 @@ status_bad() {
 
 print_runtime_fields() {
   btcpay_host=$(resolve_btcpay_host)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
   alias_domain=$(zap_alias_domain)
   alias_localpart=$(zap_alias_localpart)
   printf 'btcpay_host=%s\n' "$btcpay_host"
-  printf 'btcpay_url=https://%s\n' "$btcpay_host"
+  printf 'btcpay_rootpath=%s\n' "$btcpay_rootpath"
+  printf 'btcpay_url=%s\n' "$(btcpay_public_url)"
   printf 'zap_alias_localpart=%s\n' "$alias_localpart"
   printf 'zap_alias_domain=%s\n' "$alias_domain"
   printf 'zap_lud16=%s@%s\n' "$alias_localpart" "$alias_domain"
@@ -154,6 +156,29 @@ valid_host() {
   return 0
 }
 
+normalize_rootpath() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  case "$raw" in
+    ''|'/')
+      printf '/\n'
+      return 0
+      ;;
+    *://*)
+      raw=$(printf '%s' "$raw" | sed -e 's#^[A-Za-z][A-Za-z0-9+.-]*://[^/]*##')
+      ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's/[?#].*$//')
+  case "$raw" in
+    '') raw='/' ;;
+    /*) ;;
+    *) raw="/$raw" ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's#//*#/#g' -e 's#/$##')
+  [ -n "$raw" ] || raw='/'
+  printf '%s\n' "$raw"
+}
+
 resolve_btcpay_host() {
   configured=$(normalize_host "$(read_conf_value "$(active_site_conf)" btcpay_host)")
   if valid_host "$configured"; then
@@ -166,6 +191,40 @@ resolve_btcpay_host() {
     return 0
   fi
   printf 'pay.%s\n' "$site_domain"
+}
+
+resolve_btcpay_rootpath() {
+  configured=$(normalize_rootpath "$(read_conf_value "$(active_site_conf)" btcpay_rootpath)")
+  if [ "$configured" != "/" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_rootpath "$(read_conf_value "$(release_site_conf)" btcpay_rootpath)")
+  if [ "$configured" != "/" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  printf '/\n'
+}
+
+btcpay_public_url() {
+  btcpay_host=$(resolve_btcpay_host)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
+  if [ "$btcpay_rootpath" = "/" ]; then
+    printf 'https://%s\n' "$btcpay_host"
+    return 0
+  fi
+  printf 'https://%s%s\n' "$btcpay_host" "$btcpay_rootpath"
+}
+
+btcpay_lnurl_proxy_pass() {
+  upstream=$(btcpay_proxy_upstream)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
+  if [ "$btcpay_rootpath" = "/" ]; then
+    printf 'http://%s\n' "$upstream"
+    return 0
+  fi
+  printf 'http://%s%s$request_uri\n' "$upstream" "$btcpay_rootpath"
 }
 
 btcpay_http_port() {
@@ -210,7 +269,7 @@ zap_endpoint_url() {
 }
 
 write_server_hook() {
-  upstream=$(btcpay_proxy_upstream)
+  proxy_target=$(btcpay_lnurl_proxy_pass)
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-zap-hook.XXXXXX")
   cat > "$tmp" <<EOF_HOOK
 location ^~ /.well-known/lnurlp/ {
@@ -219,7 +278,7 @@ location ^~ /.well-known/lnurlp/ {
   proxy_set_header X-Forwarded-Proto \$scheme;
   proxy_set_header X-Real-IP \$remote_addr;
   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_pass http://$upstream;
+  proxy_pass $proxy_target;
 }
 
 location = /.well-known/nostr.json {
@@ -228,7 +287,7 @@ location = /.well-known/nostr.json {
   proxy_set_header X-Forwarded-Proto \$scheme;
   proxy_set_header X-Real-IP \$remote_addr;
   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_pass http://$upstream;
+  proxy_pass $proxy_target;
 }
 EOF_HOOK
   run_root install -d -m 755 "/etc/nginx/headquarters-site/$site_user/server.d"
@@ -237,7 +296,7 @@ EOF_HOOK
 }
 
 write_alias_server_hook() {
-  upstream=$(btcpay_proxy_upstream)
+  proxy_target=$(btcpay_lnurl_proxy_pass)
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-zap-alias-hook.XXXXXX")
   cat > "$tmp" <<EOF_HOOK
 location ^~ /.well-known/lnurlp/ {
@@ -246,7 +305,7 @@ location ^~ /.well-known/lnurlp/ {
   proxy_set_header X-Forwarded-Proto \$scheme;
   proxy_set_header X-Real-IP \$remote_addr;
   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_pass http://$upstream;
+  proxy_pass $proxy_target;
 }
 
 location = /.well-known/nostr.json {
@@ -255,7 +314,7 @@ location = /.well-known/nostr.json {
   proxy_set_header X-Forwarded-Proto \$scheme;
   proxy_set_header X-Real-IP \$remote_addr;
   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_pass http://$upstream;
+  proxy_pass $proxy_target;
 }
 EOF_HOOK
   run_root install -d -m 755 "$(alias_server_hook_dir)"
@@ -309,7 +368,7 @@ reload_nginx() {
 }
 
 btcpay_public_ready() {
-  curl -fsSI "https://$(resolve_btcpay_host)/" >/dev/null 2>&1
+  curl -fsSI "$(btcpay_public_url)/" >/dev/null 2>&1
 }
 
 zap_endpoint_ready() {
@@ -345,14 +404,14 @@ check_status() {
   fi
   if ! btcpay_public_ready; then
     printf 'btcpay_public_ready=false\n'
-    status_bad "BTCPay is not reachable at https://$(resolve_btcpay_host)/."
+    status_bad "BTCPay is not reachable at $(btcpay_public_url)/."
     return 0
   fi
   printf 'btcpay_public_ready=true\n'
   if ! zap_endpoint_ready; then
     printf 'zap_endpoint_ready=false\n'
     if [ "$(zap_alias_domain)" != "$site_domain" ]; then
-      status_bad "BTCPay is online, but $(zap_endpoint_url) is not live yet. Because $(zap_alias_domain) is not the site domain, route /.well-known/lnurlp/* and /.well-known/nostr.json for that domain to https://$(resolve_btcpay_host)/, then in BTCPay create the first admin, create a store, connect the internal Lightning node, and enable the Lightning Address name $(zap_alias_localpart)."
+      status_bad "BTCPay is online, but $(zap_endpoint_url) is not live yet. Because $(zap_alias_domain) is not the site domain, route /.well-known/lnurlp/* and /.well-known/nostr.json for that domain to $(btcpay_public_url)/, then in BTCPay create the first admin, create a store, connect the internal Lightning node, and enable the Lightning Address name $(zap_alias_localpart)."
       return 0
     fi
     status_bad "BTCPay is online, but $(zap_endpoint_url) is not returning a Lightning Address response yet. In BTCPay create the first admin, create a store, connect the internal Lightning node, and enable the Lightning Address name $(zap_alias_localpart)."

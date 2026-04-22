@@ -16,37 +16,11 @@ blog_read_request_body
 blog_send_json_headers
 
 btcpay_host_for_request() {
-  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
-  if [ -n "$configured" ]; then
-    printf '%s\n' "$configured"
-    return 0
-  fi
-  host=${HTTP_HOST-}
-  host=${host%%:*}
-  host=$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')
-  case "$host" in
-    ''|localhost|127.0.0.1|*' '*|*'/'*|*'..'*|*:* )
-      printf '\n'
-      return 0
-      ;;
-  esac
-  case "$host" in
-    *.*)
-      printf 'pay.%s\n' "$host"
-      ;;
-    *)
-      printf '\n'
-      ;;
-  esac
+  blog_resolve_btcpay_host
 }
 
 btcpay_url_for_request() {
-  host=$(btcpay_host_for_request)
-  if [ -z "$host" ]; then
-    printf '\n'
-    return 0
-  fi
-  printf 'https://%s\n' "$host"
+  blog_btcpay_url
 }
 
 emit_runtime_status() {

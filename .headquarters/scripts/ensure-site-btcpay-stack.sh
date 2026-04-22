@@ -32,8 +32,10 @@ status_bad() {
 
 print_runtime_fields() {
   btcpay_host=$(resolve_btcpay_host)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
   printf 'btcpay_host=%s\n' "$btcpay_host"
-  printf 'btcpay_url=https://%s\n' "$btcpay_host"
+  printf 'btcpay_rootpath=%s\n' "$btcpay_rootpath"
+  printf 'btcpay_url=%s\n' "$(btcpay_public_url)"
   printf 'btcpay_http_port=%s\n' "$(btcpay_http_port)"
   printf 'btcpay_proxy_upstream=%s\n' "$(btcpay_proxy_upstream)"
   printf 'lightning_alias=%s\n' "$(lightning_alias)"
@@ -96,6 +98,18 @@ btcpay_vhost_link() {
   printf '/etc/nginx/sites-enabled/headquarters-btcpay-%s.conf\n' "$site_user"
 }
 
+btcpay_domain_hook_dir() {
+  printf '/etc/nginx/headquarters-domain/%s/server.d\n' "$(resolve_btcpay_host)"
+}
+
+btcpay_domain_hook_file() {
+  printf '%s/btcpay-rootpath.conf\n' "$(btcpay_domain_hook_dir)"
+}
+
+btcpay_domain_vhost_file() {
+  printf '/etc/nginx/sites-available/%s\n' "$(resolve_btcpay_host)"
+}
+
 normalize_host() {
   raw=${1-}
   raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
@@ -113,6 +127,29 @@ valid_host() {
     [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 1 ;;
   esac
   return 0
+}
+
+normalize_rootpath() {
+  raw=${1-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
+  case "$raw" in
+    ''|'/')
+      printf '/\n'
+      return 0
+      ;;
+    *://*)
+      raw=$(printf '%s' "$raw" | sed -e 's#^[A-Za-z][A-Za-z0-9+.-]*://[^/]*##')
+      ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's/[?#].*$//')
+  case "$raw" in
+    '') raw='/' ;;
+    /*) ;;
+    *) raw="/$raw" ;;
+  esac
+  raw=$(printf '%s' "$raw" | sed -e 's#//*#/#g' -e 's#/$##')
+  [ -n "$raw" ] || raw='/'
+  printf '%s\n' "$raw"
 }
 
 read_conf_value() {
@@ -158,6 +195,30 @@ resolve_btcpay_host() {
     return 0
   fi
   printf 'pay.%s\n' "$site_domain"
+}
+
+resolve_btcpay_rootpath() {
+  configured=$(normalize_rootpath "$(read_conf_value "$(active_site_conf)" btcpay_rootpath)")
+  if [ "$configured" != "/" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_rootpath "$(read_conf_value "$(release_site_conf)" btcpay_rootpath)")
+  if [ "$configured" != "/" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  printf '/\n'
+}
+
+btcpay_public_url() {
+  btcpay_host=$(resolve_btcpay_host)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
+  if [ "$btcpay_rootpath" = "/" ]; then
+    printf 'https://%s\n' "$btcpay_host"
+    return 0
+  fi
+  printf 'https://%s%s\n' "$btcpay_host" "$btcpay_rootpath"
 }
 
 lightning_alias() {
@@ -313,12 +374,83 @@ EOF_VHOST
   run_root ln -snf "$(btcpay_vhost_file)" "$(btcpay_vhost_link)"
 }
 
+write_btcpay_domain_hook() {
+  upstream=$(btcpay_proxy_upstream)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-rootpath-hook.XXXXXX")
+  cat > "$tmp" <<EOF_HOOK
+location = $btcpay_rootpath {
+  return 301 $btcpay_rootpath/;
+}
+
+location ^~ $btcpay_rootpath/ {
+$(proxy_header_lines)
+  proxy_pass http://$upstream;
+}
+EOF_HOOK
+  run_root install -d -m 755 "$(btcpay_domain_hook_dir)"
+  run_root install -m 0644 -o root -g root "$tmp" "$(btcpay_domain_hook_file)"
+  rm -f "$tmp"
+}
+
+ensure_btcpay_domain_include() {
+  vhost_file=$(btcpay_domain_vhost_file)
+  [ -f "$vhost_file" ] || {
+    status_bad "The nginx vhost $vhost_file does not exist yet."
+    exit 1
+  }
+  include_line="  include $(btcpay_domain_hook_dir)/*.conf;"
+  if run_root grep -Fq "$include_line" "$vhost_file"; then
+    return 0
+  fi
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-domain-vhost.XXXXXX")
+  run_root awk -v include_line="$include_line" '
+    { lines[NR] = $0 }
+    END {
+      close_idx = 0
+      for (i = NR; i >= 1; i--) {
+        if (lines[i] ~ /^[[:space:]]*}[[:space:]]*$/) {
+          close_idx = i
+          break
+        }
+      }
+      if (close_idx == 0) {
+        exit 1
+      }
+      for (i = 1; i <= NR; i++) {
+        if (i == close_idx) {
+          print include_line
+        }
+        print lines[i]
+      }
+    }
+  ' "$vhost_file" > "$tmp" || {
+    rm -f "$tmp"
+    status_bad "Could not patch $vhost_file with the BTCPay root-path include."
+    exit 1
+  }
+  run_root install -m 0644 -o root -g root "$tmp" "$vhost_file"
+  rm -f "$tmp"
+}
+
+write_btcpay_public_proxy() {
+  if [ "$(resolve_btcpay_rootpath)" = "/" ]; then
+    write_btcpay_vhost
+    return 0
+  fi
+  write_btcpay_domain_hook
+  ensure_btcpay_domain_include
+}
+
 reload_nginx() {
   run_root nginx -t
   run_root systemctl reload nginx 2>/dev/null || run_root service nginx reload 2>/dev/null || true
 }
 
 ensure_btcpay_https_cert() {
+  if [ "$(resolve_btcpay_rootpath)" != "/" ]; then
+    return 0
+  fi
   btcpay_host=$(resolve_btcpay_host)
   have_tls_cert && return 0
   command -v certbot >/dev/null 2>&1 || {
@@ -342,6 +474,7 @@ run_btcpay_install() {
   exclude_fragments='nginx-https'
   BTCPAY_HOST="$btcpay_host" \
   REVERSEPROXY_DEFAULT_HOST="$btcpay_host" \
+  BTCPAY_ROOTPATH="$(resolve_btcpay_rootpath)" \
   REVERSEPROXY_HTTP_PORT="$(btcpay_http_port)" \
   BTCPAY_BASE_DIR="$(btcpay_root)" \
   NBITCOIN_NETWORK=mainnet \
@@ -359,6 +492,7 @@ run_btcpay_install() {
 
 update_site_config() {
   btcpay_host=$(resolve_btcpay_host)
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
   [ -f "$(active_site_conf)" ] || {
     status_bad "The active site.conf file is missing."
     exit 1
@@ -369,14 +503,17 @@ update_site_config() {
   }
   write_conf_value "$(active_site_conf)" btcpay_host "$btcpay_host"
   write_conf_value "$(release_site_conf)" btcpay_host "$btcpay_host"
+  write_conf_value "$(active_site_conf)" btcpay_rootpath "$btcpay_rootpath"
+  write_conf_value "$(release_site_conf)" btcpay_rootpath "$btcpay_rootpath"
 }
 
 local_btcpay_proxy_ready() {
-  curl -fsS -H "Host: $(resolve_btcpay_host)" -H 'X-Forwarded-Proto: https' "http://$(btcpay_proxy_upstream)/" >/dev/null 2>&1
+  btcpay_rootpath=$(resolve_btcpay_rootpath)
+  curl -fsS -H "Host: $(resolve_btcpay_host)" -H 'X-Forwarded-Proto: https' "http://$(btcpay_proxy_upstream)$btcpay_rootpath/" >/dev/null 2>&1
 }
 
 btcpay_public_ready() {
-  curl -fsSI "https://$(resolve_btcpay_host)/" >/dev/null 2>&1
+  curl -fsSI "$(btcpay_public_url)/" >/dev/null 2>&1
 }
 
 btcpay_bitcoin_pruned() {
@@ -424,14 +561,26 @@ check_status() {
     status_bad "BTCPay local proxy fragment is missing."
     return 0
   }
-  [ -f "$(btcpay_vhost_file)" ] || {
-    status_bad "The nginx vhost for $(resolve_btcpay_host) is missing."
-    return 0
-  }
-  [ -L "$(btcpay_vhost_link)" ] || {
-    status_bad "The nginx vhost for $(resolve_btcpay_host) is not enabled."
-    return 0
-  }
+  if [ "$(resolve_btcpay_rootpath)" = "/" ]; then
+    [ -f "$(btcpay_vhost_file)" ] || {
+      status_bad "The nginx vhost for $(resolve_btcpay_host) is missing."
+      return 0
+    }
+    [ -L "$(btcpay_vhost_link)" ] || {
+      status_bad "The nginx vhost for $(resolve_btcpay_host) is not enabled."
+      return 0
+    }
+  else
+    [ -f "$(btcpay_domain_hook_file)" ] || {
+      status_bad "The nginx root-path hook for $(resolve_btcpay_host) is missing."
+      return 0
+    }
+    include_line="  include $(btcpay_domain_hook_dir)/*.conf;"
+    if ! run_root grep -Fq "$include_line" "$(btcpay_domain_vhost_file)"; then
+      status_bad "The nginx vhost for $(resolve_btcpay_host) does not include the BTCPay root-path hook."
+      return 0
+    fi
+  fi
   [ -f "$(active_site_conf)" ] || {
     status_bad "The active site.conf file is missing."
     return 0
@@ -448,6 +597,14 @@ check_status() {
     status_bad "The managed release config is not pointed at $(resolve_btcpay_host)."
     return 0
   fi
+  if [ "$(normalize_rootpath "$(read_conf_value "$(active_site_conf)" btcpay_rootpath)")" != "$(resolve_btcpay_rootpath)" ]; then
+    status_bad "The active site config is not pointed at BTCPay root path $(resolve_btcpay_rootpath)."
+    return 0
+  fi
+  if [ "$(normalize_rootpath "$(read_conf_value "$(release_site_conf)" btcpay_rootpath)")" != "$(resolve_btcpay_rootpath)" ]; then
+    status_bad "The managed release config is not pointed at BTCPay root path $(resolve_btcpay_rootpath)."
+    return 0
+  fi
   if ! local_btcpay_proxy_ready; then
     printf 'btcpay_local_proxy_ready=false\n'
     status_bad "The local BTCPay proxy is not responding on $(btcpay_proxy_upstream)."
@@ -456,7 +613,7 @@ check_status() {
   printf 'btcpay_local_proxy_ready=true\n'
   if ! btcpay_public_ready; then
     printf 'btcpay_public_ready=false\n'
-    status_bad "BTCPay is not reachable at https://$(resolve_btcpay_host)/."
+    status_bad "BTCPay is not reachable at $(btcpay_public_url)/."
     return 0
   fi
   printf 'btcpay_public_ready=true\n'
@@ -478,7 +635,7 @@ check_status() {
     return 0
   fi
   printf 'lightning_port_listening=true\n'
-  status_ok "BTCPay, pruned Bitcoin Core, and Core Lightning are active for $site_domain via https://$(resolve_btcpay_host)/, and the Lightning peer port is listening on 9735."
+  status_ok "BTCPay, pruned Bitcoin Core, and Core Lightning are active for $site_domain via $(btcpay_public_url)/, and the Lightning peer port is listening on 9735."
 }
 
 case "${1-}" in
@@ -491,11 +648,11 @@ esac
 require_site_context
 ensure_repo_checkout
 write_custom_fragment
-write_btcpay_vhost
+write_btcpay_public_proxy
 reload_nginx
 run_btcpay_install
 ensure_btcpay_https_cert
-write_btcpay_vhost
+write_btcpay_public_proxy
 reload_nginx
 update_site_config
 check_status

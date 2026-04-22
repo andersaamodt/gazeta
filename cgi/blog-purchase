@@ -43,24 +43,7 @@ resolve_product_slug() {
 }
 
 btcpay_host_for_request() {
-  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
-  if [ -n "$configured" ]; then
-    printf '%s\n' "$configured"
-    return 0
-  fi
-  host=${HTTP_HOST-}
-  host=${host%%:*}
-  host=$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')
-  case "$host" in
-    ''|localhost|127.0.0.1|*' '*|*'/'*|*'..'*|*:* )
-      printf '\n'
-      return 0
-      ;;
-  esac
-  case "$host" in
-    *.*) printf 'pay.%s\n' "$host" ;;
-    *) printf '\n' ;;
-  esac
+  blog_resolve_btcpay_host
 }
 
 provider_url_for_order() {
@@ -71,9 +54,9 @@ provider_url_for_order() {
 
   case "$provider" in
     btcpay)
-      btcpay_host=$(btcpay_host_for_request)
-      if [ -n "$btcpay_host" ]; then
-        printf 'https://%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_host" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
+      btcpay_url=$(blog_btcpay_url)
+      if [ -n "$btcpay_url" ]; then
+        printf '%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
       else
         printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
