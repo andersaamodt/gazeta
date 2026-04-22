@@ -80,6 +80,10 @@ btcpay_custom_fragment_file() {
   printf '%s/docker-compose-generator/docker-fragments/headquarters-local-proxy.custom.yml\n' "$(btcpay_repo_dir)"
 }
 
+btcpay_profile_file() {
+  printf '/etc/profile.d/btcpay-env.sh\n'
+}
+
 btcpay_http_port() {
   checksum=$(printf '%s\n' "$site_user" | cksum | awk '{print $1}')
   offset=$((checksum % 1000))
@@ -330,6 +334,53 @@ EOF_FRAGMENT
   rm -f "$tmp"
 }
 
+sanitize_btcpay_profile() {
+  profile_file=$(btcpay_profile_file)
+  [ -f "$profile_file" ] || return 0
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-profile.XXXXXX")
+  run_root awk '
+    /^export BTCPAYGEN_ADDITIONAL_FRAGMENTS=/ {
+      print "export BTCPAYGEN_ADDITIONAL_FRAGMENTS=\"opt-save-storage-s;opt-save-memory\""
+      next
+    }
+    /^export BTCPAYGEN_EXCLUDE_FRAGMENTS=/ {
+      print "export BTCPAYGEN_EXCLUDE_FRAGMENTS=\"nginx-https;opt-add-tor;headquarters-local-proxy.custom\""
+      next
+    }
+    { print }
+  ' "$profile_file" > "$tmp"
+  run_root install -m 0644 -o root -g root "$tmp" "$profile_file"
+  rm -f "$tmp"
+}
+
+sanitize_generated_btcpay_compose() {
+  compose_file=$(btcpay_compose_file)
+  [ -f "$compose_file" ] || return 0
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-compose.XXXXXX")
+  run_root awk '
+    index($0, "127.0.0.1:${REVERSEPROXY_HTTP_PORT") { next }
+    { print }
+  ' "$compose_file" > "$tmp"
+  run_root install -m 0644 -o root -g root "$tmp" "$compose_file"
+  rm -f "$tmp"
+}
+
+restart_btcpay_stack() {
+  run_root sh -eu -c '
+repo_dir=$1
+profile_file=$2
+cd "$repo_dir"
+. "$profile_file"
+. ./helpers.sh
+btcpay_down >/dev/null 2>&1 || true
+docker rm -f generated_btcpayserver_1 nginx nginx-gen >/dev/null 2>&1 || true
+btcpay_up >/dev/null 2>&1
+' sh "$(btcpay_repo_dir)" "$(btcpay_profile_file)" || {
+    status_bad "BTCPay restart failed after compose normalization."
+    exit 1
+  }
+}
+
 proxy_header_lines() {
   cat <<'EOF_HEADERS'
     proxy_http_version 1.1;
@@ -502,7 +553,7 @@ ensure_btcpay_https_cert() {
 run_btcpay_install() {
   btcpay_host=$(resolve_btcpay_host)
   additional_fragments='opt-save-storage-s;opt-save-memory'
-  exclude_fragments='nginx-https;opt-add-tor'
+  exclude_fragments='nginx-https;opt-add-tor;headquarters-local-proxy.custom'
   input_file=$(mktemp "${TMPDIR:-/tmp}/btcpay-setup-input.XXXXXX")
   i=0
   while [ "$i" -lt 16 ]; do
@@ -563,6 +614,9 @@ bash -e -c "source ./btcpay-setup.sh -i" < "$input_file"
     status_bad "BTCPay setup failed for $btcpay_host."
     exit 1
   }
+  sanitize_btcpay_profile
+  sanitize_generated_btcpay_compose
+  restart_btcpay_stack
 }
 
 update_site_config() {
