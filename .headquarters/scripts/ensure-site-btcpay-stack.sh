@@ -433,23 +433,33 @@ ensure_btcpay_domain_include() {
   fi
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-domain-vhost.XXXXXX")
   run_root awk -v include_line="$include_line" '
-    { lines[NR] = $0 }
     END {
-      close_idx = 0
-      for (i = NR; i >= 1; i--) {
-        if (lines[i] ~ /^[[:space:]]*}[[:space:]]*$/) {
-          close_idx = i
-          break
-        }
-      }
-      if (close_idx == 0) {
+      if (!insert_idx) {
         exit 1
       }
       for (i = 1; i <= NR; i++) {
-        if (i == close_idx) {
+        if (i == insert_idx) {
           print include_line
         }
         print lines[i]
+      }
+    }
+    {
+      lines[NR] = $0
+      if (!in_server && $0 ~ /^[[:space:]]*server[[:space:]]*{[[:space:]]*$/) {
+        in_server = 1
+        depth = 1
+        next
+      }
+      if (!in_server) {
+        next
+      }
+      line = $0
+      opens = gsub(/{/, "{", line)
+      closes = gsub(/}/, "}", line)
+      depth += opens - closes
+      if (depth == 0 && !insert_idx) {
+        insert_idx = NR
       }
     }
   ' "$vhost_file" > "$tmp" || {
