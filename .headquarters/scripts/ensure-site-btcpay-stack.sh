@@ -323,9 +323,9 @@ write_custom_fragment() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-local-proxy-fragment.XXXXXX")
   cat > "$tmp" <<EOF_FRAGMENT
 services:
-  nginx:
+  btcpayserver:
     ports:
-      - "127.0.0.1:\${REVERSEPROXY_HTTP_PORT:-$(btcpay_http_port)}:80"
+      - "127.0.0.1:\${REVERSEPROXY_HTTP_PORT:-$(btcpay_http_port)}:49392"
 EOF_FRAGMENT
   run_root install -d -m 755 "$(dirname "$(btcpay_custom_fragment_file)")"
   run_root install -m 0644 -o root -g root "$tmp" "$(btcpay_custom_fragment_file)"
@@ -526,7 +526,7 @@ BTCPAY_BASE_DIR=$6 \
 BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
 BTCPAYGEN_CRYPTO1=btc \
-BTCPAYGEN_REVERSEPROXY=nginx \
+BTCPAYGEN_REVERSEPROXY=none \
 BTCPAYGEN_LIGHTNING=clightning \
 BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
 BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
@@ -548,7 +548,7 @@ BTCPAY_BASE_DIR=$6 \
 BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
 BTCPAYGEN_CRYPTO1=btc \
-BTCPAYGEN_REVERSEPROXY=nginx \
+BTCPAYGEN_REVERSEPROXY=none \
 BTCPAYGEN_LIGHTNING=clightning \
 BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
 BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
