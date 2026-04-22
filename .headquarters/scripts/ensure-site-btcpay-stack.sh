@@ -477,7 +477,7 @@ BTCPAYGEN_LIGHTNING=clightning \
 BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
 BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
 LIGHTNING_ALIAS=$9 \
-timeout 3600 ./btcpay-setup.sh -i < "$input_file"
+timeout 3600 sh -eu -c ". ./btcpay-setup.sh -i" sh < "$input_file"
 ' sh "$(btcpay_repo_dir)" "$input_file" "$btcpay_host" "$(resolve_btcpay_rootpath)" "$(btcpay_http_port)" "$(btcpay_root)" "$additional_fragments" "$exclude_fragments" "$(lightning_alias)" >/dev/null 2>&1
     status=$?
   else
@@ -497,7 +497,7 @@ BTCPAYGEN_LIGHTNING=clightning \
 BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
 BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
 LIGHTNING_ALIAS=$9 \
-./btcpay-setup.sh -i < "$input_file"
+sh -eu -c ". ./btcpay-setup.sh -i" sh < "$input_file"
 ' sh "$(btcpay_repo_dir)" "$input_file" "$btcpay_host" "$(resolve_btcpay_rootpath)" "$(btcpay_http_port)" "$(btcpay_root)" "$additional_fragments" "$exclude_fragments" "$(lightning_alias)" >/dev/null 2>&1
     status=$?
   fi
