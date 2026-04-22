@@ -237,20 +237,6 @@ have_tls_cert() {
   run_root test -f "$(cert_fullchain)" && run_root test -f "$(cert_privkey)"
 }
 
-resolve_install_spell() {
-  for candidate in \
-    "${WIZARDRY_DIR-}/spells/web/install-btcpay" \
-    "/usr/local/share/wizardry/spells/web/install-btcpay" \
-    "/opt/homebrew/share/wizardry/spells/web/install-btcpay" \
-    "/usr/share/wizardry/spells/web/install-btcpay"
-  do
-    [ -x "$candidate" ] || continue
-    printf '%s\n' "$candidate"
-    return 0
-  done
-  return 1
-}
-
 ensure_git_available() {
   if command -v git >/dev/null 2>&1; then
     return 0
@@ -464,27 +450,60 @@ ensure_btcpay_https_cert() {
 }
 
 run_btcpay_install() {
-  install_spell=$(resolve_install_spell 2>/dev/null || true)
-  [ -n "$install_spell" ] || {
-    status_bad "Wizardry install-btcpay spell was not found on this server."
-    exit 1
-  }
   btcpay_host=$(resolve_btcpay_host)
   additional_fragments='opt-save-storage-s;headquarters-local-proxy.custom'
   exclude_fragments='nginx-https'
-  BTCPAY_HOST="$btcpay_host" \
-  REVERSEPROXY_DEFAULT_HOST="$btcpay_host" \
-  BTCPAY_ROOTPATH="$(resolve_btcpay_rootpath)" \
-  REVERSEPROXY_HTTP_PORT="$(btcpay_http_port)" \
-  BTCPAY_BASE_DIR="$(btcpay_root)" \
-  NBITCOIN_NETWORK=mainnet \
-  BTCPAYGEN_CRYPTO1=btc \
-  BTCPAYGEN_REVERSEPROXY=nginx \
-  BTCPAYGEN_LIGHTNING=clightning \
-  BTCPAYGEN_ADDITIONAL_FRAGMENTS="$additional_fragments" \
-  BTCPAYGEN_EXCLUDE_FRAGMENTS="$exclude_fragments" \
-  LIGHTNING_ALIAS="$(lightning_alias)" \
-  run_root "$install_spell" >/dev/null 2>&1 || {
+  input_file=$(mktemp "${TMPDIR:-/tmp}/btcpay-setup-input.XXXXXX")
+  i=0
+  while [ "$i" -lt 16 ]; do
+    printf '\n' >> "$input_file"
+    i=$((i + 1))
+  done
+  set +e
+  if command -v timeout >/dev/null 2>&1; then
+    run_root sh -eu -c '
+repo_dir=$1
+input_file=$2
+cd "$repo_dir"
+BTCPAY_HOST=$3 \
+REVERSEPROXY_DEFAULT_HOST=$3 \
+BTCPAY_ROOTPATH=$4 \
+REVERSEPROXY_HTTP_PORT=$5 \
+BTCPAY_BASE_DIR=$6 \
+NBITCOIN_NETWORK=mainnet \
+BTCPAYGEN_CRYPTO1=btc \
+BTCPAYGEN_REVERSEPROXY=nginx \
+BTCPAYGEN_LIGHTNING=clightning \
+BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
+BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
+LIGHTNING_ALIAS=$9 \
+timeout 3600 ./btcpay-setup.sh -i < "$input_file"
+' sh "$(btcpay_repo_dir)" "$input_file" "$btcpay_host" "$(resolve_btcpay_rootpath)" "$(btcpay_http_port)" "$(btcpay_root)" "$additional_fragments" "$exclude_fragments" "$(lightning_alias)" >/dev/null 2>&1
+    status=$?
+  else
+    run_root sh -eu -c '
+repo_dir=$1
+input_file=$2
+cd "$repo_dir"
+BTCPAY_HOST=$3 \
+REVERSEPROXY_DEFAULT_HOST=$3 \
+BTCPAY_ROOTPATH=$4 \
+REVERSEPROXY_HTTP_PORT=$5 \
+BTCPAY_BASE_DIR=$6 \
+NBITCOIN_NETWORK=mainnet \
+BTCPAYGEN_CRYPTO1=btc \
+BTCPAYGEN_REVERSEPROXY=nginx \
+BTCPAYGEN_LIGHTNING=clightning \
+BTCPAYGEN_ADDITIONAL_FRAGMENTS=$7 \
+BTCPAYGEN_EXCLUDE_FRAGMENTS=$8 \
+LIGHTNING_ALIAS=$9 \
+./btcpay-setup.sh -i < "$input_file"
+' sh "$(btcpay_repo_dir)" "$input_file" "$btcpay_host" "$(resolve_btcpay_rootpath)" "$(btcpay_http_port)" "$(btcpay_root)" "$additional_fragments" "$exclude_fragments" "$(lightning_alias)" >/dev/null 2>&1
+    status=$?
+  fi
+  set -e
+  rm -f "$input_file"
+  [ "$status" -eq 0 ] || {
     status_bad "BTCPay setup failed for $btcpay_host."
     exit 1
   }
