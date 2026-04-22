@@ -221,6 +221,48 @@ btcpay_public_url() {
   printf 'https://%s%s\n' "$btcpay_host" "$btcpay_rootpath"
 }
 
+mem_total_mib() {
+  if [ -r /proc/meminfo ]; then
+    awk '/MemTotal:/ { printf "%d\n", int($2 / 1024); exit }' /proc/meminfo
+    return 0
+  fi
+  printf '0\n'
+}
+
+swap_total_mib() {
+  if [ -r /proc/meminfo ]; then
+    awk '/SwapTotal:/ { printf "%d\n", int($2 / 1024); exit }' /proc/meminfo
+    return 0
+  fi
+  printf '0\n'
+}
+
+ensure_swap_for_btcpay() {
+  mem_mib=$(mem_total_mib)
+  swap_mib=$(swap_total_mib)
+  [ "$mem_mib" -gt 0 ] || return 0
+  [ "$mem_mib" -lt 1024 ] || return 0
+  [ "$swap_mib" -lt 1024 ] || return 0
+  swap_file=/swapfile-btcpay
+  if ! run_root test -f "$swap_file"; then
+    if command -v fallocate >/dev/null 2>&1; then
+      run_root fallocate -l 2G "$swap_file"
+    else
+      run_root dd if=/dev/zero of="$swap_file" bs=1M count=2048
+    fi
+    run_root chmod 600 "$swap_file"
+    run_root mkswap "$swap_file" >/dev/null
+  fi
+  run_root swapon "$swap_file" 2>/dev/null || true
+  if ! run_root grep -Fq "$swap_file none swap sw 0 0" /etc/fstab; then
+    tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-fstab.XXXXXX")
+    run_root sh -eu -c 'cat /etc/fstab > "$1"' sh "$tmp"
+    printf '%s\n' "$swap_file none swap sw 0 0" >> "$tmp"
+    run_root install -m 0644 -o root -g root "$tmp" /etc/fstab
+    rm -f "$tmp"
+  fi
+}
+
 lightning_alias() {
   printf '%s\n' "$site_domain" | tr -c 'A-Za-z0-9-' '-' | sed 's/--*/-/g' | sed 's/^-//' | cut -c 1-28
 }
@@ -451,8 +493,8 @@ ensure_btcpay_https_cert() {
 
 run_btcpay_install() {
   btcpay_host=$(resolve_btcpay_host)
-  additional_fragments='opt-save-storage-s;headquarters-local-proxy.custom'
-  exclude_fragments='nginx-https'
+  additional_fragments='opt-save-storage-s;opt-save-memory;headquarters-local-proxy.custom'
+  exclude_fragments='nginx-https;opt-add-tor'
   input_file=$(mktemp "${TMPDIR:-/tmp}/btcpay-setup-input.XXXXXX")
   i=0
   while [ "$i" -lt 16 ]; do
@@ -471,6 +513,7 @@ REVERSEPROXY_DEFAULT_HOST=$3 \
 BTCPAY_ROOTPATH=$4 \
 REVERSEPROXY_HTTP_PORT=$5 \
 BTCPAY_BASE_DIR=$6 \
+BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
 BTCPAYGEN_CRYPTO1=btc \
 BTCPAYGEN_REVERSEPROXY=nginx \
@@ -492,6 +535,7 @@ REVERSEPROXY_DEFAULT_HOST=$3 \
 BTCPAY_ROOTPATH=$4 \
 REVERSEPROXY_HTTP_PORT=$5 \
 BTCPAY_BASE_DIR=$6 \
+BTCPAY_ADDITIONAL_HOSTS= \
 NBITCOIN_NETWORK=mainnet \
 BTCPAYGEN_CRYPTO1=btc \
 BTCPAYGEN_REVERSEPROXY=nginx \
@@ -668,6 +712,7 @@ esac
 
 require_site_context
 ensure_repo_checkout
+ensure_swap_for_btcpay
 write_custom_fragment
 write_btcpay_public_proxy
 reload_nginx
