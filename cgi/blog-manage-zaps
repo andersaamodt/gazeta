@@ -120,12 +120,22 @@ runtime_json() {
   lud16_source=$(blog_zap_lud16_source 2>/dev/null || printf 'unavailable')
   demo_wallet_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
   lightning_online=false
+  lightning_synced=false
+  num_peers=0
   inbound_liquidity_sats=0
   public_address=$(lightning_public_address)
   zap_endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")
   zap_endpoint_ready=false
   if getinfo_json=$(lightning_cli_json getinfo); then
     lightning_online=true
+    lightning_synced=$(printf '%s\n' "$getinfo_json" | jq -r '
+      if ((.warning_bitcoind_sync // "") | tostring | length) > 0 then
+        "false"
+      else
+        "true"
+      end
+    ' 2>/dev/null || printf 'false')
+    num_peers=$(printf '%s\n' "$getinfo_json" | jq -r '.num_peers // 0' 2>/dev/null || printf '0')
   fi
   if listfunds_json=$(lightning_cli_json listfunds); then
     inbound_liquidity_sats=$(printf '%s\n' "$listfunds_json" | jq -r '
@@ -137,7 +147,7 @@ runtime_json() {
     zap_endpoint_ready=true
   fi
   can_receive=false
-  if [ "$lightning_online" = true ] && [ "$zap_endpoint_ready" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
+  if [ "$lightning_online" = true ] && [ "$lightning_synced" = true ] && [ "$zap_endpoint_ready" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
     can_receive=true
   fi
 
@@ -151,6 +161,8 @@ runtime_json() {
   printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$demo_wallet_npub")"
   printf '"site_signer_ready":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
   printf '"lightning_online":%s,' "$(bool_json_value "$lightning_online")"
+  printf '"lightning_synced":%s,' "$(bool_json_value "$lightning_synced")"
+  printf '"num_peers":%s,' "$(printf '%s' "${num_peers:-0}" | tr -dc '0-9')"
   printf '"lightning_public_address":"%s",' "$(blog_json_escape "$public_address")"
   printf '"inbound_liquidity_sats":%s,' "$(printf '%s' "${inbound_liquidity_sats:-0}" | tr -dc '0-9')"
   printf '"can_receive_zaps":%s,' "$(bool_json_value "$can_receive")"

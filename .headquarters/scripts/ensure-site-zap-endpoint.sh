@@ -260,6 +260,47 @@ local_health_url() {
   printf 'http://127.0.0.1:%s/healthz\n' "$(calc_service_port)"
 }
 
+lightning_cli_site_json() {
+  run_site lightning-cli --lightning-dir="$(lightning_root)" "$@" 2>/dev/null
+}
+
+lightning_synced() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf 'false\n'
+    return 0
+  fi
+  getinfo_json=$(lightning_cli_site_json getinfo 2>/dev/null || printf '')
+  [ -n "$getinfo_json" ] || {
+    printf 'false\n'
+    return 0
+  }
+  printf '%s' "$getinfo_json" | python3 -c 'import json,sys; info=json.load(sys.stdin); print("false" if str(info.get("warning_bitcoind_sync") or "").strip() else "true")' 2>/dev/null || printf 'false\n'
+}
+
+lightning_inbound_liquidity_sats() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '0\n'
+    return 0
+  fi
+  listfunds_json=$(lightning_cli_site_json listfunds 2>/dev/null || printf '')
+  [ -n "$listfunds_json" ] || {
+    printf '0\n'
+    return 0
+  }
+  printf '%s' "$listfunds_json" | python3 -c 'import json,sys; data=json.load(sys.stdin); total=0; 
+for channel in data.get("channels") or []:
+    def msat(value):
+        raw=str(value or "0msat")
+        if raw.endswith("msat"):
+            raw=raw[:-4]
+        try:
+            return int(float(raw))
+        except Exception:
+            return 0
+    total += max(msat(channel.get("amount_msat")) - msat(channel.get("our_amount_msat")), 0)
+print(total // 1000)' 2>/dev/null || printf '0\n'
+}
+
 write_service_env_file() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/zap-service-env.XXXXXX")
   cat > "$tmp" <<EOF_ENV
@@ -632,7 +673,7 @@ def create_invoice(amount_msat, zap_request_json):
         amount_msat=f"{amount_msat}msat",
         label=label,
         description=zap_request_json,
-        deschashonly="true",
+        deschashonly=True,
     )
     bolt11 = str(result.get("bolt11") or "").strip()
     if not bolt11:
@@ -1098,6 +1139,14 @@ check_status() {
     status_bad "The public nostr.json alias for $(desired_zap_lud16) is not live yet."
     return 0
   fi
+  if [ "$(lightning_synced)" != "true" ]; then
+    status_bad "Lightning Address zaps are published at $(desired_zap_lud16), but Bitcoin Core is still syncing."
+    return 0
+  fi
+  if [ "$(lightning_inbound_liquidity_sats)" -le 0 ]; then
+    status_bad "Lightning Address zaps are published at $(desired_zap_lud16), but the node has no inbound liquidity yet."
+    return 0
+  fi
   status_ok "Lightning Address zaps are live at $(desired_zap_lud16) through the direct Core Lightning endpoint."
 }
 
@@ -1133,6 +1182,7 @@ else
 fi
 
 run_root systemctl daemon-reload
-run_root systemctl enable --now "$(service_name)"
+run_root systemctl enable "$(service_name)" >/dev/null 2>&1 || true
+run_root systemctl restart "$(service_name)"
 reload_nginx
 check_status

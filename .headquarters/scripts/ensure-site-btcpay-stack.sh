@@ -339,12 +339,33 @@ sanitize_btcpay_profile() {
   [ -f "$profile_file" ] || return 0
   tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-profile.XXXXXX")
   run_root awk '
+    BEGIN {
+      rewrite_env_loader = 0
+    }
     /^export BTCPAYGEN_ADDITIONAL_FRAGMENTS=/ {
       print "export BTCPAYGEN_ADDITIONAL_FRAGMENTS=\"opt-save-storage-s;opt-save-memory\""
       next
     }
     /^export BTCPAYGEN_EXCLUDE_FRAGMENTS=/ {
       print "export BTCPAYGEN_EXCLUDE_FRAGMENTS=\"nginx-https;opt-add-tor;headquarters-local-proxy.custom\""
+      next
+    }
+    /^if cat "\$BTCPAY_ENV_FILE" &> \/dev\/null; then$/ {
+      print "if [ -r \"$BTCPAY_ENV_FILE\" ]; then"
+      print "  while IFS= read -r line; do"
+      print "    case \"$line\" in"
+      print "      \"\"|\\#*) continue ;;"
+      print "      *=*) export \"$line\" ;;"
+      print "    esac"
+      print "  done < \"$BTCPAY_ENV_FILE\""
+      rewrite_env_loader = 1
+      next
+    }
+    rewrite_env_loader {
+      if ($0 == "fi") {
+        print "fi"
+        rewrite_env_loader = 0
+      }
       next
     }
     { print }

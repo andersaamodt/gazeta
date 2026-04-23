@@ -3240,9 +3240,10 @@
     const signerReady = !!info.site_signer_ready;
     const endpointReady = !!info.zap_endpoint_ready;
     const activeAddress = String(info.effective_lud16 || '').trim();
+    const canReceive = !!info.can_receive_zaps;
     let label = 'Offline';
     let statusClass = 'is-offline';
-    if (zapsEnabled && signerReady && activeAddress && endpointReady) {
+    if (zapsEnabled && signerReady && activeAddress && endpointReady && canReceive) {
       label = 'Ready';
       statusClass = 'is-connected';
     } else if (signerReady || activeAddress || endpointReady || !!info.lightning_online) {
@@ -3685,11 +3686,21 @@
     const endpointReady = !!info.zap_endpoint_ready;
     const effectiveLud16 = String(info.effective_lud16 || '').trim();
     const lightningOnline = !!info.lightning_online;
+    const lightningSynced = !!info.lightning_synced;
     const canReceive = !!info.can_receive_zaps;
+    const numPeers = Number(info.num_peers || 0);
     const inboundLiquidity = Number(info.inbound_liquidity_sats || 0);
     const publicAddress = String(info.lightning_public_address || '').trim();
     const endpointUrl = String(info.zap_endpoint_url || '').trim();
     const lud16Source = String(info.lud16_source || '').trim().toLowerCase();
+    let receiveReadyBadLabel = 'Needs inbound liquidity';
+    if (!lightningOnline) {
+      receiveReadyBadLabel = 'Lightning offline';
+    } else if (!lightningSynced) {
+      receiveReadyBadLabel = 'Bitcoin syncing';
+    } else if (!endpointReady) {
+      receiveReadyBadLabel = 'Endpoint pending';
+    }
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Provisioning</strong></div><div class="zaps-runtime-value">Managed in Headquarters</div></div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Zap feature</strong></div>'
@@ -3713,11 +3724,17 @@
     html += '<div class="field-row"><div class="setting-label"><strong>Lightning node</strong></div>'
       + (showChecking ? checkingValueHtml : statusValueHtml(lightningOnline, 'Online', 'Offline'))
       + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Bitcoin sync</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(lightningSynced, 'Synced', 'Syncing'))
+      + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Public peer address</strong></div><div class="zaps-runtime-value">'
       + (publicAddress ? ('<code>' + escapeHtml(publicAddress) + '</code>') : '<span class="zaps-runtime-value is-warn">Unavailable</span>')
       + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Peers</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(numPeers))
+      + '</div></div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Receive readiness</strong></div>'
-      + (showChecking ? checkingValueHtml : statusValueHtml(canReceive, 'Ready', 'Needs inbound liquidity'))
+      + (showChecking ? checkingValueHtml : statusValueHtml(canReceive, 'Ready', receiveReadyBadLabel))
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Inbound liquidity</strong></div><div class="zaps-runtime-value">'
       + escapeHtml(String(inboundLiquidity)) + ' sats'
