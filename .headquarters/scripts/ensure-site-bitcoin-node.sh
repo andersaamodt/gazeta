@@ -204,10 +204,10 @@ check_status() {
     status_bad "bitcoin-cli is not installed on this server."
     return 0
   }
-  [ -f "$(bitcoin_conf_file)" ] || {
+  if ! run_root test -f "$(bitcoin_conf_file)"; then
     status_bad "The site Bitcoin Core config file is missing."
     return 0
-  }
+  fi
   [ -f "$(service_file)" ] || {
     status_bad "The site Bitcoin Core systemd service is missing."
     return 0

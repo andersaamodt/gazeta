@@ -116,7 +116,7 @@ lightning_cli_binary() {
 read_conf_value() {
   file=$1
   key=$2
-  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
+  run_site awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
 }
 
 write_conf_value() {
@@ -124,7 +124,7 @@ write_conf_value() {
   key=$2
   value=$3
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-lightning-meta.XXXXXX")
-  awk -F= -v key="$key" -v value="$value" '
+  run_site awk -F= -v key="$key" -v value="$value" '
 BEGIN { replaced = 0 }
 $1 == key {
   if (!replaced) {
@@ -343,10 +343,10 @@ check_status() {
     status_bad "lightning-cli is not installed on this server."
     return 0
   }
-  [ -f "$(lightning_conf_file)" ] || {
+  if ! run_root test -f "$(lightning_conf_file)"; then
     status_bad "The site Lightning config file is missing."
     return 0
-  }
+  fi
   [ -f "$(service_file)" ] || {
     status_bad "The site Lightning systemd service is missing."
     return 0
@@ -378,14 +378,14 @@ case "${1-}" in
 esac
 
 require_site_context
-[ -f "$(active_site_conf)" ] || {
+if ! run_root test -f "$(active_site_conf)"; then
   status_bad "The active site.conf file is missing."
   exit 1
-}
-[ -f "$(release_site_conf)" ] || {
+fi
+if ! run_root test -f "$(release_site_conf)"; then
   status_bad "The managed release site.conf file is missing."
   exit 1
-}
+fi
 ensure_lightning_installed
 write_conf_file
 write_conf_value "$(active_site_conf)" lightning_public_host "$(resolve_public_host)"

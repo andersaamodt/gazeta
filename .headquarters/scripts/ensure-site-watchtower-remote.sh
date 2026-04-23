@@ -82,7 +82,7 @@ lightning-cli --lightning-dir="$lightning_dir" getinfo 2>/dev/null | awk -F"\"" 
 read_conf_value() {
   file=$1
   key=$2
-  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
+  run_site awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
 }
 
 active_site_conf() {
@@ -106,10 +106,10 @@ lightning_node_port() {
 
 check_status() {
   require_site_context
-  [ -f "$(watchtower_env_file)" ] || {
+  if ! run_root test -f "$(watchtower_env_file)"; then
     status_bad "Remote watchtower scaffolding has not been prepared yet."
     return 0
-  }
+  fi
   status_bad "Remote watchtower scaffolding is prepared at $(watchtower_root), but no separate watchtower host has been provisioned yet."
 }
 

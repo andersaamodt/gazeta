@@ -19,6 +19,18 @@ run_root() {
   "$@"
 }
 
+run_site() {
+  if [ "$(id -u)" -eq 0 ]; then
+    runuser -u "$site_user" -- "$@"
+    return $?
+  fi
+  if [ "$(id -un)" = "$site_user" ]; then
+    "$@"
+    return $?
+  fi
+  run_root runuser -u "$site_user" -- "$@"
+}
+
 status_ok() {
   printf 'status=ok\n'
   printf 'summary=%s\n' "$1"
@@ -55,7 +67,7 @@ site_npub_file() {
 read_conf_value() {
   file=$1
   key=$2
-  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
+  run_site awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
 }
 
 write_conf_value() {
@@ -63,7 +75,7 @@ write_conf_value() {
   key=$2
   value=$3
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-zaps-conf.XXXXXX")
-  awk -F= -v key="$key" -v value="$value" '
+  run_site awk -F= -v key="$key" -v value="$value" '
 BEGIN { replaced = 0 }
 $1 == key {
   if (!replaced) {
@@ -88,7 +100,7 @@ wallet_path_available() {
   if [ -n "$zap_lud16" ]; then
     return 0
   fi
-  site_npub=$(sed -n '1p' "$(site_npub_file)" 2>/dev/null | tr -d '\r\n[:space:]')
+  site_npub=$(run_site sed -n '1p' "$(site_npub_file)" 2>/dev/null | tr -d '\r\n[:space:]')
   case "$site_npub" in
     npub1*) return 0 ;;
   esac
@@ -97,14 +109,14 @@ wallet_path_available() {
 
 check_status() {
   require_site_context
-  [ -f "$(active_site_conf)" ] || {
+  if ! run_root test -f "$(active_site_conf)"; then
     status_bad "The active site.conf file is missing."
     return 0
-  }
-  [ -f "$(release_site_conf)" ] || {
+  fi
+  if ! run_root test -f "$(release_site_conf)"; then
     status_bad "The managed release site.conf file is missing."
     return 0
-  }
+  fi
   if ! wallet_path_available; then
     status_bad "No configured Lightning Address or demo zap wallet is available yet."
     return 0
@@ -136,14 +148,14 @@ case "${1-}" in
 esac
 
 require_site_context
-[ -f "$(active_site_conf)" ] || {
+if ! run_root test -f "$(active_site_conf)"; then
   status_bad "The active site.conf file is missing."
   exit 1
-}
-[ -f "$(release_site_conf)" ] || {
+fi
+if ! run_root test -f "$(release_site_conf)"; then
   status_bad "The managed release site.conf file is missing."
   exit 1
-}
+fi
 if ! wallet_path_available; then
   status_bad "No configured Lightning Address or demo zap wallet is available yet."
   exit 1

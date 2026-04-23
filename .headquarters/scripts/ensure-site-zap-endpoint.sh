@@ -20,6 +20,18 @@ run_root() {
   "$@"
 }
 
+run_site() {
+  if [ "$(id -u)" -eq 0 ]; then
+    runuser -u "$site_user" -- "$@"
+    return $?
+  fi
+  if [ "$(id -un)" = "$site_user" ]; then
+    "$@"
+    return $?
+  fi
+  run_root runuser -u "$site_user" -- "$@"
+}
+
 status_ok() {
   printf 'status=ok\n'
   printf 'summary=%s\n' "$1"
@@ -112,7 +124,7 @@ alias_domain_vhost_file() {
 read_conf_value() {
   file=$1
   key=$2
-  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
+  run_site awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
 }
 
 write_conf_value() {
@@ -120,7 +132,7 @@ write_conf_value() {
   key=$2
   value=$3
   tmp=$(mktemp "${TMPDIR:-/tmp}/zap-endpoint-conf.XXXXXX")
-  awk -F= -v key="$key" -v value="$value" '
+  run_site awk -F= -v key="$key" -v value="$value" '
 BEGIN { replaced = 0 }
 $1 == key {
   if (!replaced) {
@@ -993,14 +1005,14 @@ reload_nginx() {
 
 check_status() {
   require_site_context
-  [ -f "$(active_site_conf)" ] || {
+  if ! run_root test -f "$(active_site_conf)"; then
     status_bad "The active site.conf file is missing."
     return 0
-  }
-  [ -f "$(release_site_conf)" ] || {
+  fi
+  if ! run_root test -f "$(release_site_conf)"; then
     status_bad "The managed release site.conf file is missing."
     return 0
-  }
+  fi
   command -v python3 >/dev/null 2>&1 || {
     status_bad "python3 is required for the Lightning Address endpoint."
     return 0
@@ -1076,14 +1088,14 @@ case "${1-}" in
 esac
 
 require_site_context
-[ -f "$(active_site_conf)" ] || {
+if ! run_root test -f "$(active_site_conf)"; then
   status_bad "The active site.conf file is missing."
   exit 1
-}
-[ -f "$(release_site_conf)" ] || {
+fi
+if ! run_root test -f "$(release_site_conf)"; then
   status_bad "The managed release site.conf file is missing."
   exit 1
-}
+fi
 
 write_conf_value "$(active_site_conf)" zap_lud16 "$(desired_zap_lud16)"
 write_conf_value "$(release_site_conf)" zap_lud16 "$(desired_zap_lud16)"
