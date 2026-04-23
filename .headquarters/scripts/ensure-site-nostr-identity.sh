@@ -20,6 +20,18 @@ run_root() {
   "$@"
 }
 
+run_site() {
+  if [ "$(id -u)" -eq 0 ]; then
+    runuser -u "$site_user" -- "$@"
+    return $?
+  fi
+  if [ "$(id -un)" = "$site_user" ]; then
+    "$@"
+    return $?
+  fi
+  run_root runuser -u "$site_user" -- "$@"
+}
+
 status_ok() {
   printf 'status=ok\n'
   printf 'summary=%s\n' "$1"
@@ -193,29 +205,29 @@ check_status() {
     status_bad "jq is not installed on this server."
     return 0
   }
-  secret=$(sed -n '1p' "$(secret_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+  secret=$(run_site sed -n '1p' "$(secret_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
   secret=$(validate_hex_key "$secret" 2>/dev/null || printf '')
   [ -n "$secret" ] || {
     status_bad "Site Nostr secret key is missing."
     return 0
   }
-  pubkey=$(sed -n '1p' "$(site_pubkey_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+  pubkey=$(run_site sed -n '1p' "$(site_pubkey_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
   pubkey=$(validate_hex_key "$pubkey" 2>/dev/null || printf '')
   [ -n "$pubkey" ] || {
     status_bad "Site pubkey cache is missing."
     return 0
   }
-  npub=$(sed -n '1p' "$(site_npub_file)" 2>/dev/null | tr -d '\r\n[:space:]')
+  npub=$(run_site sed -n '1p' "$(site_npub_file)" 2>/dev/null | tr -d '\r\n[:space:]')
   npub=$(validate_npub "$npub" 2>/dev/null || printf '')
   [ -n "$npub" ] || {
     status_bad "Site npub cache is missing."
     return 0
   }
-  if ! grep -Fxq "$pubkey" "$(authors_file)" 2>/dev/null; then
+  if ! run_site grep -Fxq "$pubkey" "$(authors_file)" 2>/dev/null; then
     status_bad "Site pubkey is not present in the mirrored author list."
     return 0
   fi
-  relay_count=$(awk 'NF { count += 1 } END { print count + 0 }' "$(relays_file)" 2>/dev/null || printf '0')
+  relay_count=$(run_site awk 'NF { count += 1 } END { print count + 0 }' "$(relays_file)" 2>/dev/null || printf '0')
   if [ "$relay_count" -lt 1 ]; then
     status_bad "Site relay list is empty."
     return 0
@@ -234,7 +246,7 @@ esac
 require_site_context
 run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(state_dir)"
 
-secret=$(sed -n '1p' "$(secret_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+secret=$(run_site sed -n '1p' "$(secret_file)" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
 secret=$(validate_hex_key "$secret" 2>/dev/null || printf '')
 if [ -z "$secret" ]; then
   command -v openssl >/dev/null 2>&1 || {
@@ -264,16 +276,16 @@ npub=$(compute_npub "$pubkey" 2>/dev/null || printf '')
 }
 printf '%s\n' "$npub" | write_site_owned_file "$(site_npub_file)" 600
 
-if ! grep -Fxq "$pubkey" "$(authors_file)" 2>/dev/null; then
+if ! run_site grep -Fxq "$pubkey" "$(authors_file)" 2>/dev/null; then
   {
-    if [ -f "$(authors_file)" ]; then
-      cat "$(authors_file)"
+    if run_root test -f "$(authors_file)"; then
+      run_site cat "$(authors_file)"
     fi
     printf '%s\n' "$pubkey"
   } | awk 'NF && !seen[$0]++ { print }' | write_site_owned_file "$(authors_file)" 644
 fi
 
-relay_count=$(awk 'NF { count += 1 } END { print count + 0 }' "$(relays_file)" 2>/dev/null || printf '0')
+relay_count=$(run_site awk 'NF { count += 1 } END { print count + 0 }' "$(relays_file)" 2>/dev/null || printf '0')
 if [ "$relay_count" -lt 1 ]; then
   default_relays | awk 'NF && !seen[$0]++ { print }' | write_site_owned_file "$(relays_file)" 644
 fi

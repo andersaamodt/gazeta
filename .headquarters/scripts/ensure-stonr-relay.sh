@@ -126,7 +126,7 @@ validate_pubkey() {
 }
 
 read_site_pubkey() {
-  pubkey=$(sed -n '1p' "$(nostr_state_dir)/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
+  pubkey=$(run_site_user "sed -n '1p' '$(nostr_state_dir)/site_pubkey'" 2>/dev/null | tr -d '\r\n[:space:]')
   validate_pubkey "$pubkey"
 }
 
@@ -142,8 +142,8 @@ build_upstream_relays_csv() {
   own_primary="wss://$site_domain"
   own_secondary="ws://$site_domain"
   relays_path="$(nostr_state_dir)/relays"
-  if [ -f "$relays_path" ]; then
-    csv=$(awk -v own_primary="$own_primary" -v own_secondary="$own_secondary" '
+  if run_root test -f "$relays_path"; then
+    csv=$(run_site_user "cat '$relays_path'" 2>/dev/null | awk -v own_primary="$own_primary" -v own_secondary="$own_secondary" '
       {
         gsub(/\r/, "", $0)
         sub(/[[:space:]]*#.*$/, "", $0)
@@ -151,7 +151,7 @@ build_upstream_relays_csv() {
         if ($0 == "" || $0 == own_primary || $0 == own_secondary) next
         if (!seen[$0]++) print $0
       }
-    ' "$relays_path" | paste -sd, - 2>/dev/null || true)
+    ' | paste -sd, - 2>/dev/null || true)
     if [ -n "$csv" ]; then
       printf '%s\n' "$csv"
       return 0
