@@ -127,7 +127,7 @@ write_conf_file() {
   cat > "$tmp" <<'EOF_CONF'
 server=1
 daemon=0
-prune=550
+prune=20000
 txindex=0
 listen=0
 rpcbind=127.0.0.1
