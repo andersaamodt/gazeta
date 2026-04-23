@@ -20,21 +20,16 @@ run_root() {
   "$@"
 }
 
-run_site_user() {
-  command_string=$1
+run_site() {
   if [ "$(id -u)" -eq 0 ]; then
-    su -s /bin/sh "$site_user" -c "$command_string"
+    runuser -u "$site_user" -- "$@"
     return $?
   fi
-  if [ -n "${HQ_REMOTE_SUDO_PASSWORD-}" ] && command -v sudo >/dev/null 2>&1; then
-    printf '%s\n' "$HQ_REMOTE_SUDO_PASSWORD" | sudo -S -p '' -u "$site_user" sh -lc "$command_string"
+  if [ "$(id -un)" = "$site_user" ]; then
+    "$@"
     return $?
   fi
-  if command -v sudo >/dev/null 2>&1; then
-    sudo -u "$site_user" sh -lc "$command_string"
-    return $?
-  fi
-  sh -lc "$command_string"
+  run_root runuser -u "$site_user" -- "$@"
 }
 
 status_ok() {
@@ -126,7 +121,7 @@ validate_pubkey() {
 }
 
 read_site_pubkey() {
-  pubkey=$(run_site_user "sed -n '1p' '$(nostr_state_dir)/site_pubkey'" 2>/dev/null | tr -d '\r\n[:space:]')
+  pubkey=$(run_site sed -n '1p' "$(nostr_state_dir)/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
   validate_pubkey "$pubkey"
 }
 
@@ -143,7 +138,7 @@ build_upstream_relays_csv() {
   own_secondary="ws://$site_domain"
   relays_path="$(nostr_state_dir)/relays"
   if run_root test -f "$relays_path"; then
-    csv=$(run_site_user "cat '$relays_path'" 2>/dev/null | awk -v own_primary="$own_primary" -v own_secondary="$own_secondary" '
+    csv=$(run_site cat "$relays_path" 2>/dev/null | awk -v own_primary="$own_primary" -v own_secondary="$own_secondary" '
       {
         gsub(/\r/, "", $0)
         sub(/[[:space:]]*#.*$/, "", $0)
