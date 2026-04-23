@@ -76,6 +76,71 @@ site_wizardry_dir() {
   printf '%s/.wizardry\n' "$(site_home)"
 }
 
+total_ram_mb() {
+  if command -v free >/dev/null 2>&1; then
+    mem=$(free -m 2>/dev/null | awk '/^Mem:/ { print $2; exit }')
+    case "$mem" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$mem"; return 0 ;;
+    esac
+  fi
+  if [ -r /proc/meminfo ]; then
+    mem_kb=$(awk '/^MemTotal:[[:space:]]+/ { print $2; exit }' /proc/meminfo 2>/dev/null || printf '')
+    case "$mem_kb" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' $((mem_kb / 1024)); return 0 ;;
+    esac
+  fi
+  printf '%s\n' 0
+}
+
+recommended_dbcache_mb() {
+  total=$(total_ram_mb)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$total" -le 0 ]; then
+    printf '%s\n' 64
+    return 0
+  fi
+  if [ "$total" -le 768 ]; then
+    printf '%s\n' 32
+    return 0
+  fi
+  if [ "$total" -le 1536 ]; then
+    printf '%s\n' 64
+    return 0
+  fi
+  if [ "$total" -le 3072 ]; then
+    printf '%s\n' 128
+    return 0
+  fi
+  printf '%s\n' 256
+}
+
+recommended_prune_mb() {
+  disk_mb=$(df -Pm "$(site_home)" 2>/dev/null | awk 'NR==2 { print $2; exit }')
+  case "$disk_mb" in
+    ''|*[!0-9]*) disk_mb=0 ;;
+  esac
+  min_target=20000
+  floor_target=2000
+  if [ "$disk_mb" -le 0 ]; then
+    printf '%s\n' "$min_target"
+    return 0
+  fi
+  one_third=$((disk_mb / 3))
+  if [ "$one_third" -lt "$min_target" ]; then
+    if [ "$one_third" -lt "$floor_target" ]; then
+      printf '%s\n' "$floor_target"
+    else
+      printf '%s\n' "$one_third"
+    fi
+    return 0
+  fi
+  printf '%s\n' "$min_target"
+}
+
 bitcoin_binary() {
   command -v bitcoind 2>/dev/null || true
 }
@@ -124,16 +189,18 @@ ensure_bitcoin_installed() {
 
 write_conf_file() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-bitcoin-conf.XXXXXX")
-  cat > "$tmp" <<'EOF_CONF'
+  prune_target=$(recommended_prune_mb)
+  dbcache_target=$(recommended_dbcache_mb)
+  cat > "$tmp" <<EOF_CONF
 server=1
 daemon=0
-prune=20000
+prune=$prune_target
 txindex=0
 listen=0
 rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
 fallbackfee=0.00020000
-dbcache=96
+dbcache=$dbcache_target
 maxmempool=32
 EOF_CONF
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_root)"
@@ -239,7 +306,12 @@ ensure_bitcoin_installed
 write_conf_file
 write_service_file
 run_root systemctl daemon-reload
-run_root systemctl enable --now "$(service_name)"
+run_root systemctl enable "$(service_name)"
+if run_root systemctl is-active --quiet "$(service_name)"; then
+  run_root systemctl restart "$(service_name)"
+else
+  run_root systemctl start "$(service_name)"
+fi
 if ! wait_for_rpc; then
   status_bad "Bitcoin Core did not become ready after provisioning."
   exit 1
