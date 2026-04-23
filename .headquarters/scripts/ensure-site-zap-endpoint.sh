@@ -121,6 +121,14 @@ alias_domain_vhost_file() {
   printf '/etc/nginx/sites-available/%s\n' "$(zap_alias_domain)"
 }
 
+legacy_btcpay_alias_hook_file() {
+  printf '%s/btcpay-zap-address.conf\n' "$(alias_server_hook_dir)"
+}
+
+legacy_btcpay_rootpath_hook_file() {
+  printf '%s/btcpay-rootpath.conf\n' "$(alias_server_hook_dir)"
+}
+
 read_conf_value() {
   file=$1
   key=$2
@@ -958,6 +966,13 @@ EOF_HOOK
   rm -f "$tmp"
 }
 
+remove_legacy_alias_hooks() {
+  if [ "$(zap_alias_domain)" = "$site_domain" ]; then
+    return 0
+  fi
+  run_root rm -f "$(legacy_btcpay_alias_hook_file)" "$(legacy_btcpay_rootpath_hook_file)"
+}
+
 ensure_alias_domain_include() {
   vhost_file=$(alias_domain_vhost_file)
   [ -f "$vhost_file" ] || {
@@ -1033,14 +1048,14 @@ check_status() {
     status_bad "nostril is not installed on this server."
     return 0
   }
-  [ -f "$(service_script_file)" ] || {
+  if ! run_root test -f "$(service_script_file)"; then
     status_bad "The zap service script is missing."
     return 0
-  }
-  [ -f "$(service_env_file)" ] || {
+  fi
+  if ! run_root test -f "$(service_env_file)"; then
     status_bad "The zap service env file is missing."
     return 0
-  }
+  fi
   [ -f "$(service_file)" ] || {
     status_bad "The zap service unit is missing."
     return 0
@@ -1106,6 +1121,7 @@ write_service_file
 if [ "$(zap_alias_domain)" = "$site_domain" ]; then
   write_server_hook
 else
+  remove_legacy_alias_hooks
   write_alias_server_hook
   ensure_alias_domain_include
 fi

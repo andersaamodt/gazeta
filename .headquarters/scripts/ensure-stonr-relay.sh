@@ -316,10 +316,10 @@ check_status() {
     status_bad "Stonr is not installed on this server."
     return 0
   }
-  [ -f "$(relay_env_file)" ] || {
+  if ! run_root test -f "$(relay_env_file)"; then
     status_bad "Stonr relay env file is missing."
     return 0
-  }
+  fi
   [ -f "$(service_file)" ] || {
     status_bad "Stonr systemd service file is missing."
     return 0
@@ -378,7 +378,7 @@ command -v systemctl >/dev/null 2>&1 || {
 
 run_root install -d -m 755 "/etc/nginx/headquarters-site/$site_user/server.d" "/etc/nginx/headquarters-site/$site_user/root.d"
 write_env_file
-run_site_user "stonr --env '$(relay_env_file)' init"
+run_site stonr --env "$(relay_env_file)" init
 write_root_hook
 write_server_hook
 write_service_file
