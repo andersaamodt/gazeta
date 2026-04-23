@@ -20,6 +20,18 @@ run_root() {
   "$@"
 }
 
+run_site() {
+  if [ "$(id -u)" -eq 0 ]; then
+    runuser -u "$site_user" -- "$@"
+    return $?
+  fi
+  if [ "$(id -un)" = "$site_user" ]; then
+    "$@"
+    return $?
+  fi
+  run_root runuser -u "$site_user" -- "$@"
+}
+
 status_ok() {
   printf 'status=ok\n'
   printf 'summary=%s\n' "$1"
@@ -61,7 +73,7 @@ current_lightning_pubkey() {
   if ! command -v lightning-cli >/dev/null 2>&1; then
     return 1
   fi
-  run_root sh -eu -c '
+  run_site sh -eu -c '
 lightning_dir=$1
 lightning-cli --lightning-dir="$lightning_dir" getinfo 2>/dev/null | awk -F"\"" "/\"id\"/ { print \$4; exit }"
 ' sh "$(lightning_root)"
