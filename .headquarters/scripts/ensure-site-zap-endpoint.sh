@@ -384,7 +384,13 @@ def lightning_cli(*args, timeout=30):
 def lightning_cli_keywords(method, timeout=30, **kwargs):
     args = ["lightning-cli", f"--lightning-dir={LIGHTNING_DIR}", "-k", method]
     for key, value in kwargs.items():
-        args.append(f"{key}={value}")
+        if isinstance(value, bool):
+            rendered = "true" if value else "false"
+        elif isinstance(value, (int, float)):
+            rendered = str(value)
+        else:
+            rendered = json.dumps(value, ensure_ascii=False)
+        args.append(f"{key}={rendered}")
     output = run_command(args, timeout=timeout)
     try:
         return json.loads(output)
