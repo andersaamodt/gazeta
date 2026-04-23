@@ -679,7 +679,7 @@
       }
       return provider.sendPayment(modalState.state.invoice);
     }).then(function () {
-      setDialogStatus('Payment submitted through WebLN. Your wallet will publish the zap receipt after settlement.', 'ok');
+      setDialogStatus('Payment submitted through WebLN. The recipient server will publish the zap receipt after settlement.', 'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'WebLN payment failed.', 'error');
     }).finally(function () {

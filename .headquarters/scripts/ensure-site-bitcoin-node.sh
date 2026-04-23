@@ -121,7 +121,8 @@ listen=0
 rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
 fallbackfee=0.00020000
-dbcache=300
+dbcache=96
+maxmempool=32
 EOF_CONF
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_root)"
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_data_dir)"

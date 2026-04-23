@@ -29,7 +29,7 @@ title: ""
 <button type="button" class="admin-nav-item is-active admin-nav-divider-after" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
@@ -168,7 +168,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Zaps</h3>
-<p class="muted">Manage site-level zap settings here while BTCPay + CLN provisioning stays in Headquarters.</p>
+<p class="muted">Manage site-level zap settings here while Bitcoin, Core Lightning, and the public zap endpoint are provisioned in Headquarters.</p>
 </div>
 </div>
 
@@ -188,7 +188,7 @@ title: ""
 <div class="field-row">
 <label for="zap-lud16"><strong>Lightning Address</strong></label>
 <input type="text" id="zap-lud16" inputmode="email" placeholder="you@example.com">
-<p id="zap-wallet-summary" class="muted">Leave this blank to use the site's automatic demo wallet while you test. Once BTCPay publishes your canonical address, keep that address here unless you intentionally want to override it.</p>
+<p id="zap-wallet-summary" class="muted">Leave this blank only if you intentionally want to fall back to the site's automatic demo wallet while testing. In the normal self-hosted path, Headquarters will publish your canonical site address here for you.</p>
 </div>
 <div class="field-row">
 <label for="zap-default-amount-sats"><strong>Default Amount</strong></label>
@@ -196,7 +196,7 @@ title: ""
 <span class="field-unit">sats</span>
 </div>
 </div>
-<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Keep the BTCPay-backed address here if you want one canonical zap identity for both onsite and offsite readers.</p>
+<p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Keep the canonical site address here if you want one zap identity for both onsite and offsite readers.</p>
 </section>
 
 <section class="sub-card">
@@ -215,8 +215,8 @@ title: ""
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
-<h3>BTCPay Server</h3>
-<p class="muted">BTCPay + CLN are provisioned in Headquarters. Use this panel to confirm the public host, console URL, and Lightning Address endpoint.</p>
+<h3>Lightning Node</h3>
+<p class="muted">Bitcoin, Core Lightning, and the public Lightning Address endpoint are provisioned in Headquarters. Use this panel to confirm node reachability, liquidity, and zap readiness.</p>
 </div>
 </div>
 
@@ -224,7 +224,7 @@ title: ""
 <section class="sub-card">
 <h4>Server Runtime</h4>
 <div id="btcpay-runtime" class="runtime-settings-list">
-<div class="placeholder">Loading BTCPay runtime...</div>
+<div class="placeholder">Loading Lightning runtime...</div>
 </div>
 </section>
 </div>
@@ -274,7 +274,7 @@ title: ""
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label></td>
 </tr>
 <tr data-plugin-row="btcpay">
-<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay</strong><span class="plugin-setting-help">Self-hosted checkout, invoices, and payment runtime controls.</span></div></td>
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Payments</strong><span class="plugin-setting-help">Lightning-backed checkout, invoices, and payment runtime controls.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label></td>
 </tr>
 <tr data-plugin-row="video_chat">

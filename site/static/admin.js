@@ -464,7 +464,7 @@
       return 'Zaps';
     }
     if (key === 'btcpay') {
-      return 'BTCPay';
+      return 'Lightning';
     }
     if (key === 'plugins') {
       return 'Plugins';
@@ -3245,7 +3245,7 @@
     if (zapsEnabled && signerReady && activeAddress && endpointReady) {
       label = 'Ready';
       statusClass = 'is-connected';
-    } else if (signerReady || activeAddress || endpointReady || !!info.btcpay_online) {
+    } else if (signerReady || activeAddress || endpointReady || !!info.lightning_online) {
       label = 'Partial';
       statusClass = 'is-installed';
     }
@@ -3290,18 +3290,22 @@
       return;
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
-    const btcpayOnline = !!info.btcpay_online;
+    const lightningOnline = !!info.lightning_online;
     const endpointReady = !!info.zap_endpoint_ready;
-    const btcpayConfigured = !!info.btcpay_configured;
+    const lightningConfigured = !!info.lightning_configured;
+    const canReceive = !!info.can_receive_zaps;
     let label = 'Offline';
     let statusClass = 'is-offline';
-    if (btcpayOnline && endpointReady) {
+    if (canReceive) {
       label = 'Ready';
       statusClass = 'is-connected';
-    } else if (btcpayOnline) {
+    } else if (lightningOnline && endpointReady) {
+      label = 'Live';
+      statusClass = 'is-online';
+    } else if (lightningOnline) {
       label = 'Online';
       statusClass = 'is-online';
-    } else if (btcpayConfigured) {
+    } else if (lightningConfigured) {
       label = 'Configured';
       statusClass = 'is-installed';
     }
@@ -3680,7 +3684,10 @@
     const zapsEnabled = !!info.zaps_enabled;
     const endpointReady = !!info.zap_endpoint_ready;
     const effectiveLud16 = String(info.effective_lud16 || '').trim();
-    const btcpayUrl = String(info.btcpay_url || '').trim();
+    const lightningOnline = !!info.lightning_online;
+    const canReceive = !!info.can_receive_zaps;
+    const inboundLiquidity = Number(info.inbound_liquidity_sats || 0);
+    const publicAddress = String(info.lightning_public_address || '').trim();
     const endpointUrl = String(info.zap_endpoint_url || '').trim();
     const lud16Source = String(info.lud16_source || '').trim().toLowerCase();
     let html = '';
@@ -3703,8 +3710,17 @@
     html += '<div class="field-row"><div class="setting-label"><strong>Endpoint URL</strong></div><div class="zaps-runtime-value">'
       + runtimeLinkHtml(endpointUrl, 'Unavailable')
       + '</div></div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>BTCPay console</strong></div><div class="zaps-runtime-value">'
-      + runtimeLinkHtml(btcpayUrl, 'Unavailable')
+    html += '<div class="field-row"><div class="setting-label"><strong>Lightning node</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(lightningOnline, 'Online', 'Offline'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Public peer address</strong></div><div class="zaps-runtime-value">'
+      + (publicAddress ? ('<code>' + escapeHtml(publicAddress) + '</code>') : '<span class="zaps-runtime-value is-warn">Unavailable</span>')
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Receive readiness</strong></div>'
+      + (showChecking ? checkingValueHtml : statusValueHtml(canReceive, 'Ready', 'Needs inbound liquidity'))
+      + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Inbound liquidity</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(inboundLiquidity)) + ' sats'
       + '</div></div>';
     if (runtimeMessage) {
       html += '<pre class="zaps-runtime-log">' + escapeHtml(String(runtimeMessage)) + (runtimeLog ? '\n\n' + escapeHtml(String(runtimeLog)) : '') + '</pre>';
@@ -3779,27 +3795,55 @@
     const info = runtime && typeof runtime === 'object' ? runtime : {};
     state.btcpayRuntimeInfo = info;
     setBtcpayNavStatus(info);
-    const btcpayConfigured = !!info.btcpay_configured;
-    const btcpayOnline = !!info.btcpay_online;
-    const btcpayHost = String(info.btcpay_host || '').trim();
-    const btcpayUrl = String(info.btcpay_url || '').trim();
+    const lightningConfigured = !!info.lightning_configured;
+    const lightningOnline = !!info.lightning_online;
+    const publicAddress = String(info.public_address || '').trim();
+    const nodeAlias = String(info.node_alias || '').trim();
+    const nodeId = String(info.node_id || '').trim();
+    const numPeers = Number(info.num_peers || 0);
+    const numActiveChannels = Number(info.num_active_channels || 0);
+    const numPendingChannels = Number(info.num_pending_channels || 0);
+    const inboundLiquidity = Number(info.inbound_liquidity_sats || 0);
+    const outboundLiquidity = Number(info.outbound_liquidity_sats || 0);
+    const canReceive = !!info.can_receive_zaps;
     const effectiveLud16 = String(info.effective_lud16 || '').trim();
     const endpointUrl = String(info.zap_endpoint_url || '').trim();
     const endpointReady = !!info.zap_endpoint_ready;
 
     let html = '';
     html += '<div class="field-row"><div class="setting-label"><strong>Provisioning</strong></div><div class="zaps-runtime-value">Managed in Headquarters</div></div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Stack</strong></div>'
-      + statusValueHtml(btcpayConfigured, 'Configured', 'Not configured')
+    html += '<div class="field-row"><div class="setting-label"><strong>Node stack</strong></div>'
+      + statusValueHtml(lightningConfigured, 'Configured', 'Not configured')
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Public status</strong></div>'
-      + statusValueHtml(btcpayOnline, 'Online', 'Offline')
+    html += '<div class="field-row"><div class="setting-label"><strong>Node status</strong></div>'
+      + statusValueHtml(lightningOnline, 'Online', 'Offline')
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>Host</strong></div>'
-      + '<div class="zaps-runtime-value">' + (btcpayHost ? escapeHtml(btcpayHost) : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Public peer address</strong></div>'
+      + '<div class="zaps-runtime-value">' + (publicAddress ? ('<code>' + escapeHtml(publicAddress) + '</code>') : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
       + '</div>';
-    html += '<div class="field-row"><div class="setting-label"><strong>URL</strong></div>'
-      + '<div class="zaps-runtime-value">' + runtimeLinkHtml(btcpayUrl, 'Unavailable') + '</div>'
+    html += '<div class="field-row"><div class="setting-label"><strong>Node alias</strong></div><div class="zaps-runtime-value">'
+      + (nodeAlias ? escapeHtml(nodeAlias) : '<span class="zaps-runtime-value is-warn">Unavailable</span>')
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Node id</strong></div><div class="zaps-runtime-value">'
+      + (nodeId ? ('<code>' + escapeHtml(nodeId) + '</code>') : '<span class="zaps-runtime-value is-warn">Unavailable</span>')
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Peers</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(numPeers))
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Active channels</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(numActiveChannels))
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Pending channels</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(numPendingChannels))
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Inbound liquidity</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(inboundLiquidity)) + ' sats'
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Outbound liquidity</strong></div><div class="zaps-runtime-value">'
+      + escapeHtml(String(outboundLiquidity)) + ' sats'
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Receive readiness</strong></div>'
+      + statusValueHtml(canReceive, 'Ready', 'Needs inbound liquidity')
       + '</div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Published zap address</strong></div>'
       + '<div class="zaps-runtime-value">' + (effectiveLud16 ? ('<code>' + escapeHtml(effectiveLud16) + '</code>') : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
@@ -3824,9 +3868,9 @@
     }
     setBtcpayNavStatus(null, true);
     try {
-      const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
+      const data = await apiPost('/cgi/blog-manage-lightning', { action: 'status' }, true);
       if (!data.success) {
-        throw new Error(data.error || 'Failed to load BTCPay runtime');
+        throw new Error(data.error || 'Failed to load Lightning runtime');
       }
       renderBtcpayRuntime(data.runtime || {}, '', '');
       if (els.outputBtcpay) {

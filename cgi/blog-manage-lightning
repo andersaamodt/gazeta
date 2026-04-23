@@ -1,5 +1,5 @@
 #!/bin/sh
-# Report zap readiness for a site whose Lightning stack is managed in Headquarters.
+# Report direct Lightning node + zap endpoint status for a site managed in Headquarters.
 
 set -eu
 
@@ -11,10 +11,6 @@ blog_read_request_body
 blog_send_json_headers
 
 if ! blog_require_session true true; then
-  exit 0
-fi
-if ! blog_plugin_enabled "zaps"; then
-  blog_json_error "Zaps plugin is disabled for this site" "plugin_disabled"
   exit 0
 fi
 
@@ -49,24 +45,6 @@ lud16_domain() {
     *@*) printf '%s\n' "${value#*@}" | tr '[:upper:]' '[:lower:]' ;;
     *) return 1 ;;
   esac
-}
-
-zap_endpoint_url_for_lud16() {
-  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
-  localpart=$(lud16_localpart "$value" 2>/dev/null || printf '')
-  domain=$(lud16_domain "$value" 2>/dev/null || printf '')
-  if [ -z "$localpart" ] || ! blog_valid_public_host "$domain"; then
-    printf '\n'
-    return 0
-  fi
-  printf 'https://%s/.well-known/lnurlp/%s\n' "$domain" "$localpart"
-}
-
-zap_endpoint_live() {
-  endpoint_url=${1-}
-  [ -n "$endpoint_url" ] || return 1
-  command -v curl >/dev/null 2>&1 || return 1
-  curl -fsS --max-time 8 "$endpoint_url" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'
 }
 
 lightning_public_host() {
@@ -113,49 +91,103 @@ lightning_cli_json() {
   lightning-cli --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
 }
 
+site_pubkey() {
+  pubkey=$(sed -n '1p' "$blog_nostr_state_dir/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+  case "$pubkey" in
+    ??????*) printf '%s\n' "$pubkey" ;;
+    *) return 1 ;;
+  esac
+}
+
+zap_endpoint_url_for_lud16() {
+  value=$(printf '%s' "${1-}" | tr -d '\r\n[:space:]')
+  localpart=$(lud16_localpart "$value" 2>/dev/null || printf '')
+  domain=$(lud16_domain "$value" 2>/dev/null || printf '')
+  if [ -z "$localpart" ] || ! blog_valid_public_host "$domain"; then
+    printf '\n'
+    return 0
+  fi
+  printf 'https://%s/.well-known/lnurlp/%s\n' "$domain" "$localpart"
+}
+
+zap_endpoint_live() {
+  endpoint_url=${1-}
+  [ -n "$endpoint_url" ] || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -fsS --max-time 8 "$endpoint_url" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'
+}
+
 runtime_json() {
-  zaps_enabled=$(blog_zaps_enabled 2>/dev/null || printf 'false')
   configured_lud16=$(blog_zap_lud16 2>/dev/null || printf '')
   effective_lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
-  lud16_source=$(blog_zap_lud16_source 2>/dev/null || printf 'unavailable')
-  demo_wallet_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
-  lightning_online=false
-  inbound_liquidity_sats=0
+  endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")
+  endpoint_ready=false
+  if zap_endpoint_live "$endpoint_url"; then
+    endpoint_ready=true
+  fi
+
+  host=$(lightning_public_host)
+  port=$(lightning_public_port)
   public_address=$(lightning_public_address)
-  zap_endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")
-  zap_endpoint_ready=false
+  node_id=''
+  node_alias=''
+  num_peers=0
+  num_active_channels=0
+  num_pending_channels=0
+  inbound_liquidity_sats=0
+  outbound_liquidity_sats=0
+  lightning_online=false
+
   if getinfo_json=$(lightning_cli_json getinfo); then
     lightning_online=true
+    node_id=$(printf '%s\n' "$getinfo_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+    node_alias=$(printf '%s\n' "$getinfo_json" | jq -r '.alias // ""' 2>/dev/null || printf '')
+    num_peers=$(printf '%s\n' "$getinfo_json" | jq -r '.num_peers // 0' 2>/dev/null || printf '0')
+    num_active_channels=$(printf '%s\n' "$getinfo_json" | jq -r '.num_active_channels // 0' 2>/dev/null || printf '0')
+    num_pending_channels=$(printf '%s\n' "$getinfo_json" | jq -r '.num_pending_channels // 0' 2>/dev/null || printf '0')
   fi
+
   if listfunds_json=$(lightning_cli_json listfunds); then
     inbound_liquidity_sats=$(printf '%s\n' "$listfunds_json" | jq -r '
       def msat: ((. // "0msat") | tostring | sub("msat$"; "") | tonumber? // 0);
       [(.channels // [])[]? | ((.amount_msat | msat) - (.our_amount_msat | msat))] | add // 0 | floor / 1000 | floor
     ' 2>/dev/null || printf '0')
+    outbound_liquidity_sats=$(printf '%s\n' "$listfunds_json" | jq -r '
+      def msat: ((. // "0msat") | tostring | sub("msat$"; "") | tonumber? // 0);
+      [(.channels // [])[]? | (.our_amount_msat | msat)] | add // 0 | floor / 1000 | floor
+    ' 2>/dev/null || printf '0')
   fi
-  if zap_endpoint_live "$zap_endpoint_url"; then
-    zap_endpoint_ready=true
-  fi
+
   can_receive=false
-  if [ "$lightning_online" = true ] && [ "$zap_endpoint_ready" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
+  if [ "$endpoint_ready" = true ] && [ "$lightning_online" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
     can_receive=true
+  fi
+
+  signer_ready=false
+  if site_pubkey >/dev/null 2>&1; then
+    signer_ready=true
   fi
 
   printf '{'
   printf '"headquarters_managed":true,'
-  printf '"zaps_enabled":%s,' "$(bool_json_value "$zaps_enabled")"
+  printf '"lightning_configured":%s,' "$(bool_json_value "$(test -n "$host" && test -n "$port" && printf true || printf false)")"
+  printf '"lightning_online":%s,' "$(bool_json_value "$lightning_online")"
+  printf '"lightning_host":"%s",' "$(blog_json_escape "$host")"
+  printf '"lightning_port":%s,' "$(printf '%s' "${port:-0}" | tr -dc '0-9')"
+  printf '"public_address":"%s",' "$(blog_json_escape "$public_address")"
+  printf '"node_id":"%s",' "$(blog_json_escape "$node_id")"
+  printf '"node_alias":"%s",' "$(blog_json_escape "$node_alias")"
+  printf '"num_peers":%s,' "$(printf '%s' "${num_peers:-0}" | tr -dc '0-9')"
+  printf '"num_active_channels":%s,' "$(printf '%s' "${num_active_channels:-0}" | tr -dc '0-9')"
+  printf '"num_pending_channels":%s,' "$(printf '%s' "${num_pending_channels:-0}" | tr -dc '0-9')"
+  printf '"inbound_liquidity_sats":%s,' "$(printf '%s' "${inbound_liquidity_sats:-0}" | tr -dc '0-9')"
+  printf '"outbound_liquidity_sats":%s,' "$(printf '%s' "${outbound_liquidity_sats:-0}" | tr -dc '0-9')"
+  printf '"can_receive_zaps":%s,' "$(bool_json_value "$can_receive")"
   printf '"configured_lud16":"%s",' "$(blog_json_escape "$configured_lud16")"
   printf '"effective_lud16":"%s",' "$(blog_json_escape "$effective_lud16")"
-  printf '"lud16_source":"%s",' "$(blog_json_escape "$lud16_source")"
-  printf '"demo_wallet_available":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
-  printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$demo_wallet_npub")"
-  printf '"site_signer_ready":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
-  printf '"lightning_online":%s,' "$(bool_json_value "$lightning_online")"
-  printf '"lightning_public_address":"%s",' "$(blog_json_escape "$public_address")"
-  printf '"inbound_liquidity_sats":%s,' "$(printf '%s' "${inbound_liquidity_sats:-0}" | tr -dc '0-9')"
-  printf '"can_receive_zaps":%s,' "$(bool_json_value "$can_receive")"
-  printf '"zap_endpoint_url":"%s",' "$(blog_json_escape "$zap_endpoint_url")"
-  printf '"zap_endpoint_ready":%s' "$(bool_json_value "$zap_endpoint_ready")"
+  printf '"zap_endpoint_url":"%s",' "$(blog_json_escape "$endpoint_url")"
+  printf '"zap_endpoint_ready":%s,' "$(bool_json_value "$endpoint_ready")"
+  printf '"site_signer_ready":%s' "$(bool_json_value "$signer_ready")"
   printf '}\n'
 }
 
@@ -170,7 +202,7 @@ emit_success() {
 
 emit_failure() {
   message=${1-Request failed}
-  code=${2-zaps_failed}
+  code=${2-lightning_failed}
   log_text=${3-}
   printf '{"success":false,"error":"%s","code":"%s","runtime":%s,"log":"%s"}\n' \
     "$(blog_json_escape "$message")" \
@@ -181,11 +213,11 @@ emit_failure() {
 
 case "$action" in
   status)
-    emit_success "Zap runtime loaded."
+    emit_success "Lightning runtime loaded."
     exit 0
     ;;
-  install_wizardry|install_bitcoin|install_lightning)
-    emit_failure "Provision Bitcoin, Core Lightning, and the Lightning Address endpoint from Headquarters." "managed_externally"
+  install_btcpay|uninstall_btcpay|install_lightning|install_bitcoin)
+    emit_failure "Bitcoin, Core Lightning, and the Lightning Address endpoint are provisioned in Headquarters." "managed_externally"
     exit 0
     ;;
   *)

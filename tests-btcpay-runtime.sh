@@ -26,7 +26,7 @@ assert_contains() {
   fi
 }
 
-TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/btcpay-runtime-test.XXXXXX")
+TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/lightning-runtime-test.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
 
 SITE_NAME=testsite
@@ -101,24 +101,10 @@ for arg in "$@"; do
     *) url=$arg ;;
   esac
 done
-case "$url" in
-  https://pay.blog.example.com|https://pay.blog.example.com/)
-    if [ "${MOCK_BTCPAY_ONLINE-0}" = "1" ]; then
-      printf 'HTTP/1.1 200 OK\n'
-      exit 0
-    fi
-    exit 22
-    ;;
-  https://pay.blog.example.com/btcpay|https://pay.blog.example.com/btcpay/)
-    if [ "${MOCK_BTCPAY_ONLINE-0}" = "1" ]; then
-      printf 'HTTP/1.1 200 OK\n'
-      exit 0
-    fi
-    exit 22
-    ;;
+  case "$url" in
   https://blog.example.com/.well-known/lnurlp/zap)
     if [ "${MOCK_ZAP_ENDPOINT_READY-0}" = "1" ]; then
-      printf '{"callback":"https://pay.blog.example.com/callback","allowsNostr":true}\n'
+      printf '{"callback":"https://blog.example.com/.well-known/lnurlp/zap/callback","allowsNostr":true,"nostrPubkey":"1111111111111111111111111111111111111111111111111111111111111111"}\n'
       exit 0
     fi
     exit 22
@@ -130,6 +116,36 @@ esac
 EOS
 chmod +x "$BIN_DIR/curl"
 
+cat > "$BIN_DIR/lightning-cli" <<'EOS'
+#!/bin/sh
+set -eu
+if [ "${1-}" != "" ] && printf '%s' "$1" | grep -Eq '^--lightning-dir='; then
+  shift
+fi
+cmd=${1-}
+shift || true
+case "$cmd" in
+  getinfo)
+    if [ "${MOCK_LIGHTNING_ONLINE-0}" = "1" ]; then
+      printf '{"id":"1111111111111111111111111111111111111111111111111111111111111111","alias":"testsite","num_peers":2,"num_active_channels":1,"num_pending_channels":0}\n'
+      exit 0
+    fi
+    exit 1
+    ;;
+  listfunds)
+    if [ "${MOCK_LIGHTNING_ONLINE-0}" = "1" ]; then
+      printf '{"channels":[{"amount_msat":"900000msat","our_amount_msat":"300000msat"}]}\n'
+      exit 0
+    fi
+    exit 1
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+EOS
+chmod +x "$BIN_DIR/lightning-cli"
+
 export PATH="$BIN_DIR:$PATH"
 export WIZARDRY_SITES_DIR="$SITES_DIR"
 export WIZARDRY_SITE_NAME="$SITE_NAME"
@@ -138,11 +154,12 @@ export WIZARDRY_SITE_NAME="$SITE_NAME"
 . "$ROOT_DIR/cgi/blog-lib.sh"
 
 blog_init
-config-set "$blog_site_conf" plugin_btcpay true
 config-set "$blog_site_conf" domain blog.example.com
-config-set "$blog_site_conf" btcpay_host pay.blog.example.com
+config-set "$blog_site_conf" lightning_public_host node.blog.example.com
+config-set "$blog_site_conf" lightning_public_port 19777
 config-set "$blog_site_conf" zap_lud16 zap@blog.example.com
 printf '%s\n' 'npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' > "$NOSTR_STATE_DIR/site_npub"
+printf '%s\n' '1111111111111111111111111111111111111111111111111111111111111111' > "$NOSTR_STATE_DIR/site_pubkey"
 
 admin_profile=$(blog_user_profile admin)
 config-set "$admin_profile" username admin
@@ -154,52 +171,49 @@ session_token=${session_parts%%;*}
 rest=${session_parts#*;}
 csrf_token=${rest%%;*}
 
-run_btcpay_cgi() {
+run_lightning_cgi() {
   query=$1
   host=$2
-  QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-manage-btcpay" 2>&1
+  QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-manage-lightning" 2>&1
 }
 
 # 1) auth required when session is missing.
-auth_out=$(run_btcpay_cgi 'action=status' 'blog.example.com')
+auth_out=$(run_lightning_cgi 'action=status' 'blog.example.com')
 assert_contains "$auth_out" '"code":"auth_required"' 'status requires auth'
 
 # 2) csrf required when token is invalid.
-csrf_out=$(run_btcpay_cgi "action=status&session_token=$session_token&csrf_token=bad" 'blog.example.com')
+csrf_out=$(run_lightning_cgi "action=status&session_token=$session_token&csrf_token=bad" 'blog.example.com')
 assert_contains "$csrf_out" '"code":"csrf_invalid"' 'status requires matching csrf'
 
 # 3) status returns Headquarters-managed runtime keys.
-unset MOCK_BTCPAY_ONLINE || true
+unset MOCK_LIGHTNING_ONLINE || true
 unset MOCK_ZAP_ENDPOINT_READY || true
-status_out=$(run_btcpay_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+status_out=$(run_lightning_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
 assert_contains "$status_out" '"success":true' 'status returns success'
 assert_contains "$status_out" '"headquarters_managed":true' 'status reports Headquarters-managed provisioning'
-assert_contains "$status_out" '"btcpay_host":"pay.blog.example.com"' 'status derives configured pay host'
-assert_contains "$status_out" '"btcpay_url":"https://pay.blog.example.com"' 'status emits BTCPay URL'
-assert_contains "$status_out" '"btcpay_online":false' 'status reports BTCPay offline when public host does not answer'
+assert_contains "$status_out" '"lightning_host":"node.blog.example.com"' 'status derives configured node host'
+assert_contains "$status_out" '"lightning_port":19777' 'status emits configured lightning port'
+assert_contains "$status_out" '"lightning_online":false' 'status reports lightning offline when RPC does not answer'
 assert_contains "$status_out" '"effective_lud16":"zap@blog.example.com"' 'status reports effective Lightning Address'
 assert_contains "$status_out" '"zap_endpoint_ready":false' 'status reports Lightning Address endpoint pending'
-assert_contains "$status_out" '"site_signer_ready":true' 'status reports site signer readiness from cached npub'
+assert_contains "$status_out" '"public_address":"node.blog.example.com:19777"' 'status emits public peer address'
+assert_contains "$status_out" '"site_signer_ready":true' 'status reports site signer readiness from cached site pubkey'
 
-# 4) status appends a configured BTCPay root path to the public URL.
-config-set "$blog_site_conf" btcpay_rootpath /btcpay
-path_out=$(run_btcpay_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
-assert_contains "$path_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'status includes BTCPay root path when configured'
-
-# 5) status reports live BTCPay + Lightning Address endpoint when the public URLs answer.
-MOCK_BTCPAY_ONLINE=1
+# 4) status reports live Lightning + Lightning Address endpoint when the public services answer.
+MOCK_LIGHTNING_ONLINE=1
 MOCK_ZAP_ENDPOINT_READY=1
-export MOCK_BTCPAY_ONLINE MOCK_ZAP_ENDPOINT_READY
-live_out=$(run_btcpay_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
-assert_contains "$live_out" '"btcpay_online":true' 'status reports BTCPay online when public host answers'
+export MOCK_LIGHTNING_ONLINE MOCK_ZAP_ENDPOINT_READY
+live_out=$(run_lightning_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+assert_contains "$live_out" '"lightning_online":true' 'status reports Lightning online when RPC answers'
 assert_contains "$live_out" '"zap_endpoint_ready":true' 'status reports Lightning Address endpoint live'
 assert_contains "$live_out" '"zap_endpoint_url":"https://blog.example.com/.well-known/lnurlp/zap"' 'status emits Lightning Address endpoint URL'
+assert_contains "$live_out" '"can_receive_zaps":true' 'status reports zap receive readiness when endpoint and inbound liquidity exist'
 
-# 6) install actions are blocked because provisioning moved to Headquarters.
-managed_out=$(run_btcpay_cgi "action=install_btcpay&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+# 5) install actions are blocked because provisioning moved to Headquarters.
+managed_out=$(run_lightning_cgi "action=install_lightning&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
 assert_contains "$managed_out" '"success":false' 'install action returns failure in site admin'
 assert_contains "$managed_out" '"code":"managed_externally"' 'install action reports external management boundary'
-assert_contains "$managed_out" 'BTCPay + CLN provisioning is managed in Headquarters.' 'install action explains Headquarters ownership'
+assert_contains "$managed_out" 'Bitcoin, Core Lightning, and the Lightning Address endpoint are provisioned in Headquarters.' 'install action explains Headquarters ownership'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

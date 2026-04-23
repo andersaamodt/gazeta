@@ -53,19 +53,43 @@ watchtower_notes_file() {
   printf '%s/README.md\n' "$(watchtower_root)"
 }
 
-btcpay_repo_dir() {
-  printf '%s/.sitedata/site/btcpay/btcpayserver-docker\n' "$(site_home)"
+lightning_root() {
+  printf '%s/.sitedata/site/lightning\n' "$(site_home)"
 }
 
 current_lightning_pubkey() {
-  if [ ! -x "$(btcpay_repo_dir)/bitcoin-lightning-cli.sh" ]; then
+  if ! command -v lightning-cli >/dev/null 2>&1; then
     return 1
   fi
   run_root sh -eu -c '
-repo_dir=$1
-cd "$repo_dir"
-./bitcoin-lightning-cli.sh getinfo 2>/dev/null | awk -F"\"" "/\"id\"/ { print \$4; exit }"
-' sh "$(btcpay_repo_dir)"
+lightning_dir=$1
+lightning-cli --lightning-dir="$lightning_dir" getinfo 2>/dev/null | awk -F"\"" "/\"id\"/ { print \$4; exit }"
+' sh "$(lightning_root)"
+}
+
+read_conf_value() {
+  file=$1
+  key=$2
+  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
+}
+
+active_site_conf() {
+  printf '%s/site/site.conf\n' "$(site_home)"
+}
+
+lightning_node_host() {
+  value=$(read_conf_value "$(active_site_conf)" lightning_public_host | tr -d '\r\n[:space:]')
+  [ -n "$value" ] || value=${site_domain-}
+  printf '%s\n' "$value"
+}
+
+lightning_node_port() {
+  value=$(read_conf_value "$(active_site_conf)" lightning_public_port | tr -d '\r\n[:space:]')
+  case "$value" in
+    ''|*[!0-9]*) value='' ;;
+  esac
+  [ -n "$value" ] || value=9735
+  printf '%s\n' "$value"
 }
 
 check_status() {
@@ -95,8 +119,8 @@ TARGET_HOST=
 TARGET_SSH_USER=
 TARGET_SSH_PORT=22
 SITE_DOMAIN=${site_domain-}
-LIGHTNING_NODE_HOST=${site_domain-}
-LIGHTNING_NODE_PORT=9735
+LIGHTNING_NODE_HOST=$(lightning_node_host)
+LIGHTNING_NODE_PORT=$(lightning_node_port)
 LIGHTNING_NODE_PUBKEY=$node_pubkey
 EOF_ENV
 run_root install -o "$site_user" -g "$site_user" -m 0640 "$tmp_env" "$(watchtower_env_file)"
