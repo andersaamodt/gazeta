@@ -655,61 +655,11 @@
     return html;
   }
 
-  function eventCoordinateFromCanonicalEvent(event) {
-    if (!event || typeof event !== 'object') {
-      return '';
-    }
-    var kind = Number(event.kind || 0);
-    var pubkey = String(event.pubkey || '').trim().toLowerCase();
-    if (!kind || !/^[0-9a-f]{64}$/i.test(pubkey) || !Array.isArray(event.tags)) {
-      return '';
-    }
-    var dTag = '';
-    event.tags.some(function (tag) {
-      if (Array.isArray(tag) && tag[0] === 'd' && tag[1]) {
-        dTag = String(tag[1] || '').trim();
-        return true;
-      }
-      return false;
-    });
-    if (!dTag) {
-      return '';
-    }
-    return String(kind) + ':' + pubkey + ':' + dTag;
-  }
-
-  function renderZapUi() {
-    if (!els.content || !window.blogZapUi || typeof window.blogZapUi.render !== 'function') {
-      return;
-    }
-    var host = els.content.querySelector('.nip23-zap-host');
-    if (!host) {
-      return;
-    }
-    var renderState = getRenderState();
-    var canonicalEvent = state.payload && state.payload.canonical_event && typeof state.payload.canonical_event === 'object'
-      ? state.payload.canonical_event
-      : null;
-    window.blogZapUi.render(host, {
-      zapConfig: state.payload ? state.payload.zap_config : null,
-      title: String((renderState && renderState.title) || state.navTitle || slug || ''),
-      target: {
-        label: 'page',
-        title: String((renderState && renderState.title) || state.navTitle || slug || ''),
-        recipientPubkey: canonicalEvent ? canonicalEvent.pubkey : '',
-        eventId: canonicalEvent ? canonicalEvent.id : '',
-        address: eventCoordinateFromCanonicalEvent(canonicalEvent),
-        kind: canonicalEvent ? canonicalEvent.kind : ''
-      }
-    });
-  }
-
   function renderContent() {
     if (!els.content) {
       return;
     }
     var s = getRenderState();
-    var zapHostHtml = '<div class="nip23-zap-host"></div>';
     var outroHtml = '';
     if (String(s.extras_after || '').trim()) {
       outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
@@ -745,15 +695,12 @@
       html += '</section>';
       html += productCardHtml;
       html += readOnlyMain;
-      html += zapHostHtml;
       html += outroHtml;
       els.content.innerHTML = html;
-      renderZapUi();
       return;
     }
 
-    els.content.innerHTML = productCardHtml + readOnlyMain + zapHostHtml + outroHtml;
-    renderZapUi();
+    els.content.innerHTML = productCardHtml + readOnlyMain + outroHtml;
   }
 
   function renderAll() {

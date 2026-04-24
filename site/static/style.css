@@ -8122,9 +8122,7 @@ textarea:focus {
   }
 }
 
-.post-zap-host,
-.nip23-zap-host,
-.contact-zap-host {
+.post-zap-host {
   margin: 1rem 0 1.25rem;
 }
 
