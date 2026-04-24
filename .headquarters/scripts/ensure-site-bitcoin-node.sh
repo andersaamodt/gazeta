@@ -328,6 +328,8 @@ write_service_file() {
     exit 1
   }
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-bitcoin-service.XXXXXX")
+  # Keep bitcoind logs in debug.log instead of mirroring verbose IBD output
+  # into systemd-journald, which is too expensive on tiny containers.
   cat > "$tmp" <<EOF_SERVICE
 [Unit]
 Description=Headquarters Bitcoin Core for $site_user
@@ -339,7 +341,12 @@ Type=simple
 User=$site_user
 Group=$site_user
 WorkingDirectory=$(site_home)
-ExecStart=$bitcoind_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) -pid=$(bitcoin_root)/bitcoind.pid -printtoconsole=1
+# Keep bitcoind off the short list when the host has to choose an OOM victim.
+OOMScoreAdjust=-900
+# bitcoind writes its own debug.log; dropping stdout avoids extra journal churn.
+StandardOutput=null
+StandardError=journal
+ExecStart=$bitcoind_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) -pid=$(bitcoin_root)/bitcoind.pid
 ExecStop=$bitcoin_cli_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) stop
 Restart=on-failure
 RestartSec=10
