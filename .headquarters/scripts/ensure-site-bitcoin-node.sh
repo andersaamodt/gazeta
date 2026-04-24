@@ -76,6 +76,21 @@ site_wizardry_dir() {
   printf '%s/.wizardry\n' "$(site_home)"
 }
 
+virtualization_kind() {
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    virt=$(systemd-detect-virt 2>/dev/null || printf '')
+    case "$virt" in
+      ''|none) ;;
+      *) printf '%s\n' "$virt"; return 0 ;;
+    esac
+  fi
+  if [ -r /proc/user_beancounters ] || [ -d /proc/vz ]; then
+    printf '%s\n' openvz
+    return 0
+  fi
+  printf '\n'
+}
+
 total_ram_mb() {
   if command -v free >/dev/null 2>&1; then
     mem=$(free -m 2>/dev/null | awk '/^Mem:/ { print $2; exit }')
@@ -96,26 +111,31 @@ total_ram_mb() {
 
 recommended_dbcache_mb() {
   total=$(total_ram_mb)
+  virt=$(virtualization_kind)
   case "$total" in
     ''|*[!0-9]*) total=0 ;;
   esac
   if [ "$total" -le 0 ]; then
-    printf '%s\n' 64
-    return 0
-  fi
-  if [ "$total" -le 768 ]; then
     printf '%s\n' 32
     return 0
   fi
+  if [ "$total" -le 768 ]; then
+    if [ "$virt" = "openvz" ]; then
+      printf '%s\n' 4
+    else
+      printf '%s\n' 16
+    fi
+    return 0
+  fi
   if [ "$total" -le 1536 ]; then
-    printf '%s\n' 64
+    printf '%s\n' 32
     return 0
   fi
   if [ "$total" -le 3072 ]; then
-    printf '%s\n' 128
+    printf '%s\n' 64
     return 0
   fi
-  printf '%s\n' 256
+  printf '%s\n' 128
 }
 
 recommended_prune_mb() {
@@ -139,6 +159,84 @@ recommended_prune_mb() {
     return 0
   fi
   printf '%s\n' "$min_target"
+}
+
+recommended_maxmempool_mb() {
+  total=$(total_ram_mb)
+  virt=$(virtualization_kind)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$total" -le 0 ]; then
+    printf '%s\n' 16
+    return 0
+  fi
+  if [ "$total" -le 768 ]; then
+    if [ "$virt" = "openvz" ]; then
+      printf '%s\n' 5
+    else
+      printf '%s\n' 16
+    fi
+    return 0
+  fi
+  if [ "$total" -le 1536 ]; then
+    printf '%s\n' 16
+    return 0
+  fi
+  printf '%s\n' 32
+}
+
+recommended_rpcthreads() {
+  total=$(total_ram_mb)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$total" -le 768 ]; then
+    printf '%s\n' 1
+    return 0
+  fi
+  if [ "$total" -le 1536 ]; then
+    printf '%s\n' 4
+    return 0
+  fi
+  printf '%s\n' 8
+}
+
+recommended_maxconnections() {
+  total=$(total_ram_mb)
+  virt=$(virtualization_kind)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$total" -le 0 ]; then
+    printf '%s\n' 8
+    return 0
+  fi
+  if [ "$total" -le 768 ]; then
+    if [ "$virt" = "openvz" ]; then
+      printf '%s\n' 4
+    else
+      printf '%s\n' 8
+    fi
+    return 0
+  fi
+  if [ "$total" -le 1536 ]; then
+    printf '%s\n' 10
+    return 0
+  fi
+  printf '%s\n' 16
+}
+
+recommended_script_threads() {
+  total=$(total_ram_mb)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$total" -le 768 ]; then
+    printf '%s\n' 1
+    return 0
+  fi
+  printf '%s\n' 2
 }
 
 bitcoin_binary() {
@@ -191,17 +289,26 @@ write_conf_file() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-bitcoin-conf.XXXXXX")
   prune_target=$(recommended_prune_mb)
   dbcache_target=$(recommended_dbcache_mb)
+  mempool_target=$(recommended_maxmempool_mb)
+  rpc_threads=$(recommended_rpcthreads)
+  max_connections=$(recommended_maxconnections)
+  script_threads=$(recommended_script_threads)
   cat > "$tmp" <<EOF_CONF
 server=1
 daemon=0
 prune=$prune_target
 txindex=0
+disablewallet=1
+persistmempool=0
 listen=0
+maxconnections=$max_connections
 rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
+rpcthreads=$rpc_threads
+par=$script_threads
 fallbackfee=0.00020000
 dbcache=$dbcache_target
-maxmempool=32
+maxmempool=$mempool_target
 EOF_CONF
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_root)"
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_data_dir)"
