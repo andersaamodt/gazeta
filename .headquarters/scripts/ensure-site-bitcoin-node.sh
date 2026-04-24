@@ -239,6 +239,19 @@ recommended_script_threads() {
   printf '%s\n' 2
 }
 
+recommended_blocksonly() {
+  total=$(total_ram_mb)
+  virt=$(virtualization_kind)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$virt" = "openvz" ] || [ "$total" -le 768 ]; then
+    printf '%s\n' 1
+    return 0
+  fi
+  printf '%s\n' 0
+}
+
 bitcoin_binary() {
   command -v bitcoind 2>/dev/null || true
 }
@@ -293,6 +306,7 @@ write_conf_file() {
   rpc_threads=$(recommended_rpcthreads)
   max_connections=$(recommended_maxconnections)
   script_threads=$(recommended_script_threads)
+  blocksonly_target=$(recommended_blocksonly)
   cat > "$tmp" <<EOF_CONF
 server=1
 daemon=0
@@ -306,6 +320,7 @@ rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
 rpcthreads=$rpc_threads
 par=$script_threads
+blocksonly=$blocksonly_target
 fallbackfee=0.00020000
 dbcache=$dbcache_target
 maxmempool=$mempool_target
