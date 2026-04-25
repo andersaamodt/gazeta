@@ -6,7 +6,7 @@ site_user=${HQ_SITE_USER-}
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
-    return 0
+    return $?
   fi
   if [ -n "${HQ_REMOTE_SUDO_PASSWORD-}" ] && command -v sudo >/dev/null 2>&1; then
     printf '%s\n' "$HQ_REMOTE_SUDO_PASSWORD" | sudo -S -p '' "$@"
@@ -109,6 +109,24 @@ total_ram_mb() {
   printf '%s\n' 0
 }
 
+cpu_count() {
+  if command -v nproc >/dev/null 2>&1; then
+    count=$(nproc 2>/dev/null || printf '')
+    case "$count" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$count"; return 0 ;;
+    esac
+  fi
+  if [ -r /proc/cpuinfo ]; then
+    count=$(awk '/^processor[[:space:]]*:/ { n += 1 } END { print n + 0 }' /proc/cpuinfo 2>/dev/null || printf '')
+    case "$count" in
+      ''|*[!0-9]*) ;;
+      *) printf '%s\n' "$count"; return 0 ;;
+    esac
+  fi
+  printf '%s\n' 1
+}
+
 recommended_dbcache_mb() {
   total=$(total_ram_mb)
   virt=$(virtualization_kind)
@@ -121,7 +139,10 @@ recommended_dbcache_mb() {
   fi
   if [ "$total" -le 768 ]; then
     if [ "$virt" = "openvz" ]; then
-      printf '%s\n' 4
+      # 4 MiB keeps the process alive on tiny OpenVZ hosts, but it slows IBD
+      # dramatically once block validation dominates. 16 MiB is still small
+      # enough for our trimmed 512 MiB profile while avoiding extreme churn.
+      printf '%s\n' 16
     else
       printf '%s\n' 16
     fi
@@ -229,11 +250,19 @@ recommended_maxconnections() {
 
 recommended_script_threads() {
   total=$(total_ram_mb)
+  cpus=$(cpu_count)
   case "$total" in
     ''|*[!0-9]*) total=0 ;;
   esac
+  case "$cpus" in
+    ''|*[!0-9]*) cpus=1 ;;
+  esac
   if [ "$total" -le 768 ]; then
-    printf '%s\n' 1
+    if [ "$cpus" -ge 2 ]; then
+      printf '%s\n' 2
+    else
+      printf '%s\n' 1
+    fi
     return 0
   fi
   printf '%s\n' 2
