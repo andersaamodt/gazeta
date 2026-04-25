@@ -107,6 +107,18 @@ wait_for_rpc() {
   return 1
 }
 
+wait_for_bitcoind_stopped() {
+  attempts=0
+  while [ "$attempts" -lt 60 ]; do
+    if ! run_root systemctl is-active --quiet "$(service_name)" && ! pgrep -u "$site_user" -x bitcoind >/dev/null 2>&1; then
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    sleep 1
+  done
+  return 1
+}
+
 snapshot_chainstate_loaded() {
   bitcoin_cli getchainstates 2>/dev/null | jq -e --argjson height "$snapshot_height" '
     .chainstates[]?
@@ -131,6 +143,10 @@ download_snapshot() {
   # Keep the tiny VPS focused on one heavy job. The node is restarted only after
   # the snapshot file exists, and network syncing is paused during the import RPC.
   run_root systemctl stop "$(service_name)" 2>/dev/null || true
+  wait_for_bitcoind_stopped || {
+    status_bad "Bitcoin Core did not stop cleanly before the snapshot download."
+    exit 1
+  }
   run_site "$aria2" \
     --dir="$(snapshot_dir)" \
     --out="$snapshot_file" \
