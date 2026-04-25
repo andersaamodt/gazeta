@@ -241,6 +241,11 @@ swap_total_mib() {
   printf '0\n'
 }
 
+swap_entry_active() {
+  swap_path=$1
+  awk -v path="$swap_path" 'NR > 1 && $1 == path { found = 1 } END { exit found ? 0 : 1 }' /proc/swaps 2>/dev/null
+}
+
 ensure_swap_for_btcpay() {
   mem_mib=$(mem_total_mib)
   swap_mib=$(swap_total_mib)
@@ -248,6 +253,7 @@ ensure_swap_for_btcpay() {
   [ "$mem_mib" -lt 1024 ] || return 0
   [ "$swap_mib" -lt 1024 ] || return 0
   swap_file=/swapfile-btcpay
+  swap_entry_active "$swap_file" && return 0
   if ! run_root test -f "$swap_file"; then
     if command -v fallocate >/dev/null 2>&1; then
       run_root fallocate -l 2G "$swap_file"
@@ -257,7 +263,11 @@ ensure_swap_for_btcpay() {
     run_root chmod 600 "$swap_file"
     run_root mkswap "$swap_file" >/dev/null
   fi
-  run_root swapon "$swap_file" 2>/dev/null || true
+  if ! run_root swapon "$swap_file" 2>/dev/null; then
+    run_root rm -f "$swap_file"
+    status_bad "This host has less than 1 GiB RAM and does not permit adding swap; BTCPay should be provisioned on a larger VPS."
+    exit 1
+  fi
   if ! run_root grep -Fq "$swap_file none swap sw 0 0" /etc/fstab; then
     tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-fstab.XXXXXX")
     run_root sh -eu -c 'cat /etc/fstab > "$1"' sh "$tmp"
