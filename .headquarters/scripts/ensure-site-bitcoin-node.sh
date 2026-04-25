@@ -139,10 +139,7 @@ recommended_dbcache_mb() {
   fi
   if [ "$total" -le 768 ]; then
     if [ "$virt" = "openvz" ]; then
-      # 4 MiB keeps the process alive on tiny OpenVZ hosts, but it slows IBD
-      # dramatically once block validation dominates. 16 MiB is still small
-      # enough for our trimmed 512 MiB profile while avoiding extreme churn.
-      printf '%s\n' 16
+      printf '%s\n' 4
     else
       printf '%s\n' 16
     fi
@@ -235,7 +232,7 @@ recommended_maxconnections() {
   fi
   if [ "$total" -le 768 ]; then
     if [ "$virt" = "openvz" ]; then
-      printf '%s\n' 4
+      printf '%s\n' 2
     else
       printf '%s\n' 8
     fi
@@ -258,14 +255,38 @@ recommended_script_threads() {
     ''|*[!0-9]*) cpus=1 ;;
   esac
   if [ "$total" -le 768 ]; then
-    if [ "$cpus" -ge 2 ]; then
-      printf '%s\n' 2
-    else
-      printf '%s\n' 1
-    fi
+    printf '%s\n' 1
     return 0
   fi
   printf '%s\n' 2
+}
+
+recommended_maxsigcachesize_mb() {
+  total=$(total_ram_mb)
+  virt=$(virtualization_kind)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$virt" = "openvz" ] || [ "$total" -le 768 ]; then
+    printf '%s\n' 4
+    return 0
+  fi
+  printf '%s\n' 32
+}
+
+recommended_dbbatchsize_bytes() {
+  total=$(total_ram_mb)
+  virt=$(virtualization_kind)
+  case "$total" in
+    ''|*[!0-9]*) total=0 ;;
+  esac
+  if [ "$virt" = "openvz" ] || [ "$total" -le 768 ]; then
+    # This keeps loadtxoutset from building a write batch large enough to make
+    # 512 MiB OpenVZ containers kill bitcoind.
+    printf '%s\n' 1048576
+    return 0
+  fi
+  printf '%s\n' 16777216
 }
 
 recommended_blocksonly() {
@@ -336,6 +357,8 @@ write_conf_file() {
   max_connections=$(recommended_maxconnections)
   script_threads=$(recommended_script_threads)
   blocksonly_target=$(recommended_blocksonly)
+  sigcache_target=$(recommended_maxsigcachesize_mb)
+  dbbatch_target=$(recommended_dbbatchsize_bytes)
   cat > "$tmp" <<EOF_CONF
 server=1
 daemon=0
@@ -353,6 +376,8 @@ blocksonly=$blocksonly_target
 fallbackfee=0.00020000
 dbcache=$dbcache_target
 maxmempool=$mempool_target
+maxsigcachesize=$sigcache_target
+dbbatchsize=$dbbatch_target
 EOF_CONF
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_root)"
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_data_dir)"
