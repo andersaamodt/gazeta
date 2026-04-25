@@ -379,14 +379,19 @@ write_service_file() {
 Description=Headquarters Bitcoin Core for $site_user
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=2
 
 [Service]
 Type=simple
 User=$site_user
 Group=$site_user
 WorkingDirectory=$(site_home)
-# Keep bitcoind off the short list when the host has to choose an OOM victim.
-OOMScoreAdjust=-900
+# On tiny VPSes, bitcoind must be safer to kill than ssh/nginx/the host.
+OOMScoreAdjust=500
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
 # bitcoind writes its own debug.log; dropping stdout avoids extra journal churn.
 StandardOutput=null
 StandardError=journal
