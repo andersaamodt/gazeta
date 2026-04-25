@@ -197,7 +197,7 @@ case "$action" in
     exit 0
     ;;
   install_wizardry|install_bitcoin|install_lightning)
-    emit_failure "Provision Bitcoin, Core Lightning, and the Lightning Address endpoint from Headquarters." "managed_externally"
+    emit_failure "Provision Bitcoin, Core Lightning, and the Lightning Address endpoint from the dedicated payments host in Headquarters." "managed_externally"
     exit 0
     ;;
   *)
