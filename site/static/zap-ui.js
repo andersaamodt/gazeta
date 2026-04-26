@@ -10,8 +10,14 @@
     'wss://relay.primal.net',
     'wss://relay.snort.social'
   ];
+  var BTC_USD_RATE_TTL_MS = 60000;
   var hostStates = new WeakMap();
   var lnurlCache = {};
+  var btcUsdRate = {
+    loading: false,
+    loadedAt: 0,
+    value: 0
+  };
   var modalState = {
     open: false,
     host: null,
@@ -122,6 +128,53 @@
     });
     values.sort(function (a, b) { return a - b; });
     return values.slice(0, 5);
+  }
+
+  function formatUsdForSats(sats) {
+    var rate = Number(btcUsdRate.value || 0);
+    var amount = clampSats(sats, 1);
+    if (!isFinite(rate) || rate <= 0) {
+      return '';
+    }
+    var usd = (amount / 100000000) * rate;
+    if (!isFinite(usd) || usd < 0) {
+      return '';
+    }
+    return '$' + usd.toFixed(2) + ' USD';
+  }
+
+  function satsWithUsdLabel(sats) {
+    var amount = clampSats(sats, 1);
+    var usd = formatUsdForSats(amount);
+    return String(amount) + ' sats' + (usd ? ' (' + usd + ')' : '');
+  }
+
+  function loadBtcUsdRate() {
+    var now = Date.now();
+    if (btcUsdRate.value > 0 && now - btcUsdRate.loadedAt < BTC_USD_RATE_TTL_MS) {
+      return Promise.resolve(btcUsdRate.value);
+    }
+    if (btcUsdRate.loading) {
+      return Promise.resolve(btcUsdRate.value || 0);
+    }
+    btcUsdRate.loading = true;
+    return fetch('/cgi/blog-btc-usd-rate', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        var value = Number(data && data.btc_usd);
+        if (data && data.success && isFinite(value) && value > 0) {
+          btcUsdRate.value = value;
+          btcUsdRate.loadedAt = Date.now();
+        }
+        return btcUsdRate.value || 0;
+      })
+      .catch(function () {
+        return btcUsdRate.value || 0;
+      })
+      .then(function (value) {
+        btcUsdRate.loading = false;
+        return value;
+      });
   }
 
   function initialHostState(options) {
@@ -249,6 +302,7 @@
       if (action === 'select_amount') {
         event.preventDefault();
         modalState.state.selectedSats = clampSats(actionNode.getAttribute('data-zap-amount') || '', modalState.options.zapConfig.defaultAmountSats);
+        modalState.state.customSats = '';
         renderDialog();
         return;
       }
@@ -277,6 +331,8 @@
       }
       if (target.hasAttribute('data-zap-custom-sats')) {
         modalState.state.customSats = String(target.value || '').trim();
+        renderCustomUsd();
+        renderCreateInvoiceLabel();
         return;
       }
       if (target.hasAttribute('data-zap-note')) {
@@ -317,6 +373,43 @@
     modalState.state = state;
     ensureModal().hidden = false;
     renderDialog();
+    loadBtcUsdRate().then(function () {
+      if (modalState.open && modalState.host === host) {
+        renderDialog();
+      }
+    });
+  }
+
+  function renderCustomUsd() {
+    if (!modalState.open || !modalState.state) {
+      return;
+    }
+    var body = dialogBody();
+    if (!body) {
+      return;
+    }
+    var node = body.querySelector('[data-zap-custom-usd="true"]');
+    if (!node) {
+      return;
+    }
+    var custom = String(modalState.state.customSats || '').trim();
+    var text = /^[0-9]+$/.test(custom) && Number(custom) > 0 ? formatUsdForSats(custom) : '';
+    node.textContent = text ? '(' + text + ')' : '';
+  }
+
+  function renderCreateInvoiceLabel() {
+    if (!modalState.open || !modalState.state) {
+      return;
+    }
+    var body = dialogBody();
+    if (!body) {
+      return;
+    }
+    var button = body.querySelector('[data-zap-action="create_invoice"]');
+    if (!button || modalState.state.busy) {
+      return;
+    }
+    button.textContent = 'Create invoice for ' + satsWithUsdLabel(currentSats());
   }
 
   function closeDialog() {
@@ -341,12 +434,14 @@
     var targetTitle = options.title || options.target.title || options.target.label || 'this page';
     var presets = resolvePresetAmounts(options.zapConfig.defaultAmountSats);
     var activeSats = currentSats();
+    var customValue = String(state.customSats || '').trim();
+    var customUsd = /^[0-9]+$/.test(customValue) && Number(customValue) > 0 ? formatUsdForSats(customValue) : '';
     var buttonsHtml = presets.map(function (amount) {
       var cls = 'zap-amount-chip';
       if (amount === activeSats && !String(state.customSats || '').trim()) {
         cls += ' is-selected';
       }
-      return '<button type="button" class="' + cls + '" data-zap-action="select_amount" data-zap-amount="' + String(amount) + '">' + escapeHtml(String(amount)) + ' sats</button>';
+      return '<button type="button" class="' + cls + '" data-zap-action="select_amount" data-zap-amount="' + String(amount) + '">' + escapeHtml(satsWithUsdLabel(amount)) + '</button>';
     }).join('');
     var disabledAttr = state.busy ? ' disabled aria-disabled="true"' : '';
 
@@ -362,7 +457,7 @@
           '<div class="zap-amount-chips">' + buttonsHtml + '</div>' +
         '</div>' +
         '<label class="zap-dialog-field">' +
-          '<span class="zap-dialog-label">Custom sats</span>' +
+          '<span class="zap-dialog-label">Custom sats <span class="zap-usd-note" data-zap-custom-usd="true">' + escapeHtml(customUsd ? '(' + customUsd + ')' : '') + '</span></span>' +
           '<input type="number" min="1" step="1" inputmode="numeric" data-zap-custom-sats="true" value="' + escapeAttr(String(state.customSats || '')) + '" placeholder="' + escapeAttr(String(options.zapConfig.defaultAmountSats)) + '">' +
         '</label>' +
         '<label class="zap-dialog-field">' +
@@ -371,7 +466,7 @@
         '</label>' +
       '</div>' +
       '<div class="zap-dialog-actions">' +
-        '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-action="create_invoice"' + disabledAttr + '>' + (state.busy ? 'Creating invoice...' : ('Create invoice for ' + String(activeSats) + ' sats')) + '</button>' +
+        '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-action="create_invoice"' + disabledAttr + '>' + (state.busy ? 'Creating invoice...' : ('Create invoice for ' + satsWithUsdLabel(activeSats))) + '</button>' +
       '</div>' +
       statusHtml(state) +
       invoiceHtml(state);

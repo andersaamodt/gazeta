@@ -8340,6 +8340,11 @@ textarea:focus {
   font-weight: 700;
 }
 
+.zap-usd-note {
+  color: rgba(17, 24, 39, 0.62);
+  font-weight: 600;
+}
+
 .zap-amount-chips {
   display: flex;
   flex-wrap: wrap;

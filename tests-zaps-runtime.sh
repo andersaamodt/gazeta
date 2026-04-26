@@ -124,6 +124,9 @@ assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'blogZapUi.rend
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "display: 'compact'" 'post pages render compact zap button'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'post-nostr-proof' 'post pages do not render Nostr Proof panel'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "ensureCommentShell(layout)" 'post comments mount after the enhanced post card body'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" '/cgi/blog-btc-usd-rate' 'zap UI fetches the current BTC/USD rate'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "satsWithUsdLabel" 'zap UI renders USD equivalents beside sats'
+assert_contains "$(cat "$ROOT_DIR/cgi/blog-btc-usd-rate")" 'api.exchange.coinbase.com/products/BTC-USD/ticker' 'BTC/USD endpoint uses Coinbase ticker data'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages do not render zap UI'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'contact-zap-host' 'contact pages do not render zap UI'
 
