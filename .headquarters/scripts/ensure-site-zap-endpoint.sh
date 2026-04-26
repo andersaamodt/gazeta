@@ -7,7 +7,7 @@ site_domain=${HQ_SITE_DOMAIN-}
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
-    return 0
+    return $?
   fi
   if [ -n "${HQ_REMOTE_SUDO_PASSWORD-}" ] && command -v sudo >/dev/null 2>&1; then
     printf '%s\n' "$HQ_REMOTE_SUDO_PASSWORD" | sudo -S -p '' "$@"
@@ -67,6 +67,30 @@ release_site_conf() {
 
 lightning_root() {
   printf '%s/.sitedata/site/lightning\n' "$(site_home)"
+}
+
+service_bin_dir() {
+  printf '%s/bin\n' "$(service_root)"
+}
+
+remote_cli_root() {
+  printf '%s/remote-cli\n' "$(service_root)"
+}
+
+remote_cli_key_file() {
+  printf '%s/pay-node-zap-cli_ed25519\n' "$(remote_cli_root)"
+}
+
+remote_cli_pubkey_file() {
+  printf '%s.pub\n' "$(remote_cli_key_file)"
+}
+
+remote_cli_known_hosts_file() {
+  printf '%s/known_hosts\n' "$(remote_cli_root)"
+}
+
+remote_lightning_cli_wrapper() {
+  printf '%s/lightning-cli\n' "$(service_bin_dir)"
 }
 
 nostr_state_dir() {
@@ -226,6 +250,57 @@ lightning_public_host() {
   printf '%s\n' "$(zap_alias_domain)"
 }
 
+remote_lightning_host() {
+  configured=$(normalize_host "$(read_conf_value "$(active_site_conf)" zap_lightning_remote_host)")
+  if valid_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_host "$(read_conf_value "$(release_site_conf)" zap_lightning_remote_host)")
+  if valid_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_host "$(read_conf_value "$(active_site_conf)" btcpay_host)")
+  if valid_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_host "$(read_conf_value "$(release_site_conf)" btcpay_host)")
+  if valid_host "$configured"; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  printf '\n'
+}
+
+remote_lightning_user() {
+  configured=$(read_conf_value "$(active_site_conf)" zap_lightning_remote_user | tr -d '\r\n[:space:]')
+  [ -n "$configured" ] || configured=$(read_conf_value "$(release_site_conf)" zap_lightning_remote_user | tr -d '\r\n[:space:]')
+  [ -n "$configured" ] || configured=zapcli
+  printf '%s\n' "$configured"
+}
+
+remote_lightning_port() {
+  configured=$(read_conf_value "$(active_site_conf)" zap_lightning_remote_port | tr -d '\r\n[:space:]')
+  case "$configured" in
+    ''|*[!0-9]*) configured='' ;;
+  esac
+  [ -n "$configured" ] || configured=$(read_conf_value "$(release_site_conf)" zap_lightning_remote_port | tr -d '\r\n[:space:]')
+  case "$configured" in
+    ''|*[!0-9]*) configured='' ;;
+  esac
+  [ -n "$configured" ] || configured=22
+  printf '%s\n' "$configured"
+}
+
+use_remote_lightning_cli() {
+  host=$(remote_lightning_host)
+  [ -n "$host" ] || return 1
+  [ "$host" != "$site_domain" ] || return 1
+  return 0
+}
+
 lightning_public_port() {
   configured=$(read_conf_value "$(active_site_conf)" lightning_public_port | tr -d '\r\n[:space:]')
   case "$configured" in
@@ -261,6 +336,10 @@ local_health_url() {
 }
 
 lightning_cli_site_json() {
+  if use_remote_lightning_cli; then
+    run_site "$(remote_lightning_cli_wrapper)" "$@" 2>/dev/null
+    return $?
+  fi
   run_site lightning-cli --lightning-dir="$(lightning_root)" "$@" 2>/dev/null
 }
 
@@ -323,6 +402,85 @@ COMMENT_ALLOWED=280
 EOF_ENV
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(service_root)" "$(service_state_dir)" "$(service_requests_dir)" "$(service_receipts_dir)"
   run_root install -o "$site_user" -g "$site_user" -m 600 "$tmp" "$(service_env_file)"
+  rm -f "$tmp"
+}
+
+ensure_remote_cli_key() {
+  use_remote_lightning_cli || return 0
+  command -v ssh-keygen >/dev/null 2>&1 || {
+    status_bad "ssh-keygen is required for the remote Lightning gateway key."
+    exit 1
+  }
+  run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(remote_cli_root)" "$(service_bin_dir)"
+  if ! run_root test -f "$(remote_cli_key_file)"; then
+    run_site ssh-keygen -q -t ed25519 -N '' -C "$site_user zap endpoint to $(remote_lightning_host)" -f "$(remote_cli_key_file)"
+  fi
+  run_root chmod 600 "$(remote_cli_key_file)"
+  run_root chmod 644 "$(remote_cli_pubkey_file)"
+}
+
+write_remote_lightning_cli_wrapper() {
+  use_remote_lightning_cli || return 0
+  ensure_remote_cli_key
+  host=$(remote_lightning_host)
+  port=$(remote_lightning_port)
+  user=$(remote_lightning_user)
+  known_hosts=$(remote_cli_known_hosts_file)
+  tmp_known=$(mktemp "${TMPDIR:-/tmp}/zap-known-hosts.XXXXXX")
+  if command -v ssh-keyscan >/dev/null 2>&1; then
+    ssh-keyscan -p "$port" "$host" > "$tmp_known" 2>/dev/null || true
+  fi
+  if [ -s "$tmp_known" ]; then
+    run_root install -o "$site_user" -g "$site_user" -m 600 "$tmp_known" "$known_hosts"
+  elif ! run_root test -f "$known_hosts"; then
+    run_root install -o "$site_user" -g "$site_user" -m 600 /dev/null "$known_hosts"
+  fi
+  rm -f "$tmp_known"
+
+  tmp=$(mktemp "${TMPDIR:-/tmp}/zap-lightning-cli-wrapper.XXXXXX")
+  cat > "$tmp" <<EOF_WRAPPER
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+
+host = "$host"
+port = "$port"
+user = "$user"
+key_file = "$(remote_cli_key_file)"
+known_hosts = "$(remote_cli_known_hosts_file)"
+
+argv = []
+skip_next = False
+for arg in sys.argv[1:]:
+    if skip_next:
+        skip_next = False
+        continue
+    if arg in ("--lightning-dir", "--network"):
+        skip_next = True
+        continue
+    if arg.startswith("--lightning-dir=") or arg.startswith("--network="):
+        continue
+    argv.append(arg)
+
+completed = subprocess.run(
+    [
+        "ssh",
+        "-T",
+        "-i", key_file,
+        "-p", port,
+        "-o", "BatchMode=yes",
+        "-o", "IdentitiesOnly=yes",
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", f"UserKnownHostsFile={known_hosts}",
+        f"{user}@{host}",
+    ],
+    input=json.dumps(argv, separators=(",", ":")) + "\\n",
+    text=True,
+)
+sys.exit(completed.returncode)
+EOF_WRAPPER
+  run_root install -o "$site_user" -g "$site_user" -m 700 "$tmp" "$(remote_lightning_cli_wrapper)"
   rm -f "$tmp"
 }
 
@@ -935,11 +1093,19 @@ EOF_PY
 
 write_service_file() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/zap-service-unit.XXXXXX")
+  if use_remote_lightning_cli; then
+    unit_deps='After=network-online.target
+Wants=network-online.target'
+    path_line="Environment=PATH=$(service_bin_dir):/usr/local/bin:/usr/bin:/bin"
+  else
+    unit_deps="Requires=headquarters-lightningd-$site_user.service
+After=headquarters-lightningd-$site_user.service"
+    path_line=''
+  fi
   cat > "$tmp" <<EOF_SERVICE
 [Unit]
 Description=Headquarters Lightning Address endpoint for $site_user
-Requires=headquarters-lightningd-$site_user.service
-After=headquarters-lightningd-$site_user.service
+$unit_deps
 
 [Service]
 Type=simple
@@ -947,6 +1113,7 @@ User=$site_user
 Group=$site_user
 WorkingDirectory=$(site_home)
 EnvironmentFile=$(service_env_file)
+$path_line
 ExecStart=$(command -v python3) -u $(service_script_file)
 Restart=on-failure
 RestartSec=5
@@ -1083,10 +1250,15 @@ check_status() {
     status_bad "curl is required for Lightning Address endpoint checks."
     return 0
   }
-  command -v lightning-cli >/dev/null 2>&1 || {
+  if use_remote_lightning_cli; then
+    if ! run_root test -x "$(remote_lightning_cli_wrapper)"; then
+      status_bad "The remote Lightning gateway wrapper is missing."
+      return 0
+    fi
+  elif ! command -v lightning-cli >/dev/null 2>&1; then
     status_bad "lightning-cli is not installed on this server."
     return 0
-  }
+  fi
   command -v nak >/dev/null 2>&1 || {
     status_bad "nak is not installed on this server."
     return 0
@@ -1127,8 +1299,8 @@ check_status() {
     status_bad "Lightning Address endpoint service $(service_name) is not active."
     return 0
   fi
-  if ! curl -fsS "$(local_health_url)" >/dev/null 2>&1; then
-    status_bad "The local zap endpoint health check is failing at $(local_health_url)."
+  if ! curl -fsS "http://127.0.0.1:$(calc_service_port)/.well-known/lnurlp/$(zap_alias_localpart)" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'; then
+    status_bad "The local zap endpoint metadata check is failing."
     return 0
   fi
   if ! curl -fsS "$(zap_endpoint_url)" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'; then
@@ -1170,6 +1342,7 @@ fi
 write_conf_value "$(active_site_conf)" zap_lud16 "$(desired_zap_lud16)"
 write_conf_value "$(release_site_conf)" zap_lud16 "$(desired_zap_lud16)"
 write_service_env_file
+write_remote_lightning_cli_wrapper
 write_service_script
 write_service_file
 

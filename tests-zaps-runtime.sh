@@ -26,6 +26,17 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  haystack=$1
+  needle=$2
+  label=$3
+  if printf '%s\n' "$haystack" | awk -v needle="$needle" 'index($0, needle) { found=1 } END { exit found ? 0 : 1 }'; then
+    fail "$label (unexpected: $needle)"
+  else
+    pass
+  fi
+}
+
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/zaps-runtime-test.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
 
@@ -110,8 +121,8 @@ assert_contains "$(blog_zap_effective_lud16)" 'demo@wallet.example' 'configured 
 
 assert_contains "$(cat "$ROOT_DIR/site/includes/head.html")" '/static/zap-ui.js' 'head includes shared zap UI bundle'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'blogZapUi.render' 'post pages mount shared zap UI'
-assert_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages render a zap host'
-assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'contact-zap-host' 'contact pages render a zap host'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages do not render zap UI'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'contact-zap-host' 'contact pages do not render zap UI'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2
