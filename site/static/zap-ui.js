@@ -104,7 +104,8 @@
       zapConfig: zapConfig,
       target: target,
       contextLabel: String(src.contextLabel || target.label || '').trim(),
-      title: String(src.title || target.title || '').trim()
+      title: String(src.title || target.title || '').trim(),
+      display: String(src.display || '').trim()
     };
   }
 
@@ -729,7 +730,17 @@
     }
     var state = ensureHostState(host, options);
     host.hidden = false;
-    host.className = 'zap-inline-host';
+    host.className = 'zap-inline-host' + (options.display === 'compact' ? ' is-compact' : '');
+    if (options.display === 'compact') {
+      host.innerHTML = '<button type="button" class="zap-action-btn zap-action-btn-primary zap-compact-btn" data-zap-open="true" title="Zap this post">Zap</button>';
+      var compactButton = host.querySelector('[data-zap-open="true"]');
+      if (compactButton) {
+        compactButton.addEventListener('click', function () {
+          openDialog(host, options, state);
+        });
+      }
+      return;
+    }
     host.innerHTML = '' +
       '<section class="zap-inline-card">' +
         '<div class="zap-inline-copy">' +

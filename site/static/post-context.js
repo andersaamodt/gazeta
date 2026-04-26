@@ -499,21 +499,6 @@
     return { anchor: root, card: card, body: body };
   }
 
-  function renderNostrProof(nostr) {
-    if (!nostr || !nostr.id) {
-      return '';
-    }
-    return '<section class="post-nostr-proof">' +
-      '<h3>Nostr Proof</h3>' +
-      '<dl class="post-nostr-proof-list">' +
-      '<div><dt>ID</dt><dd><code>' + escapeHtml(nostr.id || '') + '</code></dd></div>' +
-      '<div><dt>Pubkey</dt><dd><code>' + escapeHtml(nostr.pubkey || '') + '</code></dd></div>' +
-      '<div><dt>Kind</dt><dd><code>' + escapeHtml(String(nostr.kind || '')) + '</code></dd></div>' +
-      '<div><dt>URI</dt><dd><code>' + escapeHtml(nostr.uri || '') + '</code></dd></div>' +
-      '</dl>' +
-      '</section>';
-  }
-
   function renderPostEndTags(tags) {
     var content = renderTags(tags);
     if (!content) {
@@ -529,17 +514,17 @@
     if (!layout || !layout.card) {
       return null;
     }
-    var existing = layout.card.querySelector('.post-zap-host');
+    var existing = layout.card.querySelector('.zap-inline-host.is-compact');
     if (existing) {
       return existing;
     }
-    var body = layout.card.querySelector('.post-single-body');
-    if (!body || body.parentNode !== layout.card) {
+    var head = layout.card.querySelector('.post-head');
+    if (!head) {
       return null;
     }
     var host = document.createElement('div');
     host.className = 'post-zap-host';
-    layout.card.insertBefore(host, body);
+    head.appendChild(host);
     return host;
   }
 
@@ -555,6 +540,7 @@
     var nostr = current && current.nostr ? current.nostr : null;
     window.blogZapUi.render(host, {
       zapConfig: payload ? payload.zap_config : null,
+      display: 'compact',
       title: current ? current.title : '',
       target: {
         label: 'post',
@@ -1106,11 +1092,11 @@
       });
   }
 
-  function ensureCommentShell() {
+  function ensureCommentShell(layout) {
     if (document.querySelector('.post-comments-shell')) {
       return;
     }
-    var anchor = document.querySelector('#main-content') || document.body;
+    var anchor = layout && layout.card ? layout.card : document.body;
     anchor.insertAdjacentHTML('beforeend',
       '<section class="post-comments-shell">' +
       '<div class="post-comments-head">' +
@@ -1174,15 +1160,10 @@
     refreshPostPageMenuVisibility();
     renderPostZapUi(payload, layout);
 
-    if (payload.current.nostr && !document.querySelector('.post-nostr-proof')) {
+    if (payload.current.nostr) {
       currentNostrAddress = payload.current.nostr.address || '';
       currentNostrEventId = payload.current.nostr.id || '';
-      var proof = renderNostrProof(payload.current.nostr);
-      if (proof) {
-        var proofAnchor = document.querySelector('#main-content') || document.body;
-        proofAnchor.insertAdjacentHTML('beforeend', proof);
-      }
-      ensureCommentShell();
+      ensureCommentShell(layout);
       loadComments();
     }
 

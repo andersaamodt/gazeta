@@ -5724,6 +5724,10 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   padding-right: 2.45rem;
 }
 
+.post-single-item .post-head-main .post-title {
+  padding-right: 5.4rem;
+}
+
 .post-title {
   font-size: 1.65rem;
   margin: 0;
@@ -8122,10 +8126,6 @@ textarea:focus {
   }
 }
 
-.post-zap-host {
-  margin: 1rem 0 1.25rem;
-}
-
 .contact-managed-lightning-note {
   margin: 0 0 1rem;
   max-width: 42rem;
@@ -8134,6 +8134,27 @@ textarea:focus {
 
 .zap-inline-host {
   display: block;
+}
+
+.post-head > .zap-inline-host.is-compact {
+  position: absolute;
+  top: 0;
+  right: 2.45rem;
+  z-index: 55;
+}
+
+.zap-inline-host.is-compact .zap-compact-btn {
+  min-height: 1.9rem;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.zap-inline-host.is-compact .zap-compact-btn:hover,
+.zap-inline-host.is-compact .zap-compact-btn:focus-visible {
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
 }
 
 .zap-inline-card {
@@ -8939,46 +8960,8 @@ nav.site-nav {
   }
 }
 
-.post-nostr-proof {
-  margin-top: 1.1rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.post-nostr-proof h3 {
-  margin: 0 0 0.55rem;
-}
-
-.post-nostr-proof-list {
-  margin: 0;
-  display: grid;
-  gap: 0.42rem;
-}
-
-.post-nostr-proof-list div {
-  display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
-  gap: 0.45rem;
-}
-
-.post-nostr-proof-list dt {
-  font-weight: 700;
-  color: var(--color-subtle, #4f5f73);
-}
-
-.post-nostr-proof-list dd {
-  margin: 0;
-}
-
-.post-nostr-proof-list code {
-  font-size: 0.79rem;
-  word-break: break-all;
-}
-
 .post-comments-shell {
-  margin-top: 1.05rem;
+  margin-top: 2rem;
   padding: 0.9rem 0.95rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -9098,9 +9081,8 @@ nav.site-nav {
 }
 
 @media (max-width: 640px) {
-  .post-nostr-proof-list div {
-    grid-template-columns: 1fr;
-    gap: 0.15rem;
+  .post-head > .zap-inline-host.is-compact {
+    right: 2.35rem;
   }
 
   .post-comments-head {
