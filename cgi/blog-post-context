@@ -54,7 +54,7 @@ post_json() {
     post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
   fi
   post_type=$(blog_normalize_post_type "$post_type")
-  author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+  author=$(blog_post_author_display_for_file "$file")
   if [ -z "$author" ]; then
     author='Blog Author'
   fi

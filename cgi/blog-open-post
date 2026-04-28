@@ -96,7 +96,10 @@ if command -v pandoc >/dev/null 2>&1; then
 
   if [ -f "$body_html_file" ]; then
     title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf '')
-    author=$(blog_read_front_matter_value "$md_file" author 2>/dev/null || printf 'Blog Author')
+    author=$(blog_post_author_display_for_file "$md_file")
+    if [ -z "$author" ]; then
+      author='Blog Author'
+    fi
     published_at=$(blog_read_front_matter_value "$md_file" published_at 2>/dev/null || printf '')
     published_date=$(blog_iso_to_human_date "$published_at")
     post_type=$(blog_read_front_matter_value "$md_file" post_type 2>/dev/null || printf '')

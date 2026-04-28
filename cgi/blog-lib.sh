@@ -1825,6 +1825,26 @@ blog_find_username_by_nostr_pubkey() {
   done
 }
 
+blog_author_looks_like_nostr_fallback() {
+  raw_author=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+  case "$raw_author" in
+    ''|*[!0-9a-f]*) return 1 ;;
+  esac
+  [ "${#raw_author}" -ge 8 ] && [ "${#raw_author}" -le 16 ]
+}
+
+blog_nostr_author_display_name() {
+  pubkey=$(blog_validate_nostr_pubkey "${1-}" 2>/dev/null || printf '')
+  if [ -n "$pubkey" ]; then
+    username=$(blog_find_username_by_nostr_pubkey "$pubkey" 2>/dev/null | head -n 1)
+    if [ -n "$username" ]; then
+      blog_author_display_name "$username"
+      return 0
+    fi
+  fi
+  printf '%s\n' 'Nostr Author'
+}
+
 blog_suggest_username_from_nostr_pubkey() {
   pubkey=$(blog_validate_nostr_pubkey "${1-}" 2>/dev/null || printf '')
   [ -n "$pubkey" ] || return 1
@@ -2071,6 +2091,26 @@ blog_author_display_name() {
     fi
   fi
   printf '%s\n' "$raw_author"
+}
+
+blog_post_author_display_for_file() {
+  file=${1-}
+  [ -n "$file" ] && [ -f "$file" ] || {
+    printf '%s\n' ''
+    return 0
+  }
+  raw_author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+  nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
+  case "$nostr_projection" in
+    true|1|yes|on)
+      nostr_pubkey=$(blog_read_front_matter_value "$file" nostr_pubkey 2>/dev/null || printf '')
+      if [ -z "$raw_author" ] || blog_author_looks_like_nostr_fallback "$raw_author"; then
+        blog_nostr_author_display_name "$nostr_pubkey"
+        return 0
+      fi
+      ;;
+  esac
+  blog_author_display_name "$raw_author"
 }
 
 blog_rename_authored_posts() {
@@ -3683,7 +3723,7 @@ blog_nostr_write_projection_posts() {
       title=$(blog_effective_post_title "$title" "$content" "$post_type")
     fi
     content_hash=$(printf '%s' "$content" | blog_sha256)
-    author_label=$(printf '%s' "$pubkey" | cut -c1-16)
+    author_label=$(blog_nostr_author_display_name "$pubkey")
 
     out_path="$blog_posts_dir/$slug.md"
     {
@@ -4867,7 +4907,7 @@ blog_public_posts_catalog_build_json() {
       esac
 
       title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
-      author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+      author=$(blog_post_author_display_for_file "$file")
       published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
       published_date=$(blog_iso_to_human_date "$published_at")
       summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')

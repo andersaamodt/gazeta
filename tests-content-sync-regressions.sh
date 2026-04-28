@@ -216,6 +216,40 @@ ID_6=6666666666666666666666666666666666666666666666666666666666666666
 ID_7=7777777777777777777777777777777777777777777777777777777777777777
 ID_8=8888888888888888888888888888888888888888888888888888888888888888
 
+mkdir -p "$blog_users_dir/anders"
+cat > "$blog_users_dir/anders/profile.conf" <<EOF_AUTHOR_PROFILE
+username=anders
+publish_name=Anders
+nostr_pubkey=$KEY_A
+EOF_AUTHOR_PROFILE
+
+nostr_projected_post="$blog_posts_dir/projected-author.md"
+mkdir -p "$(dirname "$nostr_projected_post")"
+cat > "$nostr_projected_post" <<EOF_PROJECTED_AUTHOR
+---
+title: "Projected Author"
+author: "$(printf '%s' "$KEY_A" | cut -c1-16)"
+nostr_projection: "true"
+nostr_pubkey: "$KEY_A"
+---
+
+Body
+EOF_PROJECTED_AUTHOR
+assert_eq 'Anders' "$(blog_post_author_display_for_file "$nostr_projected_post")" 'projected post byline resolves matching Nostr pubkey to publish name'
+
+unmatched_projected_post="$blog_posts_dir/projected-author-unmatched.md"
+cat > "$unmatched_projected_post" <<EOF_PROJECTED_UNMATCHED
+---
+title: "Projected Author"
+author: "$(printf '%s' "$KEY_B" | cut -c1-16)"
+nostr_projection: "true"
+nostr_pubkey: "$KEY_B"
+---
+
+Body
+EOF_PROJECTED_UNMATCHED
+assert_eq 'Nostr Author' "$(blog_post_author_display_for_file "$unmatched_projected_post")" 'projected post byline avoids exposing raw Nostr pubkey fallback'
+
 front_matter_escape_fixture="$TMP_ROOT/front-matter-escape.md"
 cat > "$front_matter_escape_fixture" <<'EOF_FRONT_MATTER_ESCAPE'
 ---
