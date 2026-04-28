@@ -572,6 +572,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu"
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu">⋯</button>' 'account menu source does not use horizontal dots'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-user-menu > .nav-menu-btn::before' 'account menu renders vertical dots with CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-page-menu-trigger::before' 'post overflow menu renders vertical dots with CSS'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible;' 'mobile nav keeps absolute account and overflow menus visible'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages load the shared post resize behavior'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'EDGE_PX = 14' 'post resize behavior uses edge-only drag detection'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'delta * 2' 'post resize behavior grows symmetrically from the center'

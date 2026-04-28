@@ -9117,7 +9117,7 @@ nav.site-nav {
     justify-content: flex-start;
     gap: 0.45rem;
     padding: 0.24rem 0.55rem;
-    overflow-x: hidden;
+    overflow: visible;
   }
 
   .nav-center {
