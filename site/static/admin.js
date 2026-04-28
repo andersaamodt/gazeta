@@ -3712,6 +3712,10 @@
     html += '<div class="field-row"><div class="setting-label"><strong>Active Lightning Address</strong></div>'
       + '<div class="zaps-runtime-value">' + (effectiveLud16 ? ('<code>' + escapeHtml(effectiveLud16) + '</code>') : '<span class="zaps-runtime-value is-warn">Not set</span>') + '</div>'
       + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Bellheim zap target</strong></div><div class="zaps-runtime-value">'
+      + (effectiveLud16 ? ('<code>' + escapeHtml(effectiveLud16) + '</code>') : '<span class="zaps-runtime-value is-warn">Use the active Lightning Address once set</span>')
+      + '<div class="muted">Nostr Wallet Connect is a separate wallet-control secret. Use Headquarters Zap / Pay Node to provision or reveal it; do not publish it as public zap metadata.</div>'
+      + '</div></div>';
     html += '<div class="field-row"><div class="setting-label"><strong>Address source</strong></div><div class="zaps-runtime-value">'
       + escapeHtml(lud16Source ? lud16Source : 'unavailable')
       + '</div></div>';

@@ -197,6 +197,7 @@ title: ""
 </div>
 </div>
 <p class="muted">Public zap buttons use your site signer pubkey and the effective Lightning Address shown above. Keep the canonical site address here if you want one zap identity for both onsite and offsite readers.</p>
+<p class="muted">Apps like Bellheim can use the active Lightning Address for receiving support/zaps. Nostr Wallet Connect is a separate wallet-control secret for apps that need spending access; provision and reveal that only through the Headquarters pay-node workflow.</p>
 </section>
 
 <section class="sub-card">

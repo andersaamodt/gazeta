@@ -340,6 +340,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "'/cgi/blog-save-po
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJson('/static/public-posts.json')" 'blog posts prefer static catalog fetch'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJson('/cgi/blog-list-public-posts')" 'blog posts fall back to CGI catalog fetch'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
+assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'Bellheim zap target' 'zaps admin names the Bellheim-compatible zap target'
+assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Nostr Wallet Connect is a separate wallet-control secret' 'zaps admin distinguishes Lightning Address from NWC secret'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "Object.assign({ cache: 'no-store' }, options || {})" 'nav-auth fetch default no-store'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "fetch('/cgi/blog-get-nostr-page', {" 'nav-auth prefetch call exists'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token), { cache: 'no-store' })" 'nav-auth check-session no-store'
