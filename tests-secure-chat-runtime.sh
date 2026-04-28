@@ -234,6 +234,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secur
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-send' 'contact page sends secure chat messages'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-upload' 'contact page uploads secure chat attachments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "window.blogAuth.openLoginModal(hasBrowserSigner() ? 'register' : 'phone')" 'secure chat login opens shared auth modal instead of swallowing signer failures'
 assert_file_contains "$ROOT_DIR/cgi/ssh-auth-check-session" 'simplex_contact_info' 'session bootstrap exposes SimpleX account info'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
 

@@ -1999,12 +1999,16 @@
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
-          if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
-            window.blogAuth.startLogin().catch(function () {
-              // Shared nav auth flow already surfaced feedback.
+          if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+            window.blogAuth.openLoginModal(hasBrowserSigner() ? 'register' : 'phone');
+          } else if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
+            window.blogAuth.startLogin().catch(function (err) {
+              state.chat.error = err && err.message ? err.message : 'Login is not ready yet.';
+              renderContent();
             });
-          } else if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-            window.blogAuth.openLoginModal('phone');
+          } else {
+            state.chat.error = 'Login is still loading. The Secure Chat sign-in panel will be available in a moment.';
+            renderContent();
           }
           return;
         }
