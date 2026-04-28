@@ -512,6 +512,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-inline-actions 
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-center {' 'nav center lane styling exists'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow-x: auto;' 'navbar center lane scrolls within its own column instead of overlapping right controls'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-width: max-content;' 'navbar right lane preserves intrinsic width so search/actions do not intrude into center links'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu">⋮</button>' 'account menu source uses vertical dots'
+assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu">⋯</button>' 'account menu source does not use horizontal dots'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-user-menu > .nav-menu-btn::before' 'account menu renders vertical dots with CSS'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-page-menu-trigger::before' 'post overflow menu renders vertical dots with CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
 # 9) blog-get-config runtime output stays correct with direct site.conf parsing.
