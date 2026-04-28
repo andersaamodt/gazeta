@@ -118,17 +118,40 @@
   function resolvePresetAmounts(defaultAmountSats) {
     var base = clampSats(defaultAmountSats, 1000);
     var values = uniqueStrings([
-      String(base),
       '100',
       '1000',
-      '2100',
+      String(base),
       '5000',
-      '10000'
+      '10000',
+      '21000'
     ]).map(function (value) {
       return clampSats(value, base);
     });
     values.sort(function (a, b) { return a - b; });
-    return values.slice(0, 5);
+    return values.slice(0, 6);
+  }
+
+  function zapAmountName(sats) {
+    var amount = clampSats(sats, 1);
+    if (amount <= 100) return 'Spark';
+    if (amount <= 1000) return 'Boost';
+    if (amount <= 5000) return 'Signal';
+    if (amount <= 10000) return 'Flare';
+    return 'Patron';
+  }
+
+  function zapAmountChipHtml(amount, activeSats, customActive) {
+    var cls = 'zap-amount-chip';
+    if (amount === activeSats && !customActive) {
+      cls += ' is-selected';
+    }
+    var usd = formatUsdForSats(amount);
+    return '' +
+      '<button type="button" class="' + cls + '" data-zap-action="select_amount" data-zap-amount="' + String(amount) + '">' +
+        '<span class="zap-amount-chip-name">' + escapeHtml(zapAmountName(amount)) + '</span>' +
+        '<span class="zap-amount-chip-sats">' + escapeHtml(String(amount)) + ' sats</span>' +
+        (usd ? '<span class="zap-amount-chip-usd">(' + escapeHtml(usd) + ')</span>' : '') +
+      '</button>';
   }
 
   function formatUsdForSats(sats) {
@@ -436,38 +459,41 @@
     var presets = resolvePresetAmounts(options.zapConfig.defaultAmountSats);
     var activeSats = currentSats();
     var customValue = String(state.customSats || '').trim();
+    var customActive = !!customValue;
     var customUsd = /^[0-9]+$/.test(customValue) && Number(customValue) > 0 ? formatUsdForSats(customValue) : '';
     var buttonsHtml = presets.map(function (amount) {
-      var cls = 'zap-amount-chip';
-      if (amount === activeSats && !String(state.customSats || '').trim()) {
-        cls += ' is-selected';
-      }
-      return '<button type="button" class="' + cls + '" data-zap-action="select_amount" data-zap-amount="' + String(amount) + '">' + escapeHtml(satsWithUsdLabel(amount)) + '</button>';
+      return zapAmountChipHtml(amount, activeSats, customActive);
     }).join('');
     var disabledAttr = state.busy ? ' disabled aria-disabled="true"' : '';
+    var activeUsd = formatUsdForSats(activeSats);
 
     body.innerHTML = '' +
       '<div class="zap-dialog-head">' +
-        '<p class="zap-dialog-kicker">Lightning Zap</p>' +
+        '<p class="zap-dialog-kicker">' + zapIconHtml() + '<span>Lightning Zap</span></p>' +
         '<h3 id="zap-dialog-title">Zap ' + escapeHtml(targetTitle) + '</h3>' +
-        '<p class="zap-dialog-subtitle">Recipient: <code>' + escapeHtml(options.zapConfig.lud16) + '</code></p>' +
+        '<p class="zap-dialog-subtitle">Send sats to support this post. Recipient: <code>' + escapeHtml(options.zapConfig.lud16) + '</code></p>' +
       '</div>' +
       '<div class="zap-dialog-grid">' +
         '<div class="zap-dialog-field">' +
-          '<span class="zap-dialog-label">Amount</span>' +
+          '<div class="zap-dialog-label-row">' +
+            '<span class="zap-dialog-label">Choose amount</span>' +
+            '<span class="zap-dialog-current-amount">' + escapeHtml(String(activeSats)) + ' sats' + (activeUsd ? ' (' + escapeHtml(activeUsd) + ')' : '') + '</span>' +
+          '</div>' +
           '<div class="zap-amount-chips">' + buttonsHtml + '</div>' +
         '</div>' +
-        '<label class="zap-dialog-field">' +
-          '<span class="zap-dialog-label">Custom sats <span class="zap-usd-note" data-zap-custom-usd="true">' + escapeHtml(customUsd ? '(' + customUsd + ')' : '') + '</span></span>' +
-          '<input type="number" min="1" step="1" inputmode="numeric" data-zap-custom-sats="true" value="' + escapeAttr(String(state.customSats || '')) + '" placeholder="' + escapeAttr(String(options.zapConfig.defaultAmountSats)) + '">' +
-        '</label>' +
-        '<label class="zap-dialog-field">' +
-          '<span class="zap-dialog-label">Comment (optional)</span>' +
-          '<textarea rows="3" data-zap-note="true" placeholder="Say something with the zap...">' + escapeHtml(String(state.note || '')) + '</textarea>' +
-        '</label>' +
+        '<div class="zap-dialog-secondary-grid">' +
+          '<label class="zap-dialog-field">' +
+            '<span class="zap-dialog-label">Custom sats <span class="zap-usd-note" data-zap-custom-usd="true">' + escapeHtml(customUsd ? '(' + customUsd + ')' : '') + '</span></span>' +
+            '<input type="number" min="1" step="1" inputmode="numeric" data-zap-custom-sats="true" value="' + escapeAttr(String(state.customSats || '')) + '" placeholder="' + escapeAttr(String(options.zapConfig.defaultAmountSats)) + '">' +
+          '</label>' +
+          '<label class="zap-dialog-field">' +
+            '<span class="zap-dialog-label">Comment <small>(optional)</small></span>' +
+            '<textarea rows="2" data-zap-note="true" placeholder="Say something with the zap...">' + escapeHtml(String(state.note || '')) + '</textarea>' +
+          '</label>' +
+        '</div>' +
       '</div>' +
       '<div class="zap-dialog-actions">' +
-        '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-action="create_invoice"' + disabledAttr + '>' + (state.busy ? 'Creating invoice...' : ('Create invoice for ' + satsWithUsdLabel(activeSats))) + '</button>' +
+        '<button type="button" class="zap-action-btn zap-action-btn-primary zap-dialog-primary-action" data-zap-action="create_invoice"' + disabledAttr + '>' + zapIconHtml() + (state.busy ? 'Creating invoice...' : ('Create invoice for ' + satsWithUsdLabel(activeSats))) + '</button>' +
       '</div>' +
       statusHtml(state) +
       invoiceHtml(state);
