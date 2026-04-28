@@ -80,7 +80,7 @@ blog_nostr_posts_index="$blog_nostr_derived_dir/posts.json"
 blog_nostr_comments_index="$blog_nostr_derived_dir/comments.json"
 blog_nostr_rebuild_lock_dir="$blog_nostr_state_dir/rebuild.lock"
 blog_nostr_mirror_lock_dir="$blog_nostr_state_dir/mirror.lock"
-blog_zaps_default_amount_sats=210
+blog_zaps_default_amount_sats=1000
 
 BLOG_REQUEST_BODY=${BLOG_REQUEST_BODY-}
 BLOG_SESSION_USERNAME=${BLOG_SESSION_USERNAME-}
@@ -2617,6 +2617,8 @@ blog_read_front_matter_value() {
       if (index($0, key ":") == 1) {
         sub(/^[^:]*:[[:space:]]*/, "", $0);
         gsub(/^"|"$/, "", $0);
+        gsub(/\\"/, "\"", $0);
+        gsub(/\\\\/, "\\", $0);
         print $0;
         exit;
       }

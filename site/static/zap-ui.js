@@ -75,7 +75,7 @@
     return {
       enabled: !!src.enabled && !!lud16,
       lud16: lud16,
-      defaultAmountSats: clampSats(src.default_amount_sats || 21, 21),
+      defaultAmountSats: clampSats(src.default_amount_sats || 1000, 1000),
       relays: relays.length ? relays : DEFAULT_RELAYS.slice()
     };
   }
@@ -116,13 +116,14 @@
   }
 
   function resolvePresetAmounts(defaultAmountSats) {
-    var base = clampSats(defaultAmountSats, 21);
+    var base = clampSats(defaultAmountSats, 1000);
     var values = uniqueStrings([
       String(base),
-      '21',
-      '210',
+      '100',
       '1000',
-      '5000'
+      '2100',
+      '5000',
+      '10000'
     ]).map(function (value) {
       return clampSats(value, base);
     });
@@ -158,7 +159,7 @@
       return Promise.resolve(btcUsdRate.value || 0);
     }
     btcUsdRate.loading = true;
-    return fetch('/cgi/blog-btc-usd-rate', { credentials: 'same-origin' })
+    return fetch('/cgi/blog-btc-usd-rate', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         var value = Number(data && data.btc_usd);

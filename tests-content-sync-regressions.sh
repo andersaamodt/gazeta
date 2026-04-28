@@ -216,6 +216,16 @@ ID_6=6666666666666666666666666666666666666666666666666666666666666666
 ID_7=7777777777777777777777777777777777777777777777777777777777777777
 ID_8=8888888888888888888888888888888888888888888888888888888888888888
 
+front_matter_escape_fixture="$TMP_ROOT/front-matter-escape.md"
+cat > "$front_matter_escape_fixture" <<'EOF_FRONT_MATTER_ESCAPE'
+---
+summary: "Quoted \"people\" should render without YAML escape slashes"
+---
+
+Body
+EOF_FRONT_MATTER_ESCAPE
+assert_eq 'Quoted "people" should render without YAML escape slashes' "$(blog_read_front_matter_value "$front_matter_escape_fixture" summary)" 'front matter reader unescapes quoted YAML strings'
+
 write_event() {
   pubkey=$1
   kind=$2
@@ -540,7 +550,7 @@ plugin_btcpay=true
 plugin_video_chat=false
 zaps_enabled=false
 zap_lud16=
-zap_default_amount_sats=210
+zap_default_amount_sats=1000
 EOF_SITE_CONF
 printf '%s\n' 'wss://relay.example.com' > "$blog_nostr_relays_file"
 blog_get_config_out=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-get-config")
@@ -556,6 +566,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "cache: 'no-store'"
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-action=\"delete\"" 'in-blog compose exposes delete-draft trash action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "apiPost('/cgi/blog-delete-draft'" 'in-blog compose can delete local draft via delete endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '(postSummary ? '\''<p class="post-summary">'\'' + markdownInline(postSummary) + '\''</p>'\'' : '\'''\'')' 'blog index renders post summaries as inline markdown'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "cache: 'no-store'" 'contact-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'id="nip23-price-input"' 'nip23 editor exposes product USD price input'

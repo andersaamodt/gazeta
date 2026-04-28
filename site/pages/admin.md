@@ -192,7 +192,7 @@ title: ""
 </div>
 <div class="field-row">
 <label for="zap-default-amount-sats"><strong>Default Amount</strong></label>
-<input type="number" id="zap-default-amount-sats" min="1" step="1" value="210">
+<input type="number" id="zap-default-amount-sats" min="1" step="1" value="1000">
 <span class="field-unit">sats</span>
 </div>
 </div>

@@ -340,6 +340,12 @@
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
+  function cleanMarkdownText(value) {
+    return String(value || '')
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'");
+  }
+
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -2917,8 +2923,9 @@
     els.empty.hidden = true;
     els.list.innerHTML = shown.map(function (post) {
       var postTitle = String(post.title || '').trim();
+      var postSummary = cleanMarkdownText(post.summary || '');
       if (!postTitle) {
-        postTitle = String(post.summary || '').trim() || 'Untitled';
+        postTitle = postSummary.trim() || 'Untitled';
       }
       var postPath = String(post.path || '').trim();
       var tagsHtml = (post.tags || []).map(function (tag) {
@@ -2959,7 +2966,7 @@
             '</div>' +
             adminMenuHtml +
           '</div>' +
-          (post.summary ? '<p class="post-summary">' + escapeHtml(post.summary) + '</p>' : '') +
+          (postSummary ? '<p class="post-summary">' + markdownInline(postSummary) + '</p>' : '') +
           '<div class="blog-meta-row' + (hasTags ? '' : ' blog-meta-row-with-comments') + '"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span>' + (hasTags ? '' : commentsHtml) + '</div>' +
           (hasTags
             ? '<div class="post-card-footer"><div class="tags">' + tagsHtml + '</div>' + commentsHtml + '</div>'

@@ -2976,7 +2976,7 @@
       }
       renderZapWalletSummary(data);
       if (els.zapDefaultAmountSats) {
-        els.zapDefaultAmountSats.value = String(data.zap_default_amount_sats || 210);
+        els.zapDefaultAmountSats.value = String(data.zap_default_amount_sats || 1000);
       }
       syncZapsEnabledAvailability();
       if (els.mirrorNostrButton) {
