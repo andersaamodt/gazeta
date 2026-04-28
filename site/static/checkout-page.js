@@ -249,10 +249,15 @@
     var embedUrl = providerEmbedUrl(provider);
 
     var embedHtml = '';
-    if (embedUrl) {
-      embedHtml = '<iframe class="checkout-provider-embed" src="' + escapeHtml(embedUrl) + '" title="' + escapeHtml(provider) + ' checkout panel"></iframe>';
+    if (provider === 'btcpay' && state.order && state.order.provider_url) {
+      embedHtml = '<div class="checkout-provider-placeholder checkout-btcpay-handoff">'
+        + '<p>BTCPay checkout opens in its own secure page.</p>'
+        + '<a class="checkout-link-button cart-page-link-button-primary" href="' + escapeHtml(state.order.provider_url) + '" target="_blank" rel="noopener noreferrer">Open BTCPay Checkout</a>'
+        + '</div>';
     } else if (provider === 'btcpay') {
-      embedHtml = '<p class="checkout-provider-placeholder">BTCPay is not configured yet. Set <code>btcpay_host</code> and, if needed, <code>btcpay_rootpath</code> in site config or finish BTCPay provisioning in Headquarters.</p>';
+      embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a BTCPay invoice. The secure BTCPay checkout will open from this page after the order is created.</p>';
+    } else if (embedUrl) {
+      embedHtml = '<iframe class="checkout-provider-embed" src="' + escapeHtml(embedUrl) + '" title="' + escapeHtml(provider) + ' checkout panel"></iframe>';
     } else if (provider === 'paybis') {
       embedHtml = '<p class="checkout-provider-placeholder">Paybis embed is available as a stub until partner credentials are configured.</p>';
     } else {

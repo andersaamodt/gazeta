@@ -1054,6 +1054,17 @@ body.nav-cart-open {
   font-size: 0.9rem;
 }
 
+.checkout-btcpay-handoff {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.checkout-btcpay-handoff p {
+  margin: 0;
+}
+
 .checkout-message {
   margin: 0.3rem 0 0;
   border: 1px solid var(--border);
