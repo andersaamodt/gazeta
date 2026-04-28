@@ -5907,6 +5907,103 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   background: var(--menu-danger-hover-bg);
 }
 
+.post-page-modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+}
+
+.post-page-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-overlay, rgba(15, 23, 42, 0.56));
+  backdrop-filter: blur(3px);
+}
+
+.post-page-modal-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  width: min(30rem, calc(100vw - 2rem));
+  margin: min(14vh, 6rem) auto 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--menu-bg, var(--post-card-bg-single, #fffaf0));
+  color: var(--text);
+  box-shadow: var(--menu-shadow, 0 18px 44px rgba(15, 23, 42, 0.2));
+}
+
+.post-page-modal-panel h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.post-page-modal-field {
+  display: grid;
+  gap: 0.32rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.post-page-modal-field small {
+  font-weight: 500;
+  color: var(--light-text);
+}
+
+.post-page-modal-field input,
+.post-page-modal-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.38rem 0.58rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-raised, #fff);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.post-page-modal-field input:focus,
+.post-page-modal-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.post-page-modal-status {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  background: color-mix(in srgb, var(--surface-raised, #fff) 75%, var(--accent) 25%);
+}
+
+.post-page-modal-status.is-error {
+  background: #fff1f0;
+  color: #8e1c1a;
+}
+
+.post-page-modal-status.is-ok {
+  background: #ecfdf3;
+  color: #17633a;
+}
+
+.post-page-modal-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.post-page-modal-primary {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border) 30%);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  font-weight: 760;
+}
+
 .post-date {
   font-weight: 400;
   color: var(--light-text);

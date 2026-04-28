@@ -5,6 +5,14 @@
   var refreshInFlight = false;
   var submitInFlight = false;
   var postMenuBusy = false;
+  var addToListState = {
+    postPath: '',
+    loading: false,
+    submitting: false,
+    lists: [],
+    message: '',
+    tone: ''
+  };
   var inlineEditState = {
     open: false,
     busy: false,
@@ -136,6 +144,15 @@
       .replace(/'/g, '&#39;');
   }
 
+  function normalizeListSlug(raw) {
+    return String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   function getSessionToken() {
     try {
       return String(localStorage.getItem('session_token') || '').trim();
@@ -247,6 +264,194 @@
     });
   }
 
+  function addToListDialogNode() {
+    return document.getElementById('post-page-add-to-list-dialog');
+  }
+
+  function closeAddToListDialog() {
+    var dialog = addToListDialogNode();
+    if (dialog && dialog.parentNode) {
+      dialog.parentNode.removeChild(dialog);
+    }
+    addToListState.postPath = '';
+    addToListState.loading = false;
+    addToListState.submitting = false;
+    addToListState.lists = [];
+    addToListState.message = '';
+    addToListState.tone = '';
+  }
+
+  function addToListSelectedSlug(dialog) {
+    var select = dialog ? dialog.querySelector('[data-post-add-list-select]') : null;
+    var newInput = dialog ? dialog.querySelector('[data-post-add-list-new-slug]') : null;
+    var selected = select ? String(select.value || '').trim() : '';
+    if (selected === '__new__') {
+      return normalizeListSlug(newInput ? newInput.value : '');
+    }
+    return normalizeListSlug(selected || 'list');
+  }
+
+  function syncAddToListDialogNewRow(dialog) {
+    var select = dialog ? dialog.querySelector('[data-post-add-list-select]') : null;
+    var row = dialog ? dialog.querySelector('[data-post-add-list-new-row]') : null;
+    var newInput = dialog ? dialog.querySelector('[data-post-add-list-new-slug]') : null;
+    if (!select || !row) {
+      return;
+    }
+    var useNew = String(select.value || '') === '__new__';
+    row.hidden = !useNew;
+    if (useNew && newInput) {
+      newInput.focus();
+      newInput.select();
+    }
+  }
+
+  function renderAddToListDialog() {
+    var dialog = addToListDialogNode();
+    if (!dialog) {
+      dialog = document.createElement('div');
+      dialog.id = 'post-page-add-to-list-dialog';
+      dialog.className = 'post-page-modal-shell';
+      dialog.setAttribute('role', 'presentation');
+      document.body.appendChild(dialog);
+    }
+
+    var lists = Array.isArray(addToListState.lists) ? addToListState.lists : [];
+    var optionsHtml = '';
+    lists.forEach(function (item) {
+      var slug = normalizeListSlug(item && item.slug);
+      if (!slug) {
+        return;
+      }
+      var title = String((item && item.title) || slug).trim();
+      optionsHtml += '<option value="' + escapeHtml(slug) + '">' + escapeHtml(title || slug) + '</option>';
+    });
+    optionsHtml += '<option value="__new__">New list...</option>';
+    var disabledAttr = addToListState.loading || addToListState.submitting ? ' disabled aria-disabled="true"' : '';
+    var statusHtml = addToListState.message
+      ? '<p class="post-page-modal-status is-' + escapeHtml(addToListState.tone || 'info') + '">' + escapeHtml(addToListState.message) + '</p>'
+      : '';
+
+    dialog.innerHTML = '' +
+      '<div class="post-page-modal-backdrop" data-post-add-list-action="cancel"></div>' +
+      '<form class="post-page-modal-panel" data-post-add-list-form="true" role="dialog" aria-modal="true" aria-labelledby="post-page-add-to-list-title">' +
+        '<h3 id="post-page-add-to-list-title">Add Post to List</h3>' +
+        '<label class="post-page-modal-field">' +
+          '<span>List</span>' +
+          '<select data-post-add-list-select="true"' + disabledAttr + '>' + optionsHtml + '</select>' +
+        '</label>' +
+        '<label class="post-page-modal-field" data-post-add-list-new-row="true" hidden>' +
+          '<span>New list slug</span>' +
+          '<input type="text" data-post-add-list-new-slug="true" placeholder="new-list"' + disabledAttr + '>' +
+        '</label>' +
+        '<label class="post-page-modal-field">' +
+          '<span>Date <small>(optional)</small></span>' +
+          '<input type="text" data-post-add-list-date="true" placeholder="YYYY or YYYY-MM or YYYY-MM-DD"' + disabledAttr + '>' +
+        '</label>' +
+        '<label class="post-page-modal-field">' +
+          '<span>Text <small>(optional)</small></span>' +
+          '<input type="text" data-post-add-list-markdown="true" placeholder="Markdown line for this entry"' + disabledAttr + '>' +
+        '</label>' +
+        statusHtml +
+        '<div class="post-page-modal-actions">' +
+          '<button type="button" data-post-add-list-action="cancel"' + disabledAttr + '>Cancel</button>' +
+          '<button type="submit" class="post-page-modal-primary"' + disabledAttr + '>' + (addToListState.submitting ? 'Adding...' : 'Add to list') + '</button>' +
+        '</div>' +
+      '</form>';
+
+    var select = dialog.querySelector('[data-post-add-list-select]');
+    if (select && lists.length) {
+      select.value = normalizeListSlug(lists[0] && lists[0].slug) || 'list';
+    } else if (select) {
+      select.value = '__new__';
+    }
+    syncAddToListDialogNewRow(dialog);
+    var firstField = dialog.querySelector(lists.length ? '[data-post-add-list-select]' : '[data-post-add-list-new-slug]');
+    if (firstField && !addToListState.loading && !addToListState.submitting) {
+      firstField.focus();
+    }
+  }
+
+  function openAddToListDialog(postPath, token, csrf) {
+    addToListState.postPath = postPath;
+    addToListState.loading = true;
+    addToListState.submitting = false;
+    addToListState.lists = [];
+    addToListState.message = 'Loading lists...';
+    addToListState.tone = 'info';
+    renderAddToListDialog();
+    postMenuBusy = true;
+    postForm('/cgi/blog-list-pages', {
+      session_token: token,
+      csrf_token: csrf
+    }).then(function (listsData) {
+      if (!listsData || !listsData.success) {
+        throw new Error((listsData && listsData.error) || 'Could not load lists');
+      }
+      addToListState.lists = Array.isArray(listsData.lists) ? listsData.lists : [];
+      addToListState.message = '';
+      addToListState.tone = '';
+    }).catch(function (err) {
+      addToListState.lists = [{ slug: 'list', title: 'List' }];
+      addToListState.message = err && err.message ? err.message : 'Could not load lists. You can still choose a list slug.';
+      addToListState.tone = 'error';
+    }).finally(function () {
+      addToListState.loading = false;
+      postMenuBusy = false;
+      renderAddToListDialog();
+    });
+  }
+
+  function submitAddToListDialog(form) {
+    if (addToListState.submitting || !addToListState.postPath) {
+      return;
+    }
+    var token = getSessionToken();
+    var csrf = getCsrfToken();
+    if (!token || !csrf) {
+      addToListState.message = 'Sign in as admin first.';
+      addToListState.tone = 'error';
+      renderAddToListDialog();
+      return;
+    }
+    var slug = addToListSelectedSlug(form);
+    if (!slug) {
+      addToListState.message = 'List slug is required.';
+      addToListState.tone = 'error';
+      renderAddToListDialog();
+      return;
+    }
+    var dateInput = form.querySelector('[data-post-add-list-date]');
+    var markdownInput = form.querySelector('[data-post-add-list-markdown]');
+    addToListState.submitting = true;
+    addToListState.message = 'Adding post to list draft...';
+    addToListState.tone = 'info';
+    renderAddToListDialog();
+    postForm('/cgi/blog-add-post-to-list', {
+      list_slug: slug,
+      post_path: addToListState.postPath,
+      date: dateInput ? String(dateInput.value || '').trim() : '',
+      markdown: markdownInput ? String(markdownInput.value || '').trim() : '',
+      marker: 'list',
+      session_token: token,
+      csrf_token: csrf
+    }).then(function (data) {
+      if (!data || !data.success) {
+        throw new Error((data && data.error) || 'Could not add post to list');
+      }
+      addToListState.message = (data && data.message) || ('Added to ' + slug + ' draft.');
+      addToListState.tone = 'ok';
+      addToListState.submitting = false;
+      renderAddToListDialog();
+      window.setTimeout(closeAddToListDialog, 700);
+    }).catch(function (err) {
+      addToListState.message = err && err.message ? err.message : 'Could not add post to list.';
+      addToListState.tone = 'error';
+      addToListState.submitting = false;
+      renderAddToListDialog();
+    });
+  }
+
   function runPostPageAction(action) {
     var picked = String(action || '').trim();
     if (!picked || postMenuBusy || !currentRelPath) {
@@ -287,62 +492,8 @@
     }
 
     if (picked === 'add_to_list') {
-      var targetSlug = 'list';
-      var sequence = postForm('/cgi/blog-list-pages', {
-        session_token: token,
-        csrf_token: csrf
-      }).then(function (listsData) {
-        if (!listsData || !listsData.success) {
-          throw new Error((listsData && listsData.error) || 'Could not load lists');
-        }
-        var lists = Array.isArray(listsData.lists) ? listsData.lists : [];
-        var options = lists.map(function (item) { return String((item && item.slug) || '').trim(); }).filter(Boolean);
-        var fallback = options.length ? options[0] : 'list';
-        var pickedSlug = window.prompt('Select list slug:\n' + (options.length ? options.join(', ') : 'list'), fallback);
-        if (pickedSlug === null) {
-          throw new Error('__cancel__');
-        }
-        targetSlug = String(pickedSlug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
-        if (!targetSlug) {
-          throw new Error('List slug is required.');
-        }
-      });
-      postMenuBusy = true;
-      sequence
-        .then(function () {
-          var dateInput = window.prompt('Optional entry date (YYYY / YYYY-MM / YYYY-MM-DD):', '');
-          if (dateInput === null) {
-            throw new Error('__cancel__');
-          }
-          var markdownInput = window.prompt('Optional markdown line for this entry:', '');
-          if (markdownInput === null) {
-            throw new Error('__cancel__');
-          }
-          return postForm('/cgi/blog-add-post-to-list', {
-            list_slug: targetSlug,
-            post_path: currentRelPath,
-            date: String(dateInput || '').trim(),
-            markdown: String(markdownInput || '').trim(),
-            marker: 'list',
-            session_token: token,
-            csrf_token: csrf
-          });
-        })
-        .then(function (data) {
-          if (!data || !data.success) {
-            throw new Error((data && data.error) || 'Could not add post to list');
-          }
-          closePostPageMenu();
-        })
-        .catch(function (err) {
-          if (!err || err.message === '__cancel__') {
-            return;
-          }
-          window.alert(err.message || 'Could not update list');
-        })
-        .finally(function () {
-          postMenuBusy = false;
-        });
+      closePostPageMenu();
+      openAddToListDialog(currentRelPath, token, csrf);
       return;
     }
 
@@ -1255,6 +1406,14 @@
       runPostPageAction(action);
       return;
     }
+    var addListAction = target.closest('[data-post-add-list-action]');
+    if (addListAction instanceof HTMLElement) {
+      event.preventDefault();
+      if (String(addListAction.getAttribute('data-post-add-list-action') || '') === 'cancel') {
+        closeAddToListDialog();
+      }
+      return;
+    }
     var menu = document.querySelector('.post-page-menu');
     if (menu && !menu.hidden && !menu.contains(target)) {
       closePostPageMenu();
@@ -1315,6 +1474,10 @@
 
   document.addEventListener('change', function (event) {
     var target = event.target;
+    if (target instanceof Element && target.closest('[data-post-add-list-select]')) {
+      syncAddToListDialogNewRow(addToListDialogNode());
+      return;
+    }
     if (!(target instanceof HTMLInputElement)) {
       return;
     }
@@ -1342,6 +1505,18 @@
       renderInlineEditor();
       queueInlineAutosave();
     }
+  });
+
+  document.addEventListener('submit', function (event) {
+    if (!isPostPage(window.location.pathname)) {
+      return;
+    }
+    var form = event.target;
+    if (!(form instanceof Element) || !form.closest('[data-post-add-list-form]')) {
+      return;
+    }
+    event.preventDefault();
+    submitAddToListDialog(form);
   });
 
   if (!triggerEarlyPostRouteRepair()) {
