@@ -408,6 +408,17 @@
     }
   }
 
+  function renderLoadFallback(err, fallbackText) {
+    if (err && window.console && typeof window.console.warn === 'function') {
+      window.console.warn('Public ranking page refresh failed:', err);
+    }
+    if (state.initialContentPainted || !els.content) {
+      return;
+    }
+    els.content.innerHTML = '<p class="placeholder">' + escapeHtml(fallbackText || 'Page content is still loading.') + '</p>';
+    markInitialContentPainted();
+  }
+
   function apiPost(url, payload) {
     var params = new URLSearchParams(payload || {});
     return fetch(url, {
@@ -1772,9 +1783,7 @@
       setSaveStatus('saved');
       renderAll();
     } catch (err) {
-      if (els.content) {
-        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err && err.message ? err.message : 'Could not load public ranking page') + '</p>';
-      }
+      renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
     } finally {
       markHydrationPageReady();
       markInitialContentPainted();

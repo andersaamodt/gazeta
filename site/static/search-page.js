@@ -44,6 +44,13 @@
     });
   }
 
+  function renderSearchLoadFallback(err) {
+    if (err && window.console && typeof window.console.warn === 'function') {
+      window.console.warn('Search page request failed:', err);
+    }
+    content.innerHTML = '<p class="placeholder">Search results are still loading. The latest search data was not available yet.</p>';
+  }
+
   function focusNavbarSearchInput() {
     var input = document.querySelector('.nav-search input[name="q"]');
     if (!(input instanceof HTMLInputElement)) {
@@ -85,7 +92,7 @@
         rewriteEmbeddedSearchForms();
       })
       .catch(function (err) {
-        content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml(err && err.message ? err.message : 'Could not load search results.') + '</p>';
+        renderSearchLoadFallback(err);
       })
       .finally(function () {
         focusNavbarSearchInput();

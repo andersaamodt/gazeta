@@ -188,6 +188,17 @@
     }
   }
 
+  function renderLoadFallback(err, fallbackText) {
+    if (err && window.console && typeof window.console.warn === 'function') {
+      window.console.warn('List page refresh failed:', err);
+    }
+    if (state.initialContentPainted || !els.content) {
+      return;
+    }
+    els.content.innerHTML = '<p class="placeholder">' + escapeHtml(fallbackText || 'Page content is still loading.') + '</p>';
+    markInitialContentPainted();
+  }
+
   function bootstrapCacheKey() {
     return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
   }
@@ -3820,9 +3831,7 @@
           });
         }
       }
-      if (els.content) {
-        els.content.innerHTML = '<p class="placeholder">Error: ' + escapeHtml((lastErr && lastErr.message) ? lastErr.message : 'Could not load list page') + '</p>';
-      }
+      renderLoadFallback(lastErr, 'Page content is still loading. The latest list data was not available yet.');
       if (root && root.classList) {
         root.classList.remove('is-loading');
       }
