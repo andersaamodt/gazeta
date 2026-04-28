@@ -330,9 +330,9 @@ header h1 {
   border-top: 1px solid var(--nav-border, var(--border));
   border-bottom: 1px solid var(--nav-border, var(--border));
   margin-bottom: 0;
-  position: static;
+  position: relative;
   top: auto;
-  z-index: auto;
+  z-index: 100;
   width: 100%;
   margin-left: 0;
 }
@@ -4704,6 +4704,30 @@ body.nav-cart-open {
   transform: translateY(-1px);
 }
 
+.nav-user-menu > .nav-menu-btn,
+.post-page-menu-trigger {
+  font-size: 0;
+  position: relative;
+}
+
+.nav-user-menu > .nav-menu-btn::before,
+.post-page-menu-trigger::before {
+  content: "";
+  display: block;
+  width: 0.25rem;
+  height: 1.05rem;
+  background:
+    radial-gradient(circle at 50% 0.16rem, currentColor 0 0.105rem, transparent 0.115rem),
+    radial-gradient(circle at 50% 50%, currentColor 0 0.105rem, transparent 0.115rem),
+    radial-gradient(circle at 50% calc(100% - 0.16rem), currentColor 0 0.105rem, transparent 0.115rem);
+}
+
+.nav-user-menu > .nav-menu-btn > svg,
+.post-page-menu-trigger > svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
 .nav-menu-btn:hover {
   background: var(--light-bg);
   color: var(--accent);
@@ -5833,6 +5857,10 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   justify-content: center;
   font-size: 1.2rem;
   line-height: 1;
+}
+
+.post-page-menu-trigger {
+  font-size: 0;
 }
 
 .post-page-menu-trigger:hover,

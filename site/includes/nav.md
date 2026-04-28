@@ -95,7 +95,7 @@
 </button>
 <a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
-  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋯</button>
+  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋮</button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
@@ -371,7 +371,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260321-navfast3"></script>
+<script src="/static/nav-auth.js?v=20260428-menu1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

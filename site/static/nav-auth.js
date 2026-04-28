@@ -2913,6 +2913,9 @@
       if (event.key === 'Escape' && els.loginMenu && !els.loginMenu.hidden) {
         closeLoginMenu();
       }
+      if (event.key === 'Escape' && els.menuPanel && !els.menuPanel.hidden) {
+        closeUserMenu();
+      }
       if (event.key === 'Escape' && els.navOverflowPanel && !els.navOverflowPanel.hidden) {
         closeNavOverflowMenu();
       }
