@@ -243,6 +243,10 @@ body:has(.post-list > .post-item) {
   max-width: 800px;
 }
 
+body.blog-post-resize-enabled {
+  max-width: min(1820px, calc(100vw - 0.75rem));
+}
+
 /* Keep blog-listing canvas uniform across html/body even when themes paint backgrounds. */
 html:has(#blog-page-root),
 body:has(#blog-page-root) {
@@ -5654,6 +5658,20 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   flex-direction: column;
   min-height: 210px;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.post-item.blog-post-resizable {
+  width: var(--blog-post-resizable-width, auto);
+  max-width: calc(100vw - 1rem);
+  margin-left: auto;
+  margin-right: auto;
+  justify-self: center;
+  touch-action: pan-y;
+}
+
+body.blog-post-resizing {
+  cursor: ew-resize;
+  user-select: none;
 }
 
 .post-single-item {

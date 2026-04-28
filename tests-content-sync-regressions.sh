@@ -560,6 +560,11 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu"
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User menu">⋯</button>' 'account menu source does not use horizontal dots'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-user-menu > .nav-menu-btn::before' 'account menu renders vertical dots with CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-page-menu-trigger::before' 'post overflow menu renders vertical dots with CSS'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages load the shared post resize behavior'
+assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'EDGE_PX = 14' 'post resize behavior uses edge-only drag detection'
+assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'delta * 2' 'post resize behavior grows symmetrically from the center'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body.blog-post-resize-enabled' 'post resize behavior widens the blog canvas when active'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-item.blog-post-resizable' 'post resize behavior keeps cards centered with explicit width'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
 # 9) blog-get-config runtime output stays correct with direct site.conf parsing.
