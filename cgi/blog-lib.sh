@@ -964,7 +964,7 @@ blog_to_base64url() {
 
 blog_from_base64url() {
   in=${1-}
-  raw=$(printf '%s' "$in" | tr '-_' '+/')
+  raw=$(printf '%s' "$in" | tr '_-' '/+')
   mod=$(( ${#raw} % 4 ))
   case "$mod" in
     0) ;;

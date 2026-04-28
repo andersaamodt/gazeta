@@ -1122,6 +1122,71 @@ body.nav-cart-open {
   margin: 0.18rem 0;
 }
 
+.checkout-delivery-pass {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  margin-top: 0.18rem;
+}
+
+.checkout-delivery-pass small {
+  color: var(--light-text);
+}
+
+.delivery-shell {
+  max-width: 760px;
+}
+
+.delivery-order-panel {
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.65rem;
+}
+
+.delivery-downloads h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.05rem;
+}
+
+.delivery-download-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.delivery-download-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised, #fff);
+  padding: 0.58rem 0.66rem;
+}
+
+.delivery-download-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.delivery-download-row span,
+.delivery-note {
+  color: var(--light-text);
+  font-size: 0.86rem;
+}
+
+.delivery-note {
+  margin: 0.8rem 0 0;
+}
+
 .checkout-simulate-btn {
   align-self: flex-start;
   margin-top: 0.2rem;

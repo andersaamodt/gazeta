@@ -183,8 +183,14 @@
     var status = String(order.status || 'pending').toLowerCase();
     var statusTone = status === 'paid' ? 'ok' : (status === 'failed' ? 'error' : 'warn');
     var links = Array.isArray(order.download_links) ? order.download_links : [];
+    var deliveryUrl = String(order.delivery_url || '');
     var linksHtml = '';
-    if (links.length) {
+    if (deliveryUrl) {
+      linksHtml = '<div class="checkout-delivery-pass">'
+        + '<a class="checkout-link-button cart-page-link-button-primary" href="' + escapeHtml(deliveryUrl) + '">Open Download Page</a>'
+        + '<small>Durable buyer page with short-lived download buttons.</small>'
+        + '</div>';
+    } else if (links.length) {
       linksHtml = '<ul class="checkout-download-links">' + links.map(function (row) {
         var url = String(row && row.url || '');
         var slug = String(row && row.slug || 'download');

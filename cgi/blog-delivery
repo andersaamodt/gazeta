@@ -1,0 +1,155 @@
+#!/bin/sh
+# Buyer delivery pass page. Durable pass, short-lived proxied file links.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+
+emit_json_error() {
+  message=${1-Delivery failed}
+  code=${2-delivery_failed}
+  blog_send_json_headers
+  blog_json_error "$message" "$code"
+  printf '\n'
+}
+
+resolve_order_id() {
+  raw=$(blog_param order_id)
+  raw=$(printf '%s' "$raw" | tr -cd 'a-fA-F0-9')
+  if [ -n "$raw" ]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+  path_info=${PATH_INFO-}
+  raw=$(printf '%s' "$path_info" | sed 's#^/##; s#/.*$##' | tr -cd 'a-fA-F0-9')
+  if [ -n "$raw" ]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+  uri=${REQUEST_URI-}
+  if printf '%s' "$uri" | grep -q '/delivery/'; then
+    raw=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/delivery\/##' | sed 's#[/?].*$##' | tr -cd 'a-fA-F0-9')
+    [ -n "$raw" ] && printf '%s\n' "$raw" && return 0
+  fi
+  printf '\n'
+}
+
+order_id=$(resolve_order_id)
+token=$(blog_param token)
+format=$(printf '%s' "$(blog_param format)" | tr '[:upper:]' '[:lower:]')
+accept=${HTTP_ACCEPT-}
+
+if [ -z "$order_id" ]; then
+  emit_json_error "Order id is required" "missing_order_id"
+  exit 0
+fi
+if [ -z "$token" ]; then
+  emit_json_error "Delivery token is required" "missing_delivery_token"
+  exit 0
+fi
+
+payload=$(blog_payments_verify_token "$token" delivery 2>/dev/null || printf '')
+payload_order_id=$(printf '%s\n' "$payload" | jq -r '.order_id // ""' 2>/dev/null || printf '')
+if [ -z "$payload" ] || [ "$payload_order_id" != "$order_id" ]; then
+  emit_json_error "Delivery token is invalid or expired" "invalid_delivery_token"
+  exit 0
+fi
+
+order_json=$(blog_payments_order_load_json "$order_id" 2>/dev/null || printf '')
+status=$(printf '%s\n' "$order_json" | jq -r '.status // ""' 2>/dev/null || printf '')
+if [ -z "$order_json" ] || [ "$status" != "paid" ]; then
+  emit_json_error "Order is not paid yet" "order_not_paid"
+  exit 0
+fi
+
+items_file=$(mktemp "${TMPDIR:-/tmp}/blog-delivery-items.XXXXXX")
+: > "$items_file"
+printf '%s\n' "$order_json" | jq -c '.items[]?' 2>/dev/null | while IFS= read -r item || [ -n "$item" ]; do
+  [ -n "$item" ] || continue
+  slug=$(printf '%s\n' "$item" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  slug=$(blog_nostr_page_slug "$slug")
+  [ -n "$slug" ] || continue
+  title=$(printf '%s\n' "$item" | jq -r '.title // .slug // ""' 2>/dev/null || printf "$slug")
+  download_token=$(blog_payments_issue_download_token "$order_id" "$slug" 2>/dev/null || printf '')
+  [ -n "$download_token" ] || continue
+  download_url="/download/$slug?token=$download_token"
+  product_json=$(blog_payments_public_product_json "$slug" 2>/dev/null || printf '{}')
+  product_type=$(printf '%s\n' "$product_json" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')
+  printf '%s\n' "$(jq -cn \
+    --arg slug "$slug" \
+    --arg title "$title" \
+    --arg product_type "$product_type" \
+    --arg download_url "$download_url" \
+    '{slug:$slug,title:$title,product_type:$product_type,download_url:$download_url}')" >> "$items_file"
+done
+
+items_json=$(jq -sc '.' "$items_file" 2>/dev/null || printf '[]')
+rm -f "$items_file"
+
+if [ "$format" = 'json' ] || printf '%s' "$accept" | grep -qi 'application/json'; then
+  blog_send_json_headers
+  jq -cn --argjson order "$order_json" --argjson items "$items_json" '{success:true, order:{order_id:$order.order_id,status:$order.status,paid_at:$order.paid_at,totals:$order.totals}, items:$items}'
+  printf '\n'
+  exit 0
+fi
+
+printf 'Content-Type: text/html; charset=UTF-8\r\n'
+printf 'Cache-Control: no-store\r\n'
+printf '\r\n'
+cat <<'HTML_HEAD'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software Delivery</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="checkout-shell delivery-shell">
+<div class="checkout-head">
+<h1>Software Delivery</h1>
+<p>This private delivery page belongs with the paid order. File buttons below create short-lived proxied downloads, so the release asset URL is not exposed.</p>
+</div>
+<section class="checkout-order-panel delivery-order-panel">
+HTML_HEAD
+printf '<div class="checkout-order-row"><span>Order</span><strong>%s</strong></div>\n' "$(blog_html_escape "$order_id")"
+paid_at=$(printf '%s\n' "$order_json" | jq -r '.paid_at // ""' 2>/dev/null || printf '')
+printf '<div class="checkout-order-row"><span>Status</span><strong class="is-ok">paid</strong></div>\n'
+[ -n "$paid_at" ] && printf '<div class="checkout-order-row"><span>Paid at</span><strong>%s</strong></div>\n' "$(blog_html_escape "$paid_at")"
+printf '</section>\n'
+printf '<section class="delivery-downloads" aria-label="Downloads">\n'
+printf '<h2>Your Downloads</h2>\n'
+count=$(printf '%s\n' "$items_json" | jq -r 'length' 2>/dev/null || printf '0')
+case "$count" in ''|*[!0-9]*) count=0 ;; esac
+if [ "$count" -le 0 ]; then
+  printf '<p class="checkout-message is-warn">No downloadable products are attached to this order yet.</p>\n'
+else
+  printf '<ul class="delivery-download-list">\n'
+  printf '%s\n' "$items_json" | jq -c '.[]' 2>/dev/null | while IFS= read -r item || [ -n "$item" ]; do
+    title=$(printf '%s\n' "$item" | jq -r '.title // .slug // "Download"' 2>/dev/null || printf 'Download')
+    slug=$(printf '%s\n' "$item" | jq -r '.slug // ""' 2>/dev/null || printf '')
+    url=$(printf '%s\n' "$item" | jq -r '.download_url // ""' 2>/dev/null || printf '')
+    printf '<li class="delivery-download-row"><div><strong>%s</strong><span>%s</span></div><a class="checkout-link-button cart-page-link-button-primary" href="%s">Download</a></li>\n' \
+      "$(blog_html_escape "$title")" \
+      "$(blog_html_escape "$slug")" \
+      "$(blog_html_escape "$url")"
+  done
+  printf '</ul>\n'
+fi
+cat <<'HTML_FOOT'
+</section>
+<p class="delivery-note">This page can be kept for future re-downloads. If a link is shared broadly, access can be rotated from the order record without changing the public product page.</p>
+</main>
+</body>
+</html>
+HTML_FOOT

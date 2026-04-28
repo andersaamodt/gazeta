@@ -75,6 +75,13 @@ if [ -z "$payload_product" ] || [ "$payload_product" != "$slug" ]; then
   emit_json_error "Download token does not match requested product" "download_token_product_mismatch"
   exit 0
 fi
+payload_order_id=$(printf '%s\n' "$payload" | jq -r '.order_id // ""' 2>/dev/null || printf '')
+order_json=$(blog_payments_order_load_json "$payload_order_id" 2>/dev/null || printf '')
+order_status=$(printf '%s\n' "$order_json" | jq -r '.status // ""' 2>/dev/null || printf '')
+if [ -z "$payload_order_id" ] || [ "$order_status" != "paid" ] || ! blog_payments_order_has_product "$order_json" "$slug"; then
+  emit_json_error "Download token is not backed by a paid order" "download_order_not_paid"
+  exit 0
+fi
 
 state_json=$(blog_payments_product_state_json "$slug" 2>/dev/null || printf '')
 if [ -z "$state_json" ]; then

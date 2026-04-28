@@ -36,6 +36,15 @@ blog_payments_order_load_json() {
   cat "$path" 2>/dev/null
 }
 
+blog_payments_order_has_product() {
+  order_json=${1-}
+  product=${2-}
+  [ -n "$order_json" ] || return 1
+  product=$(blog_nostr_page_slug "$product")
+  [ -n "$product" ] || return 1
+  printf '%s\n' "$order_json" | jq -e --arg product "$product" 'any(.items[]?; (.slug // "") == $product)' >/dev/null 2>&1
+}
+
 blog_payments_token_secret() {
   if [ -f "$blog_payments_token_secret_file" ]; then
     secret=$(sed -n '1p' "$blog_payments_token_secret_file" 2>/dev/null | tr -d '\r\n[:space:]')
@@ -97,6 +106,23 @@ blog_payments_issue_token() {
   sig=$(blog_payments_token_sign "$payload_b64" 2>/dev/null || printf '')
   [ -n "$sig" ] || return 1
   printf '%s.%s\n' "$payload_b64" "$sig"
+}
+
+blog_payments_issue_delivery_token() {
+  order_id=${1-}
+  [ -n "$order_id" ] || return 1
+  payload=$(jq -cn --arg order_id "$order_id" '{order_id:$order_id}')
+  # A buyer's delivery pass is intentionally durable; file download tokens are not.
+  blog_payments_issue_token delivery "$payload" 315360000
+}
+
+blog_payments_issue_download_token() {
+  order_id=${1-}
+  product=${2-}
+  [ -n "$order_id" ] || return 1
+  [ -n "$product" ] || return 1
+  payload=$(jq -cn --arg order_id "$order_id" --arg product "$product" '{order_id:$order_id, product:$product}')
+  blog_payments_issue_token download "$payload" 900
 }
 
 blog_payments_verify_token() {

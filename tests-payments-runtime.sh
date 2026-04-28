@@ -240,6 +240,12 @@ run_download_cgi() {
   REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-download" 2>&1
 }
 
+run_delivery_cgi() {
+  query=$1
+  method=${2-GET}
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-delivery" 2>&1
+}
+
 # 1) Public runtime status keys.
 status_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_out" '"success":true' 'payments status succeeds'
@@ -278,7 +284,12 @@ assert_contains "$simulate_unauth" '"code":"auth_required"' 'simulate_paid requi
 simulate_auth=$(run_payments_cgi "action=simulate_paid&order_id=$order_id&session_token=$session_token&csrf_token=$csrf_token" POST)
 assert_contains "$simulate_auth" '"success":true' 'simulate_paid succeeds with admin session'
 assert_contains "$simulate_auth" '"status":"paid"' 'simulate_paid marks order as paid'
-assert_contains "$simulate_auth" '"/download/sample-product?token=' 'simulate_paid mints download tokenized URL'
+assert_contains "$simulate_auth" '"/delivery/' 'simulate_paid mints durable delivery URL'
+delivery_token=$(printf '%s\n' "$simulate_auth" | sed -n 's/.*"delivery_token":"\([^"]*\)".*/\1/p' | head -n 1)
+assert_nonempty "$delivery_token" 'simulate_paid returns delivery token'
+delivery_out=$(run_delivery_cgi "format=json&order_id=$order_id&token=$delivery_token")
+assert_contains "$delivery_out" '"success":true' 'delivery page json succeeds for paid order'
+assert_contains "$delivery_out" '"/download/sample-product?token=' 'delivery page mints short-lived download token'
 
 # 5) Webhook paid path updates order.
 config-set "$blog_site_conf" btcpay_store_id test-store

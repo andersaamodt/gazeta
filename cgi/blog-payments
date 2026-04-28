@@ -209,19 +209,28 @@ mark_order_paid_json() {
 
   status=$(printf '%s\n' "$order_json" | jq -r '.status // "pending"' 2>/dev/null || printf 'pending')
   if [ "$status" = "paid" ]; then
+    existing_delivery_url=$(printf '%s\n' "$order_json" | jq -r '.delivery_url // ""' 2>/dev/null || printf '')
+    if [ -n "$existing_delivery_url" ]; then
+      printf '%s\n' "$order_json"
+      return 0
+    fi
+    status=pending
+  fi
+
+  if [ "$status" != "pending" ]; then
     printf '%s\n' "$order_json"
     return 0
   fi
 
   links_file=$(mktemp "${TMPDIR:-/tmp}/blog-payment-links.XXXXXX")
   : > "$links_file"
+  delivery_token=$(blog_payments_issue_delivery_token "$order_id" 2>/dev/null || printf '')
+  delivery_url=''
+  [ -n "$delivery_token" ] && delivery_url="/delivery/$order_id?token=$delivery_token"
 
   printf '%s\n' "$order_json" | jq -r '.items[]?.slug // empty' 2>/dev/null | while IFS= read -r slug || [ -n "$slug" ]; do
     [ -n "$slug" ] || continue
-    token_payload=$(jq -cn --arg order_id "$order_id" --arg product "$slug" '{order_id:$order_id, product:$product}')
-    token=$(blog_payments_issue_token download "$token_payload" 604800 2>/dev/null || printf '')
-    [ -n "$token" ] || continue
-    printf '%s\n' "$(jq -cn --arg slug "$slug" --arg token "$token" '{slug:$slug, url:("/download/" + $slug + "?token=" + $token)}')" >> "$links_file"
+    printf '%s\n' "$(jq -cn --arg slug "$slug" --arg url "$delivery_url" '{slug:$slug, url:$url}')" >> "$links_file"
   done
 
   download_links=$(jq -sc '.' "$links_file" 2>/dev/null || printf '[]')
@@ -231,9 +240,11 @@ mark_order_paid_json() {
   updated=$(printf '%s\n' "$order_json" | jq -c \
     --arg status paid \
     --arg provider "$provider" \
+    --arg delivery_token "$delivery_token" \
+    --arg delivery_url "$delivery_url" \
     --argjson paid_at "$now" \
     --argjson links "$download_links" \
-    '. + {status:$status, provider:$provider, paid_at:$paid_at, download_links:$links}')
+    '. + {status:$status, provider:$provider, paid_at:$paid_at, delivery_token:$delivery_token, delivery_url:$delivery_url, download_links:$links}')
   blog_payments_order_save_json "$order_id" "$updated"
   printf '%s\n' "$updated"
 }

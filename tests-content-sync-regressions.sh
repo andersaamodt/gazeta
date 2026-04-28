@@ -649,6 +649,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-payments"
 assert_success sh -n "$ROOT_DIR/cgi/blog-get-product"
 assert_success sh -n "$ROOT_DIR/cgi/blog-purchase"
 assert_success sh -n "$ROOT_DIR/cgi/blog-download"
+assert_success sh -n "$ROOT_DIR/cgi/blog-delivery"
 assert_success sh -n "$ROOT_DIR/cgi/blog-create-product-page"
 assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
 assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
@@ -819,6 +820,7 @@ assert_success test -x "$ROOT_DIR/cgi/blog-payments"
 assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
 assert_success test -x "$ROOT_DIR/cgi/blog-purchase"
 assert_success test -x "$ROOT_DIR/cgi/blog-download"
+assert_success test -x "$ROOT_DIR/cgi/blog-delivery"
 assert_success test -x "$ROOT_DIR/cgi/blog-create-product-page"
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'create_order' 'payments cgi supports create_order action'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'order_status' 'payments cgi supports order_status action'
@@ -830,6 +832,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_host_api_key:' 'payment
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_verify_token "$token" download' 'download cgi verifies signed download token'
+assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_verify_token "$token" delivery' 'delivery cgi verifies durable buyer delivery token'
+assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_issue_download_token "$order_id" "$slug"' 'delivery cgi mints short-lived product download tokens'
 assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_release_assets_json' 'download cgi resolves release assets from GitHub API'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-download" 'Location: %s' 'download cgi avoids exposing direct GitHub asset URLs to clients'
 assert_file_contains "$ROOT_DIR/cgi/blog-create-product-page" 'type: "nip23"' 'product-page creator provisions nip23 product pages'
