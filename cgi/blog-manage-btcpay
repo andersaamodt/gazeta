@@ -1,3 +1,148 @@
 #!/bin/sh
+# Admin control surface for the site's BTCPay checkout integration.
+
 set -eu
-exec "$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)/blog-manage-lightning" "$@"
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-payments-common.sh"
+
+blog_init
+blog_payments_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+[ -n "$action" ] || action=status
+
+bool_json() {
+  case "${1-}" in
+    true|1|yes|on|ok) printf 'true' ;;
+    *) printf 'false' ;;
+  esac
+}
+
+write_conf_value() {
+  key=$1
+  value=$2
+  config-set "$blog_site_conf" "$key" "$value"
+}
+
+public_head_ok() {
+  url=${1-}
+  [ -n "$url" ] || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -fsSI --max-time 8 "$url/" >/dev/null 2>&1
+}
+
+api_status_ok() {
+  blog_btcpay_api_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  btcpay_url=$(blog_btcpay_url)
+  store_id=$(blog_btcpay_store_id)
+  api_key=$(blog_btcpay_api_key)
+  curl -fsS --max-time 10 \
+    -H "Authorization: token $api_key" \
+    -H "Accept: application/json" \
+    "$btcpay_url/api/v1/stores/$store_id" >/dev/null 2>&1
+}
+
+runtime_json() {
+  btcpay_host=$(blog_resolve_btcpay_host)
+  btcpay_rootpath=$(blog_resolve_btcpay_rootpath)
+  btcpay_url=$(blog_btcpay_url)
+  store_id=$(blog_btcpay_store_id)
+  api_key=$(blog_btcpay_api_key)
+  webhook_secret=$(blog_btcpay_webhook_secret)
+  authorize_url=$(blog_btcpay_authorize_url 2>/dev/null || printf '')
+  webhook_url=$(blog_btcpay_webhook_url 2>/dev/null || printf '')
+  public_ready=false
+  api_ready=false
+  plugin_enabled=false
+  checkout_ready=false
+
+  public_head_ok "$btcpay_url" && public_ready=true
+  api_status_ok && api_ready=true
+  blog_plugin_enabled "btcpay" && plugin_enabled=true
+  if [ "$plugin_enabled" = true ] && [ "$public_ready" = true ] && [ "$api_ready" = true ] && [ -n "$webhook_secret" ]; then
+    checkout_ready=true
+  fi
+
+  jq -cn \
+    --arg btcpay_host "$btcpay_host" \
+    --arg btcpay_rootpath "$btcpay_rootpath" \
+    --arg btcpay_url "$btcpay_url" \
+    --arg store_id "$store_id" \
+    --arg authorize_url "$authorize_url" \
+    --arg webhook_url "$webhook_url" \
+    --argjson plugin_enabled "$(bool_json "$plugin_enabled")" \
+    --argjson public_ready "$(bool_json "$public_ready")" \
+    --argjson api_configured "$(bool_json "$( [ -n "$store_id" ] && [ -n "$api_key" ] && printf true || printf false )")" \
+    --argjson api_ready "$(bool_json "$api_ready")" \
+    --argjson webhook_configured "$(bool_json "$( [ -n "$webhook_secret" ] && printf true || printf false )")" \
+    --argjson checkout_ready "$(bool_json "$checkout_ready")" \
+    '{
+      headquarters_managed: true,
+      plugin_enabled: $plugin_enabled,
+      btcpay_host: $btcpay_host,
+      btcpay_rootpath: $btcpay_rootpath,
+      btcpay_url: $btcpay_url,
+      btcpay_public_ready: $public_ready,
+      btcpay_store_id: $store_id,
+      btcpay_api_configured: $api_configured,
+      btcpay_api_ready: $api_ready,
+      btcpay_webhook_configured: $webhook_configured,
+      btcpay_authorize_url: $authorize_url,
+      btcpay_webhook_url: $webhook_url,
+      checkout_ready: $checkout_ready
+    }'
+}
+
+emit_success() {
+  message=${1-OK}
+  printf '{"success":true,"message":"%s","runtime":%s}\n' "$(blog_json_escape "$message")" "$(runtime_json)"
+}
+
+emit_failure() {
+  message=${1-Request failed}
+  code=${2-btcpay_failed}
+  printf '{"success":false,"error":"%s","code":"%s","runtime":%s}\n' \
+    "$(blog_json_escape "$message")" \
+    "$(blog_json_escape "$code")" \
+    "$(runtime_json)"
+}
+
+case "$action" in
+  status)
+    emit_success "BTCPay checkout runtime loaded."
+    ;;
+  save_config)
+    btcpay_host=$(blog_normalize_public_host "$(blog_param btcpay_host)")
+    btcpay_rootpath=$(blog_normalize_btcpay_rootpath "$(blog_param btcpay_rootpath)")
+    btcpay_store_id=$(printf '%s' "$(blog_param btcpay_store_id)" | tr -d '\r\n[:space:]')
+    btcpay_api_key=$(printf '%s' "$(blog_param btcpay_api_key)" | tr -d '\r\n[:space:]')
+    webhook_secret=$(printf '%s' "$(blog_param payments_webhook_secret)" | tr -d '\r\n[:space:]')
+
+    if ! blog_valid_public_host "$btcpay_host"; then
+      emit_failure "BTCPay host is not a valid public hostname." "invalid_btcpay_host"
+      exit 0
+    fi
+    write_conf_value btcpay_host "$btcpay_host"
+    write_conf_value btcpay_rootpath "$btcpay_rootpath"
+    [ -n "$btcpay_store_id" ] && write_conf_value btcpay_store_id "$btcpay_store_id"
+    [ -n "$btcpay_api_key" ] && write_conf_value btcpay_api_key "$btcpay_api_key"
+    [ -n "$webhook_secret" ] && write_conf_value payments_webhook_secret "$webhook_secret"
+    write_conf_value plugin_btcpay true
+    emit_success "BTCPay checkout settings saved."
+    ;;
+  authorize_callback)
+    emit_success "BTCPay authorization callback endpoint is available."
+    ;;
+  *)
+    emit_failure "Unknown action" "invalid_action"
+    ;;
+esac

@@ -30,6 +30,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">BTCPay</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
@@ -234,6 +235,28 @@ title: ""
 </div>
 </section>
 
+<section class="admin-section" data-admin-section="btcpay-checkout" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>BTCPay Checkout</h3>
+<p class="muted">Connect the shopping cart and software-purchase checkout to the dedicated BTCPay Server.</p>
+</div>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Checkout Runtime</h4>
+<div id="btcpay-checkout-runtime" class="runtime-settings-list">
+<div class="placeholder">Loading BTCPay checkout runtime...</div>
+</div>
+</section>
+</div>
+
+<div id="output-btcpay-checkout" class="output"></div>
+</div>
+</section>
+
 <section class="admin-section" data-admin-section="plugins" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
@@ -275,7 +298,7 @@ title: ""
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label></td>
 </tr>
 <tr data-plugin-row="btcpay">
-<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Payments</strong><span class="plugin-setting-help">Lightning-backed checkout, invoices, and payment runtime controls.</span></div></td>
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay Checkout</strong><span class="plugin-setting-help">Shopping-cart checkout, BTCPay invoices, webhooks, and software-purchase delivery.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label></td>
 </tr>
 <tr data-plugin-row="video_chat">
@@ -1779,6 +1802,13 @@ body {
   gap: 0.08rem;
 }
 
+.runtime-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
 [data-admin-section="zaps"] .runtime-settings-list .field-row {
   margin-bottom: 0.08rem;
 }
@@ -1789,7 +1819,8 @@ body {
   min-width: 0;
 }
 
-[data-admin-section="btcpay"] .runtime-settings-list .field-row > button {
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > button,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > button {
   justify-self: start;
   width: auto;
   min-width: 0;
@@ -1803,7 +1834,8 @@ body {
   margin-bottom: 0.08rem;
 }
 
-[data-admin-section="btcpay"] .runtime-settings-list .field-row {
+[data-admin-section="btcpay"] .runtime-settings-list .field-row,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row {
   display: grid;
   grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
   align-items: center;
@@ -1816,7 +1848,8 @@ body {
   grid-column: 1;
 }
 
-[data-admin-section="btcpay"] .runtime-settings-list .field-row > .setting-label {
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > .setting-label,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > .setting-label {
   margin-bottom: 0;
   grid-column: 1;
 }
@@ -1830,7 +1863,12 @@ body {
 
 [data-admin-section="btcpay"] .runtime-settings-list .field-row > .zaps-runtime-value,
 [data-admin-section="btcpay"] .runtime-settings-list .field-row > button,
-[data-admin-section="btcpay"] .runtime-settings-list .field-row > .checkbox-control {
+[data-admin-section="btcpay"] .runtime-settings-list .field-row > .checkbox-control,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > .zaps-runtime-value,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > button,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > .checkbox-control,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > .runtime-action-row,
+[data-admin-section="btcpay-checkout"] .runtime-settings-list .field-row > input {
   grid-column: 2;
   justify-self: start;
 }

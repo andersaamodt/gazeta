@@ -56,7 +56,7 @@ provider_url_for_order() {
     btcpay)
       btcpay_url=$(blog_btcpay_url)
       if [ -n "$btcpay_url" ]; then
-        printf '%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
+        printf '%s/setup-required?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
       else
         printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
@@ -158,6 +158,24 @@ fi
 purchase_payload=$(jq -cn --arg order_id "$order_id" --arg provider "$provider" --arg slug "$slug" '{order_id:$order_id, provider:$provider, product:$slug}')
 purchase_token=$(blog_payments_issue_token purchase "$purchase_payload" 7200 2>/dev/null || printf '')
 provider_url=$(provider_url_for_order "$order_id" "$provider" "$(blog_payments_format_money "$subtotal_num")" "$(blog_payments_format_money "$crypto_total_num")")
+btcpay_invoice_id=''
+btcpay_checkout_link=''
+if [ "$provider" = "btcpay" ]; then
+  invoice_json=$(blog_btcpay_create_invoice_json "$order_id" "$(blog_payments_format_money "$crypto_total_num")" "USD" "$title" 2>/dev/null || printf '')
+  if [ -n "$invoice_json" ]; then
+    btcpay_invoice_id=$(printf '%s\n' "$invoice_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+    btcpay_checkout_link=$(printf '%s\n' "$invoice_json" | jq -r '.checkoutLink // .checkout.link // ""' 2>/dev/null || printf '')
+    if [ -n "$btcpay_checkout_link" ]; then
+      provider_url=$btcpay_checkout_link
+    fi
+  elif blog_btcpay_api_configured; then
+    emit_json_error "BTCPay invoice creation failed" "btcpay_invoice_failed"
+    exit 0
+  else
+    emit_json_error "BTCPay checkout is not connected yet" "btcpay_not_configured"
+    exit 0
+  fi
+fi
 
 now=$(blog_now_epoch)
 order_json=$(jq -cn \
@@ -166,6 +184,8 @@ order_json=$(jq -cn \
   --arg payment_method "$payment_method" \
   --arg purchase_token "$purchase_token" \
   --arg provider_url "$provider_url" \
+  --arg btcpay_invoice_id "$btcpay_invoice_id" \
+  --arg btcpay_checkout_link "$btcpay_checkout_link" \
   --arg checkout_url "/checkout?order_id=$order_id" \
   --argjson created_at "$now" \
   --argjson line "$line_json" \
@@ -179,6 +199,8 @@ order_json=$(jq -cn \
     created_at: $created_at,
     purchase_token: $purchase_token,
     provider_url: $provider_url,
+    btcpay_invoice_id: $btcpay_invoice_id,
+    btcpay_checkout_link: $btcpay_checkout_link,
     checkout_url: $checkout_url,
     items: [$line],
     totals: {

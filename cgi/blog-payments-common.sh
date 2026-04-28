@@ -148,6 +148,138 @@ blog_payments_format_money() {
   awk 'BEGIN { v = ARGV[1] + 0; printf "%.2f\n", v }' "$raw"
 }
 
+blog_payments_public_site_url() {
+  host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
+  if ! blog_valid_public_host "$host"; then
+    host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+  fi
+  if blog_valid_public_host "$host"; then
+    printf 'https://%s\n' "$host"
+    return 0
+  fi
+  printf '\n'
+}
+
+blog_btcpay_store_id() {
+  printf '%s\n' "$(config-get "$blog_site_conf" btcpay_store_id 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+}
+
+blog_btcpay_api_key() {
+  printf '%s\n' "$(config-get "$blog_site_conf" btcpay_api_key 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+}
+
+blog_btcpay_webhook_secret() {
+  printf '%s\n' "$(config-get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+}
+
+blog_btcpay_api_configured() {
+  [ -n "$(blog_btcpay_url)" ] || return 1
+  [ -n "$(blog_btcpay_store_id)" ] || return 1
+  [ -n "$(blog_btcpay_api_key)" ] || return 1
+}
+
+blog_btcpay_authorize_url() {
+  btcpay_url=$(blog_btcpay_url)
+  callback=$(blog_payments_public_site_url)
+  [ -n "$btcpay_url" ] || return 1
+  [ -n "$callback" ] || callback='https://example.invalid'
+  redirect_url="$callback/cgi/blog-manage-btcpay?action=authorize_callback"
+  printf '%s/api-keys/authorize?applicationName=%s&applicationIdentifier=%s&permissions=%s&permissions=%s&permissions=%s&permissions=%s&permissions=%s&selectiveStores=true&strict=true&redirect=%s\n' \
+    "$btcpay_url" \
+    "$(blog_url_encode 'nostr-blog checkout')" \
+    "$(blog_url_encode 'nostr-blog-checkout')" \
+    "$(blog_url_encode 'btcpay.store.canviewstoresettings')" \
+    "$(blog_url_encode 'btcpay.store.cancreateinvoice')" \
+    "$(blog_url_encode 'btcpay.store.canviewinvoices')" \
+    "$(blog_url_encode 'btcpay.store.canmodifyinvoices')" \
+    "$(blog_url_encode 'btcpay.store.webhooks.canmodifywebhooks')" \
+    "$(blog_url_encode "$redirect_url")"
+}
+
+blog_btcpay_webhook_url() {
+  public_url=$(blog_payments_public_site_url)
+  secret=$(blog_btcpay_webhook_secret)
+  [ -n "$public_url" ] || return 1
+  if [ -n "$secret" ]; then
+    printf '%s/cgi/blog-payments?action=webhook&provider=btcpay&webhook_secret=%s\n' "$public_url" "$(blog_url_encode "$secret")"
+    return 0
+  fi
+  printf '%s/cgi/blog-payments?action=webhook&provider=btcpay\n' "$public_url"
+}
+
+blog_btcpay_create_invoice_json() {
+  order_id=${1-}
+  amount=${2-}
+  currency=${3-USD}
+  title=${4-}
+  [ -n "$order_id" ] || return 1
+  blog_btcpay_api_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+
+  btcpay_url=$(blog_btcpay_url)
+  store_id=$(blog_btcpay_store_id)
+  api_key=$(blog_btcpay_api_key)
+  site_url=$(blog_payments_public_site_url)
+  checkout_url="/checkout?order_id=$order_id"
+  redirect_url=$checkout_url
+  if [ -n "$site_url" ]; then
+    redirect_url="$site_url$checkout_url"
+  fi
+  payload=$(jq -cn \
+    --arg amount "$(blog_payments_format_money "$amount")" \
+    --arg currency "${currency:-USD}" \
+    --arg order_id "$order_id" \
+    --arg title "$title" \
+    --arg redirect_url "$redirect_url" \
+    '{
+      amount: $amount,
+      currency: $currency,
+      metadata: {
+        orderId: $order_id,
+        itemDesc: $title
+      },
+      checkout: {
+        redirectURL: $redirect_url,
+        redirectAutomatically: false
+      }
+    }')
+  [ -n "$payload" ] || return 1
+
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-btcpay-invoice.XXXXXX")
+  http_code=$(curl -sS --max-time 20 \
+    -H "Authorization: token $api_key" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -o "$tmp" \
+    -w '%{http_code}' \
+    -X POST \
+    --data "$payload" \
+    "$btcpay_url/api/v1/stores/$store_id/invoices" 2>/dev/null || printf '000')
+  body=$(cat "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  case "$http_code" in
+    200|201)
+      printf '%s\n' "$body" | jq -c '.' 2>/dev/null
+      return $?
+      ;;
+  esac
+  return 1
+}
+
+blog_btcpay_get_invoice_json() {
+  invoice_id=${1-}
+  [ -n "$invoice_id" ] || return 1
+  blog_btcpay_api_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  btcpay_url=$(blog_btcpay_url)
+  store_id=$(blog_btcpay_store_id)
+  api_key=$(blog_btcpay_api_key)
+  curl -fsS --max-time 15 \
+    -H "Authorization: token $api_key" \
+    -H "Accept: application/json" \
+    "$btcpay_url/api/v1/stores/$store_id/invoices/$invoice_id" 2>/dev/null | jq -c '.' 2>/dev/null
+}
+
 blog_payments_default_purchase_endpoint() {
   slug=$(blog_nostr_page_slug "${1-}")
   [ -n "$slug" ] || return 1

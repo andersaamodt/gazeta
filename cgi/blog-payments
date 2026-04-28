@@ -26,17 +26,36 @@ btcpay_url_for_request() {
 emit_runtime_status() {
   btcpay_host=$(btcpay_host_for_request)
   btcpay_url=$(btcpay_url_for_request)
+  btcpay_store_id=$(blog_btcpay_store_id)
+  btcpay_api_key=$(blog_btcpay_api_key)
+  btcpay_webhook_secret=$(blog_btcpay_webhook_secret)
+  btcpay_api_configured=false
+  btcpay_webhook_configured=false
+  [ -n "$btcpay_api_key" ] && [ -n "$btcpay_store_id" ] && btcpay_api_configured=true
+  [ -n "$btcpay_webhook_secret" ] && btcpay_webhook_configured=true
+  btcpay_authorize_url=$(blog_btcpay_authorize_url 2>/dev/null || printf '')
+  btcpay_webhook_url=$(blog_btcpay_webhook_url 2>/dev/null || printf '')
   ramp_host_api_key=$(config-get "$blog_site_conf" ramp_host_api_key 2>/dev/null || printf '')
   paybis_partner_id=$(config-get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
   jq -cn \
     --arg btcpay_host "$btcpay_host" \
     --arg btcpay_url "$btcpay_url" \
+    --arg btcpay_store_id "$btcpay_store_id" \
+    --argjson btcpay_api_configured "$btcpay_api_configured" \
+    --argjson btcpay_webhook_configured "$btcpay_webhook_configured" \
+    --arg btcpay_authorize_url "$btcpay_authorize_url" \
+    --arg btcpay_webhook_url "$btcpay_webhook_url" \
     --arg ramp_host_api_key "$ramp_host_api_key" \
     --arg paybis_partner_id "$paybis_partner_id" \
     '{
       success: true,
       btcpay_host: $btcpay_host,
       btcpay_url: $btcpay_url,
+      btcpay_store_id: $btcpay_store_id,
+      btcpay_api_configured: $btcpay_api_configured,
+      btcpay_webhook_configured: $btcpay_webhook_configured,
+      btcpay_authorize_url: $btcpay_authorize_url,
+      btcpay_webhook_url: $btcpay_webhook_url,
       ramp_host_api_key: $ramp_host_api_key,
       paybis_partner_id: $paybis_partner_id,
       ramp_key: $ramp_host_api_key,
@@ -166,7 +185,7 @@ provider_url_for_order() {
   case "$provider" in
     btcpay)
       if [ -n "$btcpay_url" ]; then
-        printf '%s/invoice?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
+        printf '%s/setup-required?order_id=%s&amount=%s&currency=USD\n' "$btcpay_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$crypto_total")"
       else
         printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
@@ -219,6 +238,39 @@ mark_order_paid_json() {
   printf '%s\n' "$updated"
 }
 
+refresh_btcpay_order_json() {
+  order_json=${1-}
+  [ -n "$order_json" ] || return 1
+  status=$(printf '%s\n' "$order_json" | jq -r '.status // "pending"' 2>/dev/null || printf 'pending')
+  provider=$(printf '%s\n' "$order_json" | jq -r '.provider // ""' 2>/dev/null || printf '')
+  invoice_id=$(printf '%s\n' "$order_json" | jq -r '.btcpay_invoice_id // ""' 2>/dev/null || printf '')
+  order_id=$(printf '%s\n' "$order_json" | jq -r '.order_id // ""' 2>/dev/null || printf '')
+  if [ "$status" != "pending" ] || [ "$provider" != "btcpay" ] || [ -z "$invoice_id" ] || [ -z "$order_id" ]; then
+    printf '%s\n' "$order_json"
+    return 0
+  fi
+  invoice_json=$(blog_btcpay_get_invoice_json "$invoice_id" 2>/dev/null || printf '')
+  [ -n "$invoice_json" ] || {
+    printf '%s\n' "$order_json"
+    return 0
+  }
+  invoice_status=$(printf '%s\n' "$invoice_json" | jq -r '.status // ""' 2>/dev/null | tr '[:upper:]' '[:lower:]')
+  case "$invoice_status" in
+    settled|processing)
+      mark_order_paid_json "$order_id" "btcpay"
+      ;;
+    expired|invalid)
+      now=$(blog_now_epoch)
+      updated=$(printf '%s\n' "$order_json" | jq -c --arg status failed --arg provider btcpay --argjson updated_at "$now" '. + {status:$status, provider:$provider, updated_at:$updated_at}')
+      blog_payments_order_save_json "$order_id" "$updated"
+      printf '%s\n' "$updated"
+      ;;
+    *)
+      printf '%s\n' "$order_json"
+      ;;
+  esac
+}
+
 action=$(blog_param action)
 if [ -z "$action" ]; then
   action=$(printf '%s' "${REQUEST_METHOD-GET}" | tr '[:upper:]' '[:lower:]')
@@ -268,6 +320,26 @@ case "$action" in
     purchase_payload=$(jq -cn --arg order_id "$order_id" --arg provider "$provider" --argjson products "$slugs" '{order_id:$order_id, provider:$provider, products:$products}')
     purchase_token=$(blog_payments_issue_token purchase "$purchase_payload" 7200 2>/dev/null || printf '')
     provider_url=$(provider_url_for_order "$order_id" "$provider" "$quoted" "$purchase_token")
+    btcpay_invoice_id=''
+    btcpay_checkout_link=''
+    if [ "$provider" = "btcpay" ]; then
+      order_title=$(printf '%s\n' "$quoted" | jq -r '[.items[]?.title] | join(", ")' 2>/dev/null || printf 'nostr-blog order')
+      crypto_total=$(printf '%s\n' "$quoted" | jq -r '.crypto_total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
+      invoice_json=$(blog_btcpay_create_invoice_json "$order_id" "$crypto_total" "USD" "$order_title" 2>/dev/null || printf '')
+      if [ -n "$invoice_json" ]; then
+        btcpay_invoice_id=$(printf '%s\n' "$invoice_json" | jq -r '.id // ""' 2>/dev/null || printf '')
+        btcpay_checkout_link=$(printf '%s\n' "$invoice_json" | jq -r '.checkoutLink // .checkout.link // ""' 2>/dev/null || printf '')
+        if [ -n "$btcpay_checkout_link" ]; then
+          provider_url=$btcpay_checkout_link
+        fi
+      elif blog_btcpay_api_configured; then
+        blog_json_error "BTCPay invoice creation failed" "btcpay_invoice_failed"
+        exit 0
+      else
+        blog_json_error "BTCPay checkout is not connected yet" "btcpay_not_configured"
+        exit 0
+      fi
+    fi
 
     now=$(blog_now_epoch)
     order_json=$(jq -cn \
@@ -277,6 +349,8 @@ case "$action" in
       --argjson quote "$quoted" \
       --arg purchase_token "$purchase_token" \
       --arg provider_url "$provider_url" \
+      --arg btcpay_invoice_id "$btcpay_invoice_id" \
+      --arg btcpay_checkout_link "$btcpay_checkout_link" \
       --arg checkout_url "/checkout?order_id=$order_id" \
       --argjson created_at "$now" \
       '{
@@ -287,6 +361,8 @@ case "$action" in
         created_at: $created_at,
         purchase_token: $purchase_token,
         provider_url: $provider_url,
+        btcpay_invoice_id: $btcpay_invoice_id,
+        btcpay_checkout_link: $btcpay_checkout_link,
         checkout_url: $checkout_url,
         items: ($quote.items // []),
         totals: {
@@ -321,6 +397,7 @@ case "$action" in
       blog_json_error "Order not found" "order_not_found"
       exit 0
     fi
+    order_json=$(refresh_btcpay_order_json "$order_json" 2>/dev/null || printf '%s\n' "$order_json")
     jq -cn --argjson order "$order_json" '{success:true, order:$order}'
     printf '\n'
     ;;
@@ -346,6 +423,14 @@ case "$action" in
     payment_status=$(printf '%s' "$(blog_param payment_status)" | tr '[:upper:]' '[:lower:]')
     provider=$(printf '%s' "$(blog_param provider)" | tr '[:upper:]' '[:lower:]')
     [ -n "$provider" ] || provider='unknown'
+    if [ -n "$BLOG_REQUEST_BODY" ] && printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e 'type=="object"' >/dev/null 2>&1; then
+      body_order_id=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.metadata.orderId // .metadata.order_id // .orderId // ""' 2>/dev/null || printf '')
+      body_status=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.type // .status // ""' 2>/dev/null || printf '')
+      body_provider=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.deliveryId? // empty' 2>/dev/null >/dev/null && printf 'btcpay' || printf '')
+      [ -n "$order_id" ] || order_id=$body_order_id
+      [ -n "$payment_status" ] || payment_status=$(printf '%s' "$body_status" | tr '[:upper:]' '[:lower:]')
+      [ "$provider" != "unknown" ] || [ -z "$body_provider" ] || provider=$body_provider
+    fi
     webhook_secret_expected=$(config-get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')
     if [ -n "$webhook_secret_expected" ]; then
       webhook_secret=$(blog_param webhook_secret)
@@ -359,7 +444,7 @@ case "$action" in
       exit 0
     fi
     case "$payment_status" in
-      paid|success|succeeded)
+      paid|success|succeeded|settled|invoice_payment_settled|invoice_processing|processing)
         paid_json=$(mark_order_paid_json "$order_id" "$provider" 2>/dev/null || printf '')
         if [ -z "$paid_json" ]; then
           blog_json_error "Could not update order" "order_update_failed"

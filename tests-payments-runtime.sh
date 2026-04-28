@@ -100,6 +100,54 @@ mv "$file.tmp" "$file"
 EOS
 chmod +x "$BIN_DIR/config-set"
 
+cat > "$BIN_DIR/curl" <<'EOS'
+#!/bin/sh
+set -eu
+url=''
+method='GET'
+output_file=''
+write_out=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -X)
+      shift
+      method=${1-GET}
+      ;;
+    -o)
+      shift
+      output_file=${1-}
+      ;;
+    -w)
+      shift
+      write_out=${1-}
+      ;;
+    http://*|https://*)
+      url=$1
+      ;;
+  esac
+  shift || true
+done
+case "$url" in
+  https://pay.blog.example.com/btcpay/api/v1/stores/test-store/invoices)
+    [ "$method" = "POST" ] || exit 22
+    body='{"id":"btcpay-invoice-1","checkoutLink":"https://pay.blog.example.com/btcpay/i/btcpay-invoice-1","status":"New"}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '201'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://pay.blog.example.com/btcpay/api/v1/stores/test-store/invoices/btcpay-invoice-1)
+    printf '{"id":"btcpay-invoice-1","status":"Settled"}\n'
+    ;;
+  *)
+    exit 22
+    ;;
+esac
+EOS
+chmod +x "$BIN_DIR/curl"
+
 export PATH="$BIN_DIR:$PATH"
 export WIZARDRY_SITES_DIR="$SITES_DIR"
 export WIZARDRY_SITE_NAME="$SITE_NAME"
@@ -233,11 +281,13 @@ assert_contains "$simulate_auth" '"status":"paid"' 'simulate_paid marks order as
 assert_contains "$simulate_auth" '"/download/sample-product?token=' 'simulate_paid mints download tokenized URL'
 
 # 5) Webhook paid path updates order.
+config-set "$blog_site_conf" btcpay_store_id test-store
+config-set "$blog_site_conf" btcpay_api_key test-api-key
 create_out_2=$(run_payments_cgi "action=create_order&payment_method=crypto&provider=btcpay&items_json=$(blog_url_encode "$items_json")")
 order_id_2=$(printf '%s\n' "$create_out_2" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id_2" 'second create_order returns order_id'
-assert_contains "$create_out_2" '"provider_url":"https://pay.blog.example.com/btcpay/invoice?' 'btcpay provider URL respects configured root path'
-assert_contains "$create_out_2" 'amount=45.00' 'btcpay provider URL uses discounted crypto total amount'
+assert_contains "$create_out_2" '"provider_url":"https://pay.blog.example.com/btcpay/i/btcpay-invoice-1"' 'btcpay provider URL uses Greenfield checkout link'
+assert_contains "$create_out_2" '"btcpay_invoice_id":"btcpay-invoice-1"' 'btcpay order stores invoice id'
 webhook_out=$(run_payments_cgi "action=webhook&order_id=$order_id_2&provider=btcpay&payment_status=paid" POST)
 assert_contains "$webhook_out" '"success":true' 'webhook paid succeeds'
 assert_contains "$webhook_out" "\"order_id\":\"$order_id_2\"" 'webhook updates targeted order'

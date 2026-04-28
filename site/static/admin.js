@@ -111,6 +111,7 @@
     zapsActionPending: '',
     zapWalletInfo: null,
     btcpayRuntimeInfo: null,
+    btcpayCheckoutRuntimeInfo: null,
     btcpayActionInFlight: false,
     btcpayActionPending: '',
     initialContentPainted: false,
@@ -133,6 +134,7 @@
     outputPlugins: document.getElementById('output-plugins'),
     outputZaps: document.getElementById('output-zaps'),
     outputBtcpay: document.getElementById('output-btcpay'),
+    outputBtcpayCheckout: document.getElementById('output-btcpay-checkout'),
     outputUsers: document.getElementById('output-users'),
     nosterRuntime: document.getElementById('noster-runtime'),
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
@@ -162,6 +164,7 @@
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
     btcpayRuntime: document.getElementById('btcpay-runtime'),
+    btcpayCheckoutRuntime: document.getElementById('btcpay-checkout-runtime'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -564,6 +567,10 @@
         await loadBtcpayRuntime();
         return;
       }
+      if (section === 'btcpay-checkout') {
+        await loadBtcpayCheckoutRuntime();
+        return;
+      }
       if (section === 'users') {
         await loadUsers(false);
         return;
@@ -614,6 +621,10 @@
       }
       if (section === 'btcpay') {
         setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'btcpay-checkout') {
+        setOutput(els.outputBtcpayCheckout, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'users') {
@@ -668,6 +679,10 @@
       {
         sections: ['btcpay'],
         task: loadBtcpayRuntime()
+      },
+      {
+        sections: ['btcpay-checkout'],
+        task: loadBtcpayCheckoutRuntime()
       },
       {
         sections: ['users'],
@@ -2847,7 +2862,7 @@
     const sectionByPlugin = {
       'nostr-bridge': !!plugins.nostr_bridge,
       'zaps': !!plugins.zaps,
-      'btcpay': !!plugins.btcpay,
+      'btcpay-checkout': !!plugins.btcpay,
       'nostr-pages': !!plugins.nostr_posts
     };
     Object.keys(sectionByPlugin).forEach(function (sectionName) {
@@ -3900,6 +3915,91 @@
     } catch (err) {
       renderBtcpayRuntime({}, '', '');
       setOutput(els.outputBtcpay, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  function renderBtcpayCheckoutRuntime(runtime, message) {
+    if (!els.btcpayCheckoutRuntime) {
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    state.btcpayCheckoutRuntimeInfo = info;
+    const btcpayUrl = String(info.btcpay_url || '').trim();
+    const storeId = String(info.btcpay_store_id || '').trim();
+    const authorizeUrl = String(info.btcpay_authorize_url || '').trim();
+    const webhookUrl = String(info.btcpay_webhook_url || '').trim();
+    const apiConfigured = !!info.btcpay_api_configured;
+    const apiReady = !!info.btcpay_api_ready;
+    const publicReady = !!info.btcpay_public_ready;
+    const webhookConfigured = !!info.btcpay_webhook_configured;
+    const checkoutReady = !!info.checkout_ready;
+
+    let html = '';
+    html += '<div class="field-row"><div class="setting-label"><strong>Provisioning</strong></div><div class="zaps-runtime-value">Managed in Headquarters</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>BTCPay server</strong></div><div class="zaps-runtime-value">' + runtimeLinkHtml(btcpayUrl, 'Not configured') + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Public reachability</strong></div>' + statusValueHtml(publicReady, 'Reachable', 'Pending') + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Checkout API</strong></div>' + statusValueHtml(apiReady, 'Connected', apiConfigured ? 'Configured, not verified' : 'Needs API key') + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Webhook secret</strong></div>' + statusValueHtml(webhookConfigured, 'Configured', 'Missing') + '</div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Checkout readiness</strong></div>' + statusValueHtml(checkoutReady, 'Ready', 'Not ready') + '</div>';
+    html += '<div class="field-row"><label class="setting-label" for="btcpay-checkout-host"><strong>BTCPay Host</strong></label><input id="btcpay-checkout-host" type="text" value="' + escapeHtml(String(info.btcpay_host || 'pay.andersaamodt.com')) + '" autocomplete="off"></div>';
+    html += '<div class="field-row"><label class="setting-label" for="btcpay-checkout-rootpath"><strong>Root Path</strong></label><input id="btcpay-checkout-rootpath" type="text" value="' + escapeHtml(String(info.btcpay_rootpath || '/')) + '" autocomplete="off"></div>';
+    html += '<div class="field-row"><label class="setting-label" for="btcpay-checkout-store-id"><strong>Store ID</strong></label><input id="btcpay-checkout-store-id" type="text" value="' + escapeHtml(storeId) + '" autocomplete="off"></div>';
+    html += '<div class="field-row"><label class="setting-label" for="btcpay-checkout-api-key"><strong>API Key</strong></label><input id="btcpay-checkout-api-key" type="password" value="" placeholder="' + (apiConfigured ? 'Configured; paste a replacement only when rotating' : 'Paste BTCPay API key') + '" autocomplete="off"></div>';
+    html += '<div class="field-row"><label class="setting-label" for="btcpay-checkout-webhook-secret"><strong>Webhook Secret</strong></label><input id="btcpay-checkout-webhook-secret" type="password" value="" placeholder="' + (webhookConfigured ? 'Configured; paste a replacement only when rotating' : 'Generated by Headquarters') + '" autocomplete="off"></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Authorization Flow</strong></div><div class="runtime-action-row">'
+      + (authorizeUrl ? '<a class="btn ghost compact-btn" href="' + escapeHtml(authorizeUrl) + '" target="_blank" rel="noopener">BTCPay Authorization</a>' : '<span class="zaps-runtime-value is-warn">Authorization URL unavailable</span>')
+      + '<button type="button" class="btn ghost compact-btn" data-btcpay-checkout-save>Save Settings</button>'
+      + '</div></div>';
+    html += '<div class="field-row"><div class="setting-label"><strong>Webhook URL</strong></div><div class="zaps-runtime-value">' + (webhookUrl ? '<code>' + escapeHtml(webhookUrl) + '</code>' : '<span class="zaps-runtime-value is-warn">Unavailable</span>') + '</div></div>';
+    if (message) {
+      html += '<pre class="zaps-runtime-log">' + escapeHtml(String(message)) + '</pre>';
+    }
+    els.btcpayCheckoutRuntime.innerHTML = html;
+  }
+
+  async function loadBtcpayCheckoutRuntime() {
+    if (!els.btcpayCheckoutRuntime) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load BTCPay checkout runtime');
+      }
+      renderBtcpayCheckoutRuntime(data.runtime || {}, '');
+      if (els.outputBtcpayCheckout) {
+        els.outputBtcpayCheckout.innerHTML = '';
+      }
+    } catch (err) {
+      renderBtcpayCheckoutRuntime({}, '');
+      setOutput(els.outputBtcpayCheckout, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  async function saveBtcpayCheckoutConfig() {
+    const runtimeRoot = els.btcpayCheckoutRuntime;
+    if (!runtimeRoot) return;
+    const hostInput = runtimeRoot.querySelector('#btcpay-checkout-host');
+    const rootpathInput = runtimeRoot.querySelector('#btcpay-checkout-rootpath');
+    const storeInput = runtimeRoot.querySelector('#btcpay-checkout-store-id');
+    const keyInput = runtimeRoot.querySelector('#btcpay-checkout-api-key');
+    const secretInput = runtimeRoot.querySelector('#btcpay-checkout-webhook-secret');
+    try {
+      const data = await apiPost('/cgi/blog-manage-btcpay', {
+        action: 'save_config',
+        btcpay_host: hostInput ? hostInput.value.trim() : '',
+        btcpay_rootpath: rootpathInput ? rootpathInput.value.trim() : '/',
+        btcpay_store_id: storeInput ? storeInput.value.trim() : '',
+        btcpay_api_key: keyInput ? keyInput.value.trim() : '',
+        payments_webhook_secret: secretInput ? secretInput.value.trim() : ''
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save BTCPay checkout settings');
+      }
+      renderBtcpayCheckoutRuntime(data.runtime || {}, data.message || 'BTCPay checkout settings saved.');
+      setOutput(els.outputBtcpayCheckout, 'BTCPay checkout settings saved.', 'ok');
+    } catch (err) {
+      setOutput(els.outputBtcpayCheckout, 'Error: ' + err.message, 'error');
     }
   }
 
@@ -6659,6 +6759,21 @@
         queueNosterSettingsAutosave(120);
       });
     }
+    if (els.btcpayCheckoutRuntime) {
+      els.btcpayCheckoutRuntime.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const saveButton = target.closest('button[data-btcpay-checkout-save]');
+        if (!saveButton) {
+          return;
+        }
+        saveBtcpayCheckoutConfig().catch(function (err) {
+          setOutput(els.outputBtcpayCheckout, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
     if (els.moderationList) {
       els.moderationList.addEventListener('click', function (event) {
         const target = event.target;
@@ -7360,6 +7475,9 @@
       if (state.isAdmin && state.activeSection === 'btcpay') {
         loadBtcpayRuntime().catch(function () {});
       }
+      if (state.isAdmin && state.activeSection === 'btcpay-checkout') {
+        loadBtcpayCheckoutRuntime().catch(function () {});
+      }
       if (state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
       }
@@ -7385,6 +7503,9 @@
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'btcpay') {
         loadBtcpayRuntime().catch(function () {});
+      }
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'btcpay-checkout') {
+        loadBtcpayCheckoutRuntime().catch(function () {});
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'users' && !state.userDragActive) {
         loadUsers(false).catch(function () {});
