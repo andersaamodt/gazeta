@@ -127,6 +127,8 @@ assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "ensureCommentS
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" '/cgi/blog-btc-usd-rate' 'zap UI fetches the current BTC/USD rate'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "cache: 'no-store'" 'zap UI bypasses browser cache for BTC/USD rate checks'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "satsWithUsdLabel" 'zap UI renders USD equivalents beside sats'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'function zapIconHtml()' 'zap UI renders a standard lightning-bolt icon'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'aria-label="Zap this post"' 'compact zap icon keeps an accessible label'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'1000'" 'zap UI includes 1000 sats as the normal default/preset amount'
 assert_contains "$(cat "$ROOT_DIR/cgi/blog-btc-usd-rate")" 'api.exchange.coinbase.com/products/BTC-USD/ticker' 'BTC/USD endpoint uses Coinbase ticker data'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages do not render zap UI'

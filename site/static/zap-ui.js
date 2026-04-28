@@ -814,6 +814,15 @@
     }
   }
 
+  function zapIconHtml() {
+    return '' +
+      '<span class="zap-icon" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" focusable="false" role="img">' +
+          '<path d="M13.8 2.4 4.6 13.1h6.1l-1.1 8.5 9.8-12h-6.3l.7-7.2Z"></path>' +
+        '</svg>' +
+      '</span>';
+  }
+
   function renderHost(host, rawOptions) {
     if (!(host instanceof HTMLElement)) {
       return;
@@ -828,7 +837,7 @@
     host.hidden = false;
     host.className = 'zap-inline-host' + (options.display === 'compact' ? ' is-compact' : '');
     if (options.display === 'compact') {
-      host.innerHTML = '<button type="button" class="zap-action-btn zap-action-btn-primary zap-compact-btn" data-zap-open="true" title="Zap this post">Zap</button>';
+      host.innerHTML = '<button type="button" class="zap-action-btn zap-action-btn-primary zap-compact-btn" data-zap-open="true" title="Zap this post" aria-label="Zap this post">' + zapIconHtml() + '<span class="sr-only">Zap this post</span></button>';
       var compactButton = host.querySelector('[data-zap-open="true"]');
       if (compactButton) {
         compactButton.addEventListener('click', function () {
@@ -845,7 +854,7 @@
           '<span class="zap-inline-meta">' + escapeHtml(options.zapConfig.lud16) + '</span>' +
         '</div>' +
         '<div class="zap-inline-actions">' +
-          '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-open="true">Zap ' + escapeHtml(String(state.selectedSats || options.zapConfig.defaultAmountSats)) + ' sats</button>' +
+          '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-open="true">' + zapIconHtml() + 'Zap ' + escapeHtml(String(state.selectedSats || options.zapConfig.defaultAmountSats)) + ' sats</button>' +
         '</div>' +
       '</section>';
     var button = host.querySelector('[data-zap-open="true"]');
