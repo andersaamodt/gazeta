@@ -576,8 +576,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible;' '
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages load the shared post resize behavior'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'EDGE_PX = 14' 'post resize behavior uses edge-only drag detection'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'delta * 2' 'post resize behavior grows symmetrically from the center'
+assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'bodyContentWidth' 'post resize behavior clamps saved widths to the centered content column'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body.blog-post-resize-enabled' 'post resize behavior widens the blog canvas when active'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-item.blog-post-resizable' 'post resize behavior keeps cards centered with explicit width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-sizing: border-box;' 'post resize behavior measures and applies the same box width'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
 # 9) blog-get-config runtime output stays correct with direct site.conf parsing.

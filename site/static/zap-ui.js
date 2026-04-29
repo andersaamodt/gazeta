@@ -650,7 +650,8 @@
         encodedLnurl: bech32Encode('lnurl', payUrl),
         nostrPubkey: nostrPubkey,
         minSendable: Number(data.minSendable || 0),
-        maxSendable: Number(data.maxSendable || 0)
+        maxSendable: Number(data.maxSendable || 0),
+        commentAllowed: Number(data.commentAllowed || 0)
       };
     });
     lnurlCache[key] = request;
@@ -710,11 +711,15 @@
     });
   }
 
-  function requestInvoice(options, signedEvent, amountMsats, lnurlInfo) {
+  function requestInvoice(options, signedEvent, amountMsats, lnurlInfo, note) {
     var url = new URL(lnurlInfo.callback);
     url.searchParams.set('amount', String(amountMsats));
-    url.searchParams.set('nostr', JSON.stringify(signedEvent));
-    url.searchParams.set('lnurl', lnurlInfo.encodedLnurl);
+    if (signedEvent) {
+      url.searchParams.set('nostr', JSON.stringify(signedEvent));
+      url.searchParams.set('lnurl', lnurlInfo.encodedLnurl);
+    } else if (note && lnurlInfo.commentAllowed > 0) {
+      url.searchParams.set('comment', String(note).slice(0, lnurlInfo.commentAllowed));
+    }
     return fetchJson(url.toString()).then(function (data) {
       var invoice = String(data.pr || '').trim();
       if (!invoice) {
@@ -748,15 +753,22 @@
       if ((lnurlInfo.minSendable > 0 && amountMsats < lnurlInfo.minSendable) || (lnurlInfo.maxSendable > 0 && amountMsats > lnurlInfo.maxSendable)) {
         throw new Error('Amount must be between ' + String(Math.ceil(lnurlInfo.minSendable / 1000)) + ' and ' + String(Math.floor(lnurlInfo.maxSendable / 1000)) + ' sats for this wallet.');
       }
+      if (!signerApi()) {
+        setDialogStatus('No Nostr signer detected. Creating a copyable Lightning invoice instead.', 'info');
+        return requestInvoice(modalState.options, null, amountMsats, lnurlInfo, modalState.state.note || '');
+      }
       setDialogStatus('Waiting for signer approval…', 'info');
       return createZapEvent(modalState.options, lnurlInfo, amountMsats, modalState.state.note || '').then(function (signedEvent) {
         setDialogStatus('Requesting invoice…', 'info');
-        return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo);
+        return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo, modalState.state.note || '');
       });
     }).then(function (invoice) {
       modalState.state.invoice = invoice;
       modalState.state.invoiceAmountMsats = amountMsats;
-      setDialogStatus('Invoice ready. Pay it in your wallet to complete the zap.', 'ok');
+      setDialogStatus(signerApi()
+        ? 'Invoice ready. Pay it in your wallet to complete the zap.'
+        : 'Invoice ready. Pay it in your wallet; signed-in readers get a public Nostr zap receipt.',
+        'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'Could not create a zap invoice.', 'error');
     }).finally(function () {

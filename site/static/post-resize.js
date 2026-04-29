@@ -26,7 +26,19 @@
   }
 
   function maxWidth() {
-    return Math.max(MIN_WIDTH, window.innerWidth - 24);
+    var body = document.body;
+    if (!body) {
+      return Math.max(MIN_WIDTH, window.innerWidth - 24);
+    }
+    var styles = window.getComputedStyle(body);
+    var paddingX = parseFloat(styles.paddingLeft || '0') + parseFloat(styles.paddingRight || '0');
+    var bodyContentWidth = body.getBoundingClientRect().width - paddingX;
+    var viewportWidth = window.innerWidth - 24;
+    var available = Math.min(viewportWidth, bodyContentWidth);
+    if (!Number.isFinite(available) || available <= 0) {
+      available = viewportWidth;
+    }
+    return Math.max(MIN_WIDTH, available);
   }
 
   function clampWidth(width) {
