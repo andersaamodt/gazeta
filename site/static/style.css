@@ -8373,9 +8373,10 @@ textarea:focus {
 }
 
 .zap-inline-host.is-compact .zap-compact-btn {
-  width: 2rem;
-  min-width: 2rem;
-  min-height: 2rem;
+  width: calc(2rem - 1px);
+  min-width: calc(2rem - 1px);
+  height: calc(2rem - 1px);
+  min-height: calc(2rem - 1px);
   padding: 0;
   border-radius: 50%;
   line-height: 1;
