@@ -1493,7 +1493,14 @@
         if (!data || !data.success) {
           return;
         }
-        applyEnhancements(data);
+        try {
+          applyEnhancements(data);
+        } catch (err) {
+          window.__postContextError = err && err.message ? err.message : String(err || 'post context error');
+          if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('Post context enhancement failed:', err);
+          }
+        }
       })
       .catch(function () {
         // Post page should remain readable even if enhancement fetch fails.
