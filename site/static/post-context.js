@@ -1669,7 +1669,11 @@
   });
 
   if (!triggerEarlyPostRouteRepair()) {
-    document.addEventListener('DOMContentLoaded', loadPostContext);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadPostContext);
+    } else {
+      loadPostContext();
+    }
     window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);
   }
 })();
