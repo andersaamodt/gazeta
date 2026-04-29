@@ -248,6 +248,31 @@
     return null;
   }
 
+  function signerUnavailableError(err) {
+    var message = String((err && err.message) || err || '').toLowerCase();
+    return message.indexOf('no nostr signer') !== -1 ||
+      message.indexOf('no browser nostr signer') !== -1 ||
+      message.indexOf('fresh signer approval') !== -1 ||
+      message.indexOf('phone signer is not paired') !== -1;
+  }
+
+  function signerIsAvailable(api) {
+    if (!api) {
+      return Promise.resolve(false);
+    }
+    if (typeof api.getStatus !== 'function') {
+      return Promise.resolve(true);
+    }
+    return Promise.resolve(api.getStatus()).then(function (status) {
+      return !!(status && status.available);
+    }).catch(function (err) {
+      if (signerUnavailableError(err)) {
+        return false;
+      }
+      throw err;
+    });
+  }
+
   function parseJson(raw, fallback) {
     try {
       return JSON.parse(String(raw || ''));
@@ -763,25 +788,41 @@
     modalState.state.busy = true;
     modalState.state.invoice = '';
     modalState.state.invoiceAmountMsats = 0;
+    var createdSignedZap = false;
     setDialogStatus('Fetching Lightning zap details…', 'info');
 
     loadLnurlInfo(modalState.options.zapConfig.lud16).then(function (lnurlInfo) {
       if ((lnurlInfo.minSendable > 0 && amountMsats < lnurlInfo.minSendable) || (lnurlInfo.maxSendable > 0 && amountMsats > lnurlInfo.maxSendable)) {
         throw new Error('Amount must be between ' + String(Math.ceil(lnurlInfo.minSendable / 1000)) + ' and ' + String(Math.floor(lnurlInfo.maxSendable / 1000)) + ' sats for this wallet.');
       }
-      if (!signerApi()) {
+      var api = signerApi();
+      var requestUnsignedInvoice = function () {
         setDialogStatus('Creating a copyable Lightning invoice...', 'info');
         return requestInvoice(modalState.options, null, amountMsats, lnurlInfo, modalState.state.note || '');
+      };
+      if (!api) {
+        return requestUnsignedInvoice();
       }
-      setDialogStatus('Waiting for signer approval…', 'info');
-      return createZapEvent(modalState.options, lnurlInfo, amountMsats, modalState.state.note || '').then(function (signedEvent) {
-        setDialogStatus('Requesting invoice…', 'info');
-        return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo, modalState.state.note || '');
+      return signerIsAvailable(api).then(function (available) {
+        if (!available) {
+          return requestUnsignedInvoice();
+        }
+        setDialogStatus('Waiting for signer approval…', 'info');
+        return createZapEvent(modalState.options, lnurlInfo, amountMsats, modalState.state.note || '').then(function (signedEvent) {
+          createdSignedZap = true;
+          setDialogStatus('Requesting invoice…', 'info');
+          return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo, modalState.state.note || '');
+        }).catch(function (err) {
+          if (signerUnavailableError(err)) {
+            return requestUnsignedInvoice();
+          }
+          throw err;
+        });
       });
     }).then(function (invoice) {
       modalState.state.invoice = invoice;
       modalState.state.invoiceAmountMsats = amountMsats;
-      setDialogStatus(signerApi()
+      setDialogStatus(createdSignedZap
         ? 'Invoice ready. Pay it in your wallet to complete the zap.'
         : 'Invoice ready. Copy it or open it in a Lightning wallet to complete the zap.',
         'ok');

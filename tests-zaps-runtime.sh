@@ -144,6 +144,7 @@ assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'21000'" 'zap UI inc
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'zapAmountName' 'zap UI labels zap tiers by giving level'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'Creating a copyable Lightning invoice...' 'zap UI creates a copyable invoice when no Nostr signer is present'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'revealInvoiceControls' 'zap UI scrolls and focuses the invoice after creation'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'signerIsAvailable' 'zap UI checks shared signer availability before attempting a signed zap'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'return requestInvoice(modalState.options, null' 'zap UI does not block invoice creation on missing signer'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'mode": "nostr_zap" if zap_request_json else "lightning_invoice"' 'zap endpoint records unsigned invoice fallback separately from signed zaps'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'create_invoice(amount_msat, None, comment_value)' 'zap endpoint creates invoices without requiring a Nostr zap request'
