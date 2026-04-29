@@ -1524,6 +1524,9 @@
     if (!resolvedPath) {
       return false;
     }
+    if (document.querySelector('.post-single-item')) {
+      return false;
+    }
     currentRelPath = resolvedPath;
     // Keep current shell visible while we fetch and swap in the canonical
     // post document so navigation never flashes to a blank frame.

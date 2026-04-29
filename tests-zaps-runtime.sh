@@ -127,6 +127,7 @@ assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "ensureCommentS
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'copy_nostr_address' 'single post menu exposes public Nostr address copy action'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'copy_nostr_event' 'single post menu exposes public Nostr event copy action'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'data-post-page-admin-action' 'single post admin menu actions are independently gated'
+assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "document.querySelector('.post-single-item')" 'normal post shells skip early route repair so enhancements run'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'openAddToListDialog(currentRelPath, token, csrf)' 'single post add-to-list menu opens the modal flow'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'data-post-add-list-form' 'single post add-to-list modal has a submit form'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.post-page-modal-panel' 'single post add-to-list modal has page-level styling'
