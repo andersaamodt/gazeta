@@ -514,8 +514,8 @@
             '<input type="number" min="1" step="1" inputmode="numeric" data-zap-custom-sats="true" value="' + escapeAttr(String(state.customSats || '')) + '" placeholder="' + escapeAttr(String(options.zapConfig.defaultAmountSats)) + '">' +
           '</label>' +
           '<label class="zap-dialog-field">' +
-            '<span class="zap-dialog-label">Comment <small>(optional)</small></span>' +
-            '<textarea rows="2" data-zap-note="true" placeholder="Say something with the zap...">' + escapeHtml(String(state.note || '')) + '</textarea>' +
+            '<span class="zap-dialog-label">Note <small>(optional)</small></span>' +
+            '<textarea rows="2" data-zap-note="true" placeholder="Write a note">' + escapeHtml(String(state.note || '')) + '</textarea>' +
           '</label>' +
         '</div>' +
       '</div>' +
