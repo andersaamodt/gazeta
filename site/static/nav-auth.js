@@ -4,9 +4,7 @@
   var AUTH_KIND = 22242;
   var NIP46_KIND = 24133;
   var NIP46_RELAYS = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.primal.net'
+    'wss://andersaamodt.com'
   ];
 
   var IDB_DB_NAME = 'wizardry-blog-auth';

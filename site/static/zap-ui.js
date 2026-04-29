@@ -6,9 +6,7 @@
   }
 
   var DEFAULT_RELAYS = [
-    'wss://relay.damus.io',
-    'wss://relay.primal.net',
-    'wss://relay.snort.social'
+    'wss://andersaamodt.com'
   ];
   var BTC_USD_RATE_TTL_MS = 60000;
   var hostStates = new WeakMap();
