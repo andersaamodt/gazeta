@@ -207,6 +207,18 @@ title: ""
 <div class="placeholder">Loading zap runtime...</div>
 </div>
 </section>
+
+<section class="sub-card">
+<div class="row-head compact-row-head">
+<div>
+<h4>Received Zaps</h4>
+<p class="muted">Most recent signed zap receipts published by the site endpoint.</p>
+</div>
+</div>
+<div id="zaps-received-list" class="posts-list zaps-received-list">
+<p class="placeholder table-empty">Loading received zaps...</p>
+</div>
+</section>
 </div>
 
 <div id="output-zaps" class="output"></div>
@@ -1933,6 +1945,79 @@ body {
   font: 0.86rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.zaps-received-table {
+  display: block;
+  width: 100%;
+}
+
+.zaps-received-header,
+#admin-panel .post-row.zaps-received-row {
+  display: grid;
+  grid-template-columns: minmax(7.4rem, 0.72fr) minmax(5rem, 0.42fr) minmax(7rem, 0.7fr) minmax(9rem, 1fr) minmax(5rem, 0.4fr);
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.zaps-received-header {
+  padding: 0.35rem 0.95rem 0.4rem;
+  border-bottom: 1px solid var(--admin-border, #d2def3);
+}
+
+#admin-panel .post-row.zaps-received-row {
+  padding: 0.72rem 0.95rem;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.zaps-received-col {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.zaps-received-col-head {
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.zaps-received-amount {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--link) 72%, #264f2f);
+}
+
+.zaps-received-note {
+  display: block;
+  color: var(--admin-muted, var(--light-text));
+  font-size: 0.82rem;
+  margin-top: 0.12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .zaps-received-header {
+    display: none;
+  }
+
+  #admin-panel .post-row.zaps-received-row {
+    grid-template-columns: 1fr;
+    gap: 0.34rem;
+  }
+
+  .zaps-received-col::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 5.7rem;
+    margin-right: 0.5rem;
+    color: var(--admin-muted, #6a7488);
+    font-size: 0.72rem;
+  }
 }
 
 [data-admin-section="account"] {
@@ -5723,6 +5808,7 @@ body {
 #admin-panel .posts-list,
 #admin-panel .users-list,
 #admin-panel .nostr-pages-rows,
+#admin-panel .zaps-received-list,
 #admin-panel #files-list.posts-list,
 #admin-panel #moderation-list.posts-list {
   margin-left: 0.7rem !important;
@@ -5742,6 +5828,7 @@ body {
   #admin-panel .posts-list,
   #admin-panel .users-list,
   #admin-panel .nostr-pages-rows,
+  #admin-panel .zaps-received-list,
   #admin-panel #files-list.posts-list,
   #admin-panel #moderation-list.posts-list {
     margin-left: 0.5rem !important;

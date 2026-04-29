@@ -108,9 +108,51 @@ lightning_dir() {
   printf '%s/lightning\n' "$blog_site_data"
 }
 
+zap_receipts_dir() {
+  printf '%s/zaps/state/receipts\n' "$blog_site_data"
+}
+
 lightning_cli_json() {
   command -v lightning-cli >/dev/null 2>&1 || return 1
   lightning-cli --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
+}
+
+recent_zaps_json() {
+  receipts_dir=$(zap_receipts_dir)
+  if [ ! -d "$receipts_dir" ] || ! command -v jq >/dev/null 2>&1; then
+    printf '[]\n'
+    return 0
+  fi
+  find "$receipts_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | while IFS= read -r receipt_file; do
+    jq -c '
+      def tag($name):
+        (.event.tags // [])
+        | map(select((.[0] // "") == $name))
+        | first
+        | if type == "array" then . else [] end;
+      def tagv($name): (tag($name)[1] // "");
+      def as_number: tonumber? // 0;
+      (tagv("description") | fromjson? // {}) as $request
+      | (tagv("amount") | as_number) as $amount_msat
+      | {
+          received_at: ((.event.created_at // .published_at // 0) | as_number),
+          published_at: ((.published_at // 0) | as_number),
+          event_id: ((.event.id // "") | tostring),
+          amount_msat: $amount_msat,
+          amount_sats: (($amount_msat / 1000) | floor),
+          sender_pubkey: (tagv("P") | tostring),
+          recipient_pubkey: (tagv("p") | tostring),
+          post_event_id: (tagv("e") | tostring),
+          post_address: (tagv("a") | tostring),
+          post_kind: (tagv("k") | tostring),
+          bolt11: (tagv("bolt11") | tostring),
+          relay_count: ((.relay_count // 0) | as_number),
+          note: (($request.content // "") | tostring),
+          request_id: (($request.id // "") | tostring),
+          request_pubkey: (($request.pubkey // "") | tostring)
+        }
+    ' "$receipt_file" 2>/dev/null || true
+  done | jq -s 'sort_by(.received_at, .published_at) | reverse | .[:50]' 2>/dev/null || printf '[]\n'
 }
 
 runtime_json() {
@@ -167,7 +209,8 @@ runtime_json() {
   printf '"inbound_liquidity_sats":%s,' "$(printf '%s' "${inbound_liquidity_sats:-0}" | tr -dc '0-9')"
   printf '"can_receive_zaps":%s,' "$(bool_json_value "$can_receive")"
   printf '"zap_endpoint_url":"%s",' "$(blog_json_escape "$zap_endpoint_url")"
-  printf '"zap_endpoint_ready":%s' "$(bool_json_value "$zap_endpoint_ready")"
+  printf '"zap_endpoint_ready":%s,' "$(bool_json_value "$zap_endpoint_ready")"
+  printf '"recent_zaps":%s' "$(recent_zaps_json)"
   printf '}\n'
 }
 

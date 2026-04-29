@@ -163,6 +163,7 @@
     zapWalletSummary: document.getElementById('zap-wallet-summary'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
     zapsRuntime: document.getElementById('zaps-runtime'),
+    zapsReceivedList: document.getElementById('zaps-received-list'),
     btcpayRuntime: document.getElementById('btcpay-runtime'),
     btcpayCheckoutRuntime: document.getElementById('btcpay-checkout-runtime'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
@@ -3342,6 +3343,78 @@
     return '<a href="' + escapeAttr(href) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(href) + '</a>';
   }
 
+  function formatZapReceivedAt(value) {
+    const numeric = Number(value || 0);
+    const dt = numeric > 0 ? new Date(numeric * 1000) : null;
+    if (!dt || Number.isNaN(dt.getTime())) {
+      return 'Unknown';
+    }
+    return dt.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  function shortZapId(value) {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return '-';
+    }
+    if (raw.length <= 18) {
+      return raw;
+    }
+    return raw.slice(0, 10) + '...' + raw.slice(-6);
+  }
+
+  function zapPostTargetLabel(zap) {
+    const address = String((zap && zap.post_address) || '').trim();
+    if (address) {
+      return shortZapId(address);
+    }
+    const eventId = String((zap && zap.post_event_id) || '').trim();
+    if (eventId) {
+      return shortZapId(eventId);
+    }
+    return '-';
+  }
+
+  function renderReceivedZaps(zaps) {
+    if (!els.zapsReceivedList) {
+      return;
+    }
+    const rows = Array.isArray(zaps) ? zaps : [];
+    if (!rows.length) {
+      els.zapsReceivedList.innerHTML = '<p class="placeholder table-empty">No signed zaps received yet.</p>';
+      return;
+    }
+    let html = '<div class="zaps-received-table">';
+    html += '<div class="zaps-received-header" aria-hidden="true">';
+    html += '<div class="zaps-received-col zaps-received-col-head">Received</div>';
+    html += '<div class="zaps-received-col zaps-received-col-head">Amount</div>';
+    html += '<div class="zaps-received-col zaps-received-col-head">Sender</div>';
+    html += '<div class="zaps-received-col zaps-received-col-head">Post</div>';
+    html += '<div class="zaps-received-col zaps-received-col-head">Relays</div>';
+    html += '</div>';
+    rows.forEach(function (zap) {
+      const amountSats = Math.max(0, Math.floor(Number(zap && zap.amount_sats) || 0));
+      const note = String((zap && zap.note) || '').trim();
+      const sender = shortZapId((zap && (zap.sender_pubkey || zap.request_pubkey)) || '');
+      const eventId = shortZapId((zap && zap.event_id) || '');
+      const relays = Math.max(0, Math.floor(Number(zap && zap.relay_count) || 0));
+      html += '<div class="post-row zaps-received-row" title="Receipt event ' + escapeAttr(eventId) + '">';
+      html += '<div class="zaps-received-col" data-label="Received">' + escapeHtml(formatZapReceivedAt(zap && zap.received_at)) + '</div>';
+      html += '<div class="zaps-received-col zaps-received-amount" data-label="Amount">' + escapeHtml(String(amountSats)) + ' sats</div>';
+      html += '<div class="zaps-received-col" data-label="Sender"><code>' + escapeHtml(sender) + '</code></div>';
+      html += '<div class="zaps-received-col" data-label="Post"><code>' + escapeHtml(zapPostTargetLabel(zap)) + '</code>' + (note ? '<span class="zaps-received-note">' + escapeHtml(note) + '</span>' : '') + '</div>';
+      html += '<div class="zaps-received-col" data-label="Relays">' + escapeHtml(String(relays)) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    els.zapsReceivedList.innerHTML = html;
+  }
+
   function setNosterButtonsBusy(isBusy) {
     const cardButtons = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('button[data-noster-action]')) : [];
     const settingInputs = els.nosterRuntime ? Array.from(els.nosterRuntime.querySelectorAll('input[data-noster-setting]')) : [];
@@ -3708,6 +3781,7 @@
     const publicAddress = String(info.lightning_public_address || '').trim();
     const endpointUrl = String(info.zap_endpoint_url || '').trim();
     const lud16Source = String(info.lud16_source || '').trim().toLowerCase();
+    renderReceivedZaps(info.recent_zaps);
     let receiveReadyBadLabel = 'Needs inbound liquidity';
     if (!lightningOnline) {
       receiveReadyBadLabel = 'Lightning offline';
