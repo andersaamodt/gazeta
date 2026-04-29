@@ -1839,7 +1839,7 @@
       })
       .catch(function () {
         state.nip46.diagnostics.decryptErrors += 1;
-        setNip46Diagnostics('Saw a signer response, but the page could not decrypt it. Open the newest link from this panel in Amber.', 'error');
+        setNip46Diagnostics('Saw a signer response, but the page could not decrypt it. Open the newest phone signer link from this panel.', 'error');
       });
   }
 
@@ -1919,7 +1919,7 @@
         }
         if (Date.now() - started > timeout) {
           clearInterval(timer);
-          setNip46Diagnostics('Phone pairing timed out after ' + state.nip46.diagnostics.eventsSeen + ' response event(s) and ' + state.nip46.diagnostics.decryptErrors + ' decrypt error(s). Open the newest link in Amber and return here.', 'error');
+          setNip46Diagnostics('Phone pairing timed out after ' + state.nip46.diagnostics.eventsSeen + ' response event(s) and ' + state.nip46.diagnostics.decryptErrors + ' decrypt error(s). Open the newest phone signer link and return here.', 'error');
           reject(new Error('Phone pairing timed out. Open the newest phone signer link and try again.'));
         }
       }, 350);
@@ -3290,7 +3290,7 @@
         setAuthMessage('Making a fresh phone signer link...', 'warn');
         resetPhonePairingLink().then(function () {
           updatePhoneContinueState();
-          setAuthMessage('Fresh phone signer link is ready. Open it in Amber or scan the QR.', 'ok');
+          setAuthMessage('Fresh phone signer link is ready. Open the app link or scan the QR.', 'ok');
         }).catch(function (err) {
           setAuthMessage(err.message || 'Could not make a fresh phone signer link.', 'error');
         });

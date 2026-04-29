@@ -272,7 +272,7 @@
     if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
       window.blogAuth.openLoginModal('phone');
     }
-    throw new Error('Connect Amber with the phone signer link, then return here and create the zap invoice again.');
+    throw new Error('Connect a phone signer with the phone signer link, then return here and create the zap invoice again.');
   }
 
   function parseJson(raw, fallback) {
