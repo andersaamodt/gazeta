@@ -738,6 +738,22 @@
     renderDialog();
   }
 
+  function revealInvoiceControls() {
+    window.setTimeout(function () {
+      var invoiceBlock = document.querySelector('[data-zap-invoice-block="true"]');
+      var invoiceText = document.querySelector('[data-zap-invoice-text="true"]');
+      if (invoiceBlock && typeof invoiceBlock.scrollIntoView === 'function') {
+        invoiceBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+      if (invoiceText && typeof invoiceText.focus === 'function') {
+        invoiceText.focus({ preventScroll: true });
+        if (typeof invoiceText.select === 'function') {
+          invoiceText.select();
+        }
+      }
+    }, 0);
+  }
+
   function createInvoice() {
     if (!modalState.open || !modalState.options || !modalState.state || modalState.state.busy) {
       return;
@@ -754,7 +770,7 @@
         throw new Error('Amount must be between ' + String(Math.ceil(lnurlInfo.minSendable / 1000)) + ' and ' + String(Math.floor(lnurlInfo.maxSendable / 1000)) + ' sats for this wallet.');
       }
       if (!signerApi()) {
-        setDialogStatus('No Nostr signer detected. Creating a copyable Lightning invoice instead.', 'info');
+        setDialogStatus('Creating a copyable Lightning invoice...', 'info');
         return requestInvoice(modalState.options, null, amountMsats, lnurlInfo, modalState.state.note || '');
       }
       setDialogStatus('Waiting for signer approval…', 'info');
@@ -767,8 +783,9 @@
       modalState.state.invoiceAmountMsats = amountMsats;
       setDialogStatus(signerApi()
         ? 'Invoice ready. Pay it in your wallet to complete the zap.'
-        : 'Invoice ready. Pay it in your wallet; signed-in readers get a public Nostr zap receipt.',
+        : 'Invoice ready. Copy it or open it in a Lightning wallet to complete the zap.',
         'ok');
+      revealInvoiceControls();
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'Could not create a zap invoice.', 'error');
     }).finally(function () {
