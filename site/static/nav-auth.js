@@ -1428,7 +1428,7 @@
   }
 
   function preferredUnsignedLoginTab() {
-    return isMobileLikeRuntime() ? 'phone' : 'register';
+    return 'phone';
   }
 
   function startPrimaryLogin() {
@@ -1863,7 +1863,7 @@
   function startDesktopSignerLogin(registerAttempt, usernameHint) {
     var asRegister = !!registerAttempt;
     if (!hasDesktopSigner()) {
-      return Promise.reject(new Error('No desktop signer detected. Use the login menu for phone QR or signed challenge login.'));
+      return Promise.reject(new Error('No browser signer detected. Use phone signer QR or signed challenge login.'));
     }
     setAuthControlsDisabled(true);
     return loginWithNip07({
@@ -2795,7 +2795,7 @@
     if (els.loginBtn) {
       els.loginBtn.addEventListener('click', function () {
         startPrimaryLogin().catch(function (err) {
-          showNavToast(err.message || 'Desktop signer login failed.', 'info', 4200);
+          showNavToast(err.message || 'Nostr signer login failed.', 'info', 4200);
           showAuthModal(preferredUnsignedLoginTab());
         });
       });
@@ -2953,7 +2953,7 @@
       els.authRegisterBtn.addEventListener('click', function () {
         var usernameHint = els.authRegisterUsername ? String(els.authRegisterUsername.value || '').trim() : '';
         startDesktopSignerLogin(true, usernameHint).catch(function (err) {
-          setAuthMessage(err.message || 'Desktop signer login failed.', 'error');
+          setAuthMessage(err.message || 'Nostr signer login failed.', 'error');
         });
       });
     }
@@ -3088,7 +3088,7 @@
     window.blogAuth.openLoginModal = showAuthModal;
     window.blogAuth.startLogin = function () {
       return startPrimaryLogin().catch(function (err) {
-        showNavToast(err && err.message ? err.message : 'Desktop signer login failed.', 'info', 4200);
+        showNavToast(err && err.message ? err.message : 'Nostr signer login failed.', 'info', 4200);
         showAuthModal(preferredUnsignedLoginTab());
         throw err;
       });

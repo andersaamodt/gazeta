@@ -315,7 +315,7 @@
         <input id="auth-register-username" class="auth-input auth-username-input" type="text" maxlength="24" autocomplete="username" placeholder="optional (letters, numbers, ., _, -)">
         <p class="auth-modal-help">Login is tied to your Nostr key, not your username. Usernames must be unique.</p>
         <div class="auth-actions">
-          <button id="auth-register-btn" class="auth-primary-btn" type="button">Register with desktop signer</button>
+          <button id="auth-register-btn" class="auth-primary-btn" type="button">Register with browser signer</button>
           <span class="auth-action-reco">Recommended: <a class="auth-inline-link" href="https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/" target="_blank" rel="noopener noreferrer">nos2x-fox</a></span>
         </div>
       </div>
@@ -365,13 +365,13 @@
     <div class="auth-modal-scroll">
     <h2 id="nostr-info-modal-title">Nostr Sign-In</h2>
     <p class="auth-modal-help">Your account identity is your Nostr public key. The site verifies signed events and never asks for private keys.</p>
-    <p class="auth-modal-help">Desktop sign-in uses a NIP-07 extension. Phone sign-in uses Nostr Connect (NIP-46) pairing via QR/deep link.</p>
+    <p class="auth-modal-help">Browser sign-in uses a NIP-07 extension. Phone sign-in uses Nostr Connect (NIP-46) pairing via QR/deep link.</p>
     <p class="auth-modal-help">For full details, visit <a class="auth-inline-link" href="https://github.com/nostr-protocol/nips" target="_blank" rel="noopener noreferrer">the official Nostr NIPs repository</a>.</p>
     </div>
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260428-menu1"></script>
+<script src="/static/nav-auth.js?v=20260429-mobile-login1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
