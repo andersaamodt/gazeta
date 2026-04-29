@@ -324,6 +324,7 @@
         <p class="auth-modal-help">Scan this with your phone signer app (Nostr Connect / NIP-46), or open via deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
+        <a id="auth-nip46-amber-open" class="auth-inline-link" href="#" hidden>Open in Amber</a>
         <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
