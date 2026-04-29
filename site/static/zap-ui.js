@@ -119,14 +119,12 @@
       '100',
       '1000',
       String(base),
-      '5000',
-      '10000',
-      '21000'
+      '5000'
     ]).map(function (value) {
       return clampSats(value, base);
     });
     values.sort(function (a, b) { return a - b; });
-    return values.slice(0, 6);
+    return values.slice(0, 4);
   }
 
   function zapAmountName(sats) {
@@ -134,7 +132,6 @@
     if (amount <= 100) return 'Spark';
     if (amount <= 1000) return 'Boost';
     if (amount <= 5000) return 'Signal';
-    if (amount <= 10000) return 'Flare';
     return 'Patron';
   }
 
