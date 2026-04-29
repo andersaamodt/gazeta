@@ -2,8 +2,9 @@
 set -eu
 
 STONR_REPO_URL=${STONR_REPO_URL:-https://github.com/andersaamodt/stonr.git}
-STONR_COMMIT=${STONR_COMMIT:-189bb48f3c0e38e20b432e06f4fac3b3fb24f825}
+STONR_COMMIT=${STONR_COMMIT:-b020dc1e1b1799910f329f531b60a5d2b714ea41}
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
+INSTALL_MARKER=/usr/local/share/stonr/headquarters-commit
 
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -48,6 +49,11 @@ installed_version() {
 check_status() {
   if command -v stonr >/dev/null 2>&1; then
     version=$(installed_version 2>/dev/null || printf 'stonr installed')
+    installed_commit=$(run_root cat "$INSTALL_MARKER" 2>/dev/null || printf '')
+    if [ "$installed_commit" != "$STONR_COMMIT" ]; then
+      status_bad "Stonr is installed ($version), but it is not the Headquarters-pinned build."
+      return 0
+    fi
     if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet stonr 2>/dev/null; then
       status_ok "Stonr is installed ($version) and the stonr service is active."
     else
@@ -67,8 +73,11 @@ case "${1-}" in
 esac
 
 if command -v stonr >/dev/null 2>&1; then
-  check_status
-  exit 0
+  installed_commit=$(run_root cat "$INSTALL_MARKER" 2>/dev/null || printf '')
+  if [ "$installed_commit" = "$STONR_COMMIT" ]; then
+    check_status
+    exit 0
+  fi
 fi
 
 case "$(uname -s 2>/dev/null || printf '')" in
@@ -103,6 +112,9 @@ git clone "$STONR_REPO_URL" "$tmp_dir/stonr"
   git checkout "$STONR_COMMIT"
   cargo build --release -j "$CARGO_BUILD_JOBS" -p stonr
   run_root install -m 0755 -o root -g root "target/release/stonr" /usr/local/bin/stonr
+  run_root install -d -m 0755 -o root -g root "$(dirname "$INSTALL_MARKER")"
+  printf '%s\n' "$STONR_COMMIT" > "$tmp_dir/headquarters-commit"
+  run_root install -m 0644 -o root -g root "$tmp_dir/headquarters-commit" "$INSTALL_MARKER"
 )
 
 check_status
