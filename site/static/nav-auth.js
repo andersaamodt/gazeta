@@ -110,6 +110,8 @@
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
     authNip46AmberOpen: document.getElementById('auth-nip46-amber-open'),
+    authNip46Copy: document.getElementById('auth-nip46-copy'),
+    authNip46Reset: document.getElementById('auth-nip46-reset'),
     authNip46Diagnostics: document.getElementById('auth-nip46-diagnostics'),
 
     authManualPanel: document.getElementById('auth-manual-panel'),
@@ -1605,12 +1607,22 @@
     }
     if (els.authNip46Open) {
       els.authNip46Open.href = uri;
+      els.authNip46Open.setAttribute('data-nip46-uri', uri);
     }
     if (els.authNip46AmberOpen) {
-      els.authNip46AmberOpen.href = buildAmberIntentUri(uri);
+      var amberIntent = buildAmberIntentUri(uri);
+      els.authNip46AmberOpen.href = amberIntent;
+      els.authNip46AmberOpen.setAttribute('data-nip46-uri', amberIntent);
       els.authNip46AmberOpen.hidden = false;
     }
     renderQrCode(uri);
+  }
+
+  function currentNip46Uri() {
+    if (!state.nip46.appPubkey || !state.nip46.pairSecret) {
+      return '';
+    }
+    return buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
   }
 
   function initNip46Pairing() {
@@ -2012,6 +2024,42 @@
       setAuthMessage('Phone signer paired. Continue is ready.', 'ok');
     }).finally(function () {
       setAuthControlsDisabled(false);
+    });
+  }
+
+  function resetPhonePairingLink() {
+    return idbGet(KEY_NIP46_PAIR).then(function (saved) {
+      var keepSecret = saved && typeof saved === 'object' ? String(saved.appSecretHex || '') : '';
+      if (!keepSecret) {
+        keepSecret = state.nip46.appSecretHex || '';
+      }
+      if (!keepSecret) {
+        keepSecret = bytesToHex(window.NostrTools.generateSecretKey());
+      }
+      return idbSet(KEY_NIP46_PAIR, {
+        version: 2,
+        domain: currentHost(),
+        appSecretHex: keepSecret,
+        appPubkey: window.NostrTools.getPublicKey(hexToBytes(keepSecret)),
+        pairSecret: randomHex(16),
+        relays: NIP46_RELAYS.slice(),
+        signerPubkey: '',
+        accountPubkey: '',
+        createdAt: nowEpoch()
+      });
+    }).then(function () {
+      if (state.nip46.subscription && typeof state.nip46.subscription.close === 'function') {
+        state.nip46.subscription.close();
+      }
+      state.nip46.subscription = null;
+      if (state.nip46.pool && typeof state.nip46.pool.destroy === 'function') {
+        state.nip46.pool.destroy();
+      }
+      state.nip46.pool = null;
+      state.nip46.active = false;
+      state.nip46.signerPubkey = '';
+      state.nip46.accountPubkey = '';
+      return initNip46Pairing();
     });
   }
 
@@ -3172,6 +3220,37 @@
       els.authPhoneConnectBtn.addEventListener('click', function () {
         startPhonePairingFlow().catch(function (err) {
           setAuthMessage(err.message || 'Phone pairing setup failed.', 'error');
+        });
+      });
+    }
+
+    if (els.authNip46Copy) {
+      els.authNip46Copy.addEventListener('click', function () {
+        initNip46Pairing().then(function () {
+          var uri = currentNip46Uri();
+          if (!uri) {
+            throw new Error('Nostr Connect link is not ready yet.');
+          }
+          if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            return navigator.clipboard.writeText(uri);
+          }
+          throw new Error('Clipboard access is unavailable. Select and copy the link text below.');
+        }).then(function () {
+          setAuthMessage('Nostr Connect link copied.', 'ok');
+        }).catch(function (err) {
+          setAuthMessage(err.message || 'Could not copy Nostr Connect link.', 'error');
+        });
+      });
+    }
+
+    if (els.authNip46Reset) {
+      els.authNip46Reset.addEventListener('click', function () {
+        setAuthMessage('Making a fresh phone signer link...', 'warn');
+        resetPhonePairingLink().then(function () {
+          updatePhoneContinueState();
+          setAuthMessage('Fresh phone signer link is ready. Open it in Amber or scan the QR.', 'ok');
+        }).catch(function (err) {
+          setAuthMessage(err.message || 'Could not make a fresh phone signer link.', 'error');
         });
       });
     }

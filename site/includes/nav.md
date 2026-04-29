@@ -323,8 +323,12 @@
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
         <p class="auth-modal-help">Scan this with your phone signer app (Nostr Connect / NIP-46), or open via deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
-        <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
-        <a id="auth-nip46-amber-open" class="auth-inline-link" href="#" hidden>Open in Amber</a>
+        <div class="auth-nip46-link-actions">
+          <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
+          <a id="auth-nip46-amber-open" class="auth-inline-link" href="#" hidden>Open in Amber</a>
+          <button id="auth-nip46-copy" class="auth-secondary-btn" type="button">Copy link</button>
+          <button id="auth-nip46-reset" class="auth-secondary-btn" type="button">Make fresh link</button>
+        </div>
         <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
