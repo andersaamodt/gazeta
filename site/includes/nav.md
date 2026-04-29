@@ -323,7 +323,7 @@
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
         <p class="auth-modal-help">Scan this with your phone signer app (Nostr Connect / NIP-46), or open via deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
-        <a id="auth-nip46-open" class="auth-inline-link" href="#" target="_blank" rel="noopener noreferrer">Open nostrconnect:// link</a>
+        <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
         <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">

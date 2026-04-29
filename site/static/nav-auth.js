@@ -1586,12 +1586,27 @@
     els.authNip46Qr.appendChild(pre);
   }
 
+  function updateNip46PairingLink() {
+    if (!state.nip46.appPubkey || !state.nip46.pairSecret) {
+      return;
+    }
+    var uri = buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
+    if (els.authNip46Uri) {
+      els.authNip46Uri.textContent = uri;
+    }
+    if (els.authNip46Open) {
+      els.authNip46Open.href = uri;
+    }
+    renderQrCode(uri);
+  }
+
   function initNip46Pairing() {
     if (!hasNostrTools()) {
       throw new Error('NIP-46 requires nostr-tools support in this browser.');
     }
 
     if (state.nip46.active) {
+      updateNip46PairingLink();
       return Promise.resolve();
     }
 
@@ -1665,14 +1680,7 @@
 
       return saveNip46PairState();
     }).then(function () {
-      var uri = buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
-      if (els.authNip46Uri) {
-        els.authNip46Uri.textContent = uri;
-      }
-      if (els.authNip46Open) {
-        els.authNip46Open.href = uri;
-      }
-      renderQrCode(uri);
+      updateNip46PairingLink();
     });
   }
 
@@ -3152,6 +3160,17 @@
         startPhonePairingFlow().catch(function (err) {
           setAuthMessage(err.message || 'Phone pairing setup failed.', 'error');
         });
+      });
+    }
+
+    if (els.authNip46Open) {
+      els.authNip46Open.addEventListener('click', function (event) {
+        var href = String(els.authNip46Open.getAttribute('href') || '');
+        if (href.indexOf('nostrconnect://') !== 0) {
+          return;
+        }
+        event.preventDefault();
+        window.location.href = href;
       });
     }
 
