@@ -1843,7 +1843,8 @@
   function signInWithSigner(signEventFn, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var getPubkeyFn = typeof opts.getPubkeyFn === 'function' ? opts.getPubkeyFn : null;
-    var pubkeyHint = normalizePubkeyHex(opts.pubkeyHint || '') || normalizePubkeyHex(localStorage.getItem('last_auth_pubkey') || '');
+    var allowStoredPubkeyHint = opts.allowStoredPubkeyHint !== false;
+    var pubkeyHint = normalizePubkeyHex(opts.pubkeyHint || '') || (allowStoredPubkeyHint ? normalizePubkeyHex(localStorage.getItem('last_auth_pubkey') || '') : '');
     var registerAttempt = !!opts.registerAttempt;
     var usernameHint = String(opts.usernameHint || '').trim();
     setAuthMessage('Creating a single-use login challenge...', 'warn');
@@ -1992,7 +1993,11 @@
             return nip46SignEvent(template);
           },
           {
-            pubkeyHint: state.nip46.signerPubkey
+            getPubkeyFn: function () {
+              return sendNip46Rpc('get_public_key', [], 30000);
+            },
+            pubkeyHint: '',
+            allowStoredPubkeyHint: false
           }
         );
       });

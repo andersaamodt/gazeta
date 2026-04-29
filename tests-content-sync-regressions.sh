@@ -594,6 +594,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "params.set('perms',
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "params.set('metadata', JSON.stringify(metadata));" 'Nostr Connect link includes app metadata for Amber-compatible pairing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'typeof msg.result ===' 'Nostr Connect accepts Amber connect responses that return the secret as result'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'extractConnectSecret(msg) === state.nip46.pairSecret' 'Nostr Connect enables phone signer after current connect response format'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "sendNip46Rpc('get_public_key', [], 30000)" 'phone signer login asks the signer for the account pubkey before creating the challenge'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'allowStoredPubkeyHint: false' 'phone signer login does not reuse stale browser Nostr identity hints'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-nip46-diagnostics' 'phone signer panel shows visible Nostr Connect pairing diagnostics'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'setNip46Diagnostics' 'phone signer flow reports relay/decrypt/pairing status'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'decrypt error(s)' 'phone signer timeout reports whether relay responses were seen but unreadable'
