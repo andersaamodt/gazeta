@@ -110,8 +110,11 @@ git clone "$STONR_REPO_URL" "$tmp_dir/stonr"
 (
   cd "$tmp_dir/stonr"
   git checkout "$STONR_COMMIT"
-  cargo build --release -j "$CARGO_BUILD_JOBS" -p stonr
-  run_root install -m 0755 -o root -g root "target/release/stonr" /usr/local/bin/stonr
+  # The legacy blog VPS can OOM during optimized Rust builds. Stonr is a small,
+  # low-traffic site relay here, so the default dev profile is the safer
+  # repeatable build target for this host class.
+  cargo build -j "$CARGO_BUILD_JOBS" -p stonr
+  run_root install -m 0755 -o root -g root "target/debug/stonr" /usr/local/bin/stonr
   run_root install -d -m 0755 -o root -g root "$(dirname "$INSTALL_MARKER")"
   printf '%s\n' "$STONR_COMMIT" > "$tmp_dir/headquarters-commit"
   run_root install -m 0644 -o root -g root "$tmp_dir/headquarters-commit" "$INSTALL_MARKER"

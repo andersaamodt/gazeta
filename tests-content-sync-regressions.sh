@@ -854,6 +854,7 @@ assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'pu
 assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'write_kinds=24133' 'Stonr support file allows only NIP-46 pairing writes for phone signers'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr.sh" 'b020dc1e1b1799910f329f531b60a5d2b714ea41' 'Stonr installer pins the publish-capable Stonr build'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr.sh" 'headquarters-commit' 'Stonr installer records the installed pinned commit'
+assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr.sh" 'cargo build -j "$CARGO_BUILD_JOBS" -p stonr' 'Stonr installer uses a low-memory build profile for the legacy blog VPS'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'HQ_UPLOADED_TREE_PATH-}/.headquarters/site-support/stonr-relay.conf' 'Stonr provisioner reads the uploaded site support policy'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'domain_hook_file()' 'Stonr provisioner supports canonical domain nginx hooks'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'PUBLIC_RELAY_URL=$(relay_url)' 'Stonr provisioner exports the public relay URL'
