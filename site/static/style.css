@@ -5514,20 +5514,39 @@ nav.site-nav .btn-login {
 }
 
 .auth-modal-message {
-  min-height: 1.2rem;
-  margin-top: 0.6rem;
-  font-size: 0.9rem;
+  display: none;
+  margin: 0.66rem 0 0.72rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-left-width: 0.34rem;
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  padding: 0.68rem 0.78rem;
+  color: #1e3a8a;
+  font-size: 0.91rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.auth-modal-message:not(:empty) {
+  display: block;
 }
 
 .auth-modal-message.is-warn {
+  border-color: rgba(217, 119, 6, 0.26);
+  background: rgba(255, 251, 235, 0.98);
   color: #92400e;
 }
 
 .auth-modal-message.is-error {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: rgba(254, 242, 242, 0.98);
   color: #b91c1c;
 }
 
 .auth-modal-message.is-ok {
+  border-color: rgba(22, 101, 52, 0.24);
+  background: rgba(240, 253, 244, 0.98);
   color: #166534;
 }
 

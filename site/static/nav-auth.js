@@ -600,7 +600,12 @@
     node.id = 'auth-modal-message';
     node.className = 'auth-modal-message';
     node.setAttribute('aria-live', 'polite');
-    panel.appendChild(node);
+    var tabs = panel.querySelector('.auth-tabs');
+    if (tabs && tabs.parentNode) {
+      tabs.parentNode.insertBefore(node, tabs);
+    } else {
+      panel.appendChild(node);
+    }
     els.authMessage = node;
     return els.authMessage;
   }

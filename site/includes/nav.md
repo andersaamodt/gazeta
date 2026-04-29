@@ -300,13 +300,13 @@
     <p class="auth-modal-help">Accounts are Nostr-key based only. No email, password, or recovery. If your Nostr key is lost, the account is lost by design.</p>
     <p class="auth-modal-help">Desktop login uses NIP-07 when available. Phone login uses NIP-46 pairing via QR/deep-link.</p>
 
+    <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
+
     <div class="auth-tabs" role="tablist" aria-label="Sign-in methods">
       <button id="auth-tab-register" class="auth-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="auth-register-panel">Register</button>
       <button id="auth-tab-phone" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-phone-panel">Phone signer</button>
       <button id="auth-tab-manual" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-manual-panel">Signed challenge</button>
     </div>
-
-    <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
