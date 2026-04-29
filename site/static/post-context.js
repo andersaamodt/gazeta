@@ -9,6 +9,7 @@
   var refreshInFlight = false;
   var submitInFlight = false;
   var postMenuBusy = false;
+  var lastPostMenuTouchAt = 0;
   var addToListState = {
     postPath: '',
     loading: false,
@@ -210,6 +211,20 @@
     var nextOpen = !!panel.hidden;
     panel.hidden = !nextOpen;
     trigger.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  }
+
+  function activatePostPageMenuFromEvent(event) {
+    var now = Date.now();
+    if (now - lastPostMenuTouchAt < 700) {
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
+    }
+    lastPostMenuTouchAt = now;
+    event.preventDefault();
+    event.stopPropagation();
+    togglePostPageMenu();
+    return true;
   }
 
   function nostrToolsNip19() {
@@ -1554,8 +1569,7 @@
     }
     var trigger = target.closest('.post-page-menu-trigger');
     if (trigger) {
-      event.preventDefault();
-      togglePostPageMenu();
+      activatePostPageMenuFromEvent(event);
       return;
     }
     var actionNode = target.closest('[data-post-page-action]');
@@ -1606,6 +1620,19 @@
       return;
     }
   });
+
+  document.addEventListener('pointerup', function (event) {
+    if (!isPostPage(window.location.pathname) || event.pointerType === 'mouse') {
+      return;
+    }
+    var target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest('.post-page-menu-trigger')) {
+      activatePostPageMenuFromEvent(event);
+    }
+  }, { passive: false });
 
   document.addEventListener('input', function (event) {
     var target = event.target;

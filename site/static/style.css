@@ -5935,6 +5935,7 @@ body.blog-post-resizing {
   position: absolute;
   top: 0;
   right: 0;
+  z-index: 80;
   align-self: auto;
 }
 
@@ -5952,6 +5953,8 @@ body.blog-post-resizing {
   justify-content: center;
   font-size: 1.2rem;
   line-height: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .post-page-menu-trigger {
@@ -8805,6 +8808,13 @@ button.loading::after {
   .btn {
     width: 100%;
     padding: 1rem;
+  }
+
+  .post-page-menu-trigger {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0;
   }
   
   .demo-box {
