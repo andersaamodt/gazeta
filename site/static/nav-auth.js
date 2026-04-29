@@ -48,6 +48,7 @@
       appPubkey: '',
       pairSecret: '',
       signerPubkey: '',
+      accountPubkey: '',
       relays: NIP46_RELAYS.slice(),
       pool: null,
       subscription: null,
@@ -1084,6 +1085,7 @@
     ]).then(function () {
       state.nip46.active = false;
       state.nip46.signerPubkey = '';
+      state.nip46.accountPubkey = '';
       state.nip46.appSecretHex = '';
       state.nip46.appPubkey = '';
       state.nip46.pairSecret = '';
@@ -1546,6 +1548,23 @@
     return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
 
+  function saveNip46PairState() {
+    if (!state.nip46.appSecretHex || !state.nip46.appPubkey) {
+      return Promise.resolve();
+    }
+    return idbSet(KEY_NIP46_PAIR, {
+      version: 2,
+      domain: currentHost(),
+      appSecretHex: state.nip46.appSecretHex,
+      appPubkey: state.nip46.appPubkey,
+      pairSecret: state.nip46.pairSecret,
+      relays: state.nip46.relays,
+      signerPubkey: normalizePubkeyHex(state.nip46.signerPubkey || ''),
+      accountPubkey: normalizePubkeyHex(state.nip46.accountPubkey || ''),
+      createdAt: nowEpoch()
+    });
+  }
+
   function renderQrCode(value) {
     if (!els.authNip46Qr) {
       return;
@@ -1586,6 +1605,8 @@
       if (saved && typeof saved === 'object' && saved.domain === currentHost()) {
         appSecretHex = String(saved.appSecretHex || '');
         pairSecret = String(saved.pairSecret || '');
+        state.nip46.signerPubkey = normalizePubkeyHex(saved.signerPubkey || '');
+        state.nip46.accountPubkey = normalizePubkeyHex(saved.accountPubkey || '');
         if (Array.isArray(saved.relays) && saved.relays.length) {
           savedRelays = saved.relays.map(function (item) { return String(item || '').trim(); }).filter(Boolean);
           savedRelaysMatchDefaults = savedRelays.length === NIP46_RELAYS.length && savedRelays.every(function (relay, idx) {
@@ -1611,7 +1632,8 @@
       state.nip46.appPubkey = appPubkey;
       state.nip46.pairSecret = pairSecret;
       state.nip46.relays = relays;
-      state.nip46.signerPubkey = '';
+      state.nip46.signerPubkey = normalizePubkeyHex(state.nip46.signerPubkey || '');
+      state.nip46.accountPubkey = normalizePubkeyHex(state.nip46.accountPubkey || '');
       state.nip46.pool = new window.NostrTools.SimplePool();
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
@@ -1641,15 +1663,7 @@
       );
       setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
 
-      return idbSet(KEY_NIP46_PAIR, {
-        version: 1,
-        domain: currentHost(),
-        appSecretHex: appSecretHex,
-        appPubkey: appPubkey,
-        pairSecret: pairSecret,
-        relays: state.nip46.relays,
-        createdAt: nowEpoch()
-      });
+      return saveNip46PairState();
     }).then(function () {
       var uri = buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
       if (els.authNip46Uri) {
@@ -1743,7 +1757,8 @@
             setNip46Diagnostics('Saw an old signer response, but it belongs to a previous QR. Open the newest phone signer link.', 'warn');
             return;
           }
-          state.nip46.signerPubkey = String(event.pubkey || '');
+          state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
+          saveNip46PairState();
           updatePhoneContinueState();
           setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
           setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
@@ -1751,7 +1766,8 @@
         }
 
         if (extractConnectSecret(msg) === state.nip46.pairSecret) {
-          state.nip46.signerPubkey = String(event.pubkey || '');
+          state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
+          saveNip46PairState();
           updatePhoneContinueState();
           setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
           setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
@@ -1815,6 +1831,23 @@
         }
         return normalizeSignedEvent(result);
       });
+  }
+
+  function getNip46AccountPubkey() {
+    var cached = normalizePubkeyHex(state.nip46.accountPubkey || '');
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    return sendNip46Rpc('get_public_key', [], 30000).then(function (pubkey) {
+      var normalized = normalizePubkeyHex(pubkey || '');
+      if (!normalized) {
+        throw new Error('Phone signer did not return a valid account pubkey.');
+      }
+      state.nip46.accountPubkey = normalized;
+      return saveNip46PairState().then(function () {
+        return normalized;
+      });
+    });
   }
 
   function waitForPhonePairing(timeoutMs) {
@@ -1994,7 +2027,7 @@
           },
           {
             getPubkeyFn: function () {
-              return sendNip46Rpc('get_public_key', [], 30000);
+              return getNip46AccountPubkey();
             },
             pubkeyHint: '',
             allowStoredPubkeyHint: false
@@ -2167,7 +2200,7 @@
           return nip46SignEvent(template);
         },
         getPublicKey: function () {
-          return Promise.resolve(pairedPubkey);
+          return getNip46AccountPubkey();
         }
       };
     });
@@ -2193,6 +2226,13 @@
         return resolveSharedNostrSigner({ silent: true }).then(function (signer) {
           if (!signer) {
             return { available: false, method: '', pubkey: '' };
+          }
+          if (signer.method === 'nip46') {
+            return {
+              available: true,
+              method: 'nip46',
+              pubkey: normalizePubkeyHex(state.nip46.accountPubkey || localStorage.getItem('last_auth_pubkey') || '')
+            };
           }
           return Promise.resolve(signer.getPublicKey()).then(function (pubkey) {
             return {
