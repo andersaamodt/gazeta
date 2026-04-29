@@ -1500,6 +1500,7 @@
     });
     params.set('secret', pairSecret);
     params.set('name', 'Nostr Blog');
+    params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734');
     return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
 
@@ -1626,6 +1627,9 @@
     if (!msg) {
       return '';
     }
+    if (typeof msg.result === 'string') {
+      return msg.result;
+    }
     if (typeof msg.secret === 'string') {
       return msg.secret;
     }
@@ -1684,6 +1688,13 @@
           return;
         }
 
+        if (extractConnectSecret(msg) === state.nip46.pairSecret) {
+          state.nip46.signerPubkey = String(event.pubkey || '');
+          updatePhoneContinueState();
+          setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
+          return;
+        }
+
         if (msg && msg.id && state.nip46.pending[msg.id]) {
           if (msg.error) {
             resolveNip46Pending(msg.id, typeof msg.error === 'string' ? msg.error : JSON.stringify(msg.error), true);
@@ -1731,7 +1742,7 @@
   }
 
   function nip46SignEvent(template) {
-    return sendNip46Rpc('sign_event', [template], 70000)
+    return sendNip46Rpc('sign_event', [JSON.stringify(template)], 70000)
       .then(function (result) {
         if (typeof result === 'string') {
           return parseJsonResponse(result);
