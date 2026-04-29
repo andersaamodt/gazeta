@@ -271,6 +271,16 @@ remote_lightning_host() {
     printf '%s\n' "$configured"
     return 0
   fi
+  configured=$(normalize_host "$(read_conf_value "$(active_site_conf)" lightning_public_host)")
+  if valid_host "$configured" && [ "$configured" != "$(zap_alias_domain)" ] && [ "$configured" != "$site_domain" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+  configured=$(normalize_host "$(read_conf_value "$(release_site_conf)" lightning_public_host)")
+  if valid_host "$configured" && [ "$configured" != "$(zap_alias_domain)" ] && [ "$configured" != "$site_domain" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
   printf '\n'
 }
 
@@ -867,6 +877,20 @@ def published_receipt_path(label):
     return RECEIPTS_DIR / f"{label}.json"
 
 
+def zap_request_from_description(description):
+    if not isinstance(description, str) or not description.strip():
+        return None
+    try:
+        payload = json.loads(description)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if int(payload.get("kind") or 0) != 9734:
+        return None
+    return payload
+
+
 def publish_receipt(invoice):
     label = str(invoice.get("label") or "").strip()
     if not label:
@@ -875,14 +899,8 @@ def publish_receipt(invoice):
     if marker.exists():
         return
 
-    description = invoice.get("description")
-    if not isinstance(description, str) or not description.strip():
-        return
-    try:
-        zap_request = json.loads(description)
-    except json.JSONDecodeError:
-        return
-    if int(zap_request.get("kind") or 0) != 9734:
+    zap_request = zap_request_from_description(invoice.get("description"))
+    if not zap_request:
         return
 
     site_pubkey = read_site_pubkey()
@@ -904,6 +922,9 @@ def publish_receipt(invoice):
     bolt11 = str(invoice.get("bolt11") or "").strip()
     if bolt11:
         tags.append(["bolt11", bolt11])
+    amount_msat = parse_msat(invoice.get("amount_received_msat") or invoice.get("amount_msat") or "0msat")
+    if amount_msat > 0:
+        tags.append(["amount", str(amount_msat)])
     description_json = json_compact(zap_request)
     tags.append(["description", description_json])
     preimage = str(invoice.get("payment_preimage") or "").strip().lower()
@@ -966,9 +987,6 @@ def invoice_worker():
             continue
 
         pay_index = int(invoice.get("pay_index") or 0)
-        if pay_index > last_pay_index:
-            last_pay_index = pay_index
-            save_last_pay_index(last_pay_index)
 
         label = str(invoice.get("label") or "").strip()
         if label:
@@ -977,6 +995,14 @@ def invoice_worker():
                 publish_receipt(full_invoice)
             except ServiceError as exc:
                 log(f"paid invoice {label} could not publish a receipt: {exc}")
+                continue
+            except Exception as exc:
+                log(f"paid invoice {label} could not be processed: {exc}")
+                continue
+
+        if pay_index > last_pay_index:
+            last_pay_index = pay_index
+            save_last_pay_index(last_pay_index)
 
 
 class Handler(BaseHTTPRequestHandler):
