@@ -109,7 +109,6 @@
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
-    authNip46AmberOpen: document.getElementById('auth-nip46-amber-open'),
     authNip46Copy: document.getElementById('auth-nip46-copy'),
     authNip46Reset: document.getElementById('auth-nip46-reset'),
     authNip46Diagnostics: document.getElementById('auth-nip46-diagnostics'),
@@ -1556,14 +1555,6 @@
     return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
 
-  function buildAmberIntentUri(nostrConnectUri) {
-    var value = String(nostrConnectUri || '');
-    if (value.indexOf('nostrconnect://') !== 0) {
-      return '#';
-    }
-    return 'intent://' + value.slice('nostrconnect://'.length) + '#Intent;scheme=nostrconnect;package=com.greenart7c3.nostrsigner;end';
-  }
-
   function saveNip46PairState() {
     if (!state.nip46.appSecretHex || !state.nip46.appPubkey) {
       return Promise.resolve();
@@ -1613,12 +1604,6 @@
     if (els.authNip46Open) {
       els.authNip46Open.href = uri;
       els.authNip46Open.setAttribute('data-nip46-uri', uri);
-    }
-    if (els.authNip46AmberOpen) {
-      var amberIntent = buildAmberIntentUri(uri);
-      els.authNip46AmberOpen.href = amberIntent;
-      els.authNip46AmberOpen.setAttribute('data-nip46-uri', amberIntent);
-      els.authNip46AmberOpen.hidden = false;
     }
     renderQrCode(uri);
   }
@@ -3271,17 +3256,6 @@
         }
         event.preventDefault();
         openNativeDeepLink(uri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
-      });
-    }
-
-    if (els.authNip46AmberOpen) {
-      els.authNip46AmberOpen.addEventListener('click', function (event) {
-        var uri = String(els.authNip46AmberOpen.getAttribute('data-nip46-uri') || els.authNip46AmberOpen.getAttribute('href') || '');
-        if (uri.indexOf('intent://') !== 0) {
-          uri = buildAmberIntentUri(currentNip46Uri());
-        }
-        event.preventDefault();
-        openNativeDeepLink(uri, 'Amber link is not ready yet. The QR setup is still loading.');
       });
     }
 

@@ -325,7 +325,6 @@
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
-          <a id="auth-nip46-amber-open" class="auth-inline-link" href="#" hidden>Open in Amber</a>
           <button id="auth-nip46-copy" class="auth-secondary-btn" type="button">Copy link</button>
           <button id="auth-nip46-reset" class="auth-secondary-btn" type="button">Make fresh link</button>
         </div>

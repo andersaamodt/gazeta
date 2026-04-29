@@ -701,11 +701,15 @@
       return Promise.reject(new Error('A Nostr signer is required. Use a browser signer or pair a phone signer from Sign In.'));
     }
     var target = options.target;
+    var recipientPubkey = String(lnurlInfo.nostrPubkey || '').trim().toLowerCase();
+    if (!isHex64(recipientPubkey)) {
+      return Promise.reject(new Error('Lightning provider returned an invalid Nostr recipient pubkey.'));
+    }
     var tags = [
       ['relays'].concat(options.zapConfig.relays),
       ['amount', String(amountMsats)],
       ['lnurl', lnurlInfo.encodedLnurl],
-      ['p', target.recipientPubkey]
+      ['p', recipientPubkey]
     ];
     if (target.eventId) {
       tags.push(['e', target.eventId]);
