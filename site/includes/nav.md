@@ -106,7 +106,7 @@
   <button class="btn-login btn-login-main" id="login-btn" type="button">Login</button>
   <button class="btn-login btn-login-caret" id="login-more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More login options">▼</button>
   <div class="nav-login-menu" id="nav-login-menu" role="menu" hidden>
-    <button id="login-menu-register" class="nav-menu-item" type="button" role="menuitem">Register...</button>
+    <button id="login-menu-register" class="nav-menu-item" type="button" role="menuitem">Use browser signer...</button>
     <button id="login-menu-phone" class="nav-menu-item" type="button" role="menuitem">Use phone signer (QR)</button>
     <button id="login-menu-manual" class="nav-menu-item" type="button" role="menuitem">Use signed challenge (manual)</button>
     <button id="login-menu-learn" class="nav-menu-item" type="button" role="menuitem">Learn about Nostr sign-in</button>
@@ -303,19 +303,19 @@
     <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
 
     <div class="auth-tabs" role="tablist" aria-label="Sign-in methods">
-      <button id="auth-tab-register" class="auth-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="auth-register-panel">Register</button>
+      <button id="auth-tab-register" class="auth-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="auth-register-panel">Browser signer</button>
       <button id="auth-tab-phone" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-phone-panel">Phone signer</button>
-      <button id="auth-tab-manual" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-manual-panel">Signed challenge</button>
+      <button id="auth-tab-manual" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-manual-panel">Manual challenge</button>
     </div>
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
-        <p class="auth-modal-help">Accounts are created on first successful signer approval and are permanently tied to that Nostr key.</p>
+        <p class="auth-modal-help">Use a browser extension signer. If this is the first login for this Nostr key, the site creates the account automatically.</p>
         <label for="auth-register-username"><strong>Username</strong></label>
         <input id="auth-register-username" class="auth-input auth-username-input" type="text" maxlength="24" autocomplete="username" placeholder="optional (letters, numbers, ., _, -)">
         <p class="auth-modal-help">Login is tied to your Nostr key, not your username. Usernames must be unique.</p>
         <div class="auth-actions">
-          <button id="auth-register-btn" class="auth-primary-btn" type="button">Register with browser signer</button>
+          <button id="auth-register-btn" class="auth-primary-btn" type="button">Continue with browser signer</button>
           <span class="auth-action-reco">Recommended: <a class="auth-inline-link" href="https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/" target="_blank" rel="noopener noreferrer">nos2x-fox</a></span>
         </div>
       </div>

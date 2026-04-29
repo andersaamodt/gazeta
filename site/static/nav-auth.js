@@ -806,7 +806,7 @@
       tab = 'register';
     }
     if (els.authModalTitle) {
-      els.authModalTitle.textContent = (tab === 'register') ? 'Register' : 'Sign in';
+      els.authModalTitle.textContent = 'Sign in';
     }
 
     if (els.authTabRegister) {
@@ -842,7 +842,7 @@
       setAuthMessage('Create a challenge, then paste the signed event JSON.', 'warn');
       return;
     }
-    setAuthMessage('Register uses your Nostr signer and creates your account on first successful sign-in.', 'warn');
+    setAuthMessage('Browser signer login creates your account automatically on first successful sign-in.', 'warn');
   }
 
   function showAuthModal(initialTab) {
