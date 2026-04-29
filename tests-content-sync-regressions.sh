@@ -592,6 +592,12 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'bodyContentWidth
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body.blog-post-resize-enabled' 'post resize behavior widens the blog canvas when active'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-item.blog-post-resizable' 'post resize behavior keeps cards centered with explicit width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-sizing: border-box;' 'post resize behavior measures and applies the same box width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Final mobile containment: desktop-width content must never expand the phone viewport.' 'mobile layout has final viewport containment guard'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-single-item .post-single-body table {' 'mobile post tables are constrained inside the post body'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow-x: auto;' 'mobile overflowing post content scrolls naturally inside its own box'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow-wrap: anywhere;' 'mobile post links and titles can wrap instead of widening the page'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'calc(100dvw - 0.75rem)' 'mobile modal widths use dynamic viewport units'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'calc(100dvh - 1rem)' 'mobile modals are height-capped to the dynamic viewport'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
 
 # 9) blog-get-config runtime output stays correct with direct site.conf parsing.

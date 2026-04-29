@@ -5784,6 +5784,46 @@ body.blog-post-resizing {
   padding: 0.85rem 0 0.72rem;
 }
 
+.post-single-item .post-single-body,
+.post-single-item .post-single-body * {
+  max-width: 100%;
+}
+
+.post-single-item .post-single-body {
+  overflow-wrap: break-word;
+}
+
+.post-single-item .post-single-body a {
+  overflow-wrap: anywhere;
+}
+
+.post-single-item .post-single-body table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+
+.post-single-item .post-single-body th,
+.post-single-item .post-single-body td {
+  overflow-wrap: normal;
+}
+
+.post-single-item .post-single-body pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.post-single-item .post-single-body img,
+.post-single-item .post-single-body video,
+.post-single-item .post-single-body iframe {
+  max-width: 100%;
+  height: auto;
+}
+
 .post-single-item .post-single-body > :first-child {
   margin-top: 0.35rem;
 }
@@ -9990,4 +10030,212 @@ nav.site-nav > .nav-right .nav-search button {
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.14),
     0 0 0 3px var(--focus-ring, rgba(91, 126, 216, 0.2));
+}
+
+/* Final mobile containment: desktop-width content must never expand the phone viewport. */
+@media (max-width: 720px), (pointer: coarse) {
+  body.blog-post-resize-enabled {
+    max-width: 100%;
+  }
+
+  .post-item.blog-post-resizable {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body {
+    padding: 0 0.62rem 1.25rem;
+  }
+
+  main,
+  #blog-page-root,
+  .post-list,
+  .post-item,
+  .post-single-item,
+  .post-single-item .post-head,
+  .post-single-item .post-single-body {
+    min-width: 0;
+  }
+
+  .post-single-item {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0.72rem;
+    padding: 0.92rem 0.82rem 0.88rem;
+    border-radius: 14px;
+  }
+
+  .post-single-item .post-head-main .post-title {
+    padding-right: 2.7rem;
+  }
+
+  .post-single-item .post-title {
+    font-size: clamp(1.82rem, 10.5vw, 2.9rem);
+    line-height: 1.06;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  .post-byline-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.5rem;
+  }
+
+  .post-author,
+  .post-meta,
+  .post-byline-top .post-date,
+  .post-byline-top .post-date-published {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .post-single-item .post-single-body {
+    padding: 0.62rem 0 0.52rem;
+    font-size: clamp(1rem, 4.8vw, 1.12rem);
+    line-height: 1.72;
+    text-wrap: auto;
+  }
+
+  .post-single-item .post-single-body,
+  .post-single-item .post-single-body * {
+    max-width: 100%;
+  }
+
+  .post-single-item .post-single-body {
+    overflow-wrap: break-word;
+  }
+
+  .post-single-item .post-single-body a {
+    overflow-wrap: anywhere;
+  }
+
+  .post-single-item .post-single-body table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    margin-inline: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .post-single-item .post-single-body th,
+  .post-single-item .post-single-body td {
+    overflow-wrap: normal;
+  }
+
+  .post-single-item .post-single-body pre {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .post-single-item .post-single-body img,
+  .post-single-item .post-single-body video,
+  .post-single-item .post-single-body iframe {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-modal-panel,
+  .auth-info-modal-panel {
+    width: min(100%, calc(100dvw - 0.75rem));
+    margin: 0.5rem auto 0;
+    max-height: calc(100dvh - 1rem);
+    padding: 0.88rem 0.78rem 1rem;
+    border-radius: 12px;
+  }
+
+  .auth-modal-scroll {
+    max-height: calc(100dvh - 1rem);
+    padding: 0.82rem 0.72rem 0.9rem;
+  }
+
+  .auth-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .auth-tab {
+    white-space: nowrap;
+  }
+
+  .post-page-modal-panel {
+    width: min(100%, calc(100dvw - 0.75rem));
+    max-height: calc(100dvh - 1rem);
+    margin: 0.5rem auto;
+    overflow: auto;
+    padding: 0.84rem;
+  }
+
+  .post-page-modal-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .zap-dialog-panel {
+    width: min(100%, calc(100dvw - 0.75rem));
+    max-height: calc(100dvh - 0.75rem);
+    margin: 0.38rem auto;
+    border-radius: 1rem;
+  }
+
+  .zap-dialog-scroll {
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .zap-amount-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.46rem;
+  }
+
+  .zap-amount-chip {
+    min-height: 3.4rem;
+    padding: 0.5rem 0.56rem;
+  }
+
+  .zap-dialog-head,
+  .zap-dialog-grid,
+  .zap-dialog-actions,
+  .zap-dialog-status,
+  .zap-dialog-invoice {
+    margin-left: 0.78rem;
+    margin-right: 0.78rem;
+  }
+
+  .zap-dialog-head {
+    padding-top: 1rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .zap-amount-chips {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .nostr-publish-modal-panel {
+    width: min(100%, calc(100dvw - 0.75rem));
+    max-width: min(100%, calc(100dvw - 0.75rem));
+    max-height: calc(100dvh - 0.75rem);
+    overflow: auto;
+  }
+
+  .nostr-publish-json {
+    max-height: min(34dvh, 16rem);
+  }
 }
