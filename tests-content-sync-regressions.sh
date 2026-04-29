@@ -298,6 +298,7 @@ assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pag
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer-pages.json' 'pre-build writes static footer page list asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer_pages:' 'pre-build includes footer pages in site bootstrap'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'cp -R "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"' 'pre-build copies prerendered page bootstraps into served build output'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_public_posts_catalog_write_artifacts' 'pre-build writes static public post catalog'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
@@ -840,22 +841,30 @@ assert_file_missing "$build_marker" 'navbar listing skips build queue when mount
 printf '%s\n' 'site_title=Example Site' > "$blog_site_conf"
 printf '%s\n' 'theme=seer' >> "$blog_site_conf"
 printf '%s\n' 'append_site_title_to_page_title=true' >> "$blog_site_conf"
-blog_nostr_pages_save_json "$(jq -cn '{pages:[{slug:"about", type:"nip23", show_in_nav:true, placeholder_title:"About"}]}')"
+blog_nostr_pages_save_json "$(jq -cn '{pages:[{slug:"about", type:"nip23", show_in_nav:true, show_in_footer:true, placeholder_title:"About"}]}')"
 assert_success "$ROOT_DIR/cgi/pre-build"
 site_bootstrap_file="$blog_site_root/site/static/site-bootstrap.js"
+build_bootstrap_file="$blog_site_root/build/static/site-bootstrap.js"
 assert_success test -f "$site_bootstrap_file"
+assert_success test -f "$build_bootstrap_file"
 assert_file_contains "$site_bootstrap_file" 'window.__wizardrySiteBootstrap = bootstrap;' 'pre-build bootstrap publishes global site bootstrap'
 assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap captures site title'
 assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
 assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
 assert_file_contains "$site_bootstrap_file" 'footer_pages' 'pre-build bootstrap captures footer pages key'
+assert_file_contains "$site_bootstrap_file" 'footer_pages: [{"slug":"about"' 'pre-build bootstrap captures footer pages'
+assert_file_contains "$build_bootstrap_file" 'footer_pages: [{"slug":"about"' 'pre-build copies site bootstrap to build output'
 navbar_json_file="$blog_site_root/site/static/navbar-pages.json"
 assert_success test -f "$navbar_json_file"
 assert_file_contains "$navbar_json_file" '"success":true' 'pre-build static navbar json is generated'
 assert_file_contains "$navbar_json_file" '"slug":"about"' 'pre-build static navbar json captures page list'
 footer_json_file="$blog_site_root/site/static/footer-pages.json"
+build_footer_json_file="$blog_site_root/build/static/footer-pages.json"
 assert_success test -f "$footer_json_file"
+assert_success test -f "$build_footer_json_file"
 assert_file_contains "$footer_json_file" '"success":true' 'pre-build static footer json is generated'
+assert_file_contains "$footer_json_file" '"slug":"about"' 'pre-build static footer json captures page list'
+assert_file_contains "$build_footer_json_file" '"slug":"about"' 'pre-build copies footer json to build output'
 public_posts_file="$blog_site_root/site/static/public-posts.json"
 assert_success test -f "$public_posts_file"
 assert_file_contains "$public_posts_file" '"success":true' 'pre-build public post catalog is generated'

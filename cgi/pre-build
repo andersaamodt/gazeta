@@ -91,4 +91,10 @@ chmod 644 "$build_site_bootstrap_path" 2>/dev/null || true
 
 if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
+  if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
+    rm -rf "$build_bootstrap_dir/nostr-page-bootstrap"
+    mkdir -p "$build_bootstrap_dir"
+    cp -R "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"
+    find "$build_bootstrap_dir/nostr-page-bootstrap" -type f -exec chmod 644 {} \; 2>/dev/null || true
+  fi
 fi
