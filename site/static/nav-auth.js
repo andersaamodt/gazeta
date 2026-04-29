@@ -53,7 +53,14 @@
       subscription: null,
       pending: {},
       pendingTimers: {},
-      seenEvents: {}
+      seenEvents: {},
+      diagnostics: {
+        eventsSeen: 0,
+        decryptErrors: 0,
+        ignoredSecrets: 0,
+        lastEventPubkey: '',
+        lastMessage: ''
+      }
     },
     prefetchedNostrPageSlugs: {},
     navOverflowRaf: 0,
@@ -101,6 +108,7 @@
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
+    authNip46Diagnostics: document.getElementById('auth-nip46-diagnostics'),
 
     authManualPanel: document.getElementById('auth-manual-panel'),
     authManualStart: document.getElementById('auth-manual-start'),
@@ -147,6 +155,14 @@
 
   function compact(text) {
     return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function shortPubkey(value) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+    return raw.slice(0, 8);
   }
 
   function normalizePlugins(raw) {
@@ -596,6 +612,19 @@
     if (text && kind) {
       target.classList.add('is-' + kind);
     }
+  }
+
+  function setNip46Diagnostics(message, kind) {
+    if (!els.authNip46Diagnostics) {
+      return;
+    }
+    var text = String(message || '');
+    els.authNip46Diagnostics.textContent = text;
+    els.authNip46Diagnostics.className = 'auth-nip46-diagnostics';
+    if (text && kind) {
+      els.authNip46Diagnostics.classList.add('is-' + kind);
+    }
+    state.nip46.diagnostics.lastMessage = text;
   }
 
   function rememberNavToast(message, tone, durationMs) {
@@ -1061,6 +1090,13 @@
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
       state.nip46.seenEvents = {};
+      state.nip46.diagnostics = {
+        eventsSeen: 0,
+        decryptErrors: 0,
+        ignoredSecrets: 0,
+        lastEventPubkey: '',
+        lastMessage: ''
+      };
       if (state.nip46.subscription && typeof state.nip46.subscription.close === 'function') {
         state.nip46.subscription.close();
       }
@@ -1495,11 +1531,17 @@
 
   function buildNostrConnectUri(appPubkey, pairSecret, relays) {
     var params = new URLSearchParams();
+    var metadata = {
+      name: 'Nostr Blog',
+      url: window.location.origin,
+      description: 'Sign in and sign zaps for this blog.'
+    };
     relays.forEach(function (relay) {
       params.append('relay', relay);
     });
     params.set('secret', pairSecret);
     params.set('name', 'Nostr Blog');
+    params.set('metadata', JSON.stringify(metadata));
     params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734');
     return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
@@ -1574,6 +1616,13 @@
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
       state.nip46.seenEvents = {};
+      state.nip46.diagnostics = {
+        eventsSeen: 0,
+        decryptErrors: 0,
+        ignoredSecrets: 0,
+        lastEventPubkey: '',
+        lastMessage: ''
+      };
 
       state.nip46.subscription = state.nip46.pool.subscribeMany(
         state.nip46.relays,
@@ -1581,9 +1630,16 @@
         {
           onevent: function (event) {
             handleNip46RelayEvent(event);
+          },
+          oneose: function () {
+            setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
+          },
+          onclose: function () {
+            setNip46Diagnostics('Relay listener closed. Reopen the phone signer panel to make a fresh link.', 'error');
           }
         }
       );
+      setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
 
       return idbSet(KEY_NIP46_PAIR, {
         version: 1,
@@ -1672,6 +1728,9 @@
       return;
     }
     state.nip46.seenEvents[event.id] = true;
+    state.nip46.diagnostics.eventsSeen += 1;
+    state.nip46.diagnostics.lastEventPubkey = String(event.pubkey || '');
+    setNip46Diagnostics('Saw signer response from ' + shortPubkey(event.pubkey) + '; decrypting.', 'info');
 
     decryptNip46Content(event)
       .then(function (plain) {
@@ -1680,11 +1739,14 @@
         if (msg && msg.method === 'connect') {
           var secret = extractConnectSecret(msg);
           if (secret && secret !== state.nip46.pairSecret) {
+            state.nip46.diagnostics.ignoredSecrets += 1;
+            setNip46Diagnostics('Saw an old signer response, but it belongs to a previous QR. Open the newest phone signer link.', 'warn');
             return;
           }
           state.nip46.signerPubkey = String(event.pubkey || '');
           updatePhoneContinueState();
           setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
+          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
           return;
         }
 
@@ -1692,6 +1754,7 @@
           state.nip46.signerPubkey = String(event.pubkey || '');
           updatePhoneContinueState();
           setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
+          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
           return;
         }
 
@@ -1701,10 +1764,13 @@
             return;
           }
           resolveNip46Pending(msg.id, msg.result, false);
+          return;
         }
+        setNip46Diagnostics('Saw a Nostr Connect event, but it was not the pairing response for this page.', 'warn');
       })
       .catch(function () {
-        // Ignore malformed or unrelated relay events.
+        state.nip46.diagnostics.decryptErrors += 1;
+        setNip46Diagnostics('Saw a signer response, but the page could not decrypt it. Open the newest link from this panel in Amber.', 'error');
       });
   }
 
@@ -1767,7 +1833,8 @@
         }
         if (Date.now() - started > timeout) {
           clearInterval(timer);
-          reject(new Error('Phone pairing timed out. Scan the QR and try again.'));
+          setNip46Diagnostics('Phone pairing timed out after ' + state.nip46.diagnostics.eventsSeen + ' response event(s) and ' + state.nip46.diagnostics.decryptErrors + ' decrypt error(s). Open the newest link in Amber and return here.', 'error');
+          reject(new Error('Phone pairing timed out. Open the newest phone signer link and try again.'));
         }
       }, 350);
     });

@@ -325,6 +325,7 @@
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <a id="auth-nip46-open" class="auth-inline-link" href="#" target="_blank" rel="noopener noreferrer">Open nostrconnect:// link</a>
         <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
+        <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
           <button id="auth-phone-connect-btn" class="auth-secondary-btn" type="button">Connect phone signer (QR)</button>
           <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled>Continue with phone signer</button>
@@ -371,7 +372,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260429-amber-pair1"></script>
+<script src="/static/nav-auth.js?v=20260429-amber-diag1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

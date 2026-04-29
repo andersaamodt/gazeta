@@ -5396,6 +5396,35 @@ nav.site-nav .btn-login {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.auth-nip46-diagnostics {
+  margin: 0.2rem 0 0;
+  border-radius: 8px;
+  background: rgba(30, 64, 175, 0.08);
+  padding: 0.42rem 0.54rem;
+  color: #1e3a8a;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.auth-nip46-diagnostics:empty {
+  display: none;
+}
+
+.auth-nip46-diagnostics.is-ok {
+  background: rgba(22, 101, 52, 0.1);
+  color: #14532d;
+}
+
+.auth-nip46-diagnostics.is-warn {
+  background: rgba(146, 64, 14, 0.12);
+  color: #713f12;
+}
+
+.auth-nip46-diagnostics.is-error {
+  background: rgba(153, 27, 27, 0.1);
+  color: #7f1d1d;
+}
+
 .auth-manual-grid {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -5571,6 +5600,10 @@ nav.site-nav .btn-login {
   }
 
   .auth-nip46-uri {
+    font-size: 0.75rem;
+  }
+
+  .auth-nip46-diagnostics {
     font-size: 0.75rem;
   }
 

@@ -7,6 +7,7 @@ support_site_name=nostr-blog
 support_relay_domain=''
 support_relay_url=''
 support_public_write=false
+support_write_kinds=''
 support_mirror_posts=true
 support_mirror_comments=true
 support_search=false
@@ -103,6 +104,7 @@ load_support_policy() {
   support_relay_domain=$(support_value relay_domain 2>/dev/null || printf '')
   support_relay_url=$(support_value relay_url 2>/dev/null || printf '')
   support_public_write=$(bool_value "$(support_value public_write 2>/dev/null || printf '')" false)
+  support_write_kinds=$(support_value write_kinds 2>/dev/null | tr -d '[:space:]' || printf '')
   support_mirror_posts=$(bool_value "$(support_value mirror_posts 2>/dev/null || printf '')" true)
   support_mirror_comments=$(bool_value "$(support_value mirror_comments 2>/dev/null || printf '')" true)
   support_search=$(bool_value "$(support_value search 2>/dev/null || printf '')" false)
@@ -112,6 +114,22 @@ load_support_policy() {
     support_relay_url="wss://$support_relay_domain"
   fi
   support_relay_url=$(printf '%s' "$support_relay_url" | sed -e 's#/$##')
+}
+
+publish_enabled_value() {
+  if [ "$support_public_write" = true ] || [ -n "$support_write_kinds" ]; then
+    printf '1\n'
+    return 0
+  fi
+  printf '0\n'
+}
+
+allow_kinds_value() {
+  if [ "$support_public_write" = true ]; then
+    printf '\n'
+    return 0
+  fi
+  printf '%s\n' "$support_write_kinds"
 }
 
 relay_domain() {
@@ -464,7 +482,10 @@ ENABLE_QUERY=1
 ENABLE_COUNT=1
 ENABLE_TAG_QUERIES=1
 ENABLE_SEARCH=$([ "$support_search" = true ] && printf 1 || printf 0)
-ENABLE_PUBLISH=$([ "$support_public_write" = true ] && printf 1 || printf 0)
+ENABLE_PUBLISH=$(publish_enabled_value)
+ALLOW_KINDS=$(allow_kinds_value)
+RATE_LIMIT_WINDOW_SECS=60
+MAX_PUBLISHES_PER_WINDOW=120
 ENABLE_MIRRORING=1
 FILTER_PRIVATE_MESSAGES=1
 MIRROR_MODE=site
