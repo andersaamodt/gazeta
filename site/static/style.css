@@ -4832,7 +4832,7 @@ body.nav-cart-open {
   border-radius: 10px;
   box-shadow: var(--menu-shadow);
   padding: 0.28rem;
-  z-index: 40;
+  z-index: 1300;
 }
 
 .nav-menu-panel .nav-menu-item,
@@ -5056,7 +5056,7 @@ nav.site-nav .btn-login {
   border-radius: 10px;
   box-shadow: var(--menu-shadow);
   padding: 0.28rem;
-  z-index: 40;
+  z-index: 1300;
 }
 
 .nav-top-toast-host {
@@ -9833,7 +9833,8 @@ nav.site-nav {
   align-items: center !important;
   justify-content: flex-start !important;
   gap: 0.45rem !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+  z-index: 1200;
 }
 
 nav.site-nav > .nav-overflow-menu {
@@ -9882,6 +9883,20 @@ nav.site-nav > .nav-right {
   align-items: center !important;
   justify-content: flex-end !important;
   gap: 0.4rem !important;
+  position: relative;
+  z-index: 1;
+}
+
+nav.site-nav > .nav-overflow-menu,
+nav.site-nav > .nav-right .nav-login-split,
+nav.site-nav > .nav-right .nav-user-menu {
+  position: relative;
+  z-index: 2;
+}
+
+nav.site-nav .nav-menu-panel,
+nav.site-nav .nav-login-menu {
+  z-index: 1300;
 }
 
 nav.site-nav > .nav-right .nav-search {

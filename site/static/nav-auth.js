@@ -1411,6 +1411,35 @@
     return !!(window.nostr && typeof window.nostr.signEvent === 'function');
   }
 
+  function isMobileLikeRuntime() {
+    var nav = typeof navigator === 'object' ? navigator : null;
+    var ua = String((nav && nav.userAgent) || '');
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) {
+      return true;
+    }
+    var hasTouch = !!(nav && nav.maxTouchPoints && nav.maxTouchPoints > 0);
+    var coarsePointer = false;
+    var narrowViewport = false;
+    if (typeof window.matchMedia === 'function') {
+      coarsePointer = window.matchMedia('(pointer: coarse), (hover: none)').matches;
+      narrowViewport = window.matchMedia('(max-width: 780px)').matches;
+    }
+    return hasTouch && (coarsePointer || narrowViewport);
+  }
+
+  function preferredUnsignedLoginTab() {
+    return isMobileLikeRuntime() ? 'phone' : 'register';
+  }
+
+  function startPrimaryLogin() {
+    closeLoginMenu();
+    if (!hasDesktopSigner()) {
+      showAuthModal(preferredUnsignedLoginTab());
+      return Promise.resolve(false);
+    }
+    return startDesktopSignerLogin(false, '');
+  }
+
   function pageRequiresAuthorization() {
     var path = String(window.location.pathname || '').replace(/\/+$/, '') || '/';
     if (path === '/pages/admin.html' || path === '/pages/admin' || path === '/admin.html' || path === '/admin') {
@@ -2765,10 +2794,9 @@
   function bindUiEvents() {
     if (els.loginBtn) {
       els.loginBtn.addEventListener('click', function () {
-        closeLoginMenu();
-        startDesktopSignerLogin(false, '').catch(function (err) {
+        startPrimaryLogin().catch(function (err) {
           showNavToast(err.message || 'Desktop signer login failed.', 'info', 4200);
-          openLoginMenu();
+          showAuthModal(preferredUnsignedLoginTab());
         });
       });
     }
@@ -3059,9 +3087,9 @@
     window.blogAuth = window.blogAuth || {};
     window.blogAuth.openLoginModal = showAuthModal;
     window.blogAuth.startLogin = function () {
-      return startDesktopSignerLogin(false, '').catch(function (err) {
+      return startPrimaryLogin().catch(function (err) {
         showNavToast(err && err.message ? err.message : 'Desktop signer login failed.', 'info', 4200);
-        openLoginMenu();
+        showAuthModal(preferredUnsignedLoginTab());
         throw err;
       });
     };
