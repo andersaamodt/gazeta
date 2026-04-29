@@ -816,12 +816,15 @@
     if (!window.blogZapUi || typeof window.blogZapUi.render !== 'function') {
       return;
     }
+    var current = payload && payload.current ? payload.current : null;
+    var nostr = current && current.nostr ? current.nostr : null;
+    if (!nostr) {
+      return;
+    }
     var host = ensureZapHost(layout);
     if (!host) {
       return;
     }
-    var current = payload && payload.current ? payload.current : null;
-    var nostr = current && current.nostr ? current.nostr : null;
     window.blogZapUi.render(host, {
       zapConfig: payload ? payload.zap_config : null,
       display: 'compact',

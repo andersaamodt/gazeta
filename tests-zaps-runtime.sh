@@ -122,6 +122,7 @@ assert_contains "$(blog_zap_effective_lud16)" 'demo@wallet.example' 'configured 
 assert_contains "$(cat "$ROOT_DIR/site/includes/head.html")" '/static/zap-ui.js' 'head includes shared zap UI bundle'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'blogZapUi.render' 'post pages mount shared zap UI'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "display: 'compact'" 'post pages render compact zap button'
+assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'if (!nostr) {' 'post pages gate zap UI behind published Nostr metadata'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'post-nostr-proof' 'post pages do not render Nostr Proof panel'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "ensureCommentShell(layout)" 'post comments mount after the enhanced post card body'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'copy_nostr_address' 'single post menu exposes public Nostr address copy action'
