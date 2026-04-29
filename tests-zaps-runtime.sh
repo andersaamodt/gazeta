@@ -143,6 +143,8 @@ assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'21000'" 'zap UI inc
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'zapAmountName' 'zap UI labels zap tiers by giving level'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'Creating a copyable Lightning invoice instead' 'zap UI creates a copyable invoice when no Nostr signer is present'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'return requestInvoice(modalState.options, null' 'zap UI does not block invoice creation on missing signer'
+assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'mode": "nostr_zap" if zap_request_json else "lightning_invoice"' 'zap endpoint records unsigned invoice fallback separately from signed zaps'
+assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'create_invoice(amount_msat, None, comment_value)' 'zap endpoint creates invoices without requiring a Nostr zap request'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-secondary-grid' 'zap modal groups custom amount and comment as secondary controls'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-kicker' 'zap modal kicker styling exists'
 assert_not_contains "$(sed -n '/\\.zap-dialog-kicker {/,/}/p' "$ROOT_DIR/site/static/style.css")" 'text-transform: uppercase' 'zap modal kicker does not force all caps'

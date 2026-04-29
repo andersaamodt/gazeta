@@ -823,28 +823,34 @@ def save_json(path, payload):
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def create_invoice(amount_msat, zap_request_json):
+def create_invoice(amount_msat, zap_request_json=None, comment=""):
     label = f"zap-{int(time.time())}-{os.urandom(4).hex()}"
+    description = zap_request_json if zap_request_json else zap_metadata()
     result = lightning_cli_keywords(
         "invoice",
         timeout=20,
         amount_msat=f"{amount_msat}msat",
         label=label,
-        description=zap_request_json,
+        description=description,
         deschashonly=True,
     )
     bolt11 = str(result.get("bolt11") or "").strip()
     if not bolt11:
         raise ServiceError("lightning-cli did not return a bolt11 invoice")
+    request_payload = {
+        "label": label,
+        "amount_msat": amount_msat,
+        "bolt11": bolt11,
+        "created_at": int(time.time()),
+        "mode": "nostr_zap" if zap_request_json else "lightning_invoice",
+    }
+    if zap_request_json:
+        request_payload["zap_request"] = json.loads(zap_request_json)
+    if comment:
+        request_payload["comment"] = str(comment)
     save_json(
         REQUESTS_DIR / f"{label}.json",
-        {
-            "label": label,
-            "amount_msat": amount_msat,
-            "zap_request": json.loads(zap_request_json),
-            "bolt11": bolt11,
-            "created_at": int(time.time()),
-        },
+        request_payload,
     )
     return {"label": label, "bolt11": bolt11}
 
@@ -1029,7 +1035,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(error_payload("amount is outside the supported range"), status=400)
                 return
             if not nostr_value:
-                self.send_json(error_payload("nostr zap request is required"), status=400)
+                comment_value = (query.get("comment") or [""])[0].strip()
+                if len(comment_value) > COMMENT_ALLOWED:
+                    self.send_json(error_payload("comment is too long"), status=400)
+                    return
+                try:
+                    invoice = create_invoice(amount_msat, None, comment_value)
+                    self.send_json({"pr": invoice["bolt11"], "routes": []})
+                except ServiceError as exc:
+                    self.send_json(error_payload(str(exc)), status=400)
                 return
             if lnurl_value != expected_lnurl():
                 self.send_json(error_payload("lnurl does not match this Lightning Address"), status=400)
