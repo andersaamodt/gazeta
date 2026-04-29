@@ -623,6 +623,10 @@ disable_staging_relay_hooks_when_needed
 write_service_file
 run_root systemctl daemon-reload
 run_root systemctl enable --now "$(service_name)"
+# The relay reads policy from relay.env only at process start. Restart after
+# rewriting env/service files so repeatable provisioning actually applies
+# changes such as constrained NIP-46 write access.
+run_root systemctl restart "$(service_name)"
 run_root nginx -t
 run_root systemctl reload nginx 2>/dev/null || run_root service nginx reload 2>/dev/null || true
 

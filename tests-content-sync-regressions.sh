@@ -856,6 +856,7 @@ assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'do
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'PUBLIC_RELAY_URL=$(relay_url)' 'Stonr provisioner exports the public relay URL'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'ALLOW_KINDS=$(allow_kinds_value)' 'Stonr provisioner can expose limited relay writes without becoming a general public relay'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'MAX_PUBLISHES_PER_WINDOW=120' 'Stonr provisioner rate-limits limited relay writes'
+assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'systemctl restart "$(service_name)"' 'Stonr provisioner restarts the relay after env policy changes'
 assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-stonr-relay.sh" 'disable_staging_relay_hooks_when_needed' 'Stonr provisioner removes staging relay exposure when canonicalized'
 assert_file_contains "$ROOT_DIR/.headquarters/software/bitcoin-node.conf" 'submenu_label=Node Stack' 'site software catalog groups Bitcoin under Payments > Node Stack'
 assert_file_contains "$ROOT_DIR/.headquarters/software/lightning-node.conf" 'submenu_label=Node Stack' 'site software catalog groups Lightning under Payments > Node Stack'
