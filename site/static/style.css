@@ -8384,7 +8384,7 @@ textarea:focus {
 }
 
 .zap-inline-host.is-compact .zap-compact-btn .zap-icon {
-  transform: translate(0.5px, 0);
+  transform: translate(-0.5px, 0);
 }
 
 .zap-inline-host.is-compact .zap-compact-btn:hover,

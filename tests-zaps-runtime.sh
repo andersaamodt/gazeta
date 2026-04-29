@@ -140,7 +140,7 @@ assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "satsWithUsdLabel" 'z
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'function zapIconHtml()' 'zap UI renders a standard lightning-bolt icon'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'aria-label="Zap this post"' 'compact zap icon keeps an accessible label'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'width: calc(2rem - 1px);' 'compact zap button is optically sized for the post header'
-assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'transform: translate(0.5px, 0);' 'compact zap icon is optically centered in the round button'
+assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'transform: translate(-0.5px, 0);' 'compact zap icon is optically centered in the round button'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'1000'" 'zap UI includes 1000 sats as the normal default/preset amount'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'21000'" 'zap UI includes a larger 21000 sat patron preset'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'zapAmountName' 'zap UI labels zap tiers by giving level'
