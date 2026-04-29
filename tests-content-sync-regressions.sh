@@ -296,6 +296,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sy
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer-pages.json' 'pre-build writes static footer page list asset'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer_pages:' 'pre-build includes footer pages in site bootstrap'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_public_posts_catalog_write_artifacts' 'pre-build writes static public post catalog'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
@@ -485,6 +487,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'http-header "Expires" "0"' 'cg
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_contact_latest_event_json() {' 'contact latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_nip23_latest_event_json() {' 'nip23 latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_navbar_pages_json() {' 'shared navbar json helper exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_footer_pages_json() {' 'shared footer json helper exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'show_in_footer' 'Nostr page config preserves footer visibility'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'blog_nostr_public_ranking_latest_event_json() {' 'public ranking latest selector function exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_build_json() {' 'shared public post catalog builder exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_public_posts_catalog_write_artifacts() {' 'shared public post catalog writer exists'
@@ -575,6 +579,12 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-width: max-conten
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible !important;' 'navbar shell keeps absolute login and account menus usable above content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'z-index: 1200;' 'navbar shell stays stacked above page content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-login-menu' 'login menu gets explicit navbar stacking protection'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
+assert_file_contains "$SITE_SOURCE_ROOT/static/footer-pages.js" 'cached_footer_pages_v1' 'footer page list uses cached bootstrap state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/footer-pages.js" "fetch('/static/footer-pages.json'" 'footer page list refreshes from static JSON'
+assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'Show in Footer' 'Pages admin exposes footer visibility column'
+assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'data-nostr-page-action="toggle-footer"' 'Pages admin can toggle footer visibility'
+assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'dispatchFooterRefresh' 'Pages admin refreshes footer preview after page changes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.zap-dialog-close {' 'zap modal close button has dedicated styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'place-items: center;' 'zap modal close glyph is centered in the circular button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.zap-dialog-field input[data-zap-custom-sats]' 'Zap custom sats input has dedicated compact sizing'
@@ -838,10 +848,14 @@ assert_file_contains "$site_bootstrap_file" 'window.__wizardrySiteBootstrap = bo
 assert_file_contains "$site_bootstrap_file" 'Example Site' 'pre-build bootstrap captures site title'
 assert_file_contains "$site_bootstrap_file" 'wizardry_blog_theme_v1' 'pre-build bootstrap seeds theme cache'
 assert_file_contains "$site_bootstrap_file" '"slug":"about"' 'pre-build bootstrap captures navbar pages'
+assert_file_contains "$site_bootstrap_file" 'footer_pages' 'pre-build bootstrap captures footer pages key'
 navbar_json_file="$blog_site_root/site/static/navbar-pages.json"
 assert_success test -f "$navbar_json_file"
 assert_file_contains "$navbar_json_file" '"success":true' 'pre-build static navbar json is generated'
 assert_file_contains "$navbar_json_file" '"slug":"about"' 'pre-build static navbar json captures page list'
+footer_json_file="$blog_site_root/site/static/footer-pages.json"
+assert_success test -f "$footer_json_file"
+assert_file_contains "$footer_json_file" '"success":true' 'pre-build static footer json is generated'
 public_posts_file="$blog_site_root/site/static/public-posts.json"
 assert_success test -f "$public_posts_file"
 assert_file_contains "$public_posts_file" '"success":true' 'pre-build public post catalog is generated'

@@ -4765,6 +4765,41 @@
     return rows;
   }
 
+  function footerRowsFromNostrPages(pages) {
+    const rows = [];
+    (Array.isArray(pages) ? pages : []).forEach(function (page) {
+      if (!page || page.show_in_footer !== true) {
+        return;
+      }
+      const slug = normalizeNostrPageSlug(String(page.slug || ''));
+      if (!slug) {
+        return;
+      }
+      const title = String(page.placeholder_title || page.title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
+      rows.push({
+        slug: slug,
+        title: title,
+        path: pathFromNostrPageSlug(slug, page.type)
+      });
+    });
+    return rows;
+  }
+
+  function dispatchFooterRefresh(pages) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('wizardry-footer-refresh-request', {
+        detail: {
+          pages: footerRowsFromNostrPages(pages)
+        }
+      }));
+    } catch (_err) {
+      // Ignore footer refresh event failures.
+    }
+  }
+
   function dispatchNavbarRefresh(pages, skipFetch) {
     if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
       return;
@@ -4896,6 +4931,7 @@
     html += '<div class="nostr-pages-header-type"><span class="nostr-pages-header-type-label">Type</span></div>';
     html += '<div class="nostr-pages-header-settings"><span class="nostr-pages-header-type-label">Settings</span></div>';
     html += '<div class="nostr-pages-header-nav-col"><span class="nostr-pages-header-nav">Show in Navbar</span></div>';
+    html += '<div class="nostr-pages-header-footer-col"><span class="nostr-pages-header-nav">Show in Footer</span></div>';
     html += '<div class="nostr-pages-header-publish-col"><span class="nostr-pages-header-nav">Publish</span></div>';
     html += '<div class="nostr-pages-header-actions"><span class="nostr-pages-header-spacer"></span></div>';
     html += '</div>';
@@ -4908,6 +4944,7 @@
       const navTitle = String(page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
       const isEditingNavTitle = state.nostrPagesEditingNavTitleIndex === idx;
       const showInNav = !!page.show_in_nav;
+      const showInFooter = !!page.show_in_footer;
       const draftDiffers = !!page.draft_differs;
       const typeLabel = nostrPageTypeLabel(pageType);
       const typePillClass = nostrPageTypePillClass(pageType);
@@ -4946,6 +4983,9 @@
       html += '</div>';
       html += '<div class="nostr-page-nav-col">';
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
+      html += '</div>';
+      html += '<div class="nostr-page-footer-col">';
+      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in footer"><input type="checkbox" data-nostr-page-action="toggle-footer" data-index="' + String(idx) + '"' + (showInFooter ? ' checked' : '') + ' aria-label="Show in footer"></label>';
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
       if (draftDiffers) {
@@ -5101,6 +5141,7 @@
     state.nostrPages = next;
     renderNostrPagesList(state.nostrPages, false);
     dispatchNavbarRefresh(state.nostrPages, true);
+    dispatchFooterRefresh(state.nostrPages);
     try {
       await saveNostrPagesConfig();
       if (nextNavTitle) {
@@ -5112,6 +5153,7 @@
       state.nostrPages = before;
       renderNostrPagesList(state.nostrPages, false);
       dispatchNavbarRefresh(state.nostrPages, true);
+      dispatchFooterRefresh(state.nostrPages);
       setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
     }
   }
@@ -5179,6 +5221,7 @@
     renderNostrPagesList(state.nostrPages, false);
     renderModerationPageFilterOptions();
     dispatchNavbarRefresh(state.nostrPages, true);
+    dispatchFooterRefresh(state.nostrPages);
     try {
       await saveNostrPagesConfig();
       setOutput(els.outputNostrPages, 'Updated page path to ' + pathFromNostrPageSlug(nextSlug, page.type) + '.', 'ok');
@@ -5187,6 +5230,7 @@
       renderNostrPagesList(state.nostrPages, false);
       renderModerationPageFilterOptions();
       dispatchNavbarRefresh(state.nostrPages, true);
+      dispatchFooterRefresh(state.nostrPages);
       setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
     }
   }
@@ -5203,6 +5247,7 @@
     state.nostrPages = Array.isArray(data.pages) ? data.pages.slice() : [];
     renderNostrPagesList(state.nostrPages, false);
     renderModerationPageFilterOptions();
+    dispatchFooterRefresh(state.nostrPages);
   }
 
   async function saveNostrPagesConfig() {
@@ -5240,6 +5285,7 @@
       renderNostrPagesList(state.nostrPages, false);
       renderModerationPageFilterOptions();
       dispatchNavbarRefresh(state.nostrPages, true);
+      dispatchFooterRefresh(state.nostrPages);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
     } finally {
       state.nostrPagesSaveBusy = false;
@@ -5281,6 +5327,7 @@
       type: normalizedType,
       kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'public-ranking' ? 30040 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004))),
       show_in_nav: true,
+      show_in_footer: false,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
       path: pathFromNostrPageSlug(slug, normalizedType)
     });
@@ -6905,7 +6952,7 @@
           });
           return;
         }
-        if (action !== 'toggle-nav' || !(target instanceof HTMLInputElement)) {
+        if ((action !== 'toggle-nav' && action !== 'toggle-footer') || !(target instanceof HTMLInputElement)) {
           return;
         }
         const idx = Number(target.getAttribute('data-index'));
@@ -6914,13 +6961,19 @@
         }
         const before = state.nostrPages.slice();
         const next = state.nostrPages.slice();
-        next[idx] = Object.assign({}, next[idx], { show_in_nav: !!target.checked });
+        if (action === 'toggle-footer') {
+          next[idx] = Object.assign({}, next[idx], { show_in_footer: !!target.checked });
+        } else {
+          next[idx] = Object.assign({}, next[idx], { show_in_nav: !!target.checked });
+        }
         state.nostrPages = next;
         dispatchNavbarRefresh(state.nostrPages, true);
+        dispatchFooterRefresh(state.nostrPages);
         saveNostrPagesConfig().catch(function (err) {
           state.nostrPages = before;
           renderNostrPagesList(state.nostrPages, false);
           dispatchNavbarRefresh(state.nostrPages, true);
+          dispatchFooterRefresh(state.nostrPages);
           setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
         });
       });
@@ -7170,6 +7223,7 @@
         state.nostrPagesDragLastTarget = targetKey;
         renderNostrPagesList(state.nostrPages, true);
         dispatchNavbarRefresh(state.nostrPages, true);
+        dispatchFooterRefresh(state.nostrPages);
       });
 
       els.nostrPagesList.addEventListener('drop', function (event) {
@@ -7202,6 +7256,7 @@
               state.nostrPages = state.nostrPagesDragSnapshot.slice();
               renderNostrPagesList(state.nostrPages, true);
               dispatchNavbarRefresh(state.nostrPages, true);
+              dispatchFooterRefresh(state.nostrPages);
             }
             setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
           });
@@ -7209,6 +7264,7 @@
           state.nostrPages = state.nostrPagesDragSnapshot.slice();
           renderNostrPagesList(state.nostrPages, true);
           dispatchNavbarRefresh(state.nostrPages, true);
+          dispatchFooterRefresh(state.nostrPages);
         }
         state.nostrPagesDragActive = false;
         state.nostrPagesDragSlug = '';

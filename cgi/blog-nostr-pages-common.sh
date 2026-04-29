@@ -144,6 +144,13 @@ blog_nostr_pages_normalize_json() {
               (if .show_nav == false then false else true end)
             else true end
           ),
+          show_in_footer: (
+            if has("show_in_footer") then
+              (if .show_in_footer == true then true else false end)
+            elif has("show_footer") then
+              (if .show_footer == true then true else false end)
+            else false end
+          ),
           default_tag: ((.default_tag // "") | tostring | gsub("^\\s+|\\s+$";"")),
           placeholder_title: ((.placeholder_title // .title // "") | tostring),
           path: ((.path // "") | tostring)
@@ -167,12 +174,13 @@ blog_nostr_pages_normalize_json() {
                  elif .type == "public-ranking" then 30040
                  elif (.type == "nip23" or .type == "blog") then 30023
                  else 30004
-                 end
-               )
-               | .show_in_nav = (if .show_in_nav == false then false else true end)
-               | .default_tag = (if .type == "blog" then (.default_tag // "") else "" end)
-               | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
-               | .path = norm_path(.slug; .type; .path)
+               end
+             )
+             | .show_in_nav = (if .show_in_nav == false then false else true end)
+             | .show_in_footer = (if .show_in_footer == true then true else false end)
+             | .default_tag = (if .type == "blog" then (.default_tag // "") else "" end)
+             | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
+             | .path = norm_path(.slug; .type; .path)
              ))
            end)
       }
@@ -327,6 +335,57 @@ blog_nostr_navbar_pages_json() {
     nav_json='{"success":true,"pages":[]}'
   fi
   printf '%s\n' "$nav_json"
+}
+
+blog_nostr_footer_pages_json() {
+  cfg_json=${1-}
+  if [ -z "$cfg_json" ]; then
+    cfg_json=$(blog_nostr_pages_load_json_fast)
+  fi
+
+  footer_json=$(printf '%s\n' "$cfg_json" | jq -c '
+    def title_from_slug($slug):
+      (($slug // "") | tostring | gsub("-";" ")) as $text
+      | if ($text | length) == 0 then "Untitled"
+        else (($text[0:1] | ascii_upcase) + ($text[1:]))
+        end;
+    def norm_slug($value):
+      (($value // "") | tostring | ascii_downcase
+        | gsub("[^a-z0-9-]"; "-")
+        | gsub("-+"; "-")
+        | gsub("(^-+|-+$)"; ""));
+    def norm_path($slug; $value):
+      (($value // "") | tostring) as $path
+      | if ($path | length) > 0 then $path
+        elif $slug == "index" then "/"
+        else ("/" + $slug)
+        end;
+
+    {
+      success: true,
+      pages: [
+        .pages[]?
+        | .slug = norm_slug(.slug // "")
+        | select((.slug | length) > 0)
+        | select((if has("show_in_footer") then .show_in_footer else false end) == true)
+        | {
+            slug: .slug,
+            title: (
+              ((.placeholder_title // .title // "") | tostring | gsub("\r"; "")) as $title
+              | if ($title | length) > 0 then $title
+                elif .slug == "index" then "Home"
+                else title_from_slug(.slug)
+                end
+            ),
+            path: norm_path(.slug; .path)
+          }
+      ]
+    }
+  ' 2>/dev/null || printf '')
+  if [ -z "$footer_json" ]; then
+    footer_json='{"success":true,"pages":[]}'
+  fi
+  printf '%s\n' "$footer_json"
 }
 
 blog_nostr_page_entry_json() {

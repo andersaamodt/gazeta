@@ -25,7 +25,9 @@ theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf '')
 append_site_title_to_page_title=$(config-get "$blog_site_conf" append_site_title_to_page_title 2>/dev/null || printf 'false')
 plugins_json=$(blog_plugins_json)
 navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
+footer_json=$(blog_nostr_footer_pages_json "$pages_json")
 navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
+footer_pages_json=$(printf '%s\n' "$footer_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
 
 [ -n "$site_title" ] || site_title='Site'
 [ -n "$theme" ] || theme='archmage'
@@ -37,18 +39,26 @@ esac
 site_bootstrap_dir="$blog_site_root/site/static"
 build_bootstrap_dir="$blog_site_root/build/static"
 navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
+footer_json_path="$site_bootstrap_dir/footer-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
 build_navbar_json_path="$build_bootstrap_dir/navbar-pages.json"
+build_footer_json_path="$build_bootstrap_dir/footer-pages.json"
 build_site_bootstrap_path="$build_bootstrap_dir/site-bootstrap.js"
 mkdir -p "$site_bootstrap_dir"
 mkdir -p "$build_bootstrap_dir"
 navbar_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages-json.XXXXXX")
+footer_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-footer-pages-json.XXXXXX")
 site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")
 printf '%s\n' "$navbar_json" > "$navbar_json_tmp"
 mv "$navbar_json_tmp" "$navbar_json_path"
 chmod 644 "$navbar_json_path" 2>/dev/null || true
 cp "$navbar_json_path" "$build_navbar_json_path"
 chmod 644 "$build_navbar_json_path" 2>/dev/null || true
+printf '%s\n' "$footer_json" > "$footer_json_tmp"
+mv "$footer_json_tmp" "$footer_json_path"
+chmod 644 "$footer_json_path" 2>/dev/null || true
+cp "$footer_json_path" "$build_footer_json_path"
+chmod 644 "$build_footer_json_path" 2>/dev/null || true
 cat > "$site_bootstrap_tmp" <<EOF
 (function () {
   var bootstrap = {
@@ -58,7 +68,8 @@ cat > "$site_bootstrap_tmp" <<EOF
       theme: "$(blog_json_escape "$theme")",
       plugins: $plugins_json
     },
-    navbar_pages: $navbar_pages_json
+    navbar_pages: $navbar_pages_json,
+    footer_pages: $footer_pages_json
   };
   window.__wizardrySiteBootstrap = bootstrap;
   try {
@@ -67,6 +78,7 @@ cat > "$site_bootstrap_tmp" <<EOF
     localStorage.setItem('wizardry_blog_theme_v1', bootstrap.config.theme || 'archmage');
     localStorage.setItem('wizardry_plugins_v1', JSON.stringify(bootstrap.config.plugins || {}));
     localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(bootstrap.navbar_pages || []));
+    localStorage.setItem('cached_footer_pages_v1', JSON.stringify(bootstrap.footer_pages || []));
   } catch (_err) {
     // Ignore storage failures.
   }

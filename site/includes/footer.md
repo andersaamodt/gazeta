@@ -1,4 +1,5 @@
 <footer class="site-footer">
+  <nav id="footer-pages" class="footer-pages" aria-label="Footer pages" hidden></nav>
   <div class="footer-feeds" aria-label="Syndication feeds">
     <a href="/rss.xml" class="footer-feed-link" aria-label="RSS feed" title="RSS feed">
       <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -19,3 +20,4 @@
     </a>
   </div>
 </footer>
+<script defer src="/static/footer-pages.js?v=20260429-footer-pages1"></script>

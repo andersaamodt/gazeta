@@ -63,6 +63,7 @@ while IFS= read -r row || [ -n "$row" ]; do
   kind=$(printf '%s\n' "$row" | jq -r '.kind // 30004' 2>/dev/null || printf '30004')
   path=$(printf '%s\n' "$row" | jq -r '.path // (if .slug=="index" then "/" else ("/" + .slug) end)' 2>/dev/null || { [ "$slug" = "index" ] && printf "/" || printf "/%s" "$slug"; })
   show_in_nav=$(printf '%s\n' "$row" | jq -r 'if (if has("show_in_nav") then .show_in_nav else true end) then "true" else "false" end' 2>/dev/null || printf 'true')
+  show_in_footer=$(printf '%s\n' "$row" | jq -r 'if (if has("show_in_footer") then .show_in_footer else false end) then "true" else "false" end' 2>/dev/null || printf 'false')
   default_tag=$(printf '%s\n' "$row" | jq -r '.default_tag // ""' 2>/dev/null || printf '')
   placeholder_title=$(printf '%s\n' "$row" | jq -r '.placeholder_title // ""' 2>/dev/null || printf '')
   draft_title=''
@@ -181,6 +182,7 @@ while IFS= read -r row || [ -n "$row" ]; do
     --arg kind "$kind" \
     --arg connected_posts "$connected_posts" \
     --arg show_in_nav "$show_in_nav" \
+    --arg show_in_footer "$show_in_footer" \
     --arg canonical_exists "$canonical_exists" \
     --arg draft_differs "$draft_differs" \
     '{
@@ -193,11 +195,12 @@ while IFS= read -r row || [ -n "$row" ]; do
       default_tag: $default_tag,
       connected_posts: ($connected_posts | tonumber? // 0),
       show_in_nav: ($show_in_nav == "true"),
+      show_in_footer: ($show_in_footer == "true"),
       canonical_exists: ($canonical_exists == "true"),
       draft_differs: ($draft_differs == "true")
     }' 2>/dev/null || printf '')
   if [ -z "$row_json" ]; then
-    row_json=$(printf '{"slug":"%s","type":"%s","kind":30004,"path":"%s","title":"%s","placeholder_title":"%s","default_tag":"%s","connected_posts":0,"show_in_nav":true,"canonical_exists":false,"draft_differs":false}' \
+    row_json=$(printf '{"slug":"%s","type":"%s","kind":30004,"path":"%s","title":"%s","placeholder_title":"%s","default_tag":"%s","connected_posts":0,"show_in_nav":true,"show_in_footer":false,"canonical_exists":false,"draft_differs":false}' \
       "$(blog_json_escape "$slug")" \
       "$(blog_json_escape "$page_type")" \
       "$(blog_json_escape "$path")" \
