@@ -271,6 +271,13 @@
     });
   }
 
+  function promptPhoneSignerForZap() {
+    if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+      window.blogAuth.openLoginModal('phone');
+    }
+    throw new Error('Connect Amber with the phone signer link, then return here and create the zap invoice again.');
+  }
+
   function parseJson(raw, fallback) {
     try {
       return JSON.parse(String(raw || ''));
@@ -803,6 +810,9 @@
       }
       return signerIsAvailable(api).then(function (available) {
         if (!available) {
+          if (api.__wizardryShared === true) {
+            return promptPhoneSignerForZap();
+          }
           return requestUnsignedInvoice();
         }
         setDialogStatus('Waiting for signer approval…', 'info');
@@ -812,6 +822,9 @@
           return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo, modalState.state.note || '');
         }).catch(function (err) {
           if (signerUnavailableError(err)) {
+            if (api.__wizardryShared === true) {
+              return promptPhoneSignerForZap();
+            }
             return requestUnsignedInvoice();
           }
           throw err;

@@ -1537,12 +1537,20 @@
       var appSecretHex = '';
       var pairSecret = '';
       var relays = NIP46_RELAYS.slice();
+      var savedRelays = [];
+      var savedRelaysMatchDefaults = false;
 
       if (saved && typeof saved === 'object' && saved.domain === currentHost()) {
         appSecretHex = String(saved.appSecretHex || '');
         pairSecret = String(saved.pairSecret || '');
         if (Array.isArray(saved.relays) && saved.relays.length) {
-          relays = saved.relays.map(function (item) { return String(item || '').trim(); }).filter(Boolean).slice(0, 3);
+          savedRelays = saved.relays.map(function (item) { return String(item || '').trim(); }).filter(Boolean);
+          savedRelaysMatchDefaults = savedRelays.length === NIP46_RELAYS.length && savedRelays.every(function (relay, idx) {
+            return relay === NIP46_RELAYS[idx];
+          });
+          if (!savedRelaysMatchDefaults) {
+            pairSecret = '';
+          }
         }
       }
 
@@ -1635,13 +1643,33 @@
     return '';
   }
 
+  function decryptNip46Content(event) {
+    if (window.NostrTools.nip44 && typeof window.NostrTools.nip44.getConversationKey === 'function') {
+      try {
+        var conversationKey = window.NostrTools.nip44.getConversationKey(hexToBytes(state.nip46.appSecretHex), event.pubkey);
+        return Promise.resolve(window.NostrTools.nip44.decrypt(event.content, conversationKey));
+      } catch (_nip44Err) {
+        // Older signers may still use the pre-NIP-44 Nostr Connect encryption path.
+      }
+    }
+    return window.NostrTools.nip04.decrypt(hexToBytes(state.nip46.appSecretHex), event.pubkey, event.content);
+  }
+
+  function encryptNip46Content(pubkey, plaintext) {
+    if (window.NostrTools.nip44 && typeof window.NostrTools.nip44.getConversationKey === 'function') {
+      var conversationKey = window.NostrTools.nip44.getConversationKey(hexToBytes(state.nip46.appSecretHex), pubkey);
+      return Promise.resolve(window.NostrTools.nip44.encrypt(plaintext, conversationKey));
+    }
+    return window.NostrTools.nip04.encrypt(hexToBytes(state.nip46.appSecretHex), pubkey, plaintext);
+  }
+
   function handleNip46RelayEvent(event) {
     if (!event || !event.id || state.nip46.seenEvents[event.id]) {
       return;
     }
     state.nip46.seenEvents[event.id] = true;
 
-    window.NostrTools.nip04.decrypt(hexToBytes(state.nip46.appSecretHex), event.pubkey, event.content)
+    decryptNip46Content(event)
       .then(function (plain) {
         var msg = parseJsonResponse(plain);
 
@@ -1682,11 +1710,7 @@
       params: params || []
     };
 
-    return window.NostrTools.nip04.encrypt(
-      hexToBytes(state.nip46.appSecretHex),
-      state.nip46.signerPubkey,
-      JSON.stringify(rpc)
-    ).then(function (ciphertext) {
+    return encryptNip46Content(state.nip46.signerPubkey, JSON.stringify(rpc)).then(function (ciphertext) {
       var eventTemplate = {
         kind: NIP46_KIND,
         created_at: nowEpoch(),
