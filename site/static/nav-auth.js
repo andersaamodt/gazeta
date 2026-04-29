@@ -1630,6 +1630,21 @@
     return buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
   }
 
+  function openNativeDeepLink(uri, notReadyMessage) {
+    var href = String(uri || '').trim();
+    if (!href || href === '#') {
+      setAuthMessage(notReadyMessage || 'Phone signer link is not ready yet.', 'error');
+      return false;
+    }
+    try {
+      window.location.href = href;
+      return true;
+    } catch (_err) {
+      setAuthMessage('This browser did not open the phone signer link. Copy link is available as a fallback.', 'error');
+      return false;
+    }
+  }
+
   function initNip46Pairing() {
     if (!hasNostrTools()) {
       throw new Error('NIP-46 requires nostr-tools support in this browser.');
@@ -3245,6 +3260,28 @@
         }).catch(function (err) {
           setAuthMessage(err.message || 'Could not copy Nostr Connect link.', 'error');
         });
+      });
+    }
+
+    if (els.authNip46Open) {
+      els.authNip46Open.addEventListener('click', function (event) {
+        var uri = String(els.authNip46Open.getAttribute('data-nip46-uri') || els.authNip46Open.getAttribute('href') || '');
+        if (uri.indexOf('nostrconnect://') !== 0) {
+          uri = currentNip46Uri();
+        }
+        event.preventDefault();
+        openNativeDeepLink(uri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
+      });
+    }
+
+    if (els.authNip46AmberOpen) {
+      els.authNip46AmberOpen.addEventListener('click', function (event) {
+        var uri = String(els.authNip46AmberOpen.getAttribute('data-nip46-uri') || els.authNip46AmberOpen.getAttribute('href') || '');
+        if (uri.indexOf('intent://') !== 0) {
+          uri = buildAmberIntentUri(currentNip46Uri());
+        }
+        event.preventDefault();
+        openNativeDeepLink(uri, 'Amber link is not ready yet. The QR setup is still loading.');
       });
     }
 

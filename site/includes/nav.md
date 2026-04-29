@@ -377,7 +377,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260429-amber-diag1"></script>
+<script src="/static/nav-auth.js?v=20260429-amber-open1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
