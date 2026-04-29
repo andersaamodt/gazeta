@@ -120,6 +120,7 @@ config-set "$blog_site_conf" zap_lud16 "demo@wallet.example"
 assert_contains "$(blog_zap_effective_lud16)" 'demo@wallet.example' 'configured lud16 overrides the demo wallet'
 
 assert_contains "$(cat "$ROOT_DIR/site/includes/head.html")" '/static/zap-ui.js' 'head includes shared zap UI bundle'
+assert_contains "$(cat "$ROOT_DIR/site/includes/head.html")" '/static/post-context.js?v=' 'head cache-busts shared post context interactions'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'blogZapUi.render' 'post pages mount shared zap UI'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" "display: 'compact'" 'post pages render compact zap button'
 assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'if (!nostr) {' 'post pages gate zap UI behind published Nostr metadata'

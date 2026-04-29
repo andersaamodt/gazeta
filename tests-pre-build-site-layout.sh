@@ -29,7 +29,7 @@ EOFCONF
 
 cat > "$canonical_root/includes/head.html" <<'EOFHEAD'
 <script src="/static/site-bootstrap.js"></script>
-<script defer src="/static/post-context.js"></script>
+<script defer src="/static/post-context.js?v=20260429-menu-touch1"></script>
 EOFHEAD
 
 cat > "$canonical_root/includes/nav.md" <<'EOFNAV'
