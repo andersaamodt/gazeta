@@ -2236,10 +2236,37 @@
   function closeNavOverflowMenu() {
     if (els.navOverflowPanel) {
       els.navOverflowPanel.hidden = true;
+      els.navOverflowPanel.classList.remove('is-viewport-positioned');
+      els.navOverflowPanel.style.left = '';
+      els.navOverflowPanel.style.top = '';
+      els.navOverflowPanel.style.maxWidth = '';
     }
     if (els.navOverflowBtn) {
       els.navOverflowBtn.setAttribute('aria-expanded', 'false');
     }
+  }
+
+  function clampNavOverflowPanelToViewport() {
+    if (!els.navOverflowPanel || !els.navOverflowBtn) {
+      return;
+    }
+    var gap = 8;
+    var triggerRect = els.navOverflowBtn.getBoundingClientRect();
+    var panelRect = els.navOverflowPanel.getBoundingClientRect();
+    var viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    var panelWidth = Math.min(panelRect.width || 176, Math.max(160, viewportWidth - (gap * 2)));
+    var left = triggerRect.left;
+    var maxLeft = viewportWidth - panelWidth - gap;
+    if (left > maxLeft) {
+      left = maxLeft;
+    }
+    if (left < gap) {
+      left = gap;
+    }
+    els.navOverflowPanel.classList.add('is-viewport-positioned');
+    els.navOverflowPanel.style.maxWidth = String(panelWidth) + 'px';
+    els.navOverflowPanel.style.left = String(Math.round(left)) + 'px';
+    els.navOverflowPanel.style.top = String(Math.round(triggerRect.bottom + 6)) + 'px';
   }
 
   function openNavOverflowMenu() {
@@ -2247,6 +2274,7 @@
       return;
     }
     els.navOverflowPanel.hidden = false;
+    clampNavOverflowPanelToViewport();
     els.navOverflowBtn.setAttribute('aria-expanded', 'true');
   }
 

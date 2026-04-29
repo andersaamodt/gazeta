@@ -607,6 +607,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'aria-label="User m
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-user-menu > .nav-menu-btn::before' 'account menu renders vertical dots with CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-page-menu-trigger::before' 'post overflow menu renders vertical dots with CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" "document.addEventListener('pointerup'" 'post overflow menu has an explicit mobile pointer activation path'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'clampNavOverflowPanelToViewport' 'nav overflow menu clamps inside the viewport on mobile'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-overflow-panel.is-viewport-positioned' 'nav overflow menu uses viewport positioning when open'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'touch-action: manipulation;' 'post overflow menu trigger remains tappable on mobile'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible;' 'mobile nav keeps absolute account and overflow menus visible'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages load the shared post resize behavior'
