@@ -328,6 +328,7 @@ fi
 post_context_output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
 assert_contains "$post_context_output" '"nostr":{"id":"' 'post context falls back to stored authored nostr metadata'
 assert_contains "$post_context_output" '"address":"30023:1111111111111111111111111111111111111111111111111111111111111111:example-post"' 'post context exposes the authored address'
+assert_contains "$post_context_output" '"relays":["wss://example.com","wss://relay.one","wss://relay.two/","wss://relay.one"]' 'post context exposes configured relays for NIP-19 share codes'
 
 dated_post_record=$(blog_nostr_post_record_for_slug "dated-example-post" 2>/dev/null || printf '')
 assert_contains "$dated_post_record" '"slug":"dated-example-post"' 'dated authored sync uses the canonical public slug'

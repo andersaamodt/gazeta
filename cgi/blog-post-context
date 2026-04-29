@@ -80,8 +80,12 @@ post_json() {
     fi
   fi
   nostr_address=''
+  nostr_relays_json='[]'
   if [ -n "$nostr_pubkey" ] && [ -n "$nostr_kind" ] && [ -n "$nostr_d" ]; then
     nostr_address=$(blog_nostr_event_address "$nostr_kind" "$nostr_pubkey" "$nostr_d")
+  fi
+  if [ -n "$nostr_event_id$nostr_pubkey$nostr_kind$nostr_d$nostr_uri" ]; then
+    nostr_relays_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file" 2>/dev/null || printf '[]')
   fi
   if [ -z "$nostr_uri" ] && [ -n "$nostr_address" ]; then
     nostr_uri="nostr:$nostr_address"
@@ -114,7 +118,8 @@ post_json() {
     printf '"kind":"%s",' "$(blog_json_escape "$nostr_kind")"
     printf '"d":"%s",' "$(blog_json_escape "$nostr_d")"
     printf '"address":"%s",' "$(blog_json_escape "$nostr_address")"
-    printf '"uri":"%s"' "$(blog_json_escape "$nostr_uri")"
+    printf '"uri":"%s",' "$(blog_json_escape "$nostr_uri")"
+    printf '"relays":%s' "$nostr_relays_json"
     printf '}'
   else
     printf '"nostr":null'

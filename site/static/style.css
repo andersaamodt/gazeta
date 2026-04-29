@@ -5992,6 +5992,12 @@ body.blog-post-resizing {
   outline: none;
 }
 
+.post-page-menu-separator {
+  height: 1px;
+  margin: 0.22rem 0.32rem;
+  background: var(--menu-border);
+}
+
 .post-page-menu-panel .post-page-menu-delete {
   color: var(--menu-danger-text);
 }

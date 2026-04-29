@@ -2,6 +2,10 @@
   var currentRelPath = '';
   var currentNostrAddress = '';
   var currentNostrEventId = '';
+  var currentNostrPubkey = '';
+  var currentNostrKind = '';
+  var currentNostrD = '';
+  var currentNostrRelays = [];
   var refreshInFlight = false;
   var submitInFlight = false;
   var postMenuBusy = false;
@@ -208,6 +212,90 @@
     trigger.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
   }
 
+  function nostrToolsNip19() {
+    return window.NostrTools && window.NostrTools.nip19 ? window.NostrTools.nip19 : null;
+  }
+
+  function currentNostrNaddr() {
+    var nip19 = nostrToolsNip19();
+    var kind = parseInt(currentNostrKind, 10);
+    if (nip19 && typeof nip19.naddrEncode === 'function' && currentNostrPubkey && Number.isFinite(kind) && currentNostrD) {
+      return nip19.naddrEncode({
+        identifier: currentNostrD,
+        pubkey: currentNostrPubkey,
+        kind: kind,
+        relays: currentNostrRelays
+      });
+    }
+    return currentNostrAddress || '';
+  }
+
+  function currentNostrNevent() {
+    var nip19 = nostrToolsNip19();
+    var kind = parseInt(currentNostrKind, 10);
+    if (nip19 && typeof nip19.neventEncode === 'function' && currentNostrEventId) {
+      return nip19.neventEncode({
+        id: currentNostrEventId,
+        author: currentNostrPubkey || undefined,
+        kind: Number.isFinite(kind) ? kind : undefined,
+        relays: currentNostrRelays
+      });
+    }
+    return currentNostrEventId || '';
+  }
+
+  function currentNostrOpenValue() {
+    return currentNostrNaddr() || currentNostrNevent();
+  }
+
+  function writeClipboardText(value) {
+    var text = String(value || '').trim();
+    if (!text) {
+      return Promise.reject(new Error('Nothing to copy yet.'));
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var node = document.createElement('textarea');
+      node.value = text;
+      node.setAttribute('readonly', 'readonly');
+      node.style.position = 'fixed';
+      node.style.left = '-9999px';
+      node.style.top = '0';
+      document.body.appendChild(node);
+      node.select();
+      try {
+        if (document.execCommand('copy')) {
+          resolve();
+        } else {
+          reject(new Error('Copy was not available in this browser.'));
+        }
+      } catch (err) {
+        reject(err);
+      } finally {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+    });
+  }
+
+  function setReaderMenuEnabled() {
+    var hasAddress = !!currentNostrAddress || (!!currentNostrPubkey && !!currentNostrKind && !!currentNostrD);
+    var hasEvent = !!currentNostrEventId;
+    document.querySelectorAll('[data-post-page-reader-action="copy_nostr_address"]').forEach(function (node) {
+      node.hidden = !hasAddress;
+    });
+    document.querySelectorAll('[data-post-page-reader-action="copy_nostr_event"]').forEach(function (node) {
+      node.hidden = !hasEvent;
+    });
+    document.querySelectorAll('[data-post-page-reader-action="open_nostr"]').forEach(function (node) {
+      node.hidden = !(hasAddress || hasEvent);
+    });
+    return hasAddress || hasEvent;
+  }
+
   function ensurePostPageMenu(layout) {
     if (!layout || !layout.card) {
       return null;
@@ -226,9 +314,13 @@
     wrap.innerHTML = '' +
       '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
       '<div class="post-page-menu-panel" role="menu" hidden>' +
-      '<button type="button" data-post-page-action="edit_post" role="menuitem">Edit post...</button>' +
-      '<button type="button" data-post-page-action="add_to_list" role="menuitem">Add to list...</button>' +
-      '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" role="menuitem">Delete post...</button>' +
+      '<button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button>' +
+      '<button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button>' +
+      '<button type="button" data-post-page-action="open_nostr" data-post-page-reader-action="open_nostr" role="menuitem" hidden>Open in Nostr client</button>' +
+      '<div class="post-page-menu-separator" data-post-page-admin-separator hidden></div>' +
+      '<button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button>' +
+      '<button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button>' +
+      '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button>' +
       '</div>';
     head.appendChild(wrap);
     return wrap;
@@ -256,9 +348,16 @@
     if (!menu) {
       return;
     }
+    var hasReaderActions = setReaderMenuEnabled();
     checkAdminSession().then(function (isAdmin) {
-      menu.hidden = !isAdmin;
-      if (!isAdmin) {
+      menu.querySelectorAll('[data-post-page-admin-action]').forEach(function (node) {
+        node.hidden = !isAdmin;
+      });
+      menu.querySelectorAll('[data-post-page-admin-separator]').forEach(function (node) {
+        node.hidden = !(isAdmin && hasReaderActions);
+      });
+      menu.hidden = !(isAdmin || hasReaderActions);
+      if (menu.hidden) {
         closePostPageMenu();
       }
     });
@@ -457,6 +556,40 @@
     if (!picked || postMenuBusy || !currentRelPath) {
       return;
     }
+
+    if (picked === 'copy_nostr_address') {
+      writeClipboardText(currentNostrNaddr())
+        .then(function () {
+          closePostPageMenu();
+        })
+        .catch(function (err) {
+          window.alert((err && err.message) || 'Could not copy Nostr address.');
+        });
+      return;
+    }
+
+    if (picked === 'copy_nostr_event') {
+      writeClipboardText(currentNostrNevent())
+        .then(function () {
+          closePostPageMenu();
+        })
+        .catch(function (err) {
+          window.alert((err && err.message) || 'Could not copy Nostr event.');
+        });
+      return;
+    }
+
+    if (picked === 'open_nostr') {
+      var openValue = currentNostrOpenValue();
+      if (!openValue) {
+        window.alert('This post does not have a Nostr address yet.');
+        return;
+      }
+      closePostPageMenu();
+      window.location.href = openValue.indexOf('nostr:') === 0 ? openValue : 'nostr:' + openValue;
+      return;
+    }
+
     var token = getSessionToken();
     var csrf = getCsrfToken();
     if (!token || !csrf) {
@@ -1314,8 +1447,21 @@
     if (payload.current.nostr) {
       currentNostrAddress = payload.current.nostr.address || '';
       currentNostrEventId = payload.current.nostr.id || '';
+      currentNostrPubkey = payload.current.nostr.pubkey || '';
+      currentNostrKind = payload.current.nostr.kind || '';
+      currentNostrD = payload.current.nostr.d || '';
+      currentNostrRelays = Array.isArray(payload.current.nostr.relays) ? payload.current.nostr.relays.slice() : [];
+      refreshPostPageMenuVisibility();
       ensureCommentShell(layout);
       loadComments();
+    } else {
+      currentNostrAddress = '';
+      currentNostrEventId = '';
+      currentNostrPubkey = '';
+      currentNostrKind = '';
+      currentNostrD = '';
+      currentNostrRelays = [];
+      refreshPostPageMenuVisibility();
     }
 
     ensureMeta('description', payload.current.summary || '', 'name');
