@@ -5209,42 +5209,38 @@ nav.site-nav .btn-login {
 }
 
 .auth-tabs {
-  margin: 0.25rem 0 0;
+  margin: 0.62rem 0 0.5rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: 10px 10px 0 0;
-  padding: 0.22rem 0.22rem 0;
+  gap: 0.42rem;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .auth-tab {
-  border: 0;
-  border-radius: 8px 8px 0 0;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.38);
   color: var(--text);
   font-size: 0.84rem;
   font-weight: 700;
-  padding: 0.36rem 0.7rem;
-  border: 1px solid transparent;
-  border-bottom: 0;
+  padding: 0.42rem 0.78rem;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .auth-tab.is-active {
-  background: var(--surface-muted);
-  border-color: var(--border);
-  position: relative;
-  top: 1px;
+  background: var(--surface-raised-strong, #fff);
+  border-color: rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.14);
 }
 
 .auth-tab-frame {
   margin-top: 0;
-  border: 1px solid var(--border);
-  border-radius: 0 10px 10px 10px;
-  background: var(--surface-muted);
-  padding: 0.72rem 0.78rem 0.74rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .auth-input {
