@@ -9924,3 +9924,54 @@ nav.site-nav > .nav-right .nav-username {
     border-radius: 20px !important;
   }
 }
+
+/* Floating public surfaces: depth replaces thin framing lines. */
+nav.site-nav {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.09) !important;
+}
+
+.post-item,
+.list-page-shell {
+  border: 0 !important;
+  box-shadow:
+    0 20px 44px rgba(15, 23, 42, 0.12),
+    0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+.post-single-item {
+  border: 0 !important;
+  box-shadow:
+    0 22px 52px rgba(15, 23, 42, 0.13),
+    0 3px 10px rgba(15, 23, 42, 0.06) !important;
+}
+
+.nav-search {
+  border-radius: 999px;
+  box-shadow:
+    0 9px 20px rgba(15, 23, 42, 0.12),
+    0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.nav-search input[type="text"],
+.nav-search button,
+nav.site-nav > .nav-right .nav-search input[type="text"],
+nav.site-nav > .nav-right .nav-search button {
+  border-color: transparent !important;
+}
+
+.nav-search input[type="text"] {
+  border-right: 0 !important;
+}
+
+.nav-search button,
+nav.site-nav > .nav-right .nav-search button {
+  border-left: 0 !important;
+}
+
+.nav-search:focus-within {
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.14),
+    0 0 0 3px var(--focus-ring, rgba(91, 126, 216, 0.2));
+}
