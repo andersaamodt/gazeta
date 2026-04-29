@@ -575,6 +575,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-width: max-conten
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible !important;' 'navbar shell keeps absolute login and account menus usable above content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'z-index: 1200;' 'navbar shell stays stacked above page content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-login-menu' 'login menu gets explicit navbar stacking protection'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.zap-dialog-close {' 'zap modal close button has dedicated styling'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'place-items: center;' 'zap modal close glyph is centered in the circular button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function isMobileLikeRuntime()' 'login flow detects mobile-like browsers before choosing a signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "return 'phone';" 'primary login uses phone signer tab when no browser signer is available'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function startPrimaryLogin()' 'nav login button uses a capability-aware primary login flow'
