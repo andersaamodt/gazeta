@@ -75,6 +75,20 @@ support_file() {
   return 1
 }
 
+app_support_source_file() {
+  for candidate in \
+    "${HQ_UPLOADED_TREE_PATH-}/.headquarters/site-support/stonr-nostr-blog.yaml" \
+    "${HQ_SITE_LOCAL_PATH-}/.headquarters/site-support/stonr-nostr-blog.yaml" \
+    ".headquarters/site-support/stonr-nostr-blog.yaml"
+  do
+    [ -n "$candidate" ] || continue
+    [ -f "$candidate" ] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+  return 1
+}
+
 support_value() {
   key=$1
   file=$(support_file 2>/dev/null || printf '')
@@ -158,6 +172,14 @@ relay_store_root() {
 
 relay_env_file() {
   printf '%s/relay.env\n' "$(relay_root)"
+}
+
+relay_app_support_file() {
+  printf '%s/nostr-blog.app-support.yaml\n' "$(relay_root)"
+}
+
+relay_app_support_list_file() {
+  printf '%s/relay.app-support.json\n' "$(relay_root)"
 }
 
 service_name() {
@@ -501,6 +523,28 @@ EOF_ENV
   rm -f "$tmp"
 }
 
+write_app_support_files() {
+  source_file=$(app_support_source_file 2>/dev/null || printf '')
+  [ -n "$source_file" ] || {
+    status_bad "Stonr nostr-blog app support profile is missing."
+    exit 1
+  }
+  app_file=$(relay_app_support_file)
+  list_file=$(relay_app_support_list_file)
+  tmp=$(mktemp "${TMPDIR:-/tmp}/stonr-app-support-list.XXXXXX")
+  cat > "$tmp" <<EOF_SUPPORT_LIST
+{
+  "paths": [
+    "$app_file"
+  ]
+}
+EOF_SUPPORT_LIST
+  run_root install -d -o "$site_user" -g "$site_user" -m 0755 "$(relay_root)"
+  run_root install -o "$site_user" -g "$site_user" -m 0644 "$source_file" "$app_file"
+  run_root install -o "$site_user" -g "$site_user" -m 0644 "$tmp" "$list_file"
+  rm -f "$tmp"
+}
+
 write_service_file() {
   env_path=$(relay_env_file)
   tmp=$(mktemp "${TMPDIR:-/tmp}/stonr-service.XXXXXX")
@@ -537,6 +581,22 @@ check_status() {
   }
   if ! run_root test -f "$(relay_env_file)"; then
     status_bad "Stonr relay env file is missing."
+    return 0
+  fi
+  if ! run_root test -f "$(relay_app_support_file)"; then
+    status_bad "Stonr nostr-blog app support profile is missing from the relay root."
+    return 0
+  fi
+  if ! run_root test -f "$(relay_app_support_list_file)"; then
+    status_bad "Stonr app support list is missing next to relay.env."
+    return 0
+  fi
+  if ! run_site stonr --env "$(relay_env_file)" print-app-support 2>/dev/null | grep -q '"name"[[:space:]]*:[[:space:]]*"nostr-blog"'; then
+    status_bad "Stonr is not reading the nostr-blog app support profile."
+    return 0
+  fi
+  if ! run_site stonr --env "$(relay_env_file)" print-app-support 2>/dev/null | grep -q '"env_key"[[:space:]]*:[[:space:]]*"ALLOW_KINDS"'; then
+    status_bad "Stonr app support profile is not locking limited write kinds."
     return 0
   fi
   [ -f "$(service_file)" ] || {
@@ -615,6 +675,7 @@ command -v systemctl >/dev/null 2>&1 || {
 run_root install -d -m 755 "/etc/nginx/headquarters-site/$site_user/server.d" "/etc/nginx/headquarters-site/$site_user/root.d"
 write_site_home_relays
 write_env_file
+write_app_support_files
 run_site stonr --env "$(relay_env_file)" init
 write_root_hook
 write_server_hook

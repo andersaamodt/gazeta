@@ -1,0 +1,26 @@
+name: nostr-blog
+description: Lock Stonr relay features required by nostr-blog for site mirroring, relay discovery, read/query support, Nostr comments, and NIP-46 phone signer pairing.
+settings:
+  VERIFY_SIG: true
+  ENABLE_NIP11: true
+  SUPPORT_NIP11: true
+  ENABLE_QUERY: true
+  ENABLE_COUNT: true
+  ENABLE_TAG_QUERIES: true
+  ENABLE_LIVE_SUBSCRIPTIONS: true
+  ENABLE_PUBLISH: true
+  ENABLE_MIRRORING: true
+  SUPPORT_NIP12: true
+  FILTER_PRIVATE_MESSAGES: true
+  MIRROR_MODE: site
+  MIRROR_SITE_INCLUDE_COMMENTS: true
+  ALLOW_KINDS:
+    - 24133
+  RATE_LIMIT_WINDOW_SECS: 60
+  MAX_PUBLISHES_PER_WINDOW: 120
+  ENABLE_SEARCH: false
+  ENABLE_FILE_METADATA: false
+  ENABLE_FILE_API: false
+  ENABLE_BLOSSOM: false
+  ENABLE_BLOSSOM_LIST: false
+  ENABLE_BLOSSOM_MIRROR: false
