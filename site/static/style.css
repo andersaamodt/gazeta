@@ -5850,21 +5850,37 @@ nav.site-nav .btn-login {
 }
 
 .auth-modal-message {
-  display: none;
-  margin: 0.66rem 0 0.72rem;
+  display: block;
+  overflow: hidden;
+  max-height: 0;
+  margin: 0;
   border: 1px solid rgba(37, 99, 235, 0.2);
   border-radius: 12px;
   background: rgba(239, 246, 255, 0.96);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-  padding: 0.68rem 0.78rem;
+  padding: 0 0.78rem;
   color: #1e3a8a;
   font-size: 0.91rem;
   font-weight: 650;
   line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.28rem);
+  transition:
+    max-height 190ms ease,
+    margin 190ms ease,
+    padding 190ms ease,
+    opacity 170ms ease,
+    transform 170ms ease;
 }
 
-.auth-modal-message:not(:empty) {
-  display: block;
+.auth-modal-message.is-visible {
+  max-height: 8rem;
+  margin: 0.66rem 0 0.72rem;
+  padding: 0.68rem 0.78rem;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .auth-modal-message.is-warn {

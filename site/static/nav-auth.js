@@ -112,7 +112,6 @@
 
     authRegisterPanel: document.getElementById('auth-register-panel'),
     authPhonePanel: document.getElementById('auth-phone-panel'),
-    authPhoneIntro: document.getElementById('auth-phone-intro'),
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
@@ -131,6 +130,7 @@
   };
 
   var authModalHideTimer = null;
+  var authMessageClearTimer = null;
   var themeSwitchVisualTimer = null;
   var themeSwapToken = 0;
 
@@ -606,9 +606,9 @@
     node.id = 'auth-modal-message';
     node.className = 'auth-modal-message';
     node.setAttribute('aria-live', 'polite');
-    var chooser = panel.querySelector('.auth-platform-grid');
-    if (chooser && chooser.parentNode) {
-      chooser.parentNode.insertBefore(node, chooser);
+    var tabFrame = panel.querySelector('.auth-tab-frame');
+    if (tabFrame && tabFrame.parentNode) {
+      tabFrame.parentNode.insertBefore(node, tabFrame.nextSibling);
     } else {
       panel.appendChild(node);
     }
@@ -622,11 +622,29 @@
       return;
     }
     var text = String(message || '');
+    if (authMessageClearTimer) {
+      clearTimeout(authMessageClearTimer);
+      authMessageClearTimer = null;
+    }
+    if (!text) {
+      target.classList.remove('is-visible');
+      authMessageClearTimer = setTimeout(function () {
+        if (!target.classList.contains('is-visible')) {
+          target.textContent = '';
+          target.className = 'auth-modal-message';
+        }
+        authMessageClearTimer = null;
+      }, 220);
+      return;
+    }
     target.textContent = text;
     target.className = 'auth-modal-message';
-    if (text && kind) {
+    if (kind) {
       target.classList.add('is-' + kind);
     }
+    requestAnimationFrame(function () {
+      target.classList.add('is-visible');
+    });
   }
 
   function setNip46Diagnostics(message, kind) {
@@ -815,21 +833,16 @@
     if (els.authManualEvent) { els.authManualEvent.value = ''; }
   }
 
-  function phoneSignerRecommendation(flavor) {
-    var key = String(flavor || 'android');
-    if (key === 'ios') {
-      return {
-        intro: 'Use Nostr Connect if the signer supports it, or use the QR/copy fallback.'
-      };
+  function signInHelperMessage(tabName) {
+    var base = 'First successful sign-in creates your account automatically. You can change your username after you log in.';
+    var tab = String(tabName || 'register');
+    if (tab === 'phone') {
+      return base + ' Connect Nostr with the link or QR. Sign-in continues after pairing.';
     }
-    if (key === 'remote') {
-      return {
-        intro: 'Connect a remote signer with Nostr Connect, the QR, or the copy button.'
-      };
+    if (tab === 'manual') {
+      return base + ' Create a challenge, then paste the signed event JSON.';
     }
-    return {
-      intro: 'Connect Nostr with the link or QR. Sign-in continues after pairing.'
-    };
+    return base;
   }
 
   function loginOnboardingRecommendation(tabName, flavor) {
@@ -1152,12 +1165,8 @@
     showPanel(els.authManualPanel, tab === 'manual');
 
     if (tab === 'phone') {
-      var recommendation = phoneSignerRecommendation(flavor);
-      if (els.authPhoneIntro) {
-        els.authPhoneIntro.textContent = recommendation.intro;
-      }
       updatePhoneContinueState();
-      setAuthMessage('', '');
+      setAuthMessage(signInHelperMessage(tab), 'plain');
       initNip46Pairing().then(function () {
         updatePhoneContinueState();
       }).catch(function (err) {
@@ -1166,10 +1175,10 @@
       return;
     }
     if (tab === 'manual') {
-      setAuthMessage('Create a challenge, then paste the signed event JSON.', 'warn');
+      setAuthMessage(signInHelperMessage(tab), 'plain');
       return;
     }
-    setAuthMessage('Browser signer login creates your account automatically on first successful sign-in.', 'plain');
+    setAuthMessage(signInHelperMessage(tab), 'plain');
   }
 
   function showAuthModal(initialTab) {

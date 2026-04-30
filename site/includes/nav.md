@@ -300,8 +300,6 @@
     <p class="auth-modal-help">Choose where your signer lives. The site never asks for a private key.</p>
     <p class="auth-modal-help">Your account identity is your Nostr public key. Sign-in verifies a signed event from your browser extension, phone signer, or remote signer.</p>
 
-    <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
-
     <div class="auth-platform-grid" role="list" aria-label="Signer platform">
       <button id="auth-tab-register" class="auth-platform-card is-active" type="button" data-auth-route="register" data-auth-flavor="desktop" aria-pressed="true">
         <span class="auth-platform-icon" aria-hidden="true">
@@ -351,8 +349,7 @@
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
-        <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. Browser sign-in uses a NIP-07 extension; first sign-in creates the account automatically.</p>
-        <p class="auth-modal-help">You can change your username after you log in.</p>
+        <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. Browser sign-in uses a NIP-07 extension.</p>
         <div class="auth-actions">
           <button id="auth-register-btn" class="auth-primary-btn" type="button">Continue with browser signer</button>
           <span class="auth-action-reco">Recommended: <a class="auth-inline-link" href="https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/" target="_blank" rel="noopener noreferrer">nos2x-fox</a></span>
@@ -360,7 +357,6 @@
       </div>
 
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
-        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Phone sign-in uses NIP-46 pairing via QR/deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Connect Nostr</a>
@@ -400,6 +396,8 @@
         </div>
       </div>
     </div>
+
+    <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
 
     <section class="auth-recommended-apps auth-reco-card" aria-labelledby="auth-reco-title">
       <h3 id="auth-reco-title">
