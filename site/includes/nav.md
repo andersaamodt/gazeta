@@ -298,6 +298,7 @@
     <div class="auth-modal-scroll">
     <h2 id="auth-modal-title">Sign in</h2>
     <p class="auth-modal-help">Choose where your signer lives. The site never asks for a private key.</p>
+    <p class="auth-modal-help">Your account identity is your Nostr public key. Sign-in verifies a signed event from your browser extension, phone signer, or remote signer.</p>
 
     <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
 
@@ -345,7 +346,7 @@
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
-        <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
+        <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. Browser sign-in uses a NIP-07 extension; first sign-in creates the account automatically.</p>
         <p class="auth-modal-help">You can change your username after you log in.</p>
         <div class="auth-actions">
           <button id="auth-register-btn" class="auth-primary-btn" type="button">Continue with browser signer</button>
@@ -354,7 +355,7 @@
       </div>
 
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
-        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Open the link or scan the QR, then return here after pairing.</p>
+        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Phone sign-in uses NIP-46 pairing via QR/deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link auth-nip46-open-link" href="#">nostrconnect://...</a>
@@ -406,20 +407,7 @@
   </div>
 </div>
 
-<div class="auth-modal" id="nostr-info-modal" hidden>
-  <div class="auth-modal-backdrop" data-close-auth-info></div>
-  <div class="auth-modal-panel auth-info-modal-panel" role="dialog" aria-modal="true" aria-labelledby="nostr-info-modal-title">
-    <button class="auth-modal-close" type="button" aria-label="Close Nostr info" data-close-auth-info>&times;</button>
-    <div class="auth-modal-scroll">
-    <h2 id="nostr-info-modal-title">Nostr Sign-In</h2>
-    <p class="auth-modal-help">Your account identity is your Nostr public key. The site verifies signed events and never asks for private keys.</p>
-    <p class="auth-modal-help">Browser sign-in uses a NIP-07 extension. Phone sign-in uses Nostr Connect (NIP-46) pairing via QR/deep link.</p>
-    <p class="auth-modal-help">For full details, visit <a class="auth-inline-link" href="https://github.com/nostr-protocol/nips" target="_blank" rel="noopener noreferrer">the official Nostr NIPs repository</a>.</p>
-    </div>
-  </div>
-</div>
-
-<script src="/static/nav-auth.js?v=20260430-zap-onboarding1"></script>
+<script src="/static/nav-auth.js?v=20260430-signin-learn1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

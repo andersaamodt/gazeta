@@ -96,7 +96,6 @@
     userName: document.getElementById('nav-user-name'),
 
     authModal: document.getElementById('auth-modal'),
-    authInfoModal: document.getElementById('nostr-info-modal'),
     authModalTitle: document.getElementById('auth-modal-title'),
     authMessage: document.getElementById('auth-modal-message'),
     authRegisterBtn: document.getElementById('auth-register-btn'),
@@ -1193,9 +1192,7 @@
       return;
     }
     els.authModal.classList.remove('is-open');
-    if (!els.authInfoModal || !els.authInfoModal.classList.contains('is-open')) {
-      document.body.classList.remove('auth-modal-open');
-    }
+    document.body.classList.remove('auth-modal-open');
     setAuthMessage('', '');
     setAuthControlsDisabled(false);
     if (authModalHideTimer) {
@@ -1206,32 +1203,6 @@
         els.authModal.hidden = true;
       }
       authModalHideTimer = null;
-    }, 210);
-  }
-
-  function showInfoModal() {
-    if (!els.authInfoModal) {
-      return;
-    }
-    els.authInfoModal.hidden = false;
-    requestAnimationFrame(function () {
-      els.authInfoModal.classList.add('is-open');
-    });
-    document.body.classList.add('auth-modal-open');
-  }
-
-  function hideInfoModal() {
-    if (!els.authInfoModal) {
-      return;
-    }
-    els.authInfoModal.classList.remove('is-open');
-    if (!els.authModal || !els.authModal.classList.contains('is-open')) {
-      document.body.classList.remove('auth-modal-open');
-    }
-    setTimeout(function () {
-      if (!els.authInfoModal.classList.contains('is-open')) {
-        els.authInfoModal.hidden = true;
-      }
     }, 210);
   }
 
@@ -3378,7 +3349,7 @@
     if (els.loginMenuLearn) {
       els.loginMenuLearn.addEventListener('click', function () {
         closeLoginMenu();
-        showInfoModal();
+        showAuthModal('register');
       });
     }
 
@@ -3389,14 +3360,6 @@
         }
       });
     }
-    if (els.authInfoModal) {
-      els.authInfoModal.addEventListener('click', function (event) {
-        if (event.target && event.target.hasAttribute('data-close-auth-info')) {
-          hideInfoModal();
-        }
-      });
-    }
-
     if (els.menuBtn && els.menuPanel) {
       els.menuBtn.addEventListener('click', function (event) {
         event.preventDefault();
@@ -3467,10 +3430,6 @@
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && els.authModal && !els.authModal.hidden) {
         hideAuthModal();
-        return;
-      }
-      if (event.key === 'Escape' && els.authInfoModal && !els.authInfoModal.hidden) {
-        hideInfoModal();
         return;
       }
       if (event.key === 'Escape' && els.loginMenu && !els.loginMenu.hidden) {
