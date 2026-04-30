@@ -641,6 +641,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Back up the see
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-zap-onboarding' 'Zap onboarding section has deliberate modal styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-zap-app-icon' 'Zap onboarding app chips include app-style icons'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-zap-mode-btn.is-active' 'Zap onboarding mode buttons show the selected path'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-zap-mode-btn:not(.is-active):hover' 'Zap onboarding mode hover excludes the selected mode'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'cursor: default;' 'Selected zap onboarding mode button uses default cursor'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-phone-reco' 'phone signer recommendations are not repeated below the panel actions'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Continue with browser signer' 'Browser signer action avoids special register wording'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'You can change your username after you log in.' 'Sign-in modal defers username choice until after login'

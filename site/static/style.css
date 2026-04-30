@@ -5353,10 +5353,11 @@ nav.site-nav .btn-login {
   border-color: color-mix(in srgb, var(--link) 56%, var(--border));
   background: color-mix(in srgb, var(--link) 13%, var(--surface-raised-strong, #fff));
   color: color-mix(in srgb, var(--link) 76%, var(--text));
+  cursor: default;
 }
 
-.auth-zap-mode-btn:hover,
-.auth-zap-mode-btn:focus-visible {
+.auth-zap-mode-btn:not(.is-active):hover,
+.auth-zap-mode-btn:not(.is-active):focus-visible {
   border-color: color-mix(in srgb, var(--link) 48%, var(--border));
 }
 
