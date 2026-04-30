@@ -625,6 +625,14 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<span class="auth-
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'For Login:' 'Sign-in modal has a dedicated login requirements section'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-login-apps' 'Sign-in modal renders login recommendations separately from zap requirements'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'For Zaps:' 'Sign-in modal has a dedicated zap onboarding section'
+auth_tab_frame_line=$(grep -n 'class="auth-tab-frame"' "$SITE_SOURCE_ROOT/includes/nav.md" | head -n 1 | cut -d: -f1)
+auth_login_reco_line=$(grep -n 'auth-login-onboarding' "$SITE_SOURCE_ROOT/includes/nav.md" | head -n 1 | cut -d: -f1)
+auth_zap_reco_line=$(grep -n 'auth-zap-onboarding' "$SITE_SOURCE_ROOT/includes/nav.md" | head -n 1 | cut -d: -f1)
+if [ "$auth_tab_frame_line" -lt "$auth_login_reco_line" ] && [ "$auth_login_reco_line" -lt "$auth_zap_reco_line" ]; then
+  pass
+else
+  fail 'Sign-in modal app recommendations appear after the login flow and keep Login before Zaps'
+fi
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Recommendations Updated April 2026' 'Zap onboarding recommendations show freshness date'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Self-Sovereign' 'Zap onboarding no longer shows a mode selector'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Quick &amp; Easy' 'Zap onboarding no longer recommends quick custodial options'
