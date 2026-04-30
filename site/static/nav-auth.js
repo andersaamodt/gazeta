@@ -641,6 +641,10 @@
     state.nip46.diagnostics.lastMessage = text;
   }
 
+  function isPhonePairingPanelActive() {
+    return state.activeAuthTab === 'phone' && !!els.authPhonePanel && !els.authPhonePanel.hidden;
+  }
+
   function rememberNavToast(message, tone, durationMs) {
     try {
       sessionStorage.setItem(NAV_TOAST_KEY, JSON.stringify({
@@ -837,7 +841,7 @@
         note: 'Use this for the Nostr identity that signs into the site.',
         apps: [
           {
-            icon: '46',
+            iconKey: 'nostr-connect',
             name: 'Nostr Connect signer',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
@@ -851,7 +855,7 @@
         note: 'Use this for the Nostr identity that signs into the site.',
         apps: [
           {
-            icon: '46',
+            iconKey: 'nostr-connect',
             name: 'NIP-46 remote signer',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
@@ -865,7 +869,7 @@
         note: 'Use this for the Nostr identity that signs into the site.',
         apps: [
           {
-            icon: 'A',
+            iconKey: 'amber',
             name: 'Amber',
             url: 'https://github.com/greenart7c3/Amber',
             stores: [
@@ -883,7 +887,7 @@
         note: 'Use this only when browser or phone signing is unavailable.',
         apps: [
           {
-            icon: 'JSON',
+            iconKey: 'signed-challenge',
             name: 'Signed challenge',
             url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
             stores: [{ label: 'NIP-98', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
@@ -896,7 +900,7 @@
       note: 'Use this for the Nostr identity that signs into the site.',
       apps: [
         {
-          icon: 'fx',
+          iconKey: 'nos2x',
           name: 'nos2x-fox',
           url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
           stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
@@ -916,19 +920,19 @@
         note: 'These handle Lightning payments and offsite zapping.',
         apps: [
           {
-            icon: 'D',
+            iconKey: 'damus',
             name: 'Damus',
             url: 'https://damus.io/',
             stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
           },
           {
-            icon: 'N',
+            iconKey: 'nostur',
             name: 'Nostur',
             url: 'https://nostur.com/',
             stores: [{ label: 'App Store', url: 'https://nostur.com/appstore' }]
           },
           {
-            icon: 'Z',
+            iconKey: 'zeus',
             name: 'ZEUS',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
@@ -942,7 +946,7 @@
         note: 'Use this for the Lightning payment side of zaps.',
         apps: [
           {
-            icon: 'Z',
+            iconKey: 'zeus',
             name: 'ZEUS',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
@@ -960,7 +964,7 @@
         note: 'ZEUS handles Lightning payments. Amethyst is for offsite Nostr zaps.',
         apps: [
           {
-            icon: 'A',
+            iconKey: 'amethyst',
             name: 'Amethyst',
             url: 'https://github.com/vitorpamplona/amethyst#installation',
             stores: [
@@ -970,7 +974,7 @@
             ]
           },
           {
-            icon: 'Z',
+            iconKey: 'zeus',
             name: 'ZEUS',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
@@ -988,7 +992,7 @@
         note: 'Use this for the Lightning payment side of zaps.',
         apps: [
           {
-            icon: 'Z',
+            iconKey: 'zeus',
             name: 'ZEUS',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
@@ -1005,7 +1009,7 @@
       note: 'Use this for the Lightning payment side of zaps.',
       apps: [
         {
-          icon: 'Z',
+          iconKey: 'zeus',
           name: 'ZEUS',
           url: 'https://github.com/ZeusLN/zeus#app-store-links',
           stores: [
@@ -1016,6 +1020,21 @@
         }
       ]
     };
+  }
+
+  function recommendationIconSvg(iconKey) {
+    var key = String(iconKey || '').trim();
+    var icons = {
+      'nostr-connect': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 7.5h10"></path><path d="M7 16.5h10"></path><circle cx="7" cy="7.5" r="2.3"></circle><circle cx="17" cy="16.5" r="2.3"></circle></svg>',
+      'amber': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 19 8.2 16.4 20H7.6L5 8.2z"></path><path d="M5 8.2h14"></path><path d="M12 3 9 8.2l3 11.8 3-11.8z"></path></svg>',
+      'signed-challenge': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.5 8.5 5 12l3.5 3.5"></path><path d="M15.5 8.5 19 12l-3.5 3.5"></path><path d="m13.5 7-3 10"></path></svg>',
+      'nos2x': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 8.2c2.4-4.2 8.7-4.4 11.6-.7 2.9 3.8 1.1 9.6-3.5 10.9-4.8 1.3-9.1-2.6-8.6-7.3"></path><path d="M6 8.1 4.2 4.8 8 6.1"></path><path d="M9 15c1.8 1.1 4.3.7 5.6-1"></path></svg>',
+      'damus': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.2 17.5h7.1a4.2 4.2 0 0 0 .6-8.4A5.3 5.3 0 0 0 5.8 11a3.4 3.4 0 0 0 2.4 6.5z"></path></svg>',
+      'nostur': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 18V6l12 12V6"></path><path d="M6 6h12"></path><path d="M6 18h12"></path></svg>',
+      'zeus': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13.2 2 5 13.2h6.2L9.8 22 19 9.8h-6.3z"></path></svg>',
+      'amethyst': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 20 10l-8 11-8-11z"></path><path d="M4 10h16"></path><path d="M8 10l4 11 4-11"></path><path d="M8 10l4-7 4 7"></path></svg>'
+    };
+    return icons[key] || icons['nostr-connect'];
   }
 
   function renderRecommendationList(summaryEl, appsEl, noteEl, recommendation) {
@@ -1038,7 +1057,7 @@
       appLink.target = '_blank';
       appLink.rel = 'noopener noreferrer';
       icon.className = 'auth-reco-app-icon';
-      icon.textContent = app.icon || app.name.charAt(0);
+      icon.innerHTML = recommendationIconSvg(app.iconKey);
       name.textContent = app.name;
       appLink.appendChild(icon);
       appLink.appendChild(name);
@@ -1134,8 +1153,9 @@
         els.authPhoneIntro.textContent = recommendation.intro;
       }
       updatePhoneContinueState();
+      setAuthMessage('', '');
       initNip46Pairing().then(function () {
-        setAuthMessage('Pair the signer here. Continue unlocks after pairing.', 'warn');
+        updatePhoneContinueState();
       }).catch(function (err) {
         setAuthMessage(err.message || 'Unable to prepare phone signer QR.', 'error');
       });
@@ -1981,7 +2001,9 @@
             setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
           },
           onclose: function () {
-            setNip46Diagnostics('Relay listener closed. Reopen the phone signer panel to make a fresh link.', 'error');
+            if (isPhonePairingPanelActive() && !state.nip46.signerPubkey && state.nip46.diagnostics.eventsSeen > 0) {
+              setNip46Diagnostics('Phone signer listener paused after relay activity. If pairing stalls, reopen this panel for a fresh link.', 'warn');
+            }
           }
         }
       );
