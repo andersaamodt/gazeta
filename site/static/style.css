@@ -5331,6 +5331,35 @@ nav.site-nav .btn-login {
   line-height: 1.2;
 }
 
+.auth-zap-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin: 0 0 0.56rem;
+}
+
+.auth-zap-mode-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 86%, var(--bg) 14%);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.32rem 0.62rem;
+}
+
+.auth-zap-mode-btn.is-active {
+  border-color: color-mix(in srgb, var(--link) 56%, var(--border));
+  background: color-mix(in srgb, var(--link) 13%, var(--surface-raised-strong, #fff));
+  color: color-mix(in srgb, var(--link) 76%, var(--text));
+}
+
+.auth-zap-mode-btn:hover,
+.auth-zap-mode-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--link) 48%, var(--border));
+}
+
 .auth-zap-apps {
   list-style: none;
   margin: 0;

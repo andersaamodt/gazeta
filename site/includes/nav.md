@@ -334,9 +334,13 @@
         <span>For Zaps:</span>
       </h3>
       <p class="auth-zap-updated">Recommendations Updated April 2026</p>
+      <div class="auth-zap-mode" role="group" aria-label="Zap setup mode">
+        <button id="auth-zap-mode-sovereign" class="auth-zap-mode-btn is-active" type="button" data-zap-mode="sovereign" aria-pressed="true">Self-Sovereign</button>
+        <button id="auth-zap-mode-easy" class="auth-zap-mode-btn" type="button" data-zap-mode="easy" aria-pressed="false">Quick &amp; Easy</button>
+      </div>
       <p id="auth-zap-summary" class="auth-zap-summary"></p>
       <ul id="auth-zap-apps" class="auth-zap-apps"></ul>
-      <p class="auth-zap-note">Custodial wallets are common, but they are not the recommended path here because someone else controls the funds.</p>
+      <p id="auth-zap-note" class="auth-zap-note"></p>
     </section>
 
     <div class="auth-tab-frame">
