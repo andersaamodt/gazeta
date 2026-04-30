@@ -5309,6 +5309,7 @@ nav.site-nav .btn-login {
 .auth-advanced-toggle:hover,
 .auth-advanced-toggle:focus-visible,
 .auth-advanced-toggle.is-active {
+  background: transparent !important;
   color: var(--link);
 }
 

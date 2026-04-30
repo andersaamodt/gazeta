@@ -612,6 +612,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<span class="auth-plat
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<span class="auth-platform-copy"><strong>iPhone</strong></span>' 'Sign-in modal iOS platform button has no subtitle'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<span class="auth-platform-copy"><strong>Remote Signer</strong></span>' 'Sign-in modal remote signer platform button has no subtitle'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'class="auth-advanced-toggle"' 'Manual sign-in is hidden behind an advanced link'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-advanced-toggle:hover,' 'Advanced auth link has an explicit hover style'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: transparent !important;' 'Advanced auth link hover does not use a filled background'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-columns: repeat(4, minmax(0, 1fr));' 'Sign-in platform cards fit on one row on desktop'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'flex-direction: column;' 'Sign-in platform cards use vertical icon layout'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-platform-icon svg' 'Sign-in platform cards use real SVG icons'
