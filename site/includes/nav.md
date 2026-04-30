@@ -340,7 +340,6 @@
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
           <button id="auth-nip46-copy" class="auth-secondary-btn" type="button">Copy link</button>
-          <button id="auth-nip46-reset" class="auth-secondary-btn" type="button">Make fresh link</button>
         </div>
         <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
