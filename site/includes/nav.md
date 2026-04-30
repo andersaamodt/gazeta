@@ -394,13 +394,7 @@
         <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Phone sign-in uses NIP-46 pairing via QR/deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
-          <a id="auth-nip46-open" class="auth-inline-link auth-nip46-open-link" href="#">nostrconnect://...</a>
-          <button id="auth-nip46-copy" class="auth-icon-copy-btn" type="button" aria-label="Copy Nostr Connect link">
-            <svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>
-              <path d="M5 15.5V5.75A2.75 2.75 0 0 1 7.75 3H15"></path>
-            </svg>
-          </button>
+          <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Open Nostr Connect</a>
         </div>
         <div class="machine-string-box">
           <p class="auth-nip46-uri" id="auth-nip46-uri"></p>

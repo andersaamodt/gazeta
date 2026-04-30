@@ -115,7 +115,6 @@
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
-    authNip46Copy: document.getElementById('auth-nip46-copy'),
     authNip46UriCopy: document.getElementById('auth-nip46-uri-copy'),
     authNip46Reset: document.getElementById('auth-nip46-reset'),
     authNip46Diagnostics: document.getElementById('auth-nip46-diagnostics'),
@@ -1881,7 +1880,9 @@
     if (els.authNip46Open) {
       els.authNip46Open.href = uri;
       els.authNip46Open.setAttribute('data-nip46-uri', uri);
-      els.authNip46Open.textContent = uri;
+      els.authNip46Open.textContent = 'Open Nostr Connect';
+      els.authNip46Open.setAttribute('aria-label', 'Open Nostr Connect signer link');
+      els.authNip46Open.setAttribute('title', 'Open Nostr Connect signer link');
     }
     renderQrCode(uri);
   }
@@ -3457,10 +3458,6 @@
       }).catch(function (err) {
         setAuthMessage(err.message || 'Could not copy Nostr Connect link.', 'error');
       });
-    }
-
-    if (els.authNip46Copy) {
-      els.authNip46Copy.addEventListener('click', copyNip46Uri);
     }
 
     if (els.authNip46UriCopy) {
