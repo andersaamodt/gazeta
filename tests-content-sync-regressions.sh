@@ -651,7 +651,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'https://nostur.com/
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'auth-reco-app-link' 'Login and zap onboarding render compact linked app chips'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'auth-reco-app-purpose' 'Login and zap onboarding render explicit app purpose labels'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-reco-app-purpose' 'Recommendation app purpose labels are styled separately from app names'
-assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'https://f-droid.org/packages/com.aurora.store/' 'Zap onboarding links Aurora Store'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'https://auroraoss.com/downloads/AuroraStore/' 'Zap onboarding links Aurora Store'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Wallet of Satoshi' 'Zap onboarding does not recommend custodial wallets'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Primal' 'Zap onboarding does not recommend quick hosted Nostr apps'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Nsec.app' 'Zap onboarding does not recommend quick remote signer services'
