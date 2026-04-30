@@ -606,9 +606,9 @@
     node.id = 'auth-modal-message';
     node.className = 'auth-modal-message';
     node.setAttribute('aria-live', 'polite');
-    var tabFrame = panel.querySelector('.auth-tab-frame');
-    if (tabFrame && tabFrame.parentNode) {
-      tabFrame.parentNode.insertBefore(node, tabFrame.nextSibling);
+    var platformGrid = panel.querySelector('.auth-platform-grid');
+    if (platformGrid && platformGrid.parentNode) {
+      platformGrid.parentNode.insertBefore(node, platformGrid);
     } else {
       panel.appendChild(node);
     }
@@ -834,7 +834,7 @@
   }
 
   function signInHelperMessage(tabName) {
-    var base = 'First successful sign-in creates your account automatically. You can change your username after you log in.';
+    var base = 'Choose a sign-in method. Your Nostr public key is your account, and the site never asks for a private key. First successful sign-in creates your account automatically. You can change your username after you log in.';
     var tab = String(tabName || 'register');
     if (tab === 'phone') {
       return base + ' Connect Nostr with the link or QR. Sign-in continues after pairing.';

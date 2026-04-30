@@ -297,8 +297,6 @@
     <button class="auth-modal-close" type="button" aria-label="Close login" data-close-auth-modal>&times;</button>
     <div class="auth-modal-scroll">
     <h2 id="auth-modal-title">Sign in</h2>
-    <p class="auth-modal-help">Choose where your signer lives. The site never asks for a private key.</p>
-    <p class="auth-modal-help">Your account identity is your Nostr public key. Sign-in verifies a signed event from your browser extension, phone signer, or remote signer.</p>
 
     <div class="auth-platform-grid" role="list" aria-label="Signer platform">
       <button id="auth-tab-register" class="auth-platform-card is-active" type="button" data-auth-route="register" data-auth-flavor="desktop" aria-pressed="true">
