@@ -837,12 +837,13 @@
     var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'Install first:',
-        note: 'Use this for the Nostr identity that signs into the site.',
+        summary: 'For Login via Nostr, install first:',
+        note: 'These apps sign the Nostr event that proves your site identity.',
         apps: [
           {
             iconKey: 'nostr-connect',
             name: 'Nostr Connect signer',
+            purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
@@ -851,12 +852,13 @@
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Install first:',
-        note: 'Use this for the Nostr identity that signs into the site.',
+        summary: 'For Login via Nostr, install first:',
+        note: 'These apps sign the Nostr event that proves your site identity.',
         apps: [
           {
             iconKey: 'nostr-connect',
             name: 'NIP-46 remote signer',
+            purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
@@ -865,12 +867,13 @@
     }
     if (tab === 'phone') {
       return {
-        summary: 'Install first:',
-        note: 'Use this for the Nostr identity that signs into the site.',
+        summary: 'For Login via Nostr, install first:',
+        note: 'These apps sign the Nostr event that proves your site identity.',
         apps: [
           {
             iconKey: 'amber',
             name: 'Amber',
+            purpose: 'Login via Nostr',
             url: 'https://github.com/greenart7c3/Amber',
             stores: [
               fDroidStore,
@@ -883,12 +886,13 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Advanced fallback:',
+        summary: 'Login via Nostr advanced fallback:',
         note: 'Use this only when browser or phone signing is unavailable.',
         apps: [
           {
             iconKey: 'signed-challenge',
             name: 'Signed challenge',
+            purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
             stores: [{ label: 'NIP-98', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
           }
@@ -896,12 +900,13 @@
       };
     }
     return {
-      summary: 'Install first:',
-      note: 'Use this for the Nostr identity that signs into the site.',
+      summary: 'For Login via Nostr, install first:',
+      note: 'These apps sign the Nostr event that proves your site identity.',
       apps: [
         {
           iconKey: 'nos2x',
           name: 'nos2x-fox',
+          purpose: 'Login via Nostr',
           url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
           stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
         }
@@ -916,24 +921,27 @@
     var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'Then add for zaps:',
-        note: 'These handle Lightning payments and offsite zapping.',
+        summary: 'For Zaps, add:',
+        note: 'These apps are for zap payments and offsite Nostr zapping, not site login.',
         apps: [
           {
             iconKey: 'damus',
             name: 'Damus',
+            purpose: 'Zaps: Nostr client',
             url: 'https://damus.io/',
             stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
           },
           {
             iconKey: 'nostur',
             name: 'Nostur',
+            purpose: 'Zaps: Nostr client',
             url: 'https://nostur.com/',
             stores: [{ label: 'App Store', url: 'https://nostur.com/appstore' }]
           },
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
           }
@@ -942,12 +950,13 @@
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Then add for zaps:',
-        note: 'Use this for the Lightning payment side of zaps.',
+        summary: 'For Zaps, add:',
+        note: 'This app is for Lightning zap payments, not site login.',
         apps: [
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
               fDroidStore,
@@ -960,12 +969,13 @@
     }
     if (tab === 'phone') {
       return {
-        summary: 'Then add for zaps:',
-        note: 'ZEUS handles Lightning payments. Amethyst is for offsite Nostr zaps.',
+        summary: 'For Zaps, add:',
+        note: 'These apps are for zap payments and offsite Nostr zapping. Amber above is the login signer.',
         apps: [
           {
             iconKey: 'amethyst',
             name: 'Amethyst',
+            purpose: 'Zaps: Nostr client',
             url: 'https://github.com/vitorpamplona/amethyst#installation',
             stores: [
               fDroidStore,
@@ -976,6 +986,7 @@
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
               fDroidStore,
@@ -988,12 +999,13 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Then add for zaps:',
-        note: 'Use this for the Lightning payment side of zaps.',
+        summary: 'For Zaps, add:',
+        note: 'This app is for Lightning zap payments, not site login.',
         apps: [
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
               fDroidStore,
@@ -1005,12 +1017,13 @@
       };
     }
     return {
-      summary: 'Then add for zaps:',
-      note: 'Use this for the Lightning payment side of zaps.',
+      summary: 'For Zaps, add:',
+      note: 'This app is for Lightning zap payments, not site login.',
       apps: [
         {
           iconKey: 'zeus',
           name: 'ZEUS',
+          purpose: 'Zaps: Lightning wallet',
           url: 'https://github.com/ZeusLN/zeus#app-store-links',
           stores: [
             fDroidStore,
@@ -1050,7 +1063,9 @@
       var item = document.createElement('li');
       var appLink = document.createElement('a');
       var icon = document.createElement('span');
+      var label = document.createElement('span');
       var name = document.createElement('strong');
+      var purpose = document.createElement('span');
       var stores = document.createElement('span');
       appLink.className = 'auth-reco-app-link';
       appLink.href = app.url;
@@ -1058,9 +1073,16 @@
       appLink.rel = 'noopener noreferrer';
       icon.className = 'auth-reco-app-icon';
       icon.innerHTML = recommendationIconSvg(app.iconKey);
+      label.className = 'auth-reco-app-label';
       name.textContent = app.name;
+      purpose.className = 'auth-reco-app-purpose';
+      purpose.textContent = app.purpose || recommendation.purpose || '';
+      label.appendChild(name);
+      if (purpose.textContent) {
+        label.appendChild(purpose);
+      }
       appLink.appendChild(icon);
-      appLink.appendChild(name);
+      appLink.appendChild(label);
       stores.className = 'auth-reco-store-links';
       (app.stores || []).forEach(function (store, idx) {
         var link = document.createElement('a');

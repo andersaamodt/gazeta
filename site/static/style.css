@@ -5455,6 +5455,21 @@ nav.site-nav .btn-login {
   font-size: 0.9rem;
 }
 
+.auth-reco-app-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  line-height: 1.08;
+}
+
+.auth-reco-app-purpose {
+  color: color-mix(in srgb, var(--light-text) 76%, var(--text));
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.012em;
+  text-decoration: none;
+}
+
 .auth-reco-store-links,
 .auth-zap-store-links {
   color: color-mix(in srgb, var(--link) 72%, var(--text));
