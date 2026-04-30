@@ -5819,6 +5819,15 @@ nav.site-nav .btn-login {
   color: #92400e;
 }
 
+.auth-modal-message.is-plain {
+  border-left-width: 1px;
+  border-color: rgba(37, 99, 235, 0.16);
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: none;
+  color: #475569;
+  font-weight: 520;
+}
+
 .auth-modal-message.is-error {
   border-color: rgba(185, 28, 28, 0.28);
   background: rgba(254, 242, 242, 0.98);

@@ -1166,7 +1166,7 @@
       setAuthMessage('Create a challenge, then paste the signed event JSON.', 'warn');
       return;
     }
-    setAuthMessage('Browser signer login creates your account automatically on first successful sign-in.', 'warn');
+    setAuthMessage('Browser signer login creates your account automatically on first successful sign-in.', 'plain');
   }
 
   function showAuthModal(initialTab) {
