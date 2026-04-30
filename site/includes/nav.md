@@ -420,7 +420,7 @@
         <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
         <p id="auth-zap-note" class="auth-reco-note auth-zap-note"></p>
       </div>
-      <p class="auth-zap-updated">Recommendations Updated April 2026</p>
+      <p class="auth-zap-updated">Recommendations Updated May 2026</p>
     </section>
     </div>
   </div>

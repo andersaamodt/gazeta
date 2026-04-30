@@ -651,7 +651,7 @@ if [ "$auth_tab_frame_line" -lt "$auth_login_reco_line" ] && [ "$auth_login_reco
 else
   fail 'Sign-in modal app recommendations appear after the login flow and keep Login before Zaps'
 fi
-assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Recommendations Updated April 2026' 'Recommended app island shows freshness date'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Recommendations Updated May 2026' 'Recommended app island shows freshness date'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Self-Sovereign' 'Zap onboarding no longer shows a mode selector'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Quick &amp; Easy' 'Zap onboarding no longer recommends quick custodial options'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function loginOnboardingRecommendation' 'Login recommendations update by selected platform'
