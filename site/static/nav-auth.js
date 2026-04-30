@@ -1176,6 +1176,7 @@
     if (!els.authModal) {
       return;
     }
+    var initialSelection = normalizeAuthInitialSelection(initialTab);
     if (authModalHideTimer) {
       clearTimeout(authModalHideTimer);
       authModalHideTimer = null;
@@ -1187,7 +1188,7 @@
     document.body.classList.add('auth-modal-open');
     resetAuthPanels();
     setAuthControlsDisabled(false);
-    setActiveAuthTab(initialTab || 'register');
+    setActiveAuthTab(initialSelection.tab, initialSelection.flavor);
   }
 
   function hideAuthModal() {
@@ -1771,8 +1772,62 @@
     return hasTouch && (coarsePointer || narrowViewport);
   }
 
+  function detectedAuthPlatformFlavor() {
+    var nav = typeof navigator === 'object' ? navigator : null;
+    var ua = String((nav && nav.userAgent) || '');
+    var platform = String((nav && nav.platform) || '');
+    var uaPlatform = String((nav && nav.userAgentData && nav.userAgentData.platform) || '');
+    var combined = [ua, platform, uaPlatform].join(' ');
+    var touchPoints = Number((nav && nav.maxTouchPoints) || 0);
+    if (/Android/i.test(combined)) {
+      return 'android';
+    }
+    if (/iPhone|iPad|iPod/i.test(combined)) {
+      return 'ios';
+    }
+    // iPadOS can present itself as desktop Safari on MacIntel.
+    if (/Mac/i.test(platform) && touchPoints > 1 && isMobileLikeRuntime()) {
+      return 'ios';
+    }
+    if (isMobileLikeRuntime()) {
+      return 'android';
+    }
+    return 'desktop';
+  }
+
+  function preferredAuthInitialSelection() {
+    var flavor = detectedAuthPlatformFlavor();
+    if (flavor === 'android' || flavor === 'ios') {
+      return { tab: 'phone', flavor: flavor };
+    }
+    return { tab: 'register', flavor: 'desktop' };
+  }
+
+  function normalizeAuthInitialSelection(initialTab, initialFlavor) {
+    var fallback = preferredAuthInitialSelection();
+    if (initialTab && typeof initialTab === 'object') {
+      return normalizeAuthInitialSelection(initialTab.tab || initialTab.route, initialTab.flavor);
+    }
+    var tab = String(initialTab || '').trim();
+    var flavor = String(initialFlavor || '').trim();
+    if (!tab || tab === 'auto') {
+      return fallback;
+    }
+    if (tab === 'phone') {
+      if (!flavor) {
+        var detected = detectedAuthPlatformFlavor();
+        flavor = detected === 'ios' ? 'ios' : 'android';
+      }
+      return { tab: 'phone', flavor: flavor };
+    }
+    if (tab === 'manual') {
+      return { tab: 'manual', flavor: 'manual' };
+    }
+    return { tab: 'register', flavor: 'desktop' };
+  }
+
   function preferredUnsignedLoginTab() {
-    return 'phone';
+    return preferredAuthInitialSelection();
   }
 
   function startPrimaryLogin() {
