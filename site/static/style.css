@@ -5429,9 +5429,24 @@ nav.site-nav .btn-login {
   flex: 0 0 auto;
   background: color-mix(in srgb, var(--surface-raised-strong, #fff) 84%, var(--link) 16%);
   color: color-mix(in srgb, var(--link) 82%, var(--text));
-  font-size: 0.78rem;
-  font-weight: 850;
-  line-height: 1;
+}
+
+.auth-reco-app-icon svg,
+.auth-zap-app-icon svg {
+  width: 1.12rem;
+  height: 1.12rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.85;
+}
+
+.auth-reco-app-icon svg path,
+.auth-zap-app-icon svg path,
+.auth-reco-app-icon svg circle,
+.auth-zap-app-icon svg circle {
+  vector-effect: non-scaling-stroke;
 }
 
 .auth-reco-app-link strong,
