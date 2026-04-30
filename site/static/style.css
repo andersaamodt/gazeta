@@ -5388,7 +5388,7 @@ nav.site-nav .btn-login {
 .auth-reco-apps,
 .auth-zap-apps {
   list-style: none;
-  margin: 0;
+  margin: 0.46rem 0 0;
   padding: 0;
   display: grid;
   gap: 0.42rem;
@@ -5492,7 +5492,7 @@ nav.site-nav .btn-login {
 
 .auth-reco-note,
 .auth-zap-note {
-  margin: 0.55rem 0 0;
+  margin: -0.24rem 0 0;
   color: color-mix(in srgb, var(--light-text) 82%, var(--text));
   font-size: 0.74rem;
   line-height: 1.35;

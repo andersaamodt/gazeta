@@ -852,7 +852,7 @@
     if (tab === 'phone' && key === 'ios') {
       return {
         summary: 'Login',
-        note: 'Use a Nostr Connect signer if one is available on iOS.',
+        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
         apps: [
           {
             iconKey: 'nostr-connect',
@@ -867,7 +867,7 @@
     if (tab === 'phone' && key === 'remote') {
       return {
         summary: 'Login',
-        note: 'These apps sign the Nostr event that proves your site identity.',
+        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
         apps: [
           {
             iconKey: 'nostr-connect',
@@ -882,7 +882,7 @@
     if (tab === 'phone') {
       return {
         summary: 'Login',
-        note: 'These apps sign the Nostr event that proves your site identity.',
+        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
         apps: [
           {
             iconKey: 'amber',
@@ -897,7 +897,7 @@
     if (tab === 'manual') {
       return {
         summary: 'Login',
-        note: 'Use this only when browser or phone signing is unavailable.',
+        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
         apps: [
           {
             iconKey: 'signed-challenge',
@@ -911,7 +911,7 @@
     }
     return {
       summary: 'Login',
-      note: 'These apps sign the Nostr event that proves your site identity.',
+      note: 'Use a Nostr event signer to log in to andersaamodt.com.',
       apps: [
         {
           iconKey: 'nos2x',
@@ -933,7 +933,7 @@
     if (tab === 'phone' && key === 'ios') {
       return {
         summary: 'Zaps',
-        note: 'These apps are for zap payments and offsite Nostr zapping, not site login.',
+        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
         apps: [
           {
             iconKey: 'damus',
@@ -962,7 +962,7 @@
     if (tab === 'phone' && key === 'remote') {
       return {
         summary: 'Zaps',
-        note: 'This app is for Lightning zap payments, not site login.',
+        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
         apps: [
           {
             iconKey: 'zeus',
@@ -977,7 +977,7 @@
     if (tab === 'phone') {
       return {
         summary: 'Zaps',
-        note: 'These apps are for zap payments and offsite Nostr zapping. Amber above is the login signer.',
+        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
         apps: [
           {
             iconKey: 'amethyst',
@@ -999,7 +999,7 @@
     if (tab === 'manual') {
       return {
         summary: 'Zaps',
-        note: 'This app is for Lightning zap payments, not site login.',
+        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
         apps: [
           {
             iconKey: 'zeus',
@@ -1013,7 +1013,7 @@
     }
     return {
       summary: 'Zaps',
-      note: 'This app is for Lightning zap payments, not site login.',
+      note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
       apps: [
         {
           iconKey: 'zeus',

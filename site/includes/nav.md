@@ -413,13 +413,13 @@
       </h3>
       <div class="auth-reco-group auth-login-onboarding">
         <p id="auth-login-summary" class="auth-reco-summary"></p>
-        <ul id="auth-login-apps" class="auth-reco-apps"></ul>
         <p id="auth-login-note" class="auth-reco-note"></p>
+        <ul id="auth-login-apps" class="auth-reco-apps"></ul>
       </div>
       <div class="auth-reco-group auth-zap-onboarding">
         <p id="auth-zap-summary" class="auth-reco-summary auth-zap-summary"></p>
-        <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
         <p id="auth-zap-note" class="auth-reco-note auth-zap-note"></p>
+        <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
       </div>
       <p class="auth-zap-updated">Recommendations Updated May 2026</p>
     </section>
