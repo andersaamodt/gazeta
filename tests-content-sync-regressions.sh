@@ -672,6 +672,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "source: 'F-Droid', 
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Choose a sign-in method. Your Nostr public key is your account, and the site never asks for a private key.' 'Sign-in modal helper combines opening guidance into the top toast'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Choose where your signer lives.' 'Sign-in modal avoids vague signer-location wording'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "platformGrid.parentNode.insertBefore(node, platformGrid)" 'Sign-in helper toast appears above platform choices'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "els.authMessage.isConnected" 'Sign-in helper toast is repositioned when an existing modal message node is reused'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "return base + ' Connect Nostr with the link or QR. Sign-in continues after pairing.'" 'Android phone signer guidance is combined into the generic helper toast'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-phone-intro' 'Phone signer guidance no longer interrupts the platform buttons and QR'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "Recommended: Amber from F-Droid." 'Android phone signer guidance does not repeat Amber recommendation'

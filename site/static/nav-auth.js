@@ -587,9 +587,6 @@
   }
 
   function ensureAuthMessageEl() {
-    if (els.authMessage) {
-      return els.authMessage;
-    }
     if (!els.authModal || !els.authModal.querySelector) {
       return null;
     }
@@ -597,15 +594,16 @@
     if (!panel) {
       return null;
     }
-    var existing = panel.querySelector('#auth-modal-message');
-    if (existing) {
-      els.authMessage = existing;
-      return els.authMessage;
+    var node = (els.authMessage && els.authMessage.isConnected) ? els.authMessage : panel.querySelector('#auth-modal-message');
+    var isNew = !node;
+    if (isNew) {
+      node = document.createElement('div');
     }
-    var node = document.createElement('div');
     node.id = 'auth-modal-message';
-    node.className = 'auth-modal-message';
-    node.setAttribute('aria-live', 'polite');
+    if (isNew) {
+      node.className = 'auth-modal-message';
+      node.setAttribute('aria-live', 'polite');
+    }
     var platformGrid = panel.querySelector('.auth-platform-grid');
     if (platformGrid && platformGrid.parentNode) {
       platformGrid.parentNode.insertBefore(node, platformGrid);
@@ -645,6 +643,9 @@
     requestAnimationFrame(function () {
       target.classList.add('is-visible');
     });
+    setTimeout(function () {
+      target.classList.add('is-visible');
+    }, 20);
   }
 
   function setNip46Diagnostics(message, kind) {
