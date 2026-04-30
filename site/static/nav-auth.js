@@ -101,6 +101,8 @@
     authTabRegister: document.getElementById('auth-tab-register'),
     authTabPhone: document.getElementById('auth-tab-phone'),
     authTabManual: document.getElementById('auth-tab-manual'),
+    authZapSummary: document.getElementById('auth-zap-summary'),
+    authZapApps: document.getElementById('auth-zap-apps'),
 
     authRegisterPanel: document.getElementById('auth-register-panel'),
     authPhonePanel: document.getElementById('auth-phone-panel'),
@@ -820,6 +822,116 @@
     };
   }
 
+  function zapOnboardingRecommendation(tabName, flavor) {
+    var tab = String(tabName || 'register');
+    var key = String(flavor || '').trim();
+    if (tab === 'phone' && key === 'ios') {
+      return {
+        summary: 'iPhone/iPad is workable, but signer support is less mature than Android or desktop.',
+        apps: [
+          {
+            name: 'Damus or Nostur',
+            source: 'App Store',
+            note: 'Use as the zap-capable Nostr client. Keep signer expectations modest on iOS for now.'
+          },
+          {
+            name: 'ZEUS',
+            source: 'App Store',
+            note: 'Use Embedded Node for self-custody if comfortable, or connect ZEUS to your own Lightning node.'
+          }
+        ]
+      };
+    }
+    if (tab === 'phone' && key === 'remote') {
+      return {
+        summary: 'Advanced path: keep signing and wallet control on infrastructure you operate.',
+        apps: [
+          {
+            name: 'NIP-46 remote signer',
+            source: 'self-hosted nsecBunker, Gossip bunker mode, or another signer you control',
+            note: 'Connect this site with the Nostr Connect link. Your Nostr secret stays in the remote signer.'
+          },
+          {
+            name: 'ZEUS',
+            source: 'F-Droid, Aurora Store (Play Store), App Store',
+            note: 'Connect to your own LND or Core Lightning node, or use Embedded Node for mobile self-custody.'
+          }
+        ]
+      };
+    }
+    if (tab === 'phone') {
+      return {
+        summary: 'Android has the cleanest sovereign mobile path right now.',
+        apps: [
+          {
+            name: 'Amethyst',
+            source: 'F-Droid/IzzyOnDroid, Aurora Store (Play Store)',
+            note: 'Use as the offsite Nostr client. Pair it with Amber for signing instead of pasting an nsec.'
+          },
+          {
+            name: 'ZEUS',
+            source: 'F-Droid, Aurora Store (Play Store)',
+            note: 'Use Embedded Node for the easier self-custody path. Back up the seed, fund a small amount, then pay zap invoices from ZEUS.'
+          }
+        ]
+      };
+    }
+    if (tab === 'manual') {
+      return {
+        summary: 'Manual signing is for recovery or advanced use, not the normal zap setup.',
+        apps: [
+          {
+            name: 'NIP-46 remote signer',
+            source: 'self-hosted signer you control',
+            note: 'Prefer remote signing over repeatedly copying signed JSON by hand.'
+          },
+          {
+            name: 'ZEUS',
+            source: 'F-Droid, Aurora Store (Play Store), App Store',
+            note: 'Use Embedded Node or connect to your own Lightning node for self-custodial zap payments.'
+          }
+        ]
+      };
+    }
+    return {
+      summary: 'Desktop is the simplest web path: browser signer for Nostr, separate wallet for payments.',
+      apps: [
+        {
+          name: 'nos2x-fox',
+          source: 'Firefox Add-ons',
+          note: 'Install in Firefox and use it as the browser signer. This site never asks for the private key.'
+        },
+        {
+          name: 'ZEUS',
+          source: 'F-Droid, Aurora Store (Play Store), App Store',
+          note: 'Use ZEUS on phone as the self-custodial Lightning wallet, then open or copy zap invoices into it.'
+        }
+      ]
+    };
+  }
+
+  function renderZapOnboarding(tabName, flavor) {
+    if (!els.authZapSummary || !els.authZapApps) {
+      return;
+    }
+    var recommendation = zapOnboardingRecommendation(tabName, flavor);
+    els.authZapSummary.textContent = recommendation.summary;
+    els.authZapApps.innerHTML = '';
+    recommendation.apps.forEach(function (app) {
+      var item = document.createElement('li');
+      var title = document.createElement('strong');
+      var source = document.createElement('span');
+      var note = document.createElement('small');
+      title.textContent = app.name;
+      source.textContent = app.source;
+      note.textContent = app.note;
+      item.appendChild(title);
+      item.appendChild(source);
+      item.appendChild(note);
+      els.authZapApps.appendChild(item);
+    });
+  }
+
   function updateAuthPlatformCards(tab, flavor) {
     if (!els.authModal || typeof els.authModal.querySelectorAll !== 'function') {
       return;
@@ -845,6 +957,7 @@
       els.authModalTitle.textContent = 'Sign in';
     }
     updateAuthPlatformCards(tab, flavor);
+    renderZapOnboarding(tab, flavor);
 
     if (els.authTabRegister) {
       var activeRegister = tab === 'register';

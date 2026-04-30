@@ -324,6 +324,20 @@
       </button>
     </div>
 
+    <section class="auth-zap-onboarding" aria-labelledby="auth-zap-title">
+      <h3 id="auth-zap-title">
+        <span class="auth-zap-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M13.2 2 5 13.2h6.2L9.8 22 19 9.8h-6.3z"></path>
+          </svg>
+        </span>
+        <span>For Zaps:</span>
+      </h3>
+      <p id="auth-zap-summary" class="auth-zap-summary"></p>
+      <ul id="auth-zap-apps" class="auth-zap-apps"></ul>
+      <p class="auth-zap-note">Custodial wallets are common, but they are not the recommended path here because someone else controls the funds.</p>
+    </section>
+
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
         <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
@@ -400,7 +414,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260429-phone-signer1"></script>
+<script src="/static/nav-auth.js?v=20260430-zap-onboarding1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
