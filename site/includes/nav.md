@@ -359,7 +359,6 @@
         <div class="auth-actions">
           <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled>Continue with phone signer</button>
         </div>
-        <p id="auth-phone-reco" class="auth-action-reco">Recommended: Amber on Android, NostrKey or a NIP-46 signer on iPhone/iPad.</p>
       </div>
 
       <div id="auth-manual-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-manual" hidden>

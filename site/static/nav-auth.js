@@ -105,7 +105,6 @@
     authRegisterPanel: document.getElementById('auth-register-panel'),
     authPhonePanel: document.getElementById('auth-phone-panel'),
     authPhoneIntro: document.getElementById('auth-phone-intro'),
-    authPhoneReco: document.getElementById('auth-phone-reco'),
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
@@ -808,19 +807,16 @@
     var key = String(flavor || 'android');
     if (key === 'ios') {
       return {
-        intro: 'Recommended: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.',
-        reco: 'Recommended: NostrKey for Safari/iOS, or another open NIP-46 signer.'
+        intro: 'Recommended: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.'
       };
     }
     if (key === 'remote') {
       return {
-        intro: 'Recommended: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.',
-        reco: 'Recommended: an open NIP-46 signer you control.'
+        intro: 'Recommended: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.'
       };
     }
     return {
-      intro: 'Recommended: Amber on Android. Open the Nostr Connect link, then return here after pairing.',
-      reco: 'Recommended: Amber for Android.'
+      intro: 'Recommended: Amber on Android. Open the Nostr Connect link, then return here after pairing.'
     };
   }
 
@@ -874,9 +870,6 @@
       var recommendation = phoneSignerRecommendation(flavor);
       if (els.authPhoneIntro) {
         els.authPhoneIntro.textContent = recommendation.intro;
-      }
-      if (els.authPhoneReco) {
-        els.authPhoneReco.textContent = recommendation.reco;
       }
       updatePhoneContinueState();
       initNip46Pairing().then(function () {

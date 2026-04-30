@@ -603,6 +603,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-platform-grid' 'S
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>Desktop</strong><span>Firefox signer</span>' 'Sign-in modal recommends a desktop signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>Android</strong><span>Amber signer</span>' 'Sign-in modal recommends an Android signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>iPhone/iPad</strong><span>Safari signer</span>' 'Sign-in modal recommends an iOS signer path'
+assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-phone-reco' 'phone signer recommendations are not repeated below the panel actions'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Continue with browser signer' 'Browser signer action avoids special register wording'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'You can change your username after you log in.' 'Sign-in modal defers username choice until after login'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-register-username' 'Sign-in modal does not ask for a username during first login'
