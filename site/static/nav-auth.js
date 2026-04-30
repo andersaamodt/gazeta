@@ -97,7 +97,6 @@
     authModalTitle: document.getElementById('auth-modal-title'),
     authMessage: document.getElementById('auth-modal-message'),
     authRegisterBtn: document.getElementById('auth-register-btn'),
-    authRegisterUsername: document.getElementById('auth-register-username'),
     authPhoneConnectBtn: document.getElementById('auth-phone-connect-btn'),
     authPhoneBtn: document.getElementById('auth-phone-btn'),
     authTabRegister: document.getElementById('auth-tab-register'),
@@ -3249,8 +3248,7 @@
 
     if (els.authRegisterBtn) {
       els.authRegisterBtn.addEventListener('click', function () {
-        var usernameHint = els.authRegisterUsername ? String(els.authRegisterUsername.value || '').trim() : '';
-        startDesktopSignerLogin(true, usernameHint).catch(function (err) {
+        startDesktopSignerLogin(true, '').catch(function (err) {
           setAuthMessage(err.message || 'Nostr signer login failed.', 'error');
         });
       });

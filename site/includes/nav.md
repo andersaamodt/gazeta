@@ -327,9 +327,7 @@
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
         <p class="auth-modal-help">Best fit: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
-        <label for="auth-register-username"><strong>Username</strong></label>
-        <input id="auth-register-username" class="auth-input auth-username-input" type="text" maxlength="24" autocomplete="username" placeholder="optional (letters, numbers, ., _, -)">
-        <p class="auth-modal-help">Login is tied to your Nostr key, not your username. Usernames must be unique.</p>
+        <p class="auth-modal-help">You can change your username after you log in.</p>
         <div class="auth-actions">
           <button id="auth-register-btn" class="auth-primary-btn" type="button">Continue with browser signer</button>
           <span class="auth-action-reco">Recommended: <a class="auth-inline-link" href="https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/" target="_blank" rel="noopener noreferrer">nos2x-fox</a></span>
