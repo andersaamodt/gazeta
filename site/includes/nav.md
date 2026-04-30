@@ -304,23 +304,23 @@
     <div class="auth-platform-grid" role="list" aria-label="Signer platform">
       <button id="auth-tab-register" class="auth-platform-card is-active" type="button" data-auth-route="register" data-auth-flavor="desktop" aria-pressed="true">
         <span class="auth-platform-icon" aria-hidden="true">▣</span>
-        <span class="auth-platform-copy"><strong>Desktop</strong><span>Firefox signer</span></span>
+        <span class="auth-platform-copy"><strong>Desktop</strong></span>
       </button>
       <button id="auth-tab-phone" class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="android" aria-pressed="false">
         <span class="auth-platform-icon" aria-hidden="true">◫</span>
-        <span class="auth-platform-copy"><strong>Android</strong><span>Amber signer</span></span>
+        <span class="auth-platform-copy"><strong>Android</strong></span>
       </button>
       <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="ios" aria-pressed="false">
         <span class="auth-platform-icon" aria-hidden="true">◇</span>
-        <span class="auth-platform-copy"><strong>iPhone/iPad</strong><span>Safari signer</span></span>
+        <span class="auth-platform-copy"><strong>iPhone/iPad</strong></span>
       </button>
       <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="remote" aria-pressed="false">
         <span class="auth-platform-icon" aria-hidden="true">⇄</span>
-        <span class="auth-platform-copy"><strong>Remote signer</strong><span>Nostr Connect</span></span>
+        <span class="auth-platform-copy"><strong>Remote signer</strong></span>
       </button>
       <button id="auth-tab-manual" class="auth-platform-card auth-platform-card-muted" type="button" data-auth-route="manual" data-auth-flavor="manual" aria-pressed="false">
         <span class="auth-platform-icon" aria-hidden="true">⌁</span>
-        <span class="auth-platform-copy"><strong>Manual</strong><span>Challenge JSON</span></span>
+        <span class="auth-platform-copy"><strong>Manual</strong></span>
       </button>
     </div>
 
