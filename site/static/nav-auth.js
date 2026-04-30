@@ -2068,7 +2068,7 @@
             handleNip46RelayEvent(event);
           },
           oneose: function () {
-            setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
+            setNip46Diagnostics('Waiting for signer', 'waiting');
           },
           onclose: function () {
             if (isPhonePairingPanelActive() && !state.nip46.signerPubkey && state.nip46.diagnostics.eventsSeen > 0) {
@@ -2077,7 +2077,7 @@
           }
         }
       );
-      setNip46Diagnostics('Listening on ' + state.nip46.relays.join(', ') + ' for signer response to ' + shortPubkey(state.nip46.appPubkey) + '.', 'info');
+      setNip46Diagnostics('Waiting for signer', 'waiting');
 
       return saveNip46PairState();
     }).then(function () {
@@ -2177,7 +2177,7 @@
     state.nip46.seenEvents[event.id] = true;
     state.nip46.diagnostics.eventsSeen += 1;
     state.nip46.diagnostics.lastEventPubkey = String(event.pubkey || '');
-    setNip46Diagnostics('Saw signer response from ' + shortPubkey(event.pubkey) + '; decrypting.', 'info');
+    setNip46Diagnostics('Signer responded. Checking...', 'info');
 
     decryptNip46Content(event)
       .then(function (plain) {
@@ -2193,7 +2193,7 @@
           state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
           saveNip46PairState();
           updatePhoneContinueState();
-          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Requesting sign-in approval.', 'ok');
+          setNip46Diagnostics('Connected. Requesting approval.', 'ok');
           continuePhoneSignerLogin(true);
           return;
         }
@@ -2202,7 +2202,7 @@
           state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
           saveNip46PairState();
           updatePhoneContinueState();
-          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Requesting sign-in approval.', 'ok');
+          setNip46Diagnostics('Connected. Requesting approval.', 'ok');
           continuePhoneSignerLogin(true);
           return;
         }
