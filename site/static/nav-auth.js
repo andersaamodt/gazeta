@@ -827,84 +827,109 @@
     var key = String(flavor || '').trim();
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'iPhone/iPad is workable, but signer support is less mature than Android or desktop.',
         apps: [
           {
+            icon: 'D',
             name: 'Damus or Nostur',
-            source: 'App Store',
-            note: 'Use as the zap-capable Nostr client. Keep signer expectations modest on iOS for now.'
+            url: 'https://damus.io/',
+            stores: [{ label: 'App Store', url: 'https://damus.io/' }]
           },
           {
+            icon: 'Z',
             name: 'ZEUS',
-            source: 'App Store',
-            note: 'Use Embedded Node for self-custody if comfortable, or connect ZEUS to your own Lightning node.'
+            url: 'https://zeusln.com/',
+            stores: [{ label: 'App Store', url: 'https://zeusln.com/' }]
           }
         ]
       };
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Advanced path: keep signing and wallet control on infrastructure you operate.',
         apps: [
           {
+            icon: '46',
             name: 'NIP-46 remote signer',
-            source: 'self-hosted nsecBunker, Gossip bunker mode, or another signer you control',
-            note: 'Connect this site with the Nostr Connect link. Your Nostr secret stays in the remote signer.'
+            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
+            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           },
           {
+            icon: 'Z',
             name: 'ZEUS',
-            source: 'F-Droid, Aurora Store (Play Store), App Store',
-            note: 'Connect to your own LND or Core Lightning node, or use Embedded Node for mobile self-custody.'
+            url: 'https://zeusln.com/',
+            stores: [
+              { label: 'F-Droid', url: 'https://f-droid.org/' },
+              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
+            ]
           }
         ]
       };
     }
     if (tab === 'phone') {
       return {
-        summary: 'Android has the cleanest sovereign mobile path right now.',
         apps: [
           {
+            icon: 'A',
             name: 'Amethyst',
-            source: 'F-Droid/IzzyOnDroid, Aurora Store (Play Store)',
-            note: 'Use as the offsite Nostr client. Pair it with Amber for signing instead of pasting an nsec.'
+            url: 'https://github.com/vitorpamplona/amethyst',
+            stores: [
+              { label: 'F-Droid', url: 'https://android.izzysoft.de/repo/apk/com.vitorpamplona.amethyst' },
+              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.vitorpamplona.amethyst' }
+            ]
           },
           {
+            icon: 'Z',
             name: 'ZEUS',
-            source: 'F-Droid, Aurora Store (Play Store)',
-            note: 'Use Embedded Node for the easier self-custody path. Back up the seed, fund a small amount, then pay zap invoices from ZEUS.'
+            url: 'https://zeusln.com/',
+            stores: [
+              { label: 'F-Droid', url: 'https://f-droid.org/' },
+              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
+            ]
           }
         ]
       };
     }
     if (tab === 'manual') {
       return {
-        summary: 'Manual signing is for recovery or advanced use, not the normal zap setup.',
         apps: [
           {
+            icon: '46',
             name: 'NIP-46 remote signer',
-            source: 'self-hosted signer you control',
-            note: 'Prefer remote signing over repeatedly copying signed JSON by hand.'
+            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
+            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           },
           {
+            icon: 'Z',
             name: 'ZEUS',
-            source: 'F-Droid, Aurora Store (Play Store), App Store',
-            note: 'Use Embedded Node or connect to your own Lightning node for self-custodial zap payments.'
+            url: 'https://zeusln.com/',
+            stores: [
+              { label: 'F-Droid', url: 'https://f-droid.org/' },
+              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
+            ]
           }
         ]
       };
     }
     return {
-      summary: 'Desktop is the simplest web path: browser signer for Nostr, separate wallet for payments.',
       apps: [
         {
+          icon: 'fx',
           name: 'nos2x-fox',
-          source: 'Firefox Add-ons',
-          note: 'Install in Firefox and use it as the browser signer. This site never asks for the private key.'
+          url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
+          stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
         },
         {
+          icon: 'Z',
           name: 'ZEUS',
-          source: 'F-Droid, Aurora Store (Play Store), App Store',
-          note: 'Use ZEUS on phone as the self-custodial Lightning wallet, then open or copy zap invoices into it.'
+          url: 'https://zeusln.com/',
+          stores: [
+            { label: 'F-Droid', url: 'https://f-droid.org/' },
+            { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+            { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
+          ]
         }
       ]
     };
@@ -915,19 +940,37 @@
       return;
     }
     var recommendation = zapOnboardingRecommendation(tabName, flavor);
-    els.authZapSummary.textContent = recommendation.summary;
+    els.authZapSummary.textContent = 'Install:';
     els.authZapApps.innerHTML = '';
     recommendation.apps.forEach(function (app) {
       var item = document.createElement('li');
-      var title = document.createElement('strong');
-      var source = document.createElement('span');
-      var note = document.createElement('small');
-      title.textContent = app.name;
-      source.textContent = app.source;
-      note.textContent = app.note;
-      item.appendChild(title);
-      item.appendChild(source);
-      item.appendChild(note);
+      var appLink = document.createElement('a');
+      var icon = document.createElement('span');
+      var name = document.createElement('strong');
+      var stores = document.createElement('span');
+      appLink.className = 'auth-zap-app-link';
+      appLink.href = app.url;
+      appLink.target = '_blank';
+      appLink.rel = 'noopener noreferrer';
+      icon.className = 'auth-zap-app-icon';
+      icon.textContent = app.icon || app.name.charAt(0);
+      name.textContent = app.name;
+      appLink.appendChild(icon);
+      appLink.appendChild(name);
+      stores.className = 'auth-zap-store-links';
+      (app.stores || []).forEach(function (store, idx) {
+        var link = document.createElement('a');
+        link.href = store.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = store.label;
+        stores.appendChild(link);
+        if (idx < app.stores.length - 1) {
+          stores.appendChild(document.createTextNode(' / '));
+        }
+      });
+      item.appendChild(appLink);
+      item.appendChild(stores);
       els.authZapApps.appendChild(item);
     });
   }
