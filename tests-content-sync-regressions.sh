@@ -610,6 +610,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-modal-message.i
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'transition:' 'Sign-in modal message animates when appearing and disappearing'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-left-width: 0.34rem;' 'Sign-in modal message avoids thick left-border banner styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-modal-message.is-plain' 'Sign-in modal supports plain helper messages'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" 'body.auth-modal-open {' 'Sign-in modal does not change body overflow or reflow the navbar'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-left-width: 1px;' 'Plain sign-in helper message does not need a left-border override'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function signInHelperMessage' 'Sign-in modal uses one generic account-creation helper across methods'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'First successful sign-in creates your account automatically.' 'Sign-in helper does not make account creation sound browser-only'

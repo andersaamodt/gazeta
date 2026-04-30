@@ -264,10 +264,6 @@ body.list-page-width-anim.list-page-wide {
   margin-right: auto;
 }
 
-body.auth-modal-open {
-  overflow: hidden;
-}
-
 a[href],
 button,
 input[type="button"],
