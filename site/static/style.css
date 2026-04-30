@@ -5660,6 +5660,32 @@ nav.site-nav .btn-login {
   border-radius: 8px;
 }
 
+.auth-nip46-pairing {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem 0.85rem;
+  max-width: 100%;
+}
+
+.auth-nip46-pairing .auth-qr {
+  margin: 0;
+}
+
+.auth-nip46-controls {
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.auth-nip46-controls .auth-actions {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
 .auth-nip46-uri {
   margin: 0.2rem 0 0;
   border: 1px solid #d8e1f5;
@@ -5728,7 +5754,7 @@ nav.site-nav .btn-login {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.42rem 0.58rem;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .auth-nip46-link-actions .machine-string-copy {
@@ -5752,7 +5778,7 @@ nav.site-nav .btn-login {
 
 .auth-nip46-diagnostics {
   width: fit-content;
-  margin: 0.34rem auto 0;
+  margin: 0;
   border: 1px solid rgba(30, 64, 175, 0.14);
   border-radius: 999px;
   background: rgba(30, 64, 175, 0.06);
@@ -6029,6 +6055,26 @@ nav.site-nav .btn-login {
   .auth-qr {
     min-width: min(100%, 13rem);
     max-width: 100%;
+  }
+
+  .auth-nip46-pairing {
+    grid-template-columns: max-content minmax(0, max-content);
+    gap: 0.5rem;
+  }
+
+  .auth-nip46-pairing .auth-qr {
+    min-width: 9rem;
+    min-height: 9rem;
+    padding: 0.48rem;
+  }
+
+  .auth-nip46-pairing .auth-qr img,
+  .auth-nip46-pairing .auth-qr canvas {
+    max-width: 132px;
+  }
+
+  .auth-nip46-controls {
+    gap: 0.38rem;
   }
 
   .auth-nip46-uri {
