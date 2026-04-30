@@ -826,15 +826,14 @@
       };
     }
     return {
-      intro: 'Recommended: Amber on Android. Open the Nostr Connect link, then return here after pairing.'
+      intro: 'Recommended: Amber from F-Droid. Open the Nostr Connect link, then return here after pairing.'
     };
   }
 
   function loginOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
-    var fDroidStore = { label: 'F-Droid', url: 'https://f-droid.org/' };
-    var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
+    var amberFDroid = { source: 'F-Droid', label: 'Download', url: 'https://f-droid.org/packages/com.greenart7c3.nostrsigner/' };
     if (tab === 'phone' && key === 'ios') {
       return {
         summary: 'For Login via Nostr, install first:',
@@ -845,7 +844,7 @@
             name: 'Nostr Connect signer',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+            stores: [{ source: 'NIP-46', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
         ]
       };
@@ -860,7 +859,7 @@
             name: 'NIP-46 remote signer',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+            stores: [{ source: 'NIP-46', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
         ]
       };
@@ -875,11 +874,7 @@
             name: 'Amber',
             purpose: 'Login via Nostr',
             url: 'https://github.com/greenart7c3/Amber',
-            stores: [
-              fDroidStore,
-              auroraStore,
-              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.greenart7c3.nostrsigner' }
-            ]
+            stores: [amberFDroid]
           }
         ]
       };
@@ -894,7 +889,7 @@
             name: 'Signed challenge',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
-            stores: [{ label: 'NIP-98', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
+            stores: [{ source: 'NIP-98', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
           }
         ]
       };
@@ -908,7 +903,7 @@
           name: 'nos2x-fox',
           purpose: 'Login via Nostr',
           url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
-          stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
+          stores: [{ source: 'Firefox Add-ons', label: 'Download', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
         }
       ]
     };
@@ -917,8 +912,7 @@
   function zapOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
-    var fDroidStore = { label: 'F-Droid', url: 'https://f-droid.org/' };
-    var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
+    var auroraStore = { source: 'Aurora', label: 'Download', url: 'https://auroraoss.com/downloads/AuroraStore/' };
     if (tab === 'phone' && key === 'ios') {
       return {
         summary: 'For Zaps, add:',
@@ -929,21 +923,21 @@
             name: 'Damus',
             purpose: 'Zaps: Nostr client',
             url: 'https://damus.io/',
-            stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
+            stores: [{ source: 'App Store', label: 'Download', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
           },
           {
             iconKey: 'nostur',
             name: 'Nostur',
             purpose: 'Zaps: Nostr client',
             url: 'https://nostur.com/',
-            stores: [{ label: 'App Store', url: 'https://nostur.com/appstore' }]
+            stores: [{ source: 'App Store', label: 'Download', url: 'https://nostur.com/appstore' }]
           },
           {
             iconKey: 'zeus',
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
+            stores: [{ source: 'App Store', label: 'Download', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
           }
         ]
       };
@@ -958,11 +952,7 @@
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [
-              fDroidStore,
-              auroraStore,
-              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
-            ]
+            stores: [auroraStore]
           }
         ]
       };
@@ -977,22 +967,14 @@
             name: 'Amethyst',
             purpose: 'Zaps: Nostr client',
             url: 'https://github.com/vitorpamplona/amethyst#installation',
-            stores: [
-              fDroidStore,
-              auroraStore,
-              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.vitorpamplona.amethyst' }
-            ]
+            stores: [auroraStore]
           },
           {
             iconKey: 'zeus',
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [
-              fDroidStore,
-              auroraStore,
-              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
-            ]
+            stores: [auroraStore]
           }
         ]
       };
@@ -1007,11 +989,7 @@
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [
-              fDroidStore,
-              auroraStore,
-              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
-            ]
+            stores: [auroraStore]
           }
         ]
       };
@@ -1025,11 +1003,7 @@
           name: 'ZEUS',
           purpose: 'Zaps: Lightning wallet',
           url: 'https://github.com/ZeusLN/zeus#app-store-links',
-          stores: [
-            fDroidStore,
-            auroraStore,
-            { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
-          ]
+          stores: [auroraStore]
         }
       ]
     };
@@ -1086,10 +1060,14 @@
       stores.className = 'auth-reco-store-links';
       (app.stores || []).forEach(function (store, idx) {
         var link = document.createElement('a');
+        var source = String(store.source || '').trim();
         link.href = store.url;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = store.label;
+        if (source) {
+          stores.appendChild(document.createTextNode(source + ': '));
+        }
         stores.appendChild(link);
         if (idx < app.stores.length - 1) {
           stores.appendChild(document.createTextNode(' / '));
