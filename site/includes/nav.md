@@ -401,11 +401,12 @@
 
     <section class="auth-recommended-apps auth-reco-card" aria-labelledby="auth-reco-title">
       <h3 id="auth-reco-title">
-        <span class="auth-login-icon" aria-hidden="true">
+        <span class="auth-apps-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M7 11V8a5 5 0 0 1 10 0v3"></path>
-            <path d="M6 11h12v8H6z"></path>
-            <path d="M12 14.5v1.8"></path>
+            <rect x="4" y="4" width="6.2" height="6.2" rx="1.35"></rect>
+            <rect x="13.8" y="4" width="6.2" height="6.2" rx="1.35"></rect>
+            <rect x="4" y="13.8" width="6.2" height="6.2" rx="1.35"></rect>
+            <rect x="13.8" y="13.8" width="6.2" height="6.2" rx="1.35"></rect>
           </svg>
         </span>
         <span>Recommended Apps</span>

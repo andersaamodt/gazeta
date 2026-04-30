@@ -639,6 +639,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Safari signer' 'Si
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Nostr Connect</span>' 'Sign-in modal removes remote signer platform subtitle'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<span class="auth-platform-copy"><strong>Manual</strong></span>' 'Manual sign-in is not shown as a platform card'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Recommended Apps' 'Sign-in modal combines login and zap recommendations into one app island'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-apps-icon' 'Recommended Apps header uses an app-grid icon'
+assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-login-icon' 'Recommended Apps header no longer uses the lock/login icon'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-login-apps' 'Sign-in modal keeps login recommendation app list'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-zap-apps' 'Sign-in modal keeps zap recommendation app list'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'For Login:' 'Sign-in modal does not split recommendations into a login island'

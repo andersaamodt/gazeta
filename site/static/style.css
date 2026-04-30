@@ -5347,22 +5347,25 @@ nav.site-nav .btn-login {
   font-size: 0.98rem;
 }
 
-.auth-login-icon {
+.auth-apps-icon {
   width: 1.85rem;
   height: 1.85rem;
-  border-radius: 999px;
+  border-radius: 10px;
   display: inline-grid;
   place-items: center;
-  background: linear-gradient(135deg, #7c3aed, #a855f7 58%, #d946ef);
+  background: linear-gradient(135deg, #2563eb, #0f766e 64%, #14b8a6);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.22);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
 }
 
-.auth-login-icon svg {
+.auth-apps-icon svg {
   width: 1.02rem;
   height: 1.02rem;
-  fill: currentColor;
-  transform: translate(-0.5px, -0.5px);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
 }
 
 .auth-reco-summary,
