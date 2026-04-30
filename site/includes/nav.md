@@ -297,20 +297,36 @@
     <button class="auth-modal-close" type="button" aria-label="Close login" data-close-auth-modal>&times;</button>
     <div class="auth-modal-scroll">
     <h2 id="auth-modal-title">Sign in</h2>
-    <p class="auth-modal-help">Accounts are Nostr-key based only. No email, password, or recovery. If your Nostr key is lost, the account is lost by design.</p>
-    <p class="auth-modal-help">Desktop login uses NIP-07 when available. Phone login uses NIP-46 pairing via QR/deep-link.</p>
+    <p class="auth-modal-help">Choose where your signer lives. The site never asks for a private key.</p>
 
     <div id="auth-modal-message" class="auth-modal-message" aria-live="polite"></div>
 
-    <div class="auth-tabs" role="tablist" aria-label="Sign-in methods">
-      <button id="auth-tab-register" class="auth-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="auth-register-panel">Browser signer</button>
-      <button id="auth-tab-phone" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-phone-panel">Phone signer</button>
-      <button id="auth-tab-manual" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="auth-manual-panel">Manual challenge</button>
+    <div class="auth-platform-grid" role="list" aria-label="Signer platform">
+      <button id="auth-tab-register" class="auth-platform-card is-active" type="button" data-auth-route="register" data-auth-flavor="desktop" aria-pressed="true">
+        <span class="auth-platform-icon" aria-hidden="true">▣</span>
+        <span class="auth-platform-copy"><strong>Desktop</strong><span>Firefox signer</span></span>
+      </button>
+      <button id="auth-tab-phone" class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="android" aria-pressed="false">
+        <span class="auth-platform-icon" aria-hidden="true">◫</span>
+        <span class="auth-platform-copy"><strong>Android</strong><span>Amber signer</span></span>
+      </button>
+      <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="ios" aria-pressed="false">
+        <span class="auth-platform-icon" aria-hidden="true">◇</span>
+        <span class="auth-platform-copy"><strong>iPhone/iPad</strong><span>Safari signer</span></span>
+      </button>
+      <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="remote" aria-pressed="false">
+        <span class="auth-platform-icon" aria-hidden="true">⇄</span>
+        <span class="auth-platform-copy"><strong>Remote signer</strong><span>Nostr Connect</span></span>
+      </button>
+      <button id="auth-tab-manual" class="auth-platform-card auth-platform-card-muted" type="button" data-auth-route="manual" data-auth-flavor="manual" aria-pressed="false">
+        <span class="auth-platform-icon" aria-hidden="true">⌁</span>
+        <span class="auth-platform-copy"><strong>Manual</strong><span>Challenge JSON</span></span>
+      </button>
     </div>
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
-        <p class="auth-modal-help">Use a browser extension signer. If this is the first login for this Nostr key, the site creates the account automatically.</p>
+        <p class="auth-modal-help">Best fit: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
         <label for="auth-register-username"><strong>Username</strong></label>
         <input id="auth-register-username" class="auth-input auth-username-input" type="text" maxlength="24" autocomplete="username" placeholder="optional (letters, numbers, ., _, -)">
         <p class="auth-modal-help">Login is tied to your Nostr key, not your username. Usernames must be unique.</p>
@@ -321,7 +337,7 @@
       </div>
 
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
-        <p class="auth-modal-help">Scan this with your phone signer app (Nostr Connect / NIP-46), or open via deep link.</p>
+        <p id="auth-phone-intro" class="auth-modal-help">Best fit: phone signer app with Nostr Connect. Open the link or scan the QR.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
@@ -334,7 +350,7 @@
           <button id="auth-phone-connect-btn" class="auth-secondary-btn" type="button">Connect phone signer (QR)</button>
           <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled>Continue with phone signer</button>
         </div>
-        <p class="auth-action-reco">Recommended: <a class="auth-inline-link" href="https://play.google.com/store/apps/details?id=com.vitorpamplona.amethyst" target="_blank" rel="noopener noreferrer">Amethyst</a></p>
+        <p id="auth-phone-reco" class="auth-action-reco">Recommended: Amber on Android, NostrKey or a NIP-46 signer on iPhone/iPad.</p>
       </div>
 
       <div id="auth-manual-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-manual" hidden>

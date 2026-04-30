@@ -106,6 +106,8 @@
 
     authRegisterPanel: document.getElementById('auth-register-panel'),
     authPhonePanel: document.getElementById('auth-phone-panel'),
+    authPhoneIntro: document.getElementById('auth-phone-intro'),
+    authPhoneReco: document.getElementById('auth-phone-reco'),
     authNip46Qr: document.getElementById('auth-nip46-qr'),
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
@@ -599,9 +601,9 @@
     node.id = 'auth-modal-message';
     node.className = 'auth-modal-message';
     node.setAttribute('aria-live', 'polite');
-    var tabs = panel.querySelector('.auth-tabs');
-    if (tabs && tabs.parentNode) {
-      tabs.parentNode.insertBefore(node, tabs);
+    var chooser = panel.querySelector('.auth-platform-grid');
+    if (chooser && chooser.parentNode) {
+      chooser.parentNode.insertBefore(node, chooser);
     } else {
       panel.appendChild(node);
     }
@@ -773,6 +775,11 @@
         node.disabled = isDisabled;
       }
     });
+    if (els.authModal && typeof els.authModal.querySelectorAll === 'function') {
+      els.authModal.querySelectorAll('[data-auth-route]').forEach(function (node) {
+        node.disabled = isDisabled;
+      });
+    }
     if (!isDisabled) {
       updatePhoneContinueState();
     }
@@ -799,29 +806,66 @@
     if (els.authManualEvent) { els.authManualEvent.value = ''; }
   }
 
-  function setActiveAuthTab(tabName) {
+  function phoneSignerRecommendation(flavor) {
+    var key = String(flavor || 'android');
+    if (key === 'ios') {
+      return {
+        intro: 'Best fit: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.',
+        reco: 'Recommended: NostrKey for Safari/iOS, or another open NIP-46 signer.'
+      };
+    }
+    if (key === 'remote') {
+      return {
+        intro: 'Best fit: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.',
+        reco: 'Recommended: an open NIP-46 signer you control.'
+      };
+    }
+    return {
+      intro: 'Best fit: Amber on Android. Open the Nostr Connect link, then return here after pairing.',
+      reco: 'Recommended: Amber for Android.'
+    };
+  }
+
+  function updateAuthPlatformCards(tab, flavor) {
+    if (!els.authModal || typeof els.authModal.querySelectorAll !== 'function') {
+      return;
+    }
+    var activeTab = String(tab || 'register');
+    var activeFlavor = String(flavor || '');
+    els.authModal.querySelectorAll('[data-auth-route]').forEach(function (button) {
+      var route = String(button.getAttribute('data-auth-route') || '');
+      var cardFlavor = String(button.getAttribute('data-auth-flavor') || '');
+      var active = route === activeTab && (!activeFlavor || cardFlavor === activeFlavor || (activeTab !== 'phone' && !activeFlavor));
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function setActiveAuthTab(tabName, phoneFlavor) {
     var tab = String(tabName || 'register');
     if (tab !== 'register' && tab !== 'phone' && tab !== 'manual') {
       tab = 'register';
     }
+    var flavor = String(phoneFlavor || (tab === 'phone' ? 'android' : tab)).trim() || tab;
     if (els.authModalTitle) {
       els.authModalTitle.textContent = 'Sign in';
     }
+    updateAuthPlatformCards(tab, flavor);
 
     if (els.authTabRegister) {
       var activeRegister = tab === 'register';
       els.authTabRegister.classList.toggle('is-active', activeRegister);
-      els.authTabRegister.setAttribute('aria-selected', activeRegister ? 'true' : 'false');
+      els.authTabRegister.setAttribute('aria-pressed', activeRegister ? 'true' : 'false');
     }
     if (els.authTabPhone) {
-      var activePhone = tab === 'phone';
+      var activePhone = tab === 'phone' && flavor === 'android';
       els.authTabPhone.classList.toggle('is-active', activePhone);
-      els.authTabPhone.setAttribute('aria-selected', activePhone ? 'true' : 'false');
+      els.authTabPhone.setAttribute('aria-pressed', activePhone ? 'true' : 'false');
     }
     if (els.authTabManual) {
       var activeManual = tab === 'manual';
       els.authTabManual.classList.toggle('is-active', activeManual);
-      els.authTabManual.setAttribute('aria-selected', activeManual ? 'true' : 'false');
+      els.authTabManual.setAttribute('aria-pressed', activeManual ? 'true' : 'false');
     }
 
     showPanel(els.authRegisterPanel, tab === 'register');
@@ -829,9 +873,16 @@
     showPanel(els.authManualPanel, tab === 'manual');
 
     if (tab === 'phone') {
+      var recommendation = phoneSignerRecommendation(flavor);
+      if (els.authPhoneIntro) {
+        els.authPhoneIntro.textContent = recommendation.intro;
+      }
+      if (els.authPhoneReco) {
+        els.authPhoneReco.textContent = recommendation.reco;
+      }
       updatePhoneContinueState();
       initNip46Pairing().then(function () {
-        setAuthMessage('Scan QR in your signer app. Continue unlocks after pairing.', 'warn');
+        setAuthMessage('Pair the signer here. Continue unlocks after pairing.', 'warn');
       }).catch(function (err) {
         setAuthMessage(err.message || 'Unable to prepare phone signer QR.', 'error');
       });
@@ -3205,19 +3256,14 @@
       });
     }
 
-    if (els.authTabRegister) {
-      els.authTabRegister.addEventListener('click', function () {
-        setActiveAuthTab('register');
-      });
-    }
-    if (els.authTabPhone) {
-      els.authTabPhone.addEventListener('click', function () {
-        setActiveAuthTab('phone');
-      });
-    }
-    if (els.authTabManual) {
-      els.authTabManual.addEventListener('click', function () {
-        setActiveAuthTab('manual');
+    if (els.authModal) {
+      els.authModal.addEventListener('click', function (event) {
+        var trigger = event.target && event.target.closest ? event.target.closest('[data-auth-route]') : null;
+        if (!trigger || !els.authModal.contains(trigger)) {
+          return;
+        }
+        event.preventDefault();
+        setActiveAuthTab(trigger.getAttribute('data-auth-route'), trigger.getAttribute('data-auth-flavor'));
       });
     }
 

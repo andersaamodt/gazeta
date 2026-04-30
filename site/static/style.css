@@ -5208,31 +5208,74 @@ nav.site-nav .btn-login {
   font-size: 0.92rem;
 }
 
-.auth-tabs {
-  margin: 0.62rem 0 0.5rem;
+.auth-platform-grid {
+  margin: 0.72rem 0 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.58rem;
+}
+
+.auth-platform-card {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(255, 255, 255, 0.82), transparent 36%),
+    color-mix(in srgb, var(--surface-raised-strong, #fff) 86%, var(--bg, #f7efe0) 14%);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.68rem;
+  min-height: 4.65rem;
+  padding: 0.7rem 0.78rem;
+  text-align: left;
+  box-shadow: 0 9px 22px rgba(54, 38, 17, 0.08);
+}
+
+.auth-platform-card:hover,
+.auth-platform-card:focus-visible {
+  border-color: color-mix(in srgb, var(--link) 42%, var(--border));
+  transform: translateY(-1px);
+}
+
+.auth-platform-card.is-active {
+  border-color: color-mix(in srgb, var(--link) 56%, var(--border));
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.14);
+}
+
+.auth-platform-card-muted {
+  opacity: 0.86;
+}
+
+.auth-platform-icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
-  background: transparent;
-  border: 0;
-  padding: 0;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--link) 75%, var(--text));
+  background: color-mix(in srgb, var(--link) 10%, #fff);
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
-.auth-tab {
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.38);
-  color: var(--text);
-  font-size: 0.84rem;
-  font-weight: 700;
-  padding: 0.42rem 0.78rem;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+.auth-platform-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
 }
 
-.auth-tab.is-active {
-  background: var(--surface-raised-strong, #fff);
-  border-color: rgba(37, 99, 235, 0.22);
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.14);
+.auth-platform-copy strong {
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+
+.auth-platform-copy span {
+  color: var(--light-text);
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .auth-tab-frame {
@@ -10271,14 +10314,14 @@ nav.site-nav > .nav-right .nav-search button {
     padding: 0.82rem 0.72rem 0.9rem;
   }
 
-  .auth-tabs {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .auth-platform-grid {
+    grid-template-columns: 1fr;
+    gap: 0.46rem;
   }
 
-  .auth-tab {
-    white-space: nowrap;
+  .auth-platform-card {
+    min-height: 3.82rem;
+    padding: 0.62rem 0.68rem;
   }
 
   .post-page-modal-panel {
