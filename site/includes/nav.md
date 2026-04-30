@@ -349,6 +349,22 @@
     </div>
     <button id="auth-tab-manual" class="auth-advanced-toggle" type="button" data-auth-route="manual" data-auth-flavor="manual" aria-pressed="false">Advanced...</button>
 
+    <section class="auth-login-onboarding auth-reco-card" aria-labelledby="auth-login-reco-title">
+      <h3 id="auth-login-reco-title">
+        <span class="auth-login-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 11V8a5 5 0 0 1 10 0v3"></path>
+            <path d="M6 11h12v8H6z"></path>
+            <path d="M12 14.5v1.8"></path>
+          </svg>
+        </span>
+        <span>For Login:</span>
+      </h3>
+      <p id="auth-login-summary" class="auth-reco-summary"></p>
+      <ul id="auth-login-apps" class="auth-reco-apps"></ul>
+      <p id="auth-login-note" class="auth-reco-note"></p>
+    </section>
+
     <section class="auth-zap-onboarding" aria-labelledby="auth-zap-title">
       <h3 id="auth-zap-title">
         <span class="auth-zap-icon" aria-hidden="true">
@@ -359,9 +375,9 @@
         <span>For Zaps:</span>
       </h3>
       <p class="auth-zap-updated">Recommendations Updated April 2026</p>
-      <p id="auth-zap-summary" class="auth-zap-summary"></p>
-      <ul id="auth-zap-apps" class="auth-zap-apps"></ul>
-      <p id="auth-zap-note" class="auth-zap-note"></p>
+      <p id="auth-zap-summary" class="auth-reco-summary auth-zap-summary"></p>
+      <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
+      <p id="auth-zap-note" class="auth-reco-note auth-zap-note"></p>
     </section>
 
     <div class="auth-tab-frame">

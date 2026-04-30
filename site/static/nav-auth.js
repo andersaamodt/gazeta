@@ -102,6 +102,9 @@
     authTabRegister: document.getElementById('auth-tab-register'),
     authTabPhone: document.getElementById('auth-tab-phone'),
     authTabManual: document.getElementById('auth-tab-manual'),
+    authLoginSummary: document.getElementById('auth-login-summary'),
+    authLoginApps: document.getElementById('auth-login-apps'),
+    authLoginNote: document.getElementById('auth-login-note'),
     authZapSummary: document.getElementById('auth-zap-summary'),
     authZapApps: document.getElementById('auth-zap-apps'),
     authZapNote: document.getElementById('auth-zap-note'),
@@ -824,6 +827,85 @@
     };
   }
 
+  function loginOnboardingRecommendation(tabName, flavor) {
+    var tab = String(tabName || 'register');
+    var key = String(flavor || '').trim();
+    var fDroidStore = { label: 'F-Droid', url: 'https://f-droid.org/' };
+    var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
+    if (tab === 'phone' && key === 'ios') {
+      return {
+        summary: 'Install first:',
+        note: 'Use this for the Nostr identity that signs into the site.',
+        apps: [
+          {
+            icon: '46',
+            name: 'Nostr Connect signer',
+            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
+            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+          }
+        ]
+      };
+    }
+    if (tab === 'phone' && key === 'remote') {
+      return {
+        summary: 'Install first:',
+        note: 'Use this for the Nostr identity that signs into the site.',
+        apps: [
+          {
+            icon: '46',
+            name: 'NIP-46 remote signer',
+            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
+            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+          }
+        ]
+      };
+    }
+    if (tab === 'phone') {
+      return {
+        summary: 'Install first:',
+        note: 'Use this for the Nostr identity that signs into the site.',
+        apps: [
+          {
+            icon: 'A',
+            name: 'Amber',
+            url: 'https://github.com/greenart7c3/Amber',
+            stores: [
+              fDroidStore,
+              auroraStore,
+              { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.greenart7c3.nostrsigner' }
+            ]
+          }
+        ]
+      };
+    }
+    if (tab === 'manual') {
+      return {
+        summary: 'Advanced fallback:',
+        note: 'Use this only when browser or phone signing is unavailable.',
+        apps: [
+          {
+            icon: 'JSON',
+            name: 'Signed challenge',
+            url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
+            stores: [{ label: 'NIP-98', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
+          }
+        ]
+      };
+    }
+    return {
+      summary: 'Install first:',
+      note: 'Use this for the Nostr identity that signs into the site.',
+      apps: [
+        {
+          icon: 'fx',
+          name: 'nos2x-fox',
+          url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
+          stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
+        }
+      ]
+    };
+  }
+
   function zapOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
@@ -831,8 +913,8 @@
     var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'Install:',
-        note: 'Keys and funds stay under user control; setup takes more care.',
+        summary: 'Then add for zaps:',
+        note: 'These handle Lightning payments and offsite zapping.',
         apps: [
           {
             icon: 'D',
@@ -857,15 +939,9 @@
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Install:',
-        note: 'Keys and funds stay under user control; setup takes more care.',
+        summary: 'Then add for zaps:',
+        note: 'Use this for the Lightning payment side of zaps.',
         apps: [
-          {
-            icon: '46',
-            name: 'NIP-46 remote signer',
-            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
-          },
           {
             icon: 'Z',
             name: 'ZEUS',
@@ -881,8 +957,8 @@
     }
     if (tab === 'phone') {
       return {
-        summary: 'Install:',
-        note: 'Keys and funds stay under user control; setup takes more care.',
+        summary: 'Then add for zaps:',
+        note: 'ZEUS handles Lightning payments. Amethyst is for offsite Nostr zaps.',
         apps: [
           {
             icon: 'A',
@@ -909,15 +985,9 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Install:',
-        note: 'Keys and funds stay under user control; setup takes more care.',
+        summary: 'Then add for zaps:',
+        note: 'Use this for the Lightning payment side of zaps.',
         apps: [
-          {
-            icon: '46',
-            name: 'NIP-46 remote signer',
-            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ label: 'NIP-46', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
-          },
           {
             icon: 'Z',
             name: 'ZEUS',
@@ -932,15 +1002,9 @@
       };
     }
     return {
-      summary: 'Install:',
-      note: 'Keys and funds stay under user control; setup takes more care.',
+      summary: 'Then add for zaps:',
+      note: 'Use this for the Lightning payment side of zaps.',
       apps: [
-        {
-          icon: 'fx',
-          name: 'nos2x-fox',
-          url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
-          stores: [{ label: 'Firefox Add-ons', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
-        },
         {
           icon: 'Z',
           name: 'ZEUS',
@@ -955,32 +1019,31 @@
     };
   }
 
-  function renderZapOnboarding(tabName, flavor) {
-    if (!els.authZapSummary || !els.authZapApps) {
+  function renderRecommendationList(summaryEl, appsEl, noteEl, recommendation) {
+    if (!summaryEl || !appsEl) {
       return;
     }
-    var recommendation = zapOnboardingRecommendation(tabName, flavor);
-    els.authZapSummary.textContent = recommendation.summary || 'Install:';
-    if (els.authZapNote) {
-      els.authZapNote.textContent = recommendation.note || '';
+    summaryEl.textContent = recommendation.summary || 'Install:';
+    if (noteEl) {
+      noteEl.textContent = recommendation.note || '';
     }
-    els.authZapApps.innerHTML = '';
+    appsEl.innerHTML = '';
     recommendation.apps.forEach(function (app) {
       var item = document.createElement('li');
       var appLink = document.createElement('a');
       var icon = document.createElement('span');
       var name = document.createElement('strong');
       var stores = document.createElement('span');
-      appLink.className = 'auth-zap-app-link';
+      appLink.className = 'auth-reco-app-link';
       appLink.href = app.url;
       appLink.target = '_blank';
       appLink.rel = 'noopener noreferrer';
-      icon.className = 'auth-zap-app-icon';
+      icon.className = 'auth-reco-app-icon';
       icon.textContent = app.icon || app.name.charAt(0);
       name.textContent = app.name;
       appLink.appendChild(icon);
       appLink.appendChild(name);
-      stores.className = 'auth-zap-store-links';
+      stores.className = 'auth-reco-store-links';
       (app.stores || []).forEach(function (store, idx) {
         var link = document.createElement('a');
         link.href = store.url;
@@ -994,8 +1057,26 @@
       });
       item.appendChild(appLink);
       item.appendChild(stores);
-      els.authZapApps.appendChild(item);
+      appsEl.appendChild(item);
     });
+  }
+
+  function renderLoginOnboarding(tabName, flavor) {
+    renderRecommendationList(
+      els.authLoginSummary,
+      els.authLoginApps,
+      els.authLoginNote,
+      loginOnboardingRecommendation(tabName, flavor)
+    );
+  }
+
+  function renderZapOnboarding(tabName, flavor) {
+    renderRecommendationList(
+      els.authZapSummary,
+      els.authZapApps,
+      els.authZapNote,
+      zapOnboardingRecommendation(tabName, flavor)
+    );
   }
 
   function updateAuthPlatformCards(tab, flavor) {
@@ -1025,6 +1106,7 @@
       els.authModalTitle.textContent = 'Sign in';
     }
     updateAuthPlatformCards(tab, flavor);
+    renderLoginOnboarding(tab, flavor);
     renderZapOnboarding(tab, flavor);
 
     if (els.authTabRegister) {
