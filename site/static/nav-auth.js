@@ -832,6 +832,8 @@
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
     var mode = modeName === 'easy' ? 'easy' : 'sovereign';
+    var fDroidStore = { label: 'F-Droid', url: 'https://f-droid.org/' };
+    var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
     if (mode === 'easy') {
       if (tab === 'phone' && key === 'ios') {
         return {
@@ -881,9 +883,9 @@
             {
               icon: 'P',
               name: 'Primal',
-              url: 'https://primal.net/',
+              url: 'https://primal.net/downloads',
               stores: [
-                { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+                auroraStore,
                 { label: 'Play', url: 'https://play.google.com/store/apps/details?id=net.primal.android' }
               ]
             },
@@ -892,7 +894,7 @@
               name: 'Wallet of Satoshi',
               url: 'https://www.walletofsatoshi.com/',
               stores: [
-                { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+                auroraStore,
                 { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.livingroomofsatoshi.wallet' }
               ]
             }
@@ -906,7 +908,7 @@
           {
             icon: 'P',
             name: 'Primal',
-            url: 'https://primal.net/',
+            url: 'https://primal.net/downloads',
             stores: [{ label: 'Web', url: 'https://primal.net/' }]
           },
           {
@@ -925,15 +927,21 @@
         apps: [
           {
             icon: 'D',
-            name: 'Damus or Nostur',
+            name: 'Damus',
             url: 'https://damus.io/',
-            stores: [{ label: 'App Store', url: 'https://damus.io/' }]
+            stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
+          },
+          {
+            icon: 'N',
+            name: 'Nostur',
+            url: 'https://nostur.com/',
+            stores: [{ label: 'App Store', url: 'https://nostur.com/appstore' }]
           },
           {
             icon: 'Z',
             name: 'ZEUS',
-            url: 'https://zeusln.com/',
-            stores: [{ label: 'App Store', url: 'https://zeusln.com/' }]
+            url: 'https://github.com/ZeusLN/zeus#app-store-links',
+            stores: [{ label: 'App Store', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
           }
         ]
       };
@@ -952,10 +960,10 @@
           {
             icon: 'Z',
             name: 'ZEUS',
-            url: 'https://zeusln.com/',
+            url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
-              { label: 'F-Droid', url: 'https://f-droid.org/' },
-              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              fDroidStore,
+              auroraStore,
               { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
             ]
           }
@@ -970,20 +978,20 @@
           {
             icon: 'A',
             name: 'Amethyst',
-            url: 'https://github.com/vitorpamplona/amethyst',
+            url: 'https://github.com/vitorpamplona/amethyst#installation',
             stores: [
-              { label: 'F-Droid', url: 'https://android.izzysoft.de/repo/apk/com.vitorpamplona.amethyst' },
-              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              fDroidStore,
+              auroraStore,
               { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.vitorpamplona.amethyst' }
             ]
           },
           {
             icon: 'Z',
             name: 'ZEUS',
-            url: 'https://zeusln.com/',
+            url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
-              { label: 'F-Droid', url: 'https://f-droid.org/' },
-              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              fDroidStore,
+              auroraStore,
               { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
             ]
           }
@@ -1004,10 +1012,10 @@
           {
             icon: 'Z',
             name: 'ZEUS',
-            url: 'https://zeusln.com/',
+            url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [
-              { label: 'F-Droid', url: 'https://f-droid.org/' },
-              { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+              fDroidStore,
+              auroraStore,
               { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
             ]
           }
@@ -1027,10 +1035,10 @@
         {
           icon: 'Z',
           name: 'ZEUS',
-          url: 'https://zeusln.com/',
+          url: 'https://github.com/ZeusLN/zeus#app-store-links',
           stores: [
-            { label: 'F-Droid', url: 'https://f-droid.org/' },
-            { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' },
+            fDroidStore,
+            auroraStore,
             { label: 'Play', url: 'https://play.google.com/store/apps/details?id=app.zeusln.zeus' }
           ]
         }
