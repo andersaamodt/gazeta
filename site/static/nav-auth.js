@@ -1653,6 +1653,7 @@
     if (els.authNip46Open) {
       els.authNip46Open.href = uri;
       els.authNip46Open.setAttribute('data-nip46-uri', uri);
+      els.authNip46Open.textContent = uri;
     }
     renderQrCode(uri);
   }

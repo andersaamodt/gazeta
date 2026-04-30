@@ -5498,6 +5498,34 @@ nav.site-nav .btn-login {
   gap: 0.42rem 0.58rem;
 }
 
+.auth-nip46-open-link {
+  max-width: min(100%, 28rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.auth-icon-copy-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(30, 64, 175, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f3d8c;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
+}
+
+.auth-icon-copy-btn:hover,
+.auth-icon-copy-btn:focus-visible {
+  border-color: rgba(30, 64, 175, 0.34);
+  background: #ffffff;
+  color: #122b66;
+}
+
 .auth-nip46-diagnostics {
   margin: 0.2rem 0 0;
   border-radius: 8px;
