@@ -5414,21 +5414,29 @@ nav.site-nav .btn-login {
 }
 
 .auth-qr {
-  width: 196px;
-  min-height: 196px;
-  border: 1px solid #c4d2f1;
-  border-radius: 10px;
-  background: var(--surface-raised-strong, #fff);
-  padding: 0.32rem;
-  display: flex;
+  width: fit-content;
+  min-width: 12.9rem;
+  min-height: 12.9rem;
+  margin: 0.2rem auto 0.35rem;
+  border: 1px solid rgba(30, 64, 175, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 245, 255, 0.92)),
+    var(--surface-raised-strong, #fff);
+  padding: 0.72rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  justify-self: center;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.14);
 }
 
 .auth-qr img,
 .auth-qr canvas {
-  max-width: 100%;
+  display: block;
+  max-width: 196px;
   height: auto;
+  border-radius: 8px;
 }
 
 .auth-nip46-uri {
@@ -5744,8 +5752,8 @@ nav.site-nav .btn-login {
   }
 
   .auth-qr {
-    width: min(100%, 240px);
-    margin: 0 auto;
+    min-width: min(100%, 13rem);
+    max-width: 100%;
   }
 
   .auth-nip46-uri {

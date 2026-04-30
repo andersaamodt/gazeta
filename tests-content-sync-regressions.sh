@@ -598,6 +598,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: 9.5rem;' 'Zap 
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-height: 3rem;' 'Zap custom sats input is taller on mobile'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-modal-message:not(:empty)' 'Sign-in modal message only appears when it has toast content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-left-width: 0.34rem;' 'Sign-in modal message is styled as a toast banner'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'justify-self: center;' 'Phone signer QR is centered in the sign-in panel'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '0 18px 38px rgba(15, 23, 42, 0.14)' 'Phone signer QR has a deliberate card treatment'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'insertBefore(node, chooser)' 'Sign-in modal fallback message is inserted above the signer choices'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-platform-grid' 'Sign-in modal uses guided platform choices instead of tabs'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>Desktop</strong><span>Firefox signer</span>' 'Sign-in modal recommends a desktop signer path'
