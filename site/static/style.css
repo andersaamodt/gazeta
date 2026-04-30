@@ -5615,18 +5615,31 @@ nav.site-nav .btn-login {
 
 .auth-primary-btn,
 .auth-secondary-btn {
-  border: 1px solid var(--button-primary-border);
+  border: 1px solid var(--admin-border, var(--border));
   border-radius: 8px;
-  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
-  color: var(--button-primary-text);
+  background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)));
+  background-image: none;
+  color: var(--admin-text, var(--text));
   font-size: 0.9rem;
   font-weight: 600;
   padding: 0.45rem 0.8rem;
+  box-shadow: none;
 }
 
-.auth-secondary-btn {
-  background-image: var(--button-primary-overlay), linear-gradient(135deg, var(--button-primary-end) 0%, var(--button-primary-start) 100%);
-  border-color: var(--button-primary-end);
+.auth-primary-btn:hover:not(:disabled),
+.auth-primary-btn:focus-visible:not(:disabled),
+.auth-secondary-btn:hover:not(:disabled),
+.auth-secondary-btn:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--admin-border, var(--border)) 68%, var(--admin-accent, var(--accent)) 32%);
+  background: var(--admin-hover, var(--nav-link-hover));
+  background-image: none;
+  color: var(--admin-text, var(--text));
+}
+
+.auth-primary-btn:disabled,
+.auth-secondary-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
 }
 
 .auth-inline-link {
@@ -9737,13 +9750,9 @@ nav.site-nav {
   transform: none !important;
 }
 
-/* Keep nav/login + primary action hovers in primary color space (never tan fallback). */
+/* Keep nav/login hovers in primary color space (never tan fallback). */
 nav.site-nav .btn-login:hover:not(:disabled),
-nav.site-nav .btn-login:focus-visible:not(:disabled),
-#main-content .auth-primary-btn:hover:not(:disabled),
-#main-content .auth-primary-btn:focus-visible:not(:disabled),
-#main-content .auth-secondary-btn:hover:not(:disabled),
-#main-content .auth-secondary-btn:focus-visible:not(:disabled) {
+nav.site-nav .btn-login:focus-visible:not(:disabled) {
   background-image: linear-gradient(135deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%) !important;
   background-color: var(--button-primary-hover-start) !important;
   border-color: var(--button-primary-border) !important;
