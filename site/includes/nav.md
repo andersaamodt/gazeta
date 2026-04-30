@@ -326,7 +326,7 @@
 
     <div class="auth-tab-frame">
       <div id="auth-register-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-register">
-        <p class="auth-modal-help">Best fit: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
+        <p class="auth-modal-help">Recommended: Firefox with nos2x-fox. First sign-in creates the account automatically.</p>
         <p class="auth-modal-help">You can change your username after you log in.</p>
         <div class="auth-actions">
           <button id="auth-register-btn" class="auth-primary-btn" type="button">Continue with browser signer</button>
@@ -335,7 +335,7 @@
       </div>
 
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
-        <p id="auth-phone-intro" class="auth-modal-help">Best fit: phone signer app with Nostr Connect. Open the link or scan the QR.</p>
+        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Open the link or scan the QR.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>

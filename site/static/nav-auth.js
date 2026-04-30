@@ -809,18 +809,18 @@
     var key = String(flavor || 'android');
     if (key === 'ios') {
       return {
-        intro: 'Best fit: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.',
+        intro: 'Recommended: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.',
         reco: 'Recommended: NostrKey for Safari/iOS, or another open NIP-46 signer.'
       };
     }
     if (key === 'remote') {
       return {
-        intro: 'Best fit: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.',
+        intro: 'Recommended: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.',
         reco: 'Recommended: an open NIP-46 signer you control.'
       };
     }
     return {
-      intro: 'Best fit: Amber on Android. Open the Nostr Connect link, then return here after pairing.',
+      intro: 'Recommended: Amber on Android. Open the Nostr Connect link, then return here after pairing.',
       reco: 'Recommended: Amber for Android.'
     };
   }
