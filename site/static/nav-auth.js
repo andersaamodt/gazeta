@@ -826,7 +826,7 @@
       };
     }
     return {
-      intro: 'Recommended: Amber from F-Droid. Open the Nostr Connect link, then return here after pairing.'
+      intro: 'Open the Nostr Connect link, then return here after pairing.'
     };
   }
 
