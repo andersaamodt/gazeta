@@ -771,6 +771,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'id="auth-nip46-uri" hi
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '>Connect Nostr<' 'phone signer primary link uses clearer wording'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'hidden>Finish sign-in</button>' 'phone signer continue button is hidden as an error fallback'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.machine-string-copy {' 'machine string copy buttons share one minimal icon style'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'aspect-ratio: 1;' 'Nostr Connect copy icon button stays square'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: transparent;' 'machine string copy buttons are transparent until hover'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border: 0;' 'machine string copy buttons are borderless until hover'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: none;' 'machine string copy buttons avoid button chrome until hover'

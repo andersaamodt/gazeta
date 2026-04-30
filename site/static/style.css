@@ -5734,6 +5734,9 @@ nav.site-nav .btn-login {
 .auth-nip46-link-actions .machine-string-copy {
   position: static;
   flex: 0 0 auto;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   background: var(--surface-raised-strong, #fff);
 }
