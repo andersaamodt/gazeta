@@ -80,6 +80,16 @@ assert_file_missing() {
   fi
 }
 
+assert_file_exists() {
+  file=$1
+  label=$2
+  if [ -e "$file" ]; then
+    pass
+  else
+    fail "$label (missing file: $file)"
+  fi
+}
+
 assert_success() {
   if "$@" >/dev/null 2>&1; then
     pass
@@ -678,6 +688,20 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Back up the see
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-reco-group' 'Recommended app island separates login and zap groups inside one card'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: center;' 'Recommended app island centers the freshness date'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-reco-app-icon' 'Login and zap onboarding app chips include app-style icons'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-reco-app-img' 'Recommended app icons can render cached real app images'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function recommendationIconAsset' 'Recommended app icons use cached local app assets'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/amber.svg'" 'Amber recommendation uses cached official icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/amethyst.png'" 'Amethyst recommendation uses cached official icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/zeus.png'" 'ZEUS recommendation uses cached official icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/damus.png'" 'Damus recommendation uses cached official icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/nostur.png'" 'Nostur recommendation uses cached official icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "'/static/icons/apps/nos2x-fox.svg'" 'nos2x-fox recommendation uses cached official icon'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/amber.svg" 'Cached Amber icon is present'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/amethyst.png" 'Cached Amethyst icon is present'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/zeus.png" 'Cached ZEUS icon is present'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/damus.png" 'Cached Damus icon is present'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/nostur.png" 'Cached Nostur icon is present'
+assert_file_exists "$SITE_SOURCE_ROOT/static/icons/apps/nos2x-fox.svg" 'Cached nos2x-fox icon is present'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-zap-mode-btn' 'Zap onboarding mode button styles are removed with the mode selector'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'auth-phone-reco' 'phone signer recommendations are not repeated below the panel actions'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Continue with browser signer' 'Browser signer action avoids special register wording'
