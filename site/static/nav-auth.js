@@ -853,6 +853,26 @@
           ]
         };
       }
+      if (tab === 'phone' && key === 'remote') {
+        return {
+          summary: 'Fastest common path:',
+          note: 'Quick & Easy may use hosted infrastructure or custodial balances. It is included for low-friction onboarding, not maximum sovereignty.',
+          apps: [
+            {
+              icon: 'n',
+              name: 'Nsec.app',
+              url: 'https://nsec.app/',
+              stores: [{ label: 'Web', url: 'https://nsec.app/' }]
+            },
+            {
+              icon: 'P',
+              name: 'Primal',
+              url: 'https://primal.net/',
+              stores: [{ label: 'Web', url: 'https://primal.net/' }]
+            }
+          ]
+        };
+      }
       if (tab === 'phone') {
         return {
           summary: 'Fastest common path:',
