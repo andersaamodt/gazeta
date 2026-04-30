@@ -40,6 +40,14 @@
       .replace(/>/g, '&gt;');
   }
 
+  function copyIconHtml() {
+    return '' +
+      '<svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+        '<path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>' +
+        '<path d="M5 15.5V5.75A2.75 2.75 0 0 1 7.75 3H15"></path>' +
+      '</svg>';
+  }
+
   function uniqueStrings(values) {
     var seen = {};
     var out = [];
@@ -304,7 +312,10 @@
         '<div class="zap-dialog-qr" data-zap-qr="true" aria-hidden="true"></div>' +
         '<label class="zap-dialog-invoice-field">' +
           '<span>Lightning invoice</span>' +
-          '<textarea readonly rows="5" data-zap-invoice-text="true">' + escapeHtml(state.invoice) + '</textarea>' +
+          '<span class="machine-string-box">' +
+            '<textarea readonly rows="5" data-zap-invoice-text="true">' + escapeHtml(state.invoice) + '</textarea>' +
+            '<button type="button" class="machine-string-copy" data-zap-action="copy_invoice" aria-label="Copy Lightning invoice">' + copyIconHtml() + '</button>' +
+          '</span>' +
         '</label>' +
         '<div class="zap-dialog-invoice-actions">' +
           '<a class="zap-action-btn zap-action-btn-primary" data-zap-pay-link="true" href="lightning:' + escapeAttr(state.invoice) + '">Pay in wallet</a>' +

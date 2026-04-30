@@ -341,7 +341,15 @@
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
           <button id="auth-nip46-copy" class="auth-secondary-btn" type="button">Copy link</button>
         </div>
-        <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
+        <div class="machine-string-box">
+          <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
+          <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link">
+            <svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>
+              <path d="M5 15.5V5.75A2.75 2.75 0 0 1 7.75 3H15"></path>
+            </svg>
+          </button>
+        </div>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
           <button id="auth-phone-connect-btn" class="auth-secondary-btn" type="button">Connect phone signer (QR)</button>

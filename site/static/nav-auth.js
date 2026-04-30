@@ -111,6 +111,7 @@
     authNip46Uri: document.getElementById('auth-nip46-uri'),
     authNip46Open: document.getElementById('auth-nip46-open'),
     authNip46Copy: document.getElementById('auth-nip46-copy'),
+    authNip46UriCopy: document.getElementById('auth-nip46-uri-copy'),
     authNip46Reset: document.getElementById('auth-nip46-reset'),
     authNip46Diagnostics: document.getElementById('auth-nip46-diagnostics'),
 
@@ -3273,23 +3274,29 @@
       });
     }
 
-    if (els.authNip46Copy) {
-      els.authNip46Copy.addEventListener('click', function () {
-        initNip46Pairing().then(function () {
-          var uri = currentNip46Uri();
-          if (!uri) {
-            throw new Error('Nostr Connect link is not ready yet.');
-          }
-          if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            return navigator.clipboard.writeText(uri);
-          }
-          throw new Error('Clipboard access is unavailable. Select and copy the link text below.');
-        }).then(function () {
-          setAuthMessage('Nostr Connect link copied.', 'ok');
-        }).catch(function (err) {
-          setAuthMessage(err.message || 'Could not copy Nostr Connect link.', 'error');
-        });
+    function copyNip46Uri() {
+      return initNip46Pairing().then(function () {
+        var uri = currentNip46Uri();
+        if (!uri) {
+          throw new Error('Nostr Connect link is not ready yet.');
+        }
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          return navigator.clipboard.writeText(uri);
+        }
+        throw new Error('Clipboard access is unavailable. Select and copy the link text below.');
+      }).then(function () {
+        setAuthMessage('Nostr Connect link copied.', 'ok');
+      }).catch(function (err) {
+        setAuthMessage(err.message || 'Could not copy Nostr Connect link.', 'error');
       });
+    }
+
+    if (els.authNip46Copy) {
+      els.authNip46Copy.addEventListener('click', copyNip46Uri);
+    }
+
+    if (els.authNip46UriCopy) {
+      els.authNip46UriCopy.addEventListener('click', copyNip46Uri);
     }
 
     if (els.authNip46Open) {
