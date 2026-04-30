@@ -66,7 +66,6 @@
     prefetchedNostrPageSlugs: {},
     navOverflowRaf: 0,
     navOverflowTimer: 0,
-    zapOnboardingMode: 'sovereign',
     activeAuthTab: 'register',
     activeAuthFlavor: 'desktop'
   };
@@ -106,8 +105,6 @@
     authZapSummary: document.getElementById('auth-zap-summary'),
     authZapApps: document.getElementById('auth-zap-apps'),
     authZapNote: document.getElementById('auth-zap-note'),
-    authZapModeSovereign: document.getElementById('auth-zap-mode-sovereign'),
-    authZapModeEasy: document.getElementById('auth-zap-mode-easy'),
 
     authRegisterPanel: document.getElementById('auth-register-panel'),
     authPhonePanel: document.getElementById('auth-phone-panel'),
@@ -827,102 +824,15 @@
     };
   }
 
-  function zapOnboardingRecommendation(tabName, flavor, modeName) {
+  function zapOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
-    var mode = modeName === 'easy' ? 'easy' : 'sovereign';
     var fDroidStore = { label: 'F-Droid', url: 'https://f-droid.org/' };
     var auroraStore = { label: 'Aurora', url: 'https://f-droid.org/packages/com.aurora.store/' };
-    if (mode === 'easy') {
-      if (tab === 'phone' && key === 'ios') {
-        return {
-          summary: 'Fastest common path:',
-          note: 'Quick & Easy may use hosted infrastructure or custodial balances. It is included for low-friction onboarding, not maximum sovereignty.',
-          apps: [
-            {
-              icon: 'P',
-              name: 'Primal',
-              url: 'https://primal.net/',
-              stores: [{ label: 'App Store', url: 'https://primal.net/downloads' }]
-            },
-            {
-              icon: 'W',
-              name: 'Wallet of Satoshi',
-              url: 'https://www.walletofsatoshi.com/',
-              stores: [{ label: 'App Store', url: 'https://www.walletofsatoshi.com/' }]
-            }
-          ]
-        };
-      }
-      if (tab === 'phone' && key === 'remote') {
-        return {
-          summary: 'Fastest common path:',
-          note: 'Quick & Easy may use hosted infrastructure or custodial balances. It is included for low-friction onboarding, not maximum sovereignty.',
-          apps: [
-            {
-              icon: 'n',
-              name: 'Nsec.app',
-              url: 'https://nsec.app/',
-              stores: [{ label: 'Web', url: 'https://nsec.app/' }]
-            },
-            {
-              icon: 'P',
-              name: 'Primal',
-              url: 'https://primal.net/',
-              stores: [{ label: 'Web', url: 'https://primal.net/' }]
-            }
-          ]
-        };
-      }
-      if (tab === 'phone') {
-        return {
-          summary: 'Fastest common path:',
-          note: 'Quick & Easy may use hosted infrastructure or custodial balances. It is included for low-friction onboarding, not maximum sovereignty.',
-          apps: [
-            {
-              icon: 'P',
-              name: 'Primal',
-              url: 'https://primal.net/downloads',
-              stores: [
-                auroraStore,
-                { label: 'Play', url: 'https://play.google.com/store/apps/details?id=net.primal.android' }
-              ]
-            },
-            {
-              icon: 'W',
-              name: 'Wallet of Satoshi',
-              url: 'https://www.walletofsatoshi.com/',
-              stores: [
-                auroraStore,
-                { label: 'Play', url: 'https://play.google.com/store/apps/details?id=com.livingroomofsatoshi.wallet' }
-              ]
-            }
-          ]
-        };
-      }
-      return {
-        summary: 'Fastest common path:',
-        note: 'Quick & Easy may use hosted infrastructure or custodial balances. It is included for low-friction onboarding, not maximum sovereignty.',
-        apps: [
-          {
-            icon: 'P',
-            name: 'Primal',
-            url: 'https://primal.net/downloads',
-            stores: [{ label: 'Web', url: 'https://primal.net/' }]
-          },
-          {
-            icon: 'W',
-            name: 'Wallet of Satoshi',
-            url: 'https://www.walletofsatoshi.com/',
-            stores: [{ label: 'Website', url: 'https://www.walletofsatoshi.com/' }]
-          }
-        ]
-      };
-    }
     if (tab === 'phone' && key === 'ios') {
       return {
         summary: 'Install:',
-        note: 'Self-Sovereign keeps keys and funds under user control; setup takes more care.',
+        note: 'Keys and funds stay under user control; setup takes more care.',
         apps: [
           {
             icon: 'D',
@@ -948,7 +858,7 @@
     if (tab === 'phone' && key === 'remote') {
       return {
         summary: 'Install:',
-        note: 'Self-Sovereign keeps keys and funds under user control; setup takes more care.',
+        note: 'Keys and funds stay under user control; setup takes more care.',
         apps: [
           {
             icon: '46',
@@ -972,7 +882,7 @@
     if (tab === 'phone') {
       return {
         summary: 'Install:',
-        note: 'Self-Sovereign keeps keys and funds under user control; setup takes more care.',
+        note: 'Keys and funds stay under user control; setup takes more care.',
         apps: [
           {
             icon: 'A',
@@ -1000,7 +910,7 @@
     if (tab === 'manual') {
       return {
         summary: 'Install:',
-        note: 'Self-Sovereign keeps keys and funds under user control; setup takes more care.',
+        note: 'Keys and funds stay under user control; setup takes more care.',
         apps: [
           {
             icon: '46',
@@ -1023,7 +933,7 @@
     }
     return {
       summary: 'Install:',
-      note: 'Self-Sovereign keeps keys and funds under user control; setup takes more care.',
+      note: 'Keys and funds stay under user control; setup takes more care.',
       apps: [
         {
           icon: 'fx',
@@ -1049,8 +959,7 @@
     if (!els.authZapSummary || !els.authZapApps) {
       return;
     }
-    var recommendation = zapOnboardingRecommendation(tabName, flavor, state.zapOnboardingMode);
-    renderZapModeButtons();
+    var recommendation = zapOnboardingRecommendation(tabName, flavor);
     els.authZapSummary.textContent = recommendation.summary || 'Install:';
     if (els.authZapNote) {
       els.authZapNote.textContent = recommendation.note || '';
@@ -1086,17 +995,6 @@
       item.appendChild(appLink);
       item.appendChild(stores);
       els.authZapApps.appendChild(item);
-    });
-  }
-
-  function renderZapModeButtons() {
-    [els.authZapModeSovereign, els.authZapModeEasy].forEach(function (button) {
-      if (!button) {
-        return;
-      }
-      var active = String(button.getAttribute('data-zap-mode') || '') === state.zapOnboardingMode;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
   }
 
@@ -3454,13 +3352,6 @@
     if (els.authModal) {
       els.authModal.addEventListener('click', function (event) {
         var trigger = event.target && event.target.closest ? event.target.closest('[data-auth-route]') : null;
-        var zapMode = event.target && event.target.closest ? event.target.closest('[data-zap-mode]') : null;
-        if (zapMode && els.authModal.contains(zapMode)) {
-          event.preventDefault();
-          state.zapOnboardingMode = String(zapMode.getAttribute('data-zap-mode') || '') === 'easy' ? 'easy' : 'sovereign';
-          renderZapOnboarding(state.activeAuthTab, state.activeAuthFlavor);
-          return;
-        }
         if (!trigger || !els.authModal.contains(trigger)) {
           return;
         }

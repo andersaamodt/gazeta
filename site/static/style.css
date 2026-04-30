@@ -5211,7 +5211,7 @@ nav.site-nav .btn-login {
 .auth-platform-grid {
   margin: 0.72rem 0 0.7rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.58rem;
 }
 
@@ -5224,11 +5224,13 @@ nav.site-nav .btn-login {
     color-mix(in srgb, var(--surface-raised-strong, #fff) 86%, var(--bg, #f7efe0) 14%);
   color: var(--text);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.68rem;
-  min-height: 4.65rem;
-  padding: 0.7rem 0.78rem;
-  text-align: left;
+  justify-content: center;
+  gap: 0.52rem;
+  min-height: 5.9rem;
+  padding: 0.78rem 0.58rem;
+  text-align: center;
   box-shadow: 0 9px 22px rgba(54, 38, 17, 0.08);
 }
 
@@ -5248,9 +5250,9 @@ nav.site-nav .btn-login {
 }
 
 .auth-platform-icon {
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 13px;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5259,6 +5261,16 @@ nav.site-nav .btn-login {
   background: color-mix(in srgb, var(--link) 10%, #fff);
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.auth-platform-icon svg {
+  width: 1.55rem;
+  height: 1.55rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.85;
 }
 
 .auth-platform-copy {
@@ -5276,6 +5288,28 @@ nav.site-nav .btn-login {
   color: var(--light-text);
   font-size: 0.78rem;
   line-height: 1.2;
+}
+
+.auth-advanced-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--link) 72%, var(--text));
+  cursor: pointer;
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin: -0.24rem 0 0.72rem auto;
+  padding: 0.16rem 0.1rem;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+  width: fit-content;
+}
+
+.auth-advanced-toggle:hover,
+.auth-advanced-toggle:focus-visible,
+.auth-advanced-toggle.is-active {
+  color: var(--link);
 }
 
 .auth-zap-onboarding {
@@ -5329,36 +5363,6 @@ nav.site-nav .btn-login {
   color: color-mix(in srgb, var(--light-text) 72%, #94a3b8);
   font-size: 0.72rem;
   line-height: 1.2;
-}
-
-.auth-zap-mode {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.38rem;
-  margin: 0 0 0.56rem;
-}
-
-.auth-zap-mode-btn {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 86%, var(--bg) 14%);
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 0.32rem 0.62rem;
-}
-
-.auth-zap-mode-btn.is-active {
-  border-color: color-mix(in srgb, var(--link) 56%, var(--border));
-  background: color-mix(in srgb, var(--link) 13%, var(--surface-raised-strong, #fff));
-  color: color-mix(in srgb, var(--link) 76%, var(--text));
-  cursor: default;
-}
-
-.auth-zap-mode-btn:not(.is-active):hover,
-.auth-zap-mode-btn:not(.is-active):focus-visible {
-  border-color: color-mix(in srgb, var(--link) 48%, var(--border));
 }
 
 .auth-zap-apps {
@@ -10563,13 +10567,13 @@ nav.site-nav > .nav-right .nav-search button {
   }
 
   .auth-platform-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.46rem;
   }
 
   .auth-platform-card {
-    min-height: 3.82rem;
-    padding: 0.62rem 0.68rem;
+    min-height: 5.12rem;
+    padding: 0.64rem 0.52rem;
   }
 
   .post-page-modal-panel {

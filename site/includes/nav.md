@@ -108,7 +108,7 @@
   <div class="nav-login-menu" id="nav-login-menu" role="menu" hidden>
     <button id="login-menu-register" class="nav-menu-item" type="button" role="menuitem">Use browser signer...</button>
     <button id="login-menu-phone" class="nav-menu-item" type="button" role="menuitem">Use phone signer (QR)</button>
-    <button id="login-menu-manual" class="nav-menu-item" type="button" role="menuitem">Use signed challenge (manual)</button>
+    <button id="login-menu-manual" class="nav-menu-item" type="button" role="menuitem">Advanced...</button>
     <button id="login-menu-learn" class="nav-menu-item" type="button" role="menuitem">Learn about Nostr sign-in</button>
   </div>
 </div>
@@ -304,26 +304,50 @@
 
     <div class="auth-platform-grid" role="list" aria-label="Signer platform">
       <button id="auth-tab-register" class="auth-platform-card is-active" type="button" data-auth-route="register" data-auth-flavor="desktop" aria-pressed="true">
-        <span class="auth-platform-icon" aria-hidden="true">▣</span>
+        <span class="auth-platform-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M5 6.5h14v9H5z"></path>
+            <path d="M9 19h6"></path>
+            <path d="M12 15.5V19"></path>
+          </svg>
+        </span>
         <span class="auth-platform-copy"><strong>Desktop</strong></span>
       </button>
       <button id="auth-tab-phone" class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="android" aria-pressed="false">
-        <span class="auth-platform-icon" aria-hidden="true">◫</span>
+        <span class="auth-platform-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 9.5h10v7.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"></path>
+            <path d="M8.5 7 6.8 5.3"></path>
+            <path d="M15.5 7l1.7-1.7"></path>
+            <path d="M9 13h.01"></path>
+            <path d="M15 13h.01"></path>
+          </svg>
+        </span>
         <span class="auth-platform-copy"><strong>Android</strong></span>
       </button>
       <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="ios" aria-pressed="false">
-        <span class="auth-platform-icon" aria-hidden="true">◇</span>
-        <span class="auth-platform-copy"><strong>iPhone/iPad</strong></span>
+        <span class="auth-platform-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M9 3.5h6a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"></path>
+            <path d="M11 6h2"></path>
+            <path d="M12 17.8h.01"></path>
+          </svg>
+        </span>
+        <span class="auth-platform-copy"><strong>iPhone</strong></span>
       </button>
       <button class="auth-platform-card" type="button" data-auth-route="phone" data-auth-flavor="remote" aria-pressed="false">
-        <span class="auth-platform-icon" aria-hidden="true">⇄</span>
-        <span class="auth-platform-copy"><strong>Remote signer</strong></span>
-      </button>
-      <button id="auth-tab-manual" class="auth-platform-card auth-platform-card-muted" type="button" data-auth-route="manual" data-auth-flavor="manual" aria-pressed="false">
-        <span class="auth-platform-icon" aria-hidden="true">⌁</span>
-        <span class="auth-platform-copy"><strong>Manual</strong></span>
+        <span class="auth-platform-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 7.5h10"></path>
+            <path d="M7 16.5h10"></path>
+            <path d="M8 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"></path>
+            <path d="M16 14a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"></path>
+          </svg>
+        </span>
+        <span class="auth-platform-copy"><strong>Remote Signer</strong></span>
       </button>
     </div>
+    <button id="auth-tab-manual" class="auth-advanced-toggle" type="button" data-auth-route="manual" data-auth-flavor="manual" aria-pressed="false">Advanced...</button>
 
     <section class="auth-zap-onboarding" aria-labelledby="auth-zap-title">
       <h3 id="auth-zap-title">
@@ -335,10 +359,6 @@
         <span>For Zaps:</span>
       </h3>
       <p class="auth-zap-updated">Recommendations Updated April 2026</p>
-      <div class="auth-zap-mode" role="group" aria-label="Zap setup mode">
-        <button id="auth-zap-mode-sovereign" class="auth-zap-mode-btn is-active" type="button" data-zap-mode="sovereign" aria-pressed="true">Self-Sovereign</button>
-        <button id="auth-zap-mode-easy" class="auth-zap-mode-btn" type="button" data-zap-mode="easy" aria-pressed="false">Quick &amp; Easy</button>
-      </div>
       <p id="auth-zap-summary" class="auth-zap-summary"></p>
       <ul id="auth-zap-apps" class="auth-zap-apps"></ul>
       <p id="auth-zap-note" class="auth-zap-note"></p>
