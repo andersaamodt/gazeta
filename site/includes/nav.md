@@ -335,7 +335,7 @@
       </div>
 
       <div id="auth-phone-panel" class="auth-panel" role="tabpanel" aria-labelledby="auth-tab-phone" hidden>
-        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Open the link or scan the QR.</p>
+        <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Open the link or scan the QR, then return here after pairing.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
           <a id="auth-nip46-open" class="auth-inline-link" href="#">Open nostrconnect:// link</a>
@@ -352,7 +352,6 @@
         </div>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
-          <button id="auth-phone-connect-btn" class="auth-secondary-btn" type="button">Connect phone signer (QR)</button>
           <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled>Continue with phone signer</button>
         </div>
         <p id="auth-phone-reco" class="auth-action-reco">Recommended: Amber on Android, NostrKey or a NIP-46 signer on iPhone/iPad.</p>

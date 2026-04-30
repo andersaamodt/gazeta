@@ -97,7 +97,6 @@
     authModalTitle: document.getElementById('auth-modal-title'),
     authMessage: document.getElementById('auth-modal-message'),
     authRegisterBtn: document.getElementById('auth-register-btn'),
-    authPhoneConnectBtn: document.getElementById('auth-phone-connect-btn'),
     authPhoneBtn: document.getElementById('auth-phone-btn'),
     authTabRegister: document.getElementById('auth-tab-register'),
     authTabPhone: document.getElementById('auth-tab-phone'),
@@ -763,7 +762,6 @@
     var isDisabled = !!disabled;
     [
       els.authRegisterBtn,
-      els.authPhoneConnectBtn,
       els.authPhoneBtn,
       els.authManualStart,
       els.authManualSubmit,
@@ -1939,29 +1937,6 @@
     });
   }
 
-  function waitForPhonePairing(timeoutMs) {
-    var timeout = Number(timeoutMs || 90000);
-    if (state.nip46.signerPubkey) {
-      return Promise.resolve(state.nip46.signerPubkey);
-    }
-
-    return new Promise(function (resolve, reject) {
-      var started = Date.now();
-      var timer = setInterval(function () {
-        if (state.nip46.signerPubkey) {
-          clearInterval(timer);
-          resolve(state.nip46.signerPubkey);
-          return;
-        }
-        if (Date.now() - started > timeout) {
-          clearInterval(timer);
-          setNip46Diagnostics('Phone pairing timed out after ' + state.nip46.diagnostics.eventsSeen + ' response event(s) and ' + state.nip46.diagnostics.decryptErrors + ' decrypt error(s). Open the newest phone signer link and return here.', 'error');
-          reject(new Error('Phone pairing timed out. Open the newest phone signer link and try again.'));
-        }
-      }, 350);
-    });
-  }
-
   function signInWithSigner(signEventFn, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var getPubkeyFn = typeof opts.getPubkeyFn === 'function' ? opts.getPubkeyFn : null;
@@ -2065,22 +2040,6 @@
         usernameHint: String(opts.usernameHint || '').trim()
       }
     );
-  }
-
-  function startPhonePairingFlow() {
-    setAuthMessage('Preparing phone signer pairing QR...', 'warn');
-    setAuthControlsDisabled(true);
-    return initNip46Pairing().then(function () {
-      showPanel(els.authPhonePanel, true);
-      showPanel(els.authManualPanel, false);
-      setAuthMessage('Scan QR in your signer app. Continue unlocks after pairing.', 'warn');
-      return waitForPhonePairing(90000);
-    }).then(function () {
-      updatePhoneContinueState();
-      setAuthMessage('Phone signer paired. Continue is ready.', 'ok');
-    }).finally(function () {
-      setAuthControlsDisabled(false);
-    });
   }
 
   function resetPhonePairingLink() {
@@ -3263,14 +3222,6 @@
         }
         event.preventDefault();
         setActiveAuthTab(trigger.getAttribute('data-auth-route'), trigger.getAttribute('data-auth-flavor'));
-      });
-    }
-
-    if (els.authPhoneConnectBtn) {
-      els.authPhoneConnectBtn.addEventListener('click', function () {
-        startPhonePairingFlow().catch(function (err) {
-          setAuthMessage(err.message || 'Phone pairing setup failed.', 'error');
-        });
       });
     }
 
