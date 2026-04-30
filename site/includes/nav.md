@@ -333,6 +333,7 @@
         </span>
         <span>For Zaps:</span>
       </h3>
+      <p class="auth-zap-updated">Recommendations Updated April 2026</p>
       <p id="auth-zap-summary" class="auth-zap-summary"></p>
       <ul id="auth-zap-apps" class="auth-zap-apps"></ul>
       <p class="auth-zap-note">Custodial wallets are common, but they are not the recommended path here because someone else controls the funds.</p>

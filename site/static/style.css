@@ -5323,6 +5323,13 @@ nav.site-nav .btn-login {
   line-height: 1.35;
 }
 
+.auth-zap-updated {
+  margin: -0.18rem 0 0.48rem;
+  color: color-mix(in srgb, var(--light-text) 72%, #94a3b8);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
 .auth-zap-apps {
   list-style: none;
   margin: 0;

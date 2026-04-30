@@ -608,6 +608,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>Desktop</stron
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>Android</strong><span>Amber signer</span>' 'Sign-in modal recommends an Android signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<strong>iPhone/iPad</strong><span>Safari signer</span>' 'Sign-in modal recommends an iOS signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'For Zaps:' 'Sign-in modal has a dedicated zap onboarding section'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Recommendations Updated April 2026' 'Zap onboarding recommendations show freshness date'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function zapOnboardingRecommendation' 'Zap onboarding recommendations update by selected platform'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Amethyst' 'Android zap onboarding recommends Amethyst'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'ZEUS' 'Zap onboarding recommends ZEUS for self-custodial Lightning'
