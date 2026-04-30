@@ -55,6 +55,7 @@
       pending: {},
       pendingTimers: {},
       seenEvents: {},
+      autoLoginInFlight: false,
       diagnostics: {
         eventsSeen: 0,
         decryptErrors: 0,
@@ -799,6 +800,7 @@
     var paired = !!state.nip46.signerPubkey;
     els.authPhoneBtn.disabled = !paired;
     els.authPhoneBtn.setAttribute('aria-disabled', paired ? 'false' : 'true');
+    els.authPhoneBtn.hidden = true;
   }
 
   function resetAuthPanels() {
@@ -817,56 +819,56 @@
     var key = String(flavor || 'android');
     if (key === 'ios') {
       return {
-        intro: 'Recommended: Safari/iOS signer. Open the Nostr Connect link if the signer supports it, or use the QR/copy fallback.'
+        intro: 'Use Nostr Connect if the signer supports it, or use the QR/copy fallback.'
       };
     }
     if (key === 'remote') {
       return {
-        intro: 'Recommended: a remote signer using Nostr Connect. Open the link, scan the QR, or copy it into the signer.'
+        intro: 'Connect a remote signer with Nostr Connect, the QR, or the copy button.'
       };
     }
     return {
-      intro: 'Open the Nostr Connect link, then return here after pairing.'
+      intro: 'Connect Nostr with the link or QR. Sign-in continues after pairing.'
     };
   }
 
   function loginOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
-    var amberFDroid = { source: 'F-Droid', label: 'Download', url: 'https://f-droid.org/packages/com.greenart7c3.nostrsigner/' };
+    var amberFDroid = { source: 'F-Droid', label: 'Download Amber', url: 'https://f-droid.org/packages/com.greenart7c3.nostrsigner/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'For Login via Nostr, install first:',
-        note: 'These apps sign the Nostr event that proves your site identity.',
+        summary: 'Login',
+        note: 'Use a Nostr Connect signer if one is available on iOS.',
         apps: [
           {
             iconKey: 'nostr-connect',
-            name: 'Nostr Connect signer',
+            name: 'Nostr Connect',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ source: 'NIP-46', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+            stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
         ]
       };
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'For Login via Nostr, install first:',
+        summary: 'Login',
         note: 'These apps sign the Nostr event that proves your site identity.',
         apps: [
           {
             iconKey: 'nostr-connect',
-            name: 'NIP-46 remote signer',
+            name: 'Nostr Connect remote signer',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ source: 'NIP-46', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
+            stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
           }
         ]
       };
     }
     if (tab === 'phone') {
       return {
-        summary: 'For Login via Nostr, install first:',
+        summary: 'Login',
         note: 'These apps sign the Nostr event that proves your site identity.',
         apps: [
           {
@@ -881,7 +883,7 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Login via Nostr advanced fallback:',
+        summary: 'Login',
         note: 'Use this only when browser or phone signing is unavailable.',
         apps: [
           {
@@ -889,13 +891,13 @@
             name: 'Signed challenge',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
-            stores: [{ source: 'NIP-98', label: 'Download', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
+            stores: [{ source: 'NIP-98', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
           }
         ]
       };
     }
     return {
-      summary: 'For Login via Nostr, install first:',
+      summary: 'Login',
       note: 'These apps sign the Nostr event that proves your site identity.',
       apps: [
         {
@@ -903,7 +905,7 @@
           name: 'nos2x-fox',
           purpose: 'Login via Nostr',
           url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
-          stores: [{ source: 'Firefox Add-ons', label: 'Download', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
+          stores: [{ source: 'Firefox Add-ons', label: 'Download nos2x-fox', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
         }
       ]
     };
@@ -912,10 +914,12 @@
   function zapOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
-    var auroraStore = { source: 'Aurora', label: 'Download', url: 'https://auroraoss.com/downloads/AuroraStore/' };
+    var amethystDownload = { source: 'GitHub', label: 'Download Amethyst', url: 'https://github.com/vitorpamplona/amethyst#installation' };
+    var zeusDownload = { source: 'ZEUS', label: 'Download ZEUS', url: 'https://github.com/ZeusLN/zeus#app-store-links' };
+    var auroraStore = { source: 'Aurora', label: 'Download Aurora Store', url: 'https://auroraoss.com/downloads/AuroraStore/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'For Zaps, add:',
+        summary: 'Zaps',
         note: 'These apps are for zap payments and offsite Nostr zapping, not site login.',
         apps: [
           {
@@ -923,28 +927,28 @@
             name: 'Damus',
             purpose: 'Zaps: Nostr client',
             url: 'https://damus.io/',
-            stores: [{ source: 'App Store', label: 'Download', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
+            stores: [{ source: 'App Store', label: 'Download Damus', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
           },
           {
             iconKey: 'nostur',
             name: 'Nostur',
             purpose: 'Zaps: Nostr client',
             url: 'https://nostur.com/',
-            stores: [{ source: 'App Store', label: 'Download', url: 'https://nostur.com/appstore' }]
+            stores: [{ source: 'App Store', label: 'Download Nostur', url: 'https://nostur.com/appstore' }]
           },
           {
             iconKey: 'zeus',
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [{ source: 'App Store', label: 'Download', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
+            stores: [{ source: 'App Store', label: 'Download ZEUS', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
           }
         ]
       };
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'For Zaps, add:',
+        summary: 'Zaps',
         note: 'This app is for Lightning zap payments, not site login.',
         apps: [
           {
@@ -952,14 +956,14 @@
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [auroraStore]
+            stores: [zeusDownload, auroraStore]
           }
         ]
       };
     }
     if (tab === 'phone') {
       return {
-        summary: 'For Zaps, add:',
+        summary: 'Zaps',
         note: 'These apps are for zap payments and offsite Nostr zapping. Amber above is the login signer.',
         apps: [
           {
@@ -967,21 +971,21 @@
             name: 'Amethyst',
             purpose: 'Zaps: Nostr client',
             url: 'https://github.com/vitorpamplona/amethyst#installation',
-            stores: [auroraStore]
+            stores: [amethystDownload, auroraStore]
           },
           {
             iconKey: 'zeus',
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [auroraStore]
+            stores: [zeusDownload, auroraStore]
           }
         ]
       };
     }
     if (tab === 'manual') {
       return {
-        summary: 'For Zaps, add:',
+        summary: 'Zaps',
         note: 'This app is for Lightning zap payments, not site login.',
         apps: [
           {
@@ -989,13 +993,13 @@
             name: 'ZEUS',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [auroraStore]
+            stores: [zeusDownload, auroraStore]
           }
         ]
       };
     }
     return {
-      summary: 'For Zaps, add:',
+      summary: 'Zaps',
       note: 'This app is for Lightning zap payments, not site login.',
       apps: [
         {
@@ -1003,7 +1007,7 @@
           name: 'ZEUS',
           purpose: 'Zaps: Lightning wallet',
           url: 'https://github.com/ZeusLN/zeus#app-store-links',
-          stores: [auroraStore]
+          stores: [zeusDownload, auroraStore]
         }
       ]
     };
@@ -1395,6 +1399,7 @@
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
       state.nip46.seenEvents = {};
+      state.nip46.autoLoginInFlight = false;
       state.nip46.diagnostics = {
         eventsSeen: 0,
         decryptErrors: 0,
@@ -1900,9 +1905,9 @@
     if (els.authNip46Open) {
       els.authNip46Open.href = uri;
       els.authNip46Open.setAttribute('data-nip46-uri', uri);
-      els.authNip46Open.textContent = 'Open Nostr Connect';
-      els.authNip46Open.setAttribute('aria-label', 'Open Nostr Connect signer link');
-      els.authNip46Open.setAttribute('title', 'Open Nostr Connect signer link');
+      els.authNip46Open.textContent = 'Connect Nostr';
+      els.authNip46Open.setAttribute('aria-label', 'Connect Nostr with a signer app');
+      els.authNip46Open.setAttribute('title', 'Connect Nostr with a signer app');
     }
     renderQrCode(uri);
   }
@@ -1982,6 +1987,7 @@
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
       state.nip46.seenEvents = {};
+      state.nip46.autoLoginInFlight = false;
       state.nip46.diagnostics = {
         eventsSeen: 0,
         decryptErrors: 0,
@@ -2076,6 +2082,30 @@
     return window.NostrTools.nip04.encrypt(hexToBytes(state.nip46.appSecretHex), pubkey, plaintext);
   }
 
+  function continuePhoneSignerLogin(autoStarted) {
+    if (state.nip46.autoLoginInFlight) {
+      return Promise.resolve(false);
+    }
+    state.nip46.autoLoginInFlight = true;
+    if (autoStarted) {
+      setAuthMessage('Phone signer paired. Approve the sign-in request in the signer.', 'ok');
+    } else {
+      setAuthMessage('Starting phone signer login...', 'warn');
+    }
+    setAuthControlsDisabled(true);
+    return loginWithPhoneSigner().catch(function (err) {
+      if (els.authPhoneBtn) {
+        els.authPhoneBtn.hidden = false;
+      }
+      setAuthMessage(err.message || 'Phone signer login failed.', 'error');
+      return false;
+    }).finally(function () {
+      state.nip46.autoLoginInFlight = false;
+      setAuthControlsDisabled(false);
+      updatePhoneContinueState();
+    });
+  }
+
   function handleNip46RelayEvent(event) {
     if (!event || !event.id || state.nip46.seenEvents[event.id]) {
       return;
@@ -2099,8 +2129,8 @@
           state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
           saveNip46PairState();
           updatePhoneContinueState();
-          setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
-          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
+          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Requesting sign-in approval.', 'ok');
+          continuePhoneSignerLogin(true);
           return;
         }
 
@@ -2108,8 +2138,8 @@
           state.nip46.signerPubkey = normalizePubkeyHex(event.pubkey || '');
           saveNip46PairState();
           updatePhoneContinueState();
-          setAuthMessage('Phone signer paired. You can continue login now.', 'ok');
-          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Continue is ready.', 'ok');
+          setNip46Diagnostics('Paired with phone signer ' + shortPubkey(event.pubkey) + '. Requesting sign-in approval.', 'ok');
+          continuePhoneSignerLogin(true);
           return;
         }
 
@@ -2326,6 +2356,7 @@
       state.nip46.active = false;
       state.nip46.signerPubkey = '';
       state.nip46.accountPubkey = '';
+      state.nip46.autoLoginInFlight = false;
       return initNip46Pairing();
     });
   }
@@ -3511,13 +3542,7 @@
 
     if (els.authPhoneBtn) {
       els.authPhoneBtn.addEventListener('click', function () {
-        setAuthMessage('Starting phone signer login...', 'warn');
-        setAuthControlsDisabled(true);
-        loginWithPhoneSigner().catch(function (err) {
-          setAuthMessage(err.message || 'Phone signer login failed.', 'error');
-        }).finally(function () {
-          setAuthControlsDisabled(false);
-        });
+        continuePhoneSignerLogin(false);
       });
     }
 

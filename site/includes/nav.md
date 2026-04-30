@@ -363,10 +363,7 @@
         <p id="auth-phone-intro" class="auth-modal-help">Recommended: phone signer app with Nostr Connect. Phone sign-in uses NIP-46 pairing via QR/deep link.</p>
         <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
         <div class="auth-nip46-link-actions">
-          <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Open Nostr Connect</a>
-        </div>
-        <div class="machine-string-box">
-          <p class="auth-nip46-uri" id="auth-nip46-uri"></p>
+          <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Connect Nostr</a>
           <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link">
             <svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>
@@ -374,9 +371,10 @@
             </svg>
           </button>
         </div>
+        <p class="auth-nip46-uri" id="auth-nip46-uri" hidden></p>
         <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
         <div class="auth-actions">
-          <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled>Continue with phone signer</button>
+          <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled hidden>Finish sign-in</button>
         </div>
       </div>
 
@@ -403,8 +401,8 @@
       </div>
     </div>
 
-    <section class="auth-login-onboarding auth-reco-card" aria-labelledby="auth-login-reco-title">
-      <h3 id="auth-login-reco-title">
+    <section class="auth-recommended-apps auth-reco-card" aria-labelledby="auth-reco-title">
+      <h3 id="auth-reco-title">
         <span class="auth-login-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
             <path d="M7 11V8a5 5 0 0 1 10 0v3"></path>
@@ -412,26 +410,19 @@
             <path d="M12 14.5v1.8"></path>
           </svg>
         </span>
-        <span>For Login:</span>
+        <span>Recommended Apps</span>
       </h3>
-      <p id="auth-login-summary" class="auth-reco-summary"></p>
-      <ul id="auth-login-apps" class="auth-reco-apps"></ul>
-      <p id="auth-login-note" class="auth-reco-note"></p>
-    </section>
-
-    <section class="auth-zap-onboarding" aria-labelledby="auth-zap-title">
-      <h3 id="auth-zap-title">
-        <span class="auth-zap-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M13.2 2 5 13.2h6.2L9.8 22 19 9.8h-6.3z"></path>
-          </svg>
-        </span>
-        <span>For Zaps:</span>
-      </h3>
+      <div class="auth-reco-group auth-login-onboarding">
+        <p id="auth-login-summary" class="auth-reco-summary"></p>
+        <ul id="auth-login-apps" class="auth-reco-apps"></ul>
+        <p id="auth-login-note" class="auth-reco-note"></p>
+      </div>
+      <div class="auth-reco-group auth-zap-onboarding">
+        <p id="auth-zap-summary" class="auth-reco-summary auth-zap-summary"></p>
+        <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
+        <p id="auth-zap-note" class="auth-reco-note auth-zap-note"></p>
+      </div>
       <p class="auth-zap-updated">Recommendations Updated April 2026</p>
-      <p id="auth-zap-summary" class="auth-reco-summary auth-zap-summary"></p>
-      <ul id="auth-zap-apps" class="auth-reco-apps auth-zap-apps"></ul>
-      <p id="auth-zap-note" class="auth-reco-note auth-zap-note"></p>
     </section>
     </div>
   </div>

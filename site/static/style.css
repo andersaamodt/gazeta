@@ -5313,8 +5313,7 @@ nav.site-nav .btn-login {
   color: var(--link);
 }
 
-.auth-reco-card,
-.auth-zap-onboarding {
+.auth-reco-card {
   margin: 0.1rem 0 0.8rem;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   border-radius: 18px;
@@ -5325,18 +5324,21 @@ nav.site-nav .btn-login {
   box-shadow: 0 10px 24px rgba(54, 38, 17, 0.08);
 }
 
-.auth-login-onboarding {
-  background:
-    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.72), transparent 38%),
-    color-mix(in srgb, var(--surface-raised-strong, #fff) 88%, #e0f2fe 12%);
+.auth-reco-group {
+  display: grid;
+  gap: 0.42rem;
+  padding-top: 0.58rem;
+  margin-top: 0.58rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
 }
 
-.auth-zap-onboarding {
+.auth-reco-group:first-of-type {
+  padding-top: 0;
   margin-top: 0;
+  border-top: 0;
 }
 
-.auth-reco-card h3,
-.auth-zap-onboarding h3 {
+.auth-reco-card h3 {
   margin: 0 0 0.42rem;
   display: inline-flex;
   align-items: center;
@@ -5345,8 +5347,7 @@ nav.site-nav .btn-login {
   font-size: 0.98rem;
 }
 
-.auth-login-icon,
-.auth-zap-icon {
+.auth-login-icon {
   width: 1.85rem;
   height: 1.85rem;
   border-radius: 999px;
@@ -5357,13 +5358,7 @@ nav.site-nav .btn-login {
   box-shadow: 0 8px 18px rgba(124, 58, 237, 0.22);
 }
 
-.auth-login-icon {
-  background: linear-gradient(135deg, #2563eb, #0f766e 64%, #14b8a6);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
-}
-
-.auth-login-icon svg,
-.auth-zap-icon svg {
+.auth-login-icon svg {
   width: 1.02rem;
   height: 1.02rem;
   fill: currentColor;
@@ -5380,10 +5375,11 @@ nav.site-nav .btn-login {
 }
 
 .auth-zap-updated {
-  margin: -0.18rem 0 0.48rem;
+  margin: 0.62rem 0 0;
   color: color-mix(in srgb, var(--light-text) 72%, #94a3b8);
   font-size: 0.72rem;
   line-height: 1.2;
+  text-align: center;
 }
 
 .auth-reco-apps,
@@ -5543,6 +5539,7 @@ nav.site-nav .btn-login {
 .auth-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   margin-top: 0.7rem;
   flex-wrap: wrap;
@@ -5664,6 +5661,10 @@ nav.site-nav .btn-login {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.auth-nip46-uri[hidden] {
+  display: none;
+}
+
 .machine-string-box {
   position: relative;
   display: block;
@@ -5716,6 +5717,13 @@ nav.site-nav .btn-login {
   align-items: center;
   gap: 0.42rem 0.58rem;
   justify-content: center;
+}
+
+.auth-nip46-link-actions .machine-string-copy {
+  position: static;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: var(--surface-raised-strong, #fff);
 }
 
 .auth-nip46-open-link {
