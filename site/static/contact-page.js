@@ -232,6 +232,19 @@
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
   }
 
+  function secureChatAuthMethod() {
+    return String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
+  }
+
+  function secureChatAuthSignature() {
+    var auth = authPayload();
+    return [
+      String(auth.session_token || ''),
+      String(auth.csrf_token || ''),
+      secureChatAuthMethod()
+    ].join('|');
+  }
+
   function markInitialContentPainted() {
     if (state.initialContentPainted) {
       return;
@@ -412,7 +425,7 @@
 
   function hasSecureChatSession() {
     var auth = authPayload();
-    var authMethod = String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
+    var authMethod = secureChatAuthMethod();
     return !!(auth.session_token && auth.csrf_token && authMethod === 'nostr');
   }
 
@@ -2470,9 +2483,14 @@
   }
 
   function maybeReloadForAuthChange() {
-    var nextSig = authPayload().session_token + '|' + authPayload().csrf_token;
+    var nextSig = secureChatAuthSignature();
     var lastSig = state.authSignature || '';
     if (nextSig !== lastSig) {
+      state.authSignature = nextSig;
+      resetSecureChatState();
+      if (state.payload) {
+        renderContent();
+      }
       load();
       return;
     }
@@ -2484,7 +2502,7 @@
 
   function load() {
     var auth = authPayload();
-    state.authSignature = auth.session_token + '|' + auth.csrf_token;
+    state.authSignature = secureChatAuthSignature();
     resetSecureChatState();
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: slug,
@@ -2527,7 +2545,7 @@
     if (!event || !event.key) {
       return;
     }
-    if (event.key === 'session_token' || event.key === 'csrf_token') {
+    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_method') {
       maybeReloadForAuthChange();
     }
   });
