@@ -1105,6 +1105,9 @@ function isMissingUserContactLinkError(resp) {
 async function enableOwnerAddress(userId) {
   if (nativeDriverAvailable()) {
     const chat = await ensureNativeChatApi();
+    if (String(state.activeUserId || '') !== String(userId)) {
+      await setActiveUser(userId);
+    }
     let address = await chat.apiGetUserAddress(Number(userId));
     if (!address) {
       await chat.apiCreateUserAddress(Number(userId));
@@ -1206,6 +1209,9 @@ async function ensureBridgeUser(npub) {
 async function listContacts(userId) {
   if (nativeDriverAvailable()) {
     const chat = await ensureNativeChatApi();
+    if (String(state.activeUserId || '') !== String(userId)) {
+      await setActiveUser(userId);
+    }
     return chat.apiListContacts(Number(userId));
   }
   const resp = await sendCommand(`/_contacts ${userId}`);
