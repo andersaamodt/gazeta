@@ -7,9 +7,8 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
-const { DatabaseSync } = require('node:sqlite');
 
-const DB_PATH = process.env.SECURE_CHAT_DB_PATH || '';
+const STORE_ROOT = process.env.SECURE_CHAT_STORE_DIR || process.env.SECURE_CHAT_DB_PATH || '';
 const SOCKET_PATH = process.env.SECURE_CHAT_SOCKET_PATH || '';
 const UPLOADS_DIR = process.env.SECURE_CHAT_UPLOADS_DIR || '';
 const DOWNLOADS_DIR = process.env.SECURE_CHAT_DOWNLOADS_DIR || '';
@@ -21,12 +20,16 @@ const MESSAGE_CACHE_LIMIT = 500;
 const COMMAND_TIMEOUT_MS = 30000;
 const PROVISION_TIMEOUT_MS = 30000;
 
-if (!DB_PATH || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
+if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
   process.stderr.write('Missing Secure Chat service environment.\n');
   process.exit(1);
 }
 
-for (const dir of [path.dirname(DB_PATH), path.dirname(SOCKET_PATH), UPLOADS_DIR, DOWNLOADS_DIR]) {
+const CONTACTS_DIR = path.join(STORE_ROOT, 'contacts');
+const MESSAGES_DIR = path.join(STORE_ROOT, 'messages');
+const META_DIR = path.join(STORE_ROOT, 'meta');
+
+for (const dir of [STORE_ROOT, CONTACTS_DIR, MESSAGES_DIR, META_DIR, path.dirname(SOCKET_PATH), UPLOADS_DIR, DOWNLOADS_DIR]) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -36,172 +39,298 @@ try {
   // ignore stale sockets
 }
 
-const db = new DatabaseSync(DB_PATH);
-db.exec(`
-CREATE TABLE IF NOT EXISTS secure_chat_meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS secure_chat_contacts (
-  npub TEXT PRIMARY KEY,
-  simplex_contact_id TEXT UNIQUE,
-  bridge_user_id TEXT UNIQUE,
-  bridge_contact_id TEXT UNIQUE,
-  status TEXT NOT NULL DEFAULT 'provisioning',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  deactivated_at TEXT,
-  last_provisioned_at TEXT,
-  last_error TEXT
-);
-CREATE TABLE IF NOT EXISTS secure_chat_messages (
-  seq INTEGER PRIMARY KEY AUTOINCREMENT,
-  npub TEXT NOT NULL,
-  simplex_contact_id TEXT,
-  bridge_user_id TEXT,
-  bridge_contact_id TEXT,
-  direction TEXT NOT NULL,
-  message_ref TEXT,
-  message_kind TEXT NOT NULL,
-  delivery_status TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  attachment_name TEXT,
-  attachment_mime TEXT,
-  attachment_size INTEGER,
-  upload_id TEXT,
-  error_code TEXT,
-  error_detail TEXT
-);
-CREATE INDEX IF NOT EXISTS secure_chat_messages_npub_seq_idx
-  ON secure_chat_messages(npub, seq);
-`);
-
-const insertMessageStmt = db.prepare(`
-  INSERT INTO secure_chat_messages (
-    npub, simplex_contact_id, bridge_user_id, bridge_contact_id, direction, message_ref,
-    message_kind, delivery_status, created_at, updated_at, attachment_name,
-    attachment_mime, attachment_size, upload_id, error_code, error_detail
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-const updateMessageBySeqStmt = db.prepare(`
-  UPDATE secure_chat_messages
-     SET message_ref = COALESCE(?, message_ref),
-         delivery_status = COALESCE(?, delivery_status),
-         updated_at = ?,
-         error_code = COALESCE(?, error_code),
-         error_detail = COALESCE(?, error_detail)
-   WHERE seq = ?
-`);
-
-const updateMessageByRefStmt = db.prepare(`
-  UPDATE secure_chat_messages
-     SET delivery_status = COALESCE(?, delivery_status),
-         updated_at = ?,
-         error_code = COALESCE(?, error_code),
-         error_detail = COALESCE(?, error_detail)
-   WHERE message_ref = ?
-`);
-
-const upsertContactStmt = db.prepare(`
-  INSERT INTO secure_chat_contacts (
-    npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-    created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL)
-  ON CONFLICT(npub) DO UPDATE SET
-    simplex_contact_id = excluded.simplex_contact_id,
-    bridge_user_id = excluded.bridge_user_id,
-    bridge_contact_id = excluded.bridge_contact_id,
-    status = excluded.status,
-    updated_at = excluded.updated_at,
-    deactivated_at = NULL,
-    last_provisioned_at = excluded.last_provisioned_at,
-    last_error = NULL
-`);
-
-const updateContactStatusStmt = db.prepare(`
-  UPDATE secure_chat_contacts
-     SET status = ?,
-         updated_at = ?,
-         deactivated_at = ?,
-         last_error = ?
-   WHERE npub = ?
-`);
-
-const selectContactByNpubStmt = db.prepare(`
-  SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-         created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-    FROM secure_chat_contacts
-   WHERE npub = ?
-   LIMIT 1
-`);
-
-const selectContactByBridgeUserStmt = db.prepare(`
-  SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-         created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-    FROM secure_chat_contacts
-   WHERE bridge_user_id = ?
-   LIMIT 1
-`);
-
-const selectContactByOwnerContactStmt = db.prepare(`
-  SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-         created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-    FROM secure_chat_contacts
-   WHERE simplex_contact_id = ?
-   LIMIT 1
-`);
-
-const selectContactByBridgeContactStmt = db.prepare(`
-  SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-         created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-    FROM secure_chat_contacts
-   WHERE bridge_contact_id = ?
-   LIMIT 1
-`);
-
-const selectMappingsStmt = db.prepare(`
-  SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status,
-         created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-    FROM secure_chat_contacts
-   ORDER BY updated_at DESC
-   LIMIT ?
-`);
-
-const selectMessagesSinceStmt = db.prepare(`
-  SELECT seq, npub, simplex_contact_id, bridge_user_id, bridge_contact_id,
-         direction, message_ref, message_kind, delivery_status,
-         created_at, updated_at, attachment_name, attachment_mime,
-         attachment_size, upload_id, error_code, error_detail
-    FROM secure_chat_messages
-   WHERE npub = ? AND seq > ?
-   ORDER BY seq ASC
-   LIMIT ?
-`);
-
-const selectRecentMessagesStmt = db.prepare(`
-  SELECT seq, npub, simplex_contact_id, bridge_user_id, bridge_contact_id,
-         direction, message_ref, message_kind, delivery_status,
-         created_at, updated_at, attachment_name, attachment_mime,
-         attachment_size, upload_id, error_code, error_detail
-    FROM secure_chat_messages
-   WHERE npub = ?
-   ORDER BY seq DESC
-   LIMIT ?
-`);
-
-const metaGetStmt = db.prepare('SELECT value FROM secure_chat_meta WHERE key = ? LIMIT 1');
-const metaSetStmt = db.prepare(`
-  INSERT INTO secure_chat_meta (key, value, updated_at)
-  VALUES (?, ?, ?)
-  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-`);
-
 function nowIso() {
   return new Date().toISOString();
 }
+
+function readJsonFileSync(filePath, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (_err) {
+    return fallback;
+  }
+}
+
+function readTextFileSync(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (_err) {
+    return '';
+  }
+}
+
+function writeFileAtomicSync(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  fs.writeFileSync(tmpPath, content, { mode: 0o600 });
+  fs.renameSync(tmpPath, filePath);
+}
+
+function writeJsonFileAtomicSync(filePath, value) {
+  writeFileAtomicSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function validateNpub(npub) {
+  const value = String(npub || '').trim().toLowerCase();
+  if (!/^npub1[023456789acdefghjklmnpqrstuvwxyz]+$/.test(value)) {
+    throw new Error('Invalid npub');
+  }
+  return value;
+}
+
+function contactFilePath(npub) {
+  return path.join(CONTACTS_DIR, `${validateNpub(npub)}.json`);
+}
+
+function messagesFilePath(npub) {
+  return path.join(MESSAGES_DIR, `${validateNpub(npub)}.json`);
+}
+
+function metaFilePath(key) {
+  return path.join(META_DIR, `${String(key || '').replace(/[^a-z0-9_.-]+/gi, '_')}.txt`);
+}
+
+function normalizeContactRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  let npub;
+  try {
+    npub = validateNpub(row.npub);
+  } catch (_err) {
+    return null;
+  }
+  return {
+    npub,
+    simplex_contact_id: row.simplex_contact_id == null ? '' : String(row.simplex_contact_id),
+    bridge_user_id: row.bridge_user_id == null ? '' : String(row.bridge_user_id),
+    bridge_contact_id: row.bridge_contact_id == null ? '' : String(row.bridge_contact_id),
+    status: String(row.status || 'provisioning'),
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || '',
+    deactivated_at: row.deactivated_at || '',
+    last_provisioned_at: row.last_provisioned_at || '',
+    last_error: row.last_error || ''
+  };
+}
+
+function normalizeMessageRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  let npub;
+  try {
+    npub = validateNpub(row.npub);
+  } catch (_err) {
+    return null;
+  }
+  const seq = Number(row.seq);
+  if (!Number.isFinite(seq) || seq <= 0) return null;
+  return {
+    seq,
+    npub,
+    simplex_contact_id: row.simplex_contact_id == null ? '' : String(row.simplex_contact_id),
+    bridge_user_id: row.bridge_user_id == null ? '' : String(row.bridge_user_id),
+    bridge_contact_id: row.bridge_contact_id == null ? '' : String(row.bridge_contact_id),
+    direction: String(row.direction || 'outgoing'),
+    message_ref: row.message_ref == null ? '' : String(row.message_ref),
+    message_kind: String(row.message_kind || 'text'),
+    delivery_status: String(row.delivery_status || 'queued'),
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || '',
+    attachment_name: row.attachment_name == null ? '' : String(row.attachment_name),
+    attachment_mime: row.attachment_mime == null ? '' : String(row.attachment_mime),
+    attachment_size: row.attachment_size == null || row.attachment_size === '' ? null : Number(row.attachment_size),
+    upload_id: row.upload_id == null ? '' : String(row.upload_id),
+    error_code: row.error_code == null ? '' : String(row.error_code),
+    error_detail: row.error_detail == null ? '' : String(row.error_detail)
+  };
+}
+
+function listJsonRows(dir, normalizer) {
+  let names = [];
+  try {
+    names = fs.readdirSync(dir);
+  } catch (_err) {
+    return [];
+  }
+  const rows = [];
+  for (const name of names) {
+    if (!name.endsWith('.json')) continue;
+    const row = normalizer(readJsonFileSync(path.join(dir, name), null));
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+function loadAllContacts() {
+  return listJsonRows(CONTACTS_DIR, normalizeContactRow)
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+}
+
+function loadContactByNpub(npub) {
+  return normalizeContactRow(readJsonFileSync(contactFilePath(npub), null));
+}
+
+function findContact(predicate) {
+  for (const row of loadAllContacts()) {
+    if (predicate(row)) return row;
+  }
+  return null;
+}
+
+function saveContact(row) {
+  const normalized = normalizeContactRow(row);
+  if (!normalized) throw new Error('Invalid contact row');
+  for (const existing of loadAllContacts()) {
+    if (existing.npub === normalized.npub) continue;
+    if (normalized.simplex_contact_id && existing.simplex_contact_id === normalized.simplex_contact_id) {
+      throw new Error('duplicate simplex_contact_id');
+    }
+    if (normalized.bridge_user_id && existing.bridge_user_id === normalized.bridge_user_id) {
+      throw new Error('duplicate bridge_user_id');
+    }
+    if (normalized.bridge_contact_id && existing.bridge_contact_id === normalized.bridge_contact_id) {
+      throw new Error('duplicate bridge_contact_id');
+    }
+  }
+  writeJsonFileAtomicSync(contactFilePath(normalized.npub), normalized);
+  return normalized;
+}
+
+function updateContactStatus(npub, status, deactivatedAt, lastError) {
+  const existing = loadContactByNpub(npub) || normalizeContactRow({
+    npub,
+    simplex_contact_id: '',
+    bridge_user_id: '',
+    bridge_contact_id: '',
+    status: 'provisioning',
+    created_at: nowIso(),
+    updated_at: '',
+    deactivated_at: '',
+    last_provisioned_at: '',
+    last_error: ''
+  });
+  return saveContact(Object.assign({}, existing, {
+    status: String(status || existing.status || 'provisioning'),
+    updated_at: nowIso(),
+    deactivated_at: deactivatedAt || '',
+    last_error: lastError || ''
+  }));
+}
+
+function deleteContact(npub) {
+  try {
+    fs.unlinkSync(contactFilePath(npub));
+  } catch (_err) {
+    // ignore missing files
+  }
+}
+
+function loadMessages(npub) {
+  const rows = readJsonFileSync(messagesFilePath(npub), []);
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(normalizeMessageRow)
+    .filter(Boolean)
+    .sort((a, b) => a.seq - b.seq);
+}
+
+function saveMessages(npub, rows) {
+  const normalized = (Array.isArray(rows) ? rows : [])
+    .map(normalizeMessageRow)
+    .filter(Boolean)
+    .sort((a, b) => a.seq - b.seq);
+  writeJsonFileAtomicSync(messagesFilePath(npub), normalized);
+  return normalized;
+}
+
+function nextMessageSeq() {
+  const current = Number(readTextFileSync(metaFilePath('next_seq')).trim() || 0);
+  const next = current > 0 ? current : 1;
+  writeFileAtomicSync(metaFilePath('next_seq'), `${next + 1}\n`);
+  return next;
+}
+
+const seqToNpub = new Map();
+const messageRefToNpub = new Map();
+
+function rememberMessageIndex(row) {
+  if (!row) return;
+  seqToNpub.set(Number(row.seq), String(row.npub || ''));
+  if (row.message_ref) messageRefToNpub.set(String(row.message_ref), String(row.npub || ''));
+}
+
+const selectContactByNpubStmt = {
+  get(npub) {
+    return loadContactByNpub(String(npub || ''));
+  }
+};
+
+const selectContactByBridgeUserStmt = {
+  get(bridgeUserId) {
+    const needle = String(bridgeUserId || '');
+    if (!needle) return null;
+    return findContact((row) => row.bridge_user_id === needle);
+  }
+};
+
+const selectContactByOwnerContactStmt = {
+  get(contactId) {
+    const needle = String(contactId || '');
+    if (!needle) return null;
+    return findContact((row) => row.simplex_contact_id === needle);
+  }
+};
+
+const selectContactByBridgeContactStmt = {
+  get(contactId) {
+    const needle = String(contactId || '');
+    if (!needle) return null;
+    return findContact((row) => row.bridge_contact_id === needle);
+  }
+};
+
+const selectMappingsStmt = {
+  all(limit) {
+    return loadAllContacts().slice(0, Math.max(0, Number(limit || 0) || 0));
+  }
+};
+
+const selectMessagesSinceStmt = {
+  all(npub, sinceSeq, limit) {
+    return loadMessages(String(npub || ''))
+      .filter((row) => Number(row.seq) > Number(sinceSeq || 0))
+      .slice(0, Math.max(0, Number(limit || 0) || 0));
+  }
+};
+
+const selectRecentMessagesStmt = {
+  all(npub, limit) {
+    const rows = loadMessages(String(npub || ''));
+    const count = Math.max(0, Number(limit || 0) || 0);
+    return count > 0 ? rows.slice(-count).reverse() : [];
+  }
+};
+
+const upsertContactStmt = {
+  run(npub, simplexContactId, bridgeUserId, bridgeContactId, status, createdAt, updatedAt, lastProvisionedAt) {
+    return saveContact({
+      npub,
+      simplex_contact_id: simplexContactId || '',
+      bridge_user_id: bridgeUserId || '',
+      bridge_contact_id: bridgeContactId || '',
+      status: status || 'active',
+      created_at: createdAt || nowIso(),
+      updated_at: updatedAt || nowIso(),
+      deactivated_at: '',
+      last_provisioned_at: lastProvisionedAt || nowIso(),
+      last_error: ''
+    });
+  }
+};
+
+const updateContactStatusStmt = {
+  run(status, _updatedAt, deactivatedAt, lastError, npub) {
+    return updateContactStatus(String(npub || ''), status, deactivatedAt, lastError);
+  }
+};
 
 function sanitizeName(name) {
   return String(name || '')
@@ -220,12 +349,11 @@ function logEvent(type, detail) {
 }
 
 function metaGet(key) {
-  const row = metaGetStmt.get(String(key));
-  return row ? String(row.value) : '';
+  return readTextFileSync(metaFilePath(key)).trim();
 }
 
 function metaSet(key, value) {
-  metaSetStmt.run(String(key), String(value), nowIso());
+  writeFileAtomicSync(metaFilePath(key), `${String(value || '')}\n`);
 }
 
 function contactRowToJson(row) {
@@ -278,47 +406,72 @@ function rememberMessageText(seq, text, file) {
 }
 
 function insertMessage(row) {
-  const result = insertMessageStmt.run(
-    row.npub,
-    row.simplex_contact_id || null,
-    row.bridge_user_id || null,
-    row.bridge_contact_id || null,
-    row.direction,
-    row.message_ref || null,
-    row.message_kind,
-    row.delivery_status,
-    row.created_at,
-    row.updated_at,
-    row.attachment_name || null,
-    row.attachment_mime || null,
-    row.attachment_size == null ? null : Number(row.attachment_size),
-    row.upload_id || null,
-    row.error_code || null,
-    row.error_detail || null
-  );
-  return Number(result.lastInsertRowid);
+  const normalized = normalizeMessageRow(Object.assign({}, row, { seq: nextMessageSeq() }));
+  if (!normalized) {
+    throw new Error('Invalid secure chat message row');
+  }
+  const rows = loadMessages(normalized.npub);
+  rows.push(normalized);
+  saveMessages(normalized.npub, rows);
+  rememberMessageIndex(normalized);
+  return Number(normalized.seq);
 }
 
 function setMessageStatusByRef(messageRef, deliveryStatus, errorCode, errorDetail) {
   if (!messageRef) return;
-  updateMessageByRefStmt.run(
-    deliveryStatus || null,
-    nowIso(),
-    errorCode || null,
-    errorDetail || null,
-    String(messageRef)
-  );
+  const ref = String(messageRef);
+  const candidates = [];
+  const indexed = messageRefToNpub.get(ref);
+  if (indexed) candidates.push(indexed);
+  for (const row of loadAllContacts()) {
+    if (!candidates.includes(row.npub)) candidates.push(row.npub);
+  }
+  for (const npub of candidates) {
+    const rows = loadMessages(npub);
+    let changed = false;
+    for (const row of rows) {
+      if (String(row.message_ref || '') !== ref) continue;
+      row.delivery_status = deliveryStatus || row.delivery_status;
+      row.updated_at = nowIso();
+      row.error_code = errorCode || row.error_code || '';
+      row.error_detail = errorDetail || row.error_detail || '';
+      changed = true;
+      rememberMessageIndex(row);
+    }
+    if (changed) {
+      saveMessages(npub, rows);
+      return;
+    }
+  }
 }
 
 function updateMessageBySeq(seq, fields) {
-  updateMessageBySeqStmt.run(
-    fields.message_ref || null,
-    fields.delivery_status || null,
-    nowIso(),
-    fields.error_code || null,
-    fields.error_detail || null,
-    Number(seq)
-  );
+  const seqNumber = Number(seq);
+  const candidates = [];
+  const indexed = seqToNpub.get(seqNumber);
+  if (indexed) candidates.push(indexed);
+  for (const row of loadAllContacts()) {
+    if (!candidates.includes(row.npub)) candidates.push(row.npub);
+  }
+  for (const npub of candidates) {
+    const rows = loadMessages(npub);
+    let changed = false;
+    for (const row of rows) {
+      if (Number(row.seq) !== seqNumber) continue;
+      if (fields.message_ref) row.message_ref = String(fields.message_ref);
+      if (fields.delivery_status) row.delivery_status = String(fields.delivery_status);
+      row.updated_at = nowIso();
+      if (fields.error_code) row.error_code = String(fields.error_code);
+      if (fields.error_detail) row.error_detail = String(fields.error_detail);
+      changed = true;
+      rememberMessageIndex(row);
+      break;
+    }
+    if (changed) {
+      saveMessages(npub, rows);
+      return;
+    }
+  }
 }
 
 function bech32Polymod(values) {
@@ -455,7 +608,7 @@ function startSimplexChild() {
     state.transportError = 'simplex-chat binary is not installed';
     return;
   }
-  const dbPrefix = path.join(path.dirname(DB_PATH), 'simplex-bridge');
+  const dbPrefix = path.join(STORE_ROOT, 'simplex-bridge');
   try {
     state.simplexProcess = spawn(SIMPLEX_BINARY, ['-p', String(SIMPLEX_WS_PORT), '-d', dbPrefix], {
       stdio: ['ignore', 'ignore', 'ignore']
@@ -1174,7 +1327,7 @@ async function handleAdmin(req, res) {
   if (action === 'deactivate') {
     updateContactStatusStmt.run('inactive', nowIso(), nowIso(), '', String(body.npub || ''));
   } else if (action === 'delete') {
-    db.prepare('DELETE FROM secure_chat_contacts WHERE npub = ?').run(String(body.npub || ''));
+    deleteContact(String(body.npub || ''));
   } else if (action === 'status') {
     await ensureRuntime();
   }

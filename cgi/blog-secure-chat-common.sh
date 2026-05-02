@@ -19,8 +19,46 @@ blog_secure_chat_downloads_dir() {
   printf '%s/downloads\n' "$(blog_secure_chat_root)"
 }
 
-blog_secure_chat_db_path() {
-  printf '%s/secure-chat.sqlite\n' "$(blog_secure_chat_root)"
+blog_secure_chat_store_dir() {
+  printf '%s/store\n' "$(blog_secure_chat_root)"
+}
+
+blog_secure_chat_contacts_dir() {
+  printf '%s/contacts\n' "$(blog_secure_chat_store_dir)"
+}
+
+blog_secure_chat_messages_dir() {
+  printf '%s/messages\n' "$(blog_secure_chat_store_dir)"
+}
+
+blog_secure_chat_meta_dir() {
+  printf '%s/meta\n' "$(blog_secure_chat_store_dir)"
+}
+
+blog_secure_chat_contact_path() {
+  npub=$(blog_validate_nostr_npub "${1-}" 2>/dev/null || printf '')
+  [ -n "$npub" ] || return 1
+  printf '%s/%s.json\n' "$(blog_secure_chat_contacts_dir)" "$npub"
+}
+
+blog_secure_chat_write_file_atomic() {
+  target=${1-}
+  [ -n "$target" ] || return 1
+  mkdir -p "$(dirname "$target")"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/secure-chat-write.XXXXXX")
+  cat > "$tmp"
+  chmod 600 "$tmp" 2>/dev/null || true
+  mv "$tmp" "$target"
+}
+
+blog_secure_chat_contact_file_json() {
+  file=${1-}
+  [ -n "$file" ] || return 1
+  if [ -f "$file" ]; then
+    cat "$file"
+  else
+    printf '{}\n'
+  fi
 }
 
 blog_secure_chat_socket_path() {
@@ -80,108 +118,80 @@ blog_secure_chat_init_storage() {
   runtime=$(blog_secure_chat_runtime_dir)
   uploads=$(blog_secure_chat_uploads_dir)
   downloads=$(blog_secure_chat_downloads_dir)
-  db=$(blog_secure_chat_db_path)
-
-  mkdir -p "$root" "$runtime" "$uploads" "$downloads"
-
-  sqlite3 "$db" <<'EOSQL'
-CREATE TABLE IF NOT EXISTS secure_chat_meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS secure_chat_contacts (
-  npub TEXT PRIMARY KEY,
-  simplex_contact_id TEXT UNIQUE,
-  bridge_user_id TEXT UNIQUE,
-  bridge_contact_id TEXT UNIQUE,
-  status TEXT NOT NULL DEFAULT 'provisioning',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  deactivated_at TEXT,
-  last_provisioned_at TEXT,
-  last_error TEXT
-);
-
-CREATE TABLE IF NOT EXISTS secure_chat_messages (
-  seq INTEGER PRIMARY KEY AUTOINCREMENT,
-  npub TEXT NOT NULL,
-  simplex_contact_id TEXT,
-  bridge_user_id TEXT,
-  bridge_contact_id TEXT,
-  direction TEXT NOT NULL,
-  message_ref TEXT,
-  message_kind TEXT NOT NULL,
-  delivery_status TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  attachment_name TEXT,
-  attachment_mime TEXT,
-  attachment_size INTEGER,
-  upload_id TEXT,
-  error_code TEXT,
-  error_detail TEXT
-);
-
-CREATE INDEX IF NOT EXISTS secure_chat_messages_npub_seq_idx
-  ON secure_chat_messages(npub, seq);
-EOSQL
-}
-
-blog_secure_chat_sql_escape() {
-  printf '%s' "${1-}" | sed "s/'/''/g"
+  mkdir -p \
+    "$root" \
+    "$runtime" \
+    "$uploads" \
+    "$downloads" \
+    "$(blog_secure_chat_store_dir)" \
+    "$(blog_secure_chat_contacts_dir)" \
+    "$(blog_secure_chat_messages_dir)" \
+    "$(blog_secure_chat_meta_dir)"
 }
 
 blog_secure_chat_mapping_upsert() {
-  npub=${1-}
+  npub=$(blog_validate_nostr_npub "${1-}" 2>/dev/null || printf '')
   simplex_contact_id=${2-}
   status=${3-active}
   [ -n "$npub" ] || return 1
   blog_secure_chat_init_storage
   now_iso=$(blog_now_iso)
-  sqlite3 "$(blog_secure_chat_db_path)" \
-    "INSERT INTO secure_chat_contacts (npub, simplex_contact_id, status, created_at, updated_at, last_provisioned_at)
-     VALUES ('$(blog_secure_chat_sql_escape "$npub")', '$(blog_secure_chat_sql_escape "$simplex_contact_id")', '$(blog_secure_chat_sql_escape "$status")', '$now_iso', '$now_iso', '$now_iso')
-     ON CONFLICT(npub) DO UPDATE SET
-       simplex_contact_id = excluded.simplex_contact_id,
-       status = excluded.status,
-       updated_at = excluded.updated_at,
-       last_provisioned_at = excluded.last_provisioned_at,
-       deactivated_at = NULL;"
+  file=$(blog_secure_chat_contact_path "$npub")
+  existing=$(blog_secure_chat_contact_file_json "$file")
+  jq -cn \
+    --argjson existing "$existing" \
+    --arg npub "$npub" \
+    --arg simplex_contact_id "$simplex_contact_id" \
+    --arg status "$status" \
+    --arg now_iso "$now_iso" '
+    {
+      npub: $npub,
+      simplex_contact_id: $simplex_contact_id,
+      bridge_user_id: ($existing.bridge_user_id // ""),
+      bridge_contact_id: ($existing.bridge_contact_id // ""),
+      status: $status,
+      created_at: (($existing.created_at // "") | if . == "" then $now_iso else . end),
+      updated_at: $now_iso,
+      deactivated_at: "",
+      last_provisioned_at: $now_iso,
+      last_error: ""
+    }' | blog_secure_chat_write_file_atomic "$file"
 }
 
 blog_secure_chat_mapping_mark_inactive() {
-  npub=${1-}
+  npub=$(blog_validate_nostr_npub "${1-}" 2>/dev/null || printf '')
   [ -n "$npub" ] || return 1
   blog_secure_chat_init_storage
+  file=$(blog_secure_chat_contact_path "$npub")
+  [ -f "$file" ] || return 0
   now_iso=$(blog_now_iso)
-  sqlite3 "$(blog_secure_chat_db_path)" \
-    "UPDATE secure_chat_contacts
-        SET status = 'inactive',
-            deactivated_at = '$now_iso',
-            updated_at = '$now_iso'
-      WHERE npub = '$(blog_secure_chat_sql_escape "$npub")';"
+  existing=$(blog_secure_chat_contact_file_json "$file")
+  jq -cn \
+    --argjson existing "$existing" \
+    --arg npub "$npub" \
+    --arg now_iso "$now_iso" '
+    ($existing // {}) + {
+      npub: $npub,
+      status: "inactive",
+      updated_at: $now_iso,
+      deactivated_at: $now_iso
+    }' | blog_secure_chat_write_file_atomic "$file"
 }
 
 blog_secure_chat_mapping_delete() {
-  npub=${1-}
+  npub=$(blog_validate_nostr_npub "${1-}" 2>/dev/null || printf '')
   [ -n "$npub" ] || return 1
   blog_secure_chat_init_storage
-  sqlite3 "$(blog_secure_chat_db_path)" \
-    "DELETE FROM secure_chat_contacts WHERE npub = '$(blog_secure_chat_sql_escape "$npub")';"
+  rm -f "$(blog_secure_chat_contact_path "$npub")"
 }
 
 blog_secure_chat_mapping_json() {
-  npub=${1-}
+  npub=$(blog_validate_nostr_npub "${1-}" 2>/dev/null || printf '')
   [ -n "$npub" ] || return 1
   blog_secure_chat_init_storage
-  sqlite3 -json "$(blog_secure_chat_db_path)" \
-    "SELECT npub, simplex_contact_id, bridge_user_id, bridge_contact_id, status, created_at, updated_at, deactivated_at, last_provisioned_at, last_error
-       FROM secure_chat_contacts
-      WHERE npub = '$(blog_secure_chat_sql_escape "$npub")'
-      LIMIT 1;" \
-    | jq -c '.[0] // empty' 2>/dev/null
+  file=$(blog_secure_chat_contact_path "$npub")
+  [ -f "$file" ] || return 0
+  jq -c '.' "$file" 2>/dev/null
 }
 
 blog_secure_chat_account_info_json() {
@@ -195,9 +205,9 @@ blog_secure_chat_account_info_json() {
     return 0
   fi
 
-  db_path=$(blog_secure_chat_db_path)
+  store_dir=$(blog_secure_chat_store_dir)
   socket_path=$(blog_secure_chat_socket_path)
-  if [ ! -f "$db_path" ] && [ ! -S "$socket_path" ]; then
+  if [ ! -d "$store_dir" ] && [ ! -S "$socket_path" ]; then
     printf '{"simplex_contact_info":"","simplex_status":"not_provisioned"}\n'
     return 0
   fi
@@ -506,7 +516,7 @@ blog_secure_chat_service_start() {
     WIZARDRY_SITE_NAME="$blog_site_name" \
     WIZARDRY_SITE_ROOT="$blog_site_root" \
     WIZARDRY_SITE_DATA="$blog_site_data" \
-    SECURE_CHAT_DB_PATH="$(blog_secure_chat_db_path)" \
+    SECURE_CHAT_STORE_DIR="$(blog_secure_chat_store_dir)" \
     SECURE_CHAT_SOCKET_PATH="$socket" \
     SECURE_CHAT_UPLOADS_DIR="$(blog_secure_chat_uploads_dir)" \
     SECURE_CHAT_DOWNLOADS_DIR="$(blog_secure_chat_downloads_dir)" \

@@ -49,6 +49,17 @@ assert_file_contains() {
   fi
 }
 
+assert_file_not_contains() {
+  file=$1
+  needle=$2
+  label=$3
+  if grep -Fq "$needle" "$file"; then
+    fail "$label (unexpected: $needle in $file)"
+  else
+    pass
+  fi
+}
+
 assert_nonempty() {
   value=$1
   label=$2
@@ -154,15 +165,16 @@ export WIZARDRY_SITE_NAME="$SITE_NAME"
 blog_init
 blog_secure_chat_init_storage
 
-db_path=$(blog_secure_chat_db_path)
-assert_nonempty "$db_path" 'secure chat db path is available'
+store_dir=$(blog_secure_chat_store_dir)
+contacts_dir=$(blog_secure_chat_contacts_dir)
+assert_nonempty "$store_dir" 'secure chat store dir is available'
 
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "101" "active"
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "202" "active"
 mapping_json=$(blog_secure_chat_mapping_json "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 assert_contains "$mapping_json" '"simplex_contact_id":"202"' 'mapping upsert updates existing npub row'
 
-mapping_count=$(sqlite3 "$db_path" "select count(*) from secure_chat_contacts where npub = 'npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';")
+mapping_count=$(find "$contacts_dir" -type f -name '*.json' | wc -l | tr -d '[:space:]')
 assert_eq "1" "$mapping_count" 'npub uniqueness constraint prevents duplicates'
 
 blog_secure_chat_mapping_mark_inactive "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -172,6 +184,14 @@ assert_contains "$inactive_json" '"status":"inactive"' 'mapping can be deactivat
 blog_secure_chat_mapping_delete "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 deleted_json=$(blog_secure_chat_mapping_json "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 assert_eq "" "$deleted_json" 'mapping delete clears reprovision target'
+
+if blog_secure_chat_mapping_upsert '../escape' '303' 'active'; then
+  fail 'path-shaped npub is rejected by file-backed mapping store'
+else
+  pass
+fi
+escaped_count=$(find "$store_dir" -type f | wc -l | tr -d '[:space:]')
+assert_eq "0" "$escaped_count" 'invalid npub does not create stray secure chat files'
 
 now_epoch=$(date +%s)
 valid_event=$(jq -cn \
@@ -228,7 +248,9 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-state" 'blog_secure_chat_re
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog_secure_chat_require_authenticated_request' 'send endpoint requires signed authenticated requests'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" 'blog_secure_chat_require_authenticated_request' 'upload endpoint requires signed authenticated requests'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_require_session true' 'admin endpoint requires admin session'
-assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service uses sqlite-backed storage'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service no longer uses sqlite-backed storage'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'sqlite3 ' 'cgi helper no longer depends on sqlite shell access'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SECURE_CHAT_STORE_DIR' 'service uses file-backed store root env'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new WebSocket(' 'service opens local SimpleX websocket transport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-state' 'contact page polls secure chat state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secure-chat-send' 'contact page sends secure chat messages'
