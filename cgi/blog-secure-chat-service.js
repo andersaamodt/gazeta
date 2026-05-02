@@ -27,6 +27,8 @@ const MAX_UPLOAD_BYTES = Number(process.env.SECURE_CHAT_MAX_UPLOAD_BYTES || 25 *
 const MESSAGE_CACHE_LIMIT = 500;
 const COMMAND_TIMEOUT_MS = 30000;
 const PROVISION_TIMEOUT_MS = 30000;
+const RECONCILE_CHAT_ITEM_LIMIT = Number(process.env.SECURE_CHAT_RECONCILE_CHAT_ITEM_LIMIT || 100);
+const RECONCILE_MIN_INTERVAL_MS = Number(process.env.SECURE_CHAT_RECONCILE_MIN_INTERVAL_MS || 1500);
 
 if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
   process.stderr.write('Missing Secure Chat service environment.\n');
@@ -518,6 +520,44 @@ function updateMessageBySeq(seq, fields) {
   }
 }
 
+function upsertMessageByRef(row, text, attachmentPreview) {
+  const normalized = normalizeMessageRow(row);
+  if (!normalized) {
+    throw new Error('Invalid secure chat message row');
+  }
+  const ref = String(normalized.message_ref || '');
+  if (!ref) {
+    const seq = insertMessage(normalized);
+    rememberMessageText(seq, text, attachmentPreview || null);
+    return seq;
+  }
+  const rows = loadMessages(normalized.npub);
+  for (const existing of rows) {
+    if (String(existing.message_ref || '') !== ref) continue;
+    existing.simplex_contact_id = normalized.simplex_contact_id || existing.simplex_contact_id;
+    existing.bridge_user_id = normalized.bridge_user_id || existing.bridge_user_id;
+    existing.bridge_contact_id = normalized.bridge_contact_id || existing.bridge_contact_id;
+    existing.direction = normalized.direction || existing.direction;
+    existing.message_kind = normalized.message_kind || existing.message_kind;
+    existing.delivery_status = normalized.delivery_status || existing.delivery_status;
+    existing.created_at = normalized.created_at || existing.created_at;
+    existing.updated_at = normalized.updated_at || nowIso();
+    existing.attachment_name = normalized.attachment_name || existing.attachment_name || '';
+    existing.attachment_mime = normalized.attachment_mime || existing.attachment_mime || '';
+    existing.attachment_size = normalized.attachment_size != null ? normalized.attachment_size : existing.attachment_size;
+    existing.upload_id = normalized.upload_id || existing.upload_id || '';
+    existing.error_code = normalized.error_code || existing.error_code || '';
+    existing.error_detail = normalized.error_detail || existing.error_detail || '';
+    saveMessages(normalized.npub, rows);
+    rememberMessageIndex(existing);
+    rememberMessageText(existing.seq, text, attachmentPreview || null);
+    return Number(existing.seq);
+  }
+  const seq = insertMessage(normalized);
+  rememberMessageText(seq, text, attachmentPreview || null);
+  return seq;
+}
+
 function bech32Polymod(values) {
   const GENERATORS = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
   let chk = 1;
@@ -588,6 +628,7 @@ const recentMessageText = new Map();
 const pendingCommands = new Map();
 const provisionLocks = new Map();
 const uploads = new Map();
+const recentReconciles = new Map();
 
 const state = {
   startedAt: nowIso(),
@@ -602,12 +643,19 @@ const state = {
   driverType: 'unknown',
   nativeSimplex: null,
   nativeChat: null,
-  operations: Promise.resolve()
+  operations: Promise.resolve(),
+  transportOperations: Promise.resolve()
 };
 
 function withLock(fn) {
   const current = state.operations.then(fn, fn);
   state.operations = current.catch(() => undefined);
+  return current;
+}
+
+function withTransportLock(fn) {
+  const current = state.transportOperations.then(fn, fn);
+  state.transportOperations = current.catch(() => undefined);
   return current;
 }
 
@@ -882,7 +930,7 @@ function handleChatItemEvent(user, aChatItem) {
   const attachmentMime = '';
   const attachmentSize = chatItem.file && chatItem.file.fileSize != null ? Number(chatItem.file.fileSize) : null;
 
-  const seq = insertMessage({
+  upsertMessageByRef({
     npub: bridgeRow.npub,
     simplex_contact_id: bridgeRow.simplex_contact_id,
     bridge_user_id: bridgeRow.bridge_user_id,
@@ -899,8 +947,7 @@ function handleChatItemEvent(user, aChatItem) {
     upload_id: '',
     error_code: '',
     error_detail: ''
-  });
-  rememberMessageText(seq, text, attachmentName ? { name: attachmentName, size: attachmentSize || 0 } : null);
+  }, text, attachmentName ? { name: attachmentName, size: attachmentSize || 0 } : null);
 }
 
 function handleChatItemStatusEvent(user, aChatItem) {
@@ -1348,20 +1395,83 @@ async function ensureMappingForPubkey(pubkeyHex) {
 }
 
 async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
-  await setActiveUser(activeUserId);
-  if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
-    const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
+  return withTransportLock(async () => {
+    await setActiveUser(activeUserId);
+    if (nativeDriverAvailable()) {
+      const chat = await ensureNativeChatApi();
+      const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
+      if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
+        throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
+      }
+      return resp.chatItems;
+    }
+    const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
     }
     return resp.chatItems;
+  });
+}
+
+function shouldReconcileNpub(npub) {
+  const now = Date.now();
+  const last = Number(recentReconciles.get(npub) || 0);
+  if (last && (now - last) < RECONCILE_MIN_INTERVAL_MS) return false;
+  recentReconciles.set(npub, now);
+  return true;
+}
+
+function wrapApiChatItems(resp) {
+  if (!resp || resp.type !== 'apiChat' || !resp.chat) return [];
+  const chatInfo = resp.chat.chatInfo || null;
+  const chatItems = Array.isArray(resp.chat.chatItems) ? resp.chat.chatItems : [];
+  if (!chatInfo) return [];
+  return chatItems.map((chatItem) => ({ chatInfo, chatItem }));
+}
+
+async function fetchRecentDirectChatItems(activeUserId, bridgeContactId, count) {
+  return withTransportLock(async () => {
+    await setActiveUser(activeUserId);
+    const cmd = `/_get chat @${bridgeContactId} count=${count}`;
+    if (nativeDriverAvailable()) {
+      const chat = await ensureNativeChatApi();
+      return wrapApiChatItems(await chat.sendChatCmd(cmd));
+    }
+    const resp = await sendCommand(cmd);
+    if (resp.type === 'apiChat') return wrapApiChatItems(resp);
+    if (resp.type === 'chatCmdError') {
+      throw new Error(resp.chatError && resp.chatError.type ? resp.chatError.type : 'chatCmdError');
+    }
+    throw new Error(`Unexpected chat history response: ${resp.type || 'unknown'}`);
+  });
+}
+
+async function reconcileMappingMessages(mapping) {
+  if (!mapping || mapping.status !== 'active' || !mapping.bridge_user_id || !mapping.bridge_contact_id) return;
+  const items = await fetchRecentDirectChatItems(
+    String(mapping.bridge_user_id),
+    String(mapping.bridge_contact_id),
+    RECONCILE_CHAT_ITEM_LIMIT
+  );
+  for (const item of items) {
+    handleChatItemEvent({ userId: mapping.bridge_user_id }, item);
+    handleChatItemStatusEvent({ userId: mapping.bridge_user_id }, item);
   }
-  const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
-  if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
-    throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
+}
+
+async function reconcileStateMessages(pubkeyHex) {
+  const npub = pubkeyToNpub(pubkeyHex);
+  const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
+  if (!mapping || !shouldReconcileNpub(npub)) return;
+  try {
+    await ensureRuntime();
+    await reconcileMappingMessages(mapping);
+  } catch (err) {
+    logEvent('reconcile_error', {
+      npub,
+      error: err && err.message ? err.message : String(err || 'unknown error')
+    });
   }
-  return resp.chatItems;
 }
 
 async function sendTextMessage(pubkeyHex, text) {
@@ -1521,6 +1631,9 @@ async function handleState(req, res) {
   const pubkeyHex = String(body.sessionPubkey || '').trim().toLowerCase();
   const sinceSeq = Number(body.sinceSeq || 0);
   const admin = body.admin === true;
+  if (pubkeyHex) {
+    await reconcileStateMessages(pubkeyHex);
+  }
   safeJson(res, 200, statePayload(pubkeyHex, sinceSeq, admin));
 }
 
