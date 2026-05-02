@@ -222,6 +222,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'SECURE_CHAT_SIM
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-install-native-driver.sh" 'npm install --omit=dev' 'secure chat native driver installer provisions the official package into persistent runtime storage'
 assert_file_contains "$ROOT_DIR/cgi/secure-chat-native-driver/package.json" '"simplex-chat": "6.5.0"' 'secure chat native driver package pins the official SimpleX Node module version'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog_secure_chat_service_request_json' 'send endpoint prints daemon json responses explicitly'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" "attachments_json='[]'" 'send endpoint defaults omitted attachment metadata to an empty json array'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-state" 'blog_secure_chat_service_request_json' 'state endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_secure_chat_service_request_json' 'admin endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" "printf '%s\\n' \"\$response\"" 'upload endpoint prints daemon json responses explicitly'
