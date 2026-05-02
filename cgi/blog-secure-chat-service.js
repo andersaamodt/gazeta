@@ -936,12 +936,38 @@ async function createUser(profile) {
   return resp.user;
 }
 
+function isMissingUserContactLinkError(resp) {
+  return !!(
+    resp &&
+    resp.type === 'chatCmdError' &&
+    resp.chatError &&
+    resp.chatError.type === 'errorStore' &&
+    resp.chatError.storeError &&
+    resp.chatError.storeError.type === 'userContactLinkNotFound'
+  );
+}
+
 async function enableOwnerAddress(userId) {
-  await sendCommand(`/_profile_address ${userId} on`);
-  await sendCommand(`/_address_settings ${userId} ${JSON.stringify({
+  // SimpleX v6.5 can provision direct invitations without a user contact link.
+  // On fresh bot profiles these address-management commands return
+  // userContactLinkNotFound, which is non-fatal for the bridge flow.
+  const addressResp = await sendCommand(`/_profile_address ${userId} on`);
+  if (isMissingUserContactLinkError(addressResp)) {
+    return;
+  }
+  if (addressResp && addressResp.type === 'chatCmdError') {
+    throw new Error(`Could not enable owner profile address: ${addressResp.chatError && addressResp.chatError.type ? addressResp.chatError.type : 'chatCmdError'}`);
+  }
+  const settingsResp = await sendCommand(`/_address_settings ${userId} ${JSON.stringify({
     businessAddress: false,
     autoAccept: { acceptIncognito: true }
   })}`);
+  if (isMissingUserContactLinkError(settingsResp)) {
+    return;
+  }
+  if (settingsResp && settingsResp.type === 'chatCmdError') {
+    throw new Error(`Could not configure owner address settings: ${settingsResp.chatError && settingsResp.chatError.type ? settingsResp.chatError.type : 'chatCmdError'}`);
+  }
 }
 
 async function ensureOwnerUser() {
