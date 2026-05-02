@@ -217,6 +217,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "driverType: 'u
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '/create user ' 'secure chat service provisions bridge identities with the current SimpleX create-user command'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "state.simplexProcess.kill('SIGTERM')" 'secure chat service shuts down its child simplex process on daemon exit'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT' 'secure chat launcher passes the persistent native driver root to the daemon'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-install-native-driver.sh" 'npm install --omit=dev' 'secure chat native driver installer provisions the official package into persistent runtime storage'
+assert_file_contains "$ROOT_DIR/cgi/secure-chat-native-driver/package.json" '"simplex-chat": "6.5.0"' 'secure chat native driver package pins the official SimpleX Node module version'
 
 restart_kill_log="$TMP_ROOT/restart-kill.log"
 restart_pid_path=$(blog_secure_chat_pid_path)

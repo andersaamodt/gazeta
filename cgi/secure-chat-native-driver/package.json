@@ -1,0 +1,7 @@
+{
+  "name": "blog-secure-chat-native-driver",
+  "private": true,
+  "dependencies": {
+    "simplex-chat": "6.5.0"
+  }
+}
