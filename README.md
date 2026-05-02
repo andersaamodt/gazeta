@@ -209,6 +209,8 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
 - Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
 - `simplex-web` stays in its own repo; `nostr-blog` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
+- Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.
+- Secure Chat host overrides can be set in `site.conf` with `secure_chat_node_binary=/absolute/path/to/node` and `secure_chat_simplex_binary=/absolute/path/to/simplex-chat` when the site user PATH does not expose those binaries.
 
 ## Authentication
 
@@ -485,5 +487,4 @@ See `.github/MUD_BLOG_INTEGRATION.md` for complete documentation.
 ## License
 
 Part of the wizardry project.
-
 

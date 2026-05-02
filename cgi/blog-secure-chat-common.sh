@@ -110,7 +110,66 @@ blog_secure_chat_simplex_binary() {
     command -v simplex-chat
     return 0
   fi
+  for candidate in \
+    /usr/local/bin/simplex-chat \
+    /opt/homebrew/bin/simplex-chat \
+    /usr/bin/simplex-chat
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
   printf 'simplex-chat\n'
+}
+
+blog_secure_chat_node_binary() {
+  explicit=$(config-get "$blog_site_conf" secure_chat_node_binary 2>/dev/null || printf '')
+  if [ -n "$explicit" ]; then
+    printf '%s\n' "$explicit"
+    return 0
+  fi
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+  if command -v nodejs >/dev/null 2>&1; then
+    command -v nodejs
+    return 0
+  fi
+  for candidate in \
+    /usr/local/bin/node \
+    /opt/homebrew/bin/node \
+    /usr/bin/node \
+    /usr/local/bin/nodejs \
+    /opt/homebrew/bin/nodejs \
+    /usr/bin/nodejs
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  find "$HOME/.nvm/versions/node" -maxdepth 3 -type f -name node 2>/dev/null | sort | tail -n 1
+}
+
+blog_secure_chat_launch_path() {
+  launch_path=${PATH-}
+  launch_path="$launch_path:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  node_bin=${1-}
+  simplex_bin=${2-}
+  for bin_path in "$node_bin" "$simplex_bin"; do
+    case "$bin_path" in
+      /*)
+        bin_dir=$(dirname "$bin_path")
+        case ":$launch_path:" in
+          *":$bin_dir:"*) ;;
+          *) launch_path="$bin_dir:$launch_path" ;;
+        esac
+        ;;
+    esac
+  done
+  printf '%s\n' "$launch_path"
 }
 
 blog_secure_chat_init_storage() {
@@ -508,10 +567,19 @@ blog_secure_chat_service_start() {
   socket=$(blog_secure_chat_socket_path)
   pid_path=$(blog_secure_chat_pid_path)
   log_path=$(blog_secure_chat_log_path)
+  node_bin=$(blog_secure_chat_node_binary)
+  simplex_bin=$(blog_secure_chat_simplex_binary)
+  launch_path=$(blog_secure_chat_launch_path "$node_bin" "$simplex_bin")
   rm -f "$socket"
+
+  if [ -z "$node_bin" ] || [ ! -x "$node_bin" ]; then
+    printf '%s\n' "secure chat start failed: Node.js runtime is not installed or configured." >> "$log_path"
+    return 1
+  fi
 
   env \
     NODE_NO_WARNINGS=1 \
+    PATH="$launch_path" \
     WIZARDRY_SITES_DIR="$blog_sites_dir" \
     WIZARDRY_SITE_NAME="$blog_site_name" \
     WIZARDRY_SITE_ROOT="$blog_site_root" \
@@ -520,10 +588,10 @@ blog_secure_chat_service_start() {
     SECURE_CHAT_SOCKET_PATH="$socket" \
     SECURE_CHAT_UPLOADS_DIR="$(blog_secure_chat_uploads_dir)" \
     SECURE_CHAT_DOWNLOADS_DIR="$(blog_secure_chat_downloads_dir)" \
-    SECURE_CHAT_SIMPLEX_BINARY="$(blog_secure_chat_simplex_binary)" \
+    SECURE_CHAT_SIMPLEX_BINARY="$simplex_bin" \
     SECURE_CHAT_SIMPLEX_WS_PORT="$(blog_secure_chat_simplex_ws_port)" \
     SECURE_CHAT_SITE_TITLE="$(blog_secure_chat_site_title)" \
-    nohup node "$SCRIPT_DIR/blog-secure-chat-service.js" >>"$log_path" 2>&1 &
+    nohup "$node_bin" "$SCRIPT_DIR/blog-secure-chat-service.js" >>"$log_path" 2>&1 &
   daemon_pid=$!
   printf '%s\n' "$daemon_pid" > "$pid_path"
 

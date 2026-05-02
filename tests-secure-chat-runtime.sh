@@ -158,6 +158,7 @@ chmod +x "$BIN_DIR/nak"
 export PATH="$BIN_DIR:$PATH"
 export WIZARDRY_SITES_DIR="$SITES_DIR"
 export WIZARDRY_SITE_NAME="$SITE_NAME"
+export SCRIPT_DIR="$ROOT_DIR/cgi"
 
 . "$ROOT_DIR/cgi/blog-lib.sh"
 . "$ROOT_DIR/cgi/blog-secure-chat-common.sh"
@@ -168,6 +169,41 @@ blog_secure_chat_init_storage
 store_dir=$(blog_secure_chat_store_dir)
 contacts_dir=$(blog_secure_chat_contacts_dir)
 assert_nonempty "$store_dir" 'secure chat store dir is available'
+
+saved_path=$PATH
+PATH="$BIN_DIR:/bin:/usr/bin"
+cat > "$SITE_ROOT/site.conf" <<'EOFCONF'
+secure_chat_node_binary=/tmp/definitely-missing-node
+EOFCONF
+if blog_secure_chat_service_start; then
+  fail 'secure chat service start fails fast when node runtime is unavailable'
+else
+  pass
+fi
+PATH=$saved_path
+assert_file_contains "$(blog_secure_chat_log_path)" 'Node.js runtime is not installed or configured.' 'service start logs missing node runtime clearly'
+
+custom_node="$TMP_ROOT/custom-node"
+mkdir -p "$(dirname "$custom_node")"
+cat > "$custom_node" <<'EOS'
+#!/bin/sh
+exit 0
+EOS
+chmod +x "$custom_node"
+cat > "$SITE_ROOT/site.conf" <<EOFCONF
+secure_chat_node_binary=$custom_node
+secure_chat_simplex_binary=/tmp/custom-simplex-chat
+EOFCONF
+
+node_bin=$(blog_secure_chat_node_binary)
+assert_eq "$custom_node" "$node_bin" 'secure chat node binary honors site config override'
+
+simplex_bin=$(blog_secure_chat_simplex_binary)
+assert_eq "/tmp/custom-simplex-chat" "$simplex_bin" 'secure chat simplex binary honors site config override'
+
+launch_path=$(blog_secure_chat_launch_path "$custom_node" "/tmp/custom-simplex-chat")
+assert_contains "$launch_path" "$(dirname "$custom_node")" 'secure chat launch path includes node binary directory'
+assert_contains "$launch_path" '/tmp' 'secure chat launch path includes simplex binary directory'
 
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "101" "active"
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "202" "active"
