@@ -609,7 +609,7 @@ function parseJsonBody(req) {
 }
 
 function isWebSocketOpen() {
-  return state.ws && state.ws.readyState === WebSocket.OPEN;
+  return state.ws && state.ws.readyState === WebSocketImpl.OPEN;
 }
 
 function startSimplexChild() {
