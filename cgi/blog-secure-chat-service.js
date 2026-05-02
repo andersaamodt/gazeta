@@ -21,6 +21,7 @@ const UPLOADS_DIR = process.env.SECURE_CHAT_UPLOADS_DIR || '';
 const DOWNLOADS_DIR = process.env.SECURE_CHAT_DOWNLOADS_DIR || '';
 const SIMPLEX_BINARY = process.env.SECURE_CHAT_SIMPLEX_BINARY || 'simplex-chat';
 const SIMPLEX_WS_PORT = Number(process.env.SECURE_CHAT_SIMPLEX_WS_PORT || 0);
+const SIMPLEX_NATIVE_MODULE_ROOT = process.env.SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT || '';
 const SITE_TITLE = String(process.env.SECURE_CHAT_SITE_TITLE || 'Secure Chat');
 const MAX_UPLOAD_BYTES = Number(process.env.SECURE_CHAT_MAX_UPLOAD_BYTES || 25 * 1024 * 1024);
 const MESSAGE_CACHE_LIMIT = 500;
@@ -48,6 +49,38 @@ try {
   fs.unlinkSync(SOCKET_PATH);
 } catch (_err) {
   // ignore stale sockets
+}
+
+let cachedNativeSimplex = undefined;
+let cachedNativeSimplexError = '';
+
+function tryRequire(moduleId) {
+  try {
+    return require(moduleId);
+  } catch (err) {
+    cachedNativeSimplexError = err && err.message ? err.message : String(err || 'unknown error');
+    return null;
+  }
+}
+
+function loadNativeSimplexModule() {
+  if (cachedNativeSimplex !== undefined) return cachedNativeSimplex;
+  const candidates = [];
+  if (SIMPLEX_NATIVE_MODULE_ROOT) {
+    candidates.push(path.join(SIMPLEX_NATIVE_MODULE_ROOT, 'node_modules', 'simplex-chat'));
+    candidates.push(SIMPLEX_NATIVE_MODULE_ROOT);
+  }
+  candidates.push('simplex-chat');
+  for (const candidate of candidates) {
+    const loaded = tryRequire(candidate);
+    if (loaded) {
+      cachedNativeSimplex = loaded;
+      cachedNativeSimplexError = '';
+      return loaded;
+    }
+  }
+  cachedNativeSimplex = null;
+  return null;
 }
 
 function nowIso() {
@@ -566,6 +599,9 @@ const state = {
   transportStatus: 'starting',
   transportError: '',
   simplexProcess: null,
+  driverType: 'unknown',
+  nativeSimplex: null,
+  nativeChat: null,
   operations: Promise.resolve()
 };
 
@@ -612,7 +648,42 @@ function isWebSocketOpen() {
   return state.ws && state.ws.readyState === WebSocketImpl.OPEN;
 }
 
+function nativeDriverAvailable() {
+  return !!loadNativeSimplexModule();
+}
+
+async function ensureNativeChatApi() {
+  if (state.nativeChat) return state.nativeChat;
+  const simplex = loadNativeSimplexModule();
+  if (!simplex || !simplex.api || !simplex.core) {
+    throw new Error(cachedNativeSimplexError || 'simplex-chat native Node.js module is not available');
+  }
+  const dbPrefix = path.join(STORE_ROOT, 'simplex-bridge');
+  const chat = await simplex.api.ChatApi.init(
+    { type: 'sqlite', filePrefix: dbPrefix },
+    simplex.core.MigrationConfirmation.YesUp
+  );
+  chat.onAny((event) => {
+    try {
+      handleIncomingEvent(event);
+    } catch (err) {
+      logEvent('event_error', {
+        eventType: event && event.type ? event.type : 'native_event',
+        error: err && err.message ? err.message : String(err || 'unknown error')
+      });
+    }
+  });
+  state.nativeSimplex = simplex;
+  state.nativeChat = chat;
+  state.driverType = 'native';
+  return chat;
+}
+
 function startSimplexChild() {
+  if (nativeDriverAvailable()) {
+    state.driverType = 'native';
+    return;
+  }
   if (state.simplexProcess && !state.simplexProcess.killed) return;
   if (!fs.existsSync(SIMPLEX_BINARY) && !process.env.PATH) {
     state.transportStatus = 'degraded';
@@ -649,6 +720,23 @@ function startSimplexChild() {
 }
 
 function stopSimplexChild() {
+  if (state.nativeChat) {
+    const chat = state.nativeChat;
+    state.nativeChat = null;
+    Promise.resolve()
+      .then(async () => {
+        if (chat.started) await chat.stopChat();
+      })
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await chat.close();
+        } catch (_err) {
+          // ignore shutdown races
+        }
+      });
+    return;
+  }
   if (!state.simplexProcess || state.simplexProcess.killed) return;
   try {
     state.simplexProcess.kill('SIGTERM');
@@ -829,6 +917,18 @@ function handleChatItemStatusEvent(user, aChatItem) {
 }
 
 function ensureWsConnection() {
+  if (nativeDriverAvailable()) {
+    return ensureNativeChatApi().then((chat) => {
+      state.wsConnected = true;
+      state.transportStatus = 'connected';
+      state.transportError = '';
+      return chat;
+    }).catch((err) => {
+      state.transportStatus = 'degraded';
+      state.transportError = err && err.message ? err.message : 'Could not initialize simplex-chat native driver';
+      throw err;
+    });
+  }
   if (isWebSocketOpen()) {
     return Promise.resolve();
   }
@@ -874,7 +974,10 @@ function ensureWsConnection() {
 }
 
 async function sendCommand(cmd) {
-  await ensureWsConnection();
+  const transport = await ensureWsConnection();
+  if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
+    return transport.sendChatCmd(cmd);
+  }
   const corrId = `secure-chat-${Date.now()}-${++state.commandSeq}`;
   const payload = JSON.stringify({ corrId, cmd });
   return new Promise((resolve, reject) => {
@@ -893,6 +996,19 @@ async function sendCommand(cmd) {
 }
 
 async function ensureChatStarted() {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    if (!chat.started) {
+      await chat.startChat().catch((err) => {
+        state.transportStatus = 'degraded';
+        state.transportError = err && err.message ? err.message : 'Could not start simplex-chat native driver';
+        throw err;
+      });
+    }
+    state.transportStatus = 'connected';
+    state.transportError = '';
+    return;
+  }
   const resp = await sendCommand('/_start').catch((err) => {
     state.transportStatus = 'degraded';
     state.transportError = err.message;
@@ -904,13 +1020,23 @@ async function ensureChatStarted() {
 }
 
 async function listUsers() {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    return (await chat.apiListUsers()).map((item) => (item && item.user ? item.user : item)).filter(Boolean);
+  }
   const resp = await sendCommand('/users');
-  if (resp.type === 'usersList' && Array.isArray(resp.users)) return resp.users;
+  if (resp.type === 'usersList' && Array.isArray(resp.users)) {
+    return resp.users.map((item) => (item && item.user ? item.user : item)).filter(Boolean);
+  }
   if (resp.type === 'chatCmdError') throw new Error(resp.chatError && resp.chatError.type ? resp.chatError.type : 'users_error');
   return [];
 }
 
 async function showActiveUser() {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    return chat.apiGetActiveUser();
+  }
   const resp = await sendCommand('/user');
   if (resp.type === 'activeUser' && resp.user) return resp.user;
   if (resp.type === 'chatCmdError') {
@@ -922,6 +1048,13 @@ async function showActiveUser() {
 }
 
 async function setActiveUser(userId) {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    const user = await chat.apiSetActiveUser(Number(userId));
+    state.activeUserId = String(user.userId);
+    metaSet('last_active_user_id', state.activeUserId);
+    return user;
+  }
   const resp = await sendCommand(`/_user ${userId}`);
   if (resp.type !== 'activeUser' || !resp.user) {
     throw new Error(`Could not set active user: ${resp.type || 'unknown'}`);
@@ -933,6 +1066,20 @@ async function setActiveUser(userId) {
 
 async function createUser(profile) {
   const displayName = String((profile && profile.displayName) || '').trim() || `secure-chat-${Date.now()}`;
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    const simplex = state.nativeSimplex || loadNativeSimplexModule();
+    const created = await chat.apiCreateActiveUser({
+      displayName,
+      fullName: String((profile && profile.fullName) || ''),
+      peerType: profile && profile.peerType === 'bot' && simplex && simplex.T && simplex.T.ChatPeerType
+        ? simplex.T.ChatPeerType.Bot
+        : undefined
+    });
+    state.activeUserId = String(created.userId);
+    metaSet('last_active_user_id', state.activeUserId);
+    return created;
+  }
   const command = profile && profile.peerType === 'bot'
     ? `/create bot ${displayName}`
     : `/create user ${displayName}`;
@@ -956,6 +1103,22 @@ function isMissingUserContactLinkError(resp) {
 }
 
 async function enableOwnerAddress(userId) {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    let address = await chat.apiGetUserAddress(Number(userId));
+    if (!address) {
+      await chat.apiCreateUserAddress(Number(userId));
+      address = await chat.apiGetUserAddress(Number(userId));
+    }
+    if (!address) {
+      throw new Error('Could not load owner contact address');
+    }
+    await chat.apiSetAddressSettings(Number(userId), {
+      autoAccept: true,
+      businessAddress: false
+    });
+    return address;
+  }
   // SimpleX v6.5 can provision direct invitations without a user contact link.
   // On fresh bot profiles these address-management commands return
   // userContactLinkNotFound, which is non-fatal for the bridge flow.
@@ -979,12 +1142,13 @@ async function enableOwnerAddress(userId) {
 }
 
 async function ensureOwnerUser() {
-  await ensureChatStarted();
   const users = await listUsers();
   if (state.ownerUserId) {
     const existing = users.find((user) => String(user.userId) === String(state.ownerUserId));
     if (existing) {
       await setActiveUser(existing.userId);
+      await ensureChatStarted();
+      await enableOwnerAddress(existing.userId);
       return existing;
     }
   }
@@ -993,6 +1157,7 @@ async function ensureOwnerUser() {
   if (active) {
     state.ownerUserId = String(active.userId);
     metaSet('owner_user_id', state.ownerUserId);
+    await ensureChatStarted();
     await enableOwnerAddress(active.userId);
     return active;
   }
@@ -1005,6 +1170,7 @@ async function ensureOwnerUser() {
   });
   state.ownerUserId = String(created.userId);
   metaSet('owner_user_id', state.ownerUserId);
+  await ensureChatStarted();
   await enableOwnerAddress(created.userId);
   return created;
 }
@@ -1022,13 +1188,16 @@ async function ensureBridgeUser(npub) {
   const created = await createUser({
     displayName: `nostr-${short}`,
     fullName: `Nostr Visitor ${short}`,
-    shortDescr: 'Secure chat website bridge',
-    peerType: 'bot'
+    shortDescr: 'Secure chat website bridge'
   });
   return created;
 }
 
 async function listContacts(userId) {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    return chat.apiListContacts(Number(userId));
+  }
   const resp = await sendCommand(`/_contacts ${userId}`);
   if (resp.type === 'contactsList' && Array.isArray(resp.contacts)) {
     return resp.contacts;
@@ -1049,12 +1218,36 @@ async function createInvitation(ownerUserId) {
   return String(resp.connLinkInvitation.connFullLink);
 }
 
+async function ownerAddressLink(ownerUserId) {
+  if (nativeDriverAvailable()) {
+    const address = await enableOwnerAddress(ownerUserId);
+    const connLink = address && address.connLinkContact ? address.connLinkContact : null;
+    if (!connLink || (!connLink.connFullLink && !connLink.connShortLink)) {
+      throw new Error('Could not load owner contact address');
+    }
+    return connLink.connShortLink || connLink.connFullLink;
+  }
+  return createInvitation(ownerUserId);
+}
+
 async function connectBridgeToInvitation(bridgeUserId, link) {
   const resp = await sendCommand(`/_connect ${bridgeUserId} ${link}`);
   if (resp.type === 'sentConfirmation' || resp.type === 'sentInvitation' || resp.type === 'contactAlreadyExists') {
     return resp;
   }
   throw new Error(`Could not connect bridge profile: ${resp.type || 'unknown'}`);
+}
+
+async function connectBridgeToOwnerAddress(bridgeUserId, link) {
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    const [plan, preparedLink] = await chat.apiConnectPlan(Number(bridgeUserId), String(link));
+    if (!plan || !preparedLink) {
+      throw new Error('Could not prepare owner contact address');
+    }
+    return chat.apiConnect(Number(bridgeUserId), false, preparedLink);
+  }
+  return connectBridgeToInvitation(bridgeUserId, link);
 }
 
 async function waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore, bridgeBefore) {
@@ -1092,9 +1285,9 @@ async function provisionContact(npub) {
     await setActiveUser(ownerUserId);
     const ownerBefore = await listContacts(ownerUserId);
     const bridgeBefore = await listContacts(bridgeUserId);
-    const invitation = await createInvitation(ownerUserId);
+    const link = await ownerAddressLink(ownerUserId);
     await setActiveUser(bridgeUserId);
-    await connectBridgeToInvitation(bridgeUserId, invitation);
+    await connectBridgeToOwnerAddress(bridgeUserId, link);
     const ids = await waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore, bridgeBefore);
     await setActiveUser(ownerUserId);
 
@@ -1127,6 +1320,15 @@ async function ensureMappingForPubkey(pubkeyHex) {
 
 async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
   await setActiveUser(activeUserId);
+  if (nativeDriverAvailable()) {
+    const chat = await ensureNativeChatApi();
+    const simplex = state.nativeSimplex || loadNativeSimplexModule();
+    const contactId = Number(String(chatRef || '').replace(/^@/, ''));
+    if (!Number.isFinite(contactId) || contactId <= 0) {
+      throw new Error(`Invalid direct chat reference: ${chatRef}`);
+    }
+    return chat.apiSendMessages([simplex.T.ChatType.Direct, contactId], composedMessages);
+  }
   const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
   if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
     throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
@@ -1230,6 +1432,7 @@ async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize
 function currentServiceStatus() {
   return {
     started_at: state.startedAt,
+    driver_type: state.driverType,
     transport_status: state.transportStatus,
     transport_error: state.transportError,
     ws_connected: state.wsConnected,

@@ -201,14 +201,22 @@ assert_eq "$custom_node" "$node_bin" 'secure chat node binary honors site config
 simplex_bin=$(blog_secure_chat_simplex_binary)
 assert_eq "/tmp/custom-simplex-chat" "$simplex_bin" 'secure chat simplex binary honors site config override'
 
+native_module_root=$(blog_secure_chat_native_module_root)
+assert_eq "$SITE_DATA/secure-chat/runtime/native-driver" "$native_module_root" 'secure chat native driver root defaults to persistent site runtime storage'
+
 launch_path=$(blog_secure_chat_launch_path "$custom_node" "/tmp/custom-simplex-chat")
 assert_contains "$launch_path" "$(dirname "$custom_node")" 'secure chat launch path includes node binary directory'
 assert_contains "$launch_path" '/tmp' 'secure chat launch path includes simplex binary directory'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-display-name' 'secure chat service auto-creates a bot user on fresh SimpleX state'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-allow-files' 'secure chat service enables files for the bootstrap bot user'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl.OPEN' 'secure chat service uses the active websocket implementation for ready-state checks'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "node_modules', 'simplex-chat'" 'secure chat service can load the official native SimpleX Node API from a persistent runtime root'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'apiCreateUserAddress' 'secure chat service provisions an owner contact address with the native SimpleX API'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'apiConnectPlan' 'secure chat service prepares bridge contact connections with the native SimpleX API'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "driverType: 'unknown'" 'secure chat service tracks the active SimpleX driver'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '/create user ' 'secure chat service provisions bridge identities with the current SimpleX create-user command'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "state.simplexProcess.kill('SIGTERM')" 'secure chat service shuts down its child simplex process on daemon exit'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT' 'secure chat launcher passes the persistent native driver root to the daemon'
 
 restart_kill_log="$TMP_ROOT/restart-kill.log"
 restart_pid_path=$(blog_secure_chat_pid_path)

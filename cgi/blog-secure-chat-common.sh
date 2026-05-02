@@ -167,6 +167,15 @@ blog_secure_chat_node_binary() {
   find "$HOME/.nvm/versions/node" -maxdepth 3 -type f -name node 2>/dev/null | sort | tail -n 1
 }
 
+blog_secure_chat_native_module_root() {
+  explicit=$(config-get "$blog_site_conf" secure_chat_native_module_root 2>/dev/null || printf '')
+  if [ -n "$explicit" ]; then
+    printf '%s\n' "$explicit"
+    return 0
+  fi
+  printf '%s/native-driver\n' "$(blog_secure_chat_runtime_dir)"
+}
+
 blog_secure_chat_launch_path() {
   launch_path=${PATH-}
   launch_path="$launch_path:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -617,6 +626,7 @@ blog_secure_chat_service_start() {
   log_path=$(blog_secure_chat_log_path)
   node_bin=$(blog_secure_chat_node_binary)
   simplex_bin=$(blog_secure_chat_simplex_binary)
+  native_module_root=$(blog_secure_chat_native_module_root)
   launch_path=$(blog_secure_chat_launch_path "$node_bin" "$simplex_bin")
   rm -f "$socket"
 
@@ -637,6 +647,7 @@ blog_secure_chat_service_start() {
     SECURE_CHAT_UPLOADS_DIR="$(blog_secure_chat_uploads_dir)" \
     SECURE_CHAT_DOWNLOADS_DIR="$(blog_secure_chat_downloads_dir)" \
     SECURE_CHAT_SIMPLEX_BINARY="$simplex_bin" \
+    SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT="$native_module_root" \
     SECURE_CHAT_SIMPLEX_WS_PORT="$(blog_secure_chat_simplex_ws_port)" \
     SECURE_CHAT_SITE_TITLE="$(blog_secure_chat_site_title)" \
     nohup "$node_bin" "$SCRIPT_DIR/blog-secure-chat-service.js" >>"$log_path" 2>&1 &
