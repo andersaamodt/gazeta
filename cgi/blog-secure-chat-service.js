@@ -1226,6 +1226,17 @@ function diffContactIds(before, after) {
   return after.filter((item) => !known.has(String(item.contactId)));
 }
 
+function contactConnStatus(contact) {
+  return contact && contact.activeConn && contact.activeConn.connStatus && contact.activeConn.connStatus.type
+    ? String(contact.activeConn.connStatus.type)
+    : '';
+}
+
+function contactReadyForSend(contact) {
+  const status = contactConnStatus(contact);
+  return status === 'ready' || status === 'sndReady';
+}
+
 async function createInvitation(ownerUserId) {
   const resp = await sendCommand(`/_connect ${ownerUserId}`);
   if (resp.type !== 'invitation' || !resp.connLinkInvitation || !resp.connLinkInvitation.connFullLink) {
@@ -1273,10 +1284,12 @@ async function waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore
     const bridgeAfter = await listContacts(bridgeUserId);
     const ownerNew = diffContactIds(ownerBefore, ownerAfter);
     const bridgeNew = diffContactIds(bridgeBefore, bridgeAfter);
-    if (ownerNew.length > 0 && bridgeNew.length > 0) {
+    const ownerReady = ownerNew.find(contactReadyForSend);
+    const bridgeReady = bridgeNew.find(contactReadyForSend);
+    if (ownerReady && bridgeReady) {
       return {
-        ownerContactId: String(ownerNew[0].contactId),
-        bridgeContactId: String(bridgeNew[0].contactId)
+        ownerContactId: String(ownerReady.contactId),
+        bridgeContactId: String(bridgeReady.contactId)
       };
     }
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -1338,12 +1351,11 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
   await setActiveUser(activeUserId);
   if (nativeDriverAvailable()) {
     const chat = await ensureNativeChatApi();
-    const simplex = state.nativeSimplex || loadNativeSimplexModule();
-    const contactId = Number(String(chatRef || '').replace(/^@/, ''));
-    if (!Number.isFinite(contactId) || contactId <= 0) {
-      throw new Error(`Invalid direct chat reference: ${chatRef}`);
+    const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
+    if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
+      throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
     }
-    return chat.apiSendMessages([simplex.T.ChatType.Direct, contactId], composedMessages);
+    return resp.chatItems;
   }
   const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
   if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {

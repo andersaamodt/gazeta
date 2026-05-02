@@ -213,6 +213,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl.
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "node_modules', 'simplex-chat'" 'secure chat service can load the official native SimpleX Node API from a persistent runtime root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'apiCreateUserAddress' 'secure chat service provisions an owner contact address with the native SimpleX API'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'apiConnectPlan' 'secure chat service prepares bridge contact connections with the native SimpleX API'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'contactReadyForSend' 'secure chat service waits for send-ready direct contacts before provisioning completes'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'chat.sendChatCmd(`/_send ${chatRef} json ' 'secure chat native send path uses the raw controller command shape'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "driverType: 'unknown'" 'secure chat service tracks the active SimpleX driver'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '/create user ' 'secure chat service provisions bridge identities with the current SimpleX create-user command'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "state.simplexProcess.kill('SIGTERM')" 'secure chat service shuts down its child simplex process on daemon exit'
