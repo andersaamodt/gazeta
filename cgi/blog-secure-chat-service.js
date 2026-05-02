@@ -620,8 +620,18 @@ function startSimplexChild() {
     return;
   }
   const dbPrefix = path.join(STORE_ROOT, 'simplex-bridge');
+  const botDisplayName = `${SITE_TITLE} Secure Chat`;
+  const simplexArgs = [
+    '--create-bot-display-name',
+    botDisplayName,
+    '--create-bot-allow-files',
+    '-p',
+    String(SIMPLEX_WS_PORT),
+    '-d',
+    dbPrefix
+  ];
   try {
-    state.simplexProcess = spawn(SIMPLEX_BINARY, ['-p', String(SIMPLEX_WS_PORT), '-d', dbPrefix], {
+    state.simplexProcess = spawn(SIMPLEX_BINARY, simplexArgs, {
       stdio: ['ignore', 'ignore', 'ignore']
     });
     state.simplexProcess.on('exit', (code) => {

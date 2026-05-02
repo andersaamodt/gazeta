@@ -31,7 +31,7 @@ assert_contains() {
   haystack=$1
   needle=$2
   label=$3
-  if printf '%s' "$haystack" | grep -Fq "$needle"; then
+  if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
     pass
   else
     fail "$label (missing: $needle)"
@@ -42,7 +42,7 @@ assert_file_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     pass
   else
     fail "$label (missing: $needle in $file)"
@@ -53,7 +53,7 @@ assert_file_not_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     fail "$label (unexpected: $needle in $file)"
   else
     pass
@@ -204,6 +204,8 @@ assert_eq "/tmp/custom-simplex-chat" "$simplex_bin" 'secure chat simplex binary 
 launch_path=$(blog_secure_chat_launch_path "$custom_node" "/tmp/custom-simplex-chat")
 assert_contains "$launch_path" "$(dirname "$custom_node")" 'secure chat launch path includes node binary directory'
 assert_contains "$launch_path" '/tmp' 'secure chat launch path includes simplex binary directory'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-display-name' 'secure chat service auto-creates a bot user on fresh SimpleX state'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-allow-files' 'secure chat service enables files for the bootstrap bot user'
 
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "101" "active"
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "202" "active"
