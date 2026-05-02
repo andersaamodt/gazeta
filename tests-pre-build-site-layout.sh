@@ -64,6 +64,32 @@ cat > "$canonical_root/static/nav-auth.js" <<'EOFNAVAUTH'
 console.log('nav');
 EOFNAVAUTH
 
+cat > "$canonical_root/pages/contact.md" <<'EOFCONTACT'
+---
+title: "Contact"
+published_at: "2026-04-15T00:00:00Z"
+content_hash: ""
+tags: ["nostr", "contact"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="contact-page-root" class="list-page-shell" data-page-slug="contact" data-page-type="contact" data-page-title="Contact">
+<div class="list-page-head">
+<h1 id="contact-page-title">Contact</h1>
+<p id="contact-page-description" class="muted"></p>
+</div>
+<div id="contact-page-admin" class="list-admin" hidden></div>
+<div id="contact-page-validation" class="list-validation" hidden></div>
+<div id="contact-page-content" class="list-page-content"></div>
+</section>
+
+<script src="/static/nostr-page-bootstrap/contact.js"></script>
+<script src="/static/nostr-publish-dialog.js"></script>
+<script src="/static/contact-page.js"></script>
+EOFCONTACT
+
 mkdir -p "$tmp_root/bin"
 cat > "$tmp_root/bin/config-get" <<'EOFCONFIG'
 #!/bin/sh
@@ -140,6 +166,22 @@ grep -Fq '/static/site-bootstrap.js' "$canonical_root/includes/head.html" || {
 }
 grep -Fq 'body { background: #fff; }' "$canonical_root/static/style.css" || {
   printf '%s\n' "canonical stylesheet changed unexpectedly" >&2
+  exit 1
+}
+[ -f "$canonical_root/pages/contact.md" ] || {
+  printf '%s\n' "missing generated contact page" >&2
+  exit 1
+}
+grep -Fq 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing marked dependency after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq '/static/simplex-web-default-chat.js' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing shared simplex-web renderer after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
 [ ! -e "$canonical_root/.repo-pages-manifest" ] || {

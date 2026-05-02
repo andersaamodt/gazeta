@@ -1341,7 +1341,12 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="contact-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="contact-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="contact-page-content"' "$file" 2>/dev/null &&
-      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-publish-dialog.js' "$file" 2>/dev/null &&
+      grep -q 'marked@11\.0\.0/marked\.min\.js' "$file" 2>/dev/null &&
+      grep -q '/static/simplex-web-default-chat.js' "$file" 2>/dev/null &&
+      grep -q '/static/simplex-web-session-store.js' "$file" 2>/dev/null &&
+      grep -q '/static/contact-page.js' "$file" 2>/dev/null
       ;;
     list)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
