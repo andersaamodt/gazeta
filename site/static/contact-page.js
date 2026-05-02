@@ -245,6 +245,30 @@
     ].join('|');
   }
 
+  function secureChatSessionStore() {
+    var store = window.SimplexWebSessionStore;
+    if (!store || typeof store.readSession !== 'function' || typeof store.writeSession !== 'function') {
+      return null;
+    }
+    return store;
+  }
+
+  function secureChatStorageSiteKey() {
+    var host = String(window.location.host || window.location.hostname || 'site').trim().toLowerCase();
+    return host + ':' + slug + ':secure-chat';
+  }
+
+  function secureChatStorageAccountKey() {
+    if (secureChatAuthMethod() !== 'nostr') {
+      return '';
+    }
+    var npub = String(state.chat.npub || '').trim().toLowerCase();
+    if (npub) {
+      return npub;
+    }
+    return String(localStorage.getItem('last_auth_pubkey') || '').trim().toLowerCase();
+  }
+
   function markInitialContentPainted() {
     if (state.initialContentPainted) {
       return;
@@ -538,6 +562,56 @@
     });
   }
 
+  function secureChatPersistableUploads() {
+    var combined = (state.chat.uploads || []).slice();
+    secureChatLocalUploads().forEach(function (upload) {
+      if (!combined.some(function (existing) { return existing.upload_id === upload.upload_id; })) {
+        combined.push(upload);
+      }
+    });
+    return combined;
+  }
+
+  function secureChatInferLastSeq(messages) {
+    return (Array.isArray(messages) ? messages : []).reduce(function (maxSeq, message) {
+      var seq = Number(message && message.seq || 0);
+      return seq > maxSeq ? seq : maxSeq;
+    }, 0);
+  }
+
+  function hydrateSecureChatSessionFromBrowser() {
+    var store = secureChatSessionStore();
+    var accountKey = secureChatStorageAccountKey();
+    if (!store || !accountKey) {
+      return false;
+    }
+    var session = store.readSession(window.localStorage, secureChatStorageSiteKey(), accountKey);
+    if (!session || (!String(session.draftText || '') && !(session.messages || []).length && !(session.uploads || []).length)) {
+      return false;
+    }
+    state.chat.draftText = String(session.draftText || '');
+    state.chat.messages = Array.isArray(session.messages) ? session.messages : [];
+    state.chat.uploads = Array.isArray(session.uploads) ? session.uploads : [];
+    state.chat.localUploads = {};
+    state.chat.lastSeq = Number(session.lastSeq || secureChatInferLastSeq(state.chat.messages) || 0);
+    return true;
+  }
+
+  function persistSecureChatSessionToBrowser() {
+    var store = secureChatSessionStore();
+    var accountKey = secureChatStorageAccountKey();
+    if (!store || !accountKey) {
+      return false;
+    }
+    store.writeSession(window.localStorage, secureChatStorageSiteKey(), accountKey, {
+      draftText: state.chat.draftText || '',
+      lastSeq: Number(state.chat.lastSeq || secureChatInferLastSeq(state.chat.messages) || 0),
+      messages: state.chat.messages || [],
+      uploads: secureChatPersistableUploads()
+    });
+    return true;
+  }
+
   function resetSecureChatState() {
     if (state.chat.pollTimer) {
       clearTimeout(state.chat.pollTimer);
@@ -592,6 +666,7 @@
       state.chat.uploads = Array.isArray(data.uploads) ? data.uploads : [];
       state.chat.adminMappings = data.admin && Array.isArray(data.admin.mappings) ? data.admin.mappings : [];
       secureChatMergeMessages(data.messages || []);
+      persistSecureChatSessionToBrowser();
       renderContent();
       return true;
     }).catch(function (err) {
@@ -672,6 +747,7 @@
         };
         uploadSecureChatFile(ticket, file);
       });
+      persistSecureChatSessionToBrowser();
       renderContent();
     }).catch(function (err) {
       state.chat.error = err && err.message ? err.message : 'Could not queue attachments.';
@@ -699,6 +775,7 @@
           }
           upload.status = 'uploading';
           upload.progress = total > 0 ? Math.round((loaded / total) * 100) : 0;
+          persistSecureChatSessionToBrowser();
           renderContent();
         };
         xhr.onreadystatechange = function () {
@@ -711,6 +788,7 @@
               upload.status = 'complete';
               upload.progress = 100;
             }
+            persistSecureChatSessionToBrowser();
             refreshSecureChatState();
             resolve(true);
             return;
@@ -719,6 +797,7 @@
             upload.status = 'failed';
             upload.error = xhr.responseText || 'Upload failed';
           }
+          persistSecureChatSessionToBrowser();
           renderContent();
           reject(new Error('Secure Chat upload failed'));
         };
@@ -730,6 +809,7 @@
         upload.status = 'failed';
         upload.error = 'Secure Chat upload failed';
       }
+      persistSecureChatSessionToBrowser();
       renderContent();
     });
   }
@@ -783,12 +863,7 @@
       ? window.SimplexWebDefaultChat
       : null;
     if (sharedRenderer) {
-      var combinedUploads = (state.chat.uploads || []).slice();
-      secureChatLocalUploads().forEach(function (upload) {
-        if (!combinedUploads.some(function (existing) { return existing.upload_id === upload.upload_id; })) {
-          combinedUploads.push(upload);
-        }
-      });
+      var combinedUploads = secureChatPersistableUploads();
       return sharedRenderer.renderPanel({
         loggedIn: hasSecureChatSession(),
         hasSigner: hasBrowserSigner(),
@@ -845,12 +920,7 @@
       html += '<p class="secure-chat-empty">No secure chat messages yet.</p>';
     }
     html += '</div>';
-    var combinedUploads = (state.chat.uploads || []).slice();
-    secureChatLocalUploads().forEach(function (upload) {
-      if (!combinedUploads.some(function (existing) { return existing.upload_id === upload.upload_id; })) {
-        combinedUploads.push(upload);
-      }
-    });
+    var combinedUploads = secureChatPersistableUploads();
     if (combinedUploads.length) {
       html += '<div class="secure-chat-uploads">';
       combinedUploads.forEach(function (upload) {
@@ -2036,13 +2106,13 @@
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
-          if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-            window.blogAuth.openLoginModal(hasBrowserSigner() ? 'register' : 'phone');
-          } else if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
+          if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
             window.blogAuth.startLogin().catch(function (err) {
               state.chat.error = err && err.message ? err.message : 'Login is not ready yet.';
               renderContent();
             });
+          } else if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+            window.blogAuth.openLoginModal(hasBrowserSigner() ? 'register' : 'phone');
           } else {
             state.chat.error = 'Login is still loading. The Secure Chat sign-in panel will be available in a moment.';
             renderContent();
@@ -2322,6 +2392,7 @@
       var secureChatTarget = event.target;
       if (secureChatTarget instanceof HTMLTextAreaElement && secureChatTarget.id === 'secure-chat-input') {
         state.chat.draftText = String(secureChatTarget.value || '');
+        persistSecureChatSessionToBrowser();
         return;
       }
       if (!isAdmin() || !state.editMode) {
@@ -2550,6 +2621,11 @@
       setSaveStatus('saved');
       writeBootstrapCache(payload);
       renderAll();
+      if (hasSecureChatSession()) {
+        if (hydrateSecureChatSessionFromBrowser()) {
+          renderContent();
+        }
+      }
       markInitialContentPainted();
       if (hasSecureChatSession() && hasBrowserSigner()) {
         refreshSecureChatState({ reset: true }).finally(function () {
