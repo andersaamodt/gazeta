@@ -923,12 +923,11 @@ async function setActiveUser(userId) {
 }
 
 async function createUser(profile) {
-  const newUser = {
-    profile,
-    pastTimestamp: false,
-    userChatRelay: false
-  };
-  const resp = await sendCommand(`/_create user ${JSON.stringify(newUser)}`);
+  const displayName = String((profile && profile.displayName) || '').trim() || `secure-chat-${Date.now()}`;
+  const command = profile && profile.peerType === 'bot'
+    ? `/create bot ${displayName}`
+    : `/create user ${displayName}`;
+  const resp = await sendCommand(command);
   if (resp.type !== 'activeUser' || !resp.user) {
     throw new Error(`Could not create user: ${resp.type || 'unknown'}`);
   }
