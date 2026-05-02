@@ -572,10 +572,44 @@ blog_secure_chat_service_ping() {
   curl --silent --show-error --fail --unix-socket "$socket" http://localhost/health >/dev/null 2>&1
 }
 
+blog_secure_chat_service_pid() {
+  pid_path=$(blog_secure_chat_pid_path)
+  [ -f "$pid_path" ] || return 1
+  pid=$(cat "$pid_path" 2>/dev/null || printf '')
+  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+  kill -0 "$pid" >/dev/null 2>&1 || return 1
+  printf '%s\n' "$pid"
+}
+
+blog_secure_chat_service_command_matches_release() {
+  pid=$(blog_secure_chat_service_pid) || return 1
+  expected="$SCRIPT_DIR/blog-secure-chat-service.js"
+  command_line=$(ps -p "$pid" -o command= 2>/dev/null || ps -p "$pid" -o args= 2>/dev/null || printf '')
+  case "$command_line" in
+    *"$expected"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+blog_secure_chat_service_stop() {
+  pid=$(blog_secure_chat_service_pid 2>/dev/null || printf '')
+  [ -n "$pid" ] || return 0
+  kill "$pid" >/dev/null 2>&1 || true
+  attempts=0
+  while kill -0 "$pid" >/dev/null 2>&1 && [ "$attempts" -lt 50 ]; do
+    sleep 0.1
+    attempts=$((attempts + 1))
+  done
+  rm -f "$(blog_secure_chat_pid_path)" "$(blog_secure_chat_socket_path)"
+}
+
 blog_secure_chat_service_start() {
   blog_secure_chat_init_storage
   if blog_secure_chat_service_ping; then
-    return 0
+    if blog_secure_chat_service_command_matches_release; then
+      return 0
+    fi
+    blog_secure_chat_service_stop
   fi
 
   socket=$(blog_secure_chat_socket_path)

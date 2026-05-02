@@ -207,6 +207,52 @@ assert_contains "$launch_path" '/tmp' 'secure chat launch path includes simplex 
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-display-name' 'secure chat service auto-creates a bot user on fresh SimpleX state'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '--create-bot-allow-files' 'secure chat service enables files for the bootstrap bot user'
 
+restart_kill_log="$TMP_ROOT/restart-kill.log"
+restart_pid_path=$(blog_secure_chat_pid_path)
+printf '12345\n' > "$restart_pid_path"
+MOCK_SERVICE_RESTART=1
+MOCK_PID_ALIVE=1
+blog_secure_chat_service_ping() {
+  if [ "${MOCK_SERVICE_RESTART:-0}" = 1 ]; then
+    [ "${MOCK_PID_ALIVE:-0}" = 1 ] || return 0
+    return 0
+  fi
+  return 1
+}
+ps() {
+  if [ "${MOCK_SERVICE_RESTART:-0}" = 1 ]; then
+    printf '%s\n' '/old/release/cgi/blog-secure-chat-service.js'
+    return 0
+  fi
+  command ps "$@"
+}
+kill() {
+  if [ "${MOCK_SERVICE_RESTART:-0}" = 1 ]; then
+    if [ "${1-}" = '-0' ]; then
+      [ "${MOCK_PID_ALIVE:-0}" = 1 ]
+      return $?
+    fi
+    printf '%s\n' "$*" >> "$restart_kill_log"
+    MOCK_PID_ALIVE=0
+    return 0
+  fi
+  command kill "$@"
+}
+sleep() {
+  if [ "${MOCK_SERVICE_RESTART:-0}" = 1 ]; then
+    return 0
+  fi
+  command sleep "$@"
+}
+blog_secure_chat_service_start
+MOCK_SERVICE_RESTART=0
+assert_file_contains "$restart_kill_log" '12345' 'secure chat service restarts daemon when current pid belongs to an older release'
+new_pid=$(cat "$restart_pid_path" 2>/dev/null || printf '')
+case "$new_pid" in
+  ''|12345) fail 'secure chat service writes a new pid after restarting an older release daemon' ;;
+  *) pass ;;
+esac
+
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "101" "active"
 blog_secure_chat_mapping_upsert "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" "202" "active"
 mapping_json=$(blog_secure_chat_mapping_json "npub1aliceexamplexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
