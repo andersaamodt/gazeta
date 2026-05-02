@@ -521,7 +521,7 @@ function updateMessageBySeq(seq, fields) {
 }
 
 function upsertMessageByRef(row, text, attachmentPreview) {
-  const normalized = normalizeMessageRow(row);
+  const normalized = normalizeMessageRow(Object.assign({ seq: 1 }, row));
   if (!normalized) {
     throw new Error('Invalid secure chat message row');
   }
