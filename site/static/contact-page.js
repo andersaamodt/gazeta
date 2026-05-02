@@ -779,6 +779,30 @@
   }
 
   function renderSecureChatPanel() {
+    var sharedRenderer = window.SimplexWebDefaultChat && typeof window.SimplexWebDefaultChat.renderPanel === 'function'
+      ? window.SimplexWebDefaultChat
+      : null;
+    if (sharedRenderer) {
+      var combinedUploads = (state.chat.uploads || []).slice();
+      secureChatLocalUploads().forEach(function (upload) {
+        if (!combinedUploads.some(function (existing) { return existing.upload_id === upload.upload_id; })) {
+          combinedUploads.push(upload);
+        }
+      });
+      return sharedRenderer.renderPanel({
+        loggedIn: hasSecureChatSession(),
+        hasSigner: hasBrowserSigner(),
+        error: state.chat.error,
+        sending: state.chat.sending,
+        draftText: state.chat.draftText || '',
+        service: state.chat.service || null,
+        messages: state.chat.messages || [],
+        uploads: combinedUploads,
+        admin: isAdmin(),
+        adminMappings: state.chat.adminMappings || []
+      });
+    }
+
     var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
