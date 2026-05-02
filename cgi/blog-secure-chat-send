@@ -27,6 +27,10 @@ jq -cn \
   --argjson attachments "$attachments_json" \
   '{sessionPubkey:$sessionPubkey,text:$text,attachments:$attachments}' > "$payload_file"
 
-if ! blog_secure_chat_service_request POST /send "$payload_file" application/json; then
+response=$(blog_secure_chat_service_request_json POST /send "$payload_file" application/json 2>/dev/null || printf '')
+if [ -z "$response" ]; then
   blog_json_error "Secure Chat message dispatch failed" "dispatch_failed"
+  exit 0
 fi
+
+printf '%s\n' "$response"

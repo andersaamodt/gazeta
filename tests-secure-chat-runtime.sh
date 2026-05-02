@@ -221,6 +221,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "state.simplexP
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT' 'secure chat launcher passes the persistent native driver root to the daemon'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-install-native-driver.sh" 'npm install --omit=dev' 'secure chat native driver installer provisions the official package into persistent runtime storage'
 assert_file_contains "$ROOT_DIR/cgi/secure-chat-native-driver/package.json" '"simplex-chat": "6.5.0"' 'secure chat native driver package pins the official SimpleX Node module version'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog_secure_chat_service_request_json' 'send endpoint prints daemon json responses explicitly'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-state" 'blog_secure_chat_service_request_json' 'state endpoint prints daemon json responses explicitly'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_secure_chat_service_request_json' 'admin endpoint prints daemon json responses explicitly'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" "printf '%s\\n' \"\$response\"" 'upload endpoint prints daemon json responses explicitly'
 
 restart_kill_log="$TMP_ROOT/restart-kill.log"
 restart_pid_path=$(blog_secure_chat_pid_path)
@@ -339,6 +343,20 @@ request_url_from_origin=$(
   blog_secure_chat_request_url
 )
 assert_eq "http://localhost:8093/cgi/blog-secure-chat-state" "$request_url_from_origin" 'request url prefers browser origin when host is rewritten by managed server config'
+
+saved_service_request=$(command -v blog_secure_chat_service_request >/dev/null 2>&1 && printf yes || printf no)
+if [ "$saved_service_request" = "yes" ]; then
+  eval "$(printf '%s\n' 'blog_secure_chat_service_request() { printf '\''{"success":true,"uploads":[]}\n'\''; }')"
+  service_json=$(blog_secure_chat_service_request_json POST /send /tmp/example application/json)
+  assert_eq '{"success":true,"uploads":[]}' "$service_json" 'service request json helper returns daemon body'
+
+  eval "$(printf '%s\n' 'blog_secure_chat_service_request() { return 0; }')"
+  if blog_secure_chat_service_request_json POST /send /tmp/example application/json >/dev/null 2>&1; then
+    fail 'service request json helper rejects empty daemon bodies'
+  else
+    pass
+  fi
+fi
 
 headers_out=$(HTTPS=on blog_send_json_headers)
 assert_contains "$headers_out" 'HEADER:Strict-Transport-Security=max-age=31536000; includeSubDomains; preload' 'json headers emit HSTS on secure requests'

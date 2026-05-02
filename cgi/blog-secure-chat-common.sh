@@ -689,3 +689,9 @@ blog_secure_chat_service_request() {
     --request "$method" \
     "http://localhost$path"
 }
+
+blog_secure_chat_service_request_json() {
+  response=$(blog_secure_chat_service_request "$@" 2>/dev/null || printf '')
+  [ -n "$response" ] || return 1
+  printf '%s\n' "$response"
+}

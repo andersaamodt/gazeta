@@ -25,6 +25,10 @@ jq -cn \
   --arg npub "$npub" \
   '{action:(if ($action | length) > 0 then $action else "status" end),npub:$npub}' > "$payload_file"
 
-if ! blog_secure_chat_service_request POST /admin "$payload_file" application/json; then
+response=$(blog_secure_chat_service_request_json POST /admin "$payload_file" application/json 2>/dev/null || printf '')
+if [ -z "$response" ]; then
   blog_json_error "Secure Chat admin service is unavailable" "service_unavailable"
+  exit 0
 fi
+
+printf '%s\n' "$response"

@@ -28,14 +28,20 @@ if ! blog_secure_chat_service_start; then
 fi
 
 socket=$(blog_secure_chat_socket_path)
-if ! curl --silent --show-error --fail \
-  --unix-socket "$socket" \
-  --request POST \
-  --header "Content-Type: ${CONTENT_TYPE-application/octet-stream}" \
-  --header "X-Upload-Id: $upload_id" \
-  --header "X-File-Name: $file_name" \
-  --header "X-Session-Pubkey: $BLOG_SESSION_USER_PUBKEY" \
-  --data-binary @- \
-  http://localhost/upload; then
+response=$(
+  curl --silent --show-error --fail \
+    --unix-socket "$socket" \
+    --request POST \
+    --header "Content-Type: ${CONTENT_TYPE-application/octet-stream}" \
+    --header "X-Upload-Id: $upload_id" \
+    --header "X-File-Name: $file_name" \
+    --header "X-Session-Pubkey: $BLOG_SESSION_USER_PUBKEY" \
+    --data-binary @- \
+    http://localhost/upload 2>/dev/null || printf ''
+)
+if [ -z "$response" ]; then
   blog_json_error "Secure Chat upload failed" "upload_failed"
+  exit 0
 fi
+
+printf '%s\n' "$response"
