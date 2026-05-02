@@ -1143,6 +1143,25 @@ async function enableOwnerAddress(userId) {
 
 async function ensureOwnerUser() {
   const users = await listUsers();
+  const active = await showActiveUser();
+  if (active) {
+    await ensureChatStarted();
+    if (state.ownerUserId) {
+      const existing = users.find((user) => String(user.userId) === String(state.ownerUserId));
+      if (existing && String(existing.userId) !== String(active.userId)) {
+        const owner = await setActiveUser(existing.userId);
+        state.ownerUserId = String(owner.userId);
+        metaSet('owner_user_id', state.ownerUserId);
+        await enableOwnerAddress(owner.userId);
+        return owner;
+      }
+    }
+    state.ownerUserId = String(active.userId);
+    metaSet('owner_user_id', state.ownerUserId);
+    await enableOwnerAddress(active.userId);
+    return active;
+  }
+
   if (state.ownerUserId) {
     const existing = users.find((user) => String(user.userId) === String(state.ownerUserId));
     if (existing) {
@@ -1151,15 +1170,6 @@ async function ensureOwnerUser() {
       await enableOwnerAddress(existing.userId);
       return existing;
     }
-  }
-
-  const active = await showActiveUser();
-  if (active) {
-    state.ownerUserId = String(active.userId);
-    metaSet('owner_user_id', state.ownerUserId);
-    await ensureChatStarted();
-    await enableOwnerAddress(active.userId);
-    return active;
   }
 
   const created = await createUser({
