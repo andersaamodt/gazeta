@@ -648,6 +648,15 @@ function startSimplexChild() {
   }
 }
 
+function stopSimplexChild() {
+  if (!state.simplexProcess || state.simplexProcess.killed) return;
+  try {
+    state.simplexProcess.kill('SIGTERM');
+  } catch (_err) {
+    // ignore shutdown races
+  }
+}
+
 function parseResponseEnvelope(message) {
   try {
     return JSON.parse(String(message || ''));
@@ -1421,8 +1430,15 @@ server.listen(SOCKET_PATH, async () => {
   await ensureRuntime();
 });
 
-process.on('SIGINT', () => process.exit(0));
-process.on('SIGTERM', () => process.exit(0));
+process.on('SIGINT', () => {
+  stopSimplexChild();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  stopSimplexChild();
+  process.exit(0);
+});
 process.on('exit', () => {
+  stopSimplexChild();
   try { fs.unlinkSync(SOCKET_PATH); } catch (_err) {}
 });
