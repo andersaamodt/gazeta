@@ -287,7 +287,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_require_sessio
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service no longer uses sqlite-backed storage'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'sqlite3 ' 'cgi helper no longer depends on sqlite shell access'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SECURE_CHAT_STORE_DIR' 'service uses file-backed store root env'
-assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new WebSocket(' 'service opens local SimpleX websocket transport'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl' 'service resolves a usable local WebSocket implementation'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-default-chat.js' 'contact page loads shared simplex-web renderer'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-session-store.js' 'contact page loads shared simplex-web session store'
 assert_file_contains "$SITE_SOURCE_ROOT/static/simplex-web-default-chat.js" 'SimplexWebDefaultChat' 'shared simplex-web renderer is vendored into nostr-blog'

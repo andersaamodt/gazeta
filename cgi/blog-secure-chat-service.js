@@ -7,6 +7,13 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { pipeline } = require('node:stream/promises');
+const WebSocketImpl = globalThis.WebSocket || (() => {
+  try {
+    return require('undici').WebSocket;
+  } catch (_err) {
+    return null;
+  }
+})();
 
 const STORE_ROOT = process.env.SECURE_CHAT_STORE_DIR || process.env.SECURE_CHAT_DB_PATH || '';
 const SOCKET_PATH = process.env.SECURE_CHAT_SOCKET_PATH || '';
@@ -22,6 +29,10 @@ const PROVISION_TIMEOUT_MS = 30000;
 
 if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
   process.stderr.write('Missing Secure Chat service environment.\n');
+  process.exit(1);
+}
+if (!WebSocketImpl) {
+  process.stderr.write('Secure Chat service requires a Node.js runtime with WebSocket support.\n');
   process.exit(1);
 }
 
@@ -805,7 +816,7 @@ function ensureWsConnection() {
   startSimplexChild();
 
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
+    const ws = new WebSocketImpl(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
     const timer = setTimeout(() => {
       try { ws.close(); } catch (_err) {}
       reject(new Error('Timed out connecting to simplex-chat local WebSocket'));

@@ -110,6 +110,11 @@ blog_secure_chat_simplex_binary() {
     command -v simplex-chat
     return 0
   fi
+  candidate="${XDG_BIN_HOME:-$HOME/.local/bin}/simplex-chat"
+  if [ -x "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
   for candidate in \
     /usr/local/bin/simplex-chat \
     /opt/homebrew/bin/simplex-chat \
@@ -137,6 +142,15 @@ blog_secure_chat_node_binary() {
     command -v nodejs
     return 0
   fi
+  for candidate in \
+    "${XDG_BIN_HOME:-$HOME/.local/bin}/node" \
+    "${XDG_BIN_HOME:-$HOME/.local/bin}/nodejs"
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
   for candidate in \
     /usr/local/bin/node \
     /opt/homebrew/bin/node \
