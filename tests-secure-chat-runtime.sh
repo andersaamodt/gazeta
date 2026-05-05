@@ -387,8 +387,11 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '/cgi/blog-secur
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'secureChatCursorSeq(data.cursor_seq)' 'contact page advances poll state using the server cursor sequence'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'window.SimplexWebDefaultChat' 'contact page uses shared simplex-web renderer when available'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'window.SimplexWebSessionStore' 'contact page uses shared simplex-web session store when available'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'window.blogNostrSigner' 'contact page uses the shared Nostr signer abstraction'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'window.blogAuth.startLogin' 'secure chat login prefers the shared Nostr login flow'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'sessionCheckGraceCount < 2' 'nav auth tolerates one transient failed session check before clearing login state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'scheduleSessionCheckRetry(token)' 'nav auth retries noisy session checks before tearing down signer auth state'
 assert_file_contains "$ROOT_DIR/cgi/ssh-auth-check-session" 'simplex_contact_info' 'session bootstrap exposes SimpleX account info'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
 

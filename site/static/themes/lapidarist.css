@@ -125,6 +125,30 @@
   --amethyst: #6a4fa3;
   --vermilion: #a73b2f;
   --gold-leaf: #b68b35;
+  --lapidarist-parchment-texture: url("/static/textures/lapidarist-parchment.webp");
+  --lapidarist-parchment-surface:
+    radial-gradient(900px 360px at 18% 6%, rgba(255, 250, 236, 0.72) 0%, rgba(255, 250, 236, 0) 62%),
+    linear-gradient(180deg, rgba(255, 249, 235, 0.86) 0%, rgba(239, 224, 193, 0.78) 100%),
+    var(--lapidarist-parchment-texture);
+  --lapidarist-parchment-muted:
+    radial-gradient(640px 260px at 18% 4%, rgba(255, 249, 232, 0.56) 0%, rgba(255, 249, 232, 0) 64%),
+    linear-gradient(180deg, rgba(249, 239, 219, 0.84) 0%, rgba(231, 214, 180, 0.72) 100%),
+    var(--lapidarist-parchment-texture);
+  --lapidarist-float-shadow:
+    0 28px 54px rgba(48, 34, 16, 0.18),
+    0 10px 22px rgba(48, 34, 16, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  --lapidarist-float-shadow-soft:
+    0 18px 36px rgba(48, 34, 16, 0.14),
+    0 5px 14px rgba(48, 34, 16, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.66) inset;
+  --lapidarist-float-shadow-hover:
+    0 34px 64px rgba(48, 34, 16, 0.22),
+    0 12px 26px rgba(48, 34, 16, 0.13),
+    0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  --lapidarist-control-shadow:
+    0 8px 18px rgba(48, 34, 16, 0.12),
+    0 2px 5px rgba(48, 34, 16, 0.08);
   --page-canvas-bg:
     radial-gradient(1300px 540px at 18% -16%, rgba(190, 152, 67, 0.12) 0%, rgba(190, 152, 67, 0) 56%),
     radial-gradient(900px 400px at 87% -7%, rgba(47, 95, 184, 0.08) 0%, rgba(47, 95, 184, 0) 60%),
@@ -337,8 +361,12 @@ strong {
 
 .list-page-shell,
 .demo-box {
-  border-color: #cdb893;
-  background: linear-gradient(180deg, rgba(252, 246, 234, 0.9) 0%, rgba(246, 236, 218, 0.92) 100%);
+  border-color: transparent;
+  background-color: var(--post-card-bg-single);
+  background-image: var(--lapidarist-parchment-surface);
+  background-size: auto, auto, 640px 640px;
+  background-position: center, center, center;
+  box-shadow: var(--lapidarist-float-shadow);
 }
 
 .btn-login,
@@ -438,6 +466,330 @@ strong {
 .footer-feed-link:hover svg,
 .footer-feed-link:focus-visible svg {
   color: #553f83;
+}
+
+nav.site-nav {
+  background-color: #eadcc0;
+  background-image: var(--lapidarist-parchment-muted);
+  background-size: auto, auto, 640px 640px;
+  background-position: center, center, center;
+  box-shadow:
+    0 16px 34px rgba(48, 34, 16, 0.16),
+    0 3px 9px rgba(48, 34, 16, 0.08) !important;
+}
+
+.post-item,
+.post-single-item,
+.list-page-shell,
+.demo-box,
+.checkout-shell,
+.checkout-column,
+.cart-page-row,
+.cart-page-summary,
+.nav-cart-drawer,
+.nav-cart-item,
+.post-context-card,
+.archive-month,
+.post-comments-shell,
+.post-comment,
+.blog-filter-panel,
+.blog-compose-card,
+.blog-compose-preview-card,
+.search-box,
+.search-form,
+.auth-modal-panel,
+.auth-platform-card,
+.auth-reco-card,
+.post-page-modal-panel,
+.nostr-publish-modal-panel,
+.route-load-failure,
+.nip23-product-card,
+.nip23-product-editor,
+.nostr-page-extras-editor,
+.nostr-page-settings-panel,
+.public-ranking-editor,
+.public-ranking-pending-item,
+.public-ranking-node,
+.contact-profile-table-wrap,
+.list-inline-edit-shell,
+.list-admin-entries-wrap,
+.list-admin-entry,
+.list-tile {
+  border-color: transparent !important;
+  background-color: var(--post-card-bg-single);
+  background-image: var(--lapidarist-parchment-surface);
+  background-size: auto, auto, 640px 640px;
+  background-position: center, center, center;
+  box-shadow: var(--lapidarist-float-shadow-soft) !important;
+}
+
+.post-item,
+.list-tile,
+.auth-platform-card,
+.nav-cart-item {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.post-item:hover,
+.list-tile:hover,
+.auth-platform-card:hover,
+.auth-platform-card:focus-visible,
+.nav-cart-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lapidarist-float-shadow-hover) !important;
+}
+
+.post-single-item {
+  box-shadow: var(--lapidarist-float-shadow) !important;
+}
+
+.post-single-item .post-single-body {
+  background-image:
+    linear-gradient(180deg, rgba(255, 250, 236, 0.42), rgba(248, 237, 214, 0.18)),
+    var(--lapidarist-parchment-texture);
+  background-size: auto, 640px 640px;
+  border-radius: 12px;
+  padding-left: 0.82rem;
+  padding-right: 0.82rem;
+}
+
+.post-head-divider,
+.post-end-tags,
+.post-nav-enhanced,
+.post-nav,
+.revision-history,
+.checkout-order-panel,
+.nav-cart-drawer-footer,
+.divider {
+  border-color: rgba(151, 119, 62, 0.24) !important;
+}
+
+blockquote,
+pre,
+.route-load-failure,
+.list-validation-block,
+.checkout-message,
+.post-page-modal-status,
+.nostr-publish-modal-status,
+.nostr-publish-modal-error,
+.auth-modal-message {
+  border-color: transparent !important;
+  background-image: var(--lapidarist-parchment-muted);
+  background-size: auto, auto, 640px 640px;
+  box-shadow:
+    0 10px 22px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.58) inset;
+}
+
+.tag,
+.blog-filter-chip,
+.blog-type-pill,
+.blog-year-pill,
+.checkout-choice,
+.list-entry-date-pill,
+.list-entry-marker-pill,
+.list-marker-filter-pill,
+.nostr-page-scope-pill,
+.nip23-product-type-pill,
+.public-ranking-status {
+  border-color: transparent !important;
+  box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
+}
+
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item),
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"]:not(.list-inline-open):not(.admin-nav-item),
+.btn,
+.checkout-link-button,
+.cart-page-link-button,
+.nav-cart-link-button,
+.nip23-product-btn {
+  border-color: transparent !important;
+  box-shadow: var(--lapidarist-control-shadow) !important;
+}
+
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):hover:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):focus-visible:not(:disabled),
+input[type="button"]:hover:not(:disabled),
+input[type="button"]:focus-visible:not(:disabled),
+input[type="submit"]:hover:not(:disabled),
+input[type="submit"]:focus-visible:not(:disabled),
+input[type="reset"]:hover:not(:disabled),
+input[type="reset"]:focus-visible:not(:disabled),
+[role="button"]:not(.list-inline-open):not(.admin-nav-item):hover:not([aria-disabled="true"]),
+[role="button"]:not(.list-inline-open):not(.admin-nav-item):focus-visible:not([aria-disabled="true"]),
+.btn:hover:not(:disabled),
+.btn:focus-visible:not(:disabled),
+.checkout-link-button:hover,
+.checkout-link-button:focus-visible,
+.cart-page-link-button:hover,
+.cart-page-link-button:focus-visible,
+.nav-cart-link-button:hover,
+.nav-cart-link-button:focus-visible,
+.nip23-product-btn:hover,
+.nip23-product-btn:focus-visible {
+  border-color: transparent !important;
+  box-shadow:
+    0 12px 24px rgba(48, 34, 16, 0.16),
+    0 3px 8px rgba(48, 34, 16, 0.09) !important;
+  transform: translateY(-1px) !important;
+}
+
+.nav-compose-cycle,
+.blog-filter-toggle,
+.list-inline-history-icon-btn,
+.list-inline-indent-btn,
+.list-inline-head-add,
+.list-year-add,
+.list-inline-row-menu-trigger,
+.post-page-menu-panel button,
+.nav-menu-panel .nav-menu-item,
+.nav-menu-panel button,
+.list-inline-row-menu button,
+.public-ranking-submit-cancel,
+.contact-row-delete {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.nav-compose-cycle:hover,
+.nav-compose-cycle:focus-visible,
+.blog-filter-toggle:hover,
+.blog-filter-toggle:focus-visible,
+.list-inline-history-icon-btn:hover,
+.list-inline-history-icon-btn:focus-visible,
+.list-inline-indent-btn:hover,
+.list-inline-indent-btn:focus-visible,
+.list-inline-head-add:hover,
+.list-inline-head-add:focus-visible,
+.list-year-add:hover,
+.list-year-add:focus-visible,
+.list-inline-row-menu-trigger:hover,
+.list-inline-row-menu-trigger:focus-visible,
+.post-page-menu-panel button:hover,
+.post-page-menu-panel button:focus-visible,
+.nav-menu-panel .nav-menu-item:hover,
+.nav-menu-panel .nav-menu-item:focus-visible,
+.nav-menu-panel button:hover,
+.nav-menu-panel button:focus-visible,
+.list-inline-row-menu button:hover,
+.list-inline-row-menu button:focus-visible,
+.public-ranking-submit-cancel:hover,
+.public-ranking-submit-cancel:focus-visible,
+.contact-row-delete:hover,
+.contact-row-delete:focus-visible {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+[role="button"][aria-disabled="true"],
+.btn:disabled {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn) {
+  border-color: transparent !important;
+  box-shadow: var(--lapidarist-control-shadow) !important;
+}
+
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):focus-visible:not(:disabled) {
+  border-color: transparent !important;
+  box-shadow:
+    0 12px 24px rgba(48, 34, 16, 0.16),
+    0 3px 8px rgba(48, 34, 16, 0.09) !important;
+  transform: translateY(-1px) !important;
+}
+
+.nav-search {
+  box-shadow:
+    0 14px 28px rgba(48, 34, 16, 0.16),
+    0 3px 9px rgba(48, 34, 16, 0.10) !important;
+}
+
+.nav-search input[type="text"],
+.nav-search button,
+.nav-cart-toggle,
+.nav-menu-panel,
+.nav-overflow-panel,
+.post-page-menu-panel,
+.list-inline-row-menu {
+  border-color: transparent !important;
+  box-shadow: var(--lapidarist-control-shadow);
+}
+
+.nav-menu-panel,
+.nav-overflow-panel,
+.post-page-menu-panel,
+.list-inline-row-menu {
+  background-color: var(--menu-bg);
+  background-image: var(--lapidarist-parchment-muted);
+  background-size: auto, auto, 640px 640px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="datetime-local"],
+select,
+textarea {
+  border-color: transparent !important;
+  background-color: rgba(255, 250, 239, 0.88);
+  box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+input[type="datetime-local"]:focus,
+select:focus,
+textarea:focus {
+  border-color: transparent !important;
+  box-shadow:
+    0 10px 22px rgba(48, 34, 16, 0.13),
+    0 0 0 3px rgba(106, 79, 163, 0.18) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-item,
+  .list-tile,
+  .auth-platform-card,
+  .nav-cart-item,
+  button,
+  [role="button"],
+  .btn {
+    transition: none !important;
+  }
+
+  .post-item:hover,
+  .list-tile:hover,
+  .auth-platform-card:hover,
+  .auth-platform-card:focus-visible,
+  .nav-cart-item:hover,
+  button:hover,
+  button:focus-visible,
+  [role="button"]:hover,
+  [role="button"]:focus-visible,
+  .btn:hover,
+  .btn:focus-visible {
+    transform: none !important;
+  }
 }
 
 ::selection {

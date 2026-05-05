@@ -133,6 +133,9 @@
   var authMessageClearTimer = null;
   var themeSwitchVisualTimer = null;
   var themeSwapToken = 0;
+  var sessionCheckRetryTimer = 0;
+  var sessionCheckGraceToken = '';
+  var sessionCheckGraceCount = 0;
 
   function nowEpoch() {
     return Math.floor(Date.now() / 1000);
@@ -1337,6 +1340,39 @@
     emitAuthChanged();
   }
 
+  function resetSessionCheckGrace() {
+    sessionCheckGraceToken = '';
+    sessionCheckGraceCount = 0;
+    if (sessionCheckRetryTimer) {
+      window.clearTimeout(sessionCheckRetryTimer);
+      sessionCheckRetryTimer = 0;
+    }
+  }
+
+  function hasStoredNostrAuthHint() {
+    var method = String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
+    var pubkey = String(localStorage.getItem('last_auth_pubkey') || '').trim().toLowerCase();
+    return method === 'nostr' || !!pubkey;
+  }
+
+  function scheduleSessionCheckRetry(token) {
+    var retryToken = String(token || '').trim();
+    if (!retryToken) {
+      return;
+    }
+    if (sessionCheckRetryTimer) {
+      window.clearTimeout(sessionCheckRetryTimer);
+    }
+    sessionCheckRetryTimer = window.setTimeout(function () {
+      sessionCheckRetryTimer = 0;
+      var currentToken = String(getSessionToken() || '').trim();
+      if (!currentToken || currentToken !== retryToken) {
+        return;
+      }
+      checkAuth();
+    }, 1200);
+  }
+
   function openAuthDb() {
     if (!window.indexedDB) {
       return Promise.resolve(null);
@@ -1666,6 +1702,7 @@
   function checkAuth() {
     var token = String(getSessionToken() || '').trim();
     if (!hasStoredSessionToken()) {
+      resetSessionCheckGrace();
       clearLocalStorageAuth();
       applyLoggedInUi(false, false, '');
       return Promise.resolve(false);
@@ -1675,13 +1712,26 @@
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data || !data.authenticated) {
+          if ((state.isAuthenticated || hasStoredNostrAuthHint()) && token) {
+            if (sessionCheckGraceToken === token) {
+              sessionCheckGraceCount += 1;
+            } else {
+              sessionCheckGraceToken = token;
+              sessionCheckGraceCount = 1;
+            }
+            if (sessionCheckGraceCount < 2) {
+              scheduleSessionCheckRetry(token);
+              return !!state.isAuthenticated || hasStoredNostrAuthHint();
+            }
+          }
+          resetSessionCheckGrace();
           clearLocalStorageAuth();
           applyLoggedInUi(false, false, '');
           return false;
         }
+        resetSessionCheckGrace();
         if (data.csrf_token) {
           localStorage.setItem('csrf_token', data.csrf_token);
-          emitAuthChanged();
         }
         if (data.nostr_pubkey) {
           localStorage.setItem('last_auth_pubkey', data.nostr_pubkey);
@@ -1689,6 +1739,8 @@
         if (data.session_auth_method) {
           localStorage.setItem('last_auth_method', data.session_auth_method);
         } else if (data.nostr_pubkey) {
+          localStorage.setItem('last_auth_method', 'nostr');
+        } else if (hasStoredNostrAuthHint()) {
           localStorage.setItem('last_auth_method', 'nostr');
         } else {
           localStorage.removeItem('last_auth_method');
@@ -1705,6 +1757,7 @@
           data.player_name || localStorage.getItem('last_auth_player_name') || data.username || ''
         );
         updateLogoutOtherSessionsUi(data.other_sessions_count || 0);
+        emitAuthChanged();
         return true;
       })
       .catch(function (err) {

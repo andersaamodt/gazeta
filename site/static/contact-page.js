@@ -236,12 +236,17 @@
     return String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
   }
 
+  function secureChatStoredPubkey() {
+    return String(localStorage.getItem('last_auth_pubkey') || '').trim().toLowerCase();
+  }
+
   function secureChatAuthSignature() {
     var auth = authPayload();
     return [
       String(auth.session_token || ''),
       String(auth.csrf_token || ''),
-      secureChatAuthMethod()
+      secureChatAuthMethod(),
+      secureChatStoredPubkey()
     ].join('|');
   }
 
@@ -259,14 +264,14 @@
   }
 
   function secureChatStorageAccountKey() {
-    if (secureChatAuthMethod() !== 'nostr') {
+    if (secureChatAuthMethod() !== 'nostr' && !secureChatStoredPubkey()) {
       return '';
     }
     var npub = String(state.chat.npub || '').trim().toLowerCase();
     if (npub) {
       return npub;
     }
-    return String(localStorage.getItem('last_auth_pubkey') || '').trim().toLowerCase();
+    return secureChatStoredPubkey();
   }
 
   function markInitialContentPainted() {
@@ -443,14 +448,24 @@
     });
   }
 
+  function secureChatSigner() {
+    if (window.blogNostrSigner && typeof window.blogNostrSigner.signEvent === 'function') {
+      return window.blogNostrSigner;
+    }
+    if (window.nostr && typeof window.nostr.signEvent === 'function') {
+      return window.nostr;
+    }
+    return null;
+  }
+
   function hasBrowserSigner() {
-    return !!(window.nostr && typeof window.nostr.signEvent === 'function');
+    return !!secureChatSigner();
   }
 
   function hasSecureChatSession() {
     var auth = authPayload();
     var authMethod = secureChatAuthMethod();
-    return !!(auth.session_token && auth.csrf_token && authMethod === 'nostr');
+    return !!(auth.session_token && auth.csrf_token && (authMethod === 'nostr' || secureChatStoredPubkey()));
   }
 
   function encodeBase64Utf8(text) {
@@ -479,13 +494,13 @@
   }
 
   function secureChatRequestHeaders(url, method) {
-    if (!hasBrowserSigner()) {
-      return Promise.reject(new Error('Secure Chat requires a browser signer (NIP-07).'));
+    var signer = secureChatSigner();
+    if (!signer) {
+      return Promise.reject(new Error('Secure Chat requires a Nostr signer so each request can be signed.'));
     }
     if (!hasSecureChatSession()) {
       return Promise.reject(new Error('Secure Chat requires an authenticated Nostr session.'));
     }
-    var signer = window.nostr;
     var template = secureChatSignerTemplate(url, method);
     return Promise.resolve(signer.signEvent(template)).then(function (signed) {
       var auth = authPayload();
@@ -898,7 +913,7 @@
       return html;
     }
     if (!hasBrowserSigner()) {
-      html += '<p class="secure-chat-empty">Secure Chat requires a browser signer extension so each request can be signed.</p>';
+      html += '<p class="secure-chat-empty">Secure Chat requires a Nostr signer so each request can be signed.</p>';
       html += '</section>';
       return html;
     }
@@ -2653,7 +2668,7 @@
     if (!event || !event.key) {
       return;
     }
-    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_method') {
+    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_method' || event.key === 'last_auth_pubkey') {
       maybeReloadForAuthChange();
     }
   });
