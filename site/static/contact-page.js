@@ -553,6 +553,11 @@
     }
   }
 
+  function secureChatCursorSeq(value) {
+    var next = Number(value || 0);
+    return Number.isFinite(next) && next > 0 ? next : 0;
+  }
+
   function secureChatLocalUploads() {
     var uploads = state.chat.localUploads || {};
     return Object.keys(uploads).map(function (key) {
@@ -666,6 +671,9 @@
       state.chat.uploads = Array.isArray(data.uploads) ? data.uploads : [];
       state.chat.adminMappings = data.admin && Array.isArray(data.admin.mappings) ? data.admin.mappings : [];
       secureChatMergeMessages(data.messages || []);
+      if (secureChatCursorSeq(data.cursor_seq) > Number(state.chat.lastSeq || 0)) {
+        state.chat.lastSeq = secureChatCursorSeq(data.cursor_seq);
+      }
       persistSecureChatSessionToBrowser();
       renderContent();
       return true;

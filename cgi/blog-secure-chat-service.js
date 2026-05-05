@@ -440,6 +440,17 @@ function mapMessageRow(row) {
   };
 }
 
+function visibleMessageRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  switch (String(row.message_kind || '')) {
+    case 'text':
+    case 'file':
+      return true;
+    default:
+      return false;
+  }
+}
+
 function rememberMessageText(seq, text, file) {
   recentMessageText.set(Number(seq), {
     text: String(text || ''),
@@ -542,9 +553,15 @@ function upsertMessageByRef(row, text, attachmentPreview) {
     existing.delivery_status = normalized.delivery_status || existing.delivery_status;
     existing.created_at = normalized.created_at || existing.created_at;
     existing.updated_at = normalized.updated_at || nowIso();
-    existing.attachment_name = normalized.attachment_name || existing.attachment_name || '';
-    existing.attachment_mime = normalized.attachment_mime || existing.attachment_mime || '';
-    existing.attachment_size = normalized.attachment_size != null ? normalized.attachment_size : existing.attachment_size;
+    if (!existing.attachment_name && normalized.attachment_name) {
+      existing.attachment_name = normalized.attachment_name;
+    }
+    if (!existing.attachment_mime && normalized.attachment_mime) {
+      existing.attachment_mime = normalized.attachment_mime;
+    }
+    if ((existing.attachment_size == null || existing.attachment_size === 0) && normalized.attachment_size != null) {
+      existing.attachment_size = normalized.attachment_size;
+    }
     existing.upload_id = normalized.upload_id || existing.upload_id || '';
     existing.error_code = normalized.error_code || existing.error_code || '';
     existing.error_detail = normalized.error_detail || existing.error_detail || '';
@@ -1596,9 +1613,13 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
   const limit = 100;
-  const rows = sinceSeq > 0
+  const rawRows = sinceSeq > 0
     ? selectMessagesSinceStmt.all(npub, Number(sinceSeq), limit)
     : selectRecentMessagesStmt.all(npub, limit).reverse();
+  const cursorSeq = rawRows.length
+    ? Number(rawRows[rawRows.length - 1].seq || sinceSeq || 0)
+    : Number(sinceSeq || 0);
+  const rows = rawRows.filter(visibleMessageRow);
   const tickets = Array.from(uploads.values())
     .filter((item) => item.npub === npub)
     .map((item) => ({
@@ -1613,6 +1634,7 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
   const payload = {
     success: true,
     npub,
+    cursor_seq: cursorSeq,
     service: currentServiceStatus(),
     mapping,
     messages: rows.map(mapMessageRow),
