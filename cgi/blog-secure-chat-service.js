@@ -420,6 +420,16 @@ function contactRowToJson(row) {
 
 function mapMessageRow(row) {
   const extra = recentMessageText.get(Number(row.seq)) || {};
+  let attachmentName = row.attachment_name || '';
+  if (
+    String(row.message_kind || '') === 'file' &&
+    attachmentName &&
+    /^upl-[^-]+-/.test(String(attachmentName)) &&
+    extra.text &&
+    String(extra.text || '').trim()
+  ) {
+    attachmentName = String(extra.text || '').trim();
+  }
   return {
     seq: Number(row.seq),
     direction: String(row.direction || 'outgoing'),
@@ -429,8 +439,8 @@ function mapMessageRow(row) {
     created_at: row.created_at || '',
     updated_at: row.updated_at || '',
     text: extra.text || '',
-    attachment: row.attachment_name ? {
-      name: row.attachment_name,
+    attachment: attachmentName ? {
+      name: attachmentName,
       mime: row.attachment_mime || '',
       size: Number(row.attachment_size || 0),
       upload_id: row.upload_id || ''
@@ -943,9 +953,17 @@ function handleChatItemEvent(user, aChatItem) {
   const createdAt = (chatItem.meta && (chatItem.meta.itemTs || chatItem.meta.createdAt)) || nowIso();
   const messageRef = chatItem.meta && chatItem.meta.itemId != null ? String(chatItem.meta.itemId) : '';
   const text = chatItemText(chatItem);
-  const attachmentName = chatItem.file && chatItem.file.fileName ? String(chatItem.file.fileName) : '';
+  let attachmentName = chatItem.file && chatItem.file.fileName ? String(chatItem.file.fileName) : '';
   const attachmentMime = '';
   const attachmentSize = chatItem.file && chatItem.file.fileSize != null ? Number(chatItem.file.fileSize) : null;
+  if (
+    messageKind === 'file' &&
+    attachmentName &&
+    /^upl-[^-]+-/.test(attachmentName) &&
+    String(text || '').trim()
+  ) {
+    attachmentName = String(text || '').trim();
+  }
 
   upsertMessageByRef({
     npub: bridgeRow.npub,

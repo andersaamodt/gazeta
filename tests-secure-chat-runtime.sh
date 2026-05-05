@@ -221,6 +221,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'withTransportL
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'const rows = rawRows.filter(visibleMessageRow);' 'secure chat service filters protocol/system chat items from website message payloads'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'cursor_seq: cursorSeq' 'secure chat service returns a cursor sequence so polling can advance past hidden protocol items'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '!existing.attachment_name && normalized.attachment_name' 'secure chat service preserves friendly attachment filenames when reconciliation sees daemon temp-path names'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "/^upl-[^-]+-/.test(String(attachmentName))" 'secure chat service restores friendly attachment names when older rows already contain daemon temp filenames'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "driverType: 'unknown'" 'secure chat service tracks the active SimpleX driver'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '/create user ' 'secure chat service provisions bridge identities with the current SimpleX create-user command'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "state.simplexProcess.kill('SIGTERM')" 'secure chat service shuts down its child simplex process on daemon exit'
