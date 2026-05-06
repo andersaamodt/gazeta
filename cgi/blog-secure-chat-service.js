@@ -1208,7 +1208,7 @@ function sendCommandOnConnection(commandWs, cmd) {
     function onMessage(event) {
       const envelope = parseResponseEnvelope(event.data);
       if (!envelope || !envelope.resp) return;
-      if (!envelope.corrId || envelope.corrId === corrId) {
+      if (envelope.corrId === corrId) {
         cleanup();
         resolve(envelope.resp);
         return;

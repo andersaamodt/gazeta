@@ -247,6 +247,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'text: row.text
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'withTransportLock' 'secure chat service serializes active-user transport operations during send and reconciliation'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'openCommandWsConnection' 'secure chat commands use fresh WebSocket connections instead of a stale shared command channel'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendCommandAsUser(activeUserId' 'secure chat sends activate the bridge user on the same WebSocket connection as the send command'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'envelope.corrId === corrId' 'secure chat command sockets ignore unsolicited events while waiting for their matching command response'
 handle_send_prefix=$(sed -n '/async function handleSend/,/const tickets = \[\];/p' "$ROOT_DIR/cgi/blog-secure-chat-service.js")
 if printf '%s' "$handle_send_prefix" | grep -Fq 'await ensureRuntime();'; then
   fail 'secure chat sends do not block on optional owner runtime warmup before using an active mapping'
