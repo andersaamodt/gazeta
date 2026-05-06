@@ -709,7 +709,7 @@ blog_secure_chat_service_request() {
 
   socket=$(blog_secure_chat_socket_path)
   if [ -n "$body_file" ]; then
-    curl --silent --show-error --max-time 120 \
+    curl --silent --show-error --max-time 180 \
       --unix-socket "$socket" \
       --request "$method" \
       --header "Content-Type: $content_type" \
@@ -718,7 +718,7 @@ blog_secure_chat_service_request() {
     return 0
   fi
 
-  curl --silent --show-error --max-time 120 \
+  curl --silent --show-error --max-time 180 \
     --unix-socket "$socket" \
     --request "$method" \
     "http://localhost$path"

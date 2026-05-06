@@ -518,7 +518,7 @@
     var controller = typeof AbortController === 'function' ? new AbortController() : null;
     var timeout = controller ? window.setTimeout(function () {
       controller.abort();
-    }, 90000) : null;
+    }, 180000) : null;
     return secureChatRequestHeaders(absoluteUrl, 'POST').then(function (headers) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       return fetch(absoluteUrl, {
