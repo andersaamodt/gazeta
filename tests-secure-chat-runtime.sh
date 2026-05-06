@@ -279,6 +279,7 @@ assert_file_contains "$ROOT_DIR/cgi/secure-chat-native-driver/package.json" '"si
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog_secure_chat_service_request_json' 'send endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog-secure-chat-direct-send.js' 'send endpoint uses the isolated direct sender for text messages with active mappings'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-direct-send.js" 'scd-${Date.now()}' 'direct sender correlates SimpleX WebSocket command responses'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-direct-send.js" 'sendTextSequential' 'direct sender can use the production-verified sequential SimpleX command flow'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" "attachments_json='[]'" 'send endpoint defaults omitted attachment metadata to an empty json array'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-state" 'blog_secure_chat_service_request_json' 'state endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_secure_chat_service_request_json' 'admin endpoint prints daemon json responses explicitly'

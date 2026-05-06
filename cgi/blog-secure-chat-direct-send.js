@@ -230,6 +230,71 @@ function sendCommand(ws, cmd) {
   });
 }
 
+function sendTextSequential(userId, contactId, text) {
+  return new Promise((resolve, reject) => {
+    let step = 0;
+    let settled = false;
+    let ws = null;
+    function finish(fn, value) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (ws) {
+        try { ws.close(); } catch (_err) {}
+      }
+      fn(value);
+    }
+    function send(cmd) {
+      const corrId = `seq-${Date.now()}-${++commandSeq}`;
+      logDirect('sequential_command_send', {
+        step,
+        corrId,
+        command: cmd.replace(/ text .*/s, ' text [redacted]')
+      });
+      ws.send(JSON.stringify({ corrId, cmd }));
+    }
+    function onMessage(event) {
+      const envelope = parseResponseEnvelope(event.data);
+      const resp = envelope && envelope.resp;
+      logDirect('sequential_command_message', {
+        step,
+        envelopeCorrId: envelope && envelope.corrId || '',
+        responseType: resp && resp.type || ''
+      });
+      if (!resp) return;
+      if (step === 0) {
+        if (resp.type !== 'activeUser') {
+          finish(reject, new Error(`Could not activate SimpleX user ${userId}: ${resp.type || 'unknown'}`));
+          return;
+        }
+        step = 1;
+        send(`/_send @${contactId} text ${text}`);
+        return;
+      }
+      if (resp.type === 'newChatItems') {
+        finish(resolve, resp);
+        return;
+      }
+      if (resp.type === 'chatCmdError') {
+        return;
+      }
+      finish(reject, new Error(`Unexpected send response: ${resp.type || 'unknown'}`));
+    }
+    const timer = setTimeout(() => {
+      finish(reject, new Error(`SimpleX command timed out: /_send @${contactId} text ${String(text || '')}`));
+    }, COMMAND_TIMEOUT_MS);
+    ws = new WebSocketImpl(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
+    ws.addEventListener('open', () => {
+      logDirect('sequential_open_ws_ok', { port: SIMPLEX_WS_PORT });
+      send(`/_user ${userId}`);
+    });
+    ws.addEventListener('message', onMessage);
+    ws.addEventListener('error', (err) => {
+      finish(reject, err);
+    });
+  });
+}
+
 function deliveryStatusFromChatItem(chatItem) {
   const itemStatus = chatItem && chatItem.meta && chatItem.meta.itemStatus;
   if (!itemStatus || typeof itemStatus.type !== 'string') return 'queued';
@@ -238,10 +303,6 @@ function deliveryStatusFromChatItem(chatItem) {
   if (itemStatus.type === 'sndWarning') return 'warning';
   if (itemStatus.type === 'sndError' || itemStatus.type === 'sndErrorAuth') return 'failed';
   return itemStatus.type;
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function appendMessage(mapping, text, chatItem) {
@@ -297,27 +358,17 @@ async function main() {
     process.stdout.write(JSON.stringify({ success: false, code: 'mapping_unavailable' }) + '\n');
     return;
   }
-  const ws = await openWs();
-  try {
-    const active = await sendCommand(ws, `/_user ${mapping.bridge_user_id}`);
-    if (!active || active.type !== 'activeUser') {
-      throw new Error(`Could not activate SimpleX user ${mapping.bridge_user_id}`);
-    }
-    await delay(100);
-    const resp = await sendCommand(ws, `/_send @${mapping.bridge_contact_id} text ${text}`);
-    if (!resp || resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
-      throw new Error(`Unexpected send response: ${resp && resp.type || 'unknown'}`);
-    }
-    const first = resp.chatItems[0] && resp.chatItems[0].chatItem ? resp.chatItems[0].chatItem : null;
-    appendMessage(mapping, text, first);
-    logDirect('success', {
-      npub,
-      messageRef: first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : ''
-    });
-    process.stdout.write(JSON.stringify({ success: true, uploads: [] }) + '\n');
-  } finally {
-    try { ws.close(); } catch (_err) {}
+  const resp = await sendTextSequential(mapping.bridge_user_id, mapping.bridge_contact_id, text);
+  if (!resp || resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
+    throw new Error(`Unexpected send response: ${resp && resp.type || 'unknown'}`);
   }
+  const first = resp.chatItems[0] && resp.chatItems[0].chatItem ? resp.chatItems[0].chatItem : null;
+  appendMessage(mapping, text, first);
+  logDirect('success', {
+    npub,
+    messageRef: first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : ''
+  });
+  process.stdout.write(JSON.stringify({ success: true, uploads: [] }) + '\n');
 }
 
 main().catch((err) => {
