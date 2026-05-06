@@ -674,6 +674,11 @@ blog_secure_chat_service_start() {
       return 0
     fi
     attempts=$((attempts + 1))
+    if [ "$attempts" -ge 20 ] && ! blog_secure_chat_service_pid >/dev/null 2>&1; then
+      rmdir "$lock_dir" 2>/dev/null || true
+      attempts=0
+      continue
+    fi
     if [ "$attempts" -ge 100 ]; then
       printf '%s\n' "secure chat start failed: another start attempt did not finish." >> "$(blog_secure_chat_log_path)"
       return 1

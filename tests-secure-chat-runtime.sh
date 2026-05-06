@@ -401,6 +401,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" 'blog_secure_chat_r
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_require_session true' 'admin endpoint requires admin session'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service no longer uses sqlite-backed storage'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'sqlite3 ' 'cgi helper no longer depends on sqlite shell access'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'rmdir "$lock_dir"' 'secure chat launcher recovers stale service-start locks'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SECURE_CHAT_STORE_DIR' 'service uses file-backed store root env'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl' 'service resolves a usable local WebSocket implementation'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'disableNativeSimplexDriver' 'service falls back when the native SimpleX driver is present but unusable'
