@@ -1280,6 +1280,14 @@ async function createUser(profile) {
   return resp.user;
 }
 
+function userDisplayName(user) {
+  return String(
+    (user && user.localDisplayName) ||
+    (user && user.profile && user.profile.displayName) ||
+    ''
+  );
+}
+
 function isMissingUserContactLinkError(resp) {
   return !!(
     resp &&
@@ -1449,10 +1457,17 @@ async function ensureBridgeUser(npub) {
     }
   }
   const short = npub.slice(0, 20);
+  const displayName = `nostr-${short}`;
   const created = await createUser({
-    displayName: `nostr-${short}`,
+    displayName,
     fullName: `Nostr Visitor ${short}`,
     shortDescr: 'Secure chat website bridge'
+  }).catch((err) => {
+    if (String(err && err.message || '').includes('userExists')) {
+      const existing = users.find((user) => userDisplayName(user) === displayName);
+      if (existing) return existing;
+    }
+    throw err;
   });
   return created;
 }
@@ -1489,6 +1504,24 @@ function contactConnStatus(contact) {
 function contactReadyForSend(contact) {
   const status = contactConnStatus(contact);
   return status === 'ready' || status === 'sndReady';
+}
+
+function findExistingProvisionedContacts(ownerContacts, bridgeContacts, ownerUser, bridgeUser) {
+  const ownerName = userDisplayName(ownerUser);
+  const bridgeName = userDisplayName(bridgeUser);
+  const ownerContact = ownerContacts.find((contact) => (
+    contactReadyForSend(contact) &&
+    String(contact.localDisplayName || '') === bridgeName
+  ));
+  const bridgeContact = bridgeContacts.find((contact) => (
+    contactReadyForSend(contact) &&
+    String(contact.localDisplayName || '') === ownerName
+  ));
+  if (!ownerContact || !bridgeContact) return null;
+  return {
+    ownerContactId: String(ownerContact.contactId),
+    bridgeContactId: String(bridgeContact.contactId)
+  };
 }
 
 async function createInvitation(ownerUserId) {
@@ -1573,6 +1606,20 @@ async function provisionContact(npub) {
 
     let ownerBefore = await listContacts(ownerUserId);
     let bridgeBefore = await listContacts(bridgeUserId);
+    const existingIds = findExistingProvisionedContacts(ownerBefore, bridgeBefore, owner, bridgeUser);
+    if (existingIds) {
+      upsertContactStmt.run(
+        npub,
+        existingIds.ownerContactId,
+        bridgeUserId,
+        existingIds.bridgeContactId,
+        'active',
+        nowIso(),
+        nowIso(),
+        nowIso()
+      );
+      return contactRowToJson(selectContactByNpubStmt.get(npub));
+    }
     let link;
     try {
       link = await ownerAddressLink(ownerUserId, false);
