@@ -196,7 +196,7 @@ function openWs() {
 let commandSeq = 0;
 
 function sendCommand(ws, cmd) {
-  const corrId = `secure-chat-direct-${Date.now()}-${++commandSeq}`;
+  const corrId = `scd-${Date.now()}-${++commandSeq}`;
   logDirect('command_send', { corrId, command: cmd.replace(/ text .*/s, ' text [redacted]') });
   return new Promise((resolve, reject) => {
     function cleanup() {
