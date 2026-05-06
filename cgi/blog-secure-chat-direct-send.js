@@ -235,6 +235,7 @@ function sendTextSequential(userId, contactId, text) {
     let step = 0;
     let settled = false;
     let ws = null;
+    let sendAttempts = 0;
     function finish(fn, value) {
       if (settled) return;
       settled = true;
@@ -268,6 +269,7 @@ function sendTextSequential(userId, contactId, text) {
           return;
         }
         step = 1;
+        sendAttempts = 1;
         send(`/_send @${contactId} text ${text}`);
         return;
       }
@@ -276,6 +278,12 @@ function sendTextSequential(userId, contactId, text) {
         return;
       }
       if (resp.type === 'chatCmdError') {
+        if (sendAttempts < 3) {
+          sendAttempts += 1;
+          setTimeout(() => {
+            if (!settled) send(`/_send @${contactId} text ${text}`);
+          }, 150);
+        }
         return;
       }
       finish(reject, new Error(`Unexpected send response: ${resp.type || 'unknown'}`));
