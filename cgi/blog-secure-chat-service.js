@@ -1087,8 +1087,8 @@ function openWsConnection() {
       fn(value);
     }
     const timer = setTimeout(() => {
-      try { ws.close(); } catch (_err) {}
       finish(reject, new Error('Timed out connecting to simplex-chat local WebSocket'));
+      try { ws.close(); } catch (_err) {}
     }, 2000);
 
     ws.addEventListener('open', () => {
@@ -1116,8 +1116,8 @@ function openWsConnection() {
     });
     ws.addEventListener('error', (err) => {
       clearTimeout(timer);
-      try { ws.close(); } catch (_closeErr) {}
       finish(reject, err);
+      try { ws.close(); } catch (_closeErr) {}
     });
   });
 }
