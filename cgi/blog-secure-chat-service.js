@@ -56,6 +56,7 @@ try {
 
 let cachedNativeSimplex = undefined;
 let cachedNativeSimplexError = '';
+let nativeSimplexDisabled = false;
 
 function tryRequire(moduleId) {
   try {
@@ -67,6 +68,7 @@ function tryRequire(moduleId) {
 }
 
 function loadNativeSimplexModule() {
+  if (nativeSimplexDisabled) return null;
   if (cachedNativeSimplex !== undefined) return cachedNativeSimplex;
   const candidates = [];
   if (SIMPLEX_NATIVE_MODULE_ROOT) {
@@ -84,6 +86,15 @@ function loadNativeSimplexModule() {
   }
   cachedNativeSimplex = null;
   return null;
+}
+
+function disableNativeSimplexDriver(err) {
+  nativeSimplexDisabled = true;
+  cachedNativeSimplex = null;
+  cachedNativeSimplexError = err && err.message ? err.message : String(err || 'native simplex-chat driver failed');
+  state.nativeSimplex = null;
+  state.nativeChat = null;
+  state.driverType = 'unknown';
 }
 
 function nowIso() {
@@ -1113,16 +1124,17 @@ function openWsConnection() {
 
 async function ensureWsConnection() {
   if (nativeDriverAvailable()) {
-    return ensureNativeChatApi().then((chat) => {
+    try {
+      const chat = await ensureNativeChatApi();
       state.wsConnected = true;
       state.transportStatus = 'connected';
       state.transportError = '';
       return chat;
-    }).catch((err) => {
+    } catch (err) {
+      disableNativeSimplexDriver(err);
       state.transportStatus = 'degraded';
       state.transportError = err && err.message ? err.message : 'Could not initialize simplex-chat native driver';
-      throw err;
-    });
+    }
   }
   if (isWebSocketOpen()) {
     return Promise.resolve();
@@ -1168,18 +1180,28 @@ async function sendCommand(cmd) {
 
 async function ensureChatStarted() {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
-    if (!chat.started) {
-      await chat.startChat().catch((err) => {
+    try {
+      const chat = await ensureNativeChatApi();
+      if (!chat.started) {
+        await chat.startChat();
+        chat.started = true;
+      }
+      state.transportStatus = 'connected';
+      state.transportError = '';
+      return;
+    } catch (err) {
+      disableNativeSimplexDriver(err);
+      try {
+        await stopNativeChat();
+      } catch (_stopErr) {}
+      if (!nativeDriverAvailable()) {
+        startSimplexChild();
+      } else {
         state.transportStatus = 'degraded';
         state.transportError = err && err.message ? err.message : 'Could not start simplex-chat native driver';
         throw err;
-      });
-      chat.started = true;
+      }
     }
-    state.transportStatus = 'connected';
-    state.transportError = '';
-    return;
   }
   const resp = await sendCommand('/_start').catch((err) => {
     state.transportStatus = 'degraded';
