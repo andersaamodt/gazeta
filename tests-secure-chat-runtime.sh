@@ -202,7 +202,11 @@ simplex_bin=$(blog_secure_chat_simplex_binary)
 assert_eq "/tmp/custom-simplex-chat" "$simplex_bin" 'secure chat simplex binary honors site config override'
 
 native_module_root=$(blog_secure_chat_native_module_root)
-assert_eq "$SITE_DATA/secure-chat/runtime/native-driver" "$native_module_root" 'secure chat native driver root defaults to persistent site runtime storage'
+assert_eq "" "$native_module_root" 'secure chat native driver is disabled by default'
+
+printf '%s\n' 'secure_chat_native_driver_enabled=true' >> "$SITE_ROOT/site.conf"
+native_module_root=$(blog_secure_chat_native_module_root)
+assert_eq "$SITE_DATA/secure-chat/runtime/native-driver" "$native_module_root" 'secure chat native driver root is available when explicitly enabled'
 
 launch_path=$(blog_secure_chat_launch_path "$custom_node" "/tmp/custom-simplex-chat")
 assert_contains "$launch_path" "$(dirname "$custom_node")" 'secure chat launch path includes node binary directory'
@@ -402,6 +406,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_require_sessio
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'new DatabaseSync' 'service no longer uses sqlite-backed storage'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'sqlite3 ' 'cgi helper no longer depends on sqlite shell access'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'rmdir "$lock_dir"' 'secure chat launcher recovers stale service-start locks'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'secure_chat_native_driver_enabled' 'native SimpleX driver is opt-in so broken installs do not mask CLI fallback'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SECURE_CHAT_STORE_DIR' 'service uses file-backed store root env'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl' 'service resolves a usable local WebSocket implementation'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'disableNativeSimplexDriver' 'service falls back when the native SimpleX driver is present but unusable'

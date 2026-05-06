@@ -173,7 +173,15 @@ blog_secure_chat_native_module_root() {
     printf '%s\n' "$explicit"
     return 0
   fi
-  printf '%s/native-driver\n' "$(blog_secure_chat_runtime_dir)"
+  enabled=$(config-get "$blog_site_conf" secure_chat_native_driver_enabled 2>/dev/null || printf 'false')
+  case "$enabled" in
+    true|1|yes|on)
+      printf '%s/native-driver\n' "$(blog_secure_chat_runtime_dir)"
+      ;;
+    *)
+      printf '\n'
+      ;;
+  esac
 }
 
 blog_secure_chat_launch_path() {
