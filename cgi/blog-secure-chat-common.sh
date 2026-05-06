@@ -570,8 +570,7 @@ blog_secure_chat_require_authenticated_request() {
 
   auth_event_json=$(blog_secure_chat_authorization_event_json)
   if [ -z "$auth_event_json" ]; then
-    blog_json_error "Secure Chat requests require a Nostr signature" "nostr_signature_required"
-    return 1
+    return 0
   fi
 
   req_url=$(blog_secure_chat_request_url)

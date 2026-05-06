@@ -448,18 +448,9 @@
     });
   }
 
-  function secureChatSigner() {
-    if (window.blogNostrSigner && typeof window.blogNostrSigner.signEvent === 'function') {
-      return window.blogNostrSigner;
-    }
-    if (window.nostr && typeof window.nostr.signEvent === 'function') {
-      return window.nostr;
-    }
-    return null;
-  }
-
   function hasBrowserSigner() {
-    return !!secureChatSigner();
+    return !!((window.blogNostrSigner && typeof window.blogNostrSigner.signEvent === 'function') ||
+      (window.nostr && typeof window.nostr.signEvent === 'function'));
   }
 
   function hasSecureChatSession() {
@@ -468,47 +459,18 @@
     return !!(auth.session_token && auth.csrf_token && (authMethod === 'nostr' || secureChatStoredPubkey()));
   }
 
-  function encodeBase64Utf8(text) {
-    var raw = String(text || '');
-    try {
-      return btoa(unescape(encodeURIComponent(raw)));
-    } catch (_err) {
-      return btoa(raw);
-    }
-  }
-
   function secureChatEndpointUrl(pathname) {
     return new URL(String(pathname || ''), window.location.origin).toString();
   }
 
-  function secureChatSignerTemplate(url, method) {
-    return {
-      kind: 27235,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [
-        ['u', String(url || '')],
-        ['method', String(method || 'GET').toUpperCase()]
-      ],
-      content: ''
-    };
-  }
-
-  function secureChatRequestHeaders(url, method) {
-    var signer = secureChatSigner();
-    if (!signer) {
-      return Promise.reject(new Error('Secure Chat requires a Nostr signer so each request can be signed.'));
-    }
+  function secureChatRequestHeaders() {
     if (!hasSecureChatSession()) {
       return Promise.reject(new Error('Secure Chat requires an authenticated Nostr session.'));
     }
-    var template = secureChatSignerTemplate(url, method);
-    return Promise.resolve(signer.signEvent(template)).then(function (signed) {
-      var auth = authPayload();
-      return {
-        'Authorization': 'Nostr ' + encodeBase64Utf8(JSON.stringify(signed || template)),
-        'X-Session-Token': auth.session_token,
-        'X-CSRF-Token': auth.csrf_token
-      };
+    var auth = authPayload();
+    return Promise.resolve({
+      'X-Session-Token': auth.session_token,
+      'X-CSRF-Token': auth.csrf_token
     });
   }
 
@@ -674,10 +636,10 @@
   }
 
   function refreshSecureChatState(opts) {
-    if (!hasSecureChatSession() || !hasBrowserSigner()) {
+    if (!hasSecureChatSession()) {
       state.chat.available = false;
       state.chat.loading = false;
-      state.chat.error = hasSecureChatSession() ? 'Secure Chat requires a browser signer (NIP-07).' : '';
+      state.chat.error = '';
       renderContent();
       return Promise.resolve(false);
     }
@@ -719,7 +681,7 @@
       clearTimeout(state.chat.pollTimer);
       state.chat.pollTimer = null;
     }
-    if (document.hidden || !hasSecureChatSession() || !hasBrowserSigner()) {
+    if (document.hidden || !hasSecureChatSession()) {
       return;
     }
     state.chat.pollTimer = window.setTimeout(function () {
@@ -798,7 +760,6 @@
       return new Promise(function (resolve, reject) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', absoluteUrl, true);
-        xhr.setRequestHeader('Authorization', headers.Authorization);
         xhr.setRequestHeader('X-Session-Token', headers['X-Session-Token']);
         xhr.setRequestHeader('X-CSRF-Token', headers['X-CSRF-Token']);
         xhr.setRequestHeader('X-Upload-Id', String(ticket.upload_id || ''));
@@ -903,7 +864,7 @@
       var combinedUploads = secureChatPersistableUploads();
       return sharedRenderer.renderPanel({
         loggedIn: hasSecureChatSession(),
-        hasSigner: hasBrowserSigner(),
+        hasSigner: true,
         error: state.chat.error,
         sending: state.chat.sending,
         draftText: state.chat.draftText || '',
@@ -923,11 +884,6 @@
     }
     html += '</div>';
     if (!hasSecureChatSession()) {
-      html += '</section>';
-      return html;
-    }
-    if (!hasBrowserSigner()) {
-      html += '<p class="secure-chat-empty">Secure Chat requires a Nostr signer so each request can be signed.</p>';
       html += '</section>';
       return html;
     }
@@ -2666,7 +2622,7 @@
       load();
       return;
     }
-    if (hasSecureChatSession() && hasBrowserSigner()) {
+    if (hasSecureChatSession()) {
       refreshSecureChatState();
       scheduleSecureChatPoll();
     }
@@ -2704,7 +2660,7 @@
         }
       }
       markInitialContentPainted();
-      if (hasSecureChatSession() && hasBrowserSigner()) {
+      if (hasSecureChatSession()) {
         refreshSecureChatState({ reset: true }).finally(function () {
           scheduleSecureChatPoll();
         });
