@@ -250,8 +250,8 @@ body.blog-post-resize-enabled {
 /* Keep blog-listing canvas uniform across html/body even when themes paint backgrounds. */
 html:has(#blog-page-root),
 body:has(#blog-page-root) {
-  background: var(--bg) !important;
-  background-image: none !important;
+  background: var(--page-canvas-bg) !important;
+  background-attachment: fixed;
 }
 
 body.list-page-width-anim {
