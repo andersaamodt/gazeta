@@ -68,6 +68,7 @@
       uploads: [],
       localUploads: {},
       lastSeq: 0,
+      sessionVerified: false,
       error: '',
       pollTimer: null,
       attachedFilesToken: 0,
@@ -448,11 +449,6 @@
     });
   }
 
-  function hasBrowserSigner() {
-    return !!((window.blogNostrSigner && typeof window.blogNostrSigner.signEvent === 'function') ||
-      (window.nostr && typeof window.nostr.signEvent === 'function'));
-  }
-
   function hasSecureChatSession() {
     var auth = authPayload();
     var authMethod = secureChatAuthMethod();
@@ -499,7 +495,9 @@
           throw new Error('Invalid Secure Chat response');
         }
         if (!data || data.success === false) {
-          throw new Error((data && data.error) || 'Secure Chat request failed');
+          var responseError = new Error((data && data.error) || 'Secure Chat request failed');
+          responseError.code = data && data.code ? String(data.code) : '';
+          throw responseError;
         }
         return data;
       });
@@ -623,8 +621,13 @@
     state.chat.uploads = [];
     state.chat.localUploads = {};
     state.chat.lastSeq = 0;
+    state.chat.sessionVerified = false;
     state.chat.error = '';
     state.chat.adminMappings = [];
+  }
+
+  function hasVerifiedSecureChatSession() {
+    return hasSecureChatSession() && state.chat.sessionVerified === true;
   }
 
   function renderSecureChatThreadState() {
@@ -656,6 +659,7 @@
     }).then(function (data) {
       state.chat.loading = false;
       state.chat.error = '';
+      state.chat.sessionVerified = true;
       state.chat.npub = String(data.npub || state.chat.npub || '');
       state.chat.service = data.service || null;
       state.chat.mapping = data.mapping || null;
@@ -670,6 +674,9 @@
       return true;
     }).catch(function (err) {
       state.chat.loading = false;
+      if (err && (err.code === 'auth_required' || err.code === 'csrf_invalid')) {
+        state.chat.sessionVerified = false;
+      }
       state.chat.error = err && err.message ? err.message : 'Could not refresh Secure Chat.';
       renderContent();
       return false;
@@ -863,7 +870,7 @@
     if (sharedRenderer) {
       var combinedUploads = secureChatPersistableUploads();
       return sharedRenderer.renderPanel({
-        loggedIn: hasSecureChatSession(),
+        loggedIn: hasVerifiedSecureChatSession(),
         hasSigner: true,
         error: state.chat.error,
         sending: state.chat.sending,
@@ -879,11 +886,11 @@
     var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
-    if (!hasSecureChatSession()) {
+    if (!hasVerifiedSecureChatSession()) {
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     }
     html += '</div>';
-    if (!hasSecureChatSession()) {
+    if (!hasVerifiedSecureChatSession()) {
       html += '</section>';
       return html;
     }
@@ -2139,13 +2146,8 @@
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
-          if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
-            window.blogAuth.startLogin().catch(function (err) {
-              state.chat.error = err && err.message ? err.message : 'Login is not ready yet.';
-              renderContent();
-            });
-          } else if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-            window.blogAuth.openLoginModal(hasBrowserSigner() ? 'register' : 'phone');
+          if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+            window.blogAuth.openLoginModal('auto');
           } else {
             state.chat.error = 'Login is still loading. The Secure Chat sign-in panel will be available in a moment.';
             renderContent();
