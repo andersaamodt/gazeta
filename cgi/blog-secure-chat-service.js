@@ -1164,8 +1164,14 @@ async function sendCommand(cmd) {
   const corrId = `secure-chat-${Date.now()}-${++state.commandSeq}`;
   const payload = JSON.stringify({ corrId, cmd });
   return new Promise((resolve, reject) => {
+    const commandWs = state.ws;
     const timer = setTimeout(() => {
       pendingCommands.delete(corrId);
+      if (state.ws === commandWs) {
+        try { commandWs.close(); } catch (_closeErr) {}
+        state.ws = null;
+        state.wsConnected = false;
+      }
       reject(new Error(`SimpleX command timed out: ${cmd}`));
     }, COMMAND_TIMEOUT_MS);
     pendingCommands.set(corrId, {

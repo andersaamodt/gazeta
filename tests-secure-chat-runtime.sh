@@ -218,6 +218,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SERVICE_LOG_PA
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sanitizeSimplexDisplayName' 'secure chat fallback removes invalid characters from SimpleX bot display names'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'state.simplexProcess = null' 'secure chat fallback can restart simplex after child process exit'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'finish(reject, err);' 'secure chat websocket retries settle before closing failed sockets'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'state.ws === commandWs' 'secure chat command timeouts discard stale websocket connections'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl.OPEN' 'secure chat service uses the active websocket implementation for ready-state checks'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "node_modules', 'simplex-chat'" 'secure chat service can load the official native SimpleX Node API from a persistent runtime root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'chat.started = true' 'secure chat native driver does not repeatedly start an already-running ChatApi'
