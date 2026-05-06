@@ -2162,7 +2162,6 @@ async function handleSend(req, res) {
     safeJson(res, 400, { success: false, error: 'sessionPubkey is required' });
     return;
   }
-  await ensureRuntime();
   const tickets = [];
   if (text.trim()) {
     await sendTextMessage(pubkeyHex, text);

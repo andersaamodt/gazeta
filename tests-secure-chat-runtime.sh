@@ -247,6 +247,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'text: row.text
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'withTransportLock' 'secure chat service serializes active-user transport operations during send and reconciliation'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'openCommandWsConnection' 'secure chat commands use fresh WebSocket connections instead of a stale shared command channel'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendCommandAsUser(activeUserId' 'secure chat sends activate the bridge user on the same WebSocket connection as the send command'
+handle_send_prefix=$(sed -n '/async function handleSend/,/const tickets = \[\];/p' "$ROOT_DIR/cgi/blog-secure-chat-service.js")
+if printf '%s' "$handle_send_prefix" | grep -Fq 'await ensureRuntime();'; then
+  fail 'secure chat sends do not block on optional owner runtime warmup before using an active mapping'
+else
+  pass
+fi
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'const rows = rawRows.filter(visibleMessageRow);' 'secure chat service filters protocol/system chat items from website message payloads'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'cursor_seq: cursorSeq' 'secure chat service returns a cursor sequence so polling can advance past hidden protocol items'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'owlExportPayload' 'secure chat service exposes an Owl Native export payload'
