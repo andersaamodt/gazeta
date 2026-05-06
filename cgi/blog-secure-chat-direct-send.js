@@ -27,6 +27,18 @@ if (!STORE_ROOT || !SIMPLEX_WS_PORT || !WebSocketImpl) {
 const CONTACTS_DIR = path.join(STORE_ROOT, 'contacts');
 const MESSAGES_DIR = path.join(STORE_ROOT, 'messages');
 const META_DIR = path.join(STORE_ROOT, 'meta');
+const DIRECT_LOG_PATH = path.join(STORE_ROOT, '..', 'runtime', 'direct-send.log');
+
+function logDirect(type, detail) {
+  try {
+    fs.appendFileSync(DIRECT_LOG_PATH, JSON.stringify(Object.assign({
+      ts: new Date().toISOString(),
+      type
+    }, detail || {})) + '\n');
+  } catch (_err) {
+    // ignore logging failures
+  }
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -162,6 +174,7 @@ function parseResponseEnvelope(message) {
 
 function openWs() {
   return new Promise((resolve, reject) => {
+    logDirect('open_ws_start', { port: SIMPLEX_WS_PORT });
     const ws = new WebSocketImpl(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
     const timer = setTimeout(() => {
       try { ws.close(); } catch (_err) {}
@@ -169,10 +182,12 @@ function openWs() {
     }, 2000);
     ws.addEventListener('open', () => {
       clearTimeout(timer);
+      logDirect('open_ws_ok');
       resolve(ws);
     });
     ws.addEventListener('error', (err) => {
       clearTimeout(timer);
+      logDirect('open_ws_error', { error: err && err.message ? err.message : String(err || 'unknown') });
       reject(err);
     });
   });
@@ -182,6 +197,7 @@ let commandSeq = 0;
 
 function sendCommand(ws, cmd) {
   const corrId = `secure-chat-direct-${Date.now()}-${++commandSeq}`;
+  logDirect('command_send', { corrId, command: cmd.replace(/ text .*/s, ' text [redacted]') });
   return new Promise((resolve, reject) => {
     function cleanup() {
       clearTimeout(timer);
@@ -190,6 +206,11 @@ function sendCommand(ws, cmd) {
     }
     function onMessage(event) {
       const envelope = parseResponseEnvelope(event.data);
+      logDirect('command_message', {
+        corrId,
+        envelopeCorrId: envelope && envelope.corrId || '',
+        responseType: envelope && envelope.resp && envelope.resp.type || ''
+      });
       if (!envelope || envelope.corrId !== corrId) return;
       cleanup();
       resolve(envelope.resp);
@@ -200,6 +221,7 @@ function sendCommand(ws, cmd) {
     }
     const timer = setTimeout(() => {
       cleanup();
+      logDirect('command_timeout', { corrId, command: cmd.replace(/ text .*/s, ' text [redacted]') });
       reject(new Error(`SimpleX command timed out: ${cmd}`));
     }, COMMAND_TIMEOUT_MS);
     ws.addEventListener('message', onMessage);
@@ -250,6 +272,7 @@ function appendMessage(mapping, text, chatItem) {
 
 async function main() {
   const payloadPath = process.argv[2] || '';
+  logDirect('start', { payloadPath });
   const payload = readJsonFile(payloadPath, null);
   if (!payload || typeof payload !== 'object') throw new Error('Invalid Secure Chat payload');
   const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
@@ -260,6 +283,12 @@ async function main() {
   }
   const npub = pubkeyToNpub(payload.sessionPubkey);
   const mapping = readJsonFile(contactFilePath(npub), null);
+  logDirect('mapping_loaded', {
+    npub,
+    status: mapping && mapping.status || '',
+    bridgeUserId: mapping && mapping.bridge_user_id || '',
+    bridgeContactId: mapping && mapping.bridge_contact_id || ''
+  });
   if (!mapping || mapping.status !== 'active' || !mapping.bridge_user_id || !mapping.bridge_contact_id) {
     process.stdout.write(JSON.stringify({ success: false, code: 'mapping_unavailable' }) + '\n');
     return;
@@ -276,6 +305,10 @@ async function main() {
     }
     const first = resp.chatItems[0] && resp.chatItems[0].chatItem ? resp.chatItems[0].chatItem : null;
     appendMessage(mapping, text, first);
+    logDirect('success', {
+      npub,
+      messageRef: first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : ''
+    });
     process.stdout.write(JSON.stringify({ success: true, uploads: [] }) + '\n');
   } finally {
     try { ws.close(); } catch (_err) {}
@@ -283,6 +316,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  logDirect('error', { error: err && err.message ? err.message : String(err || 'Secure Chat direct send failed') });
   process.stdout.write(JSON.stringify({
     success: false,
     error: err && err.message ? err.message : String(err || 'Secure Chat direct send failed'),
