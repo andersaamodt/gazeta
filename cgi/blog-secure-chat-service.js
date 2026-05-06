@@ -736,6 +736,7 @@ const state = {
   wsConnected: false,
   commandSeq: 0,
   activeUserId: metaGet('last_active_user_id') || '',
+  ownerAddressCheckedUserId: '',
   transportStatus: 'starting',
   transportError: '',
   simplexProcess: null,
@@ -1273,7 +1274,7 @@ async function createUser(profile) {
     ? await (await ensureNativeChatApi()).sendChatCmd(command)
     : await sendCommand(command);
   if (resp.type !== 'activeUser' || !resp.user) {
-    throw new Error(`Could not create user: ${resp.type || 'unknown'}`);
+    throw new Error(chatCommandErrorMessage(`Could not create user: ${resp.type || 'unknown'}`, resp));
   }
   state.activeUserId = String(resp.user.userId);
   return resp.user;
@@ -1362,14 +1363,21 @@ async function recreateOwnerAddress(userId) {
 }
 
 async function ensureUsableOwnerAddress(userId) {
+  if (String(state.ownerAddressCheckedUserId || '') === String(userId)) {
+    return;
+  }
   try {
-    return await enableOwnerAddress(userId);
+    const address = await enableOwnerAddress(userId);
+    state.ownerAddressCheckedUserId = String(userId);
+    return address;
   } catch (err) {
     if (!nativeDriverAvailable()) throw err;
     logEvent('owner_address_recreate_after_error', {
       error: err && err.message ? err.message : String(err || 'unknown error')
     });
-    return recreateOwnerAddress(userId);
+    const address = await recreateOwnerAddress(userId);
+    state.ownerAddressCheckedUserId = String(userId);
+    return address;
   }
 }
 
