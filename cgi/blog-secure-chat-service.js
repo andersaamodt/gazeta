@@ -1158,6 +1158,31 @@ async function ensureWsConnection() {
   throw lastError || new Error('Timed out connecting to simplex-chat local WebSocket');
 }
 
+function openCommandWsConnection() {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocketImpl(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
+    let settled = false;
+    function finish(fn, value) {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    }
+    const timer = setTimeout(() => {
+      finish(reject, new Error('Timed out connecting to simplex-chat command WebSocket'));
+      try { ws.close(); } catch (_err) {}
+    }, 2000);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      finish(resolve, ws);
+    });
+    ws.addEventListener('error', (err) => {
+      clearTimeout(timer);
+      finish(reject, err);
+      try { ws.close(); } catch (_closeErr) {}
+    });
+  });
+}
+
 async function sendCommand(cmd) {
   const transport = await ensureWsConnection();
   if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
@@ -1165,24 +1190,29 @@ async function sendCommand(cmd) {
   }
   const corrId = `secure-chat-${Date.now()}-${++state.commandSeq}`;
   const payload = JSON.stringify({ corrId, cmd });
+  const commandWs = await openCommandWsConnection();
   return new Promise((resolve, reject) => {
-    const commandWs = state.ws;
     const timer = setTimeout(() => {
-      pendingCommands.delete(corrId);
-      if (state.ws === commandWs) {
-        try { commandWs.close(); } catch (_closeErr) {}
-        state.ws = null;
-        state.wsConnected = false;
-      }
+      try { commandWs.close(); } catch (_closeErr) {}
       reject(new Error(`SimpleX command timed out: ${cmd}`));
     }, COMMAND_TIMEOUT_MS);
-    pendingCommands.set(corrId, {
-      resolve(resp) {
+    commandWs.addEventListener('message', (event) => {
+      const envelope = parseResponseEnvelope(event.data);
+      if (!envelope || !envelope.resp) return;
+      if (!envelope.corrId || envelope.corrId === corrId) {
         clearTimeout(timer);
-        resolve(resp);
+        try { commandWs.close(); } catch (_closeErr) {}
+        resolve(envelope.resp);
+        return;
       }
+      handleIncomingEvent(envelope.resp);
     });
-    state.ws.send(payload);
+    commandWs.addEventListener('error', (err) => {
+      clearTimeout(timer);
+      try { commandWs.close(); } catch (_closeErr) {}
+      reject(err);
+    });
+    commandWs.send(payload);
   });
 }
 
