@@ -31,7 +31,6 @@ jq -cn \
   '{sessionPubkey:$sessionPubkey,text:$text,attachments:$attachments}' > "$payload_file"
 
 if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
-  blog_secure_chat_service_request GET /health >/dev/null 2>&1 || true
   direct_response=$(
     SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
     SECURE_CHAT_SIMPLEX_WS_PORT=$(blog_secure_chat_simplex_ws_port) \
