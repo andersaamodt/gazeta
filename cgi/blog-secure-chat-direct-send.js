@@ -240,6 +240,10 @@ function deliveryStatusFromChatItem(chatItem) {
   return itemStatus.type;
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function appendMessage(mapping, text, chatItem) {
   const npub = validateNpub(mapping.npub);
   const now = nowIso();
@@ -299,6 +303,7 @@ async function main() {
     if (!active || active.type !== 'activeUser') {
       throw new Error(`Could not activate SimpleX user ${mapping.bridge_user_id}`);
     }
+    await delay(100);
     const resp = await sendCommand(ws, `/_send @${mapping.bridge_contact_id} text ${text}`);
     if (!resp || resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(`Unexpected send response: ${resp && resp.type || 'unknown'}`);
