@@ -248,6 +248,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'withTransportL
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'const rows = rawRows.filter(visibleMessageRow);' 'secure chat service filters protocol/system chat items from website message payloads'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'cursor_seq: cursorSeq' 'secure chat service returns a cursor sequence so polling can advance past hidden protocol items'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'owlExportPayload' 'secure chat service exposes an Owl Native export payload'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'OWL_EXPORT_RECONCILE_TIMEOUT_MS' 'Owl Native export bounds SimpleX reconciliation so queued messages return promptly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendOwnerTextMessage' 'secure chat service can send Owl Native replies through the owner profile'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'owl_send_reprovision_legacy_mapping' 'Owl send reprovisions legacy single-profile mappings before replying'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'String(mapping.bridge_user_id) === String(owner.userId)' 'Owl send rejects mappings where the bridge user is the owner identity'

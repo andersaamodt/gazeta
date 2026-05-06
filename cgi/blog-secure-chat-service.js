@@ -29,6 +29,7 @@ const COMMAND_TIMEOUT_MS = Number(process.env.SECURE_CHAT_COMMAND_TIMEOUT_MS || 
 const PROVISION_TIMEOUT_MS = Number(process.env.SECURE_CHAT_PROVISION_TIMEOUT_MS || 90000);
 const RECONCILE_CHAT_ITEM_LIMIT = Number(process.env.SECURE_CHAT_RECONCILE_CHAT_ITEM_LIMIT || 100);
 const RECONCILE_MIN_INTERVAL_MS = Number(process.env.SECURE_CHAT_RECONCILE_MIN_INTERVAL_MS || 1500);
+const OWL_EXPORT_RECONCILE_TIMEOUT_MS = Number(process.env.SECURE_CHAT_OWL_EXPORT_RECONCILE_TIMEOUT_MS || 5000);
 const SERVICE_LOG_PATH = path.join(path.dirname(SOCKET_PATH || '/tmp/service.sock'), 'service.log');
 
 if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
@@ -1782,6 +1783,19 @@ async function reconcileAllMappingMessages() {
   }
 }
 
+async function reconcileAllMappingMessagesForOwlExport() {
+  try {
+    await Promise.race([
+      reconcileAllMappingMessages(),
+      new Promise((resolve) => setTimeout(resolve, OWL_EXPORT_RECONCILE_TIMEOUT_MS))
+    ]);
+  } catch (err) {
+    logEvent('owl_export_reconcile_error', {
+      error: err && err.message ? err.message : String(err || 'unknown error')
+    });
+  }
+}
+
 async function reconcileStateMessages(pubkeyHex) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
@@ -2040,7 +2054,7 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
 }
 
 async function owlExportPayload(sinceSeq) {
-  await reconcileAllMappingMessages();
+  await reconcileAllMappingMessagesForOwlExport();
   const since = Number(sinceSeq || 0);
   const messages = [];
   const mappings = selectMappingsStmt.all(500).map(contactRowToJson);
