@@ -224,6 +224,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'ownerAddressCh
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'SECURE_CHAT_COMMAND_TIMEOUT_MS || 90000' 'secure chat allows bounded slow SimpleX provisioning commands'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'findExistingProvisionedContacts' 'secure chat provisioning recovers existing ready SimpleX bridge contacts'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'userExists' 'secure chat provisioning reuses existing bridge users after partial retries'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendPlainTextMessage' 'secure chat text sends use SimpleX text command instead of hanging json command'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'WebSocketImpl.OPEN' 'secure chat service uses the active websocket implementation for ready-state checks'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "node_modules', 'simplex-chat'" 'secure chat service can load the official native SimpleX Node API from a persistent runtime root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'chat.started = true' 'secure chat native driver does not repeatedly start an already-running ChatApi'

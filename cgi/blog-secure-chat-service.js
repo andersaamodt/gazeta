@@ -1697,6 +1697,20 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
   });
 }
 
+async function sendPlainTextMessage(activeUserId, chatRef, text) {
+  return withTransportLock(async () => {
+    await setActiveUser(activeUserId);
+    const cmd = `/_send ${chatRef} text ${String(text || '')}`;
+    const resp = nativeDriverAvailable()
+      ? await (await ensureNativeChatApi()).sendChatCmd(cmd)
+      : await sendCommand(cmd);
+    if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
+      throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
+    }
+    return resp.chatItems;
+  });
+}
+
 async function freshMappingAfterSendFailure(npub, reason, pubkeyHex) {
   logEvent('send_retry_reprovision_mapping', {
     npub,
@@ -1810,19 +1824,13 @@ async function sendTextMessage(pubkeyHex, text, retried) {
   rememberMessageText(seq, text, null);
   let chatItems;
   try {
-    chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
-      msgContent: { type: 'text', text: String(text || '') },
-      mentions: {}
-    }]);
+    chatItems = await sendPlainTextMessage(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, text);
   } catch (err) {
     const detail = errorDetail(err);
     if (!retried) {
       try {
         mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex);
-        chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
-          msgContent: { type: 'text', text: String(text || '') },
-          mentions: {}
-        }]);
+        chatItems = await sendPlainTextMessage(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, text);
       } catch (retryErr) {
         updateMessageBySeq(seq, {
           delivery_status: 'failed',
