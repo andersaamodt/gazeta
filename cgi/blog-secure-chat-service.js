@@ -1188,32 +1188,64 @@ async function sendCommand(cmd) {
   if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
     return transport.sendChatCmd(cmd);
   }
+  const commandWs = await openCommandWsConnection();
+  try {
+    return await sendCommandOnConnection(commandWs, cmd);
+  } finally {
+    try { commandWs.close(); } catch (_closeErr) {}
+  }
+}
+
+function sendCommandOnConnection(commandWs, cmd) {
   const corrId = `secure-chat-${Date.now()}-${++state.commandSeq}`;
   const payload = JSON.stringify({ corrId, cmd });
-  const commandWs = await openCommandWsConnection();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      try { commandWs.close(); } catch (_closeErr) {}
-      reject(new Error(`SimpleX command timed out: ${cmd}`));
-    }, COMMAND_TIMEOUT_MS);
-    commandWs.addEventListener('message', (event) => {
+    function cleanup() {
+      clearTimeout(timer);
+      commandWs.removeEventListener('message', onMessage);
+      commandWs.removeEventListener('error', onError);
+    }
+    function onMessage(event) {
       const envelope = parseResponseEnvelope(event.data);
       if (!envelope || !envelope.resp) return;
       if (!envelope.corrId || envelope.corrId === corrId) {
-        clearTimeout(timer);
-        try { commandWs.close(); } catch (_closeErr) {}
+        cleanup();
         resolve(envelope.resp);
         return;
       }
       handleIncomingEvent(envelope.resp);
-    });
-    commandWs.addEventListener('error', (err) => {
-      clearTimeout(timer);
-      try { commandWs.close(); } catch (_closeErr) {}
+    }
+    function onError(err) {
+      cleanup();
       reject(err);
-    });
+    }
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`SimpleX command timed out: ${cmd}`));
+    }, COMMAND_TIMEOUT_MS);
+    commandWs.addEventListener('message', onMessage);
+    commandWs.addEventListener('error', onError);
     commandWs.send(payload);
   });
+}
+
+async function sendCommandAsUser(userId, cmd) {
+  const transport = await ensureWsConnection();
+  if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
+    await setActiveUser(userId);
+    return transport.sendChatCmd(cmd);
+  }
+  const commandWs = await openCommandWsConnection();
+  try {
+    const userResp = await sendCommandOnConnection(commandWs, `/_user ${userId}`);
+    if (userResp.type !== 'activeUser') {
+      throw new Error(chatCommandErrorMessage(`Could not activate user ${userId}: ${userResp.type || 'unknown'}`, userResp));
+    }
+    state.activeUserId = String(userId);
+    return await sendCommandOnConnection(commandWs, cmd);
+  } finally {
+    try { commandWs.close(); } catch (_closeErr) {}
+  }
 }
 
 async function ensureChatStarted() {
@@ -1709,8 +1741,8 @@ async function ensureMappingForPubkey(pubkeyHex) {
 
 async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
   return withTransportLock(async () => {
-    await setActiveUser(activeUserId);
     if (nativeDriverAvailable()) {
+      await setActiveUser(activeUserId);
       const chat = await ensureNativeChatApi();
       const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`).catch((err) => {
         throw new Error(chatCommandErrorMessage('SimpleX send failed', err));
@@ -1720,7 +1752,7 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
       }
       return resp.chatItems;
     }
-    const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
+    const resp = await sendCommandAsUser(activeUserId, `/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
     }
@@ -1730,11 +1762,13 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
 
 async function sendPlainTextMessage(activeUserId, chatRef, text) {
   return withTransportLock(async () => {
-    await setActiveUser(activeUserId);
     const cmd = `/_send ${chatRef} text ${String(text || '')}`;
     const resp = nativeDriverAvailable()
-      ? await (await ensureNativeChatApi()).sendChatCmd(cmd)
-      : await sendCommand(cmd);
+      ? await (async () => {
+        await setActiveUser(activeUserId);
+        return (await ensureNativeChatApi()).sendChatCmd(cmd);
+      })()
+      : await sendCommandAsUser(activeUserId, cmd);
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
     }
@@ -1769,13 +1803,13 @@ function wrapApiChatItems(resp) {
 
 async function fetchRecentDirectChatItems(activeUserId, bridgeContactId, count) {
   return withTransportLock(async () => {
-    await setActiveUser(activeUserId);
     const cmd = `/_get chat @${bridgeContactId} count=${count}`;
     if (nativeDriverAvailable()) {
+      await setActiveUser(activeUserId);
       const chat = await ensureNativeChatApi();
       return wrapApiChatItems(await chat.sendChatCmd(cmd));
     }
-    const resp = await sendCommand(cmd);
+    const resp = await sendCommandAsUser(activeUserId, cmd);
     if (resp.type === 'apiChat') return wrapApiChatItems(resp);
     if (resp.type === 'chatCmdError') {
       throw new Error(resp.chatError && resp.chatError.type ? resp.chatError.type : 'chatCmdError');
