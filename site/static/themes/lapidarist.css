@@ -152,17 +152,24 @@
   --page-canvas-bg:
     radial-gradient(1300px 540px at 18% -16%, rgba(190, 152, 67, 0.12) 0%, rgba(190, 152, 67, 0) 56%),
     radial-gradient(900px 400px at 87% -7%, rgba(47, 95, 184, 0.08) 0%, rgba(47, 95, 184, 0) 60%),
-    linear-gradient(180deg, #f6eddc 0%, #efe3cc 100%);
+    linear-gradient(180deg, rgba(246, 237, 220, 0.86) 0%, rgba(239, 227, 204, 0.86) 100%),
+    var(--lapidarist-parchment-texture);
+  --page-canvas-bg-size: auto, auto, auto, 640px 640px;
+  --page-canvas-bg-position: center, center, center, center;
 }
 
 html {
   background: var(--page-canvas-bg);
+  background-size: var(--page-canvas-bg-size, auto);
+  background-position: var(--page-canvas-bg-position, center);
   background-attachment: fixed;
 }
 
 body {
   color: var(--text);
   background: var(--page-canvas-bg);
+  background-size: var(--page-canvas-bg-size, auto);
+  background-position: var(--page-canvas-bg-position, center);
   background-attachment: fixed;
 }
 

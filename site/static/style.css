@@ -251,6 +251,8 @@ body.blog-post-resize-enabled {
 html:has(#blog-page-root),
 body:has(#blog-page-root) {
   background: var(--page-canvas-bg) !important;
+  background-size: var(--page-canvas-bg-size, auto) !important;
+  background-position: var(--page-canvas-bg-position, center) !important;
   background-attachment: fixed;
 }
 
