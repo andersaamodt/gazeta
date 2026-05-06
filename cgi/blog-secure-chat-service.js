@@ -29,6 +29,7 @@ const COMMAND_TIMEOUT_MS = 30000;
 const PROVISION_TIMEOUT_MS = 30000;
 const RECONCILE_CHAT_ITEM_LIMIT = Number(process.env.SECURE_CHAT_RECONCILE_CHAT_ITEM_LIMIT || 100);
 const RECONCILE_MIN_INTERVAL_MS = Number(process.env.SECURE_CHAT_RECONCILE_MIN_INTERVAL_MS || 1500);
+const SERVICE_LOG_PATH = path.join(path.dirname(SOCKET_PATH || '/tmp/service.sock'), 'service.log');
 
 if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
   process.stderr.write('Missing Secure Chat service environment.\n');
@@ -180,6 +181,7 @@ function normalizeMessageRow(row) {
     delivery_status: String(row.delivery_status || 'queued'),
     created_at: row.created_at || '',
     updated_at: row.updated_at || '',
+    text: row.text == null ? '' : String(row.text),
     attachment_name: row.attachment_name == null ? '' : String(row.attachment_name),
     attachment_mime: row.attachment_mime == null ? '' : String(row.attachment_mime),
     attachment_size: row.attachment_size == null || row.attachment_size === '' ? null : Number(row.attachment_size),
@@ -385,6 +387,14 @@ function sanitizeName(name) {
     .replace(/^-|-$/g, '') || 'file';
 }
 
+function sanitizeSimplexDisplayName(name, fallback) {
+  const value = String(name || '')
+    .replace(/[^A-Za-z0-9 ._-]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return value || fallback;
+}
+
 function truncateForLog(value, maxLength) {
   const text = String(value == null ? '' : value);
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
@@ -449,6 +459,7 @@ function contactRowToJson(row) {
 
 function mapMessageRow(row) {
   const extra = recentMessageText.get(Number(row.seq)) || {};
+  const text = extra.text || row.text || '';
   let attachmentName = row.attachment_name || '';
   if (
     String(row.message_kind || '') === 'file' &&
@@ -467,7 +478,7 @@ function mapMessageRow(row) {
     delivery_status: String(row.delivery_status || 'unknown'),
     created_at: row.created_at || '',
     updated_at: row.updated_at || '',
-    text: extra.text || '',
+    text,
     attachment: attachmentName ? {
       name: attachmentName,
       mime: row.attachment_mime || '',
@@ -575,6 +586,7 @@ function updateMessageBySeq(seq, fields) {
       if (Number(row.seq) !== seqNumber) continue;
       if (fields.message_ref) row.message_ref = String(fields.message_ref);
       if (fields.delivery_status) row.delivery_status = String(fields.delivery_status);
+      if (fields.text != null) row.text = String(fields.text);
       row.updated_at = nowIso();
       if (fields.error_code) row.error_code = String(fields.error_code);
       if (fields.error_detail) row.error_detail = String(fields.error_detail);
@@ -590,7 +602,7 @@ function updateMessageBySeq(seq, fields) {
 }
 
 function upsertMessageByRef(row, text, attachmentPreview) {
-  const normalized = normalizeMessageRow(Object.assign({ seq: 1 }, row));
+  const normalized = normalizeMessageRow(Object.assign({ seq: 1 }, row, { text: String(text || row.text || '') }));
   if (!normalized) {
     throw new Error('Invalid secure chat message row');
   }
@@ -609,6 +621,7 @@ function upsertMessageByRef(row, text, attachmentPreview) {
     existing.direction = normalized.direction || existing.direction;
     existing.message_kind = normalized.message_kind || existing.message_kind;
     existing.delivery_status = normalized.delivery_status || existing.delivery_status;
+    existing.text = normalized.text || existing.text || '';
     existing.created_at = normalized.created_at || existing.created_at;
     existing.updated_at = normalized.updated_at || nowIso();
     if (!existing.attachment_name && normalized.attachment_name) {
@@ -814,22 +827,29 @@ function startSimplexChild() {
     return;
   }
   const dbPrefix = path.join(STORE_ROOT, 'simplex-bridge');
-  const botDisplayName = `${SITE_TITLE} Secure Chat`;
+  const botDisplayName = sanitizeSimplexDisplayName(`${SITE_TITLE} Secure Chat`, 'Secure Chat');
   const simplexArgs = [
     '--create-bot-display-name',
     botDisplayName,
     '--create-bot-allow-files',
+    '--yes-migrate',
+    '--log-level',
+    'error',
+    '--log-file',
+    SERVICE_LOG_PATH,
     '-p',
     String(SIMPLEX_WS_PORT),
     '-d',
     dbPrefix
   ];
   try {
+    const childLogFd = fs.openSync(SERVICE_LOG_PATH, 'a');
     state.simplexProcess = spawn(SIMPLEX_BINARY, simplexArgs, {
-      stdio: ['ignore', 'ignore', 'ignore']
+      stdio: ['ignore', childLogFd, childLogFd]
     });
     state.simplexProcess.on('exit', (code) => {
       logEvent('simplex_exit', { code });
+      state.simplexProcess = null;
       state.transportStatus = 'degraded';
       state.transportError = 'simplex-chat stopped';
       state.wsConnected = false;
@@ -1046,30 +1066,19 @@ function handleChatItemStatusEvent(user, aChatItem) {
   setMessageStatusByRef(messageRef, deliveryStatusFromChatItem(aChatItem.chatItem), '', '');
 }
 
-function ensureWsConnection() {
-  if (nativeDriverAvailable()) {
-    return ensureNativeChatApi().then((chat) => {
-      state.wsConnected = true;
-      state.transportStatus = 'connected';
-      state.transportError = '';
-      return chat;
-    }).catch((err) => {
-      state.transportStatus = 'degraded';
-      state.transportError = err && err.message ? err.message : 'Could not initialize simplex-chat native driver';
-      throw err;
-    });
-  }
-  if (isWebSocketOpen()) {
-    return Promise.resolve();
-  }
-  startSimplexChild();
-
+function openWsConnection() {
   return new Promise((resolve, reject) => {
     const ws = new WebSocketImpl(`ws://127.0.0.1:${SIMPLEX_WS_PORT}`);
+    let settled = false;
+    function finish(fn, value) {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    }
     const timer = setTimeout(() => {
       try { ws.close(); } catch (_err) {}
-      reject(new Error('Timed out connecting to simplex-chat local WebSocket'));
-    }, 8000);
+      finish(reject, new Error('Timed out connecting to simplex-chat local WebSocket'));
+    }, 2000);
 
     ws.addEventListener('open', () => {
       clearTimeout(timer);
@@ -1092,15 +1101,47 @@ function ensureWsConnection() {
         state.wsConnected = false;
         state.ws = null;
       });
-      resolve();
+      finish(resolve);
     });
     ws.addEventListener('error', (err) => {
       clearTimeout(timer);
-      state.transportStatus = 'degraded';
-      state.transportError = err && err.message ? err.message : 'WebSocket error';
-      reject(err);
+      try { ws.close(); } catch (_closeErr) {}
+      finish(reject, err);
     });
   });
+}
+
+async function ensureWsConnection() {
+  if (nativeDriverAvailable()) {
+    return ensureNativeChatApi().then((chat) => {
+      state.wsConnected = true;
+      state.transportStatus = 'connected';
+      state.transportError = '';
+      return chat;
+    }).catch((err) => {
+      state.transportStatus = 'degraded';
+      state.transportError = err && err.message ? err.message : 'Could not initialize simplex-chat native driver';
+      throw err;
+    });
+  }
+  if (isWebSocketOpen()) {
+    return Promise.resolve();
+  }
+  startSimplexChild();
+  const started = Date.now();
+  let lastError = null;
+  while ((Date.now() - started) < 12000) {
+    try {
+      await openWsConnection();
+      return;
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+  state.transportStatus = 'degraded';
+  state.transportError = lastError && lastError.message ? lastError.message : 'WebSocket error';
+  throw lastError || new Error('Timed out connecting to simplex-chat local WebSocket');
 }
 
 async function sendCommand(cmd) {
@@ -1300,8 +1341,9 @@ function isOwnerUserCandidate(user) {
   const profile = user && user.profile ? user.profile : {};
   const displayName = String(profile.displayName || user.localDisplayName || '');
   const peerType = String(profile.peerType || '');
+  const expected = sanitizeSimplexDisplayName(`${SITE_TITLE} Secure Chat`, 'Secure Chat');
   return peerType === 'bot' && (
-    displayName === `${SITE_TITLE} Secure Chat` ||
+    displayName === expected ||
     displayName.endsWith(' Secure Chat')
   );
 }
@@ -1341,8 +1383,8 @@ async function ensureOwnerUser() {
   }
 
   const created = await createUser({
-    displayName: `${SITE_TITLE} Secure Chat`,
-    fullName: `${SITE_TITLE} Secure Chat`,
+    displayName: sanitizeSimplexDisplayName(`${SITE_TITLE} Secure Chat`, 'Secure Chat'),
+    fullName: sanitizeSimplexDisplayName(`${SITE_TITLE} Secure Chat`, 'Secure Chat'),
     shortDescr: 'Website secure chat bridge',
     peerType: 'bot'
   });
@@ -1379,11 +1421,14 @@ async function listContacts(userId) {
     }
     return chat.apiListContacts(Number(userId));
   }
+  if (String(state.activeUserId || '') !== String(userId)) {
+    await setActiveUser(userId);
+  }
   const resp = await sendCommand(`/_contacts ${userId}`);
   if (resp.type === 'contactsList' && Array.isArray(resp.contacts)) {
     return resp.contacts;
   }
-  throw new Error(`Could not list contacts: ${resp.type || 'unknown'}`);
+  throw new Error(chatCommandErrorMessage(`Could not list contacts: ${resp.type || 'unknown'}`, resp));
 }
 
 function diffContactIds(before, after) {
@@ -1403,9 +1448,12 @@ function contactReadyForSend(contact) {
 }
 
 async function createInvitation(ownerUserId) {
+  if (String(state.activeUserId || '') !== String(ownerUserId)) {
+    await setActiveUser(ownerUserId);
+  }
   const resp = await sendCommand(`/_connect ${ownerUserId}`);
   if (resp.type !== 'invitation' || !resp.connLinkInvitation || !resp.connLinkInvitation.connFullLink) {
-    throw new Error(`Could not create owner invitation: ${resp.type || 'unknown'}`);
+    throw new Error(chatCommandErrorMessage(`Could not create owner invitation: ${resp.type || 'unknown'}`, resp));
   }
   return String(resp.connLinkInvitation.connFullLink);
 }
@@ -1423,11 +1471,14 @@ async function ownerAddressLink(ownerUserId, forceNew) {
 }
 
 async function connectBridgeToInvitation(bridgeUserId, link) {
+  if (String(state.activeUserId || '') !== String(bridgeUserId)) {
+    await setActiveUser(bridgeUserId);
+  }
   const resp = await sendCommand(`/_connect ${bridgeUserId} ${link}`);
   if (resp.type === 'sentConfirmation' || resp.type === 'sentInvitation' || resp.type === 'contactAlreadyExists') {
     return resp;
   }
-  throw new Error(`Could not connect bridge profile: ${resp.type || 'unknown'}`);
+  throw new Error(chatCommandErrorMessage(`Could not connect bridge profile: ${resp.type || 'unknown'}`, resp));
 }
 
 async function connectBridgeToOwnerAddress(bridgeUserId, link) {
@@ -1657,6 +1708,7 @@ async function sendTextMessage(pubkeyHex, text, retried) {
     delivery_status: 'sending',
     created_at: createdAt,
     updated_at: createdAt,
+    text: String(text || ''),
     attachment_name: '',
     attachment_mime: '',
     attachment_size: null,
@@ -1772,6 +1824,7 @@ async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize
     delivery_status: 'uploading',
     created_at: createdAt,
     updated_at: createdAt,
+    text: '',
     attachment_name: fileName,
     attachment_mime: mimeType,
     attachment_size: fileSize,

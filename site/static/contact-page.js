@@ -515,13 +515,18 @@
   function secureChatFormPost(url, payload) {
     var absoluteUrl = secureChatEndpointUrl(url);
     var body = new URLSearchParams(payload || {});
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timeout = controller ? window.setTimeout(function () {
+      controller.abort();
+    }, 90000) : null;
     return secureChatRequestHeaders(absoluteUrl, 'POST').then(function (headers) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       return fetch(absoluteUrl, {
         method: 'POST',
         cache: 'no-store',
         headers: headers,
-        body: body.toString()
+        body: body.toString(),
+        signal: controller ? controller.signal : undefined
       });
     }).then(function (res) {
       return res.text().then(function (text) {
@@ -536,6 +541,15 @@
         }
         return data;
       });
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        throw new Error('Secure Chat request timed out. Try again in a moment.');
+      }
+      throw err;
+    }).finally(function () {
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
     });
   }
 
