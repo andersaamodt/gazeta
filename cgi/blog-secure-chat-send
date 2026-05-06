@@ -30,6 +30,31 @@ jq -cn \
   --argjson attachments "$attachments_json" \
   '{sessionPubkey:$sessionPubkey,text:$text,attachments:$attachments}' > "$payload_file"
 
+if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
+  blog_secure_chat_service_request GET /health >/dev/null 2>&1 || true
+  direct_response=$(
+    SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
+    SECURE_CHAT_SIMPLEX_WS_PORT=$(blog_secure_chat_simplex_ws_port) \
+    SECURE_CHAT_COMMAND_TIMEOUT_MS=90000 \
+    "$(blog_secure_chat_node_binary)" "$SCRIPT_DIR/blog-secure-chat-direct-send.js" "$payload_file" 2>/dev/null || printf ''
+  )
+  direct_success=$(printf '%s\n' "$direct_response" | jq -r 'if .success == true then "true" else "" end' 2>/dev/null || printf '')
+  direct_code=$(printf '%s\n' "$direct_response" | jq -r '.code // ""' 2>/dev/null || printf '')
+  if [ "$direct_success" = "true" ]; then
+    printf '%s\n' "$direct_response"
+    exit 0
+  fi
+  case "$direct_code" in
+    mapping_unavailable|unsupported_direct_send|direct_sender_unavailable) ;;
+    *)
+      if [ -n "$direct_response" ]; then
+        printf '%s\n' "$direct_response"
+        exit 0
+      fi
+      ;;
+  esac
+fi
+
 response=$(blog_secure_chat_service_request_json POST /send "$payload_file" application/json 2>/dev/null || printf '')
 if [ -z "$response" ]; then
   blog_json_error "Secure Chat message dispatch failed" "dispatch_failed"
