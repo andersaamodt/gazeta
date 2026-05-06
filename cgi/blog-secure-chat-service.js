@@ -385,6 +385,35 @@ function sanitizeName(name) {
     .replace(/^-|-$/g, '') || 'file';
 }
 
+function truncateForLog(value, maxLength) {
+  const text = String(value == null ? '' : value);
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+}
+
+function chatErrorDetail(value) {
+  if (!value || typeof value !== 'object') return '';
+  const chatError = value.chatError ||
+    (value.response && value.response.chatError) ||
+    (value.type === 'chatCmdError' ? value.chatError : null);
+  if (!chatError || typeof chatError !== 'object') return '';
+  try {
+    return truncateForLog(JSON.stringify(chatError), 1000);
+  } catch (_err) {
+    return truncateForLog(String(chatError.type || 'chatError'), 1000);
+  }
+}
+
+function errorDetail(err) {
+  const detail = chatErrorDetail(err);
+  if (detail) return detail;
+  return truncateForLog(err && err.message ? err.message : String(err || 'unknown error'), 1000);
+}
+
+function chatCommandErrorMessage(prefix, value) {
+  const detail = chatErrorDetail(value);
+  return detail ? `${prefix}: ${detail}` : prefix;
+}
+
 function logEvent(type, detail) {
   const payload = Object.assign({ ts: nowIso(), type }, detail || {});
   try {
@@ -448,6 +477,25 @@ function mapMessageRow(row) {
     error_code: row.error_code || '',
     error_detail: row.error_detail || ''
   };
+}
+
+function mapOwlExportRow(mapping, row) {
+  const message = mapMessageRow(row);
+  const text = String(message.text || '').trim();
+  const attachment = message.attachment || null;
+  const body = text || (attachment ? `Attachment: ${attachment.name}` : '');
+  return Object.assign({}, message, {
+    id: `nostr-blog-secure-chat:${row.npub}:${row.seq}`,
+    npub: String(row.npub || ''),
+    thread_id: String(row.npub || ''),
+    contact_name: `Nostr ${String(row.npub || '').slice(0, 12)}`,
+    simplex_address: mapping && mapping.simplex_contact_id ? `secure-chat:${mapping.simplex_contact_id}` : '',
+    body,
+    subject: 'Website Secure Chat',
+    from_self: String(row.direction || '') === 'incoming',
+    in_inbox: String(row.direction || '') === 'outgoing',
+    source: 'nostr-blog-secure-chat'
+  });
 }
 
 function visibleMessageRow(row) {
@@ -1086,6 +1134,7 @@ async function ensureChatStarted() {
         state.transportError = err && err.message ? err.message : 'Could not start simplex-chat native driver';
         throw err;
       });
+      chat.started = true;
     }
     state.transportStatus = 'connected';
     state.transportError = '';
@@ -1148,24 +1197,12 @@ async function setActiveUser(userId) {
 
 async function createUser(profile) {
   const displayName = String((profile && profile.displayName) || '').trim() || `secure-chat-${Date.now()}`;
-  if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
-    const simplex = state.nativeSimplex || loadNativeSimplexModule();
-    const created = await chat.apiCreateActiveUser({
-      displayName,
-      fullName: String((profile && profile.fullName) || ''),
-      peerType: profile && profile.peerType === 'bot' && simplex && simplex.T && simplex.T.ChatPeerType
-        ? simplex.T.ChatPeerType.Bot
-        : undefined
-    });
-    state.activeUserId = String(created.userId);
-    metaSet('last_active_user_id', state.activeUserId);
-    return created;
-  }
   const command = profile && profile.peerType === 'bot'
     ? `/create bot ${displayName}`
     : `/create user ${displayName}`;
-  const resp = await sendCommand(command);
+  const resp = nativeDriverAvailable()
+    ? await (await ensureNativeChatApi()).sendChatCmd(command)
+    : await sendCommand(command);
   if (resp.type !== 'activeUser' || !resp.user) {
     throw new Error(`Could not create user: ${resp.type || 'unknown'}`);
   }
@@ -1226,34 +1263,80 @@ async function enableOwnerAddress(userId) {
   }
 }
 
+async function recreateOwnerAddress(userId) {
+  if (!nativeDriverAvailable()) {
+    throw new Error('Owner address recreation requires native SimpleX API');
+  }
+  const chat = await ensureNativeChatApi();
+  if (String(state.activeUserId || '') !== String(userId)) {
+    await setActiveUser(userId);
+  }
+  await chat.apiDeleteUserAddress(Number(userId)).catch(() => undefined);
+  await chat.apiCreateUserAddress(Number(userId));
+  const address = await chat.apiGetUserAddress(Number(userId));
+  if (!address) {
+    throw new Error('Could not recreate owner contact address');
+  }
+  await chat.apiSetAddressSettings(Number(userId), {
+    autoAccept: true,
+    businessAddress: false
+  });
+  return address;
+}
+
+async function ensureUsableOwnerAddress(userId) {
+  try {
+    return await enableOwnerAddress(userId);
+  } catch (err) {
+    if (!nativeDriverAvailable()) throw err;
+    logEvent('owner_address_recreate_after_error', {
+      error: err && err.message ? err.message : String(err || 'unknown error')
+    });
+    return recreateOwnerAddress(userId);
+  }
+}
+
+function isOwnerUserCandidate(user) {
+  const profile = user && user.profile ? user.profile : {};
+  const displayName = String(profile.displayName || user.localDisplayName || '');
+  const peerType = String(profile.peerType || '');
+  return peerType === 'bot' && (
+    displayName === `${SITE_TITLE} Secure Chat` ||
+    displayName.endsWith(' Secure Chat')
+  );
+}
+
+function findOwnerUserCandidate(users) {
+  return users.find(isOwnerUserCandidate) || null;
+}
+
 async function ensureOwnerUser() {
   const users = await listUsers();
   const active = await showActiveUser();
+  let savedOwner = null;
+  if (state.ownerUserId) {
+    savedOwner = users.find((user) => String(user.userId) === String(state.ownerUserId)) || null;
+    if (savedOwner && !isOwnerUserCandidate(savedOwner)) {
+      logEvent('owner_user_id_ignored_non_owner_profile', { user_id: String(savedOwner.userId) });
+      savedOwner = null;
+    }
+  }
+  const preferredOwner = savedOwner || findOwnerUserCandidate(users);
+  if (preferredOwner && (!active || String(preferredOwner.userId) !== String(active.userId))) {
+    const owner = await setActiveUser(preferredOwner.userId);
+    state.ownerUserId = String(owner.userId);
+    metaSet('owner_user_id', state.ownerUserId);
+    await ensureChatStarted();
+    await ensureUsableOwnerAddress(owner.userId);
+    return owner;
+  }
   if (active) {
     await ensureChatStarted();
-    if (state.ownerUserId) {
-      const existing = users.find((user) => String(user.userId) === String(state.ownerUserId));
-      if (existing && String(existing.userId) !== String(active.userId)) {
-        const owner = await setActiveUser(existing.userId);
-        state.ownerUserId = String(owner.userId);
-        metaSet('owner_user_id', state.ownerUserId);
-        await enableOwnerAddress(owner.userId);
-        return owner;
-      }
-    }
-    state.ownerUserId = String(active.userId);
-    metaSet('owner_user_id', state.ownerUserId);
-    await enableOwnerAddress(active.userId);
-    return active;
-  }
-
-  if (state.ownerUserId) {
-    const existing = users.find((user) => String(user.userId) === String(state.ownerUserId));
-    if (existing) {
-      await setActiveUser(existing.userId);
-      await ensureChatStarted();
-      await enableOwnerAddress(existing.userId);
-      return existing;
+    if (isOwnerUserCandidate(active)) {
+      state.ownerUserId = String(active.userId);
+      metaSet('owner_user_id', state.ownerUserId);
+      await ensureUsableOwnerAddress(active.userId);
+      return active;
     }
   }
 
@@ -1266,7 +1349,7 @@ async function ensureOwnerUser() {
   state.ownerUserId = String(created.userId);
   metaSet('owner_user_id', state.ownerUserId);
   await ensureChatStarted();
-  await enableOwnerAddress(created.userId);
+  await ensureUsableOwnerAddress(created.userId);
   return created;
 }
 
@@ -1327,9 +1410,9 @@ async function createInvitation(ownerUserId) {
   return String(resp.connLinkInvitation.connFullLink);
 }
 
-async function ownerAddressLink(ownerUserId) {
+async function ownerAddressLink(ownerUserId, forceNew) {
   if (nativeDriverAvailable()) {
-    const address = await enableOwnerAddress(ownerUserId);
+    const address = forceNew ? await recreateOwnerAddress(ownerUserId) : await enableOwnerAddress(ownerUserId);
     const connLink = address && address.connLinkContact ? address.connLinkContact : null;
     if (!connLink || (!connLink.connFullLink && !connLink.connShortLink)) {
       throw new Error('Could not load owner contact address');
@@ -1391,14 +1474,36 @@ async function provisionContact(npub) {
     const owner = await ensureOwnerUser();
     const ownerUserId = String(owner.userId);
     const bridgeUser = await ensureBridgeUser(npub);
-    const bridgeUserId = String(bridgeUser.userId);
+    let bridgeUserId = String(bridgeUser.userId);
 
-    await setActiveUser(ownerUserId);
-    const ownerBefore = await listContacts(ownerUserId);
-    const bridgeBefore = await listContacts(bridgeUserId);
-    const link = await ownerAddressLink(ownerUserId);
+    let ownerBefore = await listContacts(ownerUserId);
+    let bridgeBefore = await listContacts(bridgeUserId);
+    let link;
+    try {
+      link = await ownerAddressLink(ownerUserId, false);
+    } catch (err) {
+      if (!nativeDriverAvailable()) throw err;
+      logEvent('provision_retry_recreate_owner_address', { npub });
+      link = await ownerAddressLink(ownerUserId, true);
+    }
     await setActiveUser(bridgeUserId);
-    await connectBridgeToOwnerAddress(bridgeUserId, link);
+    try {
+      await connectBridgeToOwnerAddress(bridgeUserId, link);
+    } catch (err) {
+      if (!nativeDriverAvailable()) throw err;
+      logEvent('provision_retry_recreate_owner_address', { npub });
+      link = await ownerAddressLink(ownerUserId, true);
+      const retryBridge = await createUser({
+        displayName: `nostr-${npub.slice(0, 20)}-retry-${Date.now().toString(36)}`,
+        fullName: `Nostr Visitor ${npub.slice(0, 20)}`,
+        shortDescr: 'Secure chat website bridge'
+      });
+      bridgeUserId = String(retryBridge.userId);
+      ownerBefore = await listContacts(ownerUserId);
+      bridgeBefore = await listContacts(bridgeUserId);
+      await setActiveUser(bridgeUserId);
+      await connectBridgeToOwnerAddress(bridgeUserId, link);
+    }
     const ids = await waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore, bridgeBefore);
     await setActiveUser(ownerUserId);
 
@@ -1434,18 +1539,29 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
     await setActiveUser(activeUserId);
     if (nativeDriverAvailable()) {
       const chat = await ensureNativeChatApi();
-      const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
+      const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`).catch((err) => {
+        throw new Error(chatCommandErrorMessage('SimpleX send failed', err));
+      });
       if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
-        throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
+        throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
       }
       return resp.chatItems;
     }
     const resp = await sendCommand(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
-      throw new Error(`Unexpected send response: ${resp.type || 'unknown'}`);
+      throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
     }
     return resp.chatItems;
   });
+}
+
+async function freshMappingAfterSendFailure(npub, reason, pubkeyHex) {
+  logEvent('send_retry_reprovision_mapping', {
+    npub,
+    error: truncateForLog(reason || 'send failed', 1000)
+  });
+  deleteContact(npub);
+  return (await ensureMappingForPubkey(pubkeyHex)).mapping;
 }
 
 function shouldReconcileNpub(npub) {
@@ -1494,6 +1610,22 @@ async function reconcileMappingMessages(mapping) {
   }
 }
 
+async function reconcileAllMappingMessages() {
+  await ensureRuntime();
+  const mappings = selectMappingsStmt.all(500).map(contactRowToJson);
+  for (const mapping of mappings) {
+    if (!mapping || mapping.status !== 'active') continue;
+    try {
+      await reconcileMappingMessages(mapping);
+    } catch (err) {
+      logEvent('reconcile_error', {
+        npub: mapping.npub || '',
+        error: err && err.message ? err.message : String(err || 'unknown error')
+      });
+    }
+  }
+}
+
 async function reconcileStateMessages(pubkeyHex) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
@@ -1509,8 +1641,10 @@ async function reconcileStateMessages(pubkeyHex) {
   }
 }
 
-async function sendTextMessage(pubkeyHex, text) {
-  const { npub, mapping } = await ensureMappingForPubkey(pubkeyHex);
+async function sendTextMessage(pubkeyHex, text, retried) {
+  const ensured = await ensureMappingForPubkey(pubkeyHex);
+  const npub = ensured.npub;
+  let mapping = ensured.mapping;
   const createdAt = nowIso();
   const seq = insertMessage({
     npub,
@@ -1531,10 +1665,38 @@ async function sendTextMessage(pubkeyHex, text) {
     error_detail: ''
   });
   rememberMessageText(seq, text, null);
-  const chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
-    msgContent: { type: 'text', text: String(text || '') },
-    mentions: {}
-  }]);
+  let chatItems;
+  try {
+    chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
+      msgContent: { type: 'text', text: String(text || '') },
+      mentions: {}
+    }]);
+  } catch (err) {
+    const detail = errorDetail(err);
+    if (!retried) {
+      try {
+        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex);
+        chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
+          msgContent: { type: 'text', text: String(text || '') },
+          mentions: {}
+        }]);
+      } catch (retryErr) {
+        updateMessageBySeq(seq, {
+          delivery_status: 'failed',
+          error_code: 'send_failed',
+          error_detail: errorDetail(retryErr)
+        });
+        throw retryErr;
+      }
+    } else {
+      updateMessageBySeq(seq, {
+        delivery_status: 'failed',
+        error_code: 'send_failed',
+        error_detail: detail
+      });
+      throw err;
+    }
+  }
   const first = chatItems[0] && chatItems[0].chatItem ? chatItems[0].chatItem : null;
   const messageRef = first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : '';
   updateMessageBySeq(seq, {
@@ -1542,6 +1704,34 @@ async function sendTextMessage(pubkeyHex, text) {
     delivery_status: first ? deliveryStatusFromChatItem(first) : 'sent'
   });
   return { npub, seq };
+}
+
+async function sendOwnerTextMessage(npubValue, text) {
+  const npub = validateNpub(npubValue);
+  const owner = await ensureOwnerUser();
+  let mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
+  if (
+    mapping &&
+    mapping.status === 'active' &&
+    mapping.bridge_user_id &&
+    String(mapping.bridge_user_id) === String(owner.userId)
+  ) {
+    logEvent('owl_send_reprovision_legacy_mapping', { npub });
+    deleteContact(npub);
+    mapping = null;
+  }
+  if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
+    mapping = contactRowToJson(await provisionContact(npub));
+  }
+  if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
+    throw new Error('Secure Chat contact is not provisioned');
+  }
+  await sendComposedMessages(String(owner.userId), `@${mapping.simplex_contact_id}`, [{
+    msgContent: { type: 'text', text: String(text || '') },
+    mentions: {}
+  }]);
+  await reconcileMappingMessages(mapping);
+  return { npub };
 }
 
 function queueUploadTicket(pubkeyHex, attachment) {
@@ -1566,8 +1756,10 @@ async function sendAttachmentMetadata(pubkeyHex, ticket) {
   await sendTextMessage(pubkeyHex, descriptor);
 }
 
-async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize, fileName) {
-  const { npub, mapping } = await ensureMappingForPubkey(pubkeyHex);
+async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize, fileName, retried) {
+  const ensured = await ensureMappingForPubkey(pubkeyHex);
+  const npub = ensured.npub;
+  let mapping = ensured.mapping;
   const createdAt = nowIso();
   const seq = insertMessage({
     npub,
@@ -1588,11 +1780,40 @@ async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize
     error_detail: ''
   });
   rememberMessageText(seq, '', { name: fileName, size: fileSize });
-  const chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
-    fileSource: { filePath },
-    msgContent: { type: 'file', text: fileName },
-    mentions: {}
-  }]);
+  let chatItems;
+  try {
+    chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
+      fileSource: { filePath },
+      msgContent: { type: 'file', text: fileName },
+      mentions: {}
+    }]);
+  } catch (err) {
+    const detail = errorDetail(err);
+    if (!retried) {
+      try {
+        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex);
+        chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
+          fileSource: { filePath },
+          msgContent: { type: 'file', text: fileName },
+          mentions: {}
+        }]);
+      } catch (retryErr) {
+        updateMessageBySeq(seq, {
+          delivery_status: 'failed',
+          error_code: 'send_failed',
+          error_detail: errorDetail(retryErr)
+        });
+        throw retryErr;
+      }
+    } else {
+      updateMessageBySeq(seq, {
+        delivery_status: 'failed',
+        error_code: 'send_failed',
+        error_detail: detail
+      });
+      throw err;
+    }
+  }
   const first = chatItems[0] && chatItems[0].chatItem ? chatItems[0].chatItem : null;
   const messageRef = first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : '';
   updateMessageBySeq(seq, {
@@ -1664,6 +1885,31 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
     };
   }
   return payload;
+}
+
+async function owlExportPayload(sinceSeq) {
+  await reconcileAllMappingMessages();
+  const since = Number(sinceSeq || 0);
+  const messages = [];
+  const mappings = selectMappingsStmt.all(500).map(contactRowToJson);
+  for (const mapping of mappings) {
+    if (!mapping || !mapping.npub || mapping.status !== 'active') continue;
+    const rows = loadMessages(mapping.npub)
+      .filter((row) => Number(row.seq || 0) > since)
+      .filter(visibleMessageRow);
+    for (const row of rows) {
+      messages.push(mapOwlExportRow(mapping, row));
+    }
+  }
+  messages.sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0));
+  const cursorSeq = messages.length ? Number(messages[messages.length - 1].seq || since || 0) : since;
+  return {
+    success: true,
+    service: currentServiceStatus(),
+    cursor_seq: cursorSeq,
+    mappings,
+    messages
+  };
 }
 
 async function handleState(req, res) {
@@ -1769,6 +2015,18 @@ async function handleAdmin(req, res) {
     deleteContact(String(body.npub || ''));
   } else if (action === 'status') {
     await ensureRuntime();
+  } else if (action === 'owl-export') {
+    safeJson(res, 200, await owlExportPayload(body.sinceSeq || body.since_seq || 0));
+    return;
+  } else if (action === 'owl-send') {
+    await ensureRuntime();
+    const text = String(body.text || '');
+    if (!text.trim()) {
+      safeJson(res, 400, { success: false, error: 'text is required' });
+      return;
+    }
+    safeJson(res, 200, Object.assign({ success: true }, await sendOwnerTextMessage(body.npub || '', text)));
+    return;
   }
   safeJson(res, 200, {
     success: true,

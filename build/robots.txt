@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://new.andersaamodt.com/sitemap.xml

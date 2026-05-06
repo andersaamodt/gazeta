@@ -612,7 +612,7 @@ blog_secure_chat_service_stop() {
   rm -f "$(blog_secure_chat_pid_path)" "$(blog_secure_chat_socket_path)"
 }
 
-blog_secure_chat_service_start() {
+blog_secure_chat_service_start_inner() {
   blog_secure_chat_init_storage
   if blog_secure_chat_service_ping; then
     if blog_secure_chat_service_command_matches_release; then
@@ -665,6 +665,27 @@ blog_secure_chat_service_start() {
   return 1
 }
 
+blog_secure_chat_service_start() {
+  blog_secure_chat_init_storage
+  lock_dir="$(blog_secure_chat_runtime_dir)/service-start.lock"
+  attempts=0
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    if blog_secure_chat_service_ping; then
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 100 ]; then
+      printf '%s\n' "secure chat start failed: another start attempt did not finish." >> "$(blog_secure_chat_log_path)"
+      return 1
+    fi
+    sleep 0.1
+  done
+  blog_secure_chat_service_start_inner
+  status=$?
+  rmdir "$lock_dir" 2>/dev/null || true
+  return "$status"
+}
+
 blog_secure_chat_service_request() {
   method=${1-GET}
   path=${2-/health}
@@ -675,7 +696,7 @@ blog_secure_chat_service_request() {
 
   socket=$(blog_secure_chat_socket_path)
   if [ -n "$body_file" ]; then
-    curl --silent --show-error --fail \
+    curl --silent --show-error \
       --unix-socket "$socket" \
       --request "$method" \
       --header "Content-Type: $content_type" \
@@ -684,7 +705,7 @@ blog_secure_chat_service_request() {
     return 0
   fi
 
-  curl --silent --show-error --fail \
+  curl --silent --show-error \
     --unix-socket "$socket" \
     --request "$method" \
     "http://localhost$path"
