@@ -1238,6 +1238,109 @@ function sendCommandOnConnection(commandWs, cmd) {
   });
 }
 
+function sendPlainTextMessageViaChild(activeUserId, chatRef, text) {
+  const script = `
+const { WebSocket } = require('undici');
+const [port, userId, chatRef, text] = process.argv.slice(1);
+let seq = 0;
+function parse(message) {
+  try { return JSON.parse(String(message || '')); } catch (_err) { return null; }
+}
+function openWs() {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket('ws://127.0.0.1:' + port);
+    const timer = setTimeout(() => {
+      try { ws.close(); } catch (_err) {}
+      reject(new Error('Timed out connecting to simplex-chat command WebSocket'));
+    }, 2000);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      resolve(ws);
+    });
+    ws.addEventListener('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+function send(ws, cmd) {
+  const corrId = 'secure-chat-child-' + Date.now() + '-' + (++seq);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('SimpleX command timed out: ' + cmd));
+    }, Number(process.env.SECURE_CHAT_COMMAND_TIMEOUT_MS || 90000));
+    function cleanup() {
+      clearTimeout(timer);
+      ws.removeEventListener('message', onMessage);
+      ws.removeEventListener('error', onError);
+    }
+    function onMessage(event) {
+      const envelope = parse(event.data);
+      if (!envelope || envelope.corrId !== corrId) return;
+      cleanup();
+      resolve(envelope.resp);
+    }
+    function onError(err) {
+      cleanup();
+      reject(err);
+    }
+    ws.addEventListener('message', onMessage);
+    ws.addEventListener('error', onError);
+    ws.send(JSON.stringify({ corrId, cmd }));
+  });
+}
+(async () => {
+  const ws = await openWs();
+  try {
+    const active = await send(ws, '/_user ' + userId);
+    if (!active || active.type !== 'activeUser') {
+      throw new Error('Could not activate user ' + userId + ': ' + (active && active.type || 'unknown'));
+    }
+    const resp = await send(ws, '/_send ' + chatRef + ' text ' + text);
+    process.stdout.write(JSON.stringify(resp));
+  } finally {
+    try { ws.close(); } catch (_err) {}
+  }
+})().catch((err) => {
+  process.stderr.write((err && err.message ? err.message : String(err || 'send failed')) + '\\n');
+  process.exit(1);
+});
+`;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['-e', script, String(SIMPLEX_WS_PORT), String(activeUserId), String(chatRef), String(text || '')], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: Object.assign({}, process.env, {
+        SECURE_CHAT_COMMAND_TIMEOUT_MS: String(COMMAND_TIMEOUT_MS)
+      })
+    });
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      try { child.kill('SIGTERM'); } catch (_err) {}
+      reject(new Error(`SimpleX command timed out: /_send ${chatRef} text ${String(text || '')}`));
+    }, COMMAND_TIMEOUT_MS + 5000);
+    child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error(stderr.trim() || `SimpleX child sender exited with ${code}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout || '{}'));
+      } catch (err) {
+        reject(new Error(`Could not parse SimpleX child sender response: ${err.message}`));
+      }
+    });
+  });
+}
+
 async function sendCommandAsUser(userId, cmd) {
   const transport = await ensureWsConnection();
   if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
@@ -1778,7 +1881,7 @@ async function sendPlainTextMessage(activeUserId, chatRef, text) {
         await setActiveUser(activeUserId);
         return (await ensureNativeChatApi()).sendChatCmd(cmd);
       })()
-      : await sendCommandAsUser(activeUserId, cmd);
+      : await sendPlainTextMessageViaChild(activeUserId, chatRef, text);
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
     }
