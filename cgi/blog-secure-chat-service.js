@@ -1183,11 +1183,20 @@ function openCommandWsConnection() {
   });
 }
 
+function closeSharedWsConnection() {
+  if (state.ws) {
+    try { state.ws.close(); } catch (_closeErr) {}
+  }
+  state.ws = null;
+  state.wsConnected = false;
+}
+
 async function sendCommand(cmd) {
   const transport = await ensureWsConnection();
   if (state.driverType === 'native' && transport && typeof transport.sendChatCmd === 'function') {
     return transport.sendChatCmd(cmd);
   }
+  closeSharedWsConnection();
   const commandWs = await openCommandWsConnection();
   try {
     return await sendCommandOnConnection(commandWs, cmd);
@@ -1235,6 +1244,7 @@ async function sendCommandAsUser(userId, cmd) {
     await setActiveUser(userId);
     return transport.sendChatCmd(cmd);
   }
+  closeSharedWsConnection();
   const commandWs = await openCommandWsConnection();
   try {
     const userResp = await sendCommandOnConnection(commandWs, `/_user ${userId}`);
