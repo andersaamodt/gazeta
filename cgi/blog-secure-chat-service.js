@@ -1313,7 +1313,11 @@ async function enableOwnerAddress(userId) {
   // SimpleX v6.5 can provision direct invitations without a user contact link.
   // On fresh bot profiles these address-management commands return
   // userContactLinkNotFound, which is non-fatal for the bridge flow.
-  const addressResp = await sendCommand(`/_profile_address ${userId} on`);
+  const addressResp = await sendCommand(`/_profile_address ${userId} on`).catch((err) => {
+    logEvent('owner_address_enable_skipped', { error: errorDetail(err) });
+    return null;
+  });
+  if (!addressResp) return;
   if (isMissingUserContactLinkError(addressResp)) {
     return;
   }
@@ -1323,7 +1327,11 @@ async function enableOwnerAddress(userId) {
   const settingsResp = await sendCommand(`/_address_settings ${userId} ${JSON.stringify({
     businessAddress: false,
     autoAccept: { acceptIncognito: true }
-  })}`);
+  })}`).catch((err) => {
+    logEvent('owner_address_settings_skipped', { error: errorDetail(err) });
+    return null;
+  });
+  if (!settingsResp) return;
   if (isMissingUserContactLinkError(settingsResp)) {
     return;
   }
