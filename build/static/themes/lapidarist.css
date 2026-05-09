@@ -532,7 +532,6 @@ nav.site-nav {
 
 .post-item,
 .list-tile,
-.auth-platform-card,
 .nav-cart-item {
   transition:
     transform 180ms ease,
@@ -542,8 +541,6 @@ nav.site-nav {
 
 .post-item:hover,
 .list-tile:hover,
-.auth-platform-card:hover,
-.auth-platform-card:focus-visible,
 .nav-cart-item:hover {
   transform: translateY(-2px);
   box-shadow: var(--lapidarist-float-shadow-hover) !important;
@@ -634,7 +631,7 @@ input[type="reset"]:focus-visible:not(:disabled),
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
     0 3px 8px rgba(48, 34, 16, 0.09) !important;
-  transform: translateY(-1px) !important;
+  transform: none !important;
 }
 
 .nav-compose-cycle,
@@ -705,7 +702,7 @@ input[type="reset"]:disabled,
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
     0 3px 8px rgba(48, 34, 16, 0.09) !important;
-  transform: translateY(-1px) !important;
+  transform: none !important;
 }
 
 .nav-search {

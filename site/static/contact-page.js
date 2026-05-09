@@ -720,6 +720,27 @@
     });
   }
 
+  function handleSecureChatLoginClick() {
+    if (hasSecureChatSession()) {
+      state.chat.error = '';
+      state.chat.loading = true;
+      renderContent();
+      return refreshSecureChatState({ reset: true }).then(function (ok) {
+        if (ok) {
+          scheduleSecureChatPoll();
+        }
+        return ok;
+      });
+    }
+    if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+      window.blogAuth.openLoginModal('auto');
+    } else {
+      state.chat.error = 'Login is still loading. The Secure Chat sign-in panel will be available in a moment.';
+      renderContent();
+    }
+    return Promise.resolve(false);
+  }
+
   function startSecureChatUploads(files) {
     var list = Array.prototype.slice.call(files || []);
     if (!list.length) {
@@ -2146,12 +2167,7 @@
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
-          if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-            window.blogAuth.openLoginModal('auto');
-          } else {
-            state.chat.error = 'Login is still loading. The Secure Chat sign-in panel will be available in a moment.';
-            renderContent();
-          }
+          handleSecureChatLoginClick();
           return;
         }
         if (secureChatAction === 'send') {

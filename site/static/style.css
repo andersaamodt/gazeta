@@ -7140,14 +7140,13 @@ footer {
   background-color: var(--button-primary-start);
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-start) 0%, var(--button-primary-end) 100%);
   color: var(--button-primary-text);
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
 .blog-clear-filters:hover {
   background-color: var(--button-primary-hover-start);
   background-image: var(--button-primary-overlay), linear-gradient(140deg, var(--button-primary-hover-start) 0%, var(--button-primary-hover-end) 100%);
   color: var(--button-primary-text);
-  transform: translateY(-1px);
 }
 
 .blog-filter-panel {
@@ -9028,7 +9027,7 @@ textarea:focus {
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  transition: box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
 }
 
 .zap-icon {
@@ -9048,7 +9047,6 @@ textarea:focus {
 
 .zap-action-btn:hover:not(:disabled),
 .zap-action-btn:focus-visible {
-  transform: translateY(-1px);
   border-color: rgba(17, 24, 39, 0.25);
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
 }
@@ -9222,12 +9220,11 @@ textarea:focus {
   font: inherit;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(43, 19, 92, 0.06);
-  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
 .zap-amount-chip:hover,
 .zap-amount-chip:focus-visible {
-  transform: translateY(-1px);
   border-color: rgba(124, 58, 237, 0.34);
   background: #fff;
   box-shadow: 0 12px 26px rgba(43, 19, 92, 0.11);
@@ -10580,6 +10577,12 @@ nav.site-nav > .nav-right .nav-search button {
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.14),
     0 0 0 3px var(--focus-ring, rgba(91, 126, 216, 0.2));
+}
+
+/* Button hover stability: hover/focus may change color, border, or shadow, but not position. */
+:where(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .btn, .checkout-link-button, .cart-page-link-button, .nav-cart-link-button, .nip23-product-btn, .zap-action-btn, .zap-amount-chip, .blog-clear-filters, .auth-primary-btn, .auth-secondary-btn, .auth-platform-card, .btn-login):hover:not(:disabled),
+:where(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .btn, .checkout-link-button, .cart-page-link-button, .nav-cart-link-button, .nip23-product-btn, .zap-action-btn, .zap-amount-chip, .blog-clear-filters, .auth-primary-btn, .auth-secondary-btn, .auth-platform-card, .btn-login):focus-visible:not(:disabled) {
+  transform: none !important;
 }
 
 /* Final mobile containment: desktop-width content must never expand the phone viewport. */

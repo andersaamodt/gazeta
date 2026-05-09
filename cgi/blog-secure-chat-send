@@ -44,7 +44,7 @@ if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
     exit 0
   fi
   case "$direct_code" in
-    mapping_unavailable|unsupported_direct_send|direct_sender_unavailable) ;;
+    mapping_unavailable|unsupported_direct_send|direct_sender_unavailable|direct_send_failed) ;;
     *)
       if [ -n "$direct_response" ]; then
         printf '%s\n' "$direct_response"

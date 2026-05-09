@@ -1240,7 +1240,16 @@ function sendCommandOnConnection(commandWs, cmd) {
 
 function sendPlainTextMessageViaChild(activeUserId, chatRef, text) {
   const script = `
-const { WebSocket } = require('undici');
+const WebSocket = globalThis.WebSocket || (() => {
+  try {
+    return require('undici').WebSocket;
+  } catch (_err) {
+    return null;
+  }
+})();
+if (!WebSocket) {
+  throw new Error('Node.js WebSocket runtime is unavailable');
+}
 const [port, userId, chatRef, text] = process.argv.slice(1);
 let seq = 0;
 function parse(message) {
@@ -2068,10 +2077,7 @@ async function sendOwnerTextMessage(npubValue, text) {
   if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
     throw new Error('Secure Chat contact is not provisioned');
   }
-  await sendComposedMessages(String(owner.userId), `@${mapping.simplex_contact_id}`, [{
-    msgContent: { type: 'text', text: String(text || '') },
-    mentions: {}
-  }]);
+  await sendPlainTextMessage(String(owner.userId), `@${mapping.simplex_contact_id}`, text);
   await reconcileMappingMessages(mapping);
   return { npub };
 }
