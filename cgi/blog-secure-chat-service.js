@@ -1643,6 +1643,10 @@ async function ensureBridgeUser(npub) {
   }
   const short = npub.slice(0, 20);
   const displayName = `nostr-${short}`;
+  const existingByName = users.find((user) => userDisplayName(user) === displayName);
+  if (existingByName) {
+    return existingByName;
+  }
   const created = await createUser({
     displayName,
     fullName: `Nostr Visitor ${short}`,
