@@ -31,9 +31,12 @@ jq -cn \
   --argjson admin "$( [ "$include_admin" = "true" ] && printf true || printf false )" \
   '{sessionPubkey:$sessionPubkey,sinceSeq:$sinceSeq,admin:$admin}' > "$payload_file"
 
-response=$(blog_secure_chat_service_request_json POST /state "$payload_file" application/json 2>/dev/null || printf '')
+response=$(
+  SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
+  "$(blog_secure_chat_node_binary)" "$SCRIPT_DIR/blog-secure-chat-fast-state.js" "$payload_file" 2>/dev/null || printf ''
+)
 if [ -z "$response" ]; then
-  blog_json_error "Secure Chat service is unavailable" "service_unavailable"
+  blog_json_error "Secure Chat state is unavailable" "state_unavailable"
   exit 0
 fi
 
