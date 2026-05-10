@@ -38,6 +38,17 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  haystack=$1
+  needle=$2
+  label=$3
+  if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
+    fail "$label (unexpected: $needle)"
+  else
+    pass
+  fi
+}
+
 assert_file_contains() {
   file=$1
   needle=$2
@@ -250,6 +261,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendCommandAsU
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'envelope.corrId === corrId' 'secure chat command sockets ignore unsolicited events while waiting for their matching command response'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'closeSharedWsConnection();' 'secure chat command sockets close the shared event websocket before issuing command requests'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendPlainTextMessageViaChild(activeUserId, chatRef, text)' 'secure chat text sends use the production-verified isolated child command path'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'const WebSocket = globalThis.WebSocket' 'secure chat child sender uses the built-in Node WebSocket when available'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "throw new Error('Node.js WebSocket runtime is unavailable')" 'secure chat child sender reports missing WebSocket support clearly'
 handle_send_prefix=$(sed -n '/async function handleSend/,/const tickets = \[\];/p' "$ROOT_DIR/cgi/blog-secure-chat-service.js")
 if printf '%s' "$handle_send_prefix" | grep -Fq 'await ensureRuntime();'; then
   fail 'secure chat sends do not block on optional owner runtime warmup before using an active mapping'
@@ -261,6 +274,9 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'cursor_seq: cu
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'owlExportPayload' 'secure chat service exposes an Owl Native export payload'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'OWL_EXPORT_RECONCILE_TIMEOUT_MS' 'Owl Native export bounds SimpleX reconciliation so queued messages return promptly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'sendOwnerTextMessage' 'secure chat service can send Owl Native replies through the owner profile'
+owl_send_block=$(sed -n '/async function sendOwnerTextMessage/,/function queueUploadTicket/p' "$ROOT_DIR/cgi/blog-secure-chat-service.js")
+assert_contains "$owl_send_block" 'sendPlainTextMessage(String(owner.userId)' 'Owl Native replies use the production-verified plaintext SimpleX sender'
+assert_not_contains "$owl_send_block" 'sendComposedMessages(String(owner.userId)' 'Owl Native replies avoid the SimpleX json send path that can hang'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'owl_send_reprovision_legacy_mapping' 'Owl send reprovisions legacy single-profile mappings before replying'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'String(mapping.bridge_user_id) === String(owner.userId)' 'Owl send rejects mappings where the bridge user is the owner identity'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'provision_retry_recreate_owner_address' 'secure chat provisioning retries with a fresh owner address if SimpleX reports a stale connection'
@@ -268,6 +284,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'WIZARDRY_SITE_
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'WIZARDRY_SITE_NAME:=site' 'Owl send helper defaults CLI calls to the live site tenant'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'WIZARDRY_SITES_DIR:=$HOME' 'Owl export helper defaults CLI calls to the single-site live root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'WIZARDRY_SITES_DIR:=$HOME' 'Owl send helper defaults CLI calls to the single-site live root'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog-secure-chat-fast-enqueue.js' 'secure chat CGI accepts text messages immediately when direct transport is unavailable'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-enqueue.js" "delivery_status: 'accepted'" 'secure chat fast enqueue stores accepted outgoing messages without waiting for SimpleX provisioning'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "mapping.status !== 'active'" 'secure chat state skips SimpleX reconciliation for inactive mappings'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "delivery_status: 'accepted'" 'secure chat service records accepted outgoing text before transport dispatch'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" '!existing.attachment_name && normalized.attachment_name' 'secure chat service preserves friendly attachment filenames when reconciliation sees daemon temp-path names'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "/^upl-[^-]+-/.test(String(attachmentName))" 'secure chat service restores friendly attachment names when older rows already contain daemon temp filenames'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "driverType: 'unknown'" 'secure chat service tracks the active SimpleX driver'
@@ -451,11 +471,14 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'signer.sign
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'if [ -z "$auth_event_json" ]; then' 'secure chat server permits session-authenticated requests without per-request NIP-98 signatures'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-common.sh" 'return 0' 'secure chat server accepts session plus CSRF without a signer prompt'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'AbortController' 'secure chat browser requests have a bounded timeout'
-assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '180000' 'secure chat browser timeout allows first-contact provisioning to finish'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '20000' 'secure chat browser timeout is short because text sends are accepted immediately'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'restoreSecureChatRenderState(secureChatRenderState)' 'secure chat refresh preserves active composer focus after rerender'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'adminPanel.open = true' 'secure chat refresh preserves open admin mapping console'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'Secure Chat' 'contact page renders secure chat UI'
-assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "window.blogAuth.openLoginModal('auto')" 'secure chat login opens the Nostr login modal instead of prompting the signer directly'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function handleSecureChatLoginClick()' 'secure chat login button has an explicit session-aware handler'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'if (hasSecureChatSession()) {' 'secure chat login button reuses an existing browser session before opening login UI'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'refreshSecureChatState({ reset: true })' 'secure chat login button verifies the existing session with the state endpoint'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "window.blogAuth.openLoginModal('auto')" 'secure chat login opens the Nostr login modal only when no usable session is present'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'window.blogAuth.startLogin' 'secure chat login does not trigger a browser signer prompt directly'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'hasVerifiedSecureChatSession()' 'secure chat form only renders after the session endpoint verifies login'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'sessionCheckGraceCount < 2' 'nav auth tolerates one transient failed session check before clearing login state'
