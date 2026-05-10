@@ -1499,7 +1499,7 @@ async function enableOwnerAddress(userId) {
       throw new Error('Could not load owner contact address');
     }
     await chat.apiSetAddressSettings(Number(userId), {
-      autoAccept: true,
+      autoAccept: { acceptIncognito: true },
       businessAddress: false
     });
     return address;
@@ -1549,7 +1549,7 @@ async function recreateOwnerAddress(userId) {
     throw new Error('Could not recreate owner contact address');
   }
   await chat.apiSetAddressSettings(Number(userId), {
-    autoAccept: true,
+    autoAccept: { acceptIncognito: true },
     businessAddress: false
   });
   return address;
