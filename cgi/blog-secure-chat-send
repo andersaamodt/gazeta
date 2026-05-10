@@ -34,7 +34,7 @@ if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
   direct_response=$(
     SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
     SECURE_CHAT_SIMPLEX_WS_PORT=$(blog_secure_chat_simplex_ws_port) \
-    SECURE_CHAT_COMMAND_TIMEOUT_MS=2500 \
+    SECURE_CHAT_COMMAND_TIMEOUT_MS=90000 \
     "$(blog_secure_chat_node_binary)" "$SCRIPT_DIR/blog-secure-chat-direct-send.js" "$payload_file" 2>/dev/null || printf ''
   )
   direct_success=$(printf '%s\n' "$direct_response" | jq -r 'if .success == true then "true" else "" end' 2>/dev/null || printf '')
@@ -44,18 +44,7 @@ if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
     exit 0
   fi
   case "$direct_code" in
-    mapping_unavailable|direct_sender_unavailable|direct_send_failed)
-      enqueue_response=$(
-        SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
-        "$(blog_secure_chat_node_binary)" "$SCRIPT_DIR/blog-secure-chat-fast-enqueue.js" "$payload_file" 2>/dev/null || printf ''
-      )
-      enqueue_success=$(printf '%s\n' "$enqueue_response" | jq -r 'if .success == true then "true" else "" end' 2>/dev/null || printf '')
-      if [ "$enqueue_success" = "true" ]; then
-        printf '%s\n' "$enqueue_response"
-        exit 0
-      fi
-      ;;
-    unsupported_direct_send) ;;
+    mapping_unavailable|unsupported_direct_send|direct_sender_unavailable|direct_send_failed) ;;
     *)
       if [ -n "$direct_response" ]; then
         printf '%s\n' "$direct_response"

@@ -1985,7 +1985,7 @@ async function reconcileAllMappingMessagesForOwlExport() {
 async function reconcileStateMessages(pubkeyHex) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
-  if (!mapping || mapping.status !== 'active' || !shouldReconcileNpub(npub)) return;
+  if (!mapping || !shouldReconcileNpub(npub)) return;
   try {
     await ensureRuntime();
     await reconcileMappingMessages(mapping);
@@ -1998,18 +1998,19 @@ async function reconcileStateMessages(pubkeyHex) {
 }
 
 async function sendTextMessage(pubkeyHex, text, retried) {
-  const npub = pubkeyToNpub(pubkeyHex);
-  let mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
+  const ensured = await ensureMappingForPubkey(pubkeyHex);
+  const npub = ensured.npub;
+  let mapping = ensured.mapping;
   const createdAt = nowIso();
   const seq = insertMessage({
     npub,
-    simplex_contact_id: mapping && mapping.simplex_contact_id ? mapping.simplex_contact_id : '',
-    bridge_user_id: mapping && mapping.bridge_user_id ? mapping.bridge_user_id : '',
-    bridge_contact_id: mapping && mapping.bridge_contact_id ? mapping.bridge_contact_id : '',
+    simplex_contact_id: mapping.simplex_contact_id,
+    bridge_user_id: mapping.bridge_user_id,
+    bridge_contact_id: mapping.bridge_contact_id,
     direction: 'outgoing',
     message_ref: '',
     message_kind: 'text',
-    delivery_status: 'accepted',
+    delivery_status: 'sending',
     created_at: createdAt,
     updated_at: createdAt,
     text: String(text || ''),
@@ -2021,10 +2022,6 @@ async function sendTextMessage(pubkeyHex, text, retried) {
     error_detail: ''
   });
   rememberMessageText(seq, text, null);
-  if (!mapping || mapping.status !== 'active' || !mapping.bridge_user_id || !mapping.bridge_contact_id) {
-    return { npub, seq, queued: true };
-  }
-  updateMessageBySeq(seq, { delivery_status: 'sending' });
   let chatItems;
   try {
     chatItems = await sendPlainTextMessage(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, text);
@@ -2245,7 +2242,7 @@ async function owlExportPayload(sinceSeq) {
   const messages = [];
   const mappings = selectMappingsStmt.all(500).map(contactRowToJson);
   for (const mapping of mappings) {
-    if (!mapping || !mapping.npub) continue;
+    if (!mapping || !mapping.npub || mapping.status !== 'active') continue;
     const rows = loadMessages(mapping.npub)
       .filter((row) => Number(row.seq || 0) > since)
       .filter(visibleMessageRow);
