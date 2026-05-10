@@ -5,7 +5,7 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="author" />
-  <title>Shopping Cart</title>
+  <title>Get Info</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -811,24 +811,26 @@
 <script src="/static/shop-cart.js?v=1468785559"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-<header id="title-block-header">
-<h1 class="title">Shopping Cart</h1>
-<p class="author">author</p>
-</header>
-<section id="cart-page-root" class="checkout-shell" data-page-slug="cart" data-page-type="checkout">
-<div class="checkout-head">
-<h1>
-Shopping Cart
+<section id="nip23-page-root" class="list-page-shell" data-page-slug="get-info" data-page-type="nip23" data-page-title="Site Info">
+<div class="list-page-head">
+<h1 id="nip23-page-title">
+Site Info
 </h1>
-<p>
-Review products and continue to checkout.
-</p>
 </div>
-<div id="cart-page-content" class="checkout-page-content">
+<div id="nip23-page-admin" class="list-admin" hidden="">
+
+</div>
+<div id="nip23-page-validation" class="list-validation" hidden="">
+
+</div>
+<div id="nip23-page-content" class="list-page-content">
 
 </div>
 </section>
-<script src="/static/cart-page.js?v=1468785559"></script>
+<script src="/static/nostr-page-bootstrap/get-info.js?v=1468785559"></script>
+<script src="/static/nostr-publish-dialog.js?v=1468785559"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/nip23-page.js?v=1468785559"></script>
 <footer class="site-footer">
   <nav id="footer-pages" class="footer-pages" aria-label="Footer pages" hidden></nav>
   <div class="footer-feeds" aria-label="Syndication feeds">
