@@ -284,6 +284,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'WIZARDRY_SITE_
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'WIZARDRY_SITE_NAME:=site' 'Owl send helper defaults CLI calls to the live site tenant'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'WIZARDRY_SITES_DIR:=$HOME' 'Owl export helper defaults CLI calls to the single-site live root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'WIZARDRY_SITES_DIR:=$HOME' 'Owl send helper defaults CLI calls to the single-site live root'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'blog-secure-chat-fast-owl-export.js' 'Owl export reads accepted website messages without waiting for the SimpleX service'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-owl-export.js" "status: 'file-export'" 'fast Owl export reports file-backed export status'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog-secure-chat-fast-enqueue.js' 'secure chat CGI accepts text messages immediately when direct transport is unavailable'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-enqueue.js" "delivery_status: 'accepted'" 'secure chat fast enqueue stores accepted outgoing messages without waiting for SimpleX provisioning'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "mapping.status !== 'active'" 'secure chat state skips SimpleX reconciliation for inactive mappings'
@@ -305,7 +307,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" "attachments_json='[]
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-state" 'blog_secure_chat_service_request_json' 'state endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-admin" 'blog_secure_chat_service_request_json' 'admin endpoint prints daemon json responses explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-upload" "printf '%s\\n' \"\$response\"" 'upload endpoint prints daemon json responses explicitly'
-assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'action:"owl-export"' 'secure chat has a local Owl Native export helper'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'blog-secure-chat-fast-owl-export.js' 'secure chat has a local Owl Native export helper'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'action:"owl-send"' 'secure chat has a local Owl Native send helper'
 
 restart_kill_log="$TMP_ROOT/restart-kill.log"
