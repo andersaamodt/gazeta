@@ -93,6 +93,9 @@ function disableNativeSimplexDriver(err) {
   nativeSimplexDisabled = true;
   cachedNativeSimplex = null;
   cachedNativeSimplexError = err && err.message ? err.message : String(err || 'native simplex-chat driver failed');
+  logEvent('native_driver_disabled', {
+    error: errorDetail(err)
+  });
   state.nativeSimplex = null;
   state.nativeChat = null;
   state.driverType = 'unknown';
