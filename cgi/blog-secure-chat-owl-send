@@ -58,9 +58,12 @@ fi
 text=$(cat "$body_file")
 jq -cn --arg npub "$npub" --arg text "$text" '{action:"owl-send",npub:$npub,text:$text}' > "$payload_file"
 
-response=$(blog_secure_chat_service_request_json POST /admin "$payload_file" application/json 2>/dev/null || printf '')
+response=$(
+  SECURE_CHAT_STORE_DIR=$(blog_secure_chat_store_dir) \
+  "$(blog_secure_chat_node_binary)" "$SCRIPT_DIR/blog-secure-chat-fast-owl-send.js" "$payload_file" 2>/dev/null || printf ''
+)
 if [ -z "$response" ]; then
-  printf '%s\n' '{"success":false,"error":"Secure Chat admin service is unavailable","code":"service_unavailable"}'
+  printf '%s\n' '{"success":false,"error":"Secure Chat Owl send is unavailable","code":"owl_send_unavailable"}'
   exit 1
 fi
 

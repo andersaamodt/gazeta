@@ -286,6 +286,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'WIZARDRY_SITES
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'WIZARDRY_SITES_DIR:=$HOME' 'Owl send helper defaults CLI calls to the single-site live root'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-export" 'blog-secure-chat-fast-owl-export.js' 'Owl export reads accepted website messages without waiting for the SimpleX service'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-owl-export.js" "status: 'file-export'" 'fast Owl export reports file-backed export status'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-owl-send" 'blog-secure-chat-fast-owl-send.js' 'Owl send writes replies without waiting for the SimpleX service'
+assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-owl-send.js" "direction: 'incoming'" 'fast Owl send stores replies as incoming website messages'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-send" 'blog-secure-chat-fast-enqueue.js' 'secure chat CGI accepts text messages immediately when direct transport is unavailable'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-fast-enqueue.js" "delivery_status: 'accepted'" 'secure chat fast enqueue stores accepted outgoing messages without waiting for SimpleX provisioning'
 assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" "mapping.status !== 'active'" 'secure chat state skips SimpleX reconciliation for inactive mappings'
