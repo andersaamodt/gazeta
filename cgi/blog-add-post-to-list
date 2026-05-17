@@ -32,19 +32,17 @@ fi
 
 post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
 case "$post_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
-case "$post_path" in
   *'..'*|*'\\'*|*'//'*)
     blog_json_error "Invalid post path" "invalid_post_path"
     exit 0
     ;;
 esac
-file="$blog_site_root/site/pages/$post_path"
+
+file=$(blog_resolve_post_markdown_file "$post_path" 2>/dev/null || printf '')
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
 case "$file" in
   "$blog_posts_dir"/*) ;;
   *)
@@ -52,10 +50,15 @@ case "$file" in
     exit 0
     ;;
 esac
-if [ ! -f "$file" ]; then
-  blog_json_error "Post not found" "not_found"
-  exit 0
-fi
+
+post_path=${file#"$blog_site_root/site/pages/"}
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
 
 event_id=$(blog_read_front_matter_value "$file" nostr_event_id 2>/dev/null || printf '')
 if [ -z "$entry_markdown" ]; then

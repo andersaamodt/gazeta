@@ -3,8 +3,13 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260326-listv6'
-blog_nostr_blog_page_js_version='20260401-blogv4'
+blog_nostr_list_page_js_version='20260404-listv11'
+blog_nostr_blog_page_js_version='20260514-blog-utf8'
+blog_nostr_contact_page_js_version='20260516-contactv25'
+blog_nostr_simplex_web_default_chat_js_version='20260516-defaultchatv4'
+blog_nostr_simplex_web_adapter_init_js_version='20260516-nativeprofilev1'
+blog_nostr_nip23_page_js_version='20260404-nip23v1'
+blog_nostr_public_ranking_page_js_version='20260404-rankingv1'
 
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"
@@ -1344,9 +1349,11 @@ blog_nostr_page_template_is_current() {
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
       grep -q '/static/nostr-publish-dialog.js' "$file" 2>/dev/null &&
       grep -q 'marked@11\.0\.0/marked\.min\.js' "$file" 2>/dev/null &&
-      grep -q '/static/simplex-web-default-chat.js' "$file" 2>/dev/null &&
+      grep -q '/static/simplex-web-transport.js' "$file" 2>/dev/null &&
+      grep -q "/static/simplex-web-browser-adapter-init.mjs?v=$blog_nostr_simplex_web_adapter_init_js_version" "$file" 2>/dev/null &&
+      grep -q "/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version" "$file" 2>/dev/null &&
       grep -q '/static/simplex-web-session-store.js' "$file" 2>/dev/null &&
-      grep -q '/static/contact-page.js' "$file" 2>/dev/null
+      grep -q "/static/contact-page.js?v=$blog_nostr_contact_page_js_version" "$file" 2>/dev/null
       ;;
     list)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
@@ -1494,10 +1501,21 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/simplex-web-default-chat.js"></script>
+<script src="/static/simplex-web-transport.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@noble/ciphers/": "https://cdn.jsdelivr.net/npm/@noble/ciphers@2.2.0/",
+    "@noble/curves/": "https://cdn.jsdelivr.net/npm/@noble/curves@2.2.0/",
+    "@noble/hashes/": "https://cdn.jsdelivr.net/npm/@noble/hashes@2.2.0/"
+  }
+}
+</script>
+<script type="module" src="/static/simplex-web-browser-adapter-init.mjs?v=$blog_nostr_simplex_web_adapter_init_js_version"></script>
+<script src="/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version"></script>
 <script src="/static/simplex-web-session-store.js"></script>
-<script src="/static/contact-page.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/contact-page.js?v=$blog_nostr_contact_page_js_version"></script>
 EOCONTACT
       ;;
     nip23)
@@ -1524,7 +1542,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nip23-page.js"></script>
+<script src="/static/nip23-page.js?v=$blog_nostr_nip23_page_js_version"></script>
 EONIP23
       ;;
     blog)
@@ -1616,7 +1634,7 @@ license: "CC BY 4.0"
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/public-ranking-page.js"></script>
+<script src="/static/public-ranking-page.js?v=$blog_nostr_public_ranking_page_js_version"></script>
 EORANKING
       ;;
     icon-gallery)

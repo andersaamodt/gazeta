@@ -62,15 +62,121 @@ if [ "$visibility" != "public" ]; then
   exit 0
 fi
 
+post_nav_title() {
+  file=${1-}
+  if [ -z "$file" ] || [ ! -f "$file" ]; then
+    printf ''
+    return 0
+  fi
+  title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
+  body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
+  blog_effective_post_title "$title" "$body" "$post_type"
+}
+
+post_nav_json() {
+  file=${1-}
+  label=${2-}
+  cls=${3-}
+  if [ -z "$file" ] || [ ! -f "$file" ]; then
+    printf '<div class="%s"><span class="post-nav-empty">%s: none</span></div>' "$cls" "$(blog_html_escape "$label")"
+    return 0
+  fi
+  title=$(post_nav_title "$file")
+  url=$(blog_rel_post_html_url "$file")
+  printf '<div class="%s"><span class="post-nav-label">%s</span><a href="%s">%s</a></div>' \
+    "$cls" \
+    "$(blog_html_escape "$label")" \
+    "$(blog_html_escape "$url")" \
+    "$(blog_html_escape "$title")"
+}
+
+post_end_tags_html=''
+tags_raw=$(blog_read_front_matter_value "$md_file" tags 2>/dev/null || printf '')
+tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+tags_norm=$(blog_normalize_tags "$tags_csv")
+if [ -n "$tags_norm" ]; then
+  tags_buf=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-tags.XXXXXX")
+  {
+    printf '<section class="post-end-tags">'
+    printf '<p class="post-end-tags-label">Tags</p>'
+    printf '<div class="tags post-context-tags">'
+    printf '%s\n' "$tags_norm" | tr ',' '\n' | while IFS= read -r tag; do
+      clean=$(printf '%s' "$tag" | sed 's/^ *//;s/ *$//')
+      [ -n "$clean" ] || continue
+      printf '<a class="tag" href="/tags#%s">%s</a>' \
+        "$(blog_html_escape "$clean")" \
+        "$(blog_html_escape "$clean")"
+    done
+    printf '</div></section>'
+  } > "$tags_buf"
+  post_end_tags_html=$(cat "$tags_buf")
+  rm -f "$tags_buf"
+fi
+
+posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-nav.XXXXXX")
+blog_collect_public_posts "$posts_tmp"
+found=0
+newer_file=''
+older_file=''
+prev_file=''
+while IFS= read -r post_file; do
+  [ -n "$post_file" ] || continue
+  if [ "$post_file" = "$md_file" ]; then
+    found=1
+    newer_file=$prev_file
+    continue
+  fi
+  if [ "$found" -eq 1 ]; then
+    older_file=$post_file
+    break
+  fi
+  prev_file=$post_file
+done < "$posts_tmp"
+rm -f "$posts_tmp"
+
+post_nav_html='<nav class="post-nav post-nav-enhanced" aria-label="Post navigation">'
+post_nav_html="${post_nav_html}$(post_nav_json "$newer_file" "Newer" "post-nav-prev")"
+post_nav_html="${post_nav_html}$(post_nav_json "$older_file" "Older" "post-nav-next")"
+post_nav_html="${post_nav_html}</nav>"
+
+post_menu_html='<div class="post-page-menu" hidden><button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button><div class="post-page-menu-panel" role="menu" hidden><button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button><button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button><button type="button" data-post-page-action="open_nostr" data-post-page-reader-action="open_nostr" role="menuitem" hidden>Open in Nostr client</button><div class="post-page-menu-separator" data-post-page-admin-separator hidden></div><button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button><button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button><button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button></div></div>'
+
 rel=${md_file#"$blog_posts_dir/"}
 rel_html=${rel%.md}.html
 html_file="$blog_site_root/build/pages/posts/$rel_html"
 
 if [ -f "$html_file" ]; then
+  tmp_injected=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-html.XXXXXX")
+  awk -v menu="$post_menu_html" -v extras="$post_end_tags_html$post_nav_html" '
+    BEGIN { inserted_menu = 0; inserted_extras = 0 }
+    {
+      line = $0
+      if (inserted_extras == 0 && index(line, "</article>") > 0) {
+        print extras
+        inserted_extras = 1
+      }
+      print line
+      if (inserted_menu == 0 && index(line, "<div class=\"post-head\">") > 0) {
+        print menu
+        inserted_menu = 1
+      }
+    }
+    END {
+      if (inserted_extras == 0) {
+        print extras
+      }
+    }
+  ' "$html_file" > "$tmp_injected"
   http-status 200 "OK"
   http-header "Content-Type" "text/html; charset=utf-8"
   http-end-headers
-  cat "$html_file"
+  cat "$tmp_injected"
+  rm -f "$tmp_injected"
   exit 0
 fi
 
@@ -127,8 +233,8 @@ if command -v pandoc >/dev/null 2>&1; then
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
-  <style>html,body{background:#f3e9d7;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css">
+  <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
+  <link rel="stylesheet" href="/static/style.css?v=20260408-stylev1">
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/idiomorph-ext.min.js"></script>
 HTML
@@ -145,6 +251,7 @@ HTML
     cat <<HTML
   <article class="post-item post-single-item">
     <div class="post-head">
+      $post_menu_html
       <div class="post-head-main">
         <h1 id="main-content" class="post-title">$safe_title</h1>
         <div class="post-byline post-byline-top">
@@ -162,6 +269,8 @@ HTML
     cat "$body_html_file"
     cat <<HTML
     </div>
+    $post_end_tags_html
+    $post_nav_html
   </article>
 HTML
     if [ -f "$footer_file" ]; then
@@ -198,14 +307,17 @@ cat <<HTML
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
-  <style>html,body{background:#f3e9d7;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css">
+  <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
+  <link rel="stylesheet" href="/static/style.css?v=20260408-stylev1">
 </head>
 <body>
   <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
-    <article class="post-item blog-post-item">
+    <article class="post-item post-single-item">
+      <div class="post-head">$post_menu_html</div>
       <h1>$safe_title</h1>
-      <pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">$safe_body</pre>
+      <div class="post-single-body"><pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">$safe_body</pre></div>
+      $post_end_tags_html
+      $post_nav_html
     </article>
   </main>
 </body>

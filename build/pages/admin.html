@@ -25,10 +25,10 @@
     }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <link rel="stylesheet" href="/static/style.css?v=1468785559" />
-  <script src="/static/js/htmx.min.js?v=1468785559"></script>
-  <script src="/static/js/idiomorph-ext.min.js?v=1468785559"></script>
-  <script src="/static/site-bootstrap.js?v=1468785559"></script>
+  <link rel="stylesheet" href="/static/style.css?v=1858372691" />
+  <script src="/static/js/htmx.min.js?v=1858372691"></script>
+  <script src="/static/js/idiomorph-ext.min.js?v=1858372691"></script>
+  <script src="/static/site-bootstrap.js?v=1858372691"></script>
   <script>
   (function () {
     var theme = 'archmage';
@@ -52,10 +52,10 @@
     (document.head || document.documentElement).appendChild(link);
   })();
   </script>
-  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=1468785559" data-theme-href="/static/themes/archmage.css?v=1468785559" /></noscript>
-  <script defer src="/static/zap-ui.js?v=1468785559"></script>
-  <script defer src="/static/post-context.js?v=1468785559"></script>
-  <script defer src="/static/post-resize.js?v=1468785559"></script>
+  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=1858372691" data-theme-href="/static/themes/archmage.css?v=1858372691" /></noscript>
+  <script defer src="/static/zap-ui.js?v=1858372691"></script>
+  <script defer src="/static/post-context.js?v=1858372691"></script>
+  <script defer src="/static/post-resize.js?v=1858372691"></script>
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
@@ -806,8 +806,8 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=1468785559"></script>
-<script src="/static/shop-cart.js?v=1468785559"></script>
+<script src="/static/nav-auth.js?v=1858372691"></script>
+<script src="/static/shop-cart.js?v=1858372691"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 <div id="admin-access-message" class="admin-access-message" hidden="">
@@ -847,6 +847,10 @@ class="admin-nav-count">(0)</span></span>
 <span class="admin-nav-icon-slot" aria-hidden="true"></span><span
 class="admin-nav-label">Posts <span id="admin-nav-posts-count"
 class="admin-nav-count">(0)</span></span>
+</button>
+<button type="button" class="admin-nav-item" data-admin-nav="crossposting" aria-selected="false">
+<span class="admin-nav-icon-slot" aria-hidden="true"></span><span
+class="admin-nav-label">Cross-posting</span>
 </button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false">
 <span class="admin-nav-icon-slot" aria-hidden="true"></span><span
@@ -1025,6 +1029,58 @@ Item Count (min 1; typical 20-100)</strong></label>
 </section>
 </div>
 <div id="output-config" class="output">
+
+</div>
+</div>
+</section>
+<section class="admin-section" data-admin-section="crossposting" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>
+Cross-posting
+</h3>
+<p class="muted">
+Enable Origin destinations for this site and choose which ones should
+start checked when you publish a new post.
+</p>
+</div>
+</div>
+<div id="crossposting-runtime" class="crossposting-runtime">
+
+</div>
+<div class="settings-stack crossposting-settings-stack">
+<section class="sub-card">
+<h4>
+Enabled On This Site
+</h4>
+<p class="muted settings-subhead">
+Only enabled destinations appear in Compose and on the Posts page.
+</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="crossposting-enabled-all">
+<input type="checkbox" id="crossposting-enabled-all"> <span>All
+supported destinations</span> </label>
+<div id="crossposting-enabled-list" class="crossposting-platform-list">
+
+</div>
+</section>
+<section class="sub-card">
+<h4>
+Default Selection
+</h4>
+<p class="muted settings-subhead">
+These destinations start checked for new posts. You can still change the
+selection before each publish.
+</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="crossposting-default-all">
+<input type="checkbox" id="crossposting-default-all"> <span>All enabled
+destinations</span> </label>
+<div id="crossposting-default-list" class="crossposting-platform-list">
+
+</div>
+</section>
+</div>
+<div id="output-crossposting" class="output">
 
 </div>
 </div>
@@ -1592,6 +1648,23 @@ Publish to server only</label>
 Publish to Nostr now</label></p>
 </div>
 </div>
+<details id="compose-crosspost-details" class="compose-crosspost-details">
+<summary id="compose-crosspost-summary">
+Cross-posting unavailable
+</summary>
+<div class="compose-crosspost-body">
+<p id="compose-crosspost-note" class="muted compose-crosspost-note">
+Origin destinations appear here when they are enabled for this site.
+</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="compose-origin-select-all">
+<input type="checkbox" id="compose-origin-select-all"> <span>All enabled
+destinations</span> </label>
+<div id="compose-origin-platform-list"
+class="crossposting-platform-list">
+
+</div>
+</div>
+</details>
 <div id="scheduled-row" class="field-row scheduled-row is-hidden">
 <label for="post-scheduled-at"><strong>Scheduled Release
 Date/Time</strong></label>
@@ -2031,12 +2104,34 @@ Add to list
 </div>
 </form>
 <p></dialog></p>
+<dialog id="post-crosspost-dialog" class="admin-inline-dialog" aria-labelledby="post-crosspost-title">
+<form id="post-crosspost-form" method="dialog" class="admin-inline-dialog-form">
+<h4 id="post-crosspost-title">
+Cross-post Post
+</h4>
+<p id="post-crosspost-subtitle" class="muted">
+Select the destinations that should receive this post now.
+</p>
+<div id="post-crosspost-list"
+class="crossposting-platform-list crossposting-platform-list-dialog">
+
+</div>
+<div class="admin-inline-dialog-actions">
+<button id="post-crosspost-cancel" type="button">
+Cancel
+</button>
+<button id="post-crosspost-submit" type="submit" class="primary">
+Cross-post selected
+</button>
+</div>
+</form>
+<p></dialog></p>
 <div id="drop-overlay" class="drop-overlay" hidden="">
 Drop files to upload
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nostr-publish-dialog.js?v=1468785559"></script>
-<script src="/static/admin.js?v=1468785559"></script>
+<script src="/static/nostr-publish-dialog.js?v=1858372691"></script>
+<script src="/static/admin.js?v=1858372691"></script>
 <style>
 header#title-block-header {
   display: none !important;
@@ -7073,6 +7168,6 @@ body {
     </a>
   </div>
 </footer>
-<script defer src="/static/footer-pages.js?v=1468785559"></script>
+<script defer src="/static/footer-pages.js?v=1858372691"></script>
 </body>
 </html>

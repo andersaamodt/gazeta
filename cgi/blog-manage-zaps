@@ -62,11 +62,25 @@ zap_endpoint_url_for_lud16() {
   printf 'https://%s/.well-known/lnurlp/%s\n' "$domain" "$localpart"
 }
 
-zap_endpoint_live() {
+zap_endpoint_metadata_json() {
   endpoint_url=${1-}
   [ -n "$endpoint_url" ] || return 1
   command -v curl >/dev/null 2>&1 || return 1
-  curl -fsS --max-time 8 "$endpoint_url" 2>/dev/null | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'
+  curl -fsS --max-time 8 "$endpoint_url" 2>/dev/null
+}
+
+zap_endpoint_metadata_live() {
+  metadata=${1-}
+  [ -n "$metadata" ] || return 1
+  printf '%s\n' "$metadata" | grep -Eq '"callback"|"allowsNostr"|"nostrPubkey"'
+}
+
+zap_endpoint_nostr_pubkey() {
+  metadata=${1-}
+  [ -n "$metadata" ] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  pubkey=$(printf '%s\n' "$metadata" | jq -r '.nostrPubkey // ""' 2>/dev/null | tr -d '\r\n[:space:]' | tr 'A-F' 'a-f')
+  blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || return 1
 }
 
 lightning_public_host() {
@@ -108,13 +122,22 @@ lightning_dir() {
   printf '%s/lightning\n' "$blog_site_data"
 }
 
+lightning_cli_bin() {
+  managed_cli="$blog_site_data/zaps/bin/lightning-cli"
+  if [ -x "$managed_cli" ]; then
+    printf '%s\n' "$managed_cli"
+    return 0
+  fi
+  command -v lightning-cli 2>/dev/null || return 1
+}
+
 zap_receipts_dir() {
   printf '%s/zaps/state/receipts\n' "$blog_site_data"
 }
 
 lightning_cli_json() {
-  command -v lightning-cli >/dev/null 2>&1 || return 1
-  lightning-cli --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
+  bin=$(lightning_cli_bin) || return 1
+  "$bin" --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
 }
 
 recent_zaps_json() {
@@ -168,6 +191,7 @@ runtime_json() {
   public_address=$(lightning_public_address)
   zap_endpoint_url=$(zap_endpoint_url_for_lud16 "$effective_lud16")
   zap_endpoint_ready=false
+  zap_endpoint_pubkey=''
   if getinfo_json=$(lightning_cli_json getinfo); then
     lightning_online=true
     lightning_synced=$(printf '%s\n' "$getinfo_json" | jq -r '
@@ -185,11 +209,20 @@ runtime_json() {
       [(.channels // [])[]? | ((.amount_msat | msat) - (.our_amount_msat | msat))] | add // 0 | floor / 1000 | floor
     ' 2>/dev/null || printf '0')
   fi
-  if zap_endpoint_live "$zap_endpoint_url"; then
+  if zap_endpoint_metadata=$(zap_endpoint_metadata_json "$zap_endpoint_url" 2>/dev/null) && zap_endpoint_metadata_live "$zap_endpoint_metadata"; then
     zap_endpoint_ready=true
+    zap_endpoint_pubkey=$(zap_endpoint_nostr_pubkey "$zap_endpoint_metadata" 2>/dev/null || printf '')
+  fi
+  site_signer_ready=false
+  if [ -n "$demo_wallet_npub" ] || [ -n "$zap_endpoint_pubkey" ]; then
+    site_signer_ready=true
+  fi
+  local_receive_ready=false
+  if [ "$lightning_online" = true ] && [ "$lightning_synced" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
+    local_receive_ready=true
   fi
   can_receive=false
-  if [ "$lightning_online" = true ] && [ "$lightning_synced" = true ] && [ "$zap_endpoint_ready" = true ] && [ "${inbound_liquidity_sats:-0}" -gt 0 ]; then
+  if [ "$zap_endpoint_ready" = true ] && { [ "$local_receive_ready" = true ] || [ -n "$zap_endpoint_pubkey" ]; }; then
     can_receive=true
   fi
 
@@ -201,7 +234,8 @@ runtime_json() {
   printf '"lud16_source":"%s",' "$(blog_json_escape "$lud16_source")"
   printf '"demo_wallet_available":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
   printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$demo_wallet_npub")"
-  printf '"site_signer_ready":%s,' "$(bool_json_value "$(test -n "$demo_wallet_npub" && printf true || printf false)")"
+  printf '"site_signer_ready":%s,' "$(bool_json_value "$site_signer_ready")"
+  printf '"zap_endpoint_nostr_pubkey":"%s",' "$(blog_json_escape "$zap_endpoint_pubkey")"
   printf '"lightning_online":%s,' "$(bool_json_value "$lightning_online")"
   printf '"lightning_synced":%s,' "$(bool_json_value "$lightning_synced")"
   printf '"num_peers":%s,' "$(printf '%s' "${num_peers:-0}" | tr -dc '0-9')"

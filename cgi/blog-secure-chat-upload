@@ -16,6 +16,7 @@ fi
 
 upload_id=${HTTP_X_UPLOAD_ID-}
 file_name=${HTTP_X_FILE_NAME-attachment.bin}
+session_display_name=$(blog_secure_chat_session_display_name)
 
 if [ -z "$upload_id" ]; then
   blog_json_error "Missing upload ticket" "upload_ticket_required"
@@ -36,6 +37,7 @@ response=$(
     --header "X-Upload-Id: $upload_id" \
     --header "X-File-Name: $file_name" \
     --header "X-Session-Pubkey: $BLOG_SESSION_USER_PUBKEY" \
+    --header "X-Session-Display-Name: $session_display_name" \
     --data-binary @- \
     http://localhost/upload 2>/dev/null || printf ''
 )

@@ -29,10 +29,13 @@
     title: '',
     content: '',
     tags: '',
+    tagList: [],
+    tagsDraftText: '',
     output: '',
     outputTone: '',
     autosaveTimer: null,
-    saveStatus: ''
+    saveStatus: '',
+    dirtyDuringSave: false
   };
 
   function isPostPage(pathname) {
@@ -205,7 +208,8 @@
   function togglePostPageMenu() {
     var panel = document.querySelector('.post-page-menu-panel');
     var trigger = document.querySelector('.post-page-menu-trigger');
-    if (!panel || !trigger) {
+    var menu = trigger ? trigger.closest('.post-page-menu') : null;
+    if (!panel || !trigger || (menu instanceof HTMLElement && menu.hidden)) {
       return;
     }
     var nextOpen = !!panel.hidden;
@@ -311,6 +315,68 @@
     return hasAddress || hasEvent;
   }
 
+  function postPageReaderMenuItemHtml(action, label) {
+    return '<button type="button" data-post-page-action="' + escapeHtml(action) + '" data-post-page-reader-action="' + escapeHtml(action) + '" role="menuitem" hidden>' + escapeHtml(label) + '</button>';
+  }
+
+  function normalizePostPageMenu(menu) {
+    if (!(menu instanceof HTMLElement)) {
+      return null;
+    }
+    var panel = menu.querySelector('.post-page-menu-panel');
+    if (!(panel instanceof HTMLElement)) {
+      return menu;
+    }
+    if (menu.getAttribute('data-post-page-menu-normalized') === 'true') {
+      return menu;
+    }
+
+    menu.hidden = true;
+    panel.hidden = true;
+    var trigger = menu.querySelector('.post-page-menu-trigger');
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    if (!panel.querySelector('[data-post-page-reader-action="copy_nostr_address"]')) {
+      panel.insertAdjacentHTML('afterbegin', postPageReaderMenuItemHtml('copy_nostr_address', 'Copy Nostr address'));
+    }
+    if (!panel.querySelector('[data-post-page-reader-action="copy_nostr_event"]')) {
+      var addressNode = panel.querySelector('[data-post-page-reader-action="copy_nostr_address"]');
+      if (addressNode) {
+        addressNode.insertAdjacentHTML('afterend', postPageReaderMenuItemHtml('copy_nostr_event', 'Copy Nostr event'));
+      } else {
+        panel.insertAdjacentHTML('afterbegin', postPageReaderMenuItemHtml('copy_nostr_event', 'Copy Nostr event'));
+      }
+    }
+    if (!panel.querySelector('[data-post-page-reader-action="open_nostr"]')) {
+      var eventNode = panel.querySelector('[data-post-page-reader-action="copy_nostr_event"]');
+      if (eventNode) {
+        eventNode.insertAdjacentHTML('afterend', postPageReaderMenuItemHtml('open_nostr', 'Open in Nostr client'));
+      } else {
+        panel.insertAdjacentHTML('afterbegin', postPageReaderMenuItemHtml('open_nostr', 'Open in Nostr client'));
+      }
+    }
+
+    panel.querySelectorAll('[data-post-page-action="edit_post"], [data-post-page-action="add_to_list"], [data-post-page-action="delete_post"]').forEach(function (node) {
+      node.setAttribute('data-post-page-admin-action', '');
+      node.hidden = true;
+    });
+
+    if (!panel.querySelector('[data-post-page-admin-separator]')) {
+      var firstAdminAction = panel.querySelector('[data-post-page-admin-action]');
+      if (firstAdminAction) {
+        firstAdminAction.insertAdjacentHTML('beforebegin', '<div class="post-page-menu-separator" data-post-page-admin-separator hidden></div>');
+      }
+    }
+    panel.querySelectorAll('[data-post-page-admin-separator]').forEach(function (node) {
+      node.hidden = true;
+    });
+
+    menu.setAttribute('data-post-page-menu-normalized', 'true');
+    return menu;
+  }
+
   function ensurePostPageMenu(layout) {
     if (!layout || !layout.card) {
       return null;
@@ -321,7 +387,7 @@
     }
     var existing = head.querySelector('.post-page-menu');
     if (existing) {
-      return existing;
+      return normalizePostPageMenu(existing);
     }
     var wrap = document.createElement('div');
     wrap.className = 'post-page-menu';
@@ -338,6 +404,7 @@
       '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button>' +
       '</div>';
     head.appendChild(wrap);
+    wrap.setAttribute('data-post-page-menu-normalized', 'true');
     return wrap;
   }
 
@@ -359,7 +426,7 @@
   }
 
   function refreshPostPageMenuVisibility() {
-    var menu = document.querySelector('.post-page-menu');
+    var menu = normalizePostPageMenu(document.querySelector('.post-page-menu'));
     if (!menu) {
       return;
     }
@@ -855,6 +922,39 @@
     });
   }
 
+  function postNeedsWideLayout(body) {
+    if (!(body instanceof HTMLElement)) {
+      return false;
+    }
+    // Semantic wide-content blocks should opt into a wider card automatically.
+    if (body.querySelector('table, pre, .table-wrapper, .wide-content, iframe, video')) {
+      return true;
+    }
+    var candidates = body.querySelectorAll('table, pre, img, iframe, video, svg, canvas');
+    for (var i = 0; i < candidates.length; i += 1) {
+      var el = candidates[i];
+      if (!(el instanceof HTMLElement)) {
+        continue;
+      }
+      if ((Number(el.scrollWidth) || 0) - (Number(el.clientWidth) || 0) > 16) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function syncSinglePostLayoutForContent(layout) {
+    if (!layout || !(layout.card instanceof HTMLElement)) {
+      return;
+    }
+    var body = layout.body instanceof HTMLElement ? layout.body : layout.card.querySelector('.post-single-body');
+    var wide = postNeedsWideLayout(body);
+    layout.card.classList.toggle('post-single-has-wide-content', wide);
+    if (document && document.body) {
+      document.body.classList.toggle('single-post-has-wide-content', wide);
+    }
+  }
+
   function normalizeInlinePostType(raw) {
     var value = String(raw || '').trim().toLowerCase();
     return value || 'longform';
@@ -862,9 +962,20 @@
 
   function normalizeInlineTags(raw) {
     var seen = {};
-    return String(raw || '')
+    var value = Array.isArray(raw) ? raw.join(',') : String(raw || '');
+    value = value.trim();
+    if (value === '[]') {
+      return '';
+    }
+    value = value.replace(/^\[+|\]+$/g, '');
+    return value
       .split(',')
-      .map(function (tag) { return String(tag || '').trim(); })
+      .map(function (tag) {
+        var clean = String(tag || '').trim();
+        clean = clean.replace(/^["']+|["']+$/g, '');
+        clean = clean.replace(/^\[+|\]+$/g, '');
+        return clean;
+      })
       .filter(function (tag) {
         if (!tag || seen[tag]) {
           return false;
@@ -873,6 +984,143 @@
         return true;
       })
       .join(', ');
+  }
+
+  function parseInlineTagList(raw) {
+    var normalized = normalizeInlineTags(raw);
+    if (!normalized) {
+      return [];
+    }
+    return normalized.split(',').map(function (tag) {
+      return String(tag || '').trim();
+    }).filter(Boolean);
+  }
+
+  function syncInlineTagsFromList() {
+    inlineEditState.tags = normalizeInlineTags(inlineEditState.tagList || []);
+  }
+
+  function inlineTagTokenHtml(tag) {
+    return '<span class="tag-token" contenteditable="false" data-post-inline-tag-token="' + escapeHtml(tag) + '" tabindex="-1"><span class="tag-token-label">' + escapeHtml(tag) + '</span></span>';
+  }
+
+  function inlineTagsEditorHtml() {
+    var tokensHtml = (inlineEditState.tagList || []).map(inlineTagTokenHtml).join('');
+    return '' +
+      '<div class="tag-token-editor' + ((inlineEditState.tagList || []).length ? '' : ' is-empty') + '" data-post-inline-field="tags-editor" contenteditable="true" role="textbox" aria-label="Post tags" spellcheck="false" data-placeholder="tag, tag, tag">' +
+        tokensHtml +
+        '<span class="tag-token-editor-draft" data-post-inline-tag-draft>' + escapeHtml(inlineEditState.tagsDraftText || '') + '</span>' +
+      '</div>';
+  }
+
+  function inlineTagsEditorNode() {
+    return document.querySelector('[data-post-inline-field="tags-editor"]');
+  }
+
+  function inlineTagsEditorDraftNode(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return null;
+    }
+    return editor.querySelector('[data-post-inline-tag-draft]');
+  }
+
+  function inlineTagsEditorReadDraft(editor) {
+    var node = inlineTagsEditorDraftNode(editor);
+    if (!node) {
+      return '';
+    }
+    return String(node.textContent || '');
+  }
+
+  function inlineTagsEditorSyncDraft(editor) {
+    inlineEditState.tagsDraftText = inlineTagsEditorReadDraft(editor);
+  }
+
+  function inlineTagsEditorRender(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    var html = (inlineEditState.tagList || []).map(inlineTagTokenHtml).join('');
+    html += '<span class="tag-token-editor-draft" data-post-inline-tag-draft>' + escapeHtml(inlineEditState.tagsDraftText || '') + '</span>';
+    editor.innerHTML = html;
+    editor.classList.toggle('is-empty', !(inlineEditState.tagList || []).length && !String(inlineEditState.tagsDraftText || '').trim());
+  }
+
+  function inlineTagsEditorFocusDraft(editor) {
+    var node = inlineTagsEditorDraftNode(editor);
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    var selection = window.getSelection && window.getSelection();
+    if (!selection) {
+      return;
+    }
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    if (document.activeElement !== editor) {
+      try {
+        editor.focus({ preventScroll: true });
+      } catch (_focusErr) {
+        editor.focus();
+      }
+    }
+  }
+
+  function inlineTagsEditorCommit(editor, force) {
+    if (!(editor instanceof HTMLElement)) {
+      return false;
+    }
+    var raw = inlineTagsEditorReadDraft(editor);
+    inlineEditState.tagsDraftText = raw;
+    var value = String(raw || '');
+    var hasSplit = /[,\n]/.test(value);
+    if (!hasSplit && !force) {
+      return false;
+    }
+    var pieces = value.split(/[,\n]/g).map(function (piece) {
+      return String(piece || '').trim();
+    }).filter(Boolean);
+    if (!pieces.length) {
+      inlineEditState.tagsDraftText = hasSplit ? '' : value;
+      inlineTagsEditorRender(editor);
+      syncInlineTagsFromList();
+      return false;
+    }
+    var changed = false;
+    pieces.forEach(function (tag) {
+      if (!tag) {
+        return;
+      }
+      if (inlineEditState.tagList.indexOf(tag) !== -1) {
+        return;
+      }
+      inlineEditState.tagList.push(tag);
+      changed = true;
+    });
+    inlineEditState.tagsDraftText = '';
+    syncInlineTagsFromList();
+    inlineTagsEditorRender(editor);
+    inlineTagsEditorFocusDraft(editor);
+    return changed || hasSplit;
+  }
+
+  function inlineRemoveTag(tag) {
+    var value = String(tag || '').trim();
+    if (!value) {
+      return false;
+    }
+    var next = (inlineEditState.tagList || []).filter(function (item) {
+      return item !== value;
+    });
+    if (next.length === (inlineEditState.tagList || []).length) {
+      return false;
+    }
+    inlineEditState.tagList = next;
+    syncInlineTagsFromList();
+    return true;
   }
 
   function inlinePostTypeLabel(postType) {
@@ -885,6 +1133,186 @@
     if (value === 'link-share') return 'Link Share';
     if (value === 'go-live') return 'Go Live';
     return 'Longform';
+  }
+
+  function inlinePostKindPillClass(postType) {
+    var value = normalizeInlinePostType(postType);
+    if (value === 'shortform') return 'is-shortform';
+    if (value === 'capture-media') return 'is-capture-media';
+    if (value === 'upload-media') return 'is-upload-media';
+    if (value === 'attachment') return 'is-attachment';
+    if (value === 'audio-note') return 'is-audio-note';
+    if (value === 'link-share') return 'is-link-share';
+    if (value === 'go-live') return 'is-go-live';
+    return 'is-longform';
+  }
+
+  function inlineComposePostTypeIconSvg(type) {
+    var value = normalizeInlinePostType(type);
+    if (value === 'shortform') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 96.314 100" fill="none" aria-hidden="true">' +
+        '<path fill="currentColor" stroke="none" d="M84.39,11.825C83.396,8.452,80.595,5,75.097,5c-5.605,0-16.216,3.389-16.216,16.216c0,2.613-1.786,3.205-3.243,3.243c-27.467,0-47.354,32.62-48.187,34.006L5,62.549l4.7,0.785c14.088,2.349,26.242,3.646,36.208,3.879V95h6.486V67.204c1.035-0.03,2.055-0.068,3.041-0.127V95h6.486V66.438c15.209-2.16,22.906-8.613,22.906-19.276V24.459h6.486v-3.243C91.314,17.868,89.414,13.124,84.39,11.825z M78.34,47.162c0,3.367,0,13.606-29.252,13.606c-9.03,0-20.227-1.017-33.326-3.031c6.043-8.383,21.414-26.792,39.876-26.792c3.908,0,9.729-2.591,9.729-9.729c0-9.157,8.12-9.711,9.729-9.73c2.609,0,3.205,1.783,3.243,3.243V47.162z M75.446,17.837c0,1.384-1.128,2.505-2.509,2.505s-2.508-1.121-2.508-2.505c0-1.384,1.127-2.505,2.508-2.505S75.446,16.453,75.446,17.837z"/>' +
+      '</svg>';
+    }
+    if (value === 'longform') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 7H19M5 11H19M5 15H17M5 19H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (value === 'capture-media') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="4" y="7" width="16" height="11" rx="2.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="12" cy="12.5" r="2.6" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M9.2 7L10.4 5.2H13.6L14.8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (value === 'upload-media') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.2" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="8.4" cy="9.7" r="1.4" fill="currentColor"/>' +
+        '<path d="M5.8 16.4L10.2 12.1L13.1 15L15.8 12.5L18.2 16.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+    }
+    if (value === 'attachment') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M21.4 11.1L12.9 19.6C10.6 21.9 6.8 21.9 4.5 19.6C2.2 17.3 2.2 13.5 4.5 11.2L13 2.8C14.6 1.2 17.1 1.2 18.7 2.8C20.2 4.4 20.2 6.9 18.7 8.5L10.2 16.9C9.3 17.8 7.8 17.8 6.9 16.9C6 16 6 14.5 6.9 13.6L14.8 5.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+    }
+    if (value === 'audio-note') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="9" y="4.2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M6.6 11.2C6.6 14.4 9.1 16.9 12 16.9C14.9 16.9 17.4 14.4 17.4 11.2M12 16.9V20.2M9.3 20.2H14.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (value === 'link-share') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="2.7" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<rect x="12.5" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M9.8 12H14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+    if (value === 'go-live') {
+      return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="12" cy="12" r="2.5" fill="currentColor"/>' +
+      '</svg>';
+    }
+    return '<svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M5 7H19M5 11H19M5 15H17M5 19H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
+  function inlineComposeCloseIconSvg() {
+    return '<svg class="compose-close-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6L18 18" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M18 6L6 18" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>';
+  }
+
+  function inlineComposeTrashIconSvg() {
+    return '<svg class="compose-trash-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 7.2H19.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.4 7.2V5.4C9.4 4.6 10 4 10.8 4H13.2C14 4 14.6 4.6 14.6 5.4V7.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M7.6 7.2L8.4 18.1C8.5 19.2 9.4 20 10.5 20H13.5C14.6 20 15.5 19.2 15.6 18.1L16.4 7.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M10.4 10.4V16.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M13.6 10.4V16.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+  }
+
+  function inlineToolbarButtonHtml(action, label, glyph) {
+    return '<button type="button" class="unobtrusive-icon-button toolbar-button" data-post-inline-toolbar="' + escapeHtml(action) + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '">' + glyph + '</button>';
+  }
+
+  function inlineToolbarHtml() {
+    return '' +
+      '<div class="toolbar blog-compose-toolbar" aria-label="Markdown toolbar">' +
+        inlineToolbarButtonHtml('bold', 'Bold', '<span class="tb-glyph tb-glyph-bold" aria-hidden="true">B</span>') +
+        inlineToolbarButtonHtml('italic', 'Italic', '<span class="tb-glyph tb-glyph-italic" aria-hidden="true">I</span>') +
+        inlineToolbarButtonHtml('h2', 'Heading 2', '<span class="tb-glyph tb-glyph-heading" aria-hidden="true">H2</span>') +
+        inlineToolbarButtonHtml('h3', 'Heading 3', '<span class="tb-glyph tb-glyph-heading" aria-hidden="true">H3</span>') +
+        inlineToolbarButtonHtml('code', 'Inline code', '<span class="tb-glyph tb-glyph-code" aria-hidden="true">&lt;/&gt;</span>') +
+        inlineToolbarButtonHtml('code_block', 'Code block', '<span class="tb-glyph tb-glyph-code" aria-hidden="true">{ }</span>') +
+        inlineToolbarButtonHtml('link', 'Insert link', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13.9L8.4 15.5C6.8 17.1 4.2 17.1 2.6 15.5C1 13.9 1 11.3 2.6 9.7L4.2 8.1" stroke="currentColor" stroke-width="2.15" stroke-linecap="round"/><path d="M14 10.1L15.6 8.5C17.2 6.9 19.8 6.9 21.4 8.5C23 10.1 23 12.7 21.4 14.3L19.8 15.9" stroke="currentColor" stroke-width="2.15" stroke-linecap="round"/><path d="M9 12H15" stroke="currentColor" stroke-width="2.15" stroke-linecap="round"/></svg>') +
+        inlineToolbarButtonHtml('quote', 'Quote', '<span class="tb-glyph tb-glyph-quote" aria-hidden="true">“”</span>') +
+        inlineToolbarButtonHtml('ul', 'Bullet list', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5.1" cy="7.2" r="1.2" fill="currentColor"/><circle cx="5.1" cy="12" r="1.2" fill="currentColor"/><circle cx="5.1" cy="16.8" r="1.2" fill="currentColor"/><path d="M9.2 7.2H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 12H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M9.2 16.8H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>') +
+        inlineToolbarButtonHtml('ol', 'Numbered list', '<span class="tb-glyph tb-glyph-list" aria-hidden="true">1.</span>') +
+      '</div>';
+  }
+
+  function inlineInsertMarkdown(action) {
+    var textarea = document.querySelector('textarea[data-post-inline-field="content"]');
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    var start = textarea.selectionStart;
+    var end = textarea.selectionEnd;
+    var value = String(textarea.value || '');
+    var selected = value.slice(start, end);
+    var before = value.slice(0, start);
+    var after = value.slice(end);
+    var replacement = selected;
+    var selectStart = start;
+    var selectEnd = end;
+
+    if (action === 'bold') {
+      replacement = '**' + selected + '**';
+      selectStart = start + 2;
+      selectEnd = end + 2;
+    } else if (action === 'italic') {
+      replacement = '*' + selected + '*';
+      selectStart = start + 1;
+      selectEnd = end + 1;
+    } else if (action === 'h2') {
+      replacement = '## ' + (selected || 'Heading');
+      selectStart = start + 3;
+      selectEnd = start + replacement.length;
+    } else if (action === 'h3') {
+      replacement = '### ' + (selected || 'Heading');
+      selectStart = start + 4;
+      selectEnd = start + replacement.length;
+    } else if (action === 'code') {
+      replacement = '`' + (selected || 'code') + '`';
+      selectStart = start + 1;
+      selectEnd = start + replacement.length - 1;
+    } else if (action === 'code_block') {
+      replacement = '```\n' + (selected || '') + '\n```';
+      selectStart = start + 4;
+      selectEnd = start + replacement.length - 4;
+    } else if (action === 'link') {
+      replacement = '[' + (selected || 'text') + '](https://)';
+      selectStart = start + replacement.length - 9;
+      selectEnd = start + replacement.length - 1;
+    } else if (action === 'quote') {
+      replacement = '> ' + (selected || 'Quote');
+      selectStart = start + 2;
+      selectEnd = start + replacement.length;
+    } else if (action === 'ul') {
+      replacement = '- ' + (selected || 'List item');
+      selectStart = start + 2;
+      selectEnd = start + replacement.length;
+    } else if (action === 'ol') {
+      replacement = '1. ' + (selected || 'List item');
+      selectStart = start + 3;
+      selectEnd = start + replacement.length;
+    }
+
+    textarea.value = before + replacement + after;
+    textarea.selectionStart = selectStart;
+    textarea.selectionEnd = selectEnd;
+    textarea.focus();
+    inlineEditState.content = String(textarea.value || '');
+    queueInlineAutosave();
+  }
+
+  function renderInlineEditorStatusOnly() {
+    var host = ensureInlineEditorHost();
+    if (!host || !inlineEditState.open) {
+      return;
+    }
+    var output = host.querySelector('.blog-compose-status-row .output');
+    if (output) {
+      output.className = 'output' + (inlineEditState.outputTone ? (' ' + inlineEditState.outputTone) : '');
+      output.textContent = inlineEditState.output || '';
+    }
+    var autosave = host.querySelector('.compose-editor-autosave');
+    if (autosave) {
+      var status = String(inlineEditState.saveStatus || '');
+      autosave.hidden = !status;
+      autosave.classList.toggle('is-saving', status === 'saving');
+      autosave.classList.toggle('is-error', status === 'error');
+      autosave.textContent = status === 'saving' ? 'Saving...' : (status === 'error' ? 'Save failed' : '✓ Saved');
+    }
   }
 
   function inlineAuthPayload() {
@@ -925,10 +1353,13 @@
       return;
     }
     host.hidden = false;
-    var outputClass = 'output';
-    if (inlineEditState.outputTone) {
-      outputClass += ' ' + inlineEditState.outputTone;
+    if (!Array.isArray(inlineEditState.tagList)) {
+      inlineEditState.tagList = parseInlineTagList(inlineEditState.tags || '');
     }
+    if (typeof inlineEditState.tagsDraftText !== 'string') {
+      inlineEditState.tagsDraftText = '';
+    }
+    var outputClass = 'output' + (inlineEditState.outputTone ? (' ' + inlineEditState.outputTone) : '');
     var hasEditableFilename = !!String(inlineEditState.sourcePostPath || '').trim();
     var showTitleField = normalizeInlinePostType(inlineEditState.postType) !== 'shortform';
     var currentFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
@@ -953,36 +1384,48 @@
           '</div>' +
         '</div>';
     }
+    var postTypeIcon = inlineComposePostTypeIconSvg(inlineEditState.postType);
+    var postTypePill = '<span class="nostr-page-kind-badge ' + inlinePostKindPillClass(inlineEditState.postType) + '">' + escapeHtml(inlinePostTypeLabel(inlineEditState.postType)) + '</span><span class="nostr-target-pill">Post type locked</span>';
     host.innerHTML = '' +
       '<article class="post-item blog-post-item blog-compose-card">' +
         '<div class="blog-compose-body">' +
-          '<div class="field-row blog-compose-head-row is-type-collapsed">' +
-            '<div class="compose-nostr-target-row">' +
-              '<span class="nostr-target-pill is-pages-pill">Post type: ' + escapeHtml(inlinePostTypeLabel(inlineEditState.postType)) + ' (locked)</span>' +
+          '<div class="field-row blog-compose-head-row is-type-collapsed" data-compose-head-row>' +
+            '<div class="compose-post-type-control is-collapsed" data-compose-type-control>' +
+              '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button" disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts">' + postTypeIcon + '</button>' +
             '</div>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="close">Done</button>' +
+            '<div class="blog-compose-head-actions">' +
+              '<button type="button" class="unobtrusive-icon-button blog-compose-close" data-post-inline-action="close" aria-label="Close compose" title="Close compose">' + inlineComposeCloseIconSvg() + '<span class="sr-only">Close compose</span></button>' +
+            '</div>' +
           '</div>' +
           '<div class="field-row blog-compose-title-row"' + (showTitleField ? '' : ' hidden aria-hidden="true"') + '>' +
-            '<input type="text" data-post-inline-field="title" placeholder="Post title" value="' + escapeHtml(inlineEditState.title) + '">' +
+            '<label><strong>Title</strong></label>' +
+            '<input type="text" data-compose-field="title" data-post-inline-field="title" placeholder="Post title" value="' + escapeHtml(inlineEditState.title) + '">' +
           '</div>' +
           filenameRow +
           '<div class="field-row">' +
-            '<label><strong>Content</strong></label>' +
+            '<label><strong>Body</strong></label>' +
             '<div class="editor-shell blog-compose-editor-shell">' +
-              '<textarea data-post-inline-field="content" rows="14" placeholder="# Write in Markdown">' + escapeHtml(inlineEditState.content) + '</textarea>' +
-              '<div class="autosave-indicator compose-editor-autosave' + (inlineEditState.saveStatus === 'saving' ? ' is-saving' : '') + (inlineEditState.saveStatus === 'error' ? ' is-error' : '') + '"' + (inlineEditState.saveStatus ? '' : ' hidden') + '>' + (inlineEditState.saveStatus === 'saving' ? 'Saving...' : (inlineEditState.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
+              inlineToolbarHtml() +
+              '<textarea data-post-inline-field="content" rows="14" placeholder="Post body">' + escapeHtml(inlineEditState.content) + '</textarea>' +
+              '<div class="autosave-indicator compose-editor-autosave' + (inlineEditState.saveStatus === 'saving' ? ' is-saving' : '') + (inlineEditState.saveStatus === 'error' ? ' is-error' : '') + '"' + (inlineEditState.saveStatus ? '' : ' hidden') + '>' + (inlineEditState.saveStatus === 'saving' ? 'Saving...' : (inlineEditState.saveStatus === 'error' ? 'Save failed' : '✓ Saved')) + '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="field-row">' +
+          '<div class="field-row compose-tags-row">' +
             '<label><strong>Tags</strong></label>' +
-            '<input type="text" data-post-inline-field="tags" value="' + escapeHtml(inlineEditState.tags) + '" placeholder="tag, tag, tag">' +
+            '<input type="hidden" data-post-inline-field="tags" value="' + escapeHtml(inlineEditState.tags) + '">' +
+            '<div class="tag-editor">' + inlineTagsEditorHtml() + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="compose-footer blog-compose-footer">' +
           '<div class="compose-actions blog-compose-footer-actions">' +
-            '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-post-inline-action="delete"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Delete Draft</button>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="save"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Save Draft</button>' +
-            '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="publish"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Publish Changes</button>' +
+            '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-post-inline-action="delete" aria-label="Delete draft" title="Delete draft"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>' + inlineComposeTrashIconSvg() + '</button>' +
+            '<div class="blog-compose-publish-stack">' +
+              '<div class="blog-compose-publish-row">' +
+                postTypePill +
+                '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="save" title="Saves unpublished changes only"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Save Draft</button>' +
+                '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-post-inline-action="publish"' + (inlineEditState.busy ? ' disabled aria-disabled="true"' : '') + '>Publish Changes</button>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
           '<div class="blog-compose-status-row">' +
             '<div class="' + outputClass + '">' + escapeHtml(inlineEditState.output) + '</div>' +
@@ -1015,7 +1458,19 @@
   }
 
   function saveInlineDraft(action) {
-    if (!inlineEditState.open || inlineEditState.busy) {
+    if (!inlineEditState.open) {
+      return Promise.resolve(false);
+    }
+    if (action !== 'autosave' && inlineEditState.autosaveTimer) {
+      window.clearTimeout(inlineEditState.autosaveTimer);
+      inlineEditState.autosaveTimer = null;
+    }
+    if (inlineEditState.busy) {
+      inlineEditState.dirtyDuringSave = true;
+      if (action !== 'autosave') {
+        setInlineOutput('Finishing the current save. Try again in a moment.', 'warn');
+        renderInlineEditorStatusOnly();
+      }
       return Promise.resolve(false);
     }
     var auth = inlineAuthPayload();
@@ -1028,10 +1483,15 @@
     payload.session_token = auth.session_token;
     payload.csrf_token = auth.csrf_token;
     inlineEditState.busy = true;
+    inlineEditState.dirtyDuringSave = false;
     if (action === 'autosave') {
       inlineEditState.saveStatus = 'saving';
     }
-    renderInlineEditor();
+    if (action === 'autosave') {
+      renderInlineEditorStatusOnly();
+    } else {
+      renderInlineEditor();
+    }
     return postForm('/cgi/blog-save-post', payload).then(function (data) {
       if (data && data.draft_id) {
         inlineEditState.draftId = String(data.draft_id || '').trim();
@@ -1040,6 +1500,7 @@
       inlineEditState.postFilename = normalizePostFilename(inlineEditState.postFilename || filenameFromPostPath(inlineEditState.sourcePostPath));
       if (action === 'autosave') {
         inlineEditState.saveStatus = 'saved';
+        renderInlineEditorStatusOnly();
       }
       if (action === 'publish_now') {
         setInlineOutput('Published. Reloading post…', 'ok');
@@ -1047,11 +1508,14 @@
         window.setTimeout(function () {
           window.location.reload();
         }, 350);
+      } else if (action === 'save_draft') {
+        setInlineOutput('Working draft saved. Live post is unchanged.', 'ok');
       }
       return true;
     }).catch(function (err) {
       if (action === 'autosave') {
         inlineEditState.saveStatus = 'error';
+        renderInlineEditorStatusOnly();
       } else {
         setInlineOutput(err && err.message ? err.message : 'Save failed', 'error');
       }
@@ -1059,7 +1523,19 @@
       return false;
     }).finally(function () {
       inlineEditState.busy = false;
-      renderInlineEditor();
+      if (inlineEditState.dirtyDuringSave) {
+        inlineEditState.dirtyDuringSave = false;
+        queueInlineAutosave();
+        if (action !== 'autosave') {
+          renderInlineEditorStatusOnly();
+        }
+        return;
+      }
+      if (action === 'autosave') {
+        renderInlineEditorStatusOnly();
+      } else {
+        renderInlineEditor();
+      }
     });
   }
 
@@ -1067,11 +1543,14 @@
     if (!inlineEditState.open) {
       return;
     }
+    if (inlineEditState.busy) {
+      inlineEditState.dirtyDuringSave = true;
+    }
     if (inlineEditState.autosaveTimer) {
       window.clearTimeout(inlineEditState.autosaveTimer);
     }
     inlineEditState.saveStatus = 'saving';
-    renderInlineEditor();
+    renderInlineEditorStatusOnly();
     inlineEditState.autosaveTimer = window.setTimeout(function () {
       inlineEditState.autosaveTimer = null;
       saveInlineDraft('autosave');
@@ -1093,6 +1572,8 @@
     inlineEditState.title = '';
     inlineEditState.content = '';
     inlineEditState.tags = '';
+    inlineEditState.tagList = [];
+    inlineEditState.tagsDraftText = '';
     inlineEditState.output = '';
     inlineEditState.outputTone = '';
     inlineEditState.saveStatus = '';
@@ -1152,6 +1633,8 @@
       inlineEditState.title = String(draft.title || '');
       inlineEditState.content = String(draft.content || '');
       inlineEditState.tags = normalizeInlineTags(draft.tags || '');
+      inlineEditState.tagList = parseInlineTagList(inlineEditState.tags);
+      inlineEditState.tagsDraftText = '';
       inlineEditState.output = '';
       inlineEditState.outputTone = '';
       inlineEditState.saveStatus = '';
@@ -1179,6 +1662,22 @@
       navColumn('Newer', payload.newer, 'post-nav-prev') +
       navColumn('Older', payload.older, 'post-nav-next') +
       '</nav>';
+  }
+
+  function normalizeMarkdownSeparators(body) {
+    if (!(body instanceof HTMLElement)) {
+      return;
+    }
+    Array.prototype.forEach.call(body.querySelectorAll('p'), function (node) {
+      var text = String(node.textContent || '').replace(/\s+/g, '').trim();
+      if (text === '***') {
+        node.classList.add('markdown-separator');
+      }
+    });
+  }
+
+  function normalizeAllMarkdownSeparators() {
+    Array.prototype.forEach.call(document.querySelectorAll('.post-single-body, .post-content, .list-entry-markdown, .nostr-page-extra'), normalizeMarkdownSeparators);
   }
 
   function renderCommentRow(comment) {
@@ -1279,7 +1778,7 @@
     setCommentStatus('Refreshing comments from relays...', 'info');
     fetch('/cgi/blog-refresh-comments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: 'path=' + encodeURIComponent(currentRelPath),
       credentials: 'same-origin'
     })
@@ -1368,7 +1867,7 @@
         setCommentStatus('Submitting signed comment...', 'info');
         return fetch('/cgi/blog-submit-comment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
           body: 'session_token=' + encodeURIComponent(sessionToken) +
             '&csrf_token=' + encodeURIComponent(csrfToken) +
             '&path=' + encodeURIComponent(currentRelPath) +
@@ -1447,16 +1946,19 @@
       return;
     }
 
-    if (!layout.body.querySelector('.post-end-tags')) {
+    if (!layout.card.querySelector('.post-end-tags')) {
       var tagsHtml = renderPostEndTags(payload.current.tags);
       if (tagsHtml) {
         layout.body.insertAdjacentHTML('beforeend', tagsHtml);
       }
     }
 
-    if (!layout.body.querySelector('.post-nav-enhanced')) {
+    if (!layout.card.querySelector('.post-nav-enhanced')) {
       layout.body.insertAdjacentHTML('beforeend', renderPostNav(payload));
     }
+
+    syncSinglePostLayoutForContent(layout);
+    normalizeAllMarkdownSeparators();
 
     ensurePostPageMenu(layout);
     refreshPostPageMenuVisibility();
@@ -1575,6 +2077,10 @@
     var actionNode = target.closest('[data-post-page-action]');
     if (actionNode instanceof HTMLElement) {
       event.preventDefault();
+      if (actionNode.hidden) {
+        closePostPageMenu();
+        return;
+      }
       var action = actionNode.getAttribute('data-post-page-action');
       runPostPageAction(action);
       return;
@@ -1619,6 +2125,38 @@
       }
       return;
     }
+
+    var inlineTagToken = target.closest('[data-post-inline-tag-token]');
+    if (inlineTagToken instanceof HTMLElement) {
+      event.preventDefault();
+      var tagValue = String(inlineTagToken.getAttribute('data-post-inline-tag-token') || '').trim();
+      if (inlineRemoveTag(tagValue)) {
+        var editorNode = inlineTagsEditorNode();
+        if (editorNode) {
+          inlineTagsEditorRender(editorNode);
+          inlineTagsEditorFocusDraft(editorNode);
+        }
+        queueInlineAutosave();
+      }
+      return;
+    }
+
+    var inlineTagEditor = target.closest('[data-post-inline-field="tags-editor"]');
+    if (inlineTagEditor instanceof HTMLElement) {
+      inlineTagsEditorSyncDraft(inlineTagEditor);
+      if (document.activeElement !== inlineTagEditor) {
+        inlineTagEditor.focus();
+      }
+      inlineTagsEditorFocusDraft(inlineTagEditor);
+      return;
+    }
+
+    var inlineToolbar = target.closest('[data-post-inline-toolbar]');
+    if (inlineToolbar instanceof HTMLElement) {
+      event.preventDefault();
+      inlineInsertMarkdown(String(inlineToolbar.getAttribute('data-post-inline-toolbar') || ''));
+      return;
+    }
   });
 
   document.addEventListener('pointerup', function (event) {
@@ -1634,12 +2172,27 @@
     }
   }, { passive: false });
 
+  if (isPostPage(window.location.pathname)) {
+    normalizePostPageMenu(document.querySelector('.post-page-menu'));
+  }
+
   document.addEventListener('input', function (event) {
     var target = event.target;
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLElement)) {
       return;
     }
     if (!inlineEditState.open) {
+      return;
+    }
+    if (target instanceof HTMLElement && String(target.getAttribute('data-post-inline-field') || '') === 'tags-editor') {
+      inlineTagsEditorSyncDraft(target);
+      var hiddenTags = document.querySelector('input[data-post-inline-field="tags"]');
+      if (hiddenTags instanceof HTMLInputElement) {
+        hiddenTags.value = inlineEditState.tags;
+      }
+      return;
+    }
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
       return;
     }
     var field = String(target.getAttribute('data-post-inline-field') || '');
@@ -1650,8 +2203,6 @@
       inlineEditState.title = String(target.value || '');
     } else if (field === 'content') {
       inlineEditState.content = String(target.value || '');
-    } else if (field === 'tags') {
-      inlineEditState.tags = String(target.value || '');
     } else if (field === 'post_filename') {
       inlineEditState.postFilename = normalizePostFilename(String(target.value || ''));
     }
@@ -1674,12 +2225,6 @@
       return;
     }
     var changedField = String(target.getAttribute('data-post-inline-field') || '');
-    if (changedField === 'tags') {
-      inlineEditState.tags = normalizeInlineTags(target.value || '');
-      target.value = inlineEditState.tags;
-      queueInlineAutosave();
-      return;
-    }
     if (changedField === 'post_filename') {
       var nextFilename = normalizePostFilename(target.value || filenameFromPostPath(inlineEditState.sourcePostPath));
       if (!nextFilename) {
@@ -1705,10 +2250,71 @@
     submitAddToListDialog(form);
   });
 
+  document.addEventListener('keydown', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement) || !inlineEditState.open) {
+      return;
+    }
+    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-editor') {
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (inlineTagsEditorCommit(target, true)) {
+        queueInlineAutosave();
+      }
+      return;
+    }
+    if (event.key === ',' || event.code === 'Comma' || event.key === 'Tab') {
+      if (event.key === 'Tab' || inlineTagsEditorReadDraft(target).indexOf(',') !== -1 || /\S/.test(inlineTagsEditorReadDraft(target))) {
+        event.preventDefault();
+        if (inlineTagsEditorCommit(target, true)) {
+          queueInlineAutosave();
+        }
+      }
+      return;
+    }
+    if (event.key === 'Backspace') {
+      var draft = inlineTagsEditorReadDraft(target);
+      if (!String(draft || '').trim() && (inlineEditState.tagList || []).length) {
+        event.preventDefault();
+        var last = inlineEditState.tagList[inlineEditState.tagList.length - 1];
+        if (inlineRemoveTag(last)) {
+          inlineTagsEditorRender(target);
+          inlineTagsEditorFocusDraft(target);
+          queueInlineAutosave();
+        }
+      }
+    }
+  });
+
+  document.addEventListener('focusout', function (event) {
+    var target = event.target;
+    if (!(target instanceof HTMLElement) || !inlineEditState.open) {
+      return;
+    }
+    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-editor') {
+      return;
+    }
+    window.setTimeout(function () {
+      var active = document.activeElement;
+      if (active instanceof HTMLElement && target.contains(active)) {
+        return;
+      }
+      if (inlineTagsEditorCommit(target, true)) {
+        queueInlineAutosave();
+      }
+    }, 0);
+  });
+
   if (!triggerEarlyPostRouteRepair()) {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadPostContext);
+      document.addEventListener('DOMContentLoaded', function () {
+        normalizeAllMarkdownSeparators();
+        loadPostContext();
+      });
     } else {
+      normalizeAllMarkdownSeparators();
       loadPostContext();
     }
     window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);

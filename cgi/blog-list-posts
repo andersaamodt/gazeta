@@ -44,6 +44,7 @@ while IFS= read -r file || [ -n "$file" ]; do
   nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
   nostr_address=$(blog_post_nostr_address_for_file "$file")
   open_url=$(blog_rel_post_html_url "$file")
+  crossposting_json=$(blog_origin_crossposting_json_for_file "$file")
 
   source="local"
   can_delete=true
@@ -73,6 +74,7 @@ while IFS= read -r file || [ -n "$file" ]; do
   printf '"source":"%s",' "$(blog_json_escape "$source")"
   printf '"nostr_address":"%s",' "$(blog_json_escape "$nostr_address")"
   printf '"open_url":"%s",' "$(blog_json_escape "$open_url")"
+  printf '"crossposting":%s,' "$crossposting_json"
   printf '"can_delete":%s,' "$can_delete"
   printf '"can_hide":%s' "$can_hide"
   printf '}'

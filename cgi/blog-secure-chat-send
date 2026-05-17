@@ -24,11 +24,13 @@ fi
 
 payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-send.XXXXXX")
 trap 'rm -f "$payload_file"' EXIT HUP INT TERM
+session_display_name=$(blog_secure_chat_session_display_name)
 jq -cn \
   --arg sessionPubkey "$BLOG_SESSION_USER_PUBKEY" \
+  --arg sessionDisplayName "$session_display_name" \
   --arg text "$message" \
   --argjson attachments "$attachments_json" \
-  '{sessionPubkey:$sessionPubkey,text:$text,attachments:$attachments}' > "$payload_file"
+  '{sessionPubkey:$sessionPubkey,sessionDisplayName:$sessionDisplayName,text:$text,attachments:$attachments}' > "$payload_file"
 
 if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
   direct_response=$(
@@ -44,7 +46,7 @@ if [ -n "$message" ] && [ "$attachments_json" = '[]' ]; then
     exit 0
   fi
   case "$direct_code" in
-    mapping_unavailable|unsupported_direct_send|direct_sender_unavailable|direct_send_failed) ;;
+    mapping_unavailable|mapping_identity_stale|unsupported_direct_send|direct_sender_unavailable|direct_send_failed) ;;
     *)
       if [ -n "$direct_response" ]; then
         printf '%s\n' "$direct_response"

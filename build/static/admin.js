@@ -14,8 +14,11 @@
     sshFingerprint: '',
     isAdmin: false,
     composeTags: [],
+    composeTagsDraftText: '',
     composePostType: 'longform',
     composePostTypeLocked: false,
+    composePostTypeToolbarCollapsed: true,
+    composePostTypeToolbarCollapseTimer: null,
     composeShortformLimit: 280,
     composeShortformLimitEditing: false,
     composeUploadBusy: false,
@@ -23,10 +26,17 @@
     composeSourcePostPath: '',
     composePostFilename: '',
     composePostFilenameEditing: false,
+    composeOriginPlatforms: [],
     autosaveTimer: null,
     suspendAutosave: false,
     previewVisible: localStorage.getItem('blog_admin_preview_hidden') !== '1',
     nostrBridgeEnabled: false,
+    originConfig: {
+      available: false,
+      platforms: [],
+      enabled_platforms: [],
+      default_platforms: []
+    },
     plugins: {
       nostr_support: true,
       nostr_login: true,
@@ -57,10 +67,17 @@
     usersSortColumn: '',
     usersSortDirection: '',
     postsMenuOpenFor: '',
+    filesMenuOpenFor: '',
     draftsMenuOpenFor: '',
     postsActionInFlight: false,
+    postsCrosspostDialogOpen: false,
+    postsCrosspostPath: '',
+    postsCrosspostSelection: [],
     moderationActionInFlight: false,
     files: [],
+    filesDeleting: {},
+    unsavedPostDraftsByPath: {},
+    postsCache: [],
     filePickerContext: 'files-admin',
     fileUploads: [],
     activeUploadCount: 0,
@@ -87,6 +104,9 @@
     nostrPagesAvailableTags: [],
     nostrPagesSaveBusy: false,
     nostrPagesSaveQueued: false,
+    nostrPagesSaveTimer: null,
+    nostrPagesSavePromise: null,
+    nostrPagesSaveRevision: 0,
     nostrPagesEditingSlugIndex: -1,
     nostrPagesEditingSlugValue: '',
     nostrPagesEditingNavTitleIndex: -1,
@@ -114,8 +134,12 @@
     btcpayCheckoutRuntimeInfo: null,
     btcpayActionInFlight: false,
     btcpayActionPending: '',
+    composeSubmitInFlight: false,
+    composeSubmitAction: '',
     initialContentPainted: false,
     loadedAdminSections: {},
+    preloadAdminStarted: false,
+    preloadAdminDone: false,
     sidebarCollapsed: false
   };
 
@@ -127,6 +151,7 @@
     outputCompose: document.getElementById('output-compose'),
     outputQueue: document.getElementById('output-queue'),
     outputPosts: document.getElementById('output-posts'),
+    outputCrossposting: document.getElementById('output-crossposting'),
     outputNostrPages: document.getElementById('output-nostr-pages'),
     outputFiles: document.getElementById('output-files'),
     outputModeration: document.getElementById('output-moderation'),
@@ -171,8 +196,14 @@
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
     appendSiteTitleToPageTitle: document.getElementById('append-site-title-to-page-title'),
     newUsersAreAdmins: document.getElementById('new-users-are-admins'),
+    crosspostingRuntime: document.getElementById('crossposting-runtime'),
+    crosspostingEnabledAll: document.getElementById('crossposting-enabled-all'),
+    crosspostingEnabledList: document.getElementById('crossposting-enabled-list'),
+    crosspostingDefaultAll: document.getElementById('crossposting-default-all'),
+    crosspostingDefaultList: document.getElementById('crossposting-default-list'),
     postTitle: document.getElementById('post-title'),
     composePostTypeToolbar: document.getElementById('compose-post-type-toolbar'),
+    composePostTypeCurrentButton: document.getElementById('compose-post-type-current-btn'),
     composeNostrTargetPill: document.getElementById('compose-nostr-target-pill'),
     composeMediaTools: document.getElementById('compose-media-tools'),
     composeMediaActions: document.getElementById('compose-media-actions'),
@@ -184,6 +215,11 @@
     composePostFilenameEditButton: document.getElementById('btn-compose-post-filename-edit'),
     composePostFilenameEditWrap: document.getElementById('compose-post-filename-edit-wrap'),
     composePostFilenameInput: document.getElementById('compose-post-filename-input'),
+    composeCrosspostDetails: document.getElementById('compose-crosspost-details'),
+    composeCrosspostSummary: document.getElementById('compose-crosspost-summary'),
+    composeCrosspostNote: document.getElementById('compose-crosspost-note'),
+    composeOriginSelectAll: document.getElementById('compose-origin-select-all'),
+    composeOriginPlatformList: document.getElementById('compose-origin-platform-list'),
     composeLinkUrl: document.getElementById('compose-link-url'),
     composeLinkBody: document.getElementById('compose-link-body'),
     composeCaptureButton: document.getElementById('btn-compose-capture'),
@@ -194,6 +230,7 @@
     postTagsInput: document.getElementById('post-tags-input'),
     postTagsEditor: document.getElementById('post-tags-editor'),
     postTagsPills: document.getElementById('post-tags-pills'),
+    postTagsTokenEditor: document.getElementById('post-tags-token-editor'),
     postContent: document.getElementById('post-content'),
     composeShortformMeter: document.getElementById('compose-shortform-meter'),
     composeShortformLimitButton: document.getElementById('btn-compose-shortform-limit'),
@@ -231,6 +268,12 @@
     postAddToListDate: document.getElementById('post-add-to-list-date'),
     postAddToListMarkdown: document.getElementById('post-add-to-list-markdown'),
     postAddToListCancel: document.getElementById('post-add-to-list-cancel'),
+    postCrosspostDialog: document.getElementById('post-crosspost-dialog'),
+    postCrosspostForm: document.getElementById('post-crosspost-form'),
+    postCrosspostSubtitle: document.getElementById('post-crosspost-subtitle'),
+    postCrosspostList: document.getElementById('post-crosspost-list'),
+    postCrosspostCancel: document.getElementById('post-crosspost-cancel'),
+    postCrosspostSubmit: document.getElementById('post-crosspost-submit'),
     nostrPagesList: document.getElementById('nostr-pages-list'),
     createNostrPageButton: document.getElementById('btn-create-nostr-page'),
     nostrPageCreateDialog: document.getElementById('nostr-page-create-dialog'),
@@ -268,8 +311,8 @@
   };
   let themeSwitchVisualTimer = null;
 
-  const publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
-  const publishDestinationInputs = Array.from(document.querySelectorAll('input[name="publish-destination"]'));
+  let publishModeInputs = [];
+  let publishDestinationInputs = [];
   const COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   const COMPOSE_POST_TYPES_ENABLED = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share'];
   const ADMIN_SIDEBAR_COLLAPSED_KEY = 'blog_admin_sidebar_collapsed_v1';
@@ -279,6 +322,406 @@
   const LOCAL_DRIP_TICK_MS = 15000;
   const ADMIN_COMPOSE_SESSION_KEY_PREFIX = 'blog_admin_compose_session_v1:';
   let themeSwapToken = 0;
+
+  function refreshComposeRadioInputs() {
+    publishModeInputs = Array.from(document.querySelectorAll('input[name="publish-mode"]'));
+    publishDestinationInputs = Array.from(document.querySelectorAll('input[name="publish-destination"]'));
+  }
+
+  refreshComposeRadioInputs();
+
+  function arrayFromMaybe(value) {
+    return Array.isArray(value) ? value.slice() : [];
+  }
+
+  function originConfigPlatformIds(platforms) {
+    return arrayFromMaybe(platforms).map(function (platform) {
+      return String(platform && platform.id || '').trim().toLowerCase();
+    }).filter(Boolean);
+  }
+
+  function normalizeOriginPlatformList(raw, allowed) {
+    const allowedIds = Array.isArray(allowed) && allowed.length
+      ? allowed.map(function (item) { return String(item || '').trim().toLowerCase(); }).filter(Boolean)
+      : originConfigPlatformIds((state.originConfig && state.originConfig.platforms) || []);
+    let list = [];
+    if (Array.isArray(raw)) {
+      list = raw.slice();
+    } else if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (trimmed) {
+        if (trimmed.charAt(0) === '[') {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              list = parsed.slice();
+            }
+          } catch (_err) {
+            list = trimmed.split(',');
+          }
+        } else {
+          list = trimmed.split(',');
+        }
+      }
+    }
+    const wanted = new Set(list.map(function (item) {
+      return String(item || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    }).filter(Boolean));
+    return allowedIds.filter(function (id) {
+      return wanted.has(id);
+    });
+  }
+
+  function normalizeOriginConfig(origin) {
+    const source = origin && typeof origin === 'object' ? origin : {};
+    const platforms = arrayFromMaybe(source.platforms).map(function (platform) {
+      const id = String(platform && platform.id || '').trim().toLowerCase();
+      if (!id) {
+        return null;
+      }
+      return {
+        id: id,
+        family: String(platform && platform.family || '').trim().toLowerCase(),
+        site_enabled: !!(platform && platform.site_enabled),
+        default_selected: !!(platform && platform.default_selected)
+      };
+    }).filter(Boolean);
+    const allIds = originConfigPlatformIds(platforms);
+    const enabled = normalizeOriginPlatformList(arrayFromMaybe(source.enabled_platforms), allIds);
+    const defaults = normalizeOriginPlatformList(arrayFromMaybe(source.default_platforms), enabled);
+    return {
+      available: !!source.available,
+      public_base_url: String(source.public_base_url || '').trim(),
+      platforms: platforms,
+      enabled_platforms: enabled,
+      default_platforms: defaults
+    };
+  }
+
+  function originPlatformInfo(platformId) {
+    const id = String(platformId || '').trim().toLowerCase();
+    return arrayFromMaybe(state.originConfig && state.originConfig.platforms).find(function (platform) {
+      return String(platform && platform.id || '') === id;
+    }) || { id: id, family: '' };
+  }
+
+  function originTitleize(text) {
+    return String(text || '').trim().replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (ch) {
+      return ch.toUpperCase();
+    });
+  }
+
+  function originPlatformLabel(platformId) {
+    const id = String(platformId || '').trim().toLowerCase();
+    const labels = {
+      mastodon: 'Mastodon',
+      misskey: 'Misskey',
+      lemmy: 'Lemmy',
+      kbin: 'kbin',
+      bluesky: 'Bluesky',
+      reddit: 'Reddit',
+      x: 'X',
+      tumblr: 'Tumblr',
+      facebook: 'Facebook',
+      minds: 'Minds',
+      mirror: 'Mirror',
+      telegram: 'Telegram'
+    };
+    if (labels[id]) {
+      return labels[id];
+    }
+    return originTitleize(id) || 'Origin';
+  }
+
+  function originPlatformShortLabel(platformId) {
+    const id = String(platformId || '').trim().toLowerCase();
+    const labels = {
+      mastodon: 'Ma',
+      misskey: 'Mi',
+      lemmy: 'Le',
+      kbin: 'Kb',
+      bluesky: 'B',
+      reddit: 'R',
+      x: 'X',
+      tumblr: 'Tu',
+      facebook: 'Fb',
+      minds: 'Mn',
+      mirror: 'Mr',
+      telegram: 'Tg'
+    };
+    if (labels[id]) {
+      return labels[id];
+    }
+    return (originPlatformLabel(id).charAt(0) || 'O').toUpperCase();
+  }
+
+  function originPlatformFamilyLabel(platformId) {
+    const family = String(originPlatformInfo(platformId).family || '').trim().toLowerCase();
+    const labels = {
+      activitypub: 'ActivityPub',
+      fediverse: 'Fediverse',
+      api: 'Native API',
+      atproto: 'AT Protocol',
+      bridge: 'Bridge target',
+      paragraph: 'Paragraph-style teaser',
+      message: 'Messaging'
+    };
+    return labels[family] || originTitleize(family) || 'Origin destination';
+  }
+
+  function originPlatformIconHtml(platformId) {
+    const id = String(platformId || '').trim().toLowerCase();
+    const family = String(originPlatformInfo(id).family || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'generic';
+    return '<span class="crosspost-platform-icon crosspost-platform-icon-' + escapeAttr(id || 'generic') + ' crosspost-platform-icon-family-' + escapeAttr(family) + '" aria-hidden="true">' + escapeHtml(originPlatformShortLabel(id)) + '</span>';
+  }
+
+  function originSummaryText(count) {
+    const total = Number(count || 0);
+    if (total <= 0) {
+      return 'Will not be cross-posted';
+    }
+    if (total === 1) {
+      return 'Will be cross-posted to 1 site';
+    }
+    return 'Will be cross-posted to ' + String(total) + ' sites';
+  }
+
+  function originDefaultSummaryText(count) {
+    const total = Number(count || 0);
+    if (total <= 0) {
+      return 'New posts default to no cross-post destinations.';
+    }
+    if (total === 1) {
+      return 'New posts default to 1 cross-post destination.';
+    }
+    return 'New posts default to ' + String(total) + ' cross-post destinations.';
+  }
+
+  function originStatusLabel(status) {
+    const value = String(status || '').trim().toLowerCase();
+    if (value === 'published' || value === 'ok') {
+      return 'Published';
+    }
+    if (value === 'failed') {
+      return 'Failed';
+    }
+    if (value === 'fetch-failed') {
+      return 'Fetch failed';
+    }
+    if (value === 'mismatch') {
+      return 'Remote differs';
+    }
+    if (value === 'not_selected') {
+      return 'Not selected';
+    }
+    if (value === 'skipped') {
+      return 'Skipped';
+    }
+    if (value === 'outdated') {
+      return 'Outdated';
+    }
+    return 'Not published';
+  }
+
+  function originStatusClass(status) {
+    const value = String(status || '').trim().toLowerCase();
+    if (value === 'published' || value === 'ok') {
+      return 'is-published';
+    }
+    if (value === 'failed') {
+      return 'is-failed';
+    }
+    if (value === 'outdated' || value === 'fetch-failed' || value === 'mismatch') {
+      return 'is-outdated';
+    }
+    if (value === 'skipped') {
+      return 'is-skipped';
+    }
+    if (value === 'not_selected') {
+      return 'is-unselected';
+    }
+    return 'is-pending';
+  }
+
+  function normalizePostCrossposting(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const rawPlatforms = arrayFromMaybe(source.platforms);
+    const discoveredIds = originConfigPlatformIds(rawPlatforms);
+    const allowedIds = discoveredIds.length
+      ? discoveredIds
+      : originConfigPlatformIds((state.originConfig && state.originConfig.platforms) || []);
+    const rawEnabled = arrayFromMaybe(source.enabled_platforms);
+    const enabled = normalizeOriginPlatformList(rawEnabled.length ? rawEnabled : allowedIds, allowedIds);
+    const platformMap = {};
+    rawPlatforms.forEach(function (platform) {
+      const id = String(platform && platform.id || '').trim().toLowerCase();
+      if (!id) {
+        return;
+      }
+      platformMap[id] = {
+        id: id,
+        family: String(platform && platform.family || '').trim().toLowerCase(),
+        selected: !!(platform && platform.selected),
+        status: String(platform && platform.status || '').trim().toLowerCase() || 'unpublished',
+        remote_url: String(platform && platform.remote_url || '').trim()
+      };
+    });
+    const orderedPlatforms = enabled.map(function (platformId) {
+      const existing = platformMap[platformId];
+      if (existing) {
+        return existing;
+      }
+      return {
+        id: platformId,
+        family: String(originPlatformInfo(platformId).family || '').trim().toLowerCase(),
+        selected: false,
+        status: 'unpublished',
+        remote_url: ''
+      };
+    });
+    const publishedCount = orderedPlatforms.filter(function (platform) {
+      return platform.status === 'published' || platform.status === 'ok';
+    }).length;
+    const selectedCount = orderedPlatforms.filter(function (platform) {
+      return !!platform.selected;
+    }).length;
+    const remainingCount = orderedPlatforms.filter(function (platform) {
+      return platform.status !== 'published' && platform.status !== 'ok';
+    }).length;
+    return {
+      available: !!source.available,
+      platforms: orderedPlatforms,
+      enabled_platforms: enabled,
+      enabled_count: enabled.length,
+      selected_count: selectedCount,
+      published_count: publishedCount,
+      remaining_count: remainingCount,
+      needs_action: typeof source.needs_action === 'boolean' ? source.needs_action : remainingCount > 0
+    };
+  }
+
+  function setComposeOriginPlatforms(raw) {
+    state.composeOriginPlatforms = normalizeOriginPlatformList(raw, state.originConfig.enabled_platforms);
+    renderComposeCrosspostingUi();
+  }
+
+  function renderComposeCrosspostingUi() {
+    const config = normalizeOriginConfig(state.originConfig);
+    state.originConfig = config;
+    const enabled = arrayFromMaybe(config.enabled_platforms);
+    const selected = normalizeOriginPlatformList(state.composeOriginPlatforms, enabled);
+    state.composeOriginPlatforms = selected;
+
+    if (els.composeOriginPlatformList) {
+      if (!config.available) {
+        els.composeOriginPlatformList.innerHTML = '';
+      } else if (!enabled.length) {
+        els.composeOriginPlatformList.innerHTML = '';
+      } else {
+        let html = '';
+        enabled.forEach(function (platformId) {
+          html += '<label class="crossposting-platform-option" for="compose-origin-platform-' + escapeAttr(platformId) + '">';
+          html += '<input type="checkbox" id="compose-origin-platform-' + escapeAttr(platformId) + '" data-compose-origin-platform="' + escapeAttr(platformId) + '"' + (selected.indexOf(platformId) >= 0 ? ' checked' : '') + '>';
+          html += originPlatformIconHtml(platformId);
+          html += '<span class="crossposting-platform-copy"><strong>' + escapeHtml(originPlatformLabel(platformId)) + '</strong><span>' + escapeHtml(originPlatformFamilyLabel(platformId)) + '</span></span>';
+          html += '</label>';
+        });
+        els.composeOriginPlatformList.innerHTML = html;
+      }
+    }
+
+    if (els.composeOriginSelectAll) {
+      const allSelected = !!enabled.length && selected.length === enabled.length;
+      els.composeOriginSelectAll.checked = allSelected;
+      els.composeOriginSelectAll.indeterminate = !!enabled.length && selected.length > 0 && selected.length < enabled.length;
+      els.composeOriginSelectAll.disabled = !config.available || !enabled.length;
+    }
+    if (els.composeCrosspostSummary) {
+      if (!config.available) {
+        els.composeCrosspostSummary.textContent = 'Cross-posting unavailable';
+      } else {
+        els.composeCrosspostSummary.textContent = originSummaryText(selected.length);
+      }
+    }
+    if (els.composeCrosspostNote) {
+      if (!config.available) {
+        els.composeCrosspostNote.textContent = 'Origin is not available on this server yet.';
+      } else if (!enabled.length) {
+        els.composeCrosspostNote.textContent = 'Enable destinations on the Cross-posting page to use Origin from Compose.';
+      } else {
+        els.composeCrosspostNote.textContent = 'Origin emits this post to the selected destinations right after publish.';
+      }
+    }
+    if (els.composeCrosspostDetails) {
+      els.composeCrosspostDetails.classList.toggle('is-unavailable', !config.available || !enabled.length);
+    }
+  }
+
+  function renderCrosspostingSettingsUi() {
+    const config = normalizeOriginConfig(state.originConfig);
+    state.originConfig = config;
+    const platformIds = originConfigPlatformIds(config.platforms);
+    const enabled = normalizeOriginPlatformList(config.enabled_platforms, platformIds);
+    const defaults = normalizeOriginPlatformList(config.default_platforms, enabled);
+    state.originConfig.enabled_platforms = enabled;
+    state.originConfig.default_platforms = defaults;
+
+    if (els.crosspostingRuntime) {
+      if (!config.available) {
+        els.crosspostingRuntime.innerHTML = '<p class="muted">Origin is not available on this server.</p>';
+      } else if (!config.platforms.length) {
+        els.crosspostingRuntime.innerHTML = '<p class="muted">Origin is available, but it is not reporting any enabled platform adapters.</p>';
+      } else {
+        els.crosspostingRuntime.innerHTML = '<p class="muted">' + escapeHtml(originDefaultSummaryText(defaults.length)) + '</p>'
+          + (config.public_base_url ? '<p class="muted">Cross-post links point to ' + escapeHtml(config.public_base_url) + '.</p>' : '');
+      }
+    }
+
+    if (els.crosspostingEnabledList) {
+      let enabledHtml = '';
+      arrayFromMaybe(config.platforms).forEach(function (platform) {
+        const checked = enabled.indexOf(platform.id) >= 0;
+        enabledHtml += '<label class="crossposting-platform-option" for="crossposting-enabled-' + escapeAttr(platform.id) + '">';
+        enabledHtml += '<input type="checkbox" id="crossposting-enabled-' + escapeAttr(platform.id) + '" data-crossposting-enabled-platform="' + escapeAttr(platform.id) + '"' + (checked ? ' checked' : '') + '>';
+        enabledHtml += originPlatformIconHtml(platform.id);
+        enabledHtml += '<span class="crossposting-platform-copy"><strong>' + escapeHtml(originPlatformLabel(platform.id)) + '</strong><span>' + escapeHtml(originPlatformFamilyLabel(platform.id)) + '</span></span>';
+        enabledHtml += '</label>';
+      });
+      els.crosspostingEnabledList.innerHTML = enabledHtml;
+    }
+
+    if (els.crosspostingDefaultList) {
+      let defaultHtml = '';
+      arrayFromMaybe(config.platforms).forEach(function (platform) {
+        const enabledHere = enabled.indexOf(platform.id) >= 0;
+        const checked = defaults.indexOf(platform.id) >= 0;
+        defaultHtml += '<label class="crossposting-platform-option' + (enabledHere ? '' : ' is-disabled') + '" for="crossposting-default-' + escapeAttr(platform.id) + '">';
+        defaultHtml += '<input type="checkbox" id="crossposting-default-' + escapeAttr(platform.id) + '" data-crossposting-default-platform="' + escapeAttr(platform.id) + '"' + (checked ? ' checked' : '') + (enabledHere ? '' : ' disabled') + '>';
+        defaultHtml += originPlatformIconHtml(platform.id);
+        defaultHtml += '<span class="crossposting-platform-copy"><strong>' + escapeHtml(originPlatformLabel(platform.id)) + '</strong><span>' + escapeHtml(enabledHere ? 'Checked by default for new posts' : 'Enable this destination first') + '</span></span>';
+        defaultHtml += '</label>';
+      });
+      els.crosspostingDefaultList.innerHTML = defaultHtml;
+    }
+
+    if (els.crosspostingEnabledAll) {
+      els.crosspostingEnabledAll.checked = !!platformIds.length && enabled.length === platformIds.length;
+      els.crosspostingEnabledAll.indeterminate = enabled.length > 0 && enabled.length < platformIds.length;
+      els.crosspostingEnabledAll.disabled = !platformIds.length;
+    }
+    if (els.crosspostingDefaultAll) {
+      els.crosspostingDefaultAll.checked = !!enabled.length && defaults.length === enabled.length;
+      els.crosspostingDefaultAll.indeterminate = defaults.length > 0 && defaults.length < enabled.length;
+      els.crosspostingDefaultAll.disabled = !enabled.length;
+    }
+
+    if (!state.currentDraftId && !state.composeSourcePostPath && !state.composeOriginPlatforms.length) {
+      state.composeOriginPlatforms = defaults.slice();
+    } else {
+      state.composeOriginPlatforms = normalizeOriginPlatformList(state.composeOriginPlatforms, enabled);
+    }
+    renderComposeCrosspostingUi();
+  }
 
   function markHydrationPageReady() {
     const gate = window.__wizardryHydration;
@@ -494,6 +937,13 @@
         sectionName = 'plugins';
       }
     }
+    if (sectionName !== 'posts') {
+      if (els.postCrosspostDialog instanceof HTMLDialogElement && els.postCrosspostDialog.open) {
+        els.postCrosspostDialog.close('navigate');
+      } else {
+        resetPostCrosspostDialogState();
+      }
+    }
     state.activeSection = sectionName;
     syncAdminDocumentTitle(sectionName);
     if (els.dropOverlay) {
@@ -658,6 +1108,13 @@
     if (!state.isAdmin) {
       return;
     }
+    if (state.preloadAdminDone) {
+      return;
+    }
+    if (state.preloadAdminStarted) {
+      return;
+    }
+    state.preloadAdminStarted = true;
 
     const configTask = loadConfig();
     const jobs = [
@@ -680,53 +1137,30 @@
       {
         sections: ['btcpay'],
         task: loadBtcpayRuntime()
-      },
-      {
-        sections: ['btcpay-checkout'],
-        task: loadBtcpayCheckoutRuntime()
-      },
-      {
-        sections: ['users'],
-        task: loadUsers(false)
-      },
-      {
-        sections: ['drafts'],
-        task: loadDrafts()
-      },
-      {
-        sections: ['queue'],
-        task: loadQueue()
-      },
-      {
-        sections: ['posts'],
-        task: loadPosts()
-      },
-      {
-        sections: ['nostr-pages', 'pages'],
-        task: loadNostrPages()
-      },
-      {
-        sections: ['files'],
-        task: loadFiles()
-      },
-      {
-        sections: ['moderation'],
-        task: loadModeration()
       }
-    ];
+    ].filter(function (job) {
+      return !job.sections.every(function (section) {
+        return !!state.loadedAdminSections[section];
+      });
+    });
 
-    await Promise.all(jobs.map(async function (job) {
-      try {
-        await job.task;
-        job.sections.forEach(function (section) {
-          state.loadedAdminSections[section] = true;
-        });
-      } catch (_err) {
-        job.sections.forEach(function (section) {
-          state.loadedAdminSections[section] = false;
-        });
-      }
-    }));
+    try {
+      await Promise.all(jobs.map(async function (job) {
+        try {
+          await job.task;
+          job.sections.forEach(function (section) {
+            state.loadedAdminSections[section] = true;
+          });
+        } catch (_err) {
+          job.sections.forEach(function (section) {
+            state.loadedAdminSections[section] = false;
+          });
+        }
+      }));
+      state.preloadAdminDone = true;
+    } finally {
+      state.preloadAdminStarted = false;
+    }
   }
 
   function initSectionNavigation() {
@@ -1365,7 +1799,7 @@
     const body = new URLSearchParams(payload);
     const res = await fetchJson(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: body.toString()
     });
     maybePromptInteractiveApproval(res);
@@ -1393,17 +1827,36 @@
   function fileAccessUrl(url) {
     syncAuthStateFromStorage();
     const raw = String(url || '').trim();
-    if (!raw || raw.indexOf('/cgi/blog-file?') !== 0) {
+    if (!raw) {
       return raw;
     }
-    const params = new URLSearchParams(raw.split('?')[1] || '');
+    let parsed;
+    try {
+      parsed = new URL(raw, window.location.origin);
+    } catch (_err) {
+      return raw;
+    }
+    if (parsed.origin !== window.location.origin) {
+      return raw;
+    }
+    const isFileUrl = parsed.pathname === '/cgi/blog-file' ||
+      parsed.pathname.indexOf('/cgi/blog-file/') === 0 ||
+      parsed.pathname === '/files' ||
+      parsed.pathname.indexOf('/files/') === 0 ||
+      parsed.pathname === '/cgi/files' ||
+      parsed.pathname.indexOf('/cgi/files/') === 0;
+    if (!isFileUrl) {
+      return raw;
+    }
+    const params = parsed.searchParams;
     if (!params.get('session_token') && state.sessionToken) {
       params.set('session_token', state.sessionToken);
     }
     if (!params.get('csrf_token') && state.csrfToken) {
       params.set('csrf_token', state.csrfToken);
     }
-    return '/cgi/blog-file?' + params.toString();
+    const query = params.toString();
+    return parsed.pathname + (query ? ('?' + query) : '');
   }
 
   function rewritePreviewPrivateFileLinks() {
@@ -1566,7 +2019,7 @@
           const body = new URLSearchParams(buildPayload(useBareData)).toString();
           const xhr = new XMLHttpRequest();
           xhr.open('POST', '/cgi/blog-upload-media', true);
-          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
           xhr.upload.addEventListener('progress', function (event) {
             if (!event.lengthComputable) {
               return;
@@ -1607,6 +2060,9 @@
               reject(new Error(message));
               return;
             }
+            updateUploadJob(job.id, {
+              url: String(data.url || '').trim()
+            });
             finishUploadJob(job.id, '');
             resolve(data);
           };
@@ -1639,6 +2095,10 @@
   }
 
   function normalizeComposePublishDestination(destination) {
+    const shared = (typeof window !== 'undefined' && window.BlogComposeShared) ? window.BlogComposeShared : null;
+    if (shared && typeof shared.normalizePublishDestination === 'function') {
+      return shared.normalizePublishDestination(destination);
+    }
     const raw = String(destination || '').trim().toLowerCase();
     if (raw === 'nostr_now') {
       return 'nostr_now';
@@ -1673,8 +2133,30 @@
     if (!els.publishNowButton) {
       return;
     }
+    if (state.composeSubmitInFlight) {
+      const action = String(state.composeSubmitAction || '');
+      if (action === 'queue_scheduled') {
+        els.publishNowButton.textContent = 'Scheduling...';
+      } else if (action === 'queue_drip') {
+        els.publishNowButton.textContent = 'Enqueuing...';
+      } else {
+        els.publishNowButton.textContent = 'Publishing...';
+      }
+      els.publishNowButton.disabled = true;
+      els.publishNowButton.setAttribute('aria-busy', 'true');
+      els.publishNowButton.classList.add('is-loading');
+      return;
+    }
+    els.publishNowButton.disabled = false;
+    els.publishNowButton.removeAttribute('aria-busy');
+    els.publishNowButton.classList.remove('is-loading');
     const picked = mode || getPublishMode();
     const target = normalizeComposePublishDestination(destination || getPublishDestination());
+    const shared = (typeof window !== 'undefined' && window.BlogComposeShared) ? window.BlogComposeShared : null;
+    if (shared && typeof shared.primaryPublishLabel === 'function') {
+      els.publishNowButton.textContent = shared.primaryPublishLabel(picked, target, { postTypeLocked: !!state.composePostTypeLocked });
+      return;
+    }
     if (picked === 'scheduled') {
       els.publishNowButton.textContent = 'Schedule Post';
       return;
@@ -1683,7 +2165,25 @@
       els.publishNowButton.textContent = 'Enqueue Post';
       return;
     }
-    els.publishNowButton.textContent = target === 'local_only' ? 'Publish to Server' : 'Publish Now';
+    els.publishNowButton.textContent = target === 'local_only' ? 'Publish to Server' : 'Publish to Nostr';
+  }
+
+  function renderComposeDestinationTemplate() {
+    const row = document.querySelector('.compose-destination-row');
+    if (!(row instanceof HTMLElement)) {
+      return;
+    }
+    const shared = (typeof window !== 'undefined' && window.BlogComposeShared) ? window.BlogComposeShared : null;
+    if (!shared || typeof shared.renderPublishDestinationField !== 'function') {
+      return;
+    }
+    const checked = row.querySelector('input[name="publish-destination"]:checked');
+    const destination = normalizeComposePublishDestination(checked ? checked.value : 'local_only');
+    row.innerHTML = shared.renderPublishDestinationField({
+      inputName: 'publish-destination',
+      destination: destination
+    });
+    refreshComposeRadioInputs();
   }
 
   function updateScheduledRowVisibility(mode) {
@@ -1827,6 +2327,14 @@
     return 'longform';
   }
 
+  function composeBackingPostType(postType) {
+    const type = normalizeComposePostType(postType);
+    if (type === 'attachment') {
+      return 'longform';
+    }
+    return type;
+  }
+
   function composePostTypeLabel(postType) {
     const type = normalizeComposePostType(postType);
     if (type === 'shortform') { return 'shortform'; }
@@ -1844,8 +2352,40 @@
     return type === 'shortform' || type === 'longform';
   }
 
+  function clearComposePostTypeCollapseTimer() {
+    if (state.composePostTypeToolbarCollapseTimer) {
+      window.clearTimeout(state.composePostTypeToolbarCollapseTimer);
+      state.composePostTypeToolbarCollapseTimer = null;
+    }
+  }
+
+  function applyComposePostTypeControlState() {
+    const control = document.querySelector('[data-compose-type-control]');
+    if (!control) {
+      return;
+    }
+    const collapsed = !!state.composePostTypeToolbarCollapsed;
+    control.classList.toggle('is-collapsed', collapsed);
+    const wrap = control.querySelector('.compose-post-type-toolbar-wrap');
+    if (wrap instanceof HTMLElement) {
+      wrap.hidden = collapsed;
+      wrap.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+    }
+  }
+
+  function setComposePostTypeToolbarCollapsed(collapsed, options) {
+    const opts = options || {};
+    state.composePostTypeToolbarCollapsed = !!collapsed;
+    if (opts.clearTimer !== false && collapsed) {
+      clearComposePostTypeCollapseTimer();
+    }
+    if (!opts.skipDom) {
+      applyComposePostTypeControlState();
+    }
+  }
+
   function composeNostrTarget(postType) {
-    const type = normalizeComposePostType(postType);
+    const type = composeBackingPostType(postType);
     if (type === 'shortform') {
       return { kind: '1', tags: 't=short, alt' };
     }
@@ -1858,9 +2398,6 @@
     if (type === 'upload-media') {
       return { kind: '20 or 21', tags: 'url, m=image/*|video/*, ox, size, dim|duration' };
     }
-    if (type === 'attachment') {
-      return { kind: '15', tags: 'url, m, size, ox' };
-    }
     if (type === 'audio-note') {
       return { kind: '21', tags: 'url, m=audio/*, duration, alt' };
     }
@@ -1870,9 +2407,32 @@
     return { kind: '30311', tags: 'streaming, starts, status=live' };
   }
 
+  function composePostKindPillText(postType) {
+    const type = composeBackingPostType(postType);
+    const target = composeNostrTarget(type);
+    if (type === 'longform') { return 'Long-form Content (kind ' + target.kind + ')'; }
+    if (type === 'shortform') { return 'Shortform Post (kind ' + target.kind + ')'; }
+    if (type === 'capture-media') { return 'Media Capture (kind ' + target.kind + ')'; }
+    if (type === 'upload-media') { return 'Media Upload (kind ' + target.kind + ')'; }
+    if (type === 'audio-note') { return 'Audio Note (kind ' + target.kind + ')'; }
+    if (type === 'link-share') { return 'Link Share (kind ' + target.kind + ')'; }
+    return 'Go Live (kind ' + target.kind + ')';
+  }
+
+  function composePostKindPillClass(postType) {
+    const type = composeBackingPostType(postType);
+    if (type === 'longform') { return 'is-type-nip23'; }
+    if (type === 'capture-media' || type === 'upload-media') { return 'is-type-icon-gallery'; }
+    if (type === 'audio-note') { return 'is-type-public-ranking'; }
+    if (type === 'link-share') { return 'is-type-blog'; }
+    if (type === 'shortform') { return 'is-type-list'; }
+    return 'is-type-public-ranking';
+  }
+
   function composeNostrTargetLabel(postType) {
-    const target = composeNostrTarget(postType);
-    return 'Nostr kind ' + target.kind + ' · ' + target.tags;
+    const type = composeBackingPostType(postType);
+    const target = composeNostrTarget(type);
+    return composePostKindPillText(type) + ' · ' + target.tags;
   }
 
   function normalizeComposeShortformLimit(raw) {
@@ -1971,6 +2531,7 @@
     const linkShare = type === 'link-share';
     const showTitleField = type !== 'shortform';
     const locked = !!state.composePostTypeLocked;
+    let activeTypeButton = null;
     if (els.composePostTypeToolbar) {
       let activeCount = 0;
       Array.from(els.composePostTypeToolbar.querySelectorAll('[data-post-type]')).forEach(function (node) {
@@ -1984,6 +2545,7 @@
         node.setAttribute('aria-pressed', active ? 'true' : 'false');
         if (active) {
           activeCount += 1;
+          activeTypeButton = node;
         }
       });
       if (!activeCount) {
@@ -1991,10 +2553,27 @@
         if (fallback instanceof HTMLElement) {
           fallback.classList.add('is-active');
           fallback.setAttribute('aria-pressed', 'true');
+          activeTypeButton = fallback;
         }
       }
       els.composePostTypeToolbar.classList.toggle('is-locked', locked);
     }
+    if (els.composePostTypeCurrentButton) {
+      const icon = activeTypeButton ? activeTypeButton.querySelector('.compose-post-type-icon') : null;
+      if (icon && typeof icon.outerHTML === 'string') {
+        els.composePostTypeCurrentButton.innerHTML = icon.outerHTML + '<span class="sr-only">Choose post type</span>';
+      }
+      els.composePostTypeCurrentButton.disabled = locked;
+      els.composePostTypeCurrentButton.setAttribute('aria-disabled', locked ? 'true' : 'false');
+      if (locked) {
+        els.composePostTypeCurrentButton.setAttribute('aria-label', 'Post type is locked for existing posts');
+        els.composePostTypeCurrentButton.setAttribute('title', 'Post type is locked for existing posts');
+      } else {
+        els.composePostTypeCurrentButton.setAttribute('aria-label', 'Choose post type');
+        els.composePostTypeCurrentButton.setAttribute('title', 'Choose post type');
+      }
+    }
+    applyComposePostTypeControlState();
     if (els.composeMediaTools) {
       const showMedia = !composePostTypeIsTextual(type);
       els.composeMediaTools.hidden = !showMedia;
@@ -2012,9 +2591,11 @@
       els.composeContentRow.style.display = linkShare ? 'none' : 'grid';
     }
     if (els.composeNostrTargetPill) {
-      const label = composeNostrTargetLabel(type);
+      const label = composePostKindPillText(type);
+      const title = composeNostrTargetLabel(type);
       els.composeNostrTargetPill.textContent = label;
-      els.composeNostrTargetPill.setAttribute('title', label);
+      els.composeNostrTargetPill.setAttribute('title', title);
+      els.composeNostrTargetPill.className = 'nostr-page-kind-badge ' + composePostKindPillClass(type);
     }
     if (els.postTitle) {
       const titleRow = typeof els.postTitle.closest === 'function' ? els.postTitle.closest('.field-row') : null;
@@ -2046,7 +2627,7 @@
       } else if (type === 'audio-note') {
         els.postContent.placeholder = 'Optional note for uploaded audio...';
       } else {
-        els.postContent.placeholder = '# Write in Markdown\n\nDrop images anywhere on this page to upload + insert.';
+        els.postContent.placeholder = 'Post body';
       }
       if (type === 'shortform') {
         els.postContent.rows = 11;
@@ -2074,11 +2655,15 @@
       if (opts.syncUi) {
         syncComposePostTypeUi();
       }
+      if (opts.interactive) {
+        setComposePostTypeToolbarCollapsed(true);
+      }
       return;
     }
     state.composePostType = normalized;
     syncComposePostTypeUi();
     if (opts.interactive) {
+      setComposePostTypeToolbarCollapsed(true);
       openComposePickerForType(normalized);
     }
     if (opts.queueAutosave !== false) {
@@ -2227,7 +2812,11 @@
   }
 
   function readComposer() {
-    commitTagInput();
+    const tagEditor = composeTagsEditorNode();
+    if (tagEditor) {
+      composeTagsEditorSyncDraft(tagEditor);
+      syncComposeTagsField();
+    }
     const postType = normalizeComposePostType(state.composePostType);
     const titleValue = els.postTitle ? String(els.postTitle.value || '').trim() : '';
     if (postType === 'shortform') {
@@ -2253,6 +2842,7 @@
       summary: '',
       content: content,
       post_type: postType,
+      origin_platforms: JSON.stringify(arrayFromMaybe(state.composeOriginPlatforms)),
       scheduled_at: localToIso(els.postScheduleAt.value),
       publish_mode: getPublishMode(),
       publish_destination: getPublishDestination()
@@ -2277,6 +2867,8 @@
     state.composePostFilename = normalizeComposePostFilename((draft && draft.post_filename) || composeFilenameFromPath(state.composeSourcePostPath));
     state.composePostFilenameEditing = false;
     state.composePostType = normalizeComposePostType((draft && draft.post_type) || 'longform');
+    state.composePostTypeToolbarCollapsed = true;
+    state.composeTagsDraftText = '';
     state.composeShortformLimitEditing = false;
     els.postTitle.value = draft.title || '';
     setComposeTagsFromString(draft.tags || '');
@@ -2296,6 +2888,7 @@
       els.composeLinkBody.value = body;
     }
     els.postScheduleAt.value = isoToLocal(draft.scheduled_at || '');
+    setComposeOriginPlatforms((draft && draft.origin_platforms) || []);
     syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode(mode || 'immediate');
@@ -2314,6 +2907,8 @@
     state.composePostFilenameEditing = false;
     state.composePostType = 'longform';
     state.composePostTypeLocked = false;
+    state.composePostTypeToolbarCollapsed = true;
+    state.composeTagsDraftText = '';
     state.composeShortformLimitEditing = false;
     els.postTitle.value = '';
     setComposeTags([]);
@@ -2325,6 +2920,7 @@
       els.composeLinkBody.value = '';
     }
     els.postScheduleAt.value = '';
+    setComposeOriginPlatforms(state.originConfig && state.originConfig.default_platforms);
     syncComposePostFilenameUi();
     syncComposePostTypeUi();
     setPublishMode('immediate');
@@ -2363,7 +2959,217 @@
       .replace(/>/g, '&gt;');
   }
 
+  function composeTagTokenHtml(tag) {
+    return '<span class="tag-token" contenteditable="false" data-post-tags-token="' + escapeHtml(tag) + '" tabindex="-1"><span class="tag-token-label">' + escapeHtml(tag) + '</span></span>';
+  }
+
+  function composeTagsEditorNode() {
+    if (els.postTagsTokenEditor instanceof HTMLElement) {
+      return els.postTagsTokenEditor;
+    }
+    if (!(els.postTagsEditor instanceof HTMLElement)) {
+      return null;
+    }
+    const node = els.postTagsEditor.querySelector('[data-post-tags-editor]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorDraftNode(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return null;
+    }
+    const node = editor.querySelector('[data-post-tags-draft]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorSelectedToken(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return null;
+    }
+    const node = editor.querySelector('.tag-token.is-selected[data-post-tags-token]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorSetEmptyClass(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    const draft = String(state.composeTagsDraftText || '').trim();
+    const empty = !state.composeTags.length && !draft;
+    editor.classList.toggle('is-empty', empty);
+    if (els.postTagsEditor) {
+      els.postTagsEditor.classList.toggle('has-tags', state.composeTags.length > 0);
+    }
+  }
+
+  function composeTagsEditorRender(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    let html = state.composeTags.map(composeTagTokenHtml).join('');
+    html += '<span class="tag-token-editor-draft" data-post-tags-draft>' + escapeHtml(state.composeTagsDraftText || '') + '</span>';
+    editor.innerHTML = html;
+    composeTagsEditorSetEmptyClass(editor);
+  }
+
+  function composeTagsEditorFocusDraft(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    const draftNode = composeTagsEditorDraftNode(editor);
+    if (!(draftNode instanceof HTMLElement)) {
+      return;
+    }
+    const range = document.createRange();
+    range.selectNodeContents(draftNode);
+    range.collapse(false);
+    const selection = window.getSelection ? window.getSelection() : null;
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    if (document.activeElement !== editor) {
+      try {
+        editor.focus({ preventScroll: true });
+      } catch (_focusErr) {
+        editor.focus();
+      }
+    }
+  }
+
+  function composeTagsEditorPlaceCaretFromPoint(editor, clientX, clientY) {
+    if (!(editor instanceof HTMLElement)) {
+      return false;
+    }
+    const selection = window.getSelection ? window.getSelection() : null;
+    if (!selection) {
+      return false;
+    }
+    let range = null;
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(clientX, clientY);
+      if (pos && pos.offsetNode && editor.contains(pos.offsetNode)) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, Number(pos.offset) || 0);
+        range.collapse(true);
+      }
+    } else if (document.caretRangeFromPoint) {
+      const pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange && pointRange.startContainer && editor.contains(pointRange.startContainer)) {
+        range = pointRange;
+        range.collapse(true);
+      }
+    }
+    if (!range) {
+      return false;
+    }
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }
+
+  function composeTagsEditorClearSelection(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    const selected = composeTagsEditorSelectedToken(editor);
+    if (selected) {
+      selected.classList.remove('is-selected');
+    }
+  }
+
+  function composeTagsEditorSelectToken(editor, tokenNode) {
+    if (!(editor instanceof HTMLElement) || !(tokenNode instanceof HTMLElement)) {
+      return;
+    }
+    composeTagsEditorClearSelection(editor);
+    tokenNode.classList.add('is-selected');
+    try {
+      editor.focus({ preventScroll: true });
+    } catch (_focusErr) {
+      editor.focus();
+    }
+  }
+
+  function composeTagsEditorReadDraftText(editor) {
+    const draftNode = composeTagsEditorDraftNode(editor);
+    if (!(draftNode instanceof HTMLElement)) {
+      return '';
+    }
+    return String(draftNode.textContent || '');
+  }
+
+  function composeTagsEditorSyncDraft(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    state.composeTagsDraftText = composeTagsEditorReadDraftText(editor);
+    composeTagsEditorSetEmptyClass(editor);
+  }
+
+  function composeTagsEditorCommit(editor, forceFinalize) {
+    if (!(editor instanceof HTMLElement)) {
+      return false;
+    }
+    const draft = composeTagsEditorReadDraftText(editor);
+    const rawParts = String(draft || '').split(',');
+    if (!rawParts.length) {
+      return false;
+    }
+    let changed = false;
+    const limit = forceFinalize ? rawParts.length : Math.max(0, rawParts.length - 1);
+    for (let i = 0; i < limit; i += 1) {
+      if (addComposeTag(rawParts[i])) {
+        changed = true;
+      }
+    }
+    const nextDraft = forceFinalize ? '' : String(rawParts[rawParts.length - 1] || '');
+    const draftChanged = nextDraft !== draft;
+    state.composeTagsDraftText = nextDraft;
+    if (changed || draftChanged) {
+      composeTagsEditorRender(editor);
+      composeTagsEditorFocusDraft(editor);
+    } else {
+      composeTagsEditorSetEmptyClass(editor);
+    }
+    return changed;
+  }
+
+  function composeTagsEditorRemoveTagByNode(editor, tokenNode) {
+    if (!(editor instanceof HTMLElement) || !(tokenNode instanceof HTMLElement)) {
+      return false;
+    }
+    const tag = String(tokenNode.getAttribute('data-post-tags-token') || '').trim();
+    if (!tag) {
+      return false;
+    }
+    if (state.composeTags.indexOf(tag) < 0) {
+      return false;
+    }
+    removeComposeTag(tag);
+    composeTagsEditorRender(editor);
+    composeTagsEditorFocusDraft(editor);
+    return true;
+  }
+
+  function hydrateComposeTagsEditor() {
+    const editor = composeTagsEditorNode();
+    if (!editor) {
+      return;
+    }
+    if (!(composeTagsEditorDraftNode(editor) instanceof HTMLElement)) {
+      composeTagsEditorRender(editor);
+    } else {
+      composeTagsEditorSetEmptyClass(editor);
+    }
+  }
+
   function renderComposeTags() {
+    const editor = composeTagsEditorNode();
+    if (editor) {
+      composeTagsEditorRender(editor);
+      return;
+    }
     if (!els.postTagsPills) {
       return;
     }
@@ -2420,6 +3226,7 @@
   }
 
   function setComposeTagsFromString(tagsValue) {
+    state.composeTagsDraftText = '';
     const list = String(tagsValue || '')
       .split(',')
       .map(normalizeTagValue)
@@ -2446,7 +3253,11 @@
     setComposeTags(next);
   }
 
-  function commitTagInput() {
+  function commitTagInput(forceFinalize) {
+    const editor = composeTagsEditorNode();
+    if (editor) {
+      return composeTagsEditorCommit(editor, forceFinalize !== false);
+    }
     if (!els.postTagsInput) {
       return false;
     }
@@ -2767,8 +3578,6 @@
         ? sectionFromHash
         : (hasRememberedSection ? rememberedSection : sectionFromHash);
       activateSection(sectionToActivate, !currentHashSection && sectionToActivate !== sectionFromHash);
-      els.adminPanel.style.display = 'grid';
-      renderPreview();
       const launchParams = readComposeLaunchParams();
       if (sectionToActivate === 'compose' && launchParams.draftId) {
         try {
@@ -2786,18 +3595,16 @@
           persistAdminComposeSession();
         }
       }
-      try {
-        await preloadAdminFirstPaint();
-      } catch (_preloadErr) {
-        // Keep first paint resilient; section-specific loaders surface errors.
-      }
-      try {
-        await maybeLoadAdminSection(state.activeSection, false);
-      } catch (_sectionErr) {
-        // Section loader already writes actionable status output.
-      }
+      renderPreview();
+      els.adminPanel.style.display = 'grid';
       markInitialContentPainted();
       markHydrationPageReady();
+      maybeLoadAdminSection(state.activeSection, false).catch(function (_sectionErr) {
+        // Section loader already writes actionable status output.
+      });
+      preloadAdminFirstPaint().catch(function (_preloadErr) {
+        // Keep first paint resilient; section-specific loaders surface errors.
+      });
     } catch (err) {
       const msg = String((err && err.message) || '');
       if (/\bnot authenticated\b/i.test(msg) || /\bauth(?:entication)?\s+required\b/i.test(msg)) {
@@ -2937,8 +3744,10 @@
         throw new Error(data.error || 'Failed to load configuration');
       }
       state.plugins = normalizePlugins(data.plugins || {});
+      state.originConfig = normalizeOriginConfig(data.origin || {});
       setPluginCheckboxStates();
       syncPluginControlledSections();
+      renderCrosspostingSettingsUi();
       window.__wizardryPlugins = state.plugins;
       window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
@@ -3024,13 +3833,18 @@
         new_users_are_admins: (els.newUsersAreAdmins && els.newUsersAreAdmins.checked) ? 'true' : 'false',
         zaps_enabled: (els.zapsEnabled && els.zapsEnabled.checked) ? 'true' : 'false',
         zap_lud16: els.zapLud16 ? els.zapLud16.value.trim() : '',
-        zap_default_amount_sats: els.zapDefaultAmountSats ? els.zapDefaultAmountSats.value.trim() : ''
+        zap_default_amount_sats: els.zapDefaultAmountSats ? els.zapDefaultAmountSats.value.trim() : '',
+        origin_enabled_platforms: JSON.stringify(arrayFromMaybe(state.originConfig && state.originConfig.enabled_platforms)),
+        origin_default_platforms: JSON.stringify(arrayFromMaybe(state.originConfig && state.originConfig.default_platforms))
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save config');
       }
       if (els.outputConfig) {
         els.outputConfig.innerHTML = '';
+      }
+      if (els.outputCrossposting) {
+        els.outputCrossposting.innerHTML = '';
       }
       if (shouldRefreshQueue) {
         await loadQueue();
@@ -3050,6 +3864,7 @@
       applyPageTitleConfig(normalizedSiteTitle, appendSiteTitleToPageTitle);
     } catch (err) {
       setOutput(els.outputConfig, 'Error: ' + err.message, 'error');
+      setOutput(els.outputCrossposting, 'Error: ' + err.message, 'error');
     }
   }
 
@@ -3259,12 +4074,15 @@
     const canReceive = !!info.can_receive_zaps;
     let label = 'Offline';
     let statusClass = 'is-offline';
-    if (zapsEnabled && signerReady && activeAddress && endpointReady && canReceive) {
+    if (zapsEnabled && canReceive) {
       label = 'Ready';
       statusClass = 'is-connected';
-    } else if (signerReady || activeAddress || endpointReady || !!info.lightning_online) {
+    } else if (zapsEnabled && (signerReady || activeAddress || endpointReady || !!info.lightning_online)) {
       label = 'Partial';
       statusClass = 'is-installed';
+    } else if (canReceive) {
+      label = 'Available';
+      statusClass = 'is-online';
     }
     els.navZapsStatus.textContent = label;
     els.navZapsStatus.className = 'admin-nav-status-pill ' + statusClass;
@@ -3602,12 +4420,15 @@
     }, Math.max(100, Number(delayMs || 220)));
   }
 
-  async function loadNosterRuntime() {
+  async function loadNosterRuntime(options) {
     if (!els.nosterRuntime) {
       return;
     }
-    setNosterNavStatus(null, true);
-    setNosterButtonsBusy(true);
+    const opts = options && typeof options === 'object' ? options : {};
+    const background = !!opts.background;
+    if (!background) {
+      setNosterNavStatus(null, true);
+    }
     try {
       const data = await apiPost('/cgi/blog-manage-noster', { action: 'status' }, true);
       if (!data.success) {
@@ -3618,10 +4439,10 @@
         els.outputNostrBridge.innerHTML = '';
       }
     } catch (err) {
-      renderNosterRuntime({}, '', '');
-      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
-    } finally {
-      setNosterButtonsBusy(false);
+      if (!background) {
+        renderNosterRuntime({}, '', '');
+        setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
+      }
     }
   }
 
@@ -3678,9 +4499,6 @@
       stopNosterPolling();
       return;
     }
-    loadNosterRuntime().catch(function (err) {
-      setOutput(els.outputNostrBridge, 'Error: ' + err.message, 'error');
-    });
     if (state.nosterPollTimer) {
       return;
     }
@@ -3692,7 +4510,7 @@
       if (document.visibilityState !== 'visible') {
         return;
       }
-      loadNosterRuntime().catch(function () {});
+      loadNosterRuntime({ background: true }).catch(function () {});
     }, 10000);
   }
 
@@ -3731,6 +4549,11 @@
       clearInterval(state.zapsPollTimer);
       state.zapsPollTimer = null;
     }
+  }
+
+  function setZapsRuntimeFeedback(message, logText) {
+    state.zapsRuntimeMessage = String(message || '').trim();
+    state.zapsRuntimeLog = String(logText || '');
   }
 
   function syncZapsAutoRefresh() {
@@ -3865,6 +4688,13 @@
       renderZapsRuntime(state.zapsRuntimeInfo || {}, undefined, undefined);
       setOutput(els.outputZaps, 'Error: ' + err.message, 'error');
     }
+  }
+
+  function setBtcpayButtonsBusy(isBusy) {
+    const cardButtons = els.btcpayRuntime ? Array.from(els.btcpayRuntime.querySelectorAll('button[data-btcpay-action]')) : [];
+    cardButtons.filter(Boolean).forEach(function (button) {
+      button.disabled = !!isBusy;
+    });
   }
 
   function stopBtcpayPolling() {
@@ -4352,13 +5182,13 @@
       const title = postListDisplayTitle(draft.title, draft.content_excerpt);
       const excerpt = String(draft.content_excerpt || '').trim();
       const draftId = escapeAttr(draft.draft_id || '');
-      html += '<div class="draft-row" data-draft-id="' + draftId + '">';
-      html += '<div class="draft-row-main">';
-      html += '<div class="draft-row-line" title="' + escapeAttr(title) + '">' +
-        '<a href="#" class="draft-row-open" data-draft-action="open" data-draft-id="' + draftId + '">' + escapeHtml(title) + '</a>' +
+      html += '<div class="post-row draft-row" data-draft-id="' + draftId + '">';
+      html += '<div class="post-row-main draft-row-main">';
+      html += '<div class="draft-row-line post-row-title" title="' + escapeAttr(title) + '">' +
+        '<a href="#" class="draft-row-open post-row-open post-row-title" data-draft-action="open" data-draft-id="' + draftId + '">' + escapeHtml(title) + '</a>' +
         '</div>';
       if (excerpt) {
-        html += '<div class="draft-row-excerpt" title="' + escapeAttr(excerpt) + '">' + escapeHtml(excerpt) + '</div>';
+        html += '<div class="draft-row-excerpt muted" title="' + escapeAttr(excerpt) + '">' + escapeHtml(excerpt) + '</div>';
       }
       html += '</div>';
       html += '<div class="draft-row-actions">';
@@ -4408,10 +5238,24 @@
       throw new Error(data.error || 'Failed to load drafts');
     }
     const drafts = Array.isArray(data.drafts) ? data.drafts : [];
+    const visibleDrafts = [];
+    const unsavedPostDraftsByPath = {};
+    drafts.forEach(function (draft) {
+      const sourcePath = normalizeComposeSourcePostPath((draft && draft.source_post_path) || '');
+      if (sourcePath) {
+        unsavedPostDraftsByPath[sourcePath] = true;
+        return;
+      }
+      visibleDrafts.push(draft);
+    });
+    state.unsavedPostDraftsByPath = unsavedPostDraftsByPath;
     if (els.navDraftsCount) {
-      els.navDraftsCount.textContent = '(' + drafts.length + ')';
+      els.navDraftsCount.textContent = '(' + visibleDrafts.length + ')';
     }
-    renderDraftList(drafts);
+    renderDraftList(visibleDrafts);
+    if (state.postsCache.length && els.postsList) {
+      renderPostsList(state.postsCache);
+    }
   }
 
   async function loadQueue() {
@@ -4481,6 +5325,12 @@
     return '<button type="button"' + classes + ' data-post-action="' + escapeAttr(action) + '" data-post-path="' + escapeAttr(postPath) + '"' + attrs + '>' + label + '</button>';
   }
 
+  function fileActionButton(label, action, fileId, className, extraAttrs) {
+    const classes = className ? ' class="' + className + '"' : '';
+    const attrs = extraAttrs ? (' ' + extraAttrs) : '';
+    return '<button type="button"' + classes + ' data-file-action="' + escapeAttr(action) + '" data-file-id="' + escapeAttr(fileId) + '"' + attrs + '>' + label + '</button>';
+  }
+
   function overflowMenuIconSvg() {
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
   }
@@ -4491,6 +5341,76 @@
       '<circle cx="5" cy="8" r="1.1"/><circle cx="11" cy="8" r="1.1"/>' +
       '<circle cx="5" cy="12.5" r="1.1"/><circle cx="11" cy="12.5" r="1.1"/>' +
       '</svg>';
+  }
+
+  function findPostByPath(postPath) {
+    const wanted = String(postPath || '').trim();
+    if (!wanted) {
+      return null;
+    }
+    return state.postsCache.find(function (post) {
+      return String(post && post.path || '').trim() === wanted;
+    }) || null;
+  }
+
+  function renderPostCrosspostingHtml(post) {
+    const crossposting = normalizePostCrossposting(post && post.crossposting);
+    if (!crossposting.available || !crossposting.enabled_count) {
+      return '';
+    }
+    let iconsHtml = '';
+    crossposting.platforms.forEach(function (platform) {
+      const statusClass = originStatusClass(platform.status);
+      const title = originPlatformLabel(platform.id) + ': ' + originStatusLabel(platform.status);
+      const chipClass = 'post-crosspost-chip ' + statusClass;
+      const iconHtml = originPlatformIconHtml(platform.id);
+      if (platform.remote_url && (platform.status === 'published' || platform.status === 'ok')) {
+        iconsHtml += '<a class="' + chipClass + '" href="' + escapeAttr(platform.remote_url) + '" target="_blank" rel="noopener noreferrer" title="' + escapeAttr(title) + '" aria-label="' + escapeAttr(title) + '">' + iconHtml + '</a>';
+      } else {
+        iconsHtml += '<span class="' + chipClass + '" title="' + escapeAttr(title) + '" aria-label="' + escapeAttr(title) + '">' + iconHtml + '</span>';
+      }
+    });
+    return '<div class="post-row-crossposting"><div class="post-crossposting" aria-label="Cross-post status"><div class="post-crossposting-icons">' + iconsHtml + '</div><span class="post-crossposting-summary">' + String(crossposting.published_count) + '/' + String(crossposting.enabled_count) + ' live</span></div></div>';
+  }
+
+  function renderPostCrosspostDialogUi(post) {
+    const crossposting = normalizePostCrossposting(post && post.crossposting);
+    const remaining = crossposting.platforms.filter(function (platform) {
+      return platform.status !== 'published' && platform.status !== 'ok';
+    });
+    const postTitle = postListDisplayTitle(post && post.title, post && post.content_excerpt);
+    if (els.postCrosspostSubtitle) {
+      if (!crossposting.enabled_count) {
+        els.postCrosspostSubtitle.textContent = 'Enable Origin destinations on the Cross-posting page before using per-post cross-posting.';
+      } else if (!remaining.length) {
+        els.postCrosspostSubtitle.textContent = '"' + postTitle + '" is already live on every enabled destination.';
+      } else {
+        els.postCrosspostSubtitle.textContent = '"' + postTitle + '" can still be sent to ' + String(remaining.length) + ' of ' + String(crossposting.enabled_count) + ' enabled destinations.';
+      }
+    }
+    if (els.postCrosspostList) {
+      if (!crossposting.enabled_count) {
+        els.postCrosspostList.innerHTML = '<p class="muted">No enabled destinations yet.</p>';
+      } else {
+        let html = '';
+        crossposting.platforms.forEach(function (platform) {
+          const isPublished = platform.status === 'published' || platform.status === 'ok';
+          const checked = !isPublished && state.postsCrosspostSelection.indexOf(platform.id) >= 0;
+          const statusClass = originStatusClass(platform.status);
+          const statusLabel = isPublished ? 'Published already' : originStatusLabel(platform.status);
+          html += '<label class="crossposting-platform-option post-crosspost-option' + (isPublished ? ' is-disabled' : '') + '" for="post-crosspost-platform-' + escapeAttr(platform.id) + '">';
+          html += '<input type="checkbox" id="post-crosspost-platform-' + escapeAttr(platform.id) + '" data-post-crosspost-platform="' + escapeAttr(platform.id) + '"' + (checked ? ' checked' : '') + (isPublished ? ' disabled' : '') + '>';
+          html += originPlatformIconHtml(platform.id);
+          html += '<span class="crossposting-platform-copy"><strong>' + escapeHtml(originPlatformLabel(platform.id)) + '</strong></span>';
+          html += '<span class="post-crosspost-status ' + statusClass + '">' + escapeHtml(statusLabel) + '</span>';
+          html += '</label>';
+        });
+        els.postCrosspostList.innerHTML = html;
+      }
+    }
+    if (els.postCrosspostSubmit) {
+      els.postCrosspostSubmit.disabled = !state.postsCrosspostSelection.length || !remaining.length;
+    }
   }
 
   function renderPostsList(posts) {
@@ -4512,6 +5432,8 @@
       const sourceClass = source === 'nostr' ? ' is-nostr' : ' is-local';
       const openUrl = String(post.open_url || '');
       const dateLabel = formatPostPublishedAt(post.published_at);
+      const hasUnsavedChanges = !!state.unsavedPostDraftsByPath[String(path || '').trim()];
+      const crossposting = normalizePostCrossposting(post && post.crossposting);
 
       html += '<div class="post-row">';
       html += '<div class="post-row-main">';
@@ -4520,13 +5442,20 @@
       } else {
         html += '<span class="post-row-title" title="' + escapeAttr(title) + '">' + escapeHtml(title) + '</span>';
       }
+      if (hasUnsavedChanges) {
+        html += '<span class="post-unsaved-changes">Unpublished changes</span>';
+      }
       html += '<span class="post-pill' + sourceClass + '">' + escapeHtml(sourceLabel) + '</span>';
       html += '<span class="post-pill">' + escapeHtml(dateLabel) + '</span>';
       if (author) {
         html += '<span class="post-pill is-author">' + escapeHtml(author) + '</span>';
       }
       html += '</div>';
+      html += renderPostCrosspostingHtml(post);
       html += '<div class="post-row-actions">';
+      if (crossposting.available && crossposting.enabled_count && crossposting.needs_action) {
+        html += '<button type="button" class="post-crosspost-trigger" data-post-action="crosspost" data-post-path="' + escapeAttr(path) + '">Cross-post...</button>';
+      }
       html += '<button type="button" class="post-row-delete post-delete" data-post-action="delete" data-post-path="' + escapeAttr(path) + '"' +
         (post.can_delete ? ' aria-label="Delete post" title="Delete post"' : ' aria-label="Cannot delete this post" title="Cannot delete this post" disabled') +
         '>' + prioritiesTrashIconSvg() + '</button>';
@@ -4555,6 +5484,7 @@
       throw new Error(data.error || 'Failed to load posts');
     }
     const posts = Array.isArray(data.posts) ? data.posts : [];
+    state.postsCache = posts;
     if (els.navPostsCount) {
       els.navPostsCount.textContent = '(' + posts.length + ')';
     }
@@ -4582,10 +5512,15 @@
       const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
       const status = job.error ? job.error : (job.status || (job.done ? 'Done' : 'Uploading'));
       const mimeType = String(job.mime_type || 'application/octet-stream');
+      const pendingOpenUrl = fileAccessUrl(String(job.url || '').trim());
       const rowClass = 'post-row file-row file-row-uploading' + (job.done ? (job.error ? ' is-failed' : ' is-done') : '');
       html += '<div class="' + rowClass + '">';
       html += '<div class="file-col file-col-name">';
-      html += '<span class="file-row-title" title="' + escapeAttr(job.name || 'Uploading file') + '">' + escapeHtml(job.name || 'Uploading file') + '</span>';
+      if (job.done && !job.error && pendingOpenUrl) {
+        html += '<a class="file-row-title file-row-title-link" title="' + escapeAttr(job.name || 'Uploaded file') + '" href="' + escapeAttr(pendingOpenUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(job.name || 'Uploaded file') + '</a>';
+      } else {
+        html += '<span class="file-row-title" title="' + escapeAttr(job.name || 'Uploading file') + '">' + escapeHtml(job.name || 'Uploading file') + '</span>';
+      }
       html += '</div>';
       html += '<div class="file-col file-col-size">';
       html += '<span class="file-pill">' + escapeHtml(formatBytes(job.size)) + '</span>';
@@ -4619,6 +5554,7 @@
     });
     files.forEach(function (file) {
       const fileId = String(file.file_id || '');
+      const deleting = !!state.filesDeleting[fileId];
       const title = String(file.original_name || file.safe_name || 'Attachment');
       const mimeType = String(file.mime_type || 'application/octet-stream');
       const createdAt = String(file.created_at || '');
@@ -4630,7 +5566,7 @@
       const openFileUrl = fileAccessUrl(url);
       const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : 'Private';
       const accessClass = effectivePublic ? ' is-public' : ' is-private';
-      html += '<div class="post-row file-row">';
+      html += '<div class="post-row file-row' + (deleting ? ' is-deleting' : '') + '" data-file-row-id="' + escapeAttr(fileId) + '">';
       html += '<div class="file-col file-col-name">';
       if (openFileUrl) {
         html += '<a class="file-row-title file-row-title-link" title="' + escapeAttr(title) + '" href="' + escapeAttr(openFileUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(title) + '</a>';
@@ -4655,14 +5591,15 @@
       html += '<div class="file-col file-col-visibility">';
       html += '<span class="file-pill' + accessClass + '">' + escapeHtml(accessLabel) + '</span>';
       html += '<div class="file-row-actions">';
-      html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '">' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
+      html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '"' + (deleting ? ' disabled' : '') + '>' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
       html += '<button type="button" class="unobtrusive-icon-button" data-file-action="copy-url" data-file-url="' + escapeAttr(url) + '"' +
-        (effectivePublic ? '' : ' disabled') +
+        (effectivePublic && !deleting ? '' : ' disabled') +
         ' aria-label="Copy file URL" title="' + (effectivePublic ? 'Copy file URL' : 'File is private') + '">' +
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
         '<path d="M9 9H19V19H9V9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
         '<path d="M5 15H4.8C3.8 15 3 14.2 3 13.2V4.8C3 3.8 3.8 3 4.8 3H13.2C14.2 3 15 3.8 15 4.8V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
         '</svg></button>';
+      html += '<button type="button" class="post-row-delete post-delete file-delete" data-file-action="delete" data-file-id="' + escapeAttr(fileId) + '" aria-label="Delete file" title="Delete file"' + (deleting ? ' disabled aria-disabled="true"' : '') + '>' + prioritiesTrashIconSvg() + '</button>';
       html += '</div>';
       html += '</div>';
       html += '</div>';
@@ -4677,11 +5614,76 @@
       throw new Error(data.error || 'Failed to load files');
     }
     state.files = Array.isArray(data.files) ? data.files : [];
+    Object.keys(state.filesDeleting || {}).forEach(function (fileId) {
+      const stillPresent = state.files.some(function (file) {
+        return String(file && file.file_id || '') === fileId;
+      });
+      if (!stillPresent) {
+        delete state.filesDeleting[fileId];
+      }
+    });
     state.fileUploads = state.fileUploads.filter(function (job) {
       return !(job && job.kind === 'file' && job.done && !job.error);
     });
     renderFilesList(state.files);
     renderUploadJobs();
+  }
+
+  function captureFilesFlipLayout() {
+    if (!els.filesList) {
+      return {};
+    }
+    const map = {};
+    Array.from(els.filesList.querySelectorAll('.file-row[data-file-row-id]')).forEach(function (row) {
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+      const id = String(row.getAttribute('data-file-row-id') || '').trim();
+      if (!id) {
+        return;
+      }
+      map[id] = row.getBoundingClientRect();
+    });
+    return map;
+  }
+
+  function runFilesFlipAnimation(firstRects) {
+    if (!els.filesList || !firstRects || typeof firstRects !== 'object') {
+      return;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    Array.from(els.filesList.querySelectorAll('.file-row[data-file-row-id]')).forEach(function (row) {
+      if (!(row instanceof HTMLElement)) {
+        return;
+      }
+      const id = String(row.getAttribute('data-file-row-id') || '').trim();
+      if (!id || !firstRects[id]) {
+        return;
+      }
+      const first = firstRects[id];
+      const last = row.getBoundingClientRect();
+      const dy = first.top - last.top;
+      if (!isFinite(dy) || Math.abs(dy) < 0.5) {
+        return;
+      }
+      try {
+        row.animate(
+          [
+            { transform: 'translateY(' + String(Math.round(dy)) + 'px)' },
+            { transform: 'translateY(0px)' }
+          ],
+          {
+            duration: 240,
+            easing: 'cubic-bezier(0.2, 0, 0, 1)',
+            fill: 'none'
+          }
+        );
+      } catch (_err) {
+        // Ignore animation failures.
+      }
+    });
   }
 
   async function setFilePublicState(fileId, makePublic) {
@@ -4694,6 +5696,54 @@
     }
     await loadFiles();
     setOutput(els.outputFiles, makePublic ? 'File is now public.' : 'File is private unless exposed by a public post.', 'ok');
+  }
+
+  async function deleteFile(fileId) {
+    const id = String(fileId || '').trim();
+    if (!id) {
+      throw new Error('Missing file id');
+    }
+    if (state.filesDeleting[id]) {
+      return;
+    }
+    const prevFiles = Array.isArray(state.files) ? state.files.slice() : [];
+    const hadFile = prevFiles.some(function (file) {
+      return String(file && file.file_id || '') === id;
+    });
+    state.filesDeleting[id] = true;
+    if (hadFile) {
+      const firstRects = captureFilesFlipLayout();
+      state.files = prevFiles.filter(function (file) {
+        return String(file && file.file_id || '') !== id;
+      });
+      renderFilesList(state.files);
+      runFilesFlipAnimation(firstRects);
+    } else {
+      renderFilesList(state.files);
+    }
+
+    try {
+      const data = await apiPost('/cgi/blog-delete-file', { file_id: id }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete file');
+      }
+      delete state.filesDeleting[id];
+      setOutput(els.outputFiles, 'File deleted.', 'ok');
+      loadFiles().catch(function (_err) {
+        // Keep optimistic state if refresh fails.
+      });
+    } catch (err) {
+      delete state.filesDeleting[id];
+      if (hadFile) {
+        const firstRects = captureFilesFlipLayout();
+        state.files = prevFiles;
+        renderFilesList(state.files);
+        runFilesFlipAnimation(firstRects);
+      } else {
+        renderFilesList(state.files);
+      }
+      throw err;
+    }
   }
 
   function normalizeNostrPageSlug(raw) {
@@ -5022,7 +6072,7 @@
       const draftDiffers = !!page.draft_differs;
       const typeLabel = nostrPageTypeLabel(pageType);
       const typePillClass = nostrPageTypePillClass(pageType);
-      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="false">';
+      html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="true">';
       html += '<div class="nostr-page-leading">';
       html += '<button type="button" class="unobtrusive-icon-button nostr-page-drag-handle" data-nostr-page-action="drag-handle" data-index="' + String(idx) + '" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">' + dragGripIconSvg() + '</button>';
       html += '</div>';
@@ -5031,7 +6081,7 @@
       if (isEditingNavTitle) {
         html += '<span class="nostr-page-nav-title-edit-wrap"><input type="text" class="nostr-page-nav-title-input" data-nostr-page-action="edit-nav-title-input" data-index="' + String(idx) + '" value="' + escapeAttr(state.nostrPagesEditingNavTitleValue || navTitle) + '" aria-label="Edit navbar link title"><button type="button" class="nostr-page-nav-title-ok" data-nostr-page-action="save-nav-title" data-index="' + String(idx) + '" aria-label="Apply navbar link title">OK</button></span>';
       } else {
-        html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Change navbar link title">Change...</a>';
+        html += '<a href="#" class="nostr-page-nav-title-edit nostr-page-title-change" data-nostr-page-action="edit-nav-title" data-index="' + String(idx) + '" aria-label="Edit navbar link title">Edit...</a>';
       }
       html += '</div>';
       html += '</div>';
@@ -5325,12 +6375,14 @@
   }
 
   async function saveNostrPagesConfig() {
+    const revision = (Number(state.nostrPagesSaveRevision) || 0) + 1;
+    state.nostrPagesSaveRevision = revision;
     if (state.nostrPagesSaveBusy) {
       state.nostrPagesSaveQueued = true;
-      return;
+      return state.nostrPagesSavePromise || Promise.resolve();
     }
     state.nostrPagesSaveBusy = true;
-    try {
+    const task = (async function () {
       const connectedPostsBySlug = {};
       (state.nostrPages || []).forEach(function (page) {
         const slug = String(page && page.slug || '');
@@ -5348,6 +6400,9 @@
       if (!data.success) {
         throw new Error(data.error || 'Failed to save Nostr pages');
       }
+      if (revision !== state.nostrPagesSaveRevision) {
+        return;
+      }
       state.nostrPages = (Array.isArray(data.pages) ? data.pages.slice() : []).map(function (page) {
         const row = Object.assign({}, page || {});
         const slug = String(row.slug || '');
@@ -5361,13 +6416,42 @@
       dispatchNavbarRefresh(state.nostrPages, true);
       dispatchFooterRefresh(state.nostrPages);
       setOutput(els.outputNostrPages, data.message || 'Nostr page settings saved.', 'ok');
+    })();
+    state.nostrPagesSavePromise = task;
+    try {
+      await task;
     } finally {
       state.nostrPagesSaveBusy = false;
+      if (state.nostrPagesSavePromise === task) {
+        state.nostrPagesSavePromise = null;
+      }
       if (state.nostrPagesSaveQueued) {
         state.nostrPagesSaveQueued = false;
-        return saveNostrPagesConfig();
+        await saveNostrPagesConfig();
       }
     }
+  }
+
+  function queueNostrPagesConfigSave(delayMs) {
+    const delay = Number.isFinite(delayMs) ? Math.max(0, delayMs) : 180;
+    if (state.nostrPagesSaveTimer) {
+      window.clearTimeout(state.nostrPagesSaveTimer);
+      state.nostrPagesSaveTimer = null;
+    }
+    state.nostrPagesSaveTimer = window.setTimeout(function () {
+      state.nostrPagesSaveTimer = null;
+      saveNostrPagesConfig().catch(function (err) {
+        setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+      });
+    }, delay);
+  }
+
+  function flushNostrPagesConfigSave() {
+    if (state.nostrPagesSaveTimer) {
+      window.clearTimeout(state.nostrPagesSaveTimer);
+      state.nostrPagesSaveTimer = null;
+    }
+    return saveNostrPagesConfig();
   }
 
   function createNostrPageFromInput(pickedType, rawSlug) {
@@ -5491,7 +6575,7 @@
         stopPostsPolling();
         return;
       }
-      if (state.postsActionInFlight || state.postsMenuOpenFor) {
+      if (state.postsActionInFlight || state.postsMenuOpenFor || state.postsCrosspostDialogOpen) {
         return;
       }
       loadPosts().catch(function () {});
@@ -5717,6 +6801,10 @@
       await openAddToListDialog(path);
       return;
     }
+    if (pickedAction === 'crosspost') {
+      await openPostCrosspostDialog(path);
+      return;
+    }
 
     if (state.postsActionInFlight) {
       return;
@@ -5746,6 +6834,114 @@
       setOutput(els.outputPosts, data.message || 'Post updated.', 'ok');
     } finally {
       state.postsActionInFlight = false;
+    }
+  }
+
+  function resetPostCrosspostDialogState() {
+    state.postsCrosspostDialogOpen = false;
+    state.postsCrosspostPath = '';
+    state.postsCrosspostSelection = [];
+    if (els.postCrosspostSubmit) {
+      els.postCrosspostSubmit.disabled = false;
+    }
+  }
+
+  function syncPostCrosspostSelectionFromDom() {
+    if (!els.postCrosspostList) {
+      return;
+    }
+    const selected = Array.from(els.postCrosspostList.querySelectorAll('input[data-post-crosspost-platform]:checked')).map(function (input) {
+      return String(input.getAttribute('data-post-crosspost-platform') || '').trim().toLowerCase();
+    }).filter(Boolean);
+    state.postsCrosspostSelection = normalizeOriginPlatformList(selected, state.originConfig.enabled_platforms);
+    const currentPost = findPostByPath(state.postsCrosspostPath);
+    renderPostCrosspostDialogUi(currentPost);
+  }
+
+  async function openPostCrosspostDialog(postPath) {
+    const path = String(postPath || '').trim();
+    const post = findPostByPath(path);
+    const crossposting = normalizePostCrossposting(post && post.crossposting);
+    const remaining = crossposting.platforms.filter(function (platform) {
+      return platform.status !== 'published' && platform.status !== 'ok';
+    });
+    if (!path || !post) {
+      setOutput(els.outputPosts, 'Could not find that post.', 'warn');
+      return;
+    }
+    if (!crossposting.available || !crossposting.enabled_count) {
+      setOutput(els.outputPosts, 'Enable Origin destinations on the Cross-posting page first.', 'warn');
+      return;
+    }
+    if (!remaining.length) {
+      setOutput(els.outputPosts, 'This post is already live on every enabled destination.', 'ok');
+      return;
+    }
+    state.postsMenuOpenFor = '';
+    if (els.postsList) {
+      Array.from(els.postsList.querySelectorAll('[data-post-menu-panel]')).forEach(function (panel) {
+        panel.hidden = true;
+      });
+    }
+    state.postsCrosspostPath = path;
+    state.postsCrosspostSelection = remaining.map(function (platform) {
+      return platform.id;
+    });
+    renderPostCrosspostDialogUi(post);
+    if (els.postCrosspostDialog instanceof HTMLDialogElement) {
+      if (els.postCrosspostDialog.open) {
+        els.postCrosspostDialog.close('replace');
+      }
+      state.postsCrosspostDialogOpen = true;
+      els.postCrosspostDialog.showModal();
+      const firstInput = els.postCrosspostList
+        ? els.postCrosspostList.querySelector('input[data-post-crosspost-platform]:not([disabled])')
+        : null;
+      if (firstInput instanceof HTMLElement) {
+        firstInput.focus();
+      } else if (els.postCrosspostSubmit) {
+        els.postCrosspostSubmit.focus();
+      }
+    }
+  }
+
+  async function submitPostCrosspostDialog() {
+    const path = String(state.postsCrosspostPath || '').trim();
+    const post = findPostByPath(path);
+    if (!path || !post) {
+      throw new Error('Post path missing for cross-posting');
+    }
+    const selection = normalizeOriginPlatformList(state.postsCrosspostSelection, state.originConfig.enabled_platforms);
+    if (!selection.length) {
+      setOutput(els.outputPosts, 'Pick at least one destination to cross-post.', 'warn');
+      renderPostCrosspostDialogUi(post);
+      return;
+    }
+    state.postsActionInFlight = true;
+    if (els.postCrosspostSubmit) {
+      els.postCrosspostSubmit.disabled = true;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-crosspost-post', {
+        post_path: path,
+        platforms: JSON.stringify(selection)
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Cross-post failed');
+      }
+      if (els.postCrosspostDialog instanceof HTMLDialogElement) {
+        els.postCrosspostDialog.close('ok');
+      } else {
+        resetPostCrosspostDialogState();
+      }
+      state.postsMenuOpenFor = '';
+      await loadPosts();
+      setOutput(els.outputPosts, data.message || 'Post cross-posted.', 'ok');
+    } finally {
+      state.postsActionInFlight = false;
+      if (els.postCrosspostSubmit) {
+        els.postCrosspostSubmit.disabled = false;
+      }
     }
   }
 
@@ -5996,16 +7192,18 @@
     const displayedUsers = sortUsersForDisplay(state.users);
     const sortColumn = normalizeUsersSortColumn(state.usersSortColumn);
     const sortDirection = state.usersSortDirection === 'desc' ? 'desc' : 'asc';
-    const sortArrow = function (col) {
-      if (sortColumn !== col) {
-        return '';
-      }
-      return sortDirection === 'desc' ? ' ↓' : ' ↑';
+    const sortButton = function (col, label) {
+      const nextDirection = usersSortNextDirection(col) || usersSortDefaultDirection(col);
+      const activeDirection = sortColumn === col ? sortDirection : '';
+      const ariaSort = sortColumn === col ? sortDirection : 'none';
+      return '<span class="users-col-sort" data-users-sort="' + col + '" data-next-sort="' + nextDirection + '"' +
+        (activeDirection ? (' data-sort-active="' + activeDirection + '"') : '') +
+        ' aria-label="Sort by ' + label + '" aria-sort="' + ariaSort + '"><span class="users-col-sort-label">' + label + '</span><span class="users-col-sort-indicator" aria-hidden="true"></span></span>';
     };
     html += '<div class="users-table-header">';
-    html += '<div class="users-col users-col-name"><button type="button" class="users-col-sort" data-users-sort="name" aria-sort="' + (sortColumn === 'name' ? sortDirection : 'none') + '">Name' + sortArrow('name') + '</button></div>';
-    html += '<div class="users-col users-col-created"><button type="button" class="users-col-sort" data-users-sort="created" aria-sort="' + (sortColumn === 'created' ? sortDirection : 'none') + '">Created' + sortArrow('created') + '</button></div>';
-    html += '<div class="users-col users-col-role"><button type="button" class="users-col-sort" data-users-sort="role" aria-sort="' + (sortColumn === 'role' ? sortDirection : 'none') + '">Role' + sortArrow('role') + '</button></div>';
+    html += '<div class="users-col users-col-name">' + sortButton('name', 'Name') + '</div>';
+    html += '<div class="users-col users-col-created">' + sortButton('created', 'Created') + '</div>';
+    html += '<div class="users-col users-col-role">' + sortButton('role', 'Role') + '</div>';
     html += '<div class="users-col users-col-actions"><span class="users-col-head" aria-hidden="true"></span></div>';
     html += '</div>';
     const actorName = state.username || '';
@@ -6292,6 +7490,9 @@
   }
 
   async function saveComposer(action) {
+    if (state.composeSubmitInFlight) {
+      return;
+    }
     const payload = readComposer();
     payload.action = action;
 
@@ -6303,6 +7504,17 @@
     if (action === 'publish_now' && !payload.content.trim()) {
       setOutput(els.outputCompose, 'Cannot publish an empty post.', 'warn');
       return;
+    }
+
+    state.composeSubmitInFlight = true;
+    state.composeSubmitAction = action;
+    updatePrimaryPublishButton();
+    if (action === 'queue_scheduled') {
+      setOutput(els.outputCompose, 'Scheduling post...', 'warn');
+    } else if (action === 'queue_drip') {
+      setOutput(els.outputCompose, 'Adding post to drip queue...', 'warn');
+    } else {
+      setOutput(els.outputCompose, 'Publishing post...', 'warn');
     }
 
     try {
@@ -6335,11 +7547,15 @@
       setAutosaveStatus('saved', 'Autosaved at ' + new Date().toLocaleString());
     } catch (err) {
       setOutput(els.outputCompose, 'Error: ' + err.message, 'error');
+    } finally {
+      state.composeSubmitInFlight = false;
+      state.composeSubmitAction = '';
+      updatePrimaryPublishButton();
     }
   }
 
   async function autosave() {
-    if (state.suspendAutosave) {
+    if (state.suspendAutosave || state.composeSubmitInFlight) {
       return;
     }
     const payload = readComposer();
@@ -6369,6 +7585,18 @@
     }
     setAutosaveStatus('saving');
     state.autosaveTimer = setTimeout(autosave, 1500);
+  }
+
+  async function flushAutosaveNow() {
+    if (state.suspendAutosave) {
+      return;
+    }
+    if (state.autosaveTimer) {
+      clearTimeout(state.autosaveTimer);
+      state.autosaveTimer = null;
+    }
+    setAutosaveStatus('saving');
+    await autosave();
   }
 
   async function runSchedulerNow() {
@@ -6526,6 +7754,7 @@
     }
     state.composeUploadBusy = true;
     setOutput(els.outputCompose, 'Uploading ' + picked.length + ' file(s)...', 'warn');
+    let uploadedCount = 0;
     try {
       for (const file of picked) {
         let uploadKind = 'file';
@@ -6537,6 +7766,10 @@
           uploadKind = 'audio';
         }
         await uploadComposeFile(file, uploadKind);
+        uploadedCount += 1;
+      }
+      if (uploadedCount > 0) {
+        await flushAutosaveNow();
       }
       setOutput(els.outputCompose, 'Upload complete. Added to compose body.', 'ok');
     } catch (err) {
@@ -6615,6 +7848,8 @@
 
   function bindEvents() {
     bindSettingsAutosave();
+    renderComposeDestinationTemplate();
+    refreshComposeRadioInputs();
     const pluginInputs = [
       els.pluginNostrSupport,
       els.pluginNostrLogin,
@@ -6677,11 +7912,131 @@
       });
     }
 
-    if (els.postTagsInput) {
-      els.postTagsInput.addEventListener('keydown', function (event) {
-        if (event.key === ',' || event.key === 'Enter') {
+    hydrateComposeTagsEditor();
+    const composeTagsEditor = composeTagsEditorNode();
+    if (composeTagsEditor) {
+      composeTagsEditor.addEventListener('click', function (event) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const token = target.closest('[data-post-tags-token]');
+        if (token instanceof HTMLElement) {
           event.preventDefault();
-          if (commitTagInput()) {
+          event.stopPropagation();
+          composeTagsEditorSelectToken(composeTagsEditor, token);
+          return;
+        }
+        composeTagsEditorClearSelection(composeTagsEditor);
+        try {
+          composeTagsEditor.focus({ preventScroll: true });
+        } catch (_focusErr) {
+          composeTagsEditor.focus();
+        }
+        if (!composeTagsEditorPlaceCaretFromPoint(composeTagsEditor, Number(event.clientX) || 0, Number(event.clientY) || 0)) {
+          const draftNode = composeTagsEditorDraftNode(composeTagsEditor);
+          if (target === composeTagsEditor || !(draftNode && draftNode.contains(target))) {
+            composeTagsEditorFocusDraft(composeTagsEditor);
+          }
+        }
+        setTimeout(function () {
+          if (document.activeElement === composeTagsEditor) {
+            composeTagsEditorSyncDraft(composeTagsEditor);
+            syncComposeTagsField();
+          }
+        }, 0);
+      });
+
+      composeTagsEditor.addEventListener('input', function () {
+        composeTagsEditorClearSelection(composeTagsEditor);
+        const changed = composeTagsEditorCommit(composeTagsEditor, false);
+        composeTagsEditorSyncDraft(composeTagsEditor);
+        syncComposeTagsField();
+        if (changed || String(state.composeTagsDraftText || '').trim()) {
+          queueAutosave('saving');
+        }
+      });
+
+      composeTagsEditor.addEventListener('keydown', function (event) {
+        const selectedToken = composeTagsEditorSelectedToken(composeTagsEditor);
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          const tokens = Array.from(composeTagsEditor.querySelectorAll('[data-post-tags-token]')).filter(function (node) {
+            return node instanceof HTMLElement;
+          });
+          if (!tokens.length) {
+            return;
+          }
+          if (selectedToken) {
+            event.preventDefault();
+            const currentIndex = tokens.indexOf(selectedToken);
+            if (currentIndex < 0) {
+              composeTagsEditorFocusDraft(composeTagsEditor);
+              return;
+            }
+            const nextIndex = event.key === 'ArrowLeft' ? currentIndex - 1 : currentIndex + 1;
+            if (nextIndex >= 0 && nextIndex < tokens.length) {
+              composeTagsEditorSelectToken(composeTagsEditor, tokens[nextIndex]);
+            } else {
+              composeTagsEditorClearSelection(composeTagsEditor);
+              composeTagsEditorFocusDraft(composeTagsEditor);
+            }
+            return;
+          }
+          const draftText = String(state.composeTagsDraftText || '');
+          if (!draftText.trim()) {
+            event.preventDefault();
+            if (event.key === 'ArrowLeft') {
+              composeTagsEditorSelectToken(composeTagsEditor, tokens[tokens.length - 1]);
+            } else {
+              composeTagsEditorSelectToken(composeTagsEditor, tokens[0]);
+            }
+            return;
+          }
+        }
+        if (event.key === 'Tab' || event.key === ',') {
+          event.preventDefault();
+          if (composeTagsEditorCommit(composeTagsEditor, true)) {
+            queueAutosave('saving');
+          }
+          return;
+        }
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          if (selectedToken) {
+            event.preventDefault();
+            if (composeTagsEditorRemoveTagByNode(composeTagsEditor, selectedToken)) {
+              queueAutosave('saving');
+            }
+            return;
+          }
+          const draftText = String(state.composeTagsDraftText || '');
+          if (!draftText.trim() && state.composeTags.length) {
+            event.preventDefault();
+            const edgeTag = event.key === 'Delete'
+              ? state.composeTags[0]
+              : state.composeTags[state.composeTags.length - 1];
+            if (edgeTag) {
+              removeComposeTag(edgeTag);
+              composeTagsEditorRender(composeTagsEditor);
+              composeTagsEditorFocusDraft(composeTagsEditor);
+              queueAutosave('saving');
+            }
+            return;
+          }
+        }
+        if (event.key === 'Escape') {
+          composeTagsEditorClearSelection(composeTagsEditor);
+        }
+      });
+
+      composeTagsEditor.addEventListener('focusout', function () {
+        composeTagsEditorSyncDraft(composeTagsEditor);
+        syncComposeTagsField();
+      });
+    } else if (els.postTagsInput) {
+      els.postTagsInput.addEventListener('keydown', function (event) {
+        if (event.key === ',' || event.key === 'Tab') {
+          event.preventDefault();
+          if (commitTagInput(true)) {
             queueAutosave('saving');
           }
           return;
@@ -6690,27 +8045,6 @@
           removeComposeTag(state.composeTags[state.composeTags.length - 1]);
           queueAutosave('saving');
         }
-      });
-
-      els.postTagsInput.addEventListener('blur', function () {
-        if (commitTagInput()) {
-          queueAutosave('saving');
-        }
-      });
-    }
-
-    if (els.postTagsPills) {
-      els.postTagsPills.addEventListener('click', function (event) {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-          return;
-        }
-        const tag = target.getAttribute('data-remove-tag');
-        if (!tag) {
-          return;
-        }
-        removeComposeTag(tag);
-        queueAutosave('saving');
       });
     }
 
@@ -6752,6 +8086,9 @@
     }
 
     document.getElementById('btn-publish-now').addEventListener('click', function () {
+      if (state.composeSubmitInFlight) {
+        return;
+      }
       const mode = getPublishMode();
       if (mode === 'scheduled') {
         saveComposer('queue_scheduled');
@@ -6843,6 +8180,112 @@
         syncAddToListNewRowVisibility();
       });
     }
+    if (els.postCrosspostCancel) {
+      els.postCrosspostCancel.addEventListener('click', function () {
+        if (els.postCrosspostDialog instanceof HTMLDialogElement) {
+          els.postCrosspostDialog.close('cancel');
+        } else {
+          resetPostCrosspostDialogState();
+        }
+      });
+    }
+    if (els.postCrosspostList) {
+      els.postCrosspostList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+          return;
+        }
+        if (!target.hasAttribute('data-post-crosspost-platform')) {
+          return;
+        }
+        syncPostCrosspostSelectionFromDom();
+      });
+    }
+    if (els.postCrosspostForm) {
+      els.postCrosspostForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitPostCrosspostDialog().catch(function (err) {
+          setOutput(els.outputPosts, 'Error: ' + err.message, 'error');
+          const currentPost = findPostByPath(state.postsCrosspostPath);
+          renderPostCrosspostDialogUi(currentPost);
+        });
+      });
+    }
+    if (els.crosspostingEnabledAll) {
+      els.crosspostingEnabledAll.addEventListener('change', function () {
+        const allIds = originConfigPlatformIds((state.originConfig && state.originConfig.platforms) || []);
+        state.originConfig.enabled_platforms = els.crosspostingEnabledAll.checked ? allIds.slice() : [];
+        state.originConfig.default_platforms = normalizeOriginPlatformList(state.originConfig.default_platforms, state.originConfig.enabled_platforms);
+        renderCrosspostingSettingsUi();
+        queueConfigAutosave(180);
+      });
+    }
+    if (els.crosspostingEnabledList) {
+      els.crosspostingEnabledList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+          return;
+        }
+        if (!target.hasAttribute('data-crossposting-enabled-platform')) {
+          return;
+        }
+        const nextEnabled = Array.from(els.crosspostingEnabledList.querySelectorAll('input[data-crossposting-enabled-platform]:checked')).map(function (input) {
+          return String(input.getAttribute('data-crossposting-enabled-platform') || '').trim().toLowerCase();
+        }).filter(Boolean);
+        state.originConfig.enabled_platforms = normalizeOriginPlatformList(nextEnabled, originConfigPlatformIds((state.originConfig && state.originConfig.platforms) || []));
+        state.originConfig.default_platforms = normalizeOriginPlatformList(state.originConfig.default_platforms, state.originConfig.enabled_platforms);
+        renderCrosspostingSettingsUi();
+        queueConfigAutosave(180);
+      });
+    }
+    if (els.crosspostingDefaultAll) {
+      els.crosspostingDefaultAll.addEventListener('change', function () {
+        const enabled = arrayFromMaybe(state.originConfig && state.originConfig.enabled_platforms);
+        state.originConfig.default_platforms = els.crosspostingDefaultAll.checked ? enabled.slice() : [];
+        renderCrosspostingSettingsUi();
+        queueConfigAutosave(180);
+      });
+    }
+    if (els.crosspostingDefaultList) {
+      els.crosspostingDefaultList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+          return;
+        }
+        if (!target.hasAttribute('data-crossposting-default-platform')) {
+          return;
+        }
+        const nextDefaults = Array.from(els.crosspostingDefaultList.querySelectorAll('input[data-crossposting-default-platform]:checked')).map(function (input) {
+          return String(input.getAttribute('data-crossposting-default-platform') || '').trim().toLowerCase();
+        }).filter(Boolean);
+        state.originConfig.default_platforms = normalizeOriginPlatformList(nextDefaults, state.originConfig.enabled_platforms);
+        renderCrosspostingSettingsUi();
+        queueConfigAutosave(180);
+      });
+    }
+    if (els.composeOriginSelectAll) {
+      els.composeOriginSelectAll.addEventListener('change', function () {
+        const enabled = arrayFromMaybe(state.originConfig && state.originConfig.enabled_platforms);
+        setComposeOriginPlatforms(els.composeOriginSelectAll.checked ? enabled.slice() : []);
+        queueAutosave('saving');
+      });
+    }
+    if (els.composeOriginPlatformList) {
+      els.composeOriginPlatformList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+          return;
+        }
+        if (!target.hasAttribute('data-compose-origin-platform')) {
+          return;
+        }
+        const nextSelection = Array.from(els.composeOriginPlatformList.querySelectorAll('input[data-compose-origin-platform]:checked')).map(function (input) {
+          return String(input.getAttribute('data-compose-origin-platform') || '').trim().toLowerCase();
+        }).filter(Boolean);
+        setComposeOriginPlatforms(nextSelection);
+        queueAutosave('saving');
+      });
+    }
     (Array.isArray(els.moderationAgeOptions) ? els.moderationAgeOptions : []).forEach(function (button) {
       button.addEventListener('click', function () {
         const picked = button.getAttribute('data-moderation-age');
@@ -6926,6 +8369,12 @@
       if (dialogEl === els.postAddToListDialog) {
         dialogEl.addEventListener('close', function () {
           state.pendingAddToListPostPath = '';
+        });
+      }
+      if (dialogEl === els.postCrosspostDialog) {
+        dialogEl.addEventListener('close', function () {
+          resetPostCrosspostDialogState();
+          syncPostsAutoRefresh();
         });
       }
     });
@@ -7254,6 +8703,10 @@
         state.nostrPagesDragLastTarget = '';
         state.nostrPagesDragDropped = false;
         state.nostrPagesDragSnapshot = state.nostrPages.slice();
+        if (state.nostrPagesSaveTimer) {
+          window.clearTimeout(state.nostrPagesSaveTimer);
+          state.nostrPagesSaveTimer = null;
+        }
         row.classList.add('is-dragging');
         if (event.dataTransfer) {
           event.dataTransfer.effectAllowed = 'move';
@@ -7274,9 +8727,13 @@
         if (!state.nostrPagesDragActive || !state.nostrPagesDragSlug) {
           return;
         }
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = 'move';
+        }
         const target = event.target;
         const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
         if (!(row instanceof HTMLElement)) {
+          event.preventDefault();
           return;
         }
         const targetSlug = String(row.getAttribute('data-slug') || '');
@@ -7300,15 +8757,44 @@
         dispatchFooterRefresh(state.nostrPages);
       });
 
+      els.nostrPagesList.addEventListener('dragenter', function (event) {
+        if (!state.nostrPagesDragActive || !state.nostrPagesDragSlug) {
+          return;
+        }
+        event.preventDefault();
+      });
+
       els.nostrPagesList.addEventListener('drop', function (event) {
         if (!state.nostrPagesDragActive || !state.nostrPagesDragSlug) {
           return;
         }
         event.preventDefault();
+        const target = event.target;
+        const row = target && target.closest ? target.closest('.nostr-page-row[data-slug]') : null;
+        if (row instanceof HTMLElement) {
+          const targetSlug = String(row.getAttribute('data-slug') || '');
+          if (targetSlug && targetSlug !== state.nostrPagesDragSlug) {
+            const rect = row.getBoundingClientRect();
+            const placeAfter = event.clientY > (rect.top + rect.height / 2);
+            if (reorderNostrPagesBySlug(state.nostrPagesDragSlug, targetSlug, placeAfter)) {
+              renderNostrPagesList(state.nostrPages, true);
+              dispatchNavbarRefresh(state.nostrPages, true);
+            }
+          }
+        }
         state.nostrPagesDragDropped = true;
-        saveNostrPagesConfig().catch(function (err) {
-          setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
-        });
+        const beforeSig = Array.isArray(state.nostrPagesDragSnapshot)
+          ? state.nostrPagesDragSnapshot.map(function (page) { return String(page.slug || ''); }).join('|')
+          : '';
+        const afterSig = Array.isArray(state.nostrPages)
+          ? state.nostrPages.map(function (page) { return String(page.slug || ''); }).join('|')
+          : '';
+        const orderChanged = !!beforeSig && !!afterSig && beforeSig !== afterSig;
+        if (orderChanged) {
+          flushNostrPagesConfigSave().catch(function (err) {
+            setOutput(els.outputNostrPages, 'Error: ' + err.message, 'error');
+          });
+        }
       });
 
       els.nostrPagesList.addEventListener('dragend', function (event) {
@@ -7325,7 +8811,7 @@
           row.classList.remove('is-dragging');
         }
         if (state.nostrPagesDragActive && !state.nostrPagesDragDropped && orderChanged) {
-          saveNostrPagesConfig().catch(function (err) {
+          flushNostrPagesConfigSave().catch(function (err) {
             if (Array.isArray(state.nostrPagesDragSnapshot)) {
               state.nostrPages = state.nostrPagesDragSnapshot.slice();
               renderNostrPagesList(state.nostrPages, true);
@@ -7439,6 +8925,19 @@
             return;
           }
           setFilePublicState(fileId, makePublic).catch(function (err) {
+            setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action === 'delete') {
+          const fileId = String(actionNode.getAttribute('data-file-id') || '').trim();
+          if (!fileId) {
+            return;
+          }
+          if (!window.confirm('Delete this file from the server? Existing posts that reference it will show a broken link/image.')) {
+            return;
+          }
+          deleteFile(fileId).catch(function (err) {
             setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
           });
         }
@@ -7597,7 +9096,7 @@
     }
     window.addEventListener('focus', function () {
       if (state.isAdmin && state.activeSection === 'nostr-bridge') {
-        loadNosterRuntime().catch(function () {});
+        loadNosterRuntime({ background: true }).catch(function () {});
       }
       if (state.isAdmin && state.activeSection === 'zaps') {
         loadZapsRuntime().catch(function () {});
@@ -7614,7 +9113,7 @@
       if (state.isAdmin && state.activeSection === 'queue') {
         loadQueue().catch(function () {});
       }
-      if (state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight) {
+      if (state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight && !state.postsCrosspostDialogOpen) {
         loadPosts().catch(function () {});
       }
       if (state.isAdmin && state.activeSection === 'files') {
@@ -7626,7 +9125,7 @@
     });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'nostr-bridge') {
-        loadNosterRuntime().catch(function () {});
+        loadNosterRuntime({ background: true }).catch(function () {});
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'zaps') {
         loadZapsRuntime().catch(function () {});
@@ -7643,7 +9142,7 @@
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'queue') {
         loadQueue().catch(function () {});
       }
-      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight) {
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'posts' && !state.postsActionInFlight && !state.postsCrosspostDialogOpen) {
         loadPosts().catch(function () {});
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'files') {
@@ -7784,6 +9283,14 @@
       });
     }
 
+    if (els.composePostTypeCurrentButton) {
+      els.composePostTypeCurrentButton.addEventListener('click', function () {
+        if (state.composePostTypeLocked) {
+          return;
+        }
+        setComposePostTypeToolbarCollapsed(!state.composePostTypeToolbarCollapsed);
+      });
+    }
     if (els.composePostTypeToolbar) {
       els.composePostTypeToolbar.addEventListener('click', function (event) {
         const target = event.target;
@@ -7801,18 +9308,21 @@
     if (els.composeCaptureButton && els.capturePicker) {
       els.composeCaptureButton.addEventListener('click', function () {
         setComposePostType('capture-media', { queueAutosave: false, syncUi: true });
+        setComposePostTypeToolbarCollapsed(true);
         els.capturePicker.click();
       });
     }
     if (els.composeUploadMediaButton && els.imagePicker) {
       els.composeUploadMediaButton.addEventListener('click', function () {
         setComposePostType('upload-media', { queueAutosave: false, syncUi: true });
+        setComposePostTypeToolbarCollapsed(true);
         els.imagePicker.click();
       });
     }
     if (els.composeUploadFileButton && els.filePicker) {
       els.composeUploadFileButton.addEventListener('click', function () {
         setComposePostType('attachment', { queueAutosave: false, syncUi: true });
+        setComposePostTypeToolbarCollapsed(true);
         state.filePickerContext = 'compose-attachment';
         els.filePicker.click();
       });
@@ -7820,6 +9330,7 @@
     if (els.composeUploadAudioButton && els.audioPicker) {
       els.composeUploadAudioButton.addEventListener('click', function () {
         setComposePostType('audio-note', { queueAutosave: false, syncUi: true });
+        setComposePostTypeToolbarCollapsed(true);
         els.audioPicker.click();
       });
     }

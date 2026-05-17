@@ -1,0 +1,91 @@
+#!/bin/sh
+# Cross-post a published post to selected Origin platforms.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+post_path=$(blog_param post_path)
+platforms=$(blog_param platforms)
+
+if [ -z "$post_path" ]; then
+  blog_json_error "post_path is required" "missing_post_path"
+  exit 0
+fi
+
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##')
+case "$post_path" in
+  *'..'*|*'\\'*|*'//'*)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+file=$(blog_resolve_post_markdown_file "$post_path" 2>/dev/null || printf '')
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
+case "$file" in
+  "$blog_posts_dir"/*) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+rel_path=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+case "$rel_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+if ! blog_origin_available; then
+  blog_json_error "Origin is not available on this server" "origin_unavailable"
+  exit 0
+fi
+
+site_enabled_json=$(blog_origin_enabled_platforms_json)
+requested_json=$(blog_origin_normalize_platforms_json "$platforms" "$site_enabled_json")
+requested_count=$(printf '%s\n' "$requested_json" | jq -r 'if type == "array" then length else 0 end' 2>/dev/null || printf '0')
+if [ "${requested_count:-0}" -lt 1 ]; then
+  blog_json_error "Select at least one cross-post destination" "platforms_required"
+  exit 0
+fi
+
+current_json=$(blog_origin_post_platforms_json "$rel_path" "$site_enabled_json")
+next_json=$(jq -cn --argjson current "$current_json" --argjson requested "$requested_json" '($current + $requested) | unique')
+blog_origin_save_post_platforms_json "$rel_path" "$next_json" >/dev/null 2>&1 || true
+
+results_json=$(blog_origin_emit_file_json "$file" "$requested_json" 2>/dev/null || printf '')
+if [ -z "$results_json" ]; then
+  blog_json_error "Cross-posting could not be completed" "crosspost_failed"
+  exit 0
+fi
+
+published_count=$(printf '%s\n' "$results_json" | jq -r '[.results[] | select(.status == "published")] | length' 2>/dev/null || printf '0')
+failed_count=$(printf '%s\n' "$results_json" | jq -r '[.results[] | select(.status == "failed")] | length' 2>/dev/null || printf '0')
+summary_json=$(blog_origin_crossposting_json_for_file "$file")
+
+message="Cross-posted to ${published_count:-0} site(s)."
+if [ "${failed_count:-0}" -gt 0 ]; then
+  message="Cross-posted to ${published_count:-0} site(s); ${failed_count:-0} site(s) failed."
+fi
+
+printf '{"success":true,"message":"%s","results":%s,"crossposting":%s}\n' \
+  "$(blog_json_escape "$message")" \
+  "$results_json" \
+  "$summary_json"

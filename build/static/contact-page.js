@@ -21,6 +21,8 @@
 
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
+  var secureChatSimplexXftpUrl = 'https://new.andersaamodt.com:18443/';
+  var secureChatSimplexXftpKeyHash = 'R-xa4iaMWHaCAK8iMzmJKFtODWn-nSw1FSl3ycoqDXQ=';
 
   var els = {
     title: document.getElementById('contact-page-title'),
@@ -56,6 +58,7 @@
     saveStatus: 'saved',
     saveIndicatorVisible: false,
     initialContentPainted: false,
+    lastContentHtml: '',
     chat: {
       available: false,
       loading: false,
@@ -67,17 +70,45 @@
       messages: [],
       uploads: [],
       localUploads: {},
+      pendingFiles: [],
       lastSeq: 0,
+      sendWithModifier: false,
       sessionVerified: false,
+      authRejected: false,
+      authChecking: false,
+      authCheckComplete: false,
+      authCheckPromise: null,
+      sessionDisplayName: '',
       error: '',
       pollTimer: null,
+      browserReceiveInFlight: false,
       attachedFilesToken: 0,
-      adminMappings: []
+      filePickerOpen: false,
+      renderDeferredWhileFilePickerOpen: false,
+      threadPinnedToBottom: true,
+      simplexBrowserTransportConfigured: false,
+      simplexWebIntroDismissed: false,
+      adminMappings: [],
+      chatStarted: false
     }
   };
   var videoChatScriptLoading = null;
+  var pageLifecycleClosing = false;
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
+  var SECURE_CHAT_STATE_TIMEOUT_MS = 12000;
+
+  function markPageLifecycleClosing() {
+    pageLifecycleClosing = true;
+  }
+
+  function clearPageLifecycleClosing() {
+    pageLifecycleClosing = false;
+  }
+
+  function isPageLifecycleClosing() {
+    return pageLifecycleClosing;
+  }
 
   function videoChatPluginEnabled() {
     var plugins = window.__wizardryPlugins;
@@ -210,6 +241,15 @@
     };
   }
 
+  function storedSessionToken() {
+    return String(localStorage.getItem('session_token') || '').trim();
+  }
+
+  function hasLikelyAuthenticatedSession() {
+    var auth = authPayload();
+    return !!(auth && auth.session_token && auth.csrf_token);
+  }
+
   function ensureNostrPublishDialog() {
     if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
       return Promise.resolve(true);
@@ -241,6 +281,17 @@
     return String(localStorage.getItem('last_auth_pubkey') || '').trim().toLowerCase();
   }
 
+  function secureChatStoredAuthHint() {
+    return [
+      secureChatAuthMethod(),
+      secureChatStoredPubkey(),
+      String(localStorage.getItem('last_auth_player_name') || '').trim(),
+      String(localStorage.getItem('last_auth_username') || '').trim()
+    ].some(function (value) {
+      return !!String(value || '').trim();
+    });
+  }
+
   function secureChatAuthSignature() {
     var auth = authPayload();
     return [
@@ -265,14 +316,51 @@
   }
 
   function secureChatStorageAccountKey() {
-    if (secureChatAuthMethod() !== 'nostr' && !secureChatStoredPubkey()) {
+    var storedPubkey = secureChatStoredPubkey();
+    if (secureChatAuthMethod() !== 'nostr' && !storedPubkey) {
       return '';
+    }
+    if (storedPubkey) {
+      return storedPubkey;
     }
     var npub = String(state.chat.npub || '').trim().toLowerCase();
     if (npub) {
       return npub;
     }
     return secureChatStoredPubkey();
+  }
+
+  function secureChatSimplexInfoDismissStorageKey() {
+    var accountKey = secureChatStorageAccountKey();
+    if (!accountKey) {
+      return '';
+    }
+    return 'secure-chat-simplex-web-info-dismissed-v2:' + secureChatStorageSiteKey() + ':' + accountKey;
+  }
+
+  function secureChatSimplexInfoDismissedFromBrowser() {
+    var key = secureChatSimplexInfoDismissStorageKey();
+    if (!key) {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(key) === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function persistSecureChatSimplexInfoDismissal() {
+    var key = secureChatSimplexInfoDismissStorageKey();
+    if (!key) {
+      return false;
+    }
+    try {
+      window.localStorage.setItem(key, '1');
+      return true;
+    } catch (_err) {
+      return false;
+    }
   }
 
   function markInitialContentPainted() {
@@ -380,7 +468,11 @@
     if (!payload || !isExpectedPayload(payload)) {
       return false;
     }
-    state.payload = payload;
+    var optimisticPayload = payload;
+    if (!optimisticPayload.is_admin && hasLikelyAuthenticatedSession()) {
+      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
+    }
+    state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', description: '', rows: [] });
     state.navTitle = String((payload && payload.nav_title) || '').trim();
     state.navTitleEditing = false;
@@ -451,8 +543,83 @@
 
   function hasSecureChatSession() {
     var auth = authPayload();
-    var authMethod = secureChatAuthMethod();
-    return !!(auth.session_token && auth.csrf_token && (authMethod === 'nostr' || secureChatStoredPubkey()));
+    return !!(auth.session_token && auth.csrf_token);
+  }
+
+  function secureChatAuthPending() {
+    return !hasSecureChatSession() && !!storedSessionToken() && state.chat.authCheckComplete !== true;
+  }
+
+  function verifySecureChatStoredAuth() {
+    if (hasSecureChatSession()) {
+      state.chat.authChecking = false;
+      state.chat.authCheckComplete = true;
+      state.chat.authRejected = false;
+      return Promise.resolve(true);
+    }
+    var token = storedSessionToken();
+    if (!token) {
+      state.chat.authChecking = false;
+      state.chat.authCheckComplete = true;
+      return Promise.resolve(false);
+    }
+    if (state.chat.authCheckPromise) {
+      return state.chat.authCheckPromise;
+    }
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timeout = controller ? window.setTimeout(function () {
+      controller.abort();
+    }, 8000) : null;
+    state.chat.authChecking = true;
+    if (state.payload) {
+      renderContent();
+    }
+    state.chat.authCheckPromise = fetch('/cgi/ssh-auth-check-session?session_token=' + encodeURIComponent(token), {
+      cache: 'no-store',
+      signal: controller ? controller.signal : undefined
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.authenticated) {
+          state.chat.authRejected = true;
+          return false;
+        }
+        if (data.csrf_token) {
+          localStorage.setItem('csrf_token', data.csrf_token);
+        }
+        if (data.nostr_pubkey) {
+          localStorage.setItem('last_auth_pubkey', data.nostr_pubkey);
+        }
+        if (data.session_auth_method) {
+          localStorage.setItem('last_auth_method', data.session_auth_method);
+        } else if (data.nostr_pubkey || secureChatStoredPubkey()) {
+          localStorage.setItem('last_auth_method', 'nostr');
+        }
+        if (data.player_name) {
+          localStorage.setItem('last_auth_player_name', data.player_name);
+        }
+        if (data.username) {
+          localStorage.setItem('last_auth_username', data.username);
+        }
+        if (typeof data.is_admin !== 'undefined') {
+          localStorage.setItem('last_auth_is_admin', data.is_admin ? '1' : '0');
+        }
+        state.chat.authRejected = false;
+        return hasSecureChatSession();
+      }).catch(function () {
+        return false;
+      }).finally(function () {
+        if (timeout) {
+          window.clearTimeout(timeout);
+        }
+        state.chat.authChecking = false;
+        state.chat.authCheckComplete = true;
+        state.chat.authCheckPromise = null;
+        if (state.payload) {
+          renderContent();
+        }
+      });
+    return state.chat.authCheckPromise;
   }
 
   function secureChatEndpointUrl(pathname) {
@@ -476,7 +643,7 @@
     var controller = typeof AbortController === 'function' ? new AbortController() : null;
     var timeout = controller ? window.setTimeout(function () {
       controller.abort();
-    }, 180000) : null;
+    }, SECURE_CHAT_STATE_TIMEOUT_MS) : null;
     return secureChatRequestHeaders(absoluteUrl, 'POST').then(function (headers) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       return fetch(absoluteUrl, {
@@ -503,7 +670,9 @@
       });
     }).catch(function (err) {
       if (err && err.name === 'AbortError') {
-        throw new Error('Secure Chat request timed out. Try again in a moment.');
+        var timeoutError = new Error('Secure Chat request timed out. Try again in a moment.');
+        timeoutError.code = 'timeout';
+        throw timeoutError;
       }
       throw err;
     }).finally(function () {
@@ -513,10 +682,158 @@
     });
   }
 
+  function secureChatBrowserTransport() {
+    var transport = window.SimplexWebTransport || window.SimplexWebClient || null;
+    if (!transport || typeof transport.sendText !== 'function') {
+      return null;
+    }
+    return transport;
+  }
+
+  function secureChatTransportUnavailableError() {
+    return new Error('Browser-native simplex-web transport is unavailable. Message was not sent to the server.');
+  }
+
+  function secureChatTransportContactId() {
+    var mapping = state.chat.mapping && typeof state.chat.mapping === 'object' ? state.chat.mapping : {};
+    return String(mapping.bridge_contact_id || mapping.simplex_contact_id || '').trim();
+  }
+
+  function secureChatStableLinkHash(value) {
+    var text = String(value || '');
+    var hash = 2166136261;
+    for (var i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function secureChatOwnerContactId(ownerContactLink) {
+    if (ownerContactLink) {
+      return 'owner-native-inline-v7-' + secureChatStableLinkHash(ownerContactLink + '|' + secureChatStorageAccountKey());
+    }
+    return secureChatTransportContactId();
+  }
+
+  function secureChatSessionDisplayName() {
+    return String(
+      state.chat.sessionDisplayName ||
+      localStorage.getItem('last_auth_username') ||
+      localStorage.getItem('last_auth_player_name') ||
+      ''
+    ).trim();
+  }
+
+  function secureChatBrowserProfile() {
+    var displayName = secureChatSessionDisplayName();
+    if (!displayName) return {};
+    return {
+      displayName: displayName,
+      fullName: displayName
+    };
+  }
+
+  function secureChatOwnerContactLink() {
+    var service = state.chat.service && typeof state.chat.service === 'object' ? state.chat.service : {};
+    return String(service.owner_contact_link || service.ownerContactLink || '').trim();
+  }
+
+  function secureChatSendDestination() {
+    var ownerContactLink = secureChatOwnerContactLink();
+    var contactId = secureChatOwnerContactId(ownerContactLink);
+    return {
+      ownerContactLink: ownerContactLink,
+      contactId: contactId,
+      userId: ownerContactLink ? '' : (state.chat.mapping && state.chat.mapping.bridge_user_id ? String(state.chat.mapping.bridge_user_id) : '')
+    };
+  }
+
+  function waitForSecureChatSendDestination(timeoutMs) {
+    var deadline = Date.now() + Math.max(100, Number(timeoutMs || 2500) || 2500);
+    function currentOrRefresh() {
+      var destination = secureChatSendDestination();
+      if (destination.ownerContactLink || destination.contactId) {
+        return Promise.resolve(destination);
+      }
+      if (Date.now() >= deadline) {
+        return Promise.reject(new Error('Secure Chat destination is still loading. Try sending again in a moment.'));
+      }
+      return refreshSecureChatState().then(function () {
+        destination = secureChatSendDestination();
+        if (destination.ownerContactLink || destination.contactId) {
+          return destination;
+        }
+        return new Promise(function (resolve) {
+          window.setTimeout(resolve, 100);
+        }).then(currentOrRefresh);
+      });
+    }
+    return currentOrRefresh();
+  }
+
+  function secureChatClientMessageId() {
+    return 'secure-chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function keepSecureChatLocalOutgoingStable() {
+    state.chat.localOutgoingVolatileUntil = Date.now() + 300000;
+  }
+
+  function secureChatRegisterBrowserNativeTransport() {
+    var bootstrap = window.SimplexWebBrowserAdapter;
+    if (!bootstrap || typeof bootstrap.registerConfiguredSimplexWebTransport !== 'function') {
+      return false;
+    }
+    try {
+      var ownerContactLink = secureChatOwnerContactLink();
+      var transportConfig = {
+        namespace: 'nostr-blog-secure-chat',
+        defaultContactId: secureChatOwnerContactId(ownerContactLink) || 'secure-chat-owner',
+        ownerContactLink: ownerContactLink,
+        profile: secureChatBrowserProfile()
+      };
+      if (!ownerContactLink) {
+        transportConfig.xftpWebUrl = secureChatSimplexXftpUrl;
+        transportConfig.xftpKeyHash = secureChatSimplexXftpKeyHash;
+      }
+      var result = bootstrap.registerConfiguredSimplexWebTransport(transportConfig);
+      state.chat.simplexBrowserTransportConfigured = !!(result && result.registered);
+      return state.chat.simplexBrowserTransportConfigured;
+    } catch (_err) {
+      state.chat.simplexBrowserTransportConfigured = false;
+      return false;
+    }
+  }
+
+  function waitForSecureChatBrowserNativeTransport(timeoutMs) {
+    var deadline = Date.now() + Math.max(100, Number(timeoutMs || 2000) || 2000);
+    return new Promise(function (resolve) {
+      function attempt() {
+        secureChatRegisterBrowserNativeTransport();
+        var transport = secureChatBrowserTransport();
+        var status = transport && typeof transport.getStatus === 'function'
+          ? transport.getStatus()
+          : null;
+        if (transport && (!status || status.available !== false)) {
+          resolve(transport);
+          return;
+        }
+        if (Date.now() >= deadline) {
+          resolve(transport || null);
+          return;
+        }
+        window.setTimeout(attempt, 50);
+      }
+      attempt();
+    });
+  }
+
   function secureChatMergeMessages(nextMessages) {
     var incoming = Array.isArray(nextMessages) ? nextMessages : [];
     var seen = {};
     var merged = [];
+    var localRows = secureChatLocalBrowserRows(state.chat.messages);
     (state.chat.messages || []).forEach(function (msg) {
       var seq = Number(msg && msg.seq);
       if (!seq || seen[seq]) {
@@ -533,13 +850,88 @@
       seen[seq] = true;
       merged.push(msg);
     });
+    localRows.forEach(function (msg) {
+      var ref = String(msg && msg.message_ref || '');
+      var hasServerMatch = !!ref && merged.some(function (serverMsg) {
+        return String(serverMsg && serverMsg.message_ref || '') === ref && String(serverMsg && serverMsg.direction || '') === String(msg.direction || '');
+      });
+      if (!hasServerMatch) {
+        merged.push(msg);
+      }
+    });
     merged.sort(function (a, b) {
+      var aTime = String(a && (a.created_at || a.updated_at) || '');
+      var bTime = String(b && (b.created_at || b.updated_at) || '');
+      if (aTime || bTime) {
+        return aTime.localeCompare(bTime);
+      }
       return Number(a.seq || 0) - Number(b.seq || 0);
     });
     state.chat.messages = merged;
-    if (merged.length) {
-      state.chat.lastSeq = Number(merged[merged.length - 1].seq || state.chat.lastSeq || 0);
+    state.chat.lastSeq = secureChatInferLastSeq(merged);
+  }
+
+  function secureChatLocalBrowserRows(messages) {
+    return (Array.isArray(messages) ? messages : []).filter(function (msg) {
+      return !!(msg && !Number(msg.seq || 0));
+    });
+  }
+
+  function secureChatLocalOutgoingRows(messages) {
+    return secureChatLocalBrowserRows(messages).filter(function (msg) {
+      return String(msg.direction || '') === 'outgoing';
+    });
+  }
+
+  function secureChatStoredLocalOutgoingRows() {
+    var store = secureChatSessionStore();
+    var accountKey = secureChatStorageAccountKey();
+    if (!store || !accountKey) {
+      return [];
     }
+    var session = store.readSession(window.localStorage, secureChatStorageSiteKey(), accountKey);
+    return secureChatLocalOutgoingRows(session.messages);
+  }
+
+  function secureChatStoredLocalBrowserRows() {
+    var store = secureChatSessionStore();
+    var accountKey = secureChatStorageAccountKey();
+    if (!store || !accountKey) {
+      return [];
+    }
+    var session = store.readSession(window.localStorage, secureChatStorageSiteKey(), accountKey);
+    return secureChatLocalBrowserRows(session.messages);
+  }
+
+  function secureChatMergeLocalOutgoingRows(rows) {
+    var incoming = secureChatLocalOutgoingRows(rows);
+    return secureChatMergeLocalBrowserRows(incoming);
+  }
+
+  function secureChatMergeLocalBrowserRows(rows) {
+    var incoming = secureChatLocalBrowserRows(rows);
+    if (!incoming.length) {
+      return false;
+    }
+    var changed = false;
+    var current = Array.isArray(state.chat.messages) ? state.chat.messages.slice() : [];
+    incoming.forEach(function (row) {
+      var ref = String(row && row.message_ref || '');
+      var text = String(row && row.text || '');
+      var exists = current.some(function (message) {
+        return String(message && message.direction || '') === String(row.direction || '') &&
+          ((ref && String(message && message.message_ref || '') === ref) ||
+            (!ref && text && String(message && message.text || '') === text));
+      });
+      if (!exists) {
+        current.push(row);
+        changed = true;
+      }
+    });
+    if (changed) {
+      state.chat.messages = current;
+    }
+    return changed;
   }
 
   function secureChatCursorSeq(value) {
@@ -566,11 +958,421 @@
     return combined;
   }
 
+  function secureChatPendingFileMeta(fileRef) {
+    var file = fileRef && fileRef.file ? fileRef.file : fileRef;
+    return {
+      id: String(fileRef && fileRef.id || ''),
+      name: String(file && file.name || 'Attachment'),
+      mime: String(file && file.type || ''),
+      size: Number(file && file.size || 0) || 0,
+      preparing: fileRef && fileRef.preparing === true
+    };
+  }
+
+  function secureChatPendingFileMetas() {
+    return (Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles : []).map(secureChatPendingFileMeta);
+  }
+
+  function secureChatPendingFileReceipt(fileRef, messageRef) {
+    var meta = secureChatPendingFileMeta(fileRef);
+    return {
+      message_ref: messageRef,
+      delivery_status: 'sending',
+      attachment: {
+        name: meta.name,
+        mime: meta.mime,
+        size: meta.size,
+        url: String(fileRef && fileRef.previewUrl || '')
+      }
+    };
+  }
+
+  function secureChatHasPendingFiles() {
+    return Array.isArray(state.chat.pendingFiles) && state.chat.pendingFiles.length > 0;
+  }
+
+  function secureChatDataTransferHasFiles(dataTransfer) {
+    if (!dataTransfer) {
+      return false;
+    }
+    if (dataTransfer.files && dataTransfer.files.length) {
+      return true;
+    }
+    if (dataTransfer.types && typeof dataTransfer.types.indexOf === 'function') {
+      return dataTransfer.types.indexOf('Files') >= 0;
+    }
+    return false;
+  }
+
+  function secureChatPreviewUrl(file) {
+    if (!file || !window.URL || typeof window.URL.createObjectURL !== 'function') {
+      return '';
+    }
+    var mime = String(file.type || '').toLowerCase();
+    if (mime.indexOf('image/') !== 0 && mime.indexOf('video/') !== 0 && mime.indexOf('audio/') !== 0) {
+      return '';
+    }
+    try {
+      return window.URL.createObjectURL(file);
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function stableSecureChatFile(file, previewUrl) {
+    if (!file || typeof file.arrayBuffer !== 'function' || typeof window.File !== 'function') {
+      return Promise.resolve(file);
+    }
+    return Promise.resolve(file.arrayBuffer()).then(function (buffer) {
+      var stable = new window.File([buffer], file.name || 'attachment.bin', {
+        type: file.type || 'application/octet-stream',
+        lastModified: file.lastModified || Date.now()
+      });
+      if (previewUrl) {
+        try {
+          stable.simplexPreviewUrl = previewUrl;
+        } catch (_err) {
+          // Preview metadata is optional; the cloned file still sends correctly.
+        }
+      }
+      return stable;
+    });
+  }
+
+  function revokeSecureChatPreviewUrl(url) {
+    if (!url || !window.URL || typeof window.URL.revokeObjectURL !== 'function') {
+      return;
+    }
+    try {
+      window.URL.revokeObjectURL(url);
+    } catch (_err) {
+      // Object URL cleanup should never interfere with attachment handling.
+    }
+  }
+
+  function addSecureChatPendingFiles(files) {
+    var list = Array.prototype.slice.call(files || []).filter(Boolean);
+    if (!list.length) {
+      return false;
+    }
+    var current = Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles.slice() : [];
+    list.forEach(function (file) {
+      state.chat.attachedFilesToken += 1;
+      var previewUrl = secureChatPreviewUrl(file);
+      if (previewUrl) {
+        try {
+          file.simplexPreviewUrl = previewUrl;
+        } catch (_err) {
+          // Non-extensible File objects still send normally; they just skip the local preview URL.
+        }
+      }
+      var item = {
+        id: 'pending-' + String(Date.now()) + '-' + String(state.chat.attachedFilesToken),
+        file: file,
+        previewUrl: previewUrl,
+        preparing: true
+      };
+      item.filePromise = stableSecureChatFile(file, previewUrl).then(function (stableFile) {
+        item.file = stableFile || file;
+        item.preparing = false;
+        renderContent();
+        return item.file;
+      }, function (err) {
+        item.preparing = false;
+        state.chat.error = err && err.message ? err.message : 'Could not prepare the selected attachment.';
+        renderContent();
+        throw err;
+      });
+      item.filePromise.catch(function () {
+        // The send path reports preparation errors; this prevents idle selected files from creating unhandled rejections.
+      });
+      current.push(item);
+    });
+    state.chat.pendingFiles = current;
+    state.chat.error = '';
+    renderContent();
+    return true;
+  }
+
+  function removeSecureChatPendingFile(fileId) {
+    var id = String(fileId || '');
+    var current = Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles : [];
+    current.forEach(function (item) {
+      if (String(item && item.id || '') === id) {
+        revokeSecureChatPreviewUrl(String(item && item.previewUrl || ''));
+      }
+    });
+    state.chat.pendingFiles = current.filter(function (item) {
+      return String(item && item.id || '') !== id;
+    });
+    renderContent();
+  }
+
+  function secureChatReadyPendingFiles(pending) {
+    return Promise.all((Array.isArray(pending) ? pending : []).map(function (item) {
+      if (!item) return null;
+      if (item.filePromise && typeof item.filePromise.then === 'function') {
+        return item.filePromise;
+      }
+      return item.file || null;
+    })).then(function (files) {
+      return files.filter(Boolean);
+    });
+  }
+
   function secureChatInferLastSeq(messages) {
     return (Array.isArray(messages) ? messages : []).reduce(function (maxSeq, message) {
       var seq = Number(message && message.seq || 0);
       return seq > maxSeq ? seq : maxSeq;
     }, 0);
+  }
+
+  function secureChatLocalDeliveryStatus(receipt) {
+    var status = String(receipt && (receipt.delivery_status || receipt.transport_status || receipt.status) || 'queued').trim();
+    return status || 'queued';
+  }
+
+  function secureChatSendIcon() {
+    return '<svg class="secure-chat-send-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 9-18 9 4-9-4-9Z"/><path d="M7 12h14"/></svg>';
+  }
+
+  function secureChatRemoveIcon() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  }
+
+  function secureChatComparableMessage(message) {
+    return JSON.stringify({
+      direction: String(message && message.direction || ''),
+      message_ref: String(message && message.message_ref || ''),
+      message_kind: String(message && message.message_kind || ''),
+      delivery_status: secureChatLocalDeliveryStatus(message),
+      created_at: String(message && message.created_at || ''),
+      updated_at: String(message && message.updated_at || ''),
+      text: String(message && message.text || ''),
+      attachment: message && message.attachment ? message.attachment : null
+    });
+  }
+
+  function secureChatMessageRefSelector(messageRef) {
+    var ref = String(messageRef || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return '[data-secure-chat-message-ref="' + ref + '"]';
+  }
+
+  function syncSecureChatComposeControls() {
+    var sendButton = document.querySelector('[data-secure-chat-action="send"]');
+    if (sendButton instanceof HTMLButtonElement) {
+      sendButton.disabled = state.chat.sending === true;
+      sendButton.setAttribute('aria-label', state.chat.sending ? 'Sending...' : 'Send secure message');
+      sendButton.setAttribute('title', state.chat.sending ? 'Sending...' : 'Send secure message');
+      if (state.chat.sending) {
+        sendButton.setAttribute('aria-busy', 'true');
+        sendButton.innerHTML = secureChatSpinnerHtml('secure-chat-send-spinner');
+      } else {
+        sendButton.removeAttribute('aria-busy');
+        sendButton.innerHTML = secureChatSendIcon();
+      }
+    }
+  }
+
+  function patchSecureChatMessageStatus(message) {
+    var ref = String(message && message.message_ref || '').trim();
+    if (!ref) return false;
+    var row = document.querySelector(secureChatMessageRefSelector(ref));
+    if (!(row instanceof HTMLElement)) return false;
+    var statusHost = row.querySelector('[data-secure-chat-status="true"]');
+    if (!(statusHost instanceof HTMLElement)) return false;
+    statusHost.innerHTML = secureChatStatusHtml(message);
+    return true;
+  }
+
+  function normalizeSecureChatPersistedMessages(messages) {
+    return Array.isArray(messages) ? messages : [];
+  }
+
+  function secureChatUpdateLocalOutgoingStatus(messageRef, receipt) {
+    var ref = String((receipt && receipt.message_ref) || messageRef || '').trim();
+    if (!ref) {
+      return false;
+    }
+    var updated = false;
+    var rows = (Array.isArray(state.chat.messages) ? state.chat.messages : []).map(function (message) {
+      if (!message || typeof message !== 'object' || String(message.message_ref || '') !== ref) {
+        return message;
+      }
+      var next = Object.assign({}, message);
+      next.delivery_status = secureChatLocalDeliveryStatus(receipt);
+      next.updated_at = new Date().toISOString();
+      if (receipt && receipt.message_ref) {
+        next.message_ref = String(receipt.message_ref || '');
+      }
+      updated = true;
+      return next;
+    });
+    if (!updated) {
+      return false;
+    }
+    state.chat.messages = rows;
+    persistSecureChatSessionToBrowser();
+    patchSecureChatMessageStatus(rows.find(function (message) {
+      return message && String(message.message_ref || '') === ref;
+    }));
+    syncSecureChatLastContentHtml();
+    syncSecureChatComposeControls();
+    return true;
+  }
+
+  function secureChatKeepPendingFilesSending(pending, pendingRefs) {
+    var files = Array.isArray(pending) ? pending : [];
+    (Array.isArray(pendingRefs) ? pendingRefs : []).forEach(function (ref, index) {
+      var current = (Array.isArray(state.chat.messages) ? state.chat.messages : []).find(function (message) {
+        return message && String(message.message_ref || '') === String(ref || '');
+      });
+      var status = secureChatLocalDeliveryStatus(current);
+      if (status && status !== 'queued' && status !== 'sending' && status !== 'sndNew') return;
+      var receipt = {
+        message_ref: ref,
+        delivery_status: 'sending',
+        attachment: secureChatPendingFileReceipt(files[index], ref).attachment
+      };
+      if (!secureChatUpdateLocalOutgoingStatus(ref, receipt)) {
+        patchSecureChatMessageStatus(receipt);
+        syncSecureChatLastContentHtmlFromDom();
+      }
+    });
+    files.forEach(function (fileRef) {
+      var meta = secureChatPendingFileMeta(fileRef);
+      var rows = document.querySelectorAll('#secure-chat-thread .secure-chat-message.is-outgoing');
+      Array.prototype.forEach.call(rows, function (row) {
+        if (!(row instanceof HTMLElement) || String(row.getAttribute('data-secure-chat-message-ref') || '').trim()) return;
+        if (meta.name && row.innerText.indexOf(meta.name) < 0) return;
+        var statusHost = row.querySelector('[data-secure-chat-status="true"]');
+        if (!(statusHost instanceof HTMLElement) || !/Sending/i.test(statusHost.innerText || '')) return;
+        statusHost.innerHTML = secureChatStatusHtml({ delivery_status: 'sending' });
+      });
+    });
+    persistSecureChatSessionToBrowser();
+    syncSecureChatLastContentHtmlFromDom();
+    syncSecureChatComposeControls();
+  }
+
+  function secureChatAppendLocalOutgoing(text, receipt) {
+    var rows = Array.isArray(state.chat.messages) ? state.chat.messages.slice() : [];
+    var messageRef = String(receipt && receipt.message_ref || '');
+    var attachment = receipt && receipt.attachment && typeof receipt.attachment === 'object'
+      ? {
+        name: String(receipt.attachment.name || 'Attachment'),
+        mime: String(receipt.attachment.mime || ''),
+        size: Number(receipt.attachment.size || 0) || 0,
+        data_url: String(receipt.attachment.data_url || receipt.attachment.dataUrl || ''),
+        url: String(receipt.attachment.url || ''),
+        file_path: String(receipt.attachment.file_path || receipt.attachment.filePath || '')
+      }
+      : null;
+    var now = new Date().toISOString();
+    var next = {
+      seq: 0,
+      direction: 'outgoing',
+      message_ref: messageRef,
+      message_kind: attachment ? 'file' : 'text',
+      delivery_status: secureChatLocalDeliveryStatus(receipt),
+      created_at: now,
+      updated_at: now,
+      text: String(text || ''),
+      attachment: attachment
+    };
+    var existingIndex = messageRef ? rows.findIndex(function (message) {
+      return message && String(message.direction || '') === 'outgoing' &&
+        String(message.message_ref || '') === messageRef;
+    }) : -1;
+    if (existingIndex >= 0) {
+      next.created_at = String(rows[existingIndex].created_at || now);
+      rows[existingIndex] = Object.assign({}, rows[existingIndex], next);
+    } else {
+      rows.push(next);
+    }
+    state.chat.messages = rows;
+  }
+
+  function secureChatMergeBrowserTransportMessages(messages) {
+    var incoming = secureChatLocalBrowserRows(Array.isArray(messages) ? messages : []);
+    if (!incoming.length) {
+      return false;
+    }
+    var rows = Array.isArray(state.chat.messages) ? state.chat.messages.slice() : [];
+    var changed = false;
+    incoming.forEach(function (message) {
+      var ref = String(message && message.message_ref || '').trim();
+      var direction = String(message && message.direction || '') === 'incoming' ? 'incoming' : 'outgoing';
+      var existingIndex = rows.findIndex(function (row) {
+        return String(row && row.direction || '') === direction &&
+          !!ref &&
+          String(row && row.message_ref || '') === ref;
+      });
+      var next = Object.assign({}, message, {
+        seq: 0,
+        direction: direction,
+        delivery_status: secureChatLocalDeliveryStatus(message),
+        updated_at: String(message && message.updated_at || '') || new Date().toISOString()
+      });
+      if (existingIndex >= 0) {
+        var merged = Object.assign({}, rows[existingIndex], next);
+        if (secureChatComparableMessage(rows[existingIndex]) !== secureChatComparableMessage(merged)) {
+          rows[existingIndex] = merged;
+          changed = true;
+        }
+        return;
+      }
+      var text = String(next.text || '');
+      var duplicateText = !ref && text && rows.some(function (row) {
+        return String(row && row.direction || '') === direction && String(row && row.text || '') === text;
+      });
+      if (!duplicateText) {
+        rows.push(next);
+        changed = true;
+      }
+    });
+    if (!changed) {
+      return false;
+    }
+    rows.sort(function (a, b) {
+      var aTime = String(a && (a.created_at || a.updated_at) || '');
+      var bTime = String(b && (b.created_at || b.updated_at) || '');
+      return aTime.localeCompare(bTime);
+    });
+    state.chat.messages = rows;
+    return true;
+  }
+
+  function refreshSecureChatBrowserMessages() {
+    var transport = secureChatBrowserTransport();
+    if (!transport || typeof transport.getMessages !== 'function' || state.chat.browserReceiveInFlight) {
+      return Promise.resolve(false);
+    }
+    var ownerContactLink = secureChatOwnerContactLink();
+    var contactId = secureChatOwnerContactId(ownerContactLink);
+    if (!ownerContactLink && !contactId) {
+      return Promise.resolve(false);
+    }
+    state.chat.browserReceiveInFlight = true;
+    return Promise.resolve(transport.getMessages({
+      contact_id: contactId,
+      contact_link: ownerContactLink,
+      user_id: ownerContactLink ? '' : (state.chat.mapping && state.chat.mapping.bridge_user_id ? String(state.chat.mapping.bridge_user_id) : ''),
+      accountKey: secureChatStorageAccountKey(),
+      siteKey: secureChatStorageSiteKey(),
+      count: 50
+    })).then(function (messages) {
+      var changed = secureChatMergeBrowserTransportMessages(messages);
+      if (changed) {
+        persistSecureChatSessionToBrowser();
+        renderContent();
+      }
+      return changed;
+    }).catch(function () {
+      return false;
+    }).finally(function () {
+      state.chat.browserReceiveInFlight = false;
+    });
   }
 
   function hydrateSecureChatSessionFromBrowser() {
@@ -584,10 +1386,13 @@
       return false;
     }
     state.chat.draftText = String(session.draftText || '');
-    state.chat.messages = Array.isArray(session.messages) ? session.messages : [];
+    state.chat.messages = normalizeSecureChatPersistedMessages(session.messages);
     state.chat.uploads = Array.isArray(session.uploads) ? session.uploads : [];
+    state.chat.service = session.service && typeof session.service === 'object' ? session.service : state.chat.service;
+    state.chat.mapping = session.mapping && typeof session.mapping === 'object' ? session.mapping : state.chat.mapping;
     state.chat.localUploads = {};
     state.chat.lastSeq = Number(session.lastSeq || secureChatInferLastSeq(state.chat.messages) || 0);
+    state.chat.simplexWebIntroDismissed = secureChatSimplexInfoDismissedFromBrowser();
     return true;
   }
 
@@ -601,7 +1406,9 @@
       draftText: state.chat.draftText || '',
       lastSeq: Number(state.chat.lastSeq || secureChatInferLastSeq(state.chat.messages) || 0),
       messages: state.chat.messages || [],
-      uploads: secureChatPersistableUploads()
+      uploads: secureChatPersistableUploads(),
+      service: state.chat.service || null,
+      mapping: state.chat.mapping || null
     });
     return true;
   }
@@ -609,8 +1416,9 @@
   function resetSecureChatState() {
     if (state.chat.pollTimer) {
       clearTimeout(state.chat.pollTimer);
-      state.chat.pollTimer = null;
     }
+    state.chat.pollTimer = null;
+    state.chat.browserReceiveInFlight = false;
     state.chat.available = false;
     state.chat.loading = false;
     state.chat.sending = false;
@@ -620,22 +1428,125 @@
     state.chat.messages = [];
     state.chat.uploads = [];
     state.chat.localUploads = {};
+    state.chat.pendingFiles = [];
     state.chat.lastSeq = 0;
+    state.chat.sendWithModifier = false;
     state.chat.sessionVerified = false;
+    state.chat.authRejected = false;
+    state.chat.authChecking = false;
+    state.chat.authCheckComplete = false;
+    state.chat.authCheckPromise = null;
     state.chat.error = '';
+    state.chat.filePickerOpen = false;
+    state.chat.renderDeferredWhileFilePickerOpen = false;
+    state.chat.simplexWebIntroDismissed = false;
     state.chat.adminMappings = [];
+    state.chat.chatStarted = false;
   }
 
   function hasVerifiedSecureChatSession() {
     return hasSecureChatSession() && state.chat.sessionVerified === true;
   }
 
+  function hasUsableSecureChatSession() {
+    var browserSession = hasSecureChatSession() || (!!storedSessionToken() && secureChatStoredAuthHint());
+    return browserSession && state.chat.authRejected !== true && (
+      state.chat.sessionVerified === true || state.chat.authCheckComplete === true || secureChatStoredAuthHint()
+    );
+  }
+
+  function secureChatLoadingBeforeVerification(loggedIn) {
+    return !loggedIn && !state.chat.authRejected && (
+      state.chat.loading || state.chat.authChecking || secureChatAuthPending() ||
+      (hasSecureChatSession() && state.chat.authCheckComplete !== true && !state.chat.error)
+    );
+  }
+
   function renderSecureChatThreadState() {
+    return renderSecureChatThreadScrollState(null);
+  }
+
+  function secureChatPanelSignature() {
+    var chat = state.chat || {};
+    return JSON.stringify({
+      available: !!chat.available,
+      loading: !!chat.loading,
+      sending: !!chat.sending,
+      error: String(chat.error || ''),
+      service: chat.service || null,
+      mapping: chat.mapping || null,
+      uploads: chat.uploads || [],
+      messages: chat.messages || [],
+      pendingFiles: secureChatPendingFileMetas(),
+      draftText: String(chat.draftText || ''),
+      simplexWebIntroDismissed: chat.simplexWebIntroDismissed === true,
+      sendWithModifier: chat.sendWithModifier === true,
+      chatStarted: chat.chatStarted === true
+    });
+  }
+
+  function renderSecureChatContentIfChanged(previousSignature, force) {
+    var nextSignature = secureChatPanelSignature();
+    if (force || previousSignature !== nextSignature) {
+      if (!force && secureChatHasVolatileLocalOutgoingRows()) {
+        syncSecureChatLastContentHtmlFromDom();
+        return false;
+      }
+      renderContent();
+      return true;
+    }
+    return false;
+  }
+
+  function secureChatHasVolatileLocalOutgoingRows() {
+    if (Number(state.chat.localOutgoingVolatileUntil || 0) > Date.now()) {
+      return true;
+    }
+    return (Array.isArray(state.chat.messages) ? state.chat.messages : []).some(function (message) {
+      if (!message || String(message.direction || '') !== 'outgoing') return false;
+      if (!Number(message.seq || 0)) {
+        var created = Date.parse(String(message.created_at || message.updated_at || ''));
+        if (Number.isFinite(created) && Date.now() - created < 300000) return true;
+      }
+      var status = secureChatLocalDeliveryStatus(message);
+      return status === 'sending' || status === 'sndNew' || status === 'file-invitation-sent';
+    });
+  }
+
+  function renderSecureChatThreadScrollState(previous) {
     var thread = document.getElementById('secure-chat-thread');
     if (!(thread instanceof HTMLElement)) {
       return;
     }
-    thread.scrollTop = thread.scrollHeight;
+    var maxTop = Math.max(0, Number(thread.scrollHeight || 0) - Number(thread.clientHeight || 0));
+    if (previous && previous.threadHadScrollState && previous.threadWasAtBottom !== true) {
+      var previousDistance = Number(previous.threadDistanceFromBottom || 0);
+      var nextTop = maxTop - previousDistance;
+      thread.scrollTop = Math.max(0, Math.min(nextTop, maxTop));
+      state.chat.threadPinnedToBottom = secureChatThreadDistanceFromBottom(thread) <= 24;
+      return;
+    }
+    if (thread.querySelector('.secure-chat-simplex-info') && !(previous && previous.threadHadScrollState)) {
+      thread.scrollTop = 0;
+      state.chat.threadPinnedToBottom = false;
+      return;
+    }
+    thread.scrollTop = maxTop;
+    state.chat.threadPinnedToBottom = true;
+  }
+
+  function secureChatThreadDistanceFromBottom(thread) {
+    if (!(thread instanceof HTMLElement)) {
+      return 0;
+    }
+    return Math.max(0, Number(thread.scrollHeight || 0) - Number(thread.clientHeight || 0) - Number(thread.scrollTop || 0));
+  }
+
+  function secureChatScrollThreadToBottom() {
+    var thread = document.getElementById('secure-chat-thread');
+    if (thread instanceof HTMLElement) {
+      thread.scrollTop = Math.max(0, Number(thread.scrollHeight || 0) - Number(thread.clientHeight || 0));
+    }
   }
 
   function refreshSecureChatState(opts) {
@@ -647,22 +1558,27 @@
       return Promise.resolve(false);
     }
     var options = opts || {};
+    var previousSignature = secureChatPanelSignature();
     state.chat.available = true;
     state.chat.loading = true;
+    secureChatMergeLocalBrowserRows(secureChatStoredLocalBrowserRows());
     if (options.reset) {
-      state.chat.messages = [];
+      state.chat.messages = secureChatLocalBrowserRows(state.chat.messages);
       state.chat.lastSeq = 0;
     }
     return secureChatFormPost('/cgi/blog-secure-chat-state', {
       since_seq: String(options.reset ? 0 : (state.chat.lastSeq || 0)),
-      include_admin: isAdmin() ? 'true' : 'false'
+      include_admin: 'false'
     }).then(function (data) {
       state.chat.loading = false;
       state.chat.error = '';
+      state.chat.authRejected = false;
       state.chat.sessionVerified = true;
       state.chat.npub = String(data.npub || state.chat.npub || '');
+      state.chat.sessionDisplayName = String(data.session_display_name || state.chat.sessionDisplayName || secureChatSessionDisplayName() || '');
       state.chat.service = data.service || null;
       state.chat.mapping = data.mapping || null;
+      secureChatRegisterBrowserNativeTransport();
       state.chat.uploads = Array.isArray(data.uploads) ? data.uploads : [];
       state.chat.adminMappings = data.admin && Array.isArray(data.admin.mappings) ? data.admin.mappings : [];
       secureChatMergeMessages(data.messages || []);
@@ -670,16 +1586,59 @@
         state.chat.lastSeq = secureChatCursorSeq(data.cursor_seq);
       }
       persistSecureChatSessionToBrowser();
-      renderContent();
+      renderSecureChatContentIfChanged(previousSignature, !!options.reset);
+      reconcileSecureChatPendingLocalOutgoing();
+      refreshSecureChatBrowserMessages();
       return true;
     }).catch(function (err) {
+      if (isPageLifecycleClosing()) {
+        return false;
+      }
       state.chat.loading = false;
       if (err && (err.code === 'auth_required' || err.code === 'csrf_invalid')) {
         state.chat.sessionVerified = false;
+        state.chat.authRejected = true;
       }
-      state.chat.error = err && err.message ? err.message : 'Could not refresh Secure Chat.';
+      if (err && err.code === 'timeout' && hasUsableSecureChatSession()) {
+        state.chat.error = '';
+      } else {
+        state.chat.error = err && err.message ? err.message : 'Could not refresh Secure Chat.';
+      }
       renderContent();
       return false;
+    });
+  }
+
+  function reconcileSecureChatPendingLocalOutgoing() {
+    var transport = secureChatBrowserTransport();
+    if (!transport || typeof transport.getMessageStatus !== 'function') {
+      return;
+    }
+    var pending = secureChatLocalOutgoingRows(state.chat.messages)
+      .filter(secureChatLocalOutgoingNeedsStatus)
+      .slice(-5);
+    if (!pending.length) {
+      return;
+    }
+    var ownerContactLink = secureChatOwnerContactLink();
+    var contactId = secureChatOwnerContactId(ownerContactLink);
+    var userId = ownerContactLink ? '' : (state.chat.mapping && state.chat.mapping.bridge_user_id ? String(state.chat.mapping.bridge_user_id) : '');
+    pending.forEach(function (message) {
+      Promise.resolve(transport.getMessageStatus({
+        contact_id: contactId,
+        contact_link: ownerContactLink,
+        user_id: userId,
+        message_ref: String(message.message_ref || ''),
+        accountKey: secureChatStorageAccountKey(),
+        siteKey: secureChatStorageSiteKey()
+      })).then(function (receipt) {
+        var status = secureChatLocalDeliveryStatus(receipt);
+        if (status && status !== 'unknown' && status !== 'queued') {
+          secureChatUpdateLocalOutgoingStatus(String(message.message_ref || ''), receipt || {});
+        }
+      }).catch(function () {
+        // Pending rows keep their last SimpleX status when a browser-local lookup fails.
+      });
     });
   }
 
@@ -692,30 +1651,77 @@
       return;
     }
     state.chat.pollTimer = window.setTimeout(function () {
-      refreshSecureChatState();
-      scheduleSecureChatPoll();
+      refreshSecureChatBrowserMessages();
+      refreshSecureChatState().finally(function () {
+        scheduleSecureChatPoll();
+      });
     }, 2500);
   }
 
   function sendSecureChatMessage(text) {
     var message = String(text || '');
+    if (secureChatHasPendingFiles()) {
+      return sendSecureChatPendingFiles(message);
+    }
     if (!message.trim()) {
       return Promise.resolve(false);
     }
+    var clientMessageId = secureChatClientMessageId();
     state.chat.sending = true;
+    keepSecureChatLocalOutgoingStable();
     state.chat.error = '';
+    state.chat.draftText = '';
+    secureChatAppendLocalOutgoing(message, {
+      message_ref: clientMessageId,
+      delivery_status: 'sending'
+    });
+    persistSecureChatSessionToBrowser();
     renderContent();
-    return secureChatFormPost('/cgi/blog-secure-chat-send', {
-      message: message
-    }).then(function () {
+    return waitForSecureChatSendDestination(3000).then(function (destination) {
+      return waitForSecureChatBrowserNativeTransport(2500).then(function (transport) {
+        return { destination: destination, transport: transport };
+      });
+    }).then(function (ready) {
+      var transport = ready && ready.transport;
+      var destination = ready && ready.destination ? ready.destination : secureChatSendDestination();
+      if (!transport || typeof transport.sendText !== 'function') {
+        throw secureChatTransportUnavailableError();
+      }
+      return transport.sendText({
+        contact_id: destination.contactId,
+        contact_link: destination.ownerContactLink,
+        user_id: destination.userId,
+        profile: secureChatBrowserProfile(),
+        text: message,
+        client_message_id: clientMessageId,
+        timeout_ms: 15000,
+        status_timeout_ms: 60000,
+        accountKey: secureChatStorageAccountKey(),
+        siteKey: secureChatStorageSiteKey(),
+        on_status: function (receipt) {
+          secureChatUpdateLocalOutgoingStatus(clientMessageId, receipt || {});
+        }
+      });
+    }).then(function (receipt) {
       state.chat.sending = false;
-      state.chat.draftText = '';
-      refreshSecureChatState();
+      if (!secureChatUpdateLocalOutgoingStatus(clientMessageId, receipt || {})) {
+        secureChatAppendLocalOutgoing(message, receipt || {});
+        renderContent();
+      }
+      persistSecureChatSessionToBrowser();
+      syncSecureChatComposeControls();
       return true;
     }).catch(function (err) {
+      if (isPageLifecycleClosing()) {
+        return false;
+      }
       state.chat.sending = false;
       state.chat.error = err && err.message ? err.message : 'Could not send Secure Chat message.';
-      renderContent();
+      secureChatUpdateLocalOutgoingStatus(clientMessageId, {
+        message_ref: clientMessageId,
+        delivery_status: 'failed'
+      });
+      syncSecureChatComposeControls();
       return false;
     });
   }
@@ -732,6 +1738,13 @@
         return ok;
       });
     }
+    if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
+      return window.blogAuth.startLogin().then(function () {
+        return true;
+      }).catch(function () {
+        return false;
+      });
+    }
     if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
       window.blogAuth.openLoginModal('auto');
     } else {
@@ -741,102 +1754,102 @@
     return Promise.resolve(false);
   }
 
-  function startSecureChatUploads(files) {
-    var list = Array.prototype.slice.call(files || []);
-    if (!list.length) {
-      return;
-    }
-    var attachments = list.map(function (file) {
-      return {
-        name: String(file.name || 'attachment.bin'),
-        size: Number(file.size || 0),
-        mime: String(file.type || 'application/octet-stream')
-      };
-    });
-    secureChatFormPost('/cgi/blog-secure-chat-send', {
-      attachments_json: JSON.stringify(attachments)
-    }).then(function (data) {
-      var tickets = Array.isArray(data.uploads) ? data.uploads : [];
-      tickets.forEach(function (ticket, index) {
-        var file = list[index];
-        if (!file || !ticket || !ticket.upload_id) {
-          return;
-        }
-        state.chat.localUploads[ticket.upload_id] = {
-          upload_id: ticket.upload_id,
-          name: ticket.name || file.name,
-          size: Number(ticket.size || file.size || 0),
-          mime: ticket.mime || file.type || 'application/octet-stream',
-          status: 'uploading',
-          progress: 0,
-          created_at: new Date().toISOString(),
-          error: ''
-        };
-        uploadSecureChatFile(ticket, file);
-      });
-      persistSecureChatSessionToBrowser();
-      renderContent();
-    }).catch(function (err) {
-      state.chat.error = err && err.message ? err.message : 'Could not queue attachments.';
-      renderContent();
+  function handleSecureChatStartClick() {
+    state.chat.chatStarted = true;
+    state.chat.error = '';
+    state.chat.loading = true;
+    renderContent();
+    return refreshSecureChatState({ reset: true }).finally(function () {
+      scheduleSecureChatPoll();
     });
   }
 
-  function uploadSecureChatFile(ticket, file) {
-    var absoluteUrl = secureChatEndpointUrl('/cgi/blog-secure-chat-upload');
-    secureChatRequestHeaders(absoluteUrl, 'POST').then(function (headers) {
-      return new Promise(function (resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', absoluteUrl, true);
-        xhr.setRequestHeader('X-Session-Token', headers['X-Session-Token']);
-        xhr.setRequestHeader('X-CSRF-Token', headers['X-CSRF-Token']);
-        xhr.setRequestHeader('X-Upload-Id', String(ticket.upload_id || ''));
-        xhr.setRequestHeader('X-File-Name', String(file.name || ticket.name || 'attachment.bin'));
-        xhr.upload.onprogress = function (event) {
-          var loaded = Number(event.loaded || 0);
-          var total = Number(event.total || file.size || 0);
-          var upload = state.chat.localUploads[ticket.upload_id];
-          if (!upload) {
-            return;
-          }
-          upload.status = 'uploading';
-          upload.progress = total > 0 ? Math.round((loaded / total) * 100) : 0;
-          persistSecureChatSessionToBrowser();
-          renderContent();
-        };
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState !== 4) {
-            return;
-          }
-          var upload = state.chat.localUploads[ticket.upload_id];
-          if (xhr.status >= 200 && xhr.status < 300) {
-            if (upload) {
-              upload.status = 'complete';
-              upload.progress = 100;
-            }
-            persistSecureChatSessionToBrowser();
-            refreshSecureChatState();
-            resolve(true);
-            return;
-          }
-          if (upload) {
-            upload.status = 'failed';
-            upload.error = xhr.responseText || 'Upload failed';
-          }
-          persistSecureChatSessionToBrowser();
-          renderContent();
-          reject(new Error('Secure Chat upload failed'));
-        };
-        xhr.send(file);
-      });
-    }).catch(function (_err) {
-      var upload = state.chat.localUploads[ticket.upload_id];
-      if (upload) {
-        upload.status = 'failed';
-        upload.error = 'Secure Chat upload failed';
+  function sendSecureChatPendingFiles(text) {
+    var pending = Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles.slice() : [];
+    var message = String(text || '');
+    if (!pending.length) {
+      return Promise.resolve(false);
+    }
+    var clientMessageId = secureChatClientMessageId();
+    var pendingRefs = pending.map(function (_item, index) {
+      return clientMessageId + (pending.length > 1 ? '-' + index : '');
+    });
+    state.chat.sending = true;
+    keepSecureChatLocalOutgoingStable();
+    state.chat.error = '';
+    state.chat.draftText = '';
+    state.chat.pendingFiles = [];
+    pending.forEach(function (item, index) {
+      secureChatAppendLocalOutgoing(message, secureChatPendingFileReceipt(item, pendingRefs[index]));
+    });
+    persistSecureChatSessionToBrowser();
+    renderContent();
+    return secureChatReadyPendingFiles(pending).then(function (list) {
+      if (!list.length) {
+        throw new Error('No selected attachments are ready to send.');
       }
+      return waitForSecureChatSendDestination(3000).then(function (destination) {
+        return waitForSecureChatBrowserNativeTransport(2500).then(function (transport) {
+          return { transport: transport, destination: destination, files: list };
+        });
+      });
+    }).then(function (ready) {
+      var transport = ready && ready.transport;
+      var destination = ready && ready.destination ? ready.destination : secureChatSendDestination();
+      var list = ready && ready.files;
+      if (!transport || typeof transport.sendFiles !== 'function') {
+        throw secureChatTransportUnavailableError();
+      }
+      return transport.sendFiles({
+        files: list,
+        contact_id: destination.contactId,
+        contact_link: destination.ownerContactLink,
+        user_id: destination.userId,
+        profile: secureChatBrowserProfile(),
+        text: message,
+        client_message_id: clientMessageId,
+        timeout_ms: 30000,
+        status_timeout_ms: 60000,
+        accountKey: secureChatStorageAccountKey(),
+        siteKey: secureChatStorageSiteKey()
+      });
+    }).then(function (receipts) {
+      state.chat.sending = false;
+      receipts = Array.isArray(receipts) ? receipts : [];
+      if (!receipts.length) {
+        receipts = pendingRefs.map(function (ref, index) {
+          return {
+            message_ref: ref,
+            delivery_status: 'sending',
+            attachment: secureChatPendingFileReceipt(pending[index], ref).attachment
+          };
+        });
+      }
+      receipts.forEach(function (receipt) {
+        var ref = String(receipt && receipt.message_ref || '');
+        if (!secureChatUpdateLocalOutgoingStatus(ref, receipt || {})) {
+          patchSecureChatMessageStatus(receipt || {});
+        }
+      });
+      secureChatKeepPendingFilesSending(pending, pendingRefs);
       persistSecureChatSessionToBrowser();
-      renderContent();
+      syncSecureChatComposeControls();
+      return true;
+    }).catch(function (err) {
+      if (isPageLifecycleClosing()) {
+        return false;
+      }
+      state.chat.sending = false;
+      state.chat.error = err && err.message ? err.message : 'Could not send Secure Chat attachments.';
+      pendingRefs.forEach(function (ref) {
+        secureChatUpdateLocalOutgoingStatus(ref, {
+          message_ref: ref,
+          delivery_status: 'failed'
+        });
+      });
+      persistSecureChatSessionToBrowser();
+      syncSecureChatComposeControls();
+      return false;
     });
   }
 
@@ -849,6 +1862,9 @@
       case 'sndSent':
       case 'sent':
         return 'Sent';
+      case 'file-invitation-sent':
+      case 'contact-requested':
+        return 'Sending...';
       case 'failed':
       case 'sndError':
       case 'sndErrorAuth':
@@ -860,13 +1876,144 @@
       case 'rcvNew':
       case 'rcvRead':
         return 'Received';
+      case 'sndNew':
       case 'sending':
-        return 'Sending';
+        return 'Sending...';
       case 'uploading':
         return 'Uploading';
       default:
         return raw ? raw : 'Queued';
     }
+  }
+
+  function secureChatAttachmentKind(attachment) {
+    var mime = String(attachment && attachment.mime || '').toLowerCase();
+    if (mime.indexOf('image/') === 0) return 'image';
+    if (mime.indexOf('video/') === 0) return 'video';
+    if (mime.indexOf('audio/') === 0) return 'audio';
+    return 'file';
+  }
+
+  function secureChatFormatBytes(size) {
+    var value = Math.max(0, Math.floor(Number(size || 0) || 0));
+    if (value >= 1024 * 1024) return (value / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+    if (value >= 1024) return (value / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+    return String(value) + ' B';
+  }
+
+  function secureChatAttachmentHtml(message) {
+    var attachment = message && message.attachment;
+    if (!attachment) return '';
+    var name = String(attachment.name || 'Attachment');
+    var mime = String(attachment.mime || 'application/octet-stream');
+    var dataUrl = String(attachment.data_url || attachment.dataUrl || '');
+    var mediaUrl = dataUrl || String(attachment.url || '');
+    var kind = secureChatAttachmentKind(attachment);
+    var html = '<div class="secure-chat-attachment secure-chat-attachment-' + kind + '">';
+    if (mediaUrl && kind === 'image') {
+      html += '<img class="secure-chat-attachment-media" src="' + escapeHtml(mediaUrl) + '" alt="' + escapeHtml(name) + '" loading="lazy">';
+    } else if (mediaUrl && kind === 'video') {
+      html += '<video class="secure-chat-attachment-media" src="' + escapeHtml(mediaUrl) + '" controls preload="metadata"></video>';
+    } else if (mediaUrl && kind === 'audio') {
+      html += '<audio class="secure-chat-attachment-audio" src="' + escapeHtml(mediaUrl) + '" controls preload="metadata"></audio>';
+    }
+    html += '<a class="secure-chat-attachment-file" href="' + (mediaUrl ? escapeHtml(mediaUrl) : '#') + '" download="' + escapeHtml(name) + '">';
+    html += '<span class="secure-chat-attachment-line"><span class="secure-chat-attachment-name">' + escapeHtml(name) + '</span>';
+    html += '<span class="secure-chat-attachment-meta">' + escapeHtml(mime || 'file') + ' · ' + escapeHtml(secureChatFormatBytes(attachment.size)) + '</span></span>';
+    html += '</a></div>';
+    return html;
+  }
+
+  function secureChatStatusIsSending(message) {
+    var raw = String(message && message.delivery_status || '').trim();
+    return raw === 'sndNew' || raw === 'sending' || raw === 'file-invitation-sent';
+  }
+
+  function secureChatStatusNeedsFollowup(message) {
+    var raw = String(message && message.delivery_status || '').trim();
+    return raw === 'sndNew' || raw === 'sending' || raw === 'file-invitation-sent' || raw === 'sndSent' || raw === 'sent';
+  }
+
+  function secureChatLocalOutgoingNeedsStatus(message) {
+    return !!(message && !Number(message.seq || 0) &&
+      String(message.direction || '') === 'outgoing' &&
+      String(message.message_ref || '').trim() &&
+      secureChatStatusNeedsFollowup(message));
+  }
+
+  function secureChatSpinnerPhaseStyle() {
+    var clock = window.performance && typeof window.performance.now === 'function'
+      ? window.performance
+      : null;
+    var now = clock ? clock.now() : Date.now();
+    var phase = Math.floor(Math.abs(Number(now) || 0) % 800);
+    return ' style="animation-delay:-' + String(phase) + 'ms"';
+  }
+
+  function secureChatSpinnerHtml(className) {
+    return '<span class="save-spinner ' + className + '"' + secureChatSpinnerPhaseStyle() + ' aria-hidden="true"></span>';
+  }
+
+  function secureChatStatusIconHtml(label) {
+    if (label === 'Delivered' || label === 'Read') {
+      return '<span class="secure-chat-status is-delivered" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '"><span class="secure-chat-status-check" aria-hidden="true">✓✓</span></span>';
+    }
+    if (label === 'Sent') {
+      return '<span class="secure-chat-status is-sent" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '"><span class="secure-chat-status-check" aria-hidden="true">✓</span></span>';
+    }
+    return '';
+  }
+
+  function secureChatStatusHtml(message) {
+    var label = secureChatStatusLabel(message);
+    var icon = secureChatStatusIconHtml(label);
+    if (secureChatStatusIsSending(message)) {
+      return '<span class="secure-chat-status is-sending"><span>' + escapeHtml(label) + '</span>' + secureChatSpinnerHtml('secure-chat-status-spinner') + '</span>';
+    }
+    if (icon) return icon;
+    return '<span class="secure-chat-status">' + escapeHtml(label) + '</span>';
+  }
+
+  function secureChatRelativeTime(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    var then = Date.parse(raw);
+    if (!Number.isFinite(then)) return raw;
+    var seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (seconds < 60) return 'just now';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return String(minutes) + 'm ago';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return String(hours) + 'h ago';
+    var days = Math.floor(hours / 24);
+    if (days < 7) return String(days) + 'd ago';
+    var weeks = Math.floor(days / 7);
+    if (weeks < 5) return String(weeks) + 'w ago';
+    var months = Math.floor(days / 30);
+    if (months < 12) return String(Math.max(1, months)) + 'mo ago';
+    return String(Math.max(1, Math.floor(days / 365))) + 'y ago';
+  }
+
+  function secureChatTimeHtml(value) {
+    var raw = String(value || '');
+    if (!raw) return '<time></time>';
+    return '<time datetime="' + escapeHtml(raw) + '" title="' + escapeHtml(raw) + '">' + escapeHtml(secureChatRelativeTime(raw)) + '</time>';
+  }
+
+  function secureChatPlatformText() {
+    var nav = window.navigator || {};
+    var userAgentData = nav.userAgentData && typeof nav.userAgentData.platform === 'string'
+      ? nav.userAgentData.platform
+      : '';
+    return [
+      userAgentData,
+      typeof nav.platform === 'string' ? nav.platform : '',
+      typeof nav.userAgent === 'string' ? nav.userAgent : ''
+    ].join(' ').toLowerCase();
+  }
+
+  function secureChatShortcutModifierLabel() {
+    return /\bmac|iphone|ipad|ipod/.test(secureChatPlatformText()) ? '⌘' : 'Ctrl';
   }
 
   function runSecureChatAdminAction(action, npub) {
@@ -890,8 +2037,10 @@
       : null;
     if (sharedRenderer) {
       var combinedUploads = secureChatPersistableUploads();
+      var loggedIn = hasUsableSecureChatSession();
       return sharedRenderer.renderPanel({
-        loggedIn: hasVerifiedSecureChatSession(),
+        loggedIn: loggedIn,
+        loading: secureChatLoadingBeforeVerification(loggedIn),
         hasSigner: true,
         error: state.chat.error,
         sending: state.chat.sending,
@@ -899,6 +2048,11 @@
         service: state.chat.service || null,
         messages: state.chat.messages || [],
         uploads: combinedUploads,
+        pendingFiles: secureChatPendingFileMetas(),
+        sendWithModifier: state.chat.sendWithModifier === true,
+        shortcutModifierLabel: secureChatShortcutModifierLabel(),
+        simplexWebIntroDismissed: state.chat.simplexWebIntroDismissed === true,
+        chatStarted: state.chat.chatStarted === true,
         admin: isAdmin(),
         adminMappings: state.chat.adminMappings || []
       });
@@ -907,11 +2061,21 @@
     var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
-    if (!hasVerifiedSecureChatSession()) {
+    var fallbackLoggedIn = hasUsableSecureChatSession();
+    var fallbackLoading = secureChatLoadingBeforeVerification(fallbackLoggedIn);
+    if (!fallbackLoggedIn && fallbackLoading) {
+      html += '<div class="secure-chat-loading" role="status" aria-live="polite"><span>Loading...</span>' + secureChatSpinnerHtml('secure-chat-loading-spinner') + '</div>';
+    } else if (!fallbackLoggedIn) {
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
+    } else if (state.chat.chatStarted !== true) {
+      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="start">Start Chat</button>';
     }
     html += '</div>';
-    if (!hasVerifiedSecureChatSession()) {
+    if (!fallbackLoggedIn) {
+      html += '</section>';
+      return html;
+    }
+    if (state.chat.chatStarted !== true) {
       html += '</section>';
       return html;
     }
@@ -922,18 +2086,22 @@
       html += '<div class="secure-chat-banner is-warn">Transport status: ' + escapeHtml(String(state.chat.service.transport_status || 'unknown')) + (state.chat.service.transport_error ? ' · ' + escapeHtml(String(state.chat.service.transport_error || '')) : '') + '</div>';
     }
     html += '<div class="secure-chat-thread" id="secure-chat-thread">';
+    if (state.chat.simplexWebIntroDismissed !== true) {
+      html += '<aside class="secure-chat-simplex-info" role="note">';
+      html += '<button type="button" class="secure-chat-simplex-dismiss" data-secure-chat-action="dismiss-simplex-info" aria-label="Dismiss Secure Chat info" title="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+      html += '<p>Messages are sent over SimpleX Chat using <a href="https://github.com/andersaamodt/simplex-web" rel="noopener noreferrer">simplex-web</a>, so encryption and delivery happen in the browser instead of exposing plaintext to this server. SimpleX uses end-to-end encrypted pairwise queues, so relays do not need public user identities to pass messages.</p>';
+      html += '</aside>';
+    }
     if (state.chat.messages.length) {
       state.chat.messages.forEach(function (message) {
         var incoming = String(message.direction || '') === 'incoming';
-        html += '<article class="secure-chat-message' + (incoming ? ' is-incoming' : ' is-outgoing') + '">';
+        html += '<article class="secure-chat-message' + (incoming ? ' is-incoming' : ' is-outgoing') + '" data-secure-chat-message-ref="' + escapeAttr(message.message_ref || '') + '">';
         html += '<div class="secure-chat-bubble">';
         if (message.text) {
           html += '<p class="secure-chat-text">' + escapeHtml(String(message.text || '')).replace(/\n/g, '<br>') + '</p>';
         }
-        if (message.attachment) {
-          html += '<p class="secure-chat-attachment">' + escapeHtml(String(message.attachment.name || 'Attachment')) + ' <span>' + escapeHtml(secureChatStatusLabel(message)) + '</span></p>';
-        }
-        html += '<div class="secure-chat-meta"><span>' + escapeHtml(secureChatStatusLabel(message)) + '</span><time>' + escapeHtml(String(message.created_at || '')) + '</time></div>';
+        html += secureChatAttachmentHtml(message);
+        html += '<div class="secure-chat-meta"><span data-secure-chat-status="true">' + secureChatStatusHtml(message) + '</span>' + secureChatTimeHtml(message.created_at) + '</div>';
         html += '</div>';
         html += '</article>';
       });
@@ -954,34 +2122,26 @@
       });
       html += '</div>';
     }
+    var pendingFiles = secureChatPendingFileMetas();
     html += '<div class="secure-chat-compose">';
-    html += '<textarea id="secure-chat-input" class="secure-chat-input" rows="4" placeholder="Write a secure message">' + escapeHtml(state.chat.draftText || '') + '</textarea>';
-    html += '<div class="secure-chat-actions">';
-    html += '<label class="secure-chat-attach-button"><input id="secure-chat-file-input" type="file" multiple hidden>Attach files</label>';
-    html += '<button type="button" class="list-admin-primary-btn" data-secure-chat-action="send"' + (state.chat.sending ? ' disabled' : '') + '>' + (state.chat.sending ? 'Sending...' : 'Send') + '</button>';
-    html += '<span class="secure-chat-compose-hint">Cmd/Ctrl+Enter to send</span>';
-    html += '</div>';
-    html += '</div>';
-    if (isAdmin()) {
-      html += '<details class="secure-chat-admin-panel">';
-      html += '<summary>Admin Mapping Console</summary>';
-      html += '<div class="secure-chat-admin-actions"><button type="button" data-secure-chat-action="admin-refresh">Refresh</button></div>';
-      html += '<div class="secure-chat-admin-table">';
-      (state.chat.adminMappings || []).forEach(function (row) {
-        html += '<div class="secure-chat-admin-row">';
-        html += '<span class="secure-chat-admin-npub">' + escapeHtml(String(row.npub || '')) + '</span>';
-        html += '<span class="secure-chat-admin-contact">' + escapeHtml(String(row.simplex_contact_id || '')) + '</span>';
-        html += '<span class="secure-chat-admin-status">' + escapeHtml(String(row.status || '')) + '</span>';
-        html += '<button type="button" data-secure-chat-action="deactivate" data-secure-chat-npub="' + escapeAttr(String(row.npub || '')) + '">Deactivate</button>';
-        html += '<button type="button" data-secure-chat-action="delete" data-secure-chat-npub="' + escapeAttr(String(row.npub || '')) + '">Delete Mapping</button>';
-        html += '</div>';
+    html += '<div class="secure-chat-input-wrap' + (pendingFiles.length ? ' has-pending-files' : '') + '">';
+    if (pendingFiles.length) {
+      html += '<div class="secure-chat-pending-files" aria-label="Selected attachments">';
+      pendingFiles.forEach(function (file) {
+        html += '<span class="secure-chat-pending-file">';
+        html += '<span class="secure-chat-pending-file-name">' + escapeHtml(file.name) + '</span>';
+        html += '<span class="secure-chat-pending-file-meta">' + escapeHtml(secureChatFormatBytes(file.size)) + '</span>';
+        html += '<button type="button" class="secure-chat-pending-file-remove" data-secure-chat-action="remove-pending-file" data-secure-chat-file-id="' + escapeHtml(file.id) + '" aria-label="Remove ' + escapeHtml(file.name) + '" title="Remove attachment">' + secureChatRemoveIcon() + '</button>';
+        html += '</span>';
       });
-      if (!(state.chat.adminMappings || []).length) {
-        html += '<p class="secure-chat-empty">No mappings yet.</p>';
-      }
       html += '</div>';
-      html += '</details>';
     }
+    html += '<textarea id="secure-chat-input" class="secure-chat-input" rows="2" placeholder="Write a secure message">' + escapeHtml(state.chat.draftText || '') + '</textarea>';
+    html += '<label class="secure-chat-attach-button" aria-label="Attach files" title="Attach files"><input id="secure-chat-file-input" class="secure-chat-file-input" type="file" multiple><svg class="secure-chat-attach-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 1 1-2.83-2.83l8.49-8.49"/></svg></label>';
+    html += '<button type="button" class="secure-chat-send-btn" data-secure-chat-action="send" aria-label="' + (state.chat.sending ? 'Sending...' : 'Send secure message') + '" title="' + (state.chat.sending ? 'Sending...' : 'Send secure message') + '"' + (state.chat.sending ? ' disabled aria-busy="true"' : '') + '>' + (state.chat.sending ? secureChatSpinnerHtml('secure-chat-send-spinner') : secureChatSendIcon()) + '</button>';
+    html += '</div>';
+    html += '<label class="secure-chat-compose-hint secure-chat-send-shortcut"><input id="secure-chat-send-modifier" type="checkbox"' + (state.chat.sendWithModifier === true ? ' checked' : '') + '> ' + escapeHtml(secureChatShortcutModifierLabel()) + ' + Enter to send</label>';
+    html += '</div>';
     html += '</section>';
     return html;
   }
@@ -991,22 +2151,30 @@
     var chatInput = active instanceof HTMLTextAreaElement && active.id === 'secure-chat-input'
       ? active
       : null;
-    var adminPanel = root.querySelector('.secure-chat-admin-panel');
+    var thread = document.getElementById('secure-chat-thread');
+    var threadHadScrollState = thread instanceof HTMLElement;
+    var threadScrollTop = threadHadScrollState ? Number(thread.scrollTop || 0) : 0;
+    var threadMaxScrollTop = threadHadScrollState
+      ? Math.max(0, Number(thread.scrollHeight || 0) - Number(thread.clientHeight || 0))
+      : 0;
+    var threadDistanceFromBottom = threadHadScrollState
+      ? Math.max(0, threadMaxScrollTop - threadScrollTop)
+      : 0;
     return {
       inputFocused: !!chatInput,
       selectionStart: chatInput ? Number(chatInput.selectionStart || 0) : 0,
       selectionEnd: chatInput ? Number(chatInput.selectionEnd || 0) : 0,
-      adminPanelOpen: !!(adminPanel && adminPanel.open)
+      threadHadScrollState: threadHadScrollState,
+      threadScrollTop: threadScrollTop,
+      threadMaxScrollTop: threadMaxScrollTop,
+      threadDistanceFromBottom: threadDistanceFromBottom,
+      threadWasAtBottom: threadHadScrollState ? threadDistanceFromBottom <= 24 : true
     };
   }
 
   function restoreSecureChatRenderState(previous) {
     if (!previous || typeof previous !== 'object') {
       return;
-    }
-    var adminPanel = root.querySelector('.secure-chat-admin-panel');
-    if (adminPanel && previous.adminPanelOpen) {
-      adminPanel.open = true;
     }
     if (!previous.inputFocused) {
       return;
@@ -1022,6 +2190,14 @@
       var end = Math.max(start, Math.min(Number(previous.selectionEnd || start), length));
       input.setSelectionRange(start, end);
     }
+  }
+
+  function currentSecureChatDraftValue() {
+    var input = document.getElementById('secure-chat-input');
+    if (input instanceof HTMLTextAreaElement) {
+      return String(input.value || '');
+    }
+    return String(state.chat.draftText || '');
   }
 
   function normalizeRows(rows) {
@@ -1751,8 +2927,8 @@
           els.description.hidden = true;
           els.description.innerHTML = '';
         } else {
-          els.description.hidden = false;
-          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
+          els.description.hidden = true;
+          els.description.innerHTML = '';
         }
       } else if (text) {
         els.description.hidden = false;
@@ -1761,8 +2937,8 @@
         els.description.hidden = true;
         els.description.innerHTML = '';
       } else {
-        els.description.hidden = false;
-        els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
+        els.description.hidden = true;
+        els.description.innerHTML = '';
       }
     }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
@@ -1930,11 +3106,7 @@
     return '<p class="contact-managed-lightning-note">Lightning zaps use <code>' + escapeHtml(String(zapConfig.lud16 || '')) + '</code> from Admin &gt; Zaps. Wallet changes sync your public Nostr profile automatically; publish this page after editing the contact content itself.</p>';
   }
 
-  function renderContent() {
-    if (!els.content) {
-      return;
-    }
-    var secureChatRenderState = captureSecureChatRenderState();
+  function renderContentHtml() {
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
     var afterContent = '';
@@ -1945,7 +3117,51 @@
     }
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    els.content.innerHTML = managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent + renderSecureChatPanel();
+    return renderSecureChatPanel() + managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent;
+  }
+
+  function syncSecureChatLastContentHtml() {
+    if (els.content) {
+      state.lastContentHtml = stableSecureChatContentHtml(renderContentHtml());
+    }
+  }
+
+  function syncSecureChatLastContentHtmlFromDom() {
+    if (els.content) {
+      state.lastContentHtml = stableSecureChatContentHtml(els.content.innerHTML);
+    }
+  }
+
+  function stableSecureChatContentHtml(html) {
+    return String(html || '').replace(/animation-delay:-[0-9]+ms/g, 'animation-delay:-0ms');
+  }
+
+  function renderContent() {
+    if (!els.content) {
+      return;
+    }
+    if (state.chat.filePickerOpen) {
+      state.chat.renderDeferredWhileFilePickerOpen = true;
+      return;
+    }
+    var secureChatRenderState = captureSecureChatRenderState();
+    var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
+    var inlineMode = isAdmin() && state.editMode;
+    var nextContentHtml = renderContentHtml();
+    var nextContentSignature = stableSecureChatContentHtml(nextContentHtml);
+    if (state.lastContentHtml === nextContentSignature) {
+      restoreSecureChatRenderState(secureChatRenderState);
+      renderSecureChatThreadScrollState(secureChatRenderState);
+      return;
+    }
+    state.lastContentHtml = nextContentSignature;
+    els.content.innerHTML = nextContentHtml;
+    if (stableSimplexInfo && state.chat.simplexWebIntroDismissed !== true) {
+      var nextSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
+      if (nextSimplexInfo && nextSimplexInfo !== stableSimplexInfo) {
+        nextSimplexInfo.replaceWith(stableSimplexInfo);
+      }
+    }
     if (state.pendingFlipPositions) {
       playRowFlipAnimation(state.pendingFlipPositions);
       state.pendingFlipPositions = null;
@@ -1954,7 +3170,30 @@
       focusActiveInlineFieldSoon();
     }
     restoreSecureChatRenderState(secureChatRenderState);
-    renderSecureChatThreadState();
+    renderSecureChatThreadScrollState(secureChatRenderState);
+  }
+
+  function markSecureChatFilePickerOpen() {
+    state.chat.filePickerOpen = true;
+    state.chat.renderDeferredWhileFilePickerOpen = false;
+  }
+
+  function releaseSecureChatFilePicker(renderDeferred) {
+    state.chat.filePickerOpen = false;
+    if (renderDeferred && state.chat.renderDeferredWhileFilePickerOpen) {
+      state.chat.renderDeferredWhileFilePickerOpen = false;
+      renderContent();
+      return;
+    }
+    state.chat.renderDeferredWhileFilePickerOpen = false;
+  }
+
+  function releaseSecureChatFilePickerSoon() {
+    window.setTimeout(function () {
+      if (state.chat.filePickerOpen) {
+        releaseSecureChatFilePicker(true);
+      }
+    }, 250);
   }
 
   function renderAll() {
@@ -2157,23 +3396,71 @@
   }
 
   function bindEvents() {
+    root.addEventListener('pointerdown', function (event) {
+      var target = event.target;
+      if (target instanceof HTMLInputElement && target.id === 'secure-chat-file-input') {
+        markSecureChatFilePickerOpen();
+      }
+    });
+
+    root.addEventListener('scroll', function (event) {
+      var target = event.target;
+      if (target instanceof HTMLElement && target.id === 'secure-chat-thread') {
+        state.chat.threadPinnedToBottom = secureChatThreadDistanceFromBottom(target) <= 24;
+      }
+    }, true);
+
+    root.addEventListener('load', function (event) {
+      var target = event.target;
+      if (target instanceof HTMLImageElement && target.closest('#secure-chat-thread') && state.chat.threadPinnedToBottom !== false) {
+        secureChatScrollThreadToBottom();
+      }
+    }, true);
+
+    root.addEventListener('loadedmetadata', function (event) {
+      var target = event.target;
+      if ((target instanceof HTMLVideoElement || target instanceof HTMLAudioElement) && target.closest('#secure-chat-thread') && state.chat.threadPinnedToBottom !== false) {
+        secureChatScrollThreadToBottom();
+      }
+    }, true);
+
     root.addEventListener('click', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      if (!(target instanceof Element)) {
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.id === 'secure-chat-file-input') {
+        markSecureChatFilePickerOpen();
         return;
       }
       var secureChatActionNode = target.closest('[data-secure-chat-action]');
-      if (secureChatActionNode instanceof HTMLElement) {
+      if (secureChatActionNode instanceof Element) {
         event.preventDefault();
         var secureChatAction = String(secureChatActionNode.getAttribute('data-secure-chat-action') || '').trim().toLowerCase();
         if (secureChatAction === 'login') {
           handleSecureChatLoginClick();
           return;
         }
+        if (secureChatAction === 'start') {
+          handleSecureChatStartClick();
+          return;
+        }
         if (secureChatAction === 'send') {
-          if (!state.chat.sending && String(state.chat.draftText || '').trim()) {
-            sendSecureChatMessage(state.chat.draftText);
+          var secureChatDraft = currentSecureChatDraftValue();
+          if (!state.chat.sending && (String(secureChatDraft || '').trim() || secureChatHasPendingFiles())) {
+            sendSecureChatMessage(secureChatDraft);
           }
+          return;
+        }
+        if (secureChatAction === 'remove-pending-file') {
+          removeSecureChatPendingFile(secureChatActionNode.getAttribute('data-secure-chat-file-id') || '');
+          return;
+        }
+        if (secureChatAction === 'dismiss-simplex-info') {
+          state.chat.simplexWebIntroDismissed = true;
+          persistSecureChatSimplexInfoDismissal();
+          persistSecureChatSessionToBrowser();
+          renderContent();
           return;
         }
         if (!isAdmin()) {
@@ -2339,6 +3626,16 @@
     });
 
     root.addEventListener('dragover', function (event) {
+      var secureChatTarget = event.target;
+      if (secureChatDataTransferHasFiles(event.dataTransfer) && secureChatTarget instanceof HTMLElement) {
+        var chatPanel = secureChatTarget.closest('.secure-chat-panel');
+        if (chatPanel instanceof HTMLElement) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+          chatPanel.classList.add('is-file-drop-over');
+          return;
+        }
+      }
       if (!isAdmin() || !state.editMode || !state.draggingRowUid) {
         return;
       }
@@ -2374,6 +3671,16 @@
     });
 
     root.addEventListener('drop', function (event) {
+      var secureChatTarget = event.target;
+      if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length && secureChatTarget instanceof HTMLElement) {
+        var chatPanel = secureChatTarget.closest('.secure-chat-panel');
+        if (chatPanel instanceof HTMLElement) {
+          event.preventDefault();
+          chatPanel.classList.remove('is-file-drop-over');
+          addSecureChatPendingFiles(event.dataTransfer.files);
+          return;
+        }
+      }
       if (!isAdmin() || !state.editMode || !state.draggingRowUid) {
         return;
       }
@@ -2419,6 +3726,21 @@
       } else {
         state.pendingFlipPositions = null;
         renderContent();
+      }
+    });
+
+    root.addEventListener('dragleave', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var chatPanel = target.closest('.secure-chat-panel');
+      if (!(chatPanel instanceof HTMLElement)) {
+        return;
+      }
+      var related = event.relatedTarget;
+      if (!(related instanceof Node) || !chatPanel.contains(related)) {
+        chatPanel.classList.remove('is-file-drop-over');
       }
     });
 
@@ -2491,10 +3813,15 @@
     root.addEventListener('change', function (event) {
       var secureChatTarget = event.target;
       if (secureChatTarget instanceof HTMLInputElement && secureChatTarget.id === 'secure-chat-file-input') {
+        releaseSecureChatFilePicker(false);
         if (secureChatTarget.files && secureChatTarget.files.length) {
-          startSecureChatUploads(secureChatTarget.files);
+          addSecureChatPendingFiles(secureChatTarget.files);
         }
         secureChatTarget.value = '';
+        return;
+      }
+      if (secureChatTarget instanceof HTMLInputElement && secureChatTarget.id === 'secure-chat-send-modifier') {
+        state.chat.sendWithModifier = secureChatTarget.checked === true;
         return;
       }
       if (!isAdmin() || !state.editMode) {
@@ -2580,10 +3907,17 @@
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
-      if (target instanceof HTMLTextAreaElement && target.id === 'secure-chat-input' && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      if (target instanceof HTMLTextAreaElement && target.id === 'secure-chat-input' && event.key === 'Enter') {
+        if (event.shiftKey) {
+          return;
+        }
+        if (state.chat.sendWithModifier === true && !(event.metaKey || event.ctrlKey)) {
+          return;
+        }
         event.preventDefault();
-        if (!state.chat.sending && String(state.chat.draftText || '').trim()) {
-          sendSecureChatMessage(state.chat.draftText);
+        var secureChatDraft = currentSecureChatDraftValue();
+        if (!state.chat.sending && (String(secureChatDraft || '').trim() || secureChatHasPendingFiles())) {
+          sendSecureChatMessage(secureChatDraft);
         }
         return;
       }
@@ -2643,13 +3977,41 @@
     if (hasSecureChatSession()) {
       refreshSecureChatState();
       scheduleSecureChatPoll();
+      return;
     }
+    if (storedSessionToken()) {
+      verifySecureChatStoredAuth().then(function (ok) {
+        if (ok) {
+          refreshSecureChatState({ reset: true }).finally(function () {
+            scheduleSecureChatPoll();
+          });
+        }
+      });
+    }
+  }
+
+  function initializeSecureChatAfterLoad() {
+    return verifySecureChatStoredAuth().then(function (ok) {
+      if (!ok) {
+        return false;
+      }
+      state.chat.simplexWebIntroDismissed = secureChatSimplexInfoDismissedFromBrowser();
+      if (hydrateSecureChatSessionFromBrowser()) {
+        renderContent();
+      }
+      return refreshSecureChatState({ reset: true }).finally(function () {
+        scheduleSecureChatPoll();
+      });
+    });
   }
 
   function load() {
     var auth = authPayload();
     state.authSignature = secureChatAuthSignature();
     resetSecureChatState();
+    if (!hasSecureChatSession() && storedSessionToken()) {
+      state.chat.authChecking = true;
+    }
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: slug,
       session_token: auth.session_token,
@@ -2672,17 +4034,8 @@
       setSaveStatus('saved');
       writeBootstrapCache(payload);
       renderAll();
-      if (hasSecureChatSession()) {
-        if (hydrateSecureChatSessionFromBrowser()) {
-          renderContent();
-        }
-      }
       markInitialContentPainted();
-      if (hasSecureChatSession()) {
-        refreshSecureChatState({ reset: true }).finally(function () {
-          scheduleSecureChatPoll();
-        });
-      }
+      initializeSecureChatAfterLoad();
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
     }).finally(function () {
@@ -2691,6 +4044,9 @@
   }
 
   bindEvents();
+  window.addEventListener('beforeunload', markPageLifecycleClosing);
+  window.addEventListener('pagehide', markPageLifecycleClosing);
+  window.addEventListener('pageshow', clearPageLifecycleClosing);
   window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
   window.addEventListener('storage', function (event) {
     if (!event || !event.key) {
@@ -2701,6 +4057,7 @@
     }
   });
   window.addEventListener('focus', maybeReloadForAuthChange);
+  window.addEventListener('focus', releaseSecureChatFilePickerSoon);
   window.addEventListener('wizardry-plugins-ready', maybeLoadVideoChatWidget);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') {
@@ -2716,5 +4073,6 @@
   if (!renderFromBootstrapCache()) {
     renderFromPrerenderBootstrap();
   }
+  secureChatRegisterBrowserNativeTransport();
   load();
 })();

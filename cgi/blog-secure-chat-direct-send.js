@@ -83,6 +83,20 @@ function metaFilePath(key) {
   return path.join(META_DIR, `${String(key || '').replace(/[^a-z0-9_.-]+/gi, '_')}.txt`);
 }
 
+function sanitizeSimplexDisplayName(name, fallback) {
+  const value = String(name || '')
+    .replace(/[^A-Za-z0-9 ._-]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (value || fallback).slice(0, 64);
+}
+
+function mappingBridgeDisplayMatches(mapping, sessionDisplayName) {
+  const wanted = sanitizeSimplexDisplayName(sessionDisplayName, '');
+  if (!wanted) return true;
+  return String(mapping && mapping.bridge_display_name || '') === wanted;
+}
+
 function bech32Polymod(values) {
   const generators = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
   let chk = 1;
@@ -306,6 +320,7 @@ function sendTextSequential(userId, contactId, text) {
 function deliveryStatusFromChatItem(chatItem) {
   const itemStatus = chatItem && chatItem.meta && chatItem.meta.itemStatus;
   if (!itemStatus || typeof itemStatus.type !== 'string') return 'queued';
+  if (itemStatus.type === 'sndNew') return 'sending';
   if (itemStatus.type === 'sndRcvd') return 'delivered';
   if (itemStatus.type === 'sndSent') return 'sent';
   if (itemStatus.type === 'sndWarning') return 'warning';
@@ -355,6 +370,7 @@ async function main() {
     return;
   }
   const npub = pubkeyToNpub(payload.sessionPubkey);
+  const sessionDisplayName = sanitizeSimplexDisplayName(payload.sessionDisplayName || '', '');
   const mapping = readJsonFile(contactFilePath(npub), null);
   logDirect('mapping_loaded', {
     npub,
@@ -364,6 +380,10 @@ async function main() {
   });
   if (!mapping || mapping.status !== 'active' || !mapping.bridge_user_id || !mapping.bridge_contact_id) {
     process.stdout.write(JSON.stringify({ success: false, code: 'mapping_unavailable' }) + '\n');
+    return;
+  }
+  if (!mappingBridgeDisplayMatches(mapping, sessionDisplayName)) {
+    process.stdout.write(JSON.stringify({ success: false, code: 'mapping_identity_stale' }) + '\n');
     return;
   }
   const resp = await sendTextSequential(mapping.bridge_user_id, mapping.bridge_contact_id, text);

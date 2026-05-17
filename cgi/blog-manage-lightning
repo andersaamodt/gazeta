@@ -86,9 +86,18 @@ lightning_dir() {
   printf '%s/lightning\n' "$blog_site_data"
 }
 
+lightning_cli_bin() {
+  managed_cli="$blog_site_data/zaps/bin/lightning-cli"
+  if [ -x "$managed_cli" ]; then
+    printf '%s\n' "$managed_cli"
+    return 0
+  fi
+  command -v lightning-cli 2>/dev/null || return 1
+}
+
 lightning_cli_json() {
-  command -v lightning-cli >/dev/null 2>&1 || return 1
-  lightning-cli --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
+  bin=$(lightning_cli_bin) || return 1
+  "$bin" --lightning-dir="$(lightning_dir)" "$@" 2>/dev/null
 }
 
 site_pubkey() {

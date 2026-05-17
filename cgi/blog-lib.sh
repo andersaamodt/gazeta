@@ -67,6 +67,10 @@ blog_lists_dir="$blog_site_data/lists"
 blog_files_dir="$blog_site_data/files"
 blog_files_meta_dir="$blog_site_data/.files"
 blog_file_records_dir="$blog_files_meta_dir/records"
+blog_origin_dir="$blog_site_data/origin"
+blog_origin_posts_dir="$blog_origin_dir/posts"
+blog_origin_state_store_dir="$blog_origin_dir/state"
+blog_origin_site_config="$blog_origin_dir/origin.json"
 blog_nostr_dir="$blog_site_data/nostr"
 blog_nostr_state_dir="$blog_nostr_dir/state"
 blog_nostr_events_dir="$blog_nostr_dir/events"
@@ -263,6 +267,7 @@ blog_write_draft_markdown() {
   post_type=${14-longform}
   source_post_path=${15-}
   post_filename=${16-}
+  origin_platforms_json=${17-[]}
   post_type=$(blog_normalize_post_type "$post_type")
   tags_yaml=$(blog_tags_to_yaml_array "$tags")
   tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-draft.XXXXXX")
@@ -279,6 +284,7 @@ blog_write_draft_markdown() {
     if [ -n "$post_filename" ]; then
       printf 'post_filename: "%s"\n' "$(blog_yaml_escape "$post_filename")"
     fi
+    printf 'origin_platforms: %s\n' "$(printf '%s\n' "$origin_platforms_json" | jq -c '.' 2>/dev/null || printf '[]')"
     printf 'summary: "%s"\n' "$(blog_yaml_escape "$summary")"
     printf 'author: "%s"\n' "$(blog_yaml_escape "$author")"
     printf 'publish_mode: "%s"\n' "$(blog_yaml_escape "$publish_mode")"
@@ -294,7 +300,7 @@ blog_write_draft_markdown() {
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_files_dir" "$blog_files_meta_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_files_dir" "$blog_files_meta_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir" "$blog_origin_dir" "$blog_origin_posts_dir" "$blog_origin_state_store_dir"
   blog_ensure_posts_mount
   mkdir -p "$blog_nostr_state_dir" "$blog_nostr_events_dir" "$blog_nostr_derived_dir"
   [ -f "$blog_nostr_delegation_revocations_file" ] || : > "$blog_nostr_delegation_revocations_file"
@@ -508,6 +514,576 @@ blog_normalize_post_source_path() {
   filename=$(blog_normalize_post_filename "$raw" 2>/dev/null || printf '')
   [ -n "$filename" ] || return 1
   printf 'posts/%s.md\n' "$filename"
+}
+
+blog_post_rel_path_for_file() {
+  file=${1-}
+  case "$file" in
+    "$blog_site_root/site/pages/"*)
+      printf '%s\n' "${file#"$blog_site_root/site/pages/"}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+blog_origin_resolve_dir() {
+  origin_dir=${ORIGIN_DIR-}
+  if [ -n "$origin_dir" ] && [ -x "$origin_dir/bin/origin" ] && [ -f "$origin_dir/origin.json" ]; then
+    printf '%s\n' "$origin_dir"
+    return 0
+  fi
+
+  origin_bin=$(command -v origin 2>/dev/null || printf '')
+  if [ -n "$origin_bin" ]; then
+    origin_dir=$(CDPATH= cd -- "$(dirname "$origin_bin")/.." 2>/dev/null && pwd -P)
+    if [ -n "$origin_dir" ] && [ -x "$origin_dir/bin/origin" ] && [ -f "$origin_dir/origin.json" ]; then
+      printf '%s\n' "$origin_dir"
+      return 0
+    fi
+  fi
+
+  if [ -n "${HOME-}" ] && [ -x "$HOME/git/origin/bin/origin" ] && [ -f "$HOME/git/origin/origin.json" ]; then
+    printf '%s\n' "$HOME/git/origin"
+    return 0
+  fi
+
+  return 1
+}
+
+blog_origin_available() {
+  [ -n "$(blog_origin_resolve_dir 2>/dev/null || printf '')" ]
+}
+
+blog_origin_platform_meta_json() {
+  origin_dir=$(blog_origin_resolve_dir 2>/dev/null || printf '')
+  if [ -z "$origin_dir" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  jq -c '[.platforms | to_entries[] | select(.value.enabled != false) | {id: .key, family: (.value.family // "")}]' \
+    "$origin_dir/origin.json" 2>/dev/null || printf '[]\n'
+}
+
+blog_origin_platforms_json() {
+  meta_json=$(blog_origin_platform_meta_json)
+  printf '%s\n' "$meta_json" | jq -c '[.[].id]' 2>/dev/null || printf '[]\n'
+}
+
+blog_origin_normalize_platforms_json() {
+  raw_value=${1-}
+  available_json=${2-[]}
+  trimmed=$(blog_trim_whitespace "$raw_value")
+  if [ -z "$trimmed" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  jq -cn --arg raw "$trimmed" --argjson available "$available_json" '
+    def parsed:
+      ($raw | gsub("^\\s+|\\s+$"; "")) as $trim
+      | if $trim == "" then
+          []
+        elif ($trim | startswith("[")) then
+          (try ($trim | fromjson) catch [])
+        else
+          ($trim | split(","))
+        end;
+    def cleaned:
+      tostring
+      | ascii_downcase
+      | gsub("[^a-z0-9._-]"; "");
+    parsed
+    | if type == "array" then . else [] end
+    | map(cleaned)
+    | map(select(length > 0 and ($available | index(.) != null)))
+    | unique
+  ' 2>/dev/null || printf '[]\n'
+}
+
+blog_origin_enabled_platforms_json() {
+  available_json=$(blog_origin_platforms_json)
+  if [ "$available_json" = '[]' ]; then
+    printf '[]\n'
+    return 0
+  fi
+  raw_value=$(config-get "$blog_site_conf" origin_enabled_platforms 2>/dev/null || printf '__missing__')
+  if [ "$raw_value" = '__missing__' ]; then
+    printf '%s\n' "$available_json"
+    return 0
+  fi
+  blog_origin_normalize_platforms_json "$raw_value" "$available_json"
+}
+
+blog_origin_default_platforms_json() {
+  enabled_json=$(blog_origin_enabled_platforms_json)
+  if [ "$enabled_json" = '[]' ]; then
+    printf '[]\n'
+    return 0
+  fi
+  raw_value=$(config-get "$blog_site_conf" origin_default_platforms 2>/dev/null || printf '__missing__')
+  if [ "$raw_value" = '__missing__' ]; then
+    printf '%s\n' "$enabled_json"
+    return 0
+  fi
+  blog_origin_normalize_platforms_json "$raw_value" "$enabled_json"
+}
+
+blog_origin_platforms_csv_from_json() {
+  json_value=${1-[]}
+  printf '%s\n' "$json_value" | jq -r 'if type == "array" then join(",") else "" end' 2>/dev/null || printf '\n'
+}
+
+blog_origin_public_base_url() {
+  configured=$(config-get "$blog_site_conf" origin_public_base_url 2>/dev/null || printf '')
+  configured=$(blog_trim_whitespace "$configured" | sed -e 's#/$##')
+  case "$configured" in
+    http://*|https://*)
+      printf '%s\n' "$configured"
+      return 0
+      ;;
+  esac
+  blog_base_url | sed -e 's#/$##'
+}
+
+blog_origin_post_settings_path() {
+  rel_path=$(blog_normalize_post_source_path "${1-}" 2>/dev/null || printf '')
+  [ -n "$rel_path" ] || return 1
+  slug=$(blog_normalize_post_filename "$rel_path" 2>/dev/null || printf '')
+  [ -n "$slug" ] || return 1
+  printf '%s/%s.json\n' "$blog_origin_posts_dir" "$slug"
+}
+
+blog_origin_post_platforms_json() {
+  rel_path=${1-}
+  fallback_json=${2-[]}
+  settings_path=$(blog_origin_post_settings_path "$rel_path" 2>/dev/null || printf '')
+  if [ -z "$settings_path" ] || [ ! -f "$settings_path" ]; then
+    printf '%s\n' "$fallback_json"
+    return 0
+  fi
+  stored_json=$(jq -c '.platforms // []' "$settings_path" 2>/dev/null || printf '[]')
+  blog_origin_normalize_platforms_json "$stored_json" "$fallback_json"
+}
+
+blog_origin_save_post_platforms_json() {
+  rel_path=$(blog_normalize_post_source_path "${1-}" 2>/dev/null || printf '')
+  platforms_json=${2-[]}
+  [ -n "$rel_path" ] || return 1
+  settings_path=$(blog_origin_post_settings_path "$rel_path" 2>/dev/null || printf '')
+  [ -n "$settings_path" ] || return 1
+  mkdir -p "$(dirname "$settings_path")"
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-origin-post-meta.XXXXXX")
+  jq -cn --arg source_path "$rel_path" --arg updated_at "$(blog_now_iso)" --argjson platforms "$platforms_json" \
+    '{source_path: $source_path, platforms: $platforms, updated_at: $updated_at}' > "$tmp_file"
+  mv "$tmp_file" "$settings_path"
+  chmod 644 "$settings_path" 2>/dev/null || true
+}
+
+blog_origin_move_post_platforms_json() {
+  from_rel=$(blog_normalize_post_source_path "${1-}" 2>/dev/null || printf '')
+  to_rel=$(blog_normalize_post_source_path "${2-}" 2>/dev/null || printf '')
+  [ -n "$from_rel" ] || return 0
+  [ -n "$to_rel" ] || return 0
+  [ "$from_rel" = "$to_rel" ] && return 0
+  from_path=$(blog_origin_post_settings_path "$from_rel" 2>/dev/null || printf '')
+  to_path=$(blog_origin_post_settings_path "$to_rel" 2>/dev/null || printf '')
+  [ -n "$from_path" ] || return 0
+  [ -f "$from_path" ] || return 0
+  [ -n "$to_path" ] || return 0
+  mkdir -p "$(dirname "$to_path")"
+  mv "$from_path" "$to_path"
+}
+
+blog_origin_write_site_config() {
+  origin_dir=$(blog_origin_resolve_dir 2>/dev/null || printf '')
+  [ -n "$origin_dir" ] || return 1
+  enabled_json=$(blog_origin_enabled_platforms_json)
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-origin-config.XXXXXX")
+  if jq --arg origin_dir "$origin_dir" --arg state_dir "$blog_origin_state_store_dir" --argjson enabled "$enabled_json" '
+    def abs_cmd:
+      if type == "array" and length > 0 and (.[0] | type) == "string" and (.[0] | startswith("./")) then
+        .[0] = ($origin_dir + "/" + (.[0][2:]))
+      else
+        .
+      end;
+    .state_dir = $state_dir
+    | if (.renderer // null) != null and (.renderer.markdown_to_html // null) != null then
+        .renderer.markdown_to_html |= abs_cmd
+      else
+        .
+      end
+    | if (.renderer // null) != null and (.renderer.markdown_to_text // null) != null then
+        .renderer.markdown_to_text |= abs_cmd
+      else
+        .
+      end
+    | .platforms |= with_entries(
+        . as $entry
+        | .value.enabled = (($enabled | index($entry.key)) != null)
+        | .value.project.command |= abs_cmd
+        | .value.emit.command |= abs_cmd
+        | if (.value.emit.edit_command // null) != null then
+            .value.emit.edit_command |= abs_cmd
+          else
+            .
+          end
+        | .value.fetch.command |= abs_cmd
+        | if (.value.normalize.command // null) != null then
+            .value.normalize.command |= abs_cmd
+          else
+            .
+          end
+      )
+  ' "$origin_dir/origin.json" > "$tmp_file"; then
+    mv "$tmp_file" "$blog_origin_site_config"
+    chmod 644 "$blog_origin_site_config" 2>/dev/null || true
+    return 0
+  fi
+  rm -f "$tmp_file"
+  return 1
+}
+
+blog_origin_post_id_for_file() {
+  file=${1-}
+  [ -f "$file" ] || return 1
+
+  post_id=$(blog_read_front_matter_value "$file" nostr_event_id 2>/dev/null || printf '')
+  if [ -z "$post_id" ]; then
+    post_id=$(blog_read_front_matter_value "$file" slug 2>/dev/null || printf '')
+  fi
+  if [ -z "$post_id" ]; then
+    title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
+    if [ -n "$title" ]; then
+      post_id=$(blog_slugify "$title")
+    fi
+  fi
+  if [ -z "$post_id" ]; then
+    heading=$(awk '
+      /^#[[:space:]]+/ {
+        sub(/^#[[:space:]]+/, "", $0)
+        print
+        exit
+      }
+    ' "$file" 2>/dev/null || printf '')
+    if [ -n "$heading" ]; then
+      post_id=$(blog_slugify "$heading")
+    fi
+  fi
+  if [ -z "$post_id" ]; then
+    filename=${file##*/}
+    filename=${filename%.md}
+    post_id=$(blog_slugify "$filename")
+  fi
+
+  [ -n "$post_id" ] || return 1
+  printf '%s\n' "$post_id"
+}
+
+blog_origin_state_file_for_post() {
+  file=${1-}
+  platform=${2-}
+  [ -n "$platform" ] || return 1
+  post_id=$(blog_origin_post_id_for_file "$file" 2>/dev/null || printf '')
+  [ -n "$post_id" ] || return 1
+  printf '%s/%s/%s.json\n' "$blog_origin_state_store_dir" "$post_id" "$platform"
+}
+
+blog_origin_temp_post_file() {
+  source_file=${1-}
+  platforms_json=${2-[]}
+  [ -f "$source_file" ] || return 1
+
+  rel_path=$(blog_post_rel_path_for_file "$source_file" 2>/dev/null || printf '')
+  slug=$(blog_normalize_post_filename "$rel_path" 2>/dev/null || printf '')
+  if [ -z "$slug" ]; then
+    slug=$(blog_origin_post_id_for_file "$source_file" 2>/dev/null || printf '')
+  fi
+  [ -n "$slug" ] || return 1
+
+  public_base_url=$(blog_origin_public_base_url 2>/dev/null || printf '')
+  public_post_url=
+  if [ -n "$public_base_url" ]; then
+    public_post_url="$public_base_url/posts/$slug"
+  fi
+  slug_line=$(printf 'slug: "%s"' "$(blog_yaml_escape "$slug")")
+  canonical_url_line=$(printf 'canonical_url: "%s"' "$(blog_yaml_escape "$public_post_url")")
+  url_line=$(printf 'url: "%s"' "$(blog_yaml_escape "$public_post_url")")
+  platforms_line=$(printf 'origin_platforms: %s' "$(printf '%s\n' "$platforms_json" | jq -c '.' 2>/dev/null || printf '[]')")
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/blog-origin-post.XXXXXX")
+  first_line=$(sed -n '1p' "$source_file" 2>/dev/null || printf '')
+
+  if [ "$first_line" != '---' ]; then
+    {
+      printf '%s\n' '---'
+      printf '%s\n' "$slug_line"
+      if [ -n "$public_post_url" ]; then
+        printf '%s\n' "$canonical_url_line"
+        printf '%s\n' "$url_line"
+      fi
+      printf '%s\n' "$platforms_line"
+      printf '%s\n' '---'
+      cat "$source_file"
+    } > "$tmp_file"
+    printf '%s\n' "$tmp_file"
+    return 0
+  fi
+
+  awk -v slug_line="$slug_line" -v platforms_line="$platforms_line" -v canonical_url_line="$canonical_url_line" -v url_line="$url_line" -v public_post_url="$public_post_url" '
+    BEGIN {
+      in_fm = 0
+      wrote_slug = 0
+      wrote_canonical_url = 0
+      wrote_url = 0
+      wrote_platforms = 0
+    }
+    NR == 1 && $0 == "---" {
+      print
+      in_fm = 1
+      next
+    }
+    in_fm && $0 == "---" {
+      if (!wrote_slug) {
+        print slug_line
+      }
+      if (public_post_url != "" && !wrote_canonical_url) {
+        print canonical_url_line
+      }
+      if (public_post_url != "" && !wrote_url) {
+        print url_line
+      }
+      if (!wrote_platforms) {
+        print platforms_line
+      }
+      print
+      in_fm = 0
+      next
+    }
+    in_fm {
+      if (index($0, "slug:") == 1) {
+        if (!wrote_slug) {
+          print slug_line
+          wrote_slug = 1
+        }
+        next
+      }
+      if (index($0, "canonical_url:") == 1) {
+        if (public_post_url != "" && !wrote_canonical_url) {
+          print canonical_url_line
+          wrote_canonical_url = 1
+        }
+        next
+      }
+      if (index($0, "url:") == 1) {
+        if (public_post_url != "" && !wrote_url) {
+          print url_line
+          wrote_url = 1
+        }
+        next
+      }
+      if (index($0, "origin_platforms:") == 1) {
+        if (!wrote_platforms) {
+          print platforms_line
+          wrote_platforms = 1
+        }
+        next
+      }
+      print
+      next
+    }
+    {
+      print
+    }
+    END {
+      if (in_fm) {
+        if (!wrote_slug) {
+          print slug_line
+        }
+        if (public_post_url != "" && !wrote_canonical_url) {
+          print canonical_url_line
+        }
+        if (public_post_url != "" && !wrote_url) {
+          print url_line
+        }
+        if (!wrote_platforms) {
+          print platforms_line
+        }
+        print "---"
+      }
+    }
+  ' "$source_file" > "$tmp_file"
+
+  printf '%s\n' "$tmp_file"
+}
+
+blog_origin_emit_file_json() {
+  source_file=${1-}
+  platforms_json=${2-[]}
+  [ -f "$source_file" ] || return 1
+
+  platform_count=$(printf '%s\n' "$platforms_json" | jq -r 'if type == "array" then length else 0 end' 2>/dev/null || printf '0')
+  if [ "${platform_count:-0}" -lt 1 ]; then
+    post_id=$(blog_origin_post_id_for_file "$source_file" 2>/dev/null || printf '')
+    jq -cn --arg post_id "$post_id" '{post_id: $post_id, results: []}'
+    return 0
+  fi
+
+  origin_dir=$(blog_origin_resolve_dir 2>/dev/null || printf '')
+  [ -n "$origin_dir" ] || {
+    printf '%s\n' 'Origin is not available on this server.' >&2
+    return 1
+  }
+  blog_origin_write_site_config >/dev/null 2>&1 || {
+    printf '%s\n' 'Could not prepare Origin site config.' >&2
+    return 1
+  }
+
+  prepared_file=$(blog_origin_temp_post_file "$source_file" "$platforms_json" 2>/dev/null || printf '')
+  [ -n "$prepared_file" ] || {
+    printf '%s\n' 'Could not prepare post for Origin.' >&2
+    return 1
+  }
+
+  output_file=$(mktemp "${TMPDIR:-/tmp}/blog-origin-emit.XXXXXX")
+  error_file=$(mktemp "${TMPDIR:-/tmp}/blog-origin-emit.err.XXXXXX")
+  set -- "$origin_dir/bin/origin" --config "$blog_origin_site_config" emit
+  platforms_csv=$(blog_origin_platforms_csv_from_json "$platforms_json")
+  # Rebuild argv with explicit flag/value pairs to preserve boundaries.
+  set -- "$origin_dir/bin/origin" --config "$blog_origin_site_config" emit
+  printf '%s' "$platforms_csv" | tr ',' '\n' | while IFS= read -r platform || [ -n "$platform" ]; do
+    [ -n "$platform" ] || continue
+    printf '%s\n' "$platform"
+  done > "${output_file}.platforms"
+  while IFS= read -r platform || [ -n "$platform" ]; do
+    [ -n "$platform" ] || continue
+    set -- "$@" --platform "$platform"
+  done < "${output_file}.platforms"
+  set -- "$@" "$prepared_file"
+
+  if "$@" > "$output_file" 2> "$error_file"; then
+    cat "$output_file"
+    rm -f "$prepared_file" "$output_file" "$error_file" "${output_file}.platforms"
+    return 0
+  fi
+
+  cat "$error_file" >&2
+  rm -f "$prepared_file" "$output_file" "$error_file" "${output_file}.platforms"
+  return 1
+}
+
+blog_origin_crossposting_config_json() {
+  available=false
+  if blog_origin_available; then
+    available=true
+  fi
+  meta_json=$(blog_origin_platform_meta_json)
+  enabled_json=$(blog_origin_enabled_platforms_json)
+  default_json=$(blog_origin_default_platforms_json)
+  public_base_url=$(blog_origin_public_base_url 2>/dev/null || printf '')
+  jq -cn \
+    --argjson available "$( [ "$available" = "true" ] && printf true || printf false )" \
+    --argjson meta "$meta_json" \
+    --argjson enabled "$enabled_json" \
+    --arg public_base_url "$public_base_url" \
+    --argjson defaults "$default_json" '
+      {
+        available: $available,
+        public_base_url: $public_base_url,
+        platforms: (
+          $meta
+          | map(
+              . as $platform
+              | . + {
+                site_enabled: ($enabled | index($platform.id) != null),
+                default_selected: ($defaults | index($platform.id) != null)
+              }
+            )
+        ),
+        enabled_platforms: $enabled,
+        default_platforms: $defaults
+      }
+    '
+}
+
+blog_origin_crossposting_json_for_file() {
+  file=${1-}
+  [ -f "$file" ] || {
+    printf '{"available":false,"platforms":[],"enabled_count":0,"selected_count":0,"published_count":0,"remaining_count":0,"needs_action":false}\n'
+    return 0
+  }
+
+  available=false
+  if blog_origin_available; then
+    available=true
+  fi
+  meta_json=$(blog_origin_platform_meta_json)
+  enabled_json=$(blog_origin_enabled_platforms_json)
+  rel_path=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+  selected_json=$(blog_origin_post_platforms_json "$rel_path" "$enabled_json")
+  tmp_platforms=$(mktemp "${TMPDIR:-/tmp}/blog-origin-status.XXXXXX")
+
+  printf '%s\n' "$enabled_json" | jq -r '.[]' 2>/dev/null | while IFS= read -r platform || [ -n "$platform" ]; do
+    [ -n "$platform" ] || continue
+    selected=false
+    if printf '%s\n' "$selected_json" | jq -e --arg platform "$platform" 'index($platform) != null' >/dev/null 2>&1; then
+      selected=true
+    fi
+
+    status=unpublished
+    remote_url=
+    state_file=$(blog_origin_state_file_for_post "$file" "$platform" 2>/dev/null || printf '')
+    if [ -n "$state_file" ] && [ -f "$state_file" ]; then
+      saved_status=$(jq -r '.status // empty' "$state_file" 2>/dev/null || printf '')
+      remote_url=$(jq -r '.remote_url // empty' "$state_file" 2>/dev/null || printf '')
+      case "$saved_status" in
+        published|failed|outdated|fetch-failed|mismatch|ok)
+          status=$saved_status
+          ;;
+        skipped)
+          if [ "$selected" = "true" ]; then
+            status=skipped
+          else
+            status=not_selected
+          fi
+          ;;
+      esac
+    else
+      if [ "$selected" != "true" ]; then
+        status=not_selected
+      fi
+    fi
+
+    jq -cn --argjson meta "$meta_json" --arg id "$platform" --arg status "$status" --arg remote_url "$remote_url" --argjson selected "$( [ "$selected" = "true" ] && printf true || printf false )" '
+      {
+        id: $id,
+        family: (($meta | map(select(.id == $id)) | first | .family) // ""),
+        selected: $selected,
+        status: $status,
+        remote_url: $remote_url
+      }
+    '
+  done > "$tmp_platforms"
+
+  platforms_json=$(jq -cs '.' "$tmp_platforms" 2>/dev/null || printf '[]')
+  rm -f "$tmp_platforms"
+
+  jq -cn \
+    --argjson available "$( [ "$available" = "true" ] && printf true || printf false )" \
+    --argjson platforms "$platforms_json" \
+    --argjson enabled "$enabled_json" \
+    --argjson selected "$selected_json" '
+      {
+        available: $available,
+        platforms: $platforms,
+        enabled_platforms: $enabled,
+        selected_platforms: $selected,
+        enabled_count: ($enabled | length),
+        selected_count: ($selected | length),
+        published_count: ($platforms | map(select(.status == "published")) | length),
+        remaining_count: ($platforms | map(select(.status != "published")) | length),
+        needs_action: (($platforms | map(select(.status != "published")) | length) > 0)
+      }
+    '
 }
 
 blog_strip_post_date_prefix_from_slug() {
@@ -768,9 +1344,11 @@ blog_file_public_url() {
   file_id=${1-}
   safe_name=${2-}
   [ -n "$file_id" ] || return 1
-  printf '/cgi/blog-file?file_id=%s' "$(blog_json_escape "$file_id" | sed 's/\\u0026/\&/g')"
-  if [ -n "$safe_name" ]; then
-    printf '&name=%s' "$(blog_json_escape "$safe_name" | sed 's/\\u0026/\&/g')"
+  safe_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]/-/g')
+  safe_part=$(printf '%s' "$safe_name" | sed 's/[^A-Za-z0-9._~-]/-/g')
+  printf '/files/%s' "$safe_id"
+  if [ -n "$safe_part" ]; then
+    printf '/%s' "$safe_part"
   fi
   printf '\n'
 }
@@ -779,11 +1357,7 @@ blog_file_public_url_encoded() {
   file_id=${1-}
   safe_name=${2-}
   [ -n "$file_id" ] || return 1
-  printf '/cgi/blog-file?file_id=%s' "$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]/-/g')"
-  if [ -n "$safe_name" ]; then
-    printf '&name=%s' "$(printf '%s' "$safe_name" | sed 's/[^A-Za-z0-9._~-]/-/g')"
-  fi
-  printf '\n'
+  blog_file_public_url "$file_id" "$safe_name"
 }
 
 blog_file_record_exists() {
@@ -958,6 +1532,21 @@ blog_file_resolve_disk_path() {
   blog_file_storage_path "$storage_rel"
 }
 
+blog_file_delete() {
+  file_id=${1-}
+  [ -n "$file_id" ] || return 1
+  record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+  [ -f "$record_path" ] || return 1
+  storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
+  if [ -n "$storage_rel" ]; then
+    disk_path=$(blog_file_storage_path "$storage_rel" 2>/dev/null || printf '')
+    if [ -n "$disk_path" ] && [ -f "$disk_path" ]; then
+      rm -f "$disk_path"
+    fi
+  fi
+  rm -f "$record_path"
+}
+
 blog_to_base64url() {
   printf '%s' "${1-}" | tr '+/' '-_' | tr -d '='
 }
@@ -1048,12 +1637,11 @@ blog_read_request_body() {
     ''|*[!0-9]*) cl=0 ;;
   esac
 
-  if [ "$cl" -gt 0 ]; then
-    BLOG_REQUEST_BODY=$(dd bs=1 count="$cl" 2>/dev/null || true)
+  if [ "$cl" -le 0 ]; then
     return 0
   fi
 
-  BLOG_REQUEST_BODY=$(cat 2>/dev/null || true)
+  BLOG_REQUEST_BODY=$(dd bs=1 count="$cl" 2>/dev/null || true)
 }
 
 blog_param_decode_component() {
@@ -1068,6 +1656,10 @@ blog_param_decode_component() {
   esac
   if command -v url-decode >/dev/null 2>&1; then
     url-decode "$value"
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$value" | python3 -c 'import sys, urllib.parse; sys.stdout.write(urllib.parse.unquote(sys.stdin.read(), encoding="utf-8", errors="replace"))'
     return 0
   fi
   printf '%s' "$value" | awk '
@@ -1128,7 +1720,7 @@ blog_param() {
 
 blog_send_json_headers() {
   http-status 200 "OK"
-  http-header "Content-Type" "application/json"
+  http-header "Content-Type" "application/json; charset=utf-8"
   http-header "Cache-Control" "no-store, no-cache, must-revalidate, max-age=0"
   http-header "Pragma" "no-cache"
   http-header "Expires" "0"
@@ -2721,7 +3313,8 @@ blog_normalize_post_type() {
       printf 'upload-media\n'
       ;;
     attachment|attachments|file|file-upload|file_upload)
-      printf 'attachment\n'
+      # "Attachment" is a compose mode, not a distinct persisted post kind.
+      printf 'longform\n'
       ;;
     audio|audio-note|audio_note|voice|voice-note|voice_note)
       printf 'audio-note\n'
@@ -3293,9 +3886,6 @@ blog_nostr_kind_for_post_type() {
     longform)
       printf '30023\n'
       ;;
-    attachment)
-      printf '15\n'
-      ;;
     audio-note)
       printf '21\n'
       ;;
@@ -3325,7 +3915,6 @@ blog_nostr_alt_for_post_type() {
     shortform) default_alt='Shortform post' ;;
     longform) default_alt='Longform post' ;;
     link-share) default_alt='Link share' ;;
-    attachment) default_alt='Attachment post' ;;
     audio-note) default_alt='Audio note' ;;
     capture-media|upload-media)
       case "$mime_type" in
@@ -4327,6 +4916,7 @@ blog_save_draft() {
   post_type=${10-longform}
   source_post_path=${11-}
   post_filename=${12-}
+  origin_platforms_json=${13-[]}
 
   draft_file=$(blog_draft_file_path "$draft_id")
   mkdir -p "$blog_drafts_dir"
@@ -4357,7 +4947,7 @@ blog_save_draft() {
     fi
   fi
   now_iso=$(blog_now_iso)
-  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type" "$source_post_path" "$post_filename"
+  blog_write_draft_markdown "$draft_file" "$draft_id" "$title" "$slug" "$normalized_tags" "$summary" "$author" "$publish_mode" "$scheduled_at" "$status" "$created" "$now_iso" "$content" "$normalized_post_type" "$source_post_path" "$post_filename" "$origin_platforms_json"
   blog_file_sync_draft_refs "$draft_id" "$content"
 }
 
@@ -4532,17 +5122,6 @@ blog_publish_content_nostr() {
 
 blog_publish_content() {
   # args: title tags summary content author draft_id publish_mode scheduled_at post_type source_post_path
-  if blog_nostr_bridge_enabled; then
-    if out=$(blog_publish_content_nostr "$@" 2>/dev/null); then
-      BLOG_PUBLISH_LAST_MODE="nostr"
-      printf '%s\n' "$out"
-      return 0
-    fi
-    out=$(blog_publish_content_markdown "$@")
-    BLOG_PUBLISH_LAST_MODE="local_fallback"
-    printf '%s\n' "$out"
-    return 0
-  fi
   out=$(blog_publish_content_markdown "$@")
   BLOG_PUBLISH_LAST_MODE="local"
   printf '%s\n' "$out"

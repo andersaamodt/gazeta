@@ -64,6 +64,11 @@
     };
   }
 
+  function hasLikelyAuthenticatedSession() {
+    var auth = authPayload();
+    return !!(auth && auth.session_token && auth.csrf_token);
+  }
+
   function ensureNostrPublishDialog() {
     if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
       return Promise.resolve(true);
@@ -166,7 +171,11 @@
     if (!payload || !isExpectedPayload(payload)) {
       return false;
     }
-    state.payload = payload;
+    var optimisticPayload = payload;
+    if (!optimisticPayload.is_admin && hasLikelyAuthenticatedSession()) {
+      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
+    }
+    state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || {});
     state.navTitle = String((payload && payload.nav_title) || '').trim();
     state.navTitleEditing = false;

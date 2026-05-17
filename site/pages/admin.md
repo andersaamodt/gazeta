@@ -21,6 +21,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="drafts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Drafts <span id="admin-nav-drafts-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="queue" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Queue <span id="admin-nav-queue-count" class="admin-nav-count">(0)</span></span></button>
 <button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="crossposting" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Cross-posting</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="files" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Files</span></button>
@@ -139,6 +140,39 @@ title: ""
 </div>
 
 <div id="output-config" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="crossposting" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Cross-posting</h3>
+<p class="muted">Enable Origin destinations for this site and choose which ones should start checked when you publish a new post.</p>
+</div>
+</div>
+<div id="crossposting-runtime" class="crossposting-runtime"></div>
+<div class="settings-stack crossposting-settings-stack">
+<section class="sub-card">
+<h4>Enabled On This Site</h4>
+<p class="muted settings-subhead">Only enabled destinations appear in Compose and on the Posts page.</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="crossposting-enabled-all">
+<input type="checkbox" id="crossposting-enabled-all">
+<span>All supported destinations</span>
+</label>
+<div id="crossposting-enabled-list" class="crossposting-platform-list"></div>
+</section>
+<section class="sub-card">
+<h4>Default Selection</h4>
+<p class="muted settings-subhead">These destinations start checked for new posts. You can still change the selection before each publish.</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="crossposting-default-all">
+<input type="checkbox" id="crossposting-default-all">
+<span>All enabled destinations</span>
+</label>
+<div id="crossposting-default-list" class="crossposting-platform-list"></div>
+</section>
+</div>
+<div id="output-crossposting" class="output"></div>
 </div>
 </section>
 
@@ -520,6 +554,18 @@ title: ""
 </div>
 </div>
 
+<details id="compose-crosspost-details" class="compose-crosspost-details">
+<summary id="compose-crosspost-summary">Cross-posting unavailable</summary>
+<div class="compose-crosspost-body">
+<p id="compose-crosspost-note" class="muted compose-crosspost-note">Origin destinations appear here when they are enabled for this site.</p>
+<label class="checkbox-control checkbox-control-plain crossposting-master-toggle" for="compose-origin-select-all">
+<input type="checkbox" id="compose-origin-select-all">
+<span>All enabled destinations</span>
+</label>
+<div id="compose-origin-platform-list" class="crossposting-platform-list"></div>
+</div>
+</details>
+
 <div class="field-row scheduled-row is-hidden" id="scheduled-row">
 <label for="post-scheduled-at"><strong>Scheduled Release Date/Time</strong></label>
 <div class="scheduled-picker-row">
@@ -846,11 +892,23 @@ title: ""
 </form>
 </dialog>
 
+<dialog id="post-crosspost-dialog" class="admin-inline-dialog" aria-labelledby="post-crosspost-title">
+<form id="post-crosspost-form" method="dialog" class="admin-inline-dialog-form">
+<h4 id="post-crosspost-title">Cross-post Post</h4>
+<p id="post-crosspost-subtitle" class="muted">Select the destinations that should receive this post now.</p>
+<div id="post-crosspost-list" class="crossposting-platform-list crossposting-platform-list-dialog"></div>
+<div class="admin-inline-dialog-actions">
+<button id="post-crosspost-cancel" type="button">Cancel</button>
+<button id="post-crosspost-submit" type="submit" class="primary">Cross-post selected</button>
+</div>
+</form>
+</dialog>
+
 <div id="drop-overlay" class="drop-overlay" hidden>Drop files to upload</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js"></script>
+<script src="/static/admin.js?v=20260514-crossposting"></script>
 
 <style>
 header#title-block-header {

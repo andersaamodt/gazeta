@@ -166,6 +166,7 @@ esac
 if [ "$zap_default_amount_sats" -lt 1 ]; then
   zap_default_amount_sats=1
 fi
+origin_crossposting_json=$(blog_origin_crossposting_config_json)
 
 case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; esac
 [ -n "$site_title" ] || site_title='Site'
@@ -198,6 +199,7 @@ printf '"zap_demo_wallet_active":%s,' "$zap_demo_wallet_active"
 printf '"zap_demo_wallet_npub":"%s",' "$(blog_json_escape "$zap_demo_wallet_npub")"
 printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"plugins":%s,' "$plugins_json"
+printf '"origin":%s,' "$origin_crossposting_json"
 printf '"nostr_authors":%s,' "$nostr_authors"
 printf '"nostr_relays":%s,' "$nostr_relays"
 printf '"nostr_blocklist":%s' "$nostr_blocklist"

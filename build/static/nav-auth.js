@@ -2858,71 +2858,120 @@
 
   function syncNavOverflowMenuNow() {
     var navCenter = document.querySelector('.nav-center');
-    if (!navCenter || !els.navOverflowMenu || !els.navOverflowBtn || !els.navOverflowPanel) {
+    var navRight = document.querySelector('.nav-right');
+    if (!navCenter || !navRight || !els.navOverflowMenu || !els.navOverflowBtn || !els.navOverflowPanel) {
       return;
     }
 
     var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page]'));
-    links.forEach(function (link) {
-      link.classList.remove('is-nav-overflow-hidden');
-    });
     closeNavOverflowMenu();
     els.navOverflowPanel.innerHTML = '';
-    els.navOverflowMenu.hidden = true;
-    setNavOverflowButtonCount(0);
-
     if (links.length < 2) {
+      links.forEach(function (link) {
+        link.classList.remove('is-nav-overflow-hidden');
+      });
+      els.navOverflowMenu.hidden = true;
+      setNavOverflowButtonCount(0);
       return;
     }
 
-    var initialOverflowPx = navCenter.scrollWidth - navCenter.clientWidth;
-    if (initialOverflowPx <= 1) {
-      return;
+    function rectVisible(rect) {
+      return !!rect && rect.width > 0 && rect.height > 0;
     }
 
-    var reservePx = 44;
-    if (els.navOverflowBtn && els.navOverflowBtn.offsetWidth) {
-      reservePx = Math.ceil(els.navOverflowBtn.offsetWidth + 12);
+    function rectsVerticallyOverlap(a, b) {
+      return !!(a && b && a.bottom > b.top && b.bottom > a.top);
     }
-    var hiddenLinks = [];
-    var safety = 0;
-    var activeLink = links.find(function (link) { return link.classList.contains('active'); }) || null;
-    while (safety < links.length) {
-      var currentReservePx = hiddenLinks.length ? reservePx : 0;
-      if (navCenter.scrollWidth <= ((navCenter.clientWidth - currentReservePx) + 2)) {
-        break;
-      }
-      var candidate = null;
-      for (var i = links.length - 1; i >= 0; i -= 1) {
-        var link = links[i];
+
+    function rightmostVisibleLinkRect() {
+      for (var idx = links.length - 1; idx >= 0; idx -= 1) {
+        var link = links[idx];
         if (link.classList.contains('is-nav-overflow-hidden')) {
           continue;
         }
-        if (activeLink && link === activeLink) {
-          continue;
-        }
-        candidate = link;
-        break;
-      }
-      if (!candidate && activeLink) {
-        for (var j = links.length - 1; j >= 0; j -= 1) {
-          var fallback = links[j];
-          if (fallback.classList.contains('is-nav-overflow-hidden')) {
-            continue;
-          }
-          candidate = fallback;
-          break;
+        var rect = link.getBoundingClientRect();
+        if (rectVisible(rect)) {
+          return rect;
         }
       }
-      if (!candidate) {
-        break;
-      }
-      candidate.classList.add('is-nav-overflow-hidden');
-      hiddenLinks.unshift(candidate);
-      safety += 1;
+      return null;
     }
 
+    function navCollisionLeft() {
+      var search = navRight.querySelector('.nav-search');
+      var target = search && !search.hidden ? search : navRight;
+      var rect = target.getBoundingClientRect();
+      if (!rectVisible(rect)) {
+        return null;
+      }
+      return rect.left;
+    }
+
+    function hasRightSideCollision() {
+      var linkRect = rightmostVisibleLinkRect();
+      var collisionLeft = navCollisionLeft();
+      if (!linkRect || collisionLeft === null) {
+        return false;
+      }
+      var centerRect = navCenter.getBoundingClientRect();
+      var rightRect = navRight.getBoundingClientRect();
+      if (!rectsVerticallyOverlap(centerRect, rightRect)) {
+        return false;
+      }
+      var gutter = 8;
+      return linkRect.right > (collisionLeft - gutter);
+    }
+
+    function hasNavPressure() {
+      var widthPressure = navCenter.scrollWidth > (navCenter.clientWidth + 1);
+      var overlapPressure = hasRightSideCollision();
+      return widthPressure || overlapPressure;
+    }
+
+    var activeLink = links.find(function (link) { return link.classList.contains('active'); }) || null;
+    var changed = false;
+
+    if (hasNavPressure()) {
+      var hideCandidate = null;
+      for (var i = links.length - 1; i >= 0; i -= 1) {
+        var visibleLink = links[i];
+        if (visibleLink.classList.contains('is-nav-overflow-hidden')) {
+          continue;
+        }
+        if (activeLink && visibleLink === activeLink) {
+          continue;
+        }
+        hideCandidate = visibleLink;
+        break;
+      }
+      if (!hideCandidate && activeLink && !activeLink.classList.contains('is-nav-overflow-hidden')) {
+        hideCandidate = activeLink;
+      }
+      if (hideCandidate && !hideCandidate.classList.contains('is-nav-overflow-hidden')) {
+        hideCandidate.classList.add('is-nav-overflow-hidden');
+        changed = true;
+      }
+    } else {
+      var hiddenInOrder = links.filter(function (link) {
+        return link.classList.contains('is-nav-overflow-hidden');
+      });
+      if (hiddenInOrder.length) {
+        var revealCandidate = hiddenInOrder[0];
+        revealCandidate.classList.remove('is-nav-overflow-hidden');
+        if (hasNavPressure()) {
+          revealCandidate.classList.add('is-nav-overflow-hidden');
+        } else {
+          changed = true;
+        }
+      }
+    }
+
+    var hiddenLinks = links.filter(function (link) {
+      return link.classList.contains('is-nav-overflow-hidden');
+    });
     if (!hiddenLinks.length) {
+      els.navOverflowMenu.hidden = true;
+      setNavOverflowButtonCount(0);
       return;
     }
 
@@ -2940,6 +2989,23 @@
 
     setNavOverflowButtonCount(hiddenLinks.length);
     els.navOverflowMenu.hidden = false;
+    if (changed) {
+      scheduleNavOverflowMenuSync();
+    }
+  }
+
+  function placeNavOverflowMenuAtLeadingEdge() {
+    if (!els.navOverflowMenu) {
+      return;
+    }
+    var nav = document.querySelector('nav.site-nav');
+    if (!nav) {
+      return;
+    }
+    if (nav.firstElementChild === els.navOverflowMenu) {
+      return;
+    }
+    nav.insertBefore(els.navOverflowMenu, nav.firstChild);
   }
 
   function scheduleNavOverflowMenuSync() {
@@ -3222,19 +3288,12 @@
     if (matches.length > 0) {
       navLinks.forEach(function (link) {
         var active = matches.indexOf(link) !== -1;
-        var isBlogLink = normalizeNavPath(link.getAttribute('href') || '') === '/';
-        var keepClickable = active && isBlogLink && isBlogPostRoute;
         link.classList.toggle('active', active);
-        link.classList.toggle('allow-active-click', !!keepClickable);
+        link.classList.remove('allow-active-click');
         if (active) {
           link.setAttribute('aria-current', 'page');
-          if (!keepClickable) {
-            link.setAttribute('aria-disabled', 'true');
-            link.setAttribute('tabindex', '-1');
-          } else {
-            link.removeAttribute('aria-disabled');
-            link.removeAttribute('tabindex');
-          }
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('tabindex', '-1');
         } else {
           link.removeAttribute('aria-current');
           link.removeAttribute('aria-disabled');
@@ -3743,6 +3802,7 @@
     }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
+    placeNavOverflowMenuAtLeadingEdge();
 
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');

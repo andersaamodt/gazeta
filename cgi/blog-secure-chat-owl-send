@@ -17,8 +17,13 @@ esac
 
 blog_init
 
-npub=${1-}
+target=${1-}
 body_b64=${2-}
+attachment_name_b64=${3-}
+attachment_mime=${4-}
+client_message_id=${5-}
+attachment_file=
+attachment_dir=
 
 case "${REQUEST_METHOD-}" in
   '')
@@ -29,22 +34,40 @@ case "${REQUEST_METHOD-}" in
     if ! blog_require_session true false; then
       exit 0
     fi
-    npub=$(blog_param npub)
+    target=$(blog_param target)
+    [ -n "$target" ] || target=$(blog_param npub)
     body_b64=$(blog_param body_b64)
+    client_message_id=$(blog_param client_message_id)
+    attachment_name_b64=
+    attachment_mime=
     ;;
 esac
 
-case "$npub" in
-  npub1*) ;;
+if [ "$attachment_name_b64" = "-" ] && [ "$attachment_mime" = "-" ]; then
+  attachment_name_b64=
+  attachment_mime=
+fi
+
+case "$target" in
+  npub1*|secure-chat:[0-9]*|secure-chat-contact-[0-9]*) ;;
   *)
-    printf '%s\n' '{"success":false,"error":"npub is required","code":"npub_required"}'
+    printf '%s\n' '{"success":false,"error":"npub or Secure Chat contact id is required","code":"target_required"}'
     exit 2
     ;;
 esac
 
 body_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-owl-send-body.XXXXXX")
 payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-owl-send.XXXXXX")
-trap 'rm -f "$body_file" "$payload_file"' EXIT HUP INT TERM
+attachment_name_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-owl-send-name.XXXXXX")
+cleanup() {
+  rm -f "$body_file" "$payload_file" "$attachment_name_file"
+  if [ -n "$attachment_dir" ]; then
+    rm -rf "$attachment_dir"
+  elif [ -n "$attachment_file" ]; then
+    rm -f "$attachment_file"
+  fi
+}
+trap cleanup EXIT HUP INT TERM
 
 if printf '%s' "$body_b64" | base64 --decode > "$body_file" 2>/dev/null; then
   :
@@ -56,9 +79,51 @@ else
 fi
 
 text=$(cat "$body_file")
-jq -cn --arg npub "$npub" --arg text "$text" '{action:"owl-send",npub:$npub,text:$text}' > "$payload_file"
+if [ -n "$attachment_name_b64" ]; then
+  if printf '%s' "$attachment_name_b64" | base64 --decode > "$attachment_name_file" 2>/dev/null; then
+    :
+  elif printf '%s' "$attachment_name_b64" | base64 -D > "$attachment_name_file" 2>/dev/null; then
+    :
+  else
+    printf '%s\n' '{"success":false,"error":"invalid base64 attachment name","code":"attachment_name_invalid"}'
+    exit 2
+  fi
+  attachment_name=$(cat "$attachment_name_file")
+  [ -n "$attachment_name" ] || attachment_name=attachment.bin
+  [ -n "$attachment_mime" ] || attachment_mime=application/octet-stream
+  safe_attachment_name=${attachment_name##*/}
+  safe_attachment_name=$(printf '%s' "$safe_attachment_name" | LC_ALL=C tr -c 'A-Za-z0-9._@+-' '-')
+  case "$safe_attachment_name" in
+    ''|'.'|'..') safe_attachment_name=attachment.bin ;;
+    .*) safe_attachment_name="attachment$safe_attachment_name" ;;
+  esac
+  attachment_dir=$(mktemp -d "${TMPDIR:-/tmp}/secure-chat-owl-send-file.XXXXXX")
+  attachment_file="$attachment_dir/$safe_attachment_name"
+  cat > "$attachment_file"
+  attachment_size=$(wc -c < "$attachment_file" | tr -d ' ')
+  jq -cn \
+    --arg target "$target" \
+    --arg text "$text" \
+    --arg filePath "$attachment_file" \
+    --arg fileName "$attachment_name" \
+    --arg mimeType "$attachment_mime" \
+    --arg clientMessageId "$client_message_id" \
+    --argjson fileSize "$attachment_size" \
+    '{action:"owl-send",target:$target,text:$text,attachment:{filePath:$filePath,fileName:$fileName,mimeType:$mimeType,fileSize:$fileSize}} + (if $clientMessageId == "" then {} else {client_message_id:$clientMessageId} end)' > "$payload_file"
+else
+  jq -cn --arg target "$target" --arg text "$text" --arg clientMessageId "$client_message_id" '{action:"owl-send",target:$target,text:$text} + (if $clientMessageId == "" then {} else {client_message_id:$clientMessageId} end)' > "$payload_file"
+fi
 
+previous_request_timeout=${BLOG_SECURE_CHAT_REQUEST_TIMEOUT-}
+BLOG_SECURE_CHAT_REQUEST_TIMEOUT=${BLOG_SECURE_CHAT_OWL_SEND_TIMEOUT:-120}
+export BLOG_SECURE_CHAT_REQUEST_TIMEOUT
 response=$(blog_secure_chat_service_request_json POST /admin "$payload_file" application/json 2>/dev/null || printf '')
+if [ -n "$previous_request_timeout" ]; then
+  BLOG_SECURE_CHAT_REQUEST_TIMEOUT=$previous_request_timeout
+  export BLOG_SECURE_CHAT_REQUEST_TIMEOUT
+else
+  unset BLOG_SECURE_CHAT_REQUEST_TIMEOUT
+fi
 if [ -z "$response" ]; then
   printf '%s\n' '{"success":false,"error":"Secure Chat admin service is unavailable","code":"service_unavailable"}'
   exit 1

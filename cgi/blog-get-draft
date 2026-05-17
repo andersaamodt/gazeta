@@ -28,6 +28,7 @@ fi
 
 title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
 tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+tags=$(blog_normalize_tags "$tags")
 summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
 post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
 if [ -z "$post_type" ]; then
@@ -42,6 +43,11 @@ updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null |
 content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
 source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
 post_filename=$(blog_read_front_matter_value "$draft_file" post_filename 2>/dev/null || printf '')
+origin_platforms_raw=$(blog_read_front_matter_value "$draft_file" origin_platforms 2>/dev/null || printf '')
+origin_platforms=$(blog_origin_normalize_platforms_json "$origin_platforms_raw" "$(blog_origin_enabled_platforms_json)")
+if [ "$origin_platforms" = '[]' ] && [ -z "$origin_platforms_raw" ]; then
+  origin_platforms=$(blog_origin_default_platforms_json)
+fi
 if [ -z "$post_filename" ] && [ -n "$source_post_path" ]; then
   post_filename=$(blog_normalize_post_filename "$source_post_path" 2>/dev/null || printf '')
 fi
@@ -61,5 +67,6 @@ printf '"created_at":"%s",' "$(blog_json_escape "$created_at")"
 printf '"updated_at":"%s",' "$(blog_json_escape "$updated_at")"
 printf '"source_post_path":"%s",' "$(blog_json_escape "$source_post_path")"
 printf '"post_filename":"%s",' "$(blog_json_escape "$post_filename")"
+printf '"origin_platforms":%s,' "$origin_platforms"
 printf '"content":"%s"' "$(blog_json_escape "$content")"
 printf '}}\n'

@@ -9,7 +9,51 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 blog_init
 blog_read_request_body
 
-file_id=$(blog_param file_id)
+resolve_file_id() {
+  from_query=$(blog_param file_id)
+  if [ -n "$from_query" ]; then
+    printf '%s\n' "$from_query"
+    return 0
+  fi
+
+  path_info=${PATH_INFO-}
+  if [ -n "$path_info" ]; then
+    from_path=$(printf '%s' "$path_info" | sed 's#^/##; s#/.*$##')
+    if [ -n "$from_path" ]; then
+      printf '%s\n' "$from_path"
+      return 0
+    fi
+  fi
+
+  uri=${REQUEST_URI-}
+  case "$uri" in
+    *'/files/'*)
+      from_uri=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/files\/##' | sed 's#/.*$##')
+      if [ -n "$from_uri" ]; then
+        printf '%s\n' "$from_uri"
+        return 0
+      fi
+      ;;
+    *'/cgi/files/'*)
+      from_uri=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/cgi\/files\/##' | sed 's#/.*$##')
+      if [ -n "$from_uri" ]; then
+        printf '%s\n' "$from_uri"
+        return 0
+      fi
+      ;;
+    *'/cgi/blog-file/'*)
+      from_uri=$(printf '%s' "$uri" | sed 's/[?].*$//' | sed 's#.*\/cgi\/blog-file\/##' | sed 's#/.*$##')
+      if [ -n "$from_uri" ]; then
+        printf '%s\n' "$from_uri"
+        return 0
+      fi
+      ;;
+  esac
+  printf '\n'
+}
+
+file_id=$(resolve_file_id)
+file_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]//g')
 req_token=$(blog_param session_token)
 req_csrf=$(blog_param csrf_token)
 record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')

@@ -22,14 +22,7 @@ if [ -z "$action" ] || [ -z "$post_path" ]; then
   exit 0
 fi
 
-post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
-case "$post_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##')
 case "$post_path" in
   *'..'*|*'\\'*|*'//'*)
     blog_json_error "Invalid post path" "invalid_post_path"
@@ -37,7 +30,12 @@ case "$post_path" in
     ;;
 esac
 
-file="$blog_site_root/site/pages/$post_path"
+file=$(blog_resolve_post_markdown_file "$post_path" 2>/dev/null || printf '')
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+
 case "$file" in
   "$blog_posts_dir"/*) ;;
   *)
@@ -46,10 +44,14 @@ case "$file" in
     ;;
 esac
 
-if [ ! -f "$file" ]; then
-  blog_json_error "Post not found" "not_found"
-  exit 0
-fi
+post_path=${file#"$blog_site_root/site/pages/"}
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
 
 case "$action" in
   delete)

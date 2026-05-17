@@ -295,6 +295,14 @@ relay_connected() {
     return 0
   fi
 
+  public_relay=$(configured_public_relay_url 2>/dev/null || printf '')
+  public_health_url=$(relay_health_url "$public_relay" 2>/dev/null || printf '')
+  if [ -n "$public_health_url" ] && command -v curl >/dev/null 2>&1; then
+    if curl -fsS --max-time 4 "$public_health_url" >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
   return 1
 }
 
@@ -330,11 +338,58 @@ stonr_status_json() {
   return 0
 }
 
+configured_public_relay_url() {
+  for key in nostr_stonr_relay_url nostr_relay_url relay_url public_relay_url; do
+    raw=$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')
+    relay=$(blog_nostr_normalize_relay_url "$raw" 2>/dev/null || printf '')
+    if [ -n "$relay" ]; then
+      printf '%s' "$relay"
+      return 0
+    fi
+  done
+
+  if [ -f "$blog_nostr_relays_file" ]; then
+    while IFS= read -r raw || [ -n "$raw" ]; do
+      relay=$(blog_nostr_normalize_relay_url "$raw" 2>/dev/null || printf '')
+      if [ -n "$relay" ]; then
+        printf '%s' "$relay"
+        return 0
+      fi
+    done < "$blog_nostr_relays_file"
+  fi
+
+  for support_file in \
+    "$blog_site_root/.headquarters/site-support/stonr-relay.conf" \
+    "$SCRIPT_DIR/../.headquarters/site-support/stonr-relay.conf"; do
+    [ -f "$support_file" ] || continue
+    raw=$(awk -F= '$1 == "relay_url" { print substr($0, index($0, "=") + 1); found = 1; exit } END { exit found ? 0 : 1 }' "$support_file" 2>/dev/null || printf '')
+    relay=$(blog_nostr_normalize_relay_url "$raw" 2>/dev/null || printf '')
+    if [ -n "$relay" ]; then
+      printf '%s' "$relay"
+      return 0
+    fi
+  done
+
+  blog_nostr_site_relay_url 2>/dev/null || printf ''
+}
+
+relay_health_url() {
+  relay=$(blog_nostr_normalize_relay_url "${1-}" 2>/dev/null || printf '')
+  [ -n "$relay" ] || return 1
+  case "$relay" in
+    wss://*) printf 'https://%s/healthz' "${relay#wss://}" ;;
+    ws://*) printf 'http://%s/healthz' "${relay#ws://}" ;;
+    *) return 1 ;;
+  esac
+}
+
 relay_url() {
   status_json=$(stonr_status_json 2>/dev/null || printf '')
   if [ -n "$status_json" ] && command -v jq >/dev/null 2>&1; then
     value=$(printf '%s' "$status_json" | jq -r '
       .relay_url //
+      .relay_url_wss //
+      .relay_url_ws //
       .relay_url_https //
       .relay_url_http //
       (.relay.url // empty) //
@@ -346,11 +401,17 @@ relay_url() {
       empty
     ' 2>/dev/null || printf '')
     case "$value" in
-      http://*|https://*)
+      ws://*|wss://*|http://*|https://*)
         printf '%s' "$value"
         return 0
         ;;
     esac
+  fi
+
+  configured=$(configured_public_relay_url 2>/dev/null || printf '')
+  if [ -n "$configured" ]; then
+    printf '%s' "$configured"
+    return 0
   fi
 
   if ! stonr_running; then
@@ -366,7 +427,7 @@ relay_url() {
   set +e
   status_text=$(STONR_CONFIG="$stonr_config_file" "$bin" status 2>/dev/null)
   set -e
-  value=$(printf '%s' "$status_text" | grep -Eo 'https?://[^"[:space:]]+' | head -n 1 || printf '')
+  value=$(printf '%s' "$status_text" | grep -Eo '(wss?|https?)://[^"[:space:]]+' | head -n 1 || printf '')
   printf '%s' "$value"
 }
 

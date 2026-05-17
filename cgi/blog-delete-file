@@ -1,0 +1,29 @@
+#!/bin/sh
+# Delete an uploaded attachment (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+file_id=$(blog_param file_id)
+record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
+  blog_json_error "File not found" "not_found"
+  exit 0
+fi
+
+if ! blog_file_delete "$file_id"; then
+  blog_json_error "Failed to delete file" "delete_failed"
+  exit 0
+fi
+
+printf '{"success":true,"file_id":"%s"}\n' "$(blog_json_escape "$file_id")"

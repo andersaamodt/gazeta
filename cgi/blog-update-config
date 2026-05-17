@@ -43,6 +43,8 @@ plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
 plugin_btcpay=$(blog_param plugin_btcpay)
 plugin_video_chat=$(blog_param plugin_video_chat)
+origin_enabled_platforms=$(blog_param origin_enabled_platforms)
+origin_default_platforms=$(blog_param origin_default_platforms)
 
 write_nostr_lines_file() {
   target_file=$1
@@ -188,6 +190,22 @@ set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
 set_plugin_flag "btcpay" "$plugin_btcpay"
 set_plugin_flag "video_chat" "$plugin_video_chat"
+
+case "$BLOG_REQUEST_BODY" in
+  *origin_enabled_platforms=*)
+    available_json=$(blog_origin_platforms_json)
+    normalized_json=$(blog_origin_normalize_platforms_json "$origin_enabled_platforms" "$available_json")
+    config-set "$blog_site_conf" origin_enabled_platforms "$normalized_json"
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *origin_default_platforms=*)
+    enabled_json=$(blog_origin_enabled_platforms_json)
+    normalized_json=$(blog_origin_normalize_platforms_json "$origin_default_platforms" "$enabled_json")
+    config-set "$blog_site_conf" origin_default_platforms "$normalized_json"
+    ;;
+esac
 
 nostr_support_raw=$(blog_plugin_raw_enabled "nostr_support")
 if [ "$nostr_support_raw" != "true" ]; then

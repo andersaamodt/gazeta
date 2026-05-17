@@ -73,6 +73,7 @@
     readRowMenuOpenUid: '',
     viewModeOverride: '',
     createProductBusyUid: '',
+    tabNavigationUntil: 0,
     undoStack: [],
     redoStack: [],
     historyCellEditKey: '',
@@ -292,6 +293,9 @@
     cachedPayload.validation.errors = [];
     cachedPayload.validation.warnings = [];
     cachedPayload.validation.can_publish = true;
+    if (!cachedPayload.is_admin && hasLikelyAuthenticatedSession()) {
+      cachedPayload.is_admin = true;
+    }
     state.payload = cachedPayload;
     state.draft = readEditableStateFromPayload();
     state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
@@ -359,6 +363,11 @@
     } catch (_err) {
       return { session_token: '', csrf_token: '' };
     }
+  }
+
+  function hasLikelyAuthenticatedSession() {
+    var auth = getAuthPayload();
+    return !!(auth && auth.session_token && auth.csrf_token);
   }
 
   function ensureNostrPublishDialog() {
@@ -1759,10 +1768,54 @@
     }
   }
 
-  function addEntry(prefillYear) {
+  function firstEntryInsertIndex() {
+    if (!Array.isArray(state.draft && state.draft.elements)) {
+      return 0;
+    }
+    for (var i = 0; i < state.draft.elements.length; i += 1) {
+      if (isEntryType(String(state.draft.elements[i] && state.draft.elements[i].type || 'entry'))) {
+        return i;
+      }
+    }
+    return state.draft.elements.length;
+  }
+
+  function endEntryInsertIndex() {
+    if (!Array.isArray(state.draft && state.draft.elements)) {
+      return 0;
+    }
+    for (var i = state.draft.elements.length - 1; i >= 0; i -= 1) {
+      if (isEntryType(String(state.draft.elements[i] && state.draft.elements[i].type || 'entry'))) {
+        return i + 1;
+      }
+    }
+    return state.draft.elements.length;
+  }
+
+  function endOfYearSectionInsertIndex(sectionLabel) {
+    if (!Array.isArray(state.draft && state.draft.elements)) {
+      return 0;
+    }
+    var target = String(sectionLabel || '').trim() || 'Unknown';
+    var lastMatch = -1;
+    for (var i = 0; i < state.draft.elements.length; i += 1) {
+      var el = state.draft.elements[i];
+      if (!isEntryType(String(el && el.type || 'entry'))) {
+        continue;
+      }
+      var label = yearFromDate(el && el.date || el && el.year || '') || 'Unknown';
+      if (label === target) {
+        lastMatch = i;
+      }
+    }
+    return lastMatch >= 0 ? (lastMatch + 1) : endEntryInsertIndex();
+  }
+
+  function addEntry(prefillYear, options) {
     if (!isAdmin()) {
       return '';
     }
+    var opts = options || {};
     var defaultMarker = slug === 'list' ? 'list' : '';
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
@@ -1775,7 +1828,11 @@
       depth: 0,
       markdown: ''
     };
-    state.draft.elements.push(entry);
+    var insertIndex = Number(opts.insertIndex);
+    if (!isFinite(insertIndex) || insertIndex < 0 || insertIndex > state.draft.elements.length) {
+      insertIndex = state.draft.elements.length;
+    }
+    state.draft.elements.splice(insertIndex, 0, entry);
     state.activeEntryUid = entry._uid;
     state.activeCellField = 'markdown';
     state.pendingNewEntry = {
@@ -1852,6 +1909,37 @@
       return true;
     }
     return !isPendingNewEntryUnedited();
+  }
+
+  function isEntryRowVisibleInInlineEditor(uid) {
+    var targetUid = String(uid || '').trim();
+    if (!targetUid || !els.content) {
+      return false;
+    }
+    var rows = els.content.querySelectorAll('.list-entry-inline[data-element-uid]');
+    for (var i = 0; i < rows.length; i += 1) {
+      var rowUid = String(rows[i].getAttribute('data-element-uid') || '');
+      if (rowUid === targetUid) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function ensureEntryVisibleAfterAdd(uid, beforeRects) {
+    var targetUid = String(uid || '').trim();
+    if (!targetUid) {
+      return;
+    }
+    if (isEntryRowVisibleInInlineEditor(targetUid)) {
+      focusInlineField(targetUid, 'markdown');
+      return;
+    }
+    // If marker filters hide the just-created row, clear them so add never feels broken.
+    state.markerFilterInclude = [];
+    state.markerFilterExclude = [];
+    renderListWithFlip(beforeRects);
+    focusInlineField(targetUid, 'markdown');
   }
 
   function isSubstantiveEntry(entry) {
@@ -2363,7 +2451,7 @@
     html += '<div class="list-inline-cell list-inline-marker"><input type="text" data-inline-field="marker" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markerText) + '" placeholder="Marker..."></div>';
     if (showImageField) {
       if (active && activeField === 'image_url') {
-        html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/cgi/blog-file?... or https://..."></div>';
+        html += '<div class="list-inline-cell list-inline-image-url"><input type="text" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(imageUrl) + '" placeholder="/files/<id>/<name> or https://..."></div>';
       } else {
         html += '<div class="list-inline-cell list-inline-image-url"><button type="button" class="list-inline-open list-inline-image-button" data-list-inline-action="edit" data-inline-field="image_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (imageUrl ? escapeHtml(imageUrl) : placeholderHtml('Add image URL...')) + '</span></button></div>';
       }
@@ -2455,7 +2543,7 @@
     if (isProductGalleryPage()) {
       html += '<span class="list-inline-head-image">Image URL</span>';
     }
-    html += '<span class="list-inline-head-actions"><button type="button" class="list-inline-head-add" data-list-action="add" title="' + escapeHtml(addTitle) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button></span>';
+    html += '<span class="list-inline-head-actions"><button type="button" class="list-inline-head-add" data-list-action="add" title="' + escapeHtml(addTitle) + '">+</button></span>';
     html += '</div>';
 
     if (isGrouped) {
@@ -2474,7 +2562,7 @@
           html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
           if (state.draft.group_by === 'year') {
             var prefillYear = (/^\d{4}$/.test(String(label || '')) ? String(label || '') : '');
-            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-prefill-year="' + escapeHtml(prefillYear) + '" title="' + escapeHtml(pendingUnedited ? 'Edit the new entry before adding another' : ('Add entry for ' + (prefillYear || 'this year section'))) + '"' + (pendingUnedited ? ' disabled aria-disabled="true"' : '') + '>+</button>';
+            html += '<button type="button" class="list-year-add" data-list-action="add-year" data-prefill-year="' + escapeHtml(prefillYear) + '" data-section-label="' + escapeHtml(String(label || 'Unknown')) + '" title="' + escapeHtml(pendingUnedited ? 'Edit the new entry before adding another' : ('Add entry for ' + (prefillYear || 'this year section'))) + '">+</button>';
           }
           html += '</div>';
           html += '<ul class="list-entries list-entries-inline">';
@@ -2491,6 +2579,7 @@
       });
       html += '</ul>';
     }
+    html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
     html += renderAfterContentEditor();
     return html;
   }
@@ -2943,25 +3032,85 @@
         var action = listAction.getAttribute('data-list-action');
         if (action === 'add') {
           if (isPendingNewEntryUnedited()) {
+            var pendingUid = String(state.pendingNewEntry && state.pendingNewEntry.uid || '');
+            if (pendingUid) {
+              if (isEntryRowVisibleInInlineEditor(pendingUid)) {
+                focusInlineField(pendingUid, 'markdown');
+                return;
+              }
+              var pendingIdx = findElementIndex(pendingUid);
+              if (pendingIdx >= 0) {
+                state.draft.elements.splice(pendingIdx, 1);
+              }
+            }
+            state.pendingNewEntry = null;
+            renderList();
+            renderAdmin();
+          }
+          if (isPendingNewEntryUnedited()) {
             return;
           }
           pushUndoHistorySnapshot();
           var before = captureEntryRects();
-          var newUid = addEntry('');
+          var newUid = addEntry('', { insertIndex: firstEntryInsertIndex() });
           renderListWithFlip(before);
-          focusInlineField(newUid, 'markdown');
+          ensureEntryVisibleAfterAdd(newUid, before);
           return;
         }
         if (action === 'add-year') {
+          if (isPendingNewEntryUnedited()) {
+            var yearPendingUid = String(state.pendingNewEntry && state.pendingNewEntry.uid || '');
+            if (yearPendingUid) {
+              if (isEntryRowVisibleInInlineEditor(yearPendingUid)) {
+                focusInlineField(yearPendingUid, 'markdown');
+                return;
+              }
+              var yearPendingIdx = findElementIndex(yearPendingUid);
+              if (yearPendingIdx >= 0) {
+                state.draft.elements.splice(yearPendingIdx, 1);
+              }
+            }
+            state.pendingNewEntry = null;
+            renderList();
+            renderAdmin();
+          }
           if (isPendingNewEntryUnedited()) {
             return;
           }
           pushUndoHistorySnapshot();
           var prefill = String(listAction.getAttribute('data-prefill-year') || '').trim();
+          var sectionLabel = String(listAction.getAttribute('data-section-label') || '').trim();
           var beforeYear = captureEntryRects();
-          var yearUid = addEntry(prefill);
+          var yearUid = addEntry(prefill, { insertIndex: endOfYearSectionInsertIndex(sectionLabel || prefill || 'Unknown') });
           renderListWithFlip(beforeYear);
-          focusInlineField(yearUid, 'markdown');
+          ensureEntryVisibleAfterAdd(yearUid, beforeYear);
+          return;
+        }
+        if (action === 'add-end') {
+          if (isPendingNewEntryUnedited()) {
+            var endPendingUid = String(state.pendingNewEntry && state.pendingNewEntry.uid || '');
+            if (endPendingUid) {
+              if (isEntryRowVisibleInInlineEditor(endPendingUid)) {
+                focusInlineField(endPendingUid, 'markdown');
+                return;
+              }
+              var endPendingIdx = findElementIndex(endPendingUid);
+              if (endPendingIdx >= 0) {
+                state.draft.elements.splice(endPendingIdx, 1);
+              }
+            }
+            state.pendingNewEntry = null;
+            renderList();
+            renderAdmin();
+          }
+          if (isPendingNewEntryUnedited()) {
+            return;
+          }
+          pushUndoHistorySnapshot();
+          var beforeEnd = captureEntryRects();
+          var endUid = addEntry('', { insertIndex: endEntryInsertIndex() });
+          renderListWithFlip(beforeEnd);
+          ensureEntryVisibleAfterAdd(endUid, beforeEnd);
           return;
         }
       }
@@ -3468,6 +3617,9 @@
         return;
       }
       setTimeout(function () {
+        if (Date.now() < Number(state.tabNavigationUntil || 0)) {
+          return;
+        }
         var activeEl = document.activeElement;
         if (!(activeEl instanceof HTMLElement)) {
           closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
@@ -3606,6 +3758,7 @@
       }
 
       event.preventDefault();
+      state.tabNavigationUntil = Date.now() + 320;
       state.activeEntryUid = nextUid;
       state.activeCellField = nextField;
       renderList();

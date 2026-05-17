@@ -42,7 +42,7 @@ end=$(( start + posts_per_page - 1 ))
 
 printf '<div class="post-list">\n'
 if [ "$total_posts" -eq 0 ]; then
-  printf '<p>No posts published yet.</p>\n'
+  printf '<p>No posts to show yet.</p>\n'
 else
   jq -r \
     --argjson start_index $((start - 1)) \

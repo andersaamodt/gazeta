@@ -23,7 +23,12 @@ const SIMPLEX_BINARY = process.env.SECURE_CHAT_SIMPLEX_BINARY || 'simplex-chat';
 const SIMPLEX_WS_PORT = Number(process.env.SECURE_CHAT_SIMPLEX_WS_PORT || 0);
 const SIMPLEX_NATIVE_MODULE_ROOT = process.env.SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT || '';
 const SITE_TITLE = String(process.env.SECURE_CHAT_SITE_TITLE || 'Secure Chat');
+const BROWSER_OWNER_CONTACT_LINK = String(process.env.SECURE_CHAT_BROWSER_OWNER_CONTACT_LINK || '').trim();
 const MAX_UPLOAD_BYTES = Number(process.env.SECURE_CHAT_MAX_UPLOAD_BYTES || 25 * 1024 * 1024);
+const ATTACHMENT_MARKER = 'simplex-web-file:v1:';
+const ATTACHMENT_CHUNK_MARKER = 'simplex-web-file-chunk:v1:';
+const LEGACY_SECURE_CHAT_IDENTITY_MARKER = 'simplex-web-identity:v1:';
+const MAX_ATTACHMENT_DATA_URL_LENGTH = Number(process.env.SECURE_CHAT_MAX_ATTACHMENT_DATA_URL_LENGTH || 1200000);
 const MESSAGE_CACHE_LIMIT = 500;
 const COMMAND_TIMEOUT_MS = Number(process.env.SECURE_CHAT_COMMAND_TIMEOUT_MS || 90000);
 const PROVISION_TIMEOUT_MS = Number(process.env.SECURE_CHAT_PROVISION_TIMEOUT_MS || 90000);
@@ -31,6 +36,8 @@ const RECONCILE_CHAT_ITEM_LIMIT = Number(process.env.SECURE_CHAT_RECONCILE_CHAT_
 const RECONCILE_MIN_INTERVAL_MS = Number(process.env.SECURE_CHAT_RECONCILE_MIN_INTERVAL_MS || 1500);
 const OWL_EXPORT_RECONCILE_TIMEOUT_MS = Number(process.env.SECURE_CHAT_OWL_EXPORT_RECONCILE_TIMEOUT_MS || 5000);
 const SERVICE_LOG_PATH = path.join(path.dirname(SOCKET_PATH || '/tmp/service.sock'), 'service.log');
+const OWL_SEND_RECEIPT_LIMIT = 1000;
+const OWL_SEND_RECEIPT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 if (!STORE_ROOT || !SOCKET_PATH || !UPLOADS_DIR || !DOWNLOADS_DIR || !SIMPLEX_WS_PORT) {
   process.stderr.write('Missing Secure Chat service environment.\n');
@@ -44,8 +51,10 @@ if (!WebSocketImpl) {
 const CONTACTS_DIR = path.join(STORE_ROOT, 'contacts');
 const MESSAGES_DIR = path.join(STORE_ROOT, 'messages');
 const META_DIR = path.join(STORE_ROOT, 'meta');
+const OWNER_DIRECT_MESSAGES_FILE = path.join(STORE_ROOT, 'owner-direct-messages.json');
+const OWL_SEND_RECEIPTS_FILE = path.join(STORE_ROOT, 'owl-send-receipts.json');
 
-for (const dir of [STORE_ROOT, CONTACTS_DIR, MESSAGES_DIR, META_DIR, path.dirname(SOCKET_PATH), UPLOADS_DIR, DOWNLOADS_DIR]) {
+for (const dir of [STORE_ROOT, CONTACTS_DIR, MESSAGES_DIR, META_DIR, path.dirname(SOCKET_PATH), UPLOADS_DIR, DOWNLOADS_DIR, path.join(STORE_ROOT, 'simplex-tmp')]) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -170,7 +179,9 @@ function normalizeContactRow(row) {
     updated_at: row.updated_at || '',
     deactivated_at: row.deactivated_at || '',
     last_provisioned_at: row.last_provisioned_at || '',
-    last_error: row.last_error || ''
+    last_error: row.last_error || '',
+    bridge_display_name: row.bridge_display_name == null ? '' : String(row.bridge_display_name),
+    bridge_full_name: row.bridge_full_name == null ? '' : String(row.bridge_full_name)
   };
 }
 
@@ -200,7 +211,36 @@ function normalizeMessageRow(row) {
     attachment_name: row.attachment_name == null ? '' : String(row.attachment_name),
     attachment_mime: row.attachment_mime == null ? '' : String(row.attachment_mime),
     attachment_size: row.attachment_size == null || row.attachment_size === '' ? null : Number(row.attachment_size),
+    attachment_path: row.attachment_path == null ? '' : String(row.attachment_path),
     upload_id: row.upload_id == null ? '' : String(row.upload_id),
+    error_code: row.error_code == null ? '' : String(row.error_code),
+    error_detail: row.error_detail == null ? '' : String(row.error_detail)
+  };
+}
+
+function normalizeOwnerDirectMessageRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  const seq = Number(row.seq);
+  if (!Number.isFinite(seq) || seq <= 0) return null;
+  const contactId = String(row.contact_id || '').trim();
+  const messageRef = String(row.message_ref || '').trim();
+  if (!contactId || !messageRef) return null;
+  return {
+    seq,
+    contact_id: contactId,
+    thread_id: String(row.thread_id || `secure-chat-contact-${contactId}`),
+    contact_name: sanitizeSimplexDisplayName(row.contact_name || '', `SimpleX ${contactId}`),
+    message_ref: messageRef,
+    message_kind: String(row.message_kind || 'text'),
+    direction: String(row.direction || 'incoming'),
+    delivery_status: String(row.delivery_status || 'received'),
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || '',
+    text: row.text == null ? '' : String(row.text),
+    attachment_name: row.attachment_name == null ? '' : String(row.attachment_name),
+    attachment_mime: row.attachment_mime == null ? '' : String(row.attachment_mime),
+    attachment_size: row.attachment_size == null || row.attachment_size === '' ? null : Number(row.attachment_size),
+    attachment_path: row.attachment_path == null ? '' : String(row.attachment_path),
     error_code: row.error_code == null ? '' : String(row.error_code),
     error_detail: row.error_detail == null ? '' : String(row.error_detail)
   };
@@ -304,6 +344,78 @@ function saveMessages(npub, rows) {
   return normalized;
 }
 
+function loadOwnerDirectMessages() {
+  const rows = readJsonFileSync(OWNER_DIRECT_MESSAGES_FILE, []);
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(normalizeOwnerDirectMessageRow)
+    .filter(Boolean)
+    .sort((a, b) => a.seq - b.seq);
+}
+
+function saveOwnerDirectMessages(rows) {
+  const normalized = (Array.isArray(rows) ? rows : [])
+    .map(normalizeOwnerDirectMessageRow)
+    .filter(Boolean)
+    .sort((a, b) => a.seq - b.seq);
+  writeJsonFileAtomicSync(OWNER_DIRECT_MESSAGES_FILE, normalized);
+  return normalized;
+}
+
+function normalizeOwlSendClientMessageId(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return raw
+    .replace(/[^A-Za-z0-9:._@+-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 200);
+}
+
+function loadOwlSendReceipts() {
+  const raw = readJsonFileSync(OWL_SEND_RECEIPTS_FILE, {});
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const cutoff = Date.now() - OWL_SEND_RECEIPT_TTL_MS;
+  const rows = [];
+  for (const [clientMessageId, receipt] of Object.entries(source)) {
+    const id = normalizeOwlSendClientMessageId(clientMessageId);
+    if (!id || !receipt || typeof receipt !== 'object') continue;
+    const createdAt = String(receipt.created_at || '');
+    const createdMs = Date.parse(createdAt);
+    if (Number.isFinite(createdMs) && createdMs < cutoff) continue;
+    rows.push([id, Object.assign({}, receipt, { client_message_id: id, created_at: createdAt || nowIso() })]);
+  }
+  rows.sort((a, b) => String(b[1].created_at || '').localeCompare(String(a[1].created_at || '')));
+  return Object.fromEntries(rows.slice(0, OWL_SEND_RECEIPT_LIMIT));
+}
+
+function saveOwlSendReceipts(receipts) {
+  const rows = Object.entries(receipts || {})
+    .map(([clientMessageId, receipt]) => [normalizeOwlSendClientMessageId(clientMessageId), receipt])
+    .filter(([clientMessageId, receipt]) => clientMessageId && receipt && typeof receipt === 'object')
+    .sort((a, b) => String(b[1].created_at || '').localeCompare(String(a[1].created_at || '')))
+    .slice(0, OWL_SEND_RECEIPT_LIMIT);
+  writeJsonFileAtomicSync(OWL_SEND_RECEIPTS_FILE, Object.fromEntries(rows));
+}
+
+function getOwlSendReceipt(clientMessageId) {
+  const id = normalizeOwlSendClientMessageId(clientMessageId);
+  if (!id) return null;
+  return loadOwlSendReceipts()[id] || null;
+}
+
+function recordOwlSendReceipt(clientMessageId, result) {
+  const id = normalizeOwlSendClientMessageId(clientMessageId);
+  if (!id) return null;
+  const receipts = loadOwlSendReceipts();
+  receipts[id] = {
+    client_message_id: id,
+    created_at: nowIso(),
+    result: result && typeof result === 'object' ? result : {}
+  };
+  saveOwlSendReceipts(receipts);
+  return receipts[id];
+}
+
 function nextMessageSeq() {
   const current = Number(readTextFileSync(metaFilePath('next_seq')).trim() || 0);
   const next = current > 0 ? current : 1;
@@ -373,7 +485,7 @@ const selectRecentMessagesStmt = {
 };
 
 const upsertContactStmt = {
-  run(npub, simplexContactId, bridgeUserId, bridgeContactId, status, createdAt, updatedAt, lastProvisionedAt) {
+  run(npub, simplexContactId, bridgeUserId, bridgeContactId, status, createdAt, updatedAt, lastProvisionedAt, bridgeDisplayName, bridgeFullName) {
     return saveContact({
       npub,
       simplex_contact_id: simplexContactId || '',
@@ -384,7 +496,9 @@ const upsertContactStmt = {
       updated_at: updatedAt || nowIso(),
       deactivated_at: '',
       last_provisioned_at: lastProvisionedAt || nowIso(),
-      last_error: ''
+      last_error: '',
+      bridge_display_name: bridgeDisplayName || '',
+      bridge_full_name: bridgeFullName || ''
     });
   }
 };
@@ -407,7 +521,26 @@ function sanitizeSimplexDisplayName(name, fallback) {
     .replace(/[^A-Za-z0-9 ._-]+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return value || fallback;
+  return (value || fallback).slice(0, 64);
+}
+
+function sessionDisplayNameFromBody(body) {
+  return sanitizeSimplexDisplayName(body && body.sessionDisplayName, '');
+}
+
+function bridgeProfileForSession(npub, sessionDisplayName) {
+  const short = String(npub || '').slice(0, 20);
+  const displayName = sanitizeSimplexDisplayName(sessionDisplayName, `nostr-${short}`);
+  return {
+    displayName,
+    fullName: displayName || `Nostr Visitor ${short}`
+  };
+}
+
+function mappingBridgeDisplayMatches(mapping, sessionDisplayName) {
+  const wanted = sanitizeSimplexDisplayName(sessionDisplayName, '');
+  if (!wanted) return true;
+  return String(mapping && mapping.bridge_display_name || '') === wanted;
 }
 
 function truncateForLog(value, maxLength) {
@@ -420,7 +553,16 @@ function chatErrorDetail(value) {
   const chatError = value.chatError ||
     (value.response && value.response.chatError) ||
     (value.type === 'chatCmdError' ? value.chatError : null);
-  if (!chatError || typeof chatError !== 'object') return '';
+  if (!chatError || typeof chatError !== 'object') {
+    if (value.response && typeof value.response === 'object') {
+      try {
+        return truncateForLog(JSON.stringify(value.response), 1000);
+      } catch (_err) {
+        return truncateForLog(String(value.response.type || 'chatResponse'), 1000);
+      }
+    }
+    return '';
+  }
   try {
     return truncateForLog(JSON.stringify(chatError), 1000);
   } catch (_err) {
@@ -468,14 +610,25 @@ function contactRowToJson(row) {
     updated_at: row.updated_at || '',
     deactivated_at: row.deactivated_at || '',
     last_provisioned_at: row.last_provisioned_at || '',
-    last_error: row.last_error || ''
+    last_error: row.last_error || '',
+    bridge_display_name: row.bridge_display_name == null ? '' : String(row.bridge_display_name),
+    bridge_full_name: row.bridge_full_name == null ? '' : String(row.bridge_full_name)
   };
 }
 
 function mapMessageRow(row) {
   const extra = recentMessageText.get(Number(row.seq)) || {};
-  const text = extra.text || row.text || '';
-  let attachmentName = row.attachment_name || '';
+  let text = extra.text || row.text || '';
+  const parsedAttachment = parseAttachmentMarker(text);
+  if (parsedAttachment) {
+    text = parsedAttachment.text;
+  }
+  let attachmentName = row.attachment_name || (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.name : '');
+  const attachmentMime = row.attachment_mime || (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.mime : '') || mimeFromName(attachmentName);
+  const attachmentSize = row.attachment_size != null ? row.attachment_size : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
+  const attachmentDataUrl = parsedAttachment && parsedAttachment.attachment
+    ? parsedAttachment.attachment.data_url
+    : dataUrlFromAttachmentPath(row.attachment_path, attachmentMime, attachmentSize);
   if (
     String(row.message_kind || '') === 'file' &&
     attachmentName &&
@@ -496,13 +649,126 @@ function mapMessageRow(row) {
     text,
     attachment: attachmentName ? {
       name: attachmentName,
-      mime: row.attachment_mime || '',
-      size: Number(row.attachment_size || 0),
+      mime: attachmentMime || '',
+      size: Number(attachmentSize || 0),
+      data_url: attachmentDataUrl,
       upload_id: row.upload_id || ''
     } : null,
     error_code: row.error_code || '',
     error_detail: row.error_detail || ''
   };
+}
+
+function parseAttachmentMarker(value) {
+  const text = String(value || '');
+  const idx = text.indexOf(ATTACHMENT_MARKER);
+  if (idx < 0) return null;
+  const marker = text.slice(idx + ATTACHMENT_MARKER.length).trim().split(/\s+/)[0] || '';
+  const parts = marker.split(':');
+  if (parts.length < 2) return null;
+  try {
+    const rawMeta = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = rawMeta + '='.repeat((4 - rawMeta.length % 4) % 4);
+    const meta = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+    const dataBase64 = String(parts[1] || '').replace(/[^A-Za-z0-9+/=]/g, '');
+    const mime = String(meta.mime || 'application/octet-stream');
+    const dataUrl = dataBase64 && dataBase64.length <= MAX_ATTACHMENT_DATA_URL_LENGTH
+      ? `data:${mime};base64,${dataBase64}`
+      : '';
+    return {
+      text: text.slice(0, idx).trimEnd(),
+      attachment: {
+        name: sanitizeName(meta.name || 'attachment.bin'),
+        mime,
+        size: Number(meta.size || 0) || 0,
+        data_url: dataUrl
+      }
+    };
+  } catch (_err) {
+    return null;
+  }
+}
+
+function stripLegacySecureChatIdentityMarker(value) {
+  const text = String(value || '');
+  const idx = text.indexOf(LEGACY_SECURE_CHAT_IDENTITY_MARKER);
+  if (idx < 0) return text;
+  const marker = text.slice(idx + LEGACY_SECURE_CHAT_IDENTITY_MARKER.length).trim().split(/\s+/)[0] || '';
+  return (text.slice(0, idx) + text.slice(idx + LEGACY_SECURE_CHAT_IDENTITY_MARKER.length + marker.length)).trim();
+}
+
+function parseBase64UrlJson(value) {
+  const raw = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
+  return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+}
+
+function encodeAttachmentMarkerText(text, meta, dataBase64) {
+  const metaText = Buffer.from(JSON.stringify(meta), 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+  return String(text || '').trimEnd() + '\n\n' + ATTACHMENT_MARKER + metaText + ':' + String(dataBase64 || '');
+}
+
+function parseAttachmentChunkMarker(value) {
+  const text = String(value || '');
+  const idx = text.indexOf(ATTACHMENT_CHUNK_MARKER);
+  if (idx < 0) return null;
+  const marker = text.slice(idx + ATTACHMENT_CHUNK_MARKER.length).trim().split(/\s+/)[0] || '';
+  const parts = marker.split(':');
+  if (parts.length < 4) return null;
+  try {
+    const meta = parseBase64UrlJson(parts[0]);
+    const index = Number(parts[1] || 0);
+    const total = Number(parts[2] || meta.total || 0);
+    const data = String(parts[3] || '').replace(/[^A-Za-z0-9+/=]/g, '');
+    if (!meta || !meta.id || !Number.isInteger(index) || !Number.isInteger(total) || index < 1 || total < 1 || index > total || !data) {
+      return null;
+    }
+    return {
+      text: text.slice(0, idx).trimEnd(),
+      meta,
+      index,
+      total,
+      data
+    };
+  } catch (_err) {
+    return null;
+  }
+}
+
+function mimeFromName(name) {
+  const value = String(name || '').toLowerCase();
+  if (/\.(apng)$/.test(value)) return 'image/apng';
+  if (/\.(avif)$/.test(value)) return 'image/avif';
+  if (/\.(gif)$/.test(value)) return 'image/gif';
+  if (/\.(jpe?g)$/.test(value)) return 'image/jpeg';
+  if (/\.(png)$/.test(value)) return 'image/png';
+  if (/\.(webp)$/.test(value)) return 'image/webp';
+  if (/\.(m4a)$/.test(value)) return 'audio/mp4';
+  if (/\.(mp3)$/.test(value)) return 'audio/mpeg';
+  if (/\.(ogg|oga)$/.test(value)) return 'audio/ogg';
+  if (/\.(wav)$/.test(value)) return 'audio/wav';
+  if (/\.(m4v|mp4)$/.test(value)) return 'video/mp4';
+  if (/\.(webm)$/.test(value)) return 'video/webm';
+  if (/\.(txt|md)$/.test(value)) return 'text/plain';
+  return '';
+}
+
+function dataUrlFromAttachmentPath(filePath, mime, size) {
+  const resolved = String(filePath || '');
+  const bytes = Number(size || 0);
+  if (!resolved || !bytes || bytes > MAX_ATTACHMENT_DATA_URL_LENGTH) return '';
+  try {
+    const stat = fs.statSync(resolved);
+    if (!stat.isFile() || stat.size > MAX_ATTACHMENT_DATA_URL_LENGTH) return '';
+    const mediaType = String(mime || mimeFromName(resolved) || 'application/octet-stream');
+    return `data:${mediaType};base64,${fs.readFileSync(resolved).toString('base64')}`;
+  } catch (_err) {
+    return '';
+  }
 }
 
 function mapOwlExportRow(mapping, row) {
@@ -514,7 +780,7 @@ function mapOwlExportRow(mapping, row) {
     id: `nostr-blog-secure-chat:${row.npub}:${row.seq}`,
     npub: String(row.npub || ''),
     thread_id: String(row.npub || ''),
-    contact_name: `Nostr ${String(row.npub || '').slice(0, 12)}`,
+    contact_name: String(mapping && mapping.bridge_display_name || '').trim() || `Nostr ${String(row.npub || '').slice(0, 12)}`,
     simplex_address: mapping && mapping.simplex_contact_id ? `secure-chat:${mapping.simplex_contact_id}` : '',
     body,
     subject: 'Website Secure Chat',
@@ -522,6 +788,49 @@ function mapOwlExportRow(mapping, row) {
     in_inbox: String(row.direction || '') === 'outgoing',
     source: 'nostr-blog-secure-chat'
   });
+}
+
+function mapOwnerDirectOwlExportRow(row) {
+  const cleanText = stripLegacySecureChatIdentityMarker(row.text || '');
+  const parsedAttachment = parseAttachmentMarker(cleanText);
+  const text = parsedAttachment ? parsedAttachment.text : String(cleanText || '');
+  const displayName = sanitizeSimplexDisplayName(row.contact_name || '', '');
+  const attachmentName = row.attachment_name || (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.name : '');
+  const attachmentMime = row.attachment_mime || (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.mime : '') || mimeFromName(attachmentName);
+  const attachmentSize = row.attachment_size != null ? row.attachment_size : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
+  const attachmentDataUrl = parsedAttachment && parsedAttachment.attachment
+    ? parsedAttachment.attachment.data_url
+    : dataUrlFromAttachmentPath(row.attachment_path, attachmentMime, attachmentSize);
+  const body = String(text || '').trim() || (attachmentName ? `Attachment: ${attachmentName}` : '');
+  return {
+    seq: Number(row.seq),
+    direction: String(row.direction || 'incoming'),
+    message_ref: String(row.message_ref || ''),
+    message_kind: attachmentName ? 'file' : String(row.message_kind || 'text'),
+    delivery_status: String(row.delivery_status || 'received'),
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || '',
+    text: String(text || ''),
+    attachment: attachmentName ? {
+      name: attachmentName,
+      mime: attachmentMime || '',
+      size: Number(attachmentSize || 0),
+      data_url: attachmentDataUrl,
+      upload_id: ''
+    } : null,
+    error_code: row.error_code || '',
+    error_detail: row.error_detail || '',
+    id: `simplex-owner-direct:${row.contact_id}:${row.message_ref}`,
+    npub: '',
+    thread_id: String(row.thread_id || `secure-chat-contact-${row.contact_id}`),
+    contact_name: displayName || `SimpleX ${row.contact_id}`,
+    simplex_address: `secure-chat:${row.contact_id}`,
+    body,
+    subject: 'Website Secure Chat',
+    from_self: String(row.direction || '') !== 'incoming',
+    in_inbox: String(row.direction || '') === 'incoming',
+    source: 'simplex-owner-direct'
+  };
 }
 
 function visibleMessageRow(row) {
@@ -648,6 +957,9 @@ function upsertMessageByRef(row, text, attachmentPreview) {
     if ((existing.attachment_size == null || existing.attachment_size === 0) && normalized.attachment_size != null) {
       existing.attachment_size = normalized.attachment_size;
     }
+    if (!existing.attachment_path && normalized.attachment_path) {
+      existing.attachment_path = normalized.attachment_path;
+    }
     existing.upload_id = normalized.upload_id || existing.upload_id || '';
     existing.error_code = normalized.error_code || existing.error_code || '';
     existing.error_detail = normalized.error_detail || existing.error_detail || '';
@@ -732,10 +1044,12 @@ const pendingCommands = new Map();
 const provisionLocks = new Map();
 const uploads = new Map();
 const recentReconciles = new Map();
+const owlSendClientLocks = new Map();
 
 const state = {
   startedAt: nowIso(),
   ownerUserId: metaGet('owner_user_id') || '',
+  ownerContactLink: BROWSER_OWNER_CONTACT_LINK || metaGet('owner_contact_link') || '',
   ws: null,
   wsConnected: false,
   commandSeq: 0,
@@ -760,6 +1074,20 @@ function withLock(fn) {
 function withTransportLock(fn) {
   const current = state.transportOperations.then(fn, fn);
   state.transportOperations = current.catch(() => undefined);
+  return current;
+}
+
+function withOwlSendClientLock(clientMessageId, fn) {
+  const id = normalizeOwlSendClientMessageId(clientMessageId);
+  if (!id) return fn();
+  const previous = owlSendClientLocks.get(id) || Promise.resolve();
+  const current = previous.catch(() => undefined).then(fn);
+  const stored = current.finally(() => {
+    if (owlSendClientLocks.get(id) === stored) {
+      owlSendClientLocks.delete(id);
+    }
+  });
+  owlSendClientLocks.set(id, stored);
   return current;
 }
 
@@ -831,6 +1159,16 @@ async function ensureNativeChatApi() {
   return chat;
 }
 
+async function ensureNativeChatStarted() {
+  const chat = await ensureNativeChatApi();
+  if (!chat.started) {
+    await chat.startChat();
+  }
+  state.transportStatus = 'connected';
+  state.transportError = '';
+  return chat;
+}
+
 function startSimplexChild() {
   if (nativeDriverAvailable()) {
     state.driverType = 'native';
@@ -853,6 +1191,13 @@ function startSimplexChild() {
     'error',
     '--log-file',
     SERVICE_LOG_PATH,
+    '--files-folder',
+    DOWNLOADS_DIR,
+    '--temp-folder',
+    path.join(STORE_ROOT, 'simplex-tmp'),
+    '--allow-instant-files',
+    '--auto-accept-files',
+    String(MAX_UPLOAD_BYTES),
     '-p',
     String(SIMPLEX_WS_PORT),
     '-d',
@@ -983,10 +1328,26 @@ function chatItemKind(chatItem) {
   return 'text';
 }
 
+function chatFileLocalPath(file) {
+  const source = file && file.fileSource && typeof file.fileSource === 'object' ? file.fileSource : {};
+  const status = file && file.fileStatus && typeof file.fileStatus === 'object' ? file.fileStatus : {};
+  return String(
+    (file && (file.filePath || file.file_path || file.path)) ||
+    source.filePath ||
+    source.file_path ||
+    status.filePath ||
+    status.file_path ||
+    status.path ||
+    ''
+  );
+}
+
 function deliveryStatusFromChatItem(chatItem) {
   const itemStatus = chatItem && chatItem.meta && chatItem.meta.itemStatus;
   if (!itemStatus || typeof itemStatus.type !== 'string') return 'queued';
   switch (itemStatus.type) {
+    case 'sndNew':
+      return 'sending';
     case 'sndRcvd':
       return 'delivered';
     case 'sndSent':
@@ -1032,21 +1393,28 @@ function handleChatItemEvent(user, aChatItem) {
 
   const chatItem = aChatItem.chatItem;
   const direction = chatItem.chatDir && chatItem.chatDir.type === 'directRcv' ? 'incoming' : 'outgoing';
-  const messageKind = chatItemKind(chatItem);
+  let messageKind = chatItemKind(chatItem);
   const deliveryStatus = deliveryStatusFromChatItem(chatItem);
   const createdAt = (chatItem.meta && (chatItem.meta.itemTs || chatItem.meta.createdAt)) || nowIso();
   const messageRef = chatItem.meta && chatItem.meta.itemId != null ? String(chatItem.meta.itemId) : '';
   const text = chatItemText(chatItem);
+  const parsedAttachment = parseAttachmentMarker(text);
+  const displayText = parsedAttachment ? parsedAttachment.text : text;
+  if (parsedAttachment) {
+    messageKind = 'file';
+  }
   let attachmentName = chatItem.file && chatItem.file.fileName ? String(chatItem.file.fileName) : '';
-  const attachmentMime = '';
-  const attachmentSize = chatItem.file && chatItem.file.fileSize != null ? Number(chatItem.file.fileSize) : null;
+  if (!attachmentName && parsedAttachment && parsedAttachment.attachment) attachmentName = parsedAttachment.attachment.name;
+  const attachmentMime = (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.mime : '') || mimeFromName(attachmentName);
+  const attachmentSize = chatItem.file && chatItem.file.fileSize != null ? Number(chatItem.file.fileSize) : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
+  const attachmentPath = chatFileLocalPath(chatItem.file);
   if (
     messageKind === 'file' &&
     attachmentName &&
     /^upl-[^-]+-/.test(attachmentName) &&
-    String(text || '').trim()
+    String(displayText || '').trim()
   ) {
-    attachmentName = String(text || '').trim();
+    attachmentName = String(displayText || '').trim();
   }
 
   upsertMessageByRef({
@@ -1063,6 +1431,7 @@ function handleChatItemEvent(user, aChatItem) {
     attachment_name: attachmentName,
     attachment_mime: attachmentMime,
     attachment_size: attachmentSize,
+    attachment_path: attachmentPath,
     upload_id: '',
     error_code: '',
     error_detail: ''
@@ -1376,13 +1745,7 @@ async function sendCommandAsUser(userId, cmd) {
 async function ensureChatStarted() {
   if (nativeDriverAvailable()) {
     try {
-      const chat = await ensureNativeChatApi();
-      if (!chat.started) {
-        await chat.startChat();
-        chat.started = true;
-      }
-      state.transportStatus = 'connected';
-      state.transportError = '';
+      await ensureNativeChatStarted();
       return;
     } catch (err) {
       disableNativeSimplexDriver(err);
@@ -1410,7 +1773,7 @@ async function ensureChatStarted() {
 
 async function listUsers() {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     return (await chat.apiListUsers()).map((item) => (item && item.user ? item.user : item)).filter(Boolean);
   }
   const resp = await sendCommand('/users');
@@ -1423,7 +1786,7 @@ async function listUsers() {
 
 async function showActiveUser() {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     return chat.apiGetActiveUser();
   }
   const resp = await sendCommand('/user');
@@ -1438,7 +1801,7 @@ async function showActiveUser() {
 
 async function setActiveUser(userId) {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     const user = await chat.apiSetActiveUser(Number(userId));
     state.activeUserId = String(user.userId);
     metaSet('last_active_user_id', state.activeUserId);
@@ -1459,7 +1822,7 @@ async function createUser(profile) {
     ? `/create bot ${displayName}`
     : `/create user ${displayName}`;
   const resp = nativeDriverAvailable()
-    ? await (await ensureNativeChatApi()).sendChatCmd(command)
+    ? await (await ensureNativeChatStarted()).sendChatCmd(command)
     : await sendCommand(command);
   if (resp.type !== 'activeUser' || !resp.user) {
     throw new Error(chatCommandErrorMessage(`Could not create user: ${resp.type || 'unknown'}`, resp));
@@ -1489,7 +1852,7 @@ function isMissingUserContactLinkError(resp) {
 
 async function enableOwnerAddress(userId) {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     if (String(state.activeUserId || '') !== String(userId)) {
       await setActiveUser(userId);
     }
@@ -1541,7 +1904,7 @@ async function recreateOwnerAddress(userId) {
   if (!nativeDriverAvailable()) {
     throw new Error('Owner address recreation requires native SimpleX API');
   }
-  const chat = await ensureNativeChatApi();
+  const chat = await ensureNativeChatStarted();
   if (String(state.activeUserId || '') !== String(userId)) {
     await setActiveUser(userId);
   }
@@ -1552,7 +1915,7 @@ async function recreateOwnerAddress(userId) {
     throw new Error('Could not recreate owner contact address');
   }
   await chat.apiSetAddressSettings(Number(userId), {
-    autoAccept: { acceptIncognito: true },
+    autoAccept: true,
     businessAddress: false
   });
   return address;
@@ -1635,24 +1998,24 @@ async function ensureOwnerUser() {
   return created;
 }
 
-async function ensureBridgeUser(npub) {
+async function ensureBridgeUser(npub, sessionDisplayName) {
   const row = selectContactByNpubStmt.get(npub);
   const users = await listUsers();
+  const profile = bridgeProfileForSession(npub, sessionDisplayName);
   if (row && row.bridge_user_id) {
     const existing = users.find((user) => String(user.userId) === String(row.bridge_user_id));
-    if (existing) {
+    if (existing && userDisplayName(existing) === profile.displayName) {
       return existing;
     }
   }
-  const short = npub.slice(0, 20);
-  const displayName = `nostr-${short}`;
+  const displayName = profile.displayName;
   const existingByName = users.find((user) => userDisplayName(user) === displayName);
   if (existingByName) {
     return existingByName;
   }
   const created = await createUser({
     displayName,
-    fullName: `Nostr Visitor ${short}`,
+    fullName: profile.fullName,
     shortDescr: 'Secure chat website bridge'
   }).catch((err) => {
     if (String(err && err.message || '').includes('userExists')) {
@@ -1666,7 +2029,7 @@ async function ensureBridgeUser(npub) {
 
 async function listContacts(userId) {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     if (String(state.activeUserId || '') !== String(userId)) {
       await setActiveUser(userId);
     }
@@ -1696,6 +2059,17 @@ function contactConnStatus(contact) {
 function contactReadyForSend(contact) {
   const status = contactConnStatus(contact);
   return status === 'ready' || status === 'sndReady';
+}
+
+function contactDisplayName(contact) {
+  const profile = contact && contact.profile ? contact.profile : {};
+  return sanitizeSimplexDisplayName(
+    contact && (contact.localDisplayName || contact.displayName) ||
+    profile.displayName ||
+    profile.fullName ||
+    '',
+    contact && contact.contactId != null ? `SimpleX ${contact.contactId}` : 'SimpleX Contact'
+  );
 }
 
 function findExistingProvisionedContacts(ownerContacts, bridgeContacts, ownerUser, bridgeUser) {
@@ -1734,7 +2108,7 @@ async function ownerAddressLink(ownerUserId, forceNew) {
     if (!connLink || (!connLink.connFullLink && !connLink.connShortLink)) {
       throw new Error('Could not load owner contact address');
     }
-    return connLink.connShortLink || connLink.connFullLink;
+    return connLink.connFullLink || connLink.connShortLink;
   }
   return createInvitation(ownerUserId);
 }
@@ -1752,7 +2126,7 @@ async function connectBridgeToInvitation(bridgeUserId, link) {
 
 async function connectBridgeToOwnerAddress(bridgeUserId, link) {
   if (nativeDriverAvailable()) {
-    const chat = await ensureNativeChatApi();
+    const chat = await ensureNativeChatStarted();
     const [plan, preparedLink] = await chat.apiConnectPlan(Number(bridgeUserId), String(link));
     if (!plan || !preparedLink) {
       throw new Error('Could not prepare owner contact address');
@@ -1782,19 +2156,35 @@ async function waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore
   throw new Error('Timed out waiting for SimpleX contacts to provision');
 }
 
-async function provisionContact(npub) {
-  const cached = contactRowToJson(selectContactByNpubStmt.get(npub));
-  if (cached && cached.status === 'active' && cached.simplex_contact_id && cached.bridge_user_id && cached.bridge_contact_id) {
+async function provisionContact(npub, sessionDisplayName) {
+  const profile = bridgeProfileForSession(npub, sessionDisplayName);
+  let cached = contactRowToJson(selectContactByNpubStmt.get(npub));
+  if (cached && cached.status === 'active' && cached.simplex_contact_id && cached.bridge_user_id && cached.bridge_contact_id && mappingBridgeDisplayMatches(cached, sessionDisplayName)) {
     return cached;
+  }
+  if (cached && cached.status === 'active' && !mappingBridgeDisplayMatches(cached, sessionDisplayName)) {
+    logEvent('provision_recreate_for_display_name', {
+      npub,
+      previous_bridge_display_name: cached.bridge_display_name || '',
+      next_bridge_display_name: profile.displayName
+    });
+    deleteContact(npub);
+    cached = null;
   }
   if (provisionLocks.has(npub)) {
     return provisionLocks.get(npub);
   }
   const promise = withLock(async () => {
+    logEvent('provision_start', { npub, bridge_display_name: profile.displayName });
     const owner = await ensureOwnerUser();
     const ownerUserId = String(owner.userId);
-    const bridgeUser = await ensureBridgeUser(npub);
+    const bridgeUser = await ensureBridgeUser(npub, sessionDisplayName);
     let bridgeUserId = String(bridgeUser.userId);
+    logEvent('provision_users_ready', {
+      npub,
+      owner_user_id: ownerUserId,
+      bridge_user_id: bridgeUserId
+    });
 
     let ownerBefore = await listContacts(ownerUserId);
     let bridgeBefore = await listContacts(bridgeUserId);
@@ -1808,36 +2198,48 @@ async function provisionContact(npub) {
         'active',
         nowIso(),
         nowIso(),
-        nowIso()
+        nowIso(),
+        profile.displayName,
+        profile.fullName
       );
+      logEvent('provision_reused_contacts', {
+        npub,
+        owner_contact_id: existingIds.ownerContactId,
+        bridge_contact_id: existingIds.bridgeContactId,
+        bridge_display_name: profile.displayName
+      });
       return contactRowToJson(selectContactByNpubStmt.get(npub));
     }
     let link;
     try {
+      logEvent('provision_owner_address', { npub, owner_user_id: ownerUserId });
       link = await ownerAddressLink(ownerUserId, false);
     } catch (err) {
       if (!nativeDriverAvailable()) throw err;
-      logEvent('provision_retry_recreate_owner_address', { npub });
+      logEvent('provision_retry_recreate_owner_address', { npub, error: errorDetail(err) });
       link = await ownerAddressLink(ownerUserId, true);
     }
     await setActiveUser(bridgeUserId);
     try {
+      logEvent('provision_connect_bridge', { npub, bridge_user_id: bridgeUserId });
       await connectBridgeToOwnerAddress(bridgeUserId, link);
     } catch (err) {
       if (!nativeDriverAvailable()) throw err;
-      logEvent('provision_retry_recreate_owner_address', { npub });
+      logEvent('provision_retry_recreate_owner_address', { npub, error: errorDetail(err) });
       link = await ownerAddressLink(ownerUserId, true);
       const retryBridge = await createUser({
-        displayName: `nostr-${npub.slice(0, 20)}-retry-${Date.now().toString(36)}`,
-        fullName: `Nostr Visitor ${npub.slice(0, 20)}`,
+        displayName: `${profile.displayName.slice(0, 48)}-${Date.now().toString(36)}`,
+        fullName: profile.fullName,
         shortDescr: 'Secure chat website bridge'
       });
       bridgeUserId = String(retryBridge.userId);
       ownerBefore = await listContacts(ownerUserId);
       bridgeBefore = await listContacts(bridgeUserId);
       await setActiveUser(bridgeUserId);
+      logEvent('provision_connect_retry_bridge', { npub, bridge_user_id: bridgeUserId });
       await connectBridgeToOwnerAddress(bridgeUserId, link);
     }
+    logEvent('provision_wait_contacts', { npub, owner_user_id: ownerUserId, bridge_user_id: bridgeUserId });
     const ids = await waitForProvisionedContacts(ownerUserId, bridgeUserId, ownerBefore, bridgeBefore);
     await setActiveUser(ownerUserId);
 
@@ -1849,11 +2251,20 @@ async function provisionContact(npub) {
       'active',
       nowIso(),
       nowIso(),
-      nowIso()
+      nowIso(),
+      profile.displayName,
+      profile.fullName
     );
+    logEvent('provision_active', {
+      npub,
+      owner_contact_id: ids.ownerContactId,
+      bridge_user_id: bridgeUserId,
+      bridge_contact_id: ids.bridgeContactId,
+      bridge_display_name: profile.displayName
+    });
     return contactRowToJson(selectContactByNpubStmt.get(npub));
   }).catch((err) => {
-    updateContactStatusStmt.run('error', nowIso(), null, err.message, npub);
+    updateContactStatusStmt.run('error', nowIso(), null, errorDetail(err), npub);
     throw err;
   }).finally(() => {
     provisionLocks.delete(npub);
@@ -1862,9 +2273,9 @@ async function provisionContact(npub) {
   return promise;
 }
 
-async function ensureMappingForPubkey(pubkeyHex) {
+async function ensureMappingForPubkey(pubkeyHex, sessionDisplayName) {
   const npub = pubkeyToNpub(pubkeyHex);
-  const mapping = await provisionContact(npub);
+  const mapping = await provisionContact(npub, sessionDisplayName);
   return { npub, mapping };
 }
 
@@ -1872,20 +2283,24 @@ async function sendComposedMessages(activeUserId, chatRef, composedMessages) {
   return withTransportLock(async () => {
     if (nativeDriverAvailable()) {
       await setActiveUser(activeUserId);
-      const chat = await ensureNativeChatApi();
-      const resp = await chat.sendChatCmd(`/_send ${chatRef} json ${JSON.stringify(composedMessages)}`).catch((err) => {
+      const chat = await ensureNativeChatStarted();
+      const resp = await chat.apiSendMessages(simplexChatRef(chatRef), composedMessages).catch((err) => {
         throw new Error(chatCommandErrorMessage('SimpleX send failed', err));
       });
+      if (!Array.isArray(resp)) {
+        throw new Error(chatCommandErrorMessage('Unexpected send response', resp));
+      }
+      return resp;
+    }
+    const chatItems = [];
+    for (const composedMessage of composedMessages) {
+      const resp = await sendCommandAsUser(activeUserId, `/_send ${chatRef} json ${JSON.stringify([composedMessage])}`);
       if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
         throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
       }
-      return resp.chatItems;
+      chatItems.push(...resp.chatItems);
     }
-    const resp = await sendCommandAsUser(activeUserId, `/_send ${chatRef} json ${JSON.stringify(composedMessages)}`);
-    if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
-      throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
-    }
-    return resp.chatItems;
+    return chatItems;
   });
 }
 
@@ -1895,9 +2310,15 @@ async function sendPlainTextMessage(activeUserId, chatRef, text) {
     const resp = nativeDriverAvailable()
       ? await (async () => {
         await setActiveUser(activeUserId);
-        return (await ensureNativeChatApi()).sendChatCmd(cmd);
+        return (await ensureNativeChatStarted()).apiSendTextMessage(simplexChatRef(chatRef), String(text || ''));
       })()
       : await sendPlainTextMessageViaChild(activeUserId, chatRef, text);
+    if (nativeDriverAvailable()) {
+      if (!Array.isArray(resp)) {
+        throw new Error(chatCommandErrorMessage('Unexpected send response', resp));
+      }
+      return resp;
+    }
     if (resp.type !== 'newChatItems' || !Array.isArray(resp.chatItems)) {
       throw new Error(chatCommandErrorMessage(`Unexpected send response: ${resp.type || 'unknown'}`, resp));
     }
@@ -1905,13 +2326,22 @@ async function sendPlainTextMessage(activeUserId, chatRef, text) {
   });
 }
 
-async function freshMappingAfterSendFailure(npub, reason, pubkeyHex) {
+function simplexChatRef(chatRef) {
+  const value = String(chatRef || '').trim();
+  const match = value.match(/^@(\d+)$/);
+  if (!match) {
+    throw new Error(`Unsupported SimpleX chat reference: ${value || 'empty'}`);
+  }
+  return { chatType: 'direct', chatId: Number(match[1]) };
+}
+
+async function freshMappingAfterSendFailure(npub, reason, pubkeyHex, sessionDisplayName) {
   logEvent('send_retry_reprovision_mapping', {
     npub,
     error: truncateForLog(reason || 'send failed', 1000)
   });
   deleteContact(npub);
-  return (await ensureMappingForPubkey(pubkeyHex)).mapping;
+  return (await ensureMappingForPubkey(pubkeyHex, sessionDisplayName)).mapping;
 }
 
 function shouldReconcileNpub(npub) {
@@ -1924,8 +2354,13 @@ function shouldReconcileNpub(npub) {
 
 function wrapApiChatItems(resp) {
   if (!resp || resp.type !== 'apiChat' || !resp.chat) return [];
-  const chatInfo = resp.chat.chatInfo || null;
-  const chatItems = Array.isArray(resp.chat.chatItems) ? resp.chat.chatItems : [];
+  return wrapApiChat(resp.chat);
+}
+
+function wrapApiChat(chat) {
+  if (!chat || typeof chat !== 'object') return [];
+  const chatInfo = chat.chatInfo || null;
+  const chatItems = Array.isArray(chat.chatItems) ? chat.chatItems : [];
   if (!chatInfo) return [];
   return chatItems.map((chatItem) => ({ chatInfo, chatItem }));
 }
@@ -1935,8 +2370,8 @@ async function fetchRecentDirectChatItems(activeUserId, bridgeContactId, count) 
     const cmd = `/_get chat @${bridgeContactId} count=${count}`;
     if (nativeDriverAvailable()) {
       await setActiveUser(activeUserId);
-      const chat = await ensureNativeChatApi();
-      return wrapApiChatItems(await chat.sendChatCmd(cmd));
+      const chat = await ensureNativeChatStarted();
+      return wrapApiChat(await chat.apiGetChat('direct', Number(bridgeContactId), Number(count)));
     }
     const resp = await sendCommandAsUser(activeUserId, cmd);
     if (resp.type === 'apiChat') return wrapApiChatItems(resp);
@@ -1989,6 +2424,177 @@ async function reconcileAllMappingMessagesForOwlExport() {
   }
 }
 
+function ownerDirectRowFromChatItem(contact, aChatItem) {
+  if (!contact || !aChatItem || !aChatItem.chatItem) return null;
+  const chatItem = aChatItem.chatItem;
+  const messageRef = chatItem.meta && chatItem.meta.itemId != null ? String(chatItem.meta.itemId) : '';
+  if (!messageRef) return null;
+  const contactId = String(contact.contactId || '');
+  let messageKind = chatItemKind(chatItem);
+  const text = stripLegacySecureChatIdentityMarker(chatItemText(chatItem));
+  const parsedAttachment = parseAttachmentMarker(text);
+  const displayText = parsedAttachment ? parsedAttachment.text : text;
+  if (parsedAttachment) {
+    messageKind = 'file';
+  }
+  let attachmentName = chatItem.file && chatItem.file.fileName ? String(chatItem.file.fileName) : '';
+  if (!attachmentName && parsedAttachment && parsedAttachment.attachment) attachmentName = parsedAttachment.attachment.name;
+  const attachmentSize = chatItem.file && chatItem.file.fileSize != null ? Number(chatItem.file.fileSize) : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
+  const attachmentMime = (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.mime : '') || mimeFromName(attachmentName);
+  const attachmentPath = chatFileLocalPath(chatItem.file);
+  if (
+    messageKind === 'file' &&
+    attachmentName &&
+    /^upl-[^-]+-/.test(attachmentName) &&
+    String(displayText || '').trim()
+  ) {
+    attachmentName = String(displayText || '').trim();
+  }
+  return {
+    seq: 1,
+    contact_id: contactId,
+    thread_id: `secure-chat-contact-${contactId}`,
+    npub: '',
+    contact_name: contactDisplayName(contact),
+    message_ref: messageRef,
+    message_kind: messageKind,
+    direction: chatItem.chatDir && chatItem.chatDir.type === 'directRcv' ? 'incoming' : 'outgoing',
+    delivery_status: deliveryStatusFromChatItem(chatItem),
+    created_at: (chatItem.meta && (chatItem.meta.itemTs || chatItem.meta.createdAt)) || nowIso(),
+    updated_at: nowIso(),
+    text,
+    attachment_name: attachmentName,
+    attachment_mime: attachmentMime,
+    attachment_size: attachmentSize,
+    attachment_path: attachmentPath,
+    error_code: '',
+    error_detail: ''
+  };
+}
+
+function ownerDirectChunkRowFromGroup(contact, group) {
+  if (!contact || !group || !group.firstItem || !group.meta || !group.parts) return null;
+  const total = Number(group.total || group.meta.total || 0);
+  if (!Number.isInteger(total) || total < 1 || group.parts.size !== total) return null;
+  let dataBase64 = '';
+  for (let index = 1; index <= total; index += 1) {
+    const part = group.parts.get(index);
+    if (!part || !part.data) return null;
+    dataBase64 += part.data;
+  }
+  const expectedBytes = Number(group.meta.size || 0) || 0;
+  if (!dataBase64 || dataBase64.length > MAX_ATTACHMENT_DATA_URL_LENGTH || (expectedBytes && Math.ceil(expectedBytes / 3) * 4 > MAX_ATTACHMENT_DATA_URL_LENGTH)) {
+    return null;
+  }
+  const text = encodeAttachmentMarkerText(stripLegacySecureChatIdentityMarker(group.text || ''), {
+    name: sanitizeName(group.meta.name || 'attachment.bin'),
+    mime: String(group.meta.mime || 'application/octet-stream'),
+    size: expectedBytes
+  }, dataBase64);
+  const first = group.firstItem.chatItem || {};
+  return ownerDirectRowFromChatItem(contact, {
+    chatInfo: group.firstItem.chatInfo,
+    chatItem: Object.assign({}, first, {
+      file: null,
+      text,
+      content: { msgContent: { type: 'text', text } },
+      meta: Object.assign({}, first.meta || {}, {
+        itemId: String(group.meta.id || (first.meta && first.meta.itemId) || ''),
+        itemText: text
+      })
+    })
+  });
+}
+
+function upsertOwnerDirectRow(byKey, next) {
+  if (!next || !String(next.text || next.attachment_name || '').trim()) return false;
+  const key = `${next.contact_id}:${next.message_ref}`;
+  const existing = byKey.get(key);
+  if (existing) {
+    existing.contact_name = next.contact_name || existing.contact_name;
+    existing.thread_id = next.thread_id || existing.thread_id;
+    existing.delivery_status = next.delivery_status || existing.delivery_status;
+    existing.updated_at = nowIso();
+    existing.text = next.text || existing.text || '';
+    existing.attachment_name = existing.attachment_name || next.attachment_name || '';
+    existing.attachment_mime = existing.attachment_mime || next.attachment_mime || '';
+    existing.attachment_size = existing.attachment_size || next.attachment_size || null;
+    existing.attachment_path = existing.attachment_path || next.attachment_path || '';
+    return true;
+  }
+  next.seq = nextMessageSeq();
+  byKey.set(key, normalizeOwnerDirectMessageRow(next));
+  return true;
+}
+
+async function reconcileOwnerDirectMessages() {
+  const owner = await ensureOwnerUser();
+  const ownerUserId = String(owner.userId);
+  const mappedOwnerContacts = new Set(
+    selectMappingsStmt.all(1000)
+      .map(contactRowToJson)
+      .filter((row) => row && row.status === 'active' && row.simplex_contact_id)
+      .map((row) => String(row.simplex_contact_id))
+  );
+  const contacts = (await listContacts(ownerUserId)).filter((contact) => (
+    contact &&
+    contact.contactId != null &&
+    contactReadyForSend(contact) &&
+    !mappedOwnerContacts.has(String(contact.contactId))
+  ));
+  if (!contacts.length) return;
+
+  const rows = loadOwnerDirectMessages();
+  const byKey = new Map(rows.map((row) => [`${row.contact_id}:${row.message_ref}`, row]));
+  let changed = false;
+  for (const contact of contacts) {
+    const items = await fetchRecentDirectChatItems(ownerUserId, String(contact.contactId), RECONCILE_CHAT_ITEM_LIMIT);
+    const chunkGroups = new Map();
+    for (const item of items) {
+      const chunk = parseAttachmentChunkMarker(chatItemText(item && item.chatItem));
+      if (chunk) {
+        const id = String(chunk.meta.id || '').slice(0, 256);
+        const key = `${String(contact.contactId)}:${id}`;
+        let group = chunkGroups.get(key);
+        if (!group) {
+          group = {
+            firstItem: item,
+            meta: chunk.meta,
+            total: chunk.total,
+            text: chunk.text,
+            parts: new Map()
+          };
+          chunkGroups.set(key, group);
+        }
+        if (chunk.text && !group.text) group.text = chunk.text;
+        group.parts.set(chunk.index, chunk);
+        continue;
+      }
+      const next = ownerDirectRowFromChatItem(contact, item);
+      changed = upsertOwnerDirectRow(byKey, next) || changed;
+    }
+    for (const group of chunkGroups.values()) {
+      changed = upsertOwnerDirectRow(byKey, ownerDirectChunkRowFromGroup(contact, group)) || changed;
+    }
+  }
+  if (changed) {
+    saveOwnerDirectMessages(Array.from(byKey.values()).filter(Boolean));
+  }
+}
+
+async function reconcileOwnerDirectMessagesForOwlExport() {
+  try {
+    await Promise.race([
+      reconcileOwnerDirectMessages(),
+      new Promise((resolve) => setTimeout(resolve, OWL_EXPORT_RECONCILE_TIMEOUT_MS))
+    ]);
+  } catch (err) {
+    logEvent('owl_export_owner_direct_reconcile_error', {
+      error: err && err.message ? err.message : String(err || 'unknown error')
+    });
+  }
+}
+
 async function reconcileStateMessages(pubkeyHex) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
@@ -2004,8 +2610,8 @@ async function reconcileStateMessages(pubkeyHex) {
   }
 }
 
-async function sendTextMessage(pubkeyHex, text, retried) {
-  const ensured = await ensureMappingForPubkey(pubkeyHex);
+async function sendTextMessage(pubkeyHex, text, sessionDisplayName, retried) {
+  const ensured = await ensureMappingForPubkey(pubkeyHex, sessionDisplayName);
   const npub = ensured.npub;
   let mapping = ensured.mapping;
   const createdAt = nowIso();
@@ -2036,7 +2642,7 @@ async function sendTextMessage(pubkeyHex, text, retried) {
     const detail = errorDetail(err);
     if (!retried) {
       try {
-        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex);
+        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex, sessionDisplayName);
         chatItems = await sendPlainTextMessage(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, text);
       } catch (retryErr) {
         updateMessageBySeq(seq, {
@@ -2079,7 +2685,7 @@ async function sendOwnerTextMessage(npubValue, text) {
     mapping = null;
   }
   if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
-    mapping = contactRowToJson(await provisionContact(npub));
+    mapping = contactRowToJson(await provisionContact(npub, mapping && mapping.bridge_display_name || ''));
   }
   if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
     throw new Error('Secure Chat contact is not provisioned');
@@ -2087,6 +2693,158 @@ async function sendOwnerTextMessage(npubValue, text) {
   await sendPlainTextMessage(String(owner.userId), `@${mapping.simplex_contact_id}`, text);
   await reconcileMappingMessages(mapping);
   return { npub };
+}
+
+function adminAttachmentFromBody(body) {
+  const raw = body && body.attachment && typeof body.attachment === 'object' ? body.attachment : null;
+  if (!raw) return null;
+  const filePath = String(raw.filePath || raw.file_path || raw.path || '').trim();
+  if (!filePath) {
+    throw new Error('attachment.filePath is required');
+  }
+  let stat;
+  try {
+    stat = fs.statSync(filePath);
+  } catch (_err) {
+    throw new Error('attachment file is not readable');
+  }
+  if (!stat.isFile()) {
+    throw new Error('attachment path is not a regular file');
+  }
+  if (stat.size > MAX_UPLOAD_BYTES) {
+    throw new Error('attachment exceeds server size limit');
+  }
+  const fileName = sanitizeName(raw.fileName || raw.file_name || raw.name || path.basename(filePath) || 'attachment.bin');
+  const mimeType = String(raw.mimeType || raw.mime_type || raw.mime || 'application/octet-stream').trim().toLowerCase() || 'application/octet-stream';
+  if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(mimeType)) {
+    throw new Error('attachment MIME type is invalid');
+  }
+  const stagingDir = fs.mkdtempSync(path.join(STORE_ROOT, 'simplex-tmp', 'owl-send-'));
+  const stagedPath = path.join(stagingDir, fileName);
+  fs.copyFileSync(filePath, stagedPath);
+  return {
+    filePath: stagedPath,
+    fileName,
+    mimeType,
+    fileSize: Number(raw.fileSize || raw.file_size || raw.size || stat.size || 0) || 0,
+    cleanupPath: stagingDir
+  };
+}
+
+function cleanupAdminAttachment(attachment) {
+  const cleanupPath = attachment && attachment.cleanupPath ? String(attachment.cleanupPath) : '';
+  if (!cleanupPath) return;
+  const tmpRoot = path.join(STORE_ROOT, 'simplex-tmp') + path.sep;
+  if (!cleanupPath.startsWith(tmpRoot)) return;
+  fs.rm(cleanupPath, { recursive: true, force: true }, () => {});
+}
+
+function fileComposedMessage(attachment, text) {
+  return {
+    fileSource: { filePath: attachment.filePath },
+    msgContent: { type: 'file', text: String(text || attachment.fileName || '') },
+    mentions: {}
+  };
+}
+
+async function sendOwnerFileMessage(npubValue, attachment, text) {
+  const npub = validateNpub(npubValue);
+  const owner = await ensureOwnerUser();
+  let mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
+  if (
+    mapping &&
+    mapping.status === 'active' &&
+    mapping.bridge_user_id &&
+    String(mapping.bridge_user_id) === String(owner.userId)
+  ) {
+    logEvent('owl_file_send_reprovision_legacy_mapping', { npub });
+    deleteContact(npub);
+    mapping = null;
+  }
+  if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
+    mapping = contactRowToJson(await provisionContact(npub, mapping && mapping.bridge_display_name || ''));
+  }
+  if (!mapping || mapping.status !== 'active' || !mapping.simplex_contact_id) {
+    throw new Error('Secure Chat contact is not provisioned');
+  }
+  await sendComposedMessages(String(owner.userId), `@${mapping.simplex_contact_id}`, [
+    fileComposedMessage(attachment, text)
+  ]);
+  await reconcileMappingMessages(mapping);
+  return { npub };
+}
+
+function ownerContactIdFromTarget(target) {
+  const value = String(target || '').trim();
+  let match = value.match(/^secure-chat-contact-(\d+)$/);
+  if (match) return match[1];
+  match = value.match(/^secure-chat:(\d+)$/);
+  if (match) return match[1];
+  return '';
+}
+
+async function sendOwnerDirectTextMessage(target, text) {
+  const contactId = ownerContactIdFromTarget(target);
+  if (!contactId) {
+    throw new Error('Secure Chat owner contact id is required');
+  }
+  const owner = await ensureOwnerUser();
+  await sendPlainTextMessage(String(owner.userId), `@${contactId}`, text);
+  return { target: `secure-chat-contact-${contactId}` };
+}
+
+async function sendOwnerDirectFileMessage(target, attachment, text) {
+  const contactId = ownerContactIdFromTarget(target);
+  if (!contactId) {
+    throw new Error('Secure Chat owner contact id is required');
+  }
+  const owner = await ensureOwnerUser();
+  await sendComposedMessages(String(owner.userId), `@${contactId}`, [
+    fileComposedMessage(attachment, text)
+  ]);
+  return { target: `secure-chat-contact-${contactId}` };
+}
+
+async function dispatchOwlSend(target, attachment, text) {
+  return attachment
+    ? (ownerContactIdFromTarget(target)
+      ? await sendOwnerDirectFileMessage(target, attachment, text)
+      : await sendOwnerFileMessage(target, attachment, text))
+    : (ownerContactIdFromTarget(target)
+      ? await sendOwnerDirectTextMessage(target, text)
+      : await sendOwnerTextMessage(target, text));
+}
+
+async function handleOwlSendPayload(body, target, attachment, text) {
+  const clientMessageId = normalizeOwlSendClientMessageId(
+    body.client_message_id ||
+    body.clientMessageId ||
+    body.outbox_id ||
+    body.outboxId ||
+    body.message_id ||
+    body.messageId ||
+    ''
+  );
+  const sendOnce = async () => {
+    const existing = getOwlSendReceipt(clientMessageId);
+    if (existing) {
+      logEvent('owl_send_idempotent_replay', { client_message_id: clientMessageId });
+      return Object.assign(
+        { success: true, duplicate: true, client_message_id: clientMessageId },
+        existing.result && typeof existing.result === 'object' ? existing.result : {}
+      );
+    }
+    const result = await dispatchOwlSend(target, attachment, text);
+    if (clientMessageId) {
+      recordOwlSendReceipt(clientMessageId, result);
+    }
+    return Object.assign(
+      { success: true },
+      clientMessageId ? { duplicate: false, client_message_id: clientMessageId } : {},
+      result
+    );
+  };
+  return clientMessageId ? withOwlSendClientLock(clientMessageId, sendOnce) : sendOnce();
 }
 
 function queueUploadTicket(pubkeyHex, attachment) {
@@ -2106,13 +2864,13 @@ function queueUploadTicket(pubkeyHex, attachment) {
   return item;
 }
 
-async function sendAttachmentMetadata(pubkeyHex, ticket) {
+async function sendAttachmentMetadata(pubkeyHex, ticket, sessionDisplayName) {
   const descriptor = `Attachment: ${ticket.name} (${ticket.size} bytes, ${ticket.mime})`;
-  await sendTextMessage(pubkeyHex, descriptor);
+  await sendTextMessage(pubkeyHex, descriptor, sessionDisplayName);
 }
 
-async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize, fileName, retried) {
-  const ensured = await ensureMappingForPubkey(pubkeyHex);
+async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize, fileName, sessionDisplayName, retried) {
+  const ensured = await ensureMappingForPubkey(pubkeyHex, sessionDisplayName);
   const npub = ensured.npub;
   let mapping = ensured.mapping;
   const createdAt = nowIso();
@@ -2131,6 +2889,7 @@ async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize
     attachment_name: fileName,
     attachment_mime: mimeType,
     attachment_size: fileSize,
+    attachment_path: filePath,
     upload_id: uploadId,
     error_code: '',
     error_detail: ''
@@ -2147,7 +2906,7 @@ async function sendFileMessage(pubkeyHex, uploadId, filePath, mimeType, fileSize
     const detail = errorDetail(err);
     if (!retried) {
       try {
-        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex);
+        mapping = await freshMappingAfterSendFailure(npub, detail, pubkeyHex, sessionDisplayName);
         chatItems = await sendComposedMessages(mapping.bridge_user_id, `@${mapping.bridge_contact_id}`, [{
           fileSource: { filePath },
           msgContent: { type: 'file', text: fileName },
@@ -2189,13 +2948,28 @@ function currentServiceStatus() {
     simplex_binary: SIMPLEX_BINARY,
     simplex_ws_port: SIMPLEX_WS_PORT,
     owner_user_id: state.ownerUserId || '',
+    owner_contact_link: state.ownerContactLink || '',
     max_upload_bytes: MAX_UPLOAD_BYTES
   };
 }
 
 async function ensureRuntime() {
   try {
-    await ensureOwnerUser();
+    if (BROWSER_OWNER_CONTACT_LINK) {
+      state.ownerContactLink = BROWSER_OWNER_CONTACT_LINK;
+      metaSet('owner_contact_link', state.ownerContactLink);
+      state.transportStatus = 'connected';
+      state.transportError = '';
+      return;
+    }
+    const owner = await ensureOwnerUser();
+    if (owner && owner.userId && !state.ownerContactLink) {
+      const ownerLink = await ownerAddressLink(String(owner.userId), false);
+      if (ownerLink) {
+        state.ownerContactLink = ownerLink;
+        metaSet('owner_contact_link', state.ownerContactLink);
+      }
+    }
     state.transportStatus = 'connected';
     state.transportError = '';
   } catch (err) {
@@ -2204,7 +2978,7 @@ async function ensureRuntime() {
   }
 }
 
-function statePayload(pubkeyHex, sinceSeq, admin) {
+function statePayload(pubkeyHex, sinceSeq, admin, sessionDisplayName) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
   const limit = 100;
@@ -2230,6 +3004,7 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
     success: true,
     npub,
     cursor_seq: cursorSeq,
+    session_display_name: sanitizeSimplexDisplayName(sessionDisplayName, ''),
     service: currentServiceStatus(),
     mapping,
     messages: rows.map(mapMessageRow),
@@ -2245,6 +3020,7 @@ function statePayload(pubkeyHex, sinceSeq, admin) {
 
 async function owlExportPayload(sinceSeq) {
   await reconcileAllMappingMessagesForOwlExport();
+  await reconcileOwnerDirectMessagesForOwlExport();
   const since = Number(sinceSeq || 0);
   const messages = [];
   const mappings = selectMappingsStmt.all(500).map(contactRowToJson);
@@ -2255,6 +3031,13 @@ async function owlExportPayload(sinceSeq) {
       .filter(visibleMessageRow);
     for (const row of rows) {
       messages.push(mapOwlExportRow(mapping, row));
+    }
+  }
+  for (const row of loadOwnerDirectMessages()
+    .filter((item) => Number(item.seq || 0) > since)
+    .filter((item) => String(item.direction || '') === 'incoming')) {
+    if (visibleMessageRow(row)) {
+      messages.push(mapOwnerDirectOwlExportRow(row));
     }
   }
   messages.sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0));
@@ -2271,17 +3054,19 @@ async function owlExportPayload(sinceSeq) {
 async function handleState(req, res) {
   const body = await parseJsonBody(req);
   const pubkeyHex = String(body.sessionPubkey || '').trim().toLowerCase();
+  const sessionDisplayName = sessionDisplayNameFromBody(body);
   const sinceSeq = Number(body.sinceSeq || 0);
   const admin = body.admin === true;
   if (pubkeyHex) {
     await reconcileStateMessages(pubkeyHex);
   }
-  safeJson(res, 200, statePayload(pubkeyHex, sinceSeq, admin));
+  safeJson(res, 200, statePayload(pubkeyHex, sinceSeq, admin, sessionDisplayName));
 }
 
 async function handleSend(req, res) {
   const body = await parseJsonBody(req);
   const pubkeyHex = String(body.sessionPubkey || '').trim().toLowerCase();
+  const sessionDisplayName = sessionDisplayNameFromBody(body);
   const text = String(body.text || '');
   const attachments = Array.isArray(body.attachments) ? body.attachments : [];
   if (!pubkeyHex) {
@@ -2290,12 +3075,12 @@ async function handleSend(req, res) {
   }
   const tickets = [];
   if (text.trim()) {
-    await sendTextMessage(pubkeyHex, text);
+    await sendTextMessage(pubkeyHex, text, sessionDisplayName);
   }
   for (const attachment of attachments) {
     const ticket = queueUploadTicket(pubkeyHex, attachment || {});
     tickets.push(ticket);
-    await sendAttachmentMetadata(pubkeyHex, ticket);
+    await sendAttachmentMetadata(pubkeyHex, ticket, sessionDisplayName);
   }
   safeJson(res, 200, {
     success: true,
@@ -2312,6 +3097,7 @@ async function handleSend(req, res) {
 async function handleUpload(req, res) {
   const uploadId = String(req.headers['x-upload-id'] || '').trim();
   const pubkeyHex = String(req.headers['x-session-pubkey'] || '').trim().toLowerCase();
+  const sessionDisplayName = sanitizeSimplexDisplayName(req.headers['x-session-display-name'] || '', '');
   const mimeType = String(req.headers['content-type'] || 'application/octet-stream').trim().toLowerCase();
   const rawName = String(req.headers['x-file-name'] || 'attachment.bin');
   const safeName = sanitizeName(rawName);
@@ -2351,7 +3137,7 @@ async function handleUpload(req, res) {
     ticket.status = 'processing';
     ticket.size = received;
     await ensureRuntime();
-    await sendFileMessage(pubkeyHex, uploadId, diskPath, mimeType, received, safeName);
+    await sendFileMessage(pubkeyHex, uploadId, diskPath, mimeType, received, safeName, sessionDisplayName);
     ticket.status = 'complete';
     safeJson(res, 200, { success: true, upload_id: uploadId, bytes_received: received });
   } catch (err) {
@@ -2370,17 +3156,35 @@ async function handleAdmin(req, res) {
     deleteContact(String(body.npub || ''));
   } else if (action === 'status') {
     await ensureRuntime();
+  } else if (action === 'rotate-owner-address') {
+    const owner = await ensureOwnerUser();
+    state.ownerContactLink = await ownerAddressLink(String(owner.userId), true);
+    metaSet('owner_contact_link', state.ownerContactLink);
   } else if (action === 'owl-export') {
     safeJson(res, 200, await owlExportPayload(body.sinceSeq || body.since_seq || 0));
     return;
   } else if (action === 'owl-send') {
     await ensureRuntime();
     const text = String(body.text || '');
-    if (!text.trim()) {
+    let attachment = null;
+    try {
+      attachment = adminAttachmentFromBody(body);
+    } catch (err) {
+      safeJson(res, 400, { success: false, error: err && err.message ? err.message : 'attachment is invalid' });
+      return;
+    }
+    if (!text.trim() && !attachment) {
       safeJson(res, 400, { success: false, error: 'text is required' });
       return;
     }
-    safeJson(res, 200, Object.assign({ success: true }, await sendOwnerTextMessage(body.npub || '', text)));
+    const target = String(body.target || body.npub || '').trim();
+    let result;
+    try {
+      result = await handleOwlSendPayload(body, target, attachment, text);
+    } finally {
+      cleanupAdminAttachment(attachment);
+    }
+    safeJson(res, 200, result);
     return;
   }
   safeJson(res, 200, {
@@ -2416,8 +3220,9 @@ const server = http.createServer(async (req, res) => {
     }
     safeJson(res, 404, { success: false, error: 'Not found' });
   } catch (err) {
-    logEvent('request_error', { error: err && err.message ? err.message : String(err) });
-    safeJson(res, 500, { success: false, error: err && err.message ? err.message : 'Internal error' });
+    const detail = errorDetail(err);
+    logEvent('request_error', { error: detail });
+    safeJson(res, 500, { success: false, error: detail || 'Internal error' });
   }
 });
 

@@ -244,7 +244,9 @@ blog_secure_chat_mapping_upsert() {
       updated_at: $now_iso,
       deactivated_at: "",
       last_provisioned_at: $now_iso,
-      last_error: ""
+      last_error: "",
+      bridge_display_name: ($existing.bridge_display_name // ""),
+      bridge_full_name: ($existing.bridge_full_name // "")
     }' | blog_secure_chat_write_file_atomic "$file"
 }
 
@@ -286,6 +288,7 @@ blog_secure_chat_mapping_json() {
 
 blog_secure_chat_account_info_json() {
   session_pubkey=$(blog_validate_nostr_pubkey "${1-}" 2>/dev/null || printf '')
+  session_display_name=${2-}
   [ -n "$session_pubkey" ] || {
     printf '{}\n'
     return 0
@@ -305,7 +308,8 @@ blog_secure_chat_account_info_json() {
   payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-account.XXXXXX")
   jq -cn \
     --arg sessionPubkey "$session_pubkey" \
-    '{sessionPubkey:$sessionPubkey,sinceSeq:0,admin:false}' > "$payload_file" 2>/dev/null || {
+    --arg sessionDisplayName "$session_display_name" \
+    '{sessionPubkey:$sessionPubkey,sessionDisplayName:$sessionDisplayName,sinceSeq:0,admin:false}' > "$payload_file" 2>/dev/null || {
       rm -f "$payload_file"
       printf '{}\n'
       return 0
@@ -329,6 +333,15 @@ blog_secure_chat_account_info_json() {
       end
     )
   }' 2>/dev/null || printf '{}\n'
+}
+
+blog_secure_chat_session_display_name() {
+  display_name=''
+  if [ -n "${BLOG_SESSION_USERNAME-}" ]; then
+    display_name=$BLOG_SESSION_USERNAME
+  fi
+  printf '%s' "$display_name" | tr -d '\r\n'
+  printf '\n'
 }
 
 blog_request_is_localhost() {
@@ -656,6 +669,7 @@ blog_secure_chat_service_start_inner() {
     SECURE_CHAT_SIMPLEX_BINARY="$simplex_bin" \
     SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT="$native_module_root" \
     SECURE_CHAT_SIMPLEX_WS_PORT="$(blog_secure_chat_simplex_ws_port)" \
+    SECURE_CHAT_BROWSER_OWNER_CONTACT_LINK="$(config-get "$blog_site_conf" secure_chat_browser_owner_contact_link 2>/dev/null || printf '')" \
     SECURE_CHAT_SITE_TITLE="$(blog_secure_chat_site_title)" \
     nohup "$node_bin" "$SCRIPT_DIR/blog-secure-chat-service.js" >>"$log_path" 2>&1 &
   daemon_pid=$!
@@ -708,7 +722,7 @@ blog_secure_chat_service_request() {
 
   socket=$(blog_secure_chat_socket_path)
   if [ -n "$body_file" ]; then
-    curl --silent --show-error --max-time 180 \
+    curl --silent --show-error --max-time "${BLOG_SECURE_CHAT_REQUEST_TIMEOUT:-12}" \
       --unix-socket "$socket" \
       --request "$method" \
       --header "Content-Type: $content_type" \
@@ -717,7 +731,7 @@ blog_secure_chat_service_request() {
     return 0
   fi
 
-  curl --silent --show-error --max-time 180 \
+  curl --silent --show-error --max-time "${BLOG_SECURE_CHAT_REQUEST_TIMEOUT:-12}" \
     --unix-socket "$socket" \
     --request "$method" \
     "http://localhost$path"

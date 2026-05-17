@@ -25,11 +25,13 @@ fi
 
 payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-state.XXXXXX")
 trap 'rm -f "$payload_file"' EXIT HUP INT TERM
+session_display_name=$(blog_secure_chat_session_display_name)
 jq -cn \
   --arg sessionPubkey "$BLOG_SESSION_USER_PUBKEY" \
+  --arg sessionDisplayName "$session_display_name" \
   --argjson sinceSeq "$since_seq" \
   --argjson admin "$( [ "$include_admin" = "true" ] && printf true || printf false )" \
-  '{sessionPubkey:$sessionPubkey,sinceSeq:$sinceSeq,admin:$admin}' > "$payload_file"
+  '{sessionPubkey:$sessionPubkey,sessionDisplayName:$sessionDisplayName,sinceSeq:$sinceSeq,admin:$admin}' > "$payload_file"
 
 response=$(blog_secure_chat_service_request_json POST /state "$payload_file" application/json 2>/dev/null || printf '')
 if [ -z "$response" ]; then

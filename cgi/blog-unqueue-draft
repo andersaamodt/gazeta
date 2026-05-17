@@ -32,10 +32,17 @@ summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || prin
 author=$(blog_read_front_matter_value "$draft_file" author 2>/dev/null || printf '')
 content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
 post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
+post_filename=$(blog_read_front_matter_value "$draft_file" post_filename 2>/dev/null || printf '')
+origin_platforms_raw=$(blog_read_front_matter_value "$draft_file" origin_platforms 2>/dev/null || printf '')
 if [ -z "$post_type" ]; then
   post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
 fi
 post_type=$(blog_normalize_post_type "$post_type")
-blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type"
+origin_platforms_json=$(blog_origin_normalize_platforms_json "$origin_platforms_raw" "$(blog_origin_enabled_platforms_json)")
+if [ "$origin_platforms_json" = '[]' ] && [ -z "$origin_platforms_raw" ]; then
+  origin_platforms_json=$(blog_origin_default_platforms_json)
+fi
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type" "$source_post_path" "$post_filename" "$origin_platforms_json"
 
 printf '{"success":true,"message":"Draft moved back to drafts","draft_id":"%s"}\n' "$(blog_json_escape "$draft_id")"

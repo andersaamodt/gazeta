@@ -20,6 +20,29 @@ upload_body_param() {
   [ -n "$key" ] || return 1
   [ -n "$body_file" ] || return 1
   [ -f "$body_file" ] || return 1
+  if command -v python3 >/dev/null 2>&1; then
+    decoded=$(python3 - "$key" "$body_file" <<'PY'
+import sys
+import urllib.parse
+
+key = sys.argv[1]
+path = sys.argv[2]
+try:
+    raw = open(path, 'rb').read()
+except Exception:
+    sys.exit(1)
+
+text = raw.decode('utf-8', 'replace')
+params = urllib.parse.parse_qs(text, keep_blank_values=True)
+values = params.get(key, [])
+if values:
+    sys.stdout.write(values[0])
+PY
+)
+    [ -n "$decoded" ] || return 1
+    printf '%s' "$decoded"
+    return 0
+  fi
   encoded=$(awk -v key="$key" '
     BEGIN { RS = "&" }
     index($0, key "=") == 1 {

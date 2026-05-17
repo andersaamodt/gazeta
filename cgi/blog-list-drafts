@@ -40,6 +40,7 @@ while IFS="$tab" read -r _ draft_file; do
   scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
   created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
   updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '')
+  source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
   content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
   if [ "$status" != "draft" ] || [ "$publish_mode" != "draft" ]; then
     continue
@@ -58,6 +59,7 @@ while IFS="$tab" read -r _ draft_file; do
   printf '"tags":"%s",' "$(blog_json_escape "$tags")"
   printf '"summary":"%s",' "$(blog_json_escape "$summary")"
   printf '"content_excerpt":"%s",' "$(blog_json_escape "$content_excerpt")"
+  printf '"source_post_path":"%s",' "$(blog_json_escape "$source_post_path")"
   printf '"created_at":"%s",' "$(blog_json_escape "$created_at")"
   printf '"updated_at":"%s"' "$(blog_json_escape "$updated_at")"
   printf '}'

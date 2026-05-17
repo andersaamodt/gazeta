@@ -41,7 +41,7 @@ simplex_pubkey="$session_user_pubkey"
 if [ -z "$simplex_pubkey" ]; then
   simplex_pubkey="$nostr_pubkey"
 fi
-simplex_info_json=$(blog_secure_chat_account_info_json "$simplex_pubkey" 2>/dev/null || printf '{}')
+simplex_info_json=$(blog_secure_chat_account_info_json "$simplex_pubkey" "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '{}')
 simplex_contact_info=$(printf '%s\n' "$simplex_info_json" | jq -r '.simplex_contact_info // ""' 2>/dev/null || printf '')
 simplex_status=$(printf '%s\n' "$simplex_info_json" | jq -r '.simplex_status // ""' 2>/dev/null || printf '')
 

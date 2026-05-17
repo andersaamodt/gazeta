@@ -6,8 +6,8 @@
       theme: "lapidarist",
       plugins: {"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"video_chat":false}
     },
-    navbar_pages: [{"slug":"index","title":"Writing","path":"/","type":"blog","kind":30023},{"slug":"blog","title":"Blog","path":"/blog","type":"blog","kind":30023},{"slug":"oeuvre","title":"Oeuvre","path":"/oeuvre","type":"list","kind":30004},{"slug":"projects","title":"Projects","path":"/projects","type":"public-ranking","kind":30040},{"slug":"reading-list","title":"Reading list","path":"/reading-list","type":"public-ranking","kind":30040},{"slug":"software","title":"Software","path":"/software","type":"icon-gallery","kind":30004},{"slug":"contact","title":"Contact","path":"/contact","type":"contact","kind":0}],
-    footer_pages: [{"slug":"values","title":"Values","path":"/values"},{"slug":"get-info","title":"Site Info","path":"/get-info"}]
+    navbar_pages: [{"slug":"blog","title":"Blog","path":"/blog","type":"blog","kind":30023}],
+    footer_pages: []
   };
   window.__wizardrySiteBootstrap = bootstrap;
   try {

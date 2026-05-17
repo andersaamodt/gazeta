@@ -21,6 +21,8 @@
 
   var CACHE_KEY = 'wizardry_blog_posts_v2';
   var POSTS_CACHE_MAX_AGE_MS = 15000;
+  var DRAFT_NOTICE_CACHE_KEY = 'wizardry_blog_draft_notice_v1';
+  var DRAFT_NOTICE_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
   var root = document.getElementById('blog-page-root');
   if (!root) {
     return;
@@ -41,6 +43,7 @@
     clear: document.getElementById('blog-clear-filters'),
     list: document.getElementById('blog-post-list'),
     empty: document.getElementById('blog-empty'),
+    draftNotice: null,
     composeFab: null,
     composeSlot: null
   };
@@ -70,6 +73,7 @@
       postTypeChosen: false,
       tags: [],
       tagsOpen: false,
+      tagsDraftText: '',
       postType: 'longform',
       postTypeToolbarCollapsed: false,
       postTypeToolbarCollapseTimer: null,
@@ -77,7 +81,6 @@
       shortformLimit: 280,
       shortformLimitEditing: false,
       linkUrl: '',
-      linkBody: '',
       cameraStream: null,
       cameraStarting: false,
       cameraError: '',
@@ -90,16 +93,28 @@
       audioRecording: false,
       audioError: '',
       uploading: 0,
+      uploadItems: [],
+      uploadSeq: 0,
+      uploadCleanupTimer: null,
+      pendingContentAdditions: [],
       autosaveTimer: null,
       busy: false,
       output: '',
       outputTone: '',
       saveStatus: ''
+    },
+    draftNotice: {
+      loading: false,
+      loaded: false,
+      requestSeq: 0,
+      drafts: []
     }
   };
   var panelHideTimer = null;
   var pageSettingsHideTimer = null;
   var composeToggleGuardUntil = 0;
+  var composeDropHoverTimer = null;
+  var postsCatalogReady = false;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
@@ -160,6 +175,7 @@
     if (typeof state.compose.postTypeChosen !== 'boolean') state.compose.postTypeChosen = false;
     if (!Array.isArray(state.compose.tags)) state.compose.tags = [];
     if (typeof state.compose.tagsOpen !== 'boolean') state.compose.tagsOpen = false;
+    if (typeof state.compose.tagsDraftText !== 'string') state.compose.tagsDraftText = '';
     if (typeof state.compose.postType !== 'string') state.compose.postType = 'longform';
     if (typeof state.compose.postTypeToolbarCollapsed !== 'boolean') state.compose.postTypeToolbarCollapsed = false;
     if (typeof state.compose.postTypeToolbarCollapseTimer === 'undefined') state.compose.postTypeToolbarCollapseTimer = null;
@@ -167,7 +183,6 @@
     if (typeof state.compose.shortformLimit !== 'number' || !isFinite(state.compose.shortformLimit)) state.compose.shortformLimit = 280;
     if (typeof state.compose.shortformLimitEditing !== 'boolean') state.compose.shortformLimitEditing = false;
     if (typeof state.compose.linkUrl !== 'string') state.compose.linkUrl = '';
-    if (typeof state.compose.linkBody !== 'string') state.compose.linkBody = '';
     if (typeof state.compose.cameraStarting !== 'boolean') state.compose.cameraStarting = false;
     if (typeof state.compose.cameraError !== 'string') state.compose.cameraError = '';
     if (typeof state.compose.cameraStream === 'undefined') state.compose.cameraStream = null;
@@ -180,6 +195,10 @@
     if (typeof state.compose.audioRecording !== 'boolean') state.compose.audioRecording = false;
     if (typeof state.compose.audioError !== 'string') state.compose.audioError = '';
     if (typeof state.compose.uploading !== 'number' || !isFinite(state.compose.uploading)) state.compose.uploading = 0;
+    if (!Array.isArray(state.compose.uploadItems)) state.compose.uploadItems = [];
+    if (typeof state.compose.uploadSeq !== 'number' || !isFinite(state.compose.uploadSeq)) state.compose.uploadSeq = 0;
+    if (typeof state.compose.uploadCleanupTimer === 'undefined') state.compose.uploadCleanupTimer = null;
+    if (!Array.isArray(state.compose.pendingContentAdditions)) state.compose.pendingContentAdditions = [];
     if (typeof state.compose.autosaveTimer === 'undefined') state.compose.autosaveTimer = null;
     if (typeof state.compose.busy !== 'boolean') state.compose.busy = false;
     if (typeof state.compose.output !== 'string') state.compose.output = '';
@@ -346,6 +365,14 @@
       .replace(/\\'/g, "'");
   }
 
+  function renderPostSummaryHtml(summary) {
+    var text = cleanMarkdownText(summary).trim();
+    if (!text) {
+      return '';
+    }
+    return '<p class="post-summary">' + markdownInline(text) + '</p>';
+  }
+
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -407,7 +434,7 @@
     return fetch(url, {
       method: 'POST',
       cache: 'no-store',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: body.toString()
     }).then(function (res) {
       return res.text().then(function (text) {
@@ -488,6 +515,280 @@
     if (els.toggle.parentNode !== filterCol) {
       filterCol.appendChild(els.toggle);
     }
+  }
+
+  function resolveMainColumnHost() {
+    var layout = root.querySelector('.blog-layout');
+    if (!layout) {
+      return null;
+    }
+    return layout.querySelector('.blog-main-column');
+  }
+
+  function ensureDraftNoticeHost() {
+    if (els.draftNotice && els.draftNotice.isConnected) {
+      return els.draftNotice;
+    }
+    var existing = document.getElementById('blog-draft-notice');
+    if (existing) {
+      els.draftNotice = existing;
+      return existing;
+    }
+    var mainCol = resolveMainColumnHost();
+    if (!mainCol) {
+      return null;
+    }
+    var node = document.createElement('div');
+    node.id = 'blog-draft-notice';
+    node.className = 'blog-draft-notice';
+    node.hidden = true;
+    var adminNode = document.getElementById('blog-page-admin');
+    if (adminNode && adminNode.parentNode === mainCol) {
+      mainCol.insertBefore(node, adminNode);
+    } else {
+      mainCol.insertBefore(node, mainCol.firstChild);
+    }
+    els.draftNotice = node;
+    return node;
+  }
+
+  function clearDraftNoticeState() {
+    state.draftNotice.loading = false;
+    state.draftNotice.loaded = false;
+    state.draftNotice.drafts = [];
+    clearDraftNoticeCache();
+    renderDraftNotice();
+  }
+
+  function draftNoticeIdentity() {
+    var username = '';
+    try {
+      username = String(localStorage.getItem('last_auth_username') || '').trim().toLowerCase();
+    } catch (_err) {
+      username = '';
+    }
+    if (username) {
+      return 'u:' + username;
+    }
+    var auth = authPayload();
+    if (auth.session_token) {
+      return 's:' + auth.session_token.slice(0, 24);
+    }
+    return '';
+  }
+
+  function clearDraftNoticeCache() {
+    try {
+      localStorage.removeItem(DRAFT_NOTICE_CACHE_KEY);
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function readDraftNoticeCache() {
+    try {
+      var raw = localStorage.getItem(DRAFT_NOTICE_CACHE_KEY);
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      var savedAt = Number(parsed.saved_at || 0);
+      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > DRAFT_NOTICE_CACHE_MAX_AGE_MS) {
+        localStorage.removeItem(DRAFT_NOTICE_CACHE_KEY);
+        return null;
+      }
+      var identity = String(parsed.identity || '').trim();
+      if (!identity || identity !== draftNoticeIdentity()) {
+        return null;
+      }
+      var drafts = Array.isArray(parsed.drafts) ? parsed.drafts : [];
+      return drafts.slice();
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeDraftNoticeCache(drafts) {
+    try {
+      var identity = draftNoticeIdentity();
+      if (!identity) {
+        return;
+      }
+      localStorage.setItem(DRAFT_NOTICE_CACHE_KEY, JSON.stringify({
+        identity: identity,
+        drafts: Array.isArray(drafts) ? drafts : [],
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function hydrateDraftNoticeFromCache() {
+    if (!isAdmin()) {
+      return false;
+    }
+    var cachedDrafts = readDraftNoticeCache();
+    if (!cachedDrafts) {
+      return false;
+    }
+    state.draftNotice.loaded = true;
+    state.draftNotice.drafts = cachedDrafts;
+    renderDraftNotice();
+    return true;
+  }
+
+  function draftTitleFromRecord(draft) {
+    var title = String(draft && draft.title || '').trim();
+    if (title) {
+      return title;
+    }
+    var excerpt = String(draft && draft.content_excerpt || '').trim();
+    if (excerpt) {
+      return excerpt;
+    }
+    return 'Untitled draft';
+  }
+
+  function draftTimestampMs(draft) {
+    var updated = String(draft && draft.updated_at || '').trim();
+    var created = String(draft && draft.created_at || '').trim();
+    var raw = updated || created;
+    if (!raw) {
+      return 0;
+    }
+    var ms = Date.parse(raw);
+    if (!isFinite(ms)) {
+      return 0;
+    }
+    return ms;
+  }
+
+  function pickDraftNoticeSummary(drafts) {
+    var list = Array.isArray(drafts) ? drafts : [];
+    if (!list.length) {
+      return { mode: 'none' };
+    }
+    var sorted = list.slice().sort(function (a, b) {
+      return draftTimestampMs(b) - draftTimestampMs(a);
+    });
+    if (sorted.length === 1) {
+      return { mode: 'continue', draft: sorted[0], count: 1 };
+    }
+    var recentWindowMs = 36 * 60 * 60 * 1000;
+    var cutoff = Date.now() - recentWindowMs;
+    var recent = null;
+    for (var i = 0; i < sorted.length; i += 1) {
+      if (draftTimestampMs(sorted[i]) >= cutoff) {
+        recent = sorted[i];
+        break;
+      }
+    }
+    if (recent) {
+      return { mode: 'continue', draft: recent, count: sorted.length };
+    }
+    return { mode: 'count', count: sorted.length };
+  }
+
+  function renderDraftNotice() {
+    var host = ensureDraftNoticeHost();
+    if (!host) {
+      return;
+    }
+    if (!isAdmin()) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    var summary = pickDraftNoticeSummary(state.draftNotice.drafts);
+    if (summary.mode === 'none') {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    if (summary.mode === 'count') {
+      var count = Number(summary.count) || 0;
+      var noun = count === 1 ? 'saved draft' : 'saved drafts';
+      host.innerHTML = '<div class="blog-draft-notice-card"><span>You have </span><a href="/admin#drafts" class="blog-draft-notice-link">' + escapeHtml(String(count) + ' ' + noun) + '</a><span>.</span></div>';
+      host.hidden = false;
+      return;
+    }
+    var draftId = String(summary.draft && summary.draft.draft_id || '').trim();
+    var title = draftTitleFromRecord(summary.draft);
+    var allDraftsLink = '';
+    if ((Number(summary.count) || 0) > 1) {
+      allDraftsLink = '<a href="/admin#drafts" class="blog-draft-notice-link blog-draft-notice-all-link">View all drafts</a>';
+    }
+    host.innerHTML = '' +
+      '<div class="blog-draft-notice-card">' +
+        '<span class="blog-draft-notice-main">' +
+          '<span class="blog-draft-notice-text">Continue working on: </span>' +
+          '<a href="#" class="blog-draft-notice-link blog-draft-notice-continue-link" data-draft-banner-action="continue" data-draft-id="' + escapeHtml(draftId) + '"><strong>' + escapeHtml(title) + '</strong></a>' +
+        '</span>' +
+        allDraftsLink +
+      '</div>';
+    host.hidden = false;
+  }
+
+  function loadDraftNoticeData() {
+    if (!isAdmin()) {
+      clearDraftNoticeState();
+      return Promise.resolve();
+    }
+    if (state.draftNotice.loading) {
+      return Promise.resolve();
+    }
+    var auth = authPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      clearDraftNoticeState();
+      return Promise.resolve();
+    }
+    hydrateDraftNoticeFromCache();
+    state.draftNotice.loading = true;
+    var requestSeq = state.draftNotice.requestSeq + 1;
+    state.draftNotice.requestSeq = requestSeq;
+    return apiPost('/cgi/blog-list-drafts', {
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      if (requestSeq !== state.draftNotice.requestSeq) {
+        return;
+      }
+      state.draftNotice.loading = false;
+      state.draftNotice.loaded = true;
+      state.draftNotice.drafts = Array.isArray(data && data.drafts) ? data.drafts : [];
+      writeDraftNoticeCache(state.draftNotice.drafts);
+      renderDraftNotice();
+    }).catch(function () {
+      if (requestSeq !== state.draftNotice.requestSeq) {
+        return;
+      }
+      state.draftNotice.loading = false;
+      state.draftNotice.loaded = true;
+      state.draftNotice.drafts = [];
+      renderDraftNotice();
+    });
+  }
+
+  function waitForInitialDraftNotice() {
+    if (!isAdmin()) {
+      clearDraftNoticeState();
+      return Promise.resolve();
+    }
+    return loadDraftNoticeData();
+  }
+
+  function openDraftFromNotice(draftId) {
+    var id = String(draftId || '').trim();
+    if (!id) {
+      return;
+    }
+    openComposeDraftInPlace(id, {}).catch(function (err) {
+      showTopToast(err && err.message ? err.message : 'Could not open draft.', 'error', 3600);
+    });
   }
 
   function renderValidation() {
@@ -717,7 +1018,15 @@
 
   function composePostTypeIsTextual(type) {
     var picked = normalizeComposePostType(type);
-    return picked === 'shortform' || picked === 'longform';
+    return picked === 'shortform' || picked === 'longform' || picked === 'attachment';
+  }
+
+  function composeBackingPostType(type) {
+    var picked = normalizeComposePostType(type);
+    if (picked === 'attachment') {
+      return 'longform';
+    }
+    return picked;
   }
 
   function composeBuildLinkMarkdown(urlValue, bodyValue, titleValue) {
@@ -734,8 +1043,22 @@
     return out;
   }
 
+  function parseComposeLinkShareContent(rawContent) {
+    var content = String(rawContent || '');
+    var match = content.match(/\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/i);
+    var url = '';
+    if (match && match[1]) {
+      url = String(match[1]).trim();
+    }
+    var body = content.replace(/\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/i, '').trim();
+    return {
+      url: url,
+      body: body
+    };
+  }
+
   function composeNostrTarget(postType) {
-    var type = normalizeComposePostType(postType);
+    var type = composeBackingPostType(postType);
     if (type === 'shortform') {
       return { kind: '1', tags: 't=short, alt' };
     }
@@ -747,9 +1070,6 @@
     }
     if (type === 'upload-media') {
       return { kind: '20 or 21', tags: 'url, m=image/*|video/*, ox, size, dim|duration' };
-    }
-    if (type === 'attachment') {
-      return { kind: '15', tags: 'url, m, size, ox' };
     }
     if (type === 'audio-note') {
       return { kind: '21', tags: 'url, m=audio/*, duration, alt' };
@@ -773,31 +1093,29 @@
   }
 
   function composePostKindPillText(postType) {
-    var type = normalizeComposePostType(postType);
+    var type = composeBackingPostType(postType);
     var target = composeNostrTarget(type);
     if (type === 'longform') return 'Long-form Content (kind ' + target.kind + ')';
     if (type === 'shortform') return 'Shortform Post (kind ' + target.kind + ')';
     if (type === 'capture-media') return 'Media Capture (kind ' + target.kind + ')';
     if (type === 'upload-media') return 'Media Upload (kind ' + target.kind + ')';
-    if (type === 'attachment') return 'Attachment (kind ' + target.kind + ')';
     if (type === 'audio-note') return 'Audio Note (kind ' + target.kind + ')';
     if (type === 'link-share') return 'Link Share (kind ' + target.kind + ')';
     return 'Go Live (kind ' + target.kind + ')';
   }
 
   function composePostKindPillClass(postType) {
-    var type = normalizeComposePostType(postType);
+    var type = composeBackingPostType(postType);
     if (type === 'longform') return 'is-type-nip23';
     if (type === 'capture-media' || type === 'upload-media') return 'is-type-icon-gallery';
     if (type === 'audio-note') return 'is-type-public-ranking';
-    if (type === 'attachment') return 'is-type-contact';
     if (type === 'link-share') return 'is-type-blog';
     if (type === 'shortform') return 'is-type-list';
     return 'is-type-public-ranking';
   }
 
   function composeNostrPillsHtml(postType) {
-    var type = normalizeComposePostType(postType);
+    var type = composeBackingPostType(postType);
     var target = composeNostrTarget(type);
     var kindText = composePostKindPillText(type);
     var badgeClass = composePostKindPillClass(type);
@@ -1058,14 +1376,36 @@
       if (!opts.skipRender) {
         renderComposeUi();
       }
+      if (!openComposePickerForType(normalized)) {
+        setTimeout(function () {
+          openComposePickerForType(normalized);
+        }, 0);
+      }
+      return;
+    }
+    if (opts.interactive && normalized === 'audio-note') {
+      state.compose.postType = normalized;
+      state.compose.postTypeChosen = true;
+      state.compose.postTypeToolbarCollapsed = true;
+      if (!opts.skipRender) {
+        renderComposeUi();
+      }
+      if (!opts.skipAutosave) {
+        queueComposeAutosave();
+      }
       setTimeout(function () {
-        openComposePickerForType(normalized);
+        if (!state.compose.open || composePostType() !== 'audio-note') {
+          return;
+        }
+        if (!state.compose.audioRecording) {
+          startComposeAudioRecording();
+        }
       }, 0);
       return;
     }
     state.compose.postType = normalized;
     state.compose.postTypeChosen = true;
-    state.compose.postTypeToolbarCollapsed = false;
+    state.compose.postTypeToolbarCollapsed = true;
     if (!opts.skipRender) {
       renderComposeUi();
     }
@@ -1073,11 +1413,12 @@
       queueComposeAutosave();
     }
     if (opts.interactive) {
-      scheduleComposePostTypeCollapse(2400);
       if (normalized === 'upload-media' || normalized === 'attachment') {
-        setTimeout(function () {
-          openComposePickerForType(normalized);
-        }, 0);
+        if (!openComposePickerForType(normalized)) {
+          setTimeout(function () {
+            openComposePickerForType(normalized);
+          }, 0);
+        }
       } else if (normalized === 'capture-media') {
         setTimeout(function () {
           applyComposeModeEffects(normalized);
@@ -1130,6 +1471,236 @@
     syncComposeTagsField();
   }
 
+  function composeDefaultTag() {
+    var page = getRenderState();
+    return normalizeTagValue(String(page && page.default_tag || ''));
+  }
+
+  function seedComposeDefaultTag(forceReplace) {
+    var tag = composeDefaultTag();
+    if (!tag) {
+      if (forceReplace) {
+        setComposeTags([]);
+      }
+      return;
+    }
+    if (forceReplace) {
+      setComposeTags([tag]);
+      return;
+    }
+    if (!state.compose.tags.length) {
+      setComposeTags([tag]);
+    }
+  }
+
+  function composeTagTokenHtml(tag) {
+    return '<span class="tag-token" contenteditable="false" data-compose-tag-token="' + escapeHtml(tag) + '" tabindex="-1"><span class="tag-token-label">' + escapeHtml(tag) + '</span></span>';
+  }
+
+  function composeTagsEditorHtml() {
+    var tokensHtml = state.compose.tags.map(composeTagTokenHtml).join('');
+    return '' +
+      '<div class="tag-token-editor" data-compose-field="tags-editor" contenteditable="true" role="textbox" aria-label="Post tags" spellcheck="false" data-placeholder="tag, tag, tag">' +
+        tokensHtml +
+        '<span class="tag-token-editor-draft" data-compose-tag-draft>' + escapeHtml(state.compose.tagsDraftText || '') + '</span>' +
+      '</div>';
+  }
+
+  function composeTagsEditorNode() {
+    if (!els.composeSlot) {
+      return null;
+    }
+    var node = els.composeSlot.querySelector('[data-compose-field="tags-editor"]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorDraftNode(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return null;
+    }
+    var node = editor.querySelector('[data-compose-tag-draft]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorSelectedToken(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return null;
+    }
+    var node = editor.querySelector('.tag-token.is-selected[data-compose-tag-token]');
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function composeTagsEditorSetEmptyClass(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    var draft = String(state.compose.tagsDraftText || '').trim();
+    var empty = !state.compose.tags.length && !draft;
+    editor.classList.toggle('is-empty', empty);
+  }
+
+  function composeTagsEditorRender(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    var html = state.compose.tags.map(composeTagTokenHtml).join('');
+    html += '<span class="tag-token-editor-draft" data-compose-tag-draft>' + escapeHtml(state.compose.tagsDraftText || '') + '</span>';
+    editor.innerHTML = html;
+    composeTagsEditorSetEmptyClass(editor);
+  }
+
+  function composeTagsEditorFocusDraft(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    var draftNode = composeTagsEditorDraftNode(editor);
+    if (!(draftNode instanceof HTMLElement)) {
+      return;
+    }
+    var range = document.createRange();
+    range.selectNodeContents(draftNode);
+    range.collapse(false);
+    var selection = window.getSelection ? window.getSelection() : null;
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    if (document.activeElement !== editor) {
+      try {
+        editor.focus({ preventScroll: true });
+      } catch (_focusErr) {
+        editor.focus();
+      }
+    }
+  }
+
+  function composeTagsEditorPlaceCaretFromPoint(editor, clientX, clientY) {
+    if (!(editor instanceof HTMLElement)) {
+      return false;
+    }
+    var selection = window.getSelection ? window.getSelection() : null;
+    if (!selection) {
+      return false;
+    }
+    var range = null;
+    if (document.caretPositionFromPoint) {
+      var pos = document.caretPositionFromPoint(clientX, clientY);
+      if (pos && pos.offsetNode && editor.contains(pos.offsetNode)) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, Number(pos.offset) || 0);
+        range.collapse(true);
+      }
+    } else if (document.caretRangeFromPoint) {
+      var pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange && pointRange.startContainer && editor.contains(pointRange.startContainer)) {
+        range = pointRange;
+        range.collapse(true);
+      }
+    }
+    if (!range) {
+      return false;
+    }
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }
+
+  function composeTagsEditorClearSelection(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    var selected = composeTagsEditorSelectedToken(editor);
+    if (selected) {
+      selected.classList.remove('is-selected');
+    }
+  }
+
+  function composeTagsEditorSelectToken(editor, tokenNode) {
+    if (!(editor instanceof HTMLElement) || !(tokenNode instanceof HTMLElement)) {
+      return;
+    }
+    composeTagsEditorClearSelection(editor);
+    tokenNode.classList.add('is-selected');
+    try {
+      editor.focus({ preventScroll: true });
+    } catch (_focusErr) {
+      editor.focus();
+    }
+  }
+
+  function composeTagsEditorReadDraftText(editor) {
+    var draftNode = composeTagsEditorDraftNode(editor);
+    if (!(draftNode instanceof HTMLElement)) {
+      return '';
+    }
+    return String(draftNode.textContent || '');
+  }
+
+  function composeTagsEditorSyncDraft(editor) {
+    if (!(editor instanceof HTMLElement)) {
+      return;
+    }
+    state.compose.tagsDraftText = composeTagsEditorReadDraftText(editor);
+    composeTagsEditorSetEmptyClass(editor);
+  }
+
+  function composeTagsEditorCommit(editor, forceFinalize) {
+    if (!(editor instanceof HTMLElement)) {
+      return false;
+    }
+    var draft = composeTagsEditorReadDraftText(editor);
+    var rawParts = String(draft || '').split(',');
+    if (!rawParts.length) {
+      return false;
+    }
+    var changed = false;
+    var limit = forceFinalize ? rawParts.length : Math.max(0, rawParts.length - 1);
+    for (var i = 0; i < limit; i += 1) {
+      if (addComposeTag(rawParts[i])) {
+        changed = true;
+      }
+    }
+    var nextDraft = forceFinalize ? '' : String(rawParts[rawParts.length - 1] || '');
+    var draftChanged = nextDraft !== draft;
+    state.compose.tagsDraftText = nextDraft;
+    if (changed || draftChanged) {
+      composeTagsEditorRender(editor);
+      composeTagsEditorFocusDraft(editor);
+    } else {
+      composeTagsEditorSetEmptyClass(editor);
+    }
+    return changed || draftChanged;
+  }
+
+  function composeTagsEditorRemoveTagByNode(editor, tokenNode) {
+    if (!(editor instanceof HTMLElement) || !(tokenNode instanceof HTMLElement)) {
+      return false;
+    }
+    var tag = String(tokenNode.getAttribute('data-compose-tag-token') || '').trim();
+    if (!tag) {
+      return false;
+    }
+    if (state.compose.tags.indexOf(tag) < 0) {
+      return false;
+    }
+    removeComposeTag(tag);
+    composeTagsEditorRender(editor);
+    composeTagsEditorFocusDraft(editor);
+    return true;
+  }
+
+  function hydrateComposeTagsEditor() {
+    var editor = composeTagsEditorNode();
+    if (!editor) {
+      return;
+    }
+    if (!(composeTagsEditorDraftNode(editor) instanceof HTMLElement)) {
+      composeTagsEditorRender(editor);
+    } else {
+      composeTagsEditorSetEmptyClass(editor);
+    }
+  }
+
   function addComposeTag(rawTag) {
     var tag = normalizeTagValue(rawTag);
     if (!tag || state.compose.tags.indexOf(tag) !== -1) {
@@ -1148,22 +1719,12 @@
   }
 
   function commitComposeTagInput() {
-    if (!els.composeSlot) {
-      return false;
+    var editor = composeTagsEditorNode();
+    if (editor) {
+      return composeTagsEditorCommit(editor, true);
     }
-    var input = els.composeSlot.querySelector('[data-compose-field="tags-input"]');
-    if (!(input instanceof HTMLInputElement)) {
-      return false;
-    }
-    var parts = String(input.value || '').split(',');
-    var changed = false;
-    parts.forEach(function (part) {
-      if (addComposeTag(part)) {
-        changed = true;
-      }
-    });
-    input.value = '';
-    return changed;
+    state.compose.tagsDraftText = '';
+    return false;
   }
 
   function readFileAsDataUrl(file) {
@@ -1196,77 +1757,453 @@
   }
 
   function appendComposeContent(text) {
+    ensureComposeStateShape();
     if (!els.composeSlot) {
-      return;
+      var queuedOnly = String(text || '').trim();
+      if (queuedOnly) {
+        state.compose.pendingContentAdditions.push(queuedOnly);
+      }
+      return queuedOnly ? 'queued' : 'skipped';
     }
     var source = els.composeSlot.querySelector('[data-compose-field="content"]');
-    if (!(source instanceof HTMLTextAreaElement)) {
-      return;
-    }
     var addition = String(text || '').trim();
     if (!addition) {
-      return;
+      return 'skipped';
+    }
+    if (!(source instanceof HTMLTextAreaElement)) {
+      state.compose.pendingContentAdditions.push(addition);
+      return 'queued';
     }
     var current = String(source.value || '');
     source.value = current.trim() ? (current.replace(/\s*$/, '') + '\n\n' + addition) : addition;
+    return 'inserted';
   }
 
-  function uploadComposeFile(file) {
+  function clearComposeUploadCleanupTimer() {
+    if (!state.compose || !state.compose.uploadCleanupTimer) {
+      return;
+    }
+    clearTimeout(state.compose.uploadCleanupTimer);
+    state.compose.uploadCleanupTimer = null;
+  }
+
+  function clearComposeUploadItems() {
+    ensureComposeStateShape();
+    clearComposeUploadCleanupTimer();
+    state.compose.uploadItems = [];
+    state.compose.uploading = 0;
+  }
+
+  function composeUploadDisplayName(file) {
+    var raw = String((file && file.name) || '').trim();
+    if (raw) {
+      return raw;
+    }
+    return 'upload-' + String(Date.now()) + '.bin';
+  }
+
+  function addComposeUploadEntries(files) {
+    ensureComposeStateShape();
+    var entries = Array.from(files || []).map(function (file) {
+      state.compose.uploadSeq += 1;
+      return {
+        id: 'upload-' + String(state.compose.uploadSeq),
+        name: composeUploadDisplayName(file),
+        progress: 0,
+        status: 'queued',
+        error: ''
+      };
+    });
+    if (entries.length) {
+      state.compose.uploadItems = state.compose.uploadItems.concat(entries);
+      clearComposeUploadCleanupTimer();
+    }
+    return entries;
+  }
+
+  function updateComposeUploadEntry(entryId, patch) {
+    ensureComposeStateShape();
+    var id = String(entryId || '').trim();
+    if (!id) {
+      return;
+    }
+    for (var idx = 0; idx < state.compose.uploadItems.length; idx += 1) {
+      var item = state.compose.uploadItems[idx];
+      if (String(item && item.id || '') !== id) {
+        continue;
+      }
+      var next = Object.assign({}, item, patch || {});
+      if (!isFinite(Number(next.progress))) {
+        next.progress = 0;
+      }
+      next.progress = Math.max(0, Math.min(100, Math.round(Number(next.progress))));
+      state.compose.uploadItems[idx] = next;
+      return;
+    }
+  }
+
+  function scheduleComposeUploadCleanup() {
+    ensureComposeStateShape();
+    clearComposeUploadCleanupTimer();
+    // Keep completed uploads visible in the compose upload list until the
+    // compose state is explicitly cleared/closed by the user.
+  }
+
+  function composeUploadProgressHtml() {
+    ensureComposeStateShape();
+    var items = Array.isArray(state.compose.uploadItems) ? state.compose.uploadItems : [];
+    if (!items.length) {
+      return '<div class="blog-compose-upload-list" data-compose-upload-progress hidden></div>';
+    }
+    var rows = items.map(function (item) {
+      var name = escapeHtml(String((item && item.name) || 'upload.bin'));
+      var status = String((item && item.status) || 'queued');
+      var progress = Math.max(0, Math.min(100, Math.round(Number(item && item.progress) || 0)));
+      var pctText = status === 'error' ? 'Failed' : (String(progress) + '%');
+      return '' +
+        '<div class="blog-compose-upload-row is-' + escapeHtml(status) + '">' +
+          '<span class="blog-compose-upload-name">' + name + '</span>' +
+          '<div class="blog-compose-upload-progress">' +
+            '<div class="blog-compose-upload-track"><div class="blog-compose-upload-fill" style="width:' + String(progress) + '%"></div></div>' +
+            '<span class="blog-compose-upload-state">' + pctText + '</span>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+    return '<div class="blog-compose-upload-list" data-compose-upload-progress>' + rows + '</div>';
+  }
+
+  function renderComposeUploadProgressOnly() {
+    if (!els.composeSlot || !state.compose.open) {
+      return;
+    }
+    var host = els.composeSlot.querySelector('[data-compose-upload-progress]');
+    if (!host) {
+      return;
+    }
+    var html = composeUploadProgressHtml();
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    var nextHost = wrapper.firstChild;
+    if (!(nextHost instanceof Element)) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    host.hidden = !!nextHost.hidden;
+    host.className = nextHost.className;
+    host.innerHTML = nextHost.innerHTML;
+  }
+
+  function uploadComposeFile(file, options) {
+    var opts = options || {};
+    function normalizeUploadDataBase64(dataUrl) {
+      var raw = String(dataUrl || '').trim();
+      if (!raw) {
+        return '';
+      }
+      var commaIdx = raw.indexOf(',');
+      if (commaIdx > 0 && /^data:/i.test(raw.slice(0, commaIdx))) {
+        return raw.slice(commaIdx + 1);
+      }
+      return raw;
+    }
+    function isMissingUploadPayloadError(data, statusCode) {
+      if (!data || typeof data !== 'object') {
+        return false;
+      }
+      var message = String(data.error || '').toLowerCase();
+      var code = String(data.code || '').toLowerCase();
+      if (message.indexOf('filename and data_base64 are required') < 0) {
+        return false;
+      }
+      // Some deployments return this payload with HTTP 200 and success=false.
+      return code === '' || code === 'invalid_request' || Number(statusCode) >= 200;
+    }
     var auth = authPayload();
     if (!auth.session_token || !auth.csrf_token) {
       return Promise.reject(new Error('Sign in again to upload.'));
     }
     return readFileAsDataUrl(file).then(function (dataUrl) {
-      return apiPost('/cgi/blog-upload-media', {
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token,
-        draft_id: String(state.compose.draftId || ''),
-        filename: String((file && file.name) || 'upload.bin'),
-        mime_type: String((file && file.type) || ''),
-        data_base64: String(dataUrl || '')
+      var rawDataUrl = String(dataUrl || '').trim();
+      var bareDataBase64 = normalizeUploadDataBase64(rawDataUrl);
+      var safeFilename = String((file && file.name) || 'upload.bin').trim() || 'upload.bin';
+      var safeMimeType = String((file && file.type) || '');
+      if (!rawDataUrl) {
+        return Promise.reject(new Error('Failed to read file'));
+      }
+      return new Promise(function (resolve, reject) {
+        var fallbackAttempted = false;
+        function buildPayload(useBareData) {
+          return {
+            session_token: auth.session_token,
+            csrf_token: auth.csrf_token,
+            draft_id: String(state.compose.draftId || ''),
+            filename: safeFilename,
+            mime_type: safeMimeType,
+            data_base64: useBareData ? bareDataBase64 : rawDataUrl
+          };
+        }
+        function sendAttempt(useBareData) {
+          var body = new URLSearchParams(buildPayload(useBareData)).toString();
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', '/cgi/blog-upload-media', true);
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+          if (xhr.upload && typeof opts.onProgress === 'function') {
+            xhr.upload.onprogress = function (progressEvent) {
+              if (!progressEvent || !progressEvent.lengthComputable || progressEvent.total <= 0) {
+                return;
+              }
+              opts.onProgress(progressEvent.loaded, progressEvent.total);
+            };
+          }
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) {
+              return;
+            }
+            var data;
+            try {
+              data = JSON.parse(String(xhr.responseText || ''));
+            } catch (_err) {
+              reject(new Error('Invalid JSON response'));
+              return;
+            }
+            if (xhr.status < 200 || xhr.status >= 300 || !data || data.success === false) {
+              if (!fallbackAttempted && isMissingUploadPayloadError(data, xhr.status)) {
+                fallbackAttempted = true;
+                sendAttempt(!useBareData);
+                return;
+              }
+              reject(new Error((data && data.error) || ('Upload failed (' + xhr.status + ')')));
+              return;
+            }
+            resolve(data);
+          };
+          xhr.onerror = function () {
+            reject(new Error('Upload request failed'));
+          };
+          xhr.send(body);
+        }
+        // Prefer bare base64 first; fallback to data URL form for compatibility.
+        sendAttempt(true);
       });
     });
   }
 
   function handleComposeUploads(files, preferredType) {
+    ensureComposeStateShape();
     var list = Array.from(files || []).filter(function (file) {
       return file && file.size >= 0;
     });
     if (!list.length) {
       return Promise.resolve();
     }
-    var normalizedPreferredType = normalizeComposePostType(preferredType);
-    if (normalizedPreferredType === 'capture-media' || normalizedPreferredType === 'upload-media') {
-      state.compose.preview = true;
+    if (!state.compose.open) {
+      setComposeOpen(true);
     }
-    if (preferredType) {
-      setComposePostType(preferredType, { skipAutosave: true });
+    var currentType = state.compose.postTypeChosen ? composePostType() : '';
+    var targetType = normalizeComposePostType(preferredType || currentType || 'attachment');
+    if (targetType === 'shortform' || targetType === 'capture-media' || targetType === 'go-live') {
+      targetType = 'attachment';
     }
-    state.compose.uploading += 1;
-    setComposeOutput('Uploading ' + list.length + ' file(s)...', 'warn');
+    if (!state.compose.postTypeChosen || preferredType) {
+      setComposePostType(targetType, { skipAutosave: true });
+    } else {
+      renderComposeStatusOnly();
+    }
+    var uploadEntries = addComposeUploadEntries(list);
+    state.compose.uploading += list.length;
+    setComposeOutput('', '');
+    showTopToast('Uploading ' + list.length + ' file(s)...', 'warn', 1600);
     renderComposeStatusOnly();
+    var insertedCount = 0;
+    var errorCount = 0;
     var chain = Promise.resolve();
-    list.forEach(function (file) {
+    list.forEach(function (file, idx) {
+      var entry = uploadEntries[idx];
       chain = chain.then(function () {
-        return uploadComposeFile(file).then(function (data) {
+        if (entry && entry.id) {
+          updateComposeUploadEntry(entry.id, { status: 'uploading', progress: 2, error: '' });
+          renderComposeStatusOnly();
+        }
+        return uploadComposeFile(file, {
+          onProgress: function (loaded, total) {
+            if (!entry || !entry.id) {
+              return;
+            }
+            var pct = total > 0 ? (loaded / total) * 100 : 0;
+            updateComposeUploadEntry(entry.id, { status: 'uploading', progress: Math.max(2, Math.min(98, pct)) });
+            renderComposeStatusOnly();
+          }
+        }).then(function (data) {
           if (data && data.draft_id) {
             state.compose.draftId = String(data.draft_id);
           }
-          appendComposeContent(composeUploadMarkdown(data && data.url, file));
+          var uploadUrl = String((data && data.url) || '').trim();
+          if (!uploadUrl) {
+            var uploadedFileId = String((data && data.file_id) || '').trim();
+            var uploadedName = String((data && (data.filename || data.name)) || '').trim();
+            if (uploadedFileId) {
+              uploadUrl = '/files/' + encodeURIComponent(uploadedFileId);
+              if (uploadedName) {
+                uploadUrl += '/' + encodeURIComponent(uploadedName);
+              }
+            }
+          }
+          if (!uploadUrl) {
+            throw new Error('Upload succeeded but file URL is missing');
+          }
+          var appendState = appendComposeContent(composeUploadMarkdown(uploadUrl, file));
+          if (appendState === 'inserted' || appendState === 'queued') {
+            insertedCount += 1;
+          }
+          if (entry && entry.id) {
+            updateComposeUploadEntry(entry.id, { status: 'done', progress: 100, error: '' });
+            renderComposeStatusOnly();
+          }
+        }).catch(function (err) {
+          errorCount += 1;
+          if (entry && entry.id) {
+            updateComposeUploadEntry(entry.id, {
+              status: 'error',
+              progress: 100,
+              error: String((err && err.message) || 'Upload failed')
+            });
+            renderComposeStatusOnly();
+          }
         });
       });
     });
     return chain.then(function () {
-      setComposeOutput('Upload complete. Added to body.', 'ok');
-      queueComposeAutosave();
       renderComposeUi();
-    }).catch(function (err) {
-      setComposeOutput('Upload error: ' + ((err && err.message) ? err.message : 'Upload failed'), 'error');
-      renderComposeStatusOnly();
+      if (insertedCount > 0) {
+        flushComposeAutosaveNow();
+      } else {
+        queueComposeAutosave();
+      }
+      if (insertedCount > 0) {
+        showTopToast('Upload complete. Added to body.', 'ok', 2600);
+      } else if (!errorCount) {
+        showTopToast('Upload complete.', 'ok', 2400);
+      }
+      if (errorCount > 0) {
+        showTopToast('Upload failed for ' + String(errorCount) + ' file(s).', 'error', 3600);
+      }
+      scheduleComposeUploadCleanup();
     }).finally(function () {
-      state.compose.uploading = Math.max(0, state.compose.uploading - 1);
+      state.compose.uploading = Math.max(0, state.compose.uploading - list.length);
       renderComposeStatusOnly();
     });
+  }
+
+  function composeDroppedFiles(event) {
+    var dt = event && event.dataTransfer;
+    if (!dt || !dt.files) {
+      return [];
+    }
+    return Array.from(dt.files).filter(function (file) {
+      return file && file.size >= 0;
+    });
+  }
+
+  function composeDragHasFiles(event) {
+    var dt = event && event.dataTransfer;
+    if (!dt) {
+      return false;
+    }
+    if (dt.files && dt.files.length > 0) {
+      return true;
+    }
+    var types = dt.types ? Array.from(dt.types) : [];
+    return types.indexOf('Files') >= 0;
+  }
+
+  function composeDropInComposeCard(target) {
+    if (!state.compose.open || !els.composeSlot || !target || !(target instanceof Element)) {
+      return false;
+    }
+    return !!target.closest('.blog-compose-card');
+  }
+
+  function clearComposeDropHover() {
+    if (composeDropHoverTimer) {
+      clearTimeout(composeDropHoverTimer);
+      composeDropHoverTimer = null;
+    }
+    if (!els.composeSlot) {
+      return;
+    }
+    var active = els.composeSlot.querySelector('.blog-compose-card.is-drop-hover');
+    if (active) {
+      active.classList.remove('is-drop-hover');
+    }
+  }
+
+  function setComposeDropHover(target) {
+    if (!els.composeSlot || !target || !(target instanceof Element)) {
+      return;
+    }
+    var card = target.closest('.blog-compose-card');
+    if (!card) {
+      return;
+    }
+    var active = els.composeSlot.querySelector('.blog-compose-card.is-drop-hover');
+    if (active && active !== card) {
+      active.classList.remove('is-drop-hover');
+    }
+    card.classList.add('is-drop-hover');
+    if (composeDropHoverTimer) {
+      clearTimeout(composeDropHoverTimer);
+    }
+    composeDropHoverTimer = setTimeout(function () {
+      clearComposeDropHover();
+    }, 150);
+  }
+
+  function composeCanAcceptDroppedFiles(postType) {
+    if (state.compose.cameraFullscreen) {
+      return false;
+    }
+    var type = normalizeComposePostType(postType);
+    if (!type) {
+      return true;
+    }
+    return type !== 'shortform' && type !== 'capture-media';
+  }
+
+  function composePreferredDropType(files, currentType) {
+    var type = normalizeComposePostType(currentType);
+    var list = Array.from(files || []);
+    if (!list.length) {
+      return '';
+    }
+    var allAudio = list.every(function (file) {
+      return String((file && file.type) || '').toLowerCase().indexOf('audio/') === 0;
+    });
+    var allVisual = list.every(function (file) {
+      var mime = String((file && file.type) || '').toLowerCase();
+      return mime.indexOf('image/') === 0 || mime.indexOf('video/') === 0;
+    });
+    if (type) {
+      if (type === 'upload-media' && !allVisual) {
+        return 'attachment';
+      }
+      if (type === 'audio-note' && !allAudio) {
+        return 'attachment';
+      }
+      if (type === 'shortform' || type === 'capture-media') {
+        return '';
+      }
+      return '';
+    }
+    // When chooser is showing (no type selected), auto-pick based on dropped file kind:
+    // image files -> image upload mode, everything else -> attachment mode.
+    var allImages = list.every(function (file) {
+      return String((file && file.type) || '').toLowerCase().indexOf('image/') === 0;
+    });
+    if (allImages) {
+      return 'upload-media';
+    }
+    return 'attachment';
   }
 
   function composePickerFieldByType(type) {
@@ -1634,7 +2571,7 @@
       state.compose.cameraReturnToChooser = false;
       state.compose.postType = 'capture-media';
       state.compose.postTypeChosen = true;
-      state.compose.preview = true;
+      state.compose.preview = false;
       stopComposeCameraStream();
       renderComposeUi();
       handleComposeUploads([file], 'capture-media');
@@ -1690,6 +2627,25 @@
     return dt.toISOString().replace('.000Z', 'Z');
   }
 
+  function composeNormalizeScheduledDate(value) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw;
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+      return raw.slice(0, 10);
+    }
+    var dt = new Date(raw);
+    if (isNaN(dt.getTime())) {
+      return '';
+    }
+    var local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
   function composePublishMode() {
     if (!els.composeSlot) {
       return 'immediate';
@@ -1721,6 +2677,10 @@
   }
 
   function composePrimaryLabel(mode, destination) {
+    var shared = (typeof window !== 'undefined' && window.BlogComposeShared) ? window.BlogComposeShared : null;
+    if (shared && typeof shared.primaryPublishLabel === 'function') {
+      return shared.primaryPublishLabel(mode, destination, { postTypeLocked: !!state.compose.postTypeLocked });
+    }
     if (state.compose.postTypeLocked) {
       return 'Publish Changes';
     }
@@ -1733,7 +2693,23 @@
     if (normalizeComposePublishDestination(destination) === 'local_only') {
       return 'Publish to Server';
     }
-    return 'Publish Now';
+    return 'Publish to Nostr';
+  }
+
+  function composePublishDestinationFieldHtml(destination) {
+    var shared = (typeof window !== 'undefined' && window.BlogComposeShared) ? window.BlogComposeShared : null;
+    if (shared && typeof shared.renderPublishDestinationField === 'function') {
+      return shared.renderPublishDestinationField({
+        inputName: 'blog-inline-compose-destination',
+        destination: destination
+      });
+    }
+    return '' +
+      '<strong>Publish to</strong>' +
+      '<div class="mode-row">' +
+        '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Server only</label>' +
+        '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Server + Nostr</label>' +
+      '</div>';
   }
 
   function composeModeAction(mode, destination) {
@@ -1745,9 +2721,6 @@
     }
     if (mode === 'drip') {
       return 'queue_drip';
-    }
-    if (normalizeComposePublishDestination(destination) === 'local_only') {
-      return 'save_draft';
     }
     return 'publish_now';
   }
@@ -1762,6 +2735,19 @@
     var scheduleInput = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
     if (!(scheduleInput instanceof HTMLInputElement)) {
       return;
+    }
+    var releaseRow = scheduleInput.closest('.compose-release-row');
+    var scheduleOption = els.composeSlot.querySelector('input[name="blog-inline-compose-mode"][value="scheduled"]');
+    var scheduleAnchor = scheduleOption instanceof HTMLInputElement
+      ? (scheduleOption.closest('label') || scheduleOption)
+      : null;
+    if (releaseRow && scheduleAnchor instanceof Element) {
+      var rowRect = releaseRow.getBoundingClientRect();
+      var anchorRect = scheduleAnchor.getBoundingClientRect();
+      var left = Math.max(0, Math.round(anchorRect.left - rowRect.left));
+      var top = Math.max(0, Math.round(anchorRect.bottom - rowRect.top + 3));
+      scheduleInput.style.left = String(left) + 'px';
+      scheduleInput.style.top = String(top) + 'px';
     }
     try {
       if (typeof scheduleInput.showPicker === 'function') {
@@ -1780,11 +2766,11 @@
   }
 
   function composeScheduledDisplayValue(rawValue) {
-    var value = String(rawValue || '').trim();
+    var value = composeNormalizeScheduledDate(rawValue);
     if (!value) {
       return 'No schedule selected';
     }
-    return value.replace('T', ' ');
+    return value;
   }
 
   function composeToolbarButtonHtml(action, label, icon) {
@@ -1806,6 +2792,7 @@
         composeToolbarButtonHtml('ol', 'Numbered list', '<span class="tb-glyph tb-glyph-list" aria-hidden="true">1.</span>') +
         composeToolbarButtonHtml('image', 'Insert image', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.1" stroke="currentColor" stroke-width="1.8"/><circle cx="9.2" cy="10.2" r="1.2" fill="currentColor"/><path d="M6.2 16.1L10.7 11.7L13.2 14.2L16.1 11.5L17.8 13.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
         composeToolbarButtonHtml('attachment', 'Attach file', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.2 12.8L14.4 7.6C15.8 6.2 18 6.2 19.4 7.6C20.8 9 20.8 11.2 19.4 12.6L11.2 20.8C8.9 23.1 5.2 23.1 2.9 20.8C0.6 18.5 0.6 14.8 2.9 12.5L11 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+        composeToolbarButtonHtml('audio_record', 'Record audio', '<svg class="tb-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="6.2" stroke="currentColor" stroke-width="1.9"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>') +
       '</div>';
   }
 
@@ -1824,39 +2811,13 @@
         '</div>';
     }
     if (type === 'upload-media') {
-      return '' +
-        '<div class="compose-media-tools compose-mode-panel">' +
-          '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="upload-media">Upload Photo/Video</button>' +
-          '</div>' +
-        '</div>';
+      return '';
     }
     if (type === 'attachment') {
-      return '' +
-        '<div class="compose-media-tools compose-mode-panel">' +
-          '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="open-mode-picker" data-compose-mode-target="attachment">Browse Attachment/File</button>' +
-          '</div>' +
-        '</div>';
+      return '';
     }
     if (type === 'audio-note') {
-      var audioStatus = state.compose.audioRecording
-        ? 'Recording... press Stop to finish and attach audio.'
-        : (state.compose.audioStarting
-            ? 'Requesting microphone access...'
-            : (state.compose.audioError
-                ? escapeHtml(state.compose.audioError)
-                : (state.compose.audioStream
-                    ? 'Microphone is ready. Press Start Recording.'
-                    : 'Press Start Recording to request microphone access.')));
-      return '' +
-        '<div class="compose-media-tools compose-mode-panel compose-audio-panel">' +
-          '<div class="compose-media-actions">' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn compose-media-btn-primary" data-compose-action="audio-record-toggle">' + (state.compose.audioRecording ? 'Stop Recording' : 'Start Recording') + '</button>' +
-            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="audio-note">Upload Audio File</button>' +
-          '</div>' +
-          '<div class="compose-audio-status">' + audioStatus + '</div>' +
-        '</div>';
+      return '';
     }
     if (type === 'link-share') {
       return '' +
@@ -1864,8 +2825,6 @@
           '<div class="compose-link-fields">' +
             '<label><strong>Link URL</strong></label>' +
             '<input type="url" data-compose-field="link-url" placeholder="https://example.com" value="' + escapeHtml(fields.linkUrl) + '">' +
-            '<label><strong>Body</strong></label>' +
-            '<textarea rows="3" data-compose-field="link-body" placeholder="Optional note">' + escapeHtml(fields.linkBody) + '</textarea>' +
           '</div>' +
         '</div>';
     }
@@ -1915,14 +2874,12 @@
     var scheduled = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
     var tags = els.composeSlot.querySelector('[data-compose-field="tags"]');
     var linkUrl = els.composeSlot.querySelector('[data-compose-field="link-url"]');
-    var linkBody = els.composeSlot.querySelector('[data-compose-field="link-body"]');
     return {
       title: title instanceof HTMLInputElement ? String(title.value || '') : '',
       content: content instanceof HTMLTextAreaElement ? String(content.value || '') : '',
-      scheduledAt: scheduled instanceof HTMLInputElement ? String(scheduled.value || '') : '',
+      scheduledAt: scheduled instanceof HTMLInputElement ? composeNormalizeScheduledDate(String(scheduled.value || '')) : '',
       tags: tags instanceof HTMLInputElement ? String(tags.value || '') : '',
       linkUrl: linkUrl instanceof HTMLInputElement ? String(linkUrl.value || '') : String(state.compose.linkUrl || ''),
-      linkBody: linkBody instanceof HTMLTextAreaElement ? String(linkBody.value || '') : String(state.compose.linkBody || ''),
       postType: composePostType()
     };
   }
@@ -1935,12 +2892,11 @@
     }
     var payloadContent = fields.content;
     if (fields.postType === 'link-share') {
-      var linkMd = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
+      var linkMd = composeBuildLinkMarkdown(fields.linkUrl, fields.content, fields.title);
       if (linkMd) {
         payloadContent = linkMd;
       }
       state.compose.linkUrl = String(fields.linkUrl || '');
-      state.compose.linkBody = String(fields.linkBody || '');
     }
     return {
       action: action,
@@ -1950,7 +2906,7 @@
       tags: fields.tags.trim(),
       summary: '',
       content: payloadContent,
-      post_type: fields.postType,
+      post_type: composeBackingPostType(fields.postType),
       scheduled_at: composeLocalToIso(fields.scheduledAt),
       publish_mode: composePublishMode(),
       publish_destination: composePublishDestination()
@@ -1958,8 +2914,138 @@
   }
 
   function setComposeOutput(message, tone) {
-    state.compose.output = String(message || '');
-    state.compose.outputTone = String(tone || '');
+    var text = String(message || '').trim();
+    var safeTone = String(tone || '').trim().toLowerCase();
+    if (safeTone === 'error' || safeTone === 'warn') {
+      if (text) {
+        showTopToast(text, safeTone === 'error' ? 'error' : 'warn', safeTone === 'error' ? 3800 : 3400);
+      }
+      state.compose.output = '';
+      state.compose.outputTone = '';
+      return;
+    }
+    state.compose.output = text;
+    state.compose.outputTone = safeTone;
+  }
+
+  function captureComposeFieldFocus() {
+    if (!els.composeSlot) {
+      return null;
+    }
+    var active = document.activeElement;
+    var isTextControl = (active instanceof HTMLInputElement) || (active instanceof HTMLTextAreaElement);
+    var isTagEditor = (active instanceof HTMLElement) && String(active.getAttribute('data-compose-field') || '') === 'tags-editor';
+    if (!isTextControl && !isTagEditor) {
+      return null;
+    }
+    if (!els.composeSlot.contains(active)) {
+      return null;
+    }
+    var field = String(active.getAttribute('data-compose-field') || '').trim();
+    if (!field) {
+      return null;
+    }
+    var snapshot = {
+      field: field,
+      scrollTop: typeof active.scrollTop === 'number' ? active.scrollTop : 0,
+      scrollLeft: typeof active.scrollLeft === 'number' ? active.scrollLeft : 0
+    };
+    if (isTextControl) {
+      snapshot.selectionStart = typeof active.selectionStart === 'number' ? active.selectionStart : null;
+      snapshot.selectionEnd = typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
+      snapshot.selectionDirection = typeof active.selectionDirection === 'string' ? active.selectionDirection : 'none';
+      return snapshot;
+    }
+    snapshot.tagsDraftText = String(state.compose.tagsDraftText || '');
+    return snapshot;
+  }
+
+  function restoreComposeFieldFocus(snapshot) {
+    if (!snapshot || !els.composeSlot) {
+      return;
+    }
+    var selector = '[data-compose-field="' + String(snapshot.field || '').replace(/"/g, '\\"') + '"]';
+    var target = els.composeSlot.querySelector(selector);
+    if ((target instanceof HTMLElement) && String(snapshot.field || '') === 'tags-editor') {
+      state.compose.tagsDraftText = typeof snapshot.tagsDraftText === 'string' ? snapshot.tagsDraftText : String(state.compose.tagsDraftText || '');
+      composeTagsEditorRender(target);
+      composeTagsEditorFocusDraft(target);
+      return;
+    }
+    if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    try {
+      target.focus({ preventScroll: true });
+    } catch (_focusErr) {
+      target.focus();
+    }
+    if (typeof snapshot.selectionStart === 'number' && typeof snapshot.selectionEnd === 'number' && typeof target.setSelectionRange === 'function') {
+      try {
+        target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd, snapshot.selectionDirection || 'none');
+      } catch (_selectionErr) {
+        // Ignore selection restore errors.
+      }
+    }
+    try {
+      target.scrollTop = Number(snapshot.scrollTop) || 0;
+      target.scrollLeft = Number(snapshot.scrollLeft) || 0;
+    } catch (_scrollErr) {
+      // Ignore scroll restore errors.
+    }
+  }
+
+  function renderComposeUiPreserveFieldFocus() {
+    var focusSnapshot = captureComposeFieldFocus();
+    renderComposeUi();
+    if (focusSnapshot) {
+      restoreComposeFieldFocus(focusSnapshot);
+    }
+  }
+
+  function toastHost() {
+    var host = document.getElementById('nav-top-toast-host');
+    if (host) {
+      return host;
+    }
+    if (!document || !document.body) {
+      return null;
+    }
+    host = document.createElement('div');
+    host.id = 'nav-top-toast-host';
+    host.className = 'nav-top-toast-host';
+    document.body.appendChild(host);
+    return host;
+  }
+
+  function showTopToast(message, tone, ttlMs) {
+    var text = String(message || '').trim();
+    if (!text) {
+      return;
+    }
+    var host = toastHost();
+    if (!host) {
+      return;
+    }
+    var kind = String(tone || '').trim().toLowerCase();
+    var safeTone = (kind === 'ok' || kind === 'warn' || kind === 'error') ? kind : '';
+    var toast = document.createElement('div');
+    toast.className = 'nav-top-toast' + (safeTone ? (' is-' + safeTone) : '');
+    toast.textContent = text;
+    host.appendChild(toast);
+    requestAnimationFrame(function () {
+      toast.classList.add('is-visible');
+    });
+    var stayMs = Math.max(1800, Number(ttlMs) || 3200);
+    window.setTimeout(function () {
+      toast.classList.remove('is-visible');
+      toast.classList.add('is-closing');
+      window.setTimeout(function () {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 240);
+    }, stayMs);
   }
 
   function queueComposeAutosave() {
@@ -1974,7 +3060,18 @@
     state.compose.autosaveTimer = setTimeout(function () {
       state.compose.autosaveTimer = null;
       autosaveCompose();
-    }, 1500);
+    }, 500);
+  }
+
+  function flushComposeAutosaveNow() {
+    if (!isAdmin() || !state.compose.open) {
+      return;
+    }
+    if (state.compose.autosaveTimer) {
+      clearTimeout(state.compose.autosaveTimer);
+      state.compose.autosaveTimer = null;
+    }
+    autosaveCompose();
   }
 
   function afterComposePublishSuccess() {
@@ -1986,10 +3083,12 @@
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.tagsOpen = false;
+    state.compose.tagsDraftText = '';
     state.compose.publishDestination = 'local_only';
     state.compose.shortformLimitEditing = false;
     state.compose.linkUrl = '';
-    state.compose.linkBody = '';
+    state.compose.pendingContentAdditions = [];
+    clearComposeUploadItems();
     stopComposeCameraStream();
     stopComposeAudioStream();
     setComposeTags([]);
@@ -2058,21 +3157,25 @@
         return;
       }
       if (action === 'publish_now') {
-        setComposeOutput('Published. Rebuild may take a few seconds.', 'ok');
+        setComposeOutput('', '');
+        showTopToast('Published. Rebuild may take a few seconds.', 'ok', 2600);
         afterComposePublishSuccess();
+        toggleComposeFromUi(false);
       } else {
         setComposeOutput((data && data.message) || 'Saved.', 'ok');
       }
       renderComposeUi();
       loadPosts();
+      loadDraftNoticeData();
       setTimeout(function () { loadPosts(); }, 2500);
     }).catch(function (err) {
       var message = err && err.message ? err.message : 'Save failed';
       if (action === 'autosave') {
-        state.compose.saveStatus = 'error';
-      } else {
-        setComposeOutput('Error: ' + message, 'error');
+        state.compose.saveStatus = '';
+        renderComposeStatusOnly();
+        return;
       }
+      setComposeOutput('Error: ' + message, 'error');
       renderComposeStatusOnly();
     }).finally(function () {
       state.compose.busy = false;
@@ -2089,14 +3192,15 @@
     state.compose.uploading = 0;
     state.compose.postType = 'longform';
     state.compose.tagsOpen = false;
+    state.compose.tagsDraftText = '';
     state.compose.publishDestination = 'local_only';
     state.compose.shortformLimitEditing = false;
     state.compose.linkUrl = '';
-    state.compose.linkBody = '';
+    clearComposeUploadItems();
     stopComposeCameraStream();
     stopComposeAudioStream();
     setComposeOutput('', '');
-    setComposeTags([]);
+    seedComposeDefaultTag(true);
     if (!els.composeSlot) {
       renderComposeStatusOnly();
       return;
@@ -2130,7 +3234,6 @@
     var hasContent = hasTitle ||
       !!String(fields.content || '').trim() ||
       !!String(fields.linkUrl || '').trim() ||
-      !!String(fields.linkBody || '').trim() ||
       state.compose.tags.length > 0 ||
       !!state.compose.draftId;
     if (hasContent && !window.confirm('Delete this draft?')) {
@@ -2156,6 +3259,7 @@
       clearComposeFields();
       setComposeOutput('Draft deleted.', 'ok');
       renderComposeStatusOnly();
+      loadDraftNoticeData();
     }).catch(function (err) {
       setComposeOutput('Error: ' + ((err && err.message) ? err.message : 'Delete failed'), 'error');
       renderComposeStatusOnly();
@@ -2188,6 +3292,7 @@
       state.compose.sourcePostPath = '';
       state.compose.cameraFullscreen = false;
       state.compose.cameraReturnToChooser = false;
+      clearComposeUploadItems();
     } else {
       state.compose.postTypeToolbarCollapsed = false;
       state.compose.postTypeChosen = false;
@@ -2195,6 +3300,10 @@
       state.compose.sourcePostPath = '';
       state.compose.cameraFullscreen = false;
       state.compose.cameraReturnToChooser = false;
+      clearComposeUploadItems();
+      if (!state.compose.draftId && !state.compose.sourcePostPath) {
+        seedComposeDefaultTag(false);
+      }
     }
     try {
       renderComposeUi();
@@ -2293,8 +3402,8 @@
       state.compose.postTypeLocked = !!opts.lockPostType;
       state.compose.postTypeToolbarCollapsed = true;
       state.compose.tagsOpen = false;
+      state.compose.tagsDraftText = '';
       state.compose.linkUrl = '';
-      state.compose.linkBody = '';
       state.compose.shortformLimitEditing = false;
       state.compose.publishDestination = 'local_only';
       stopComposeCameraStream();
@@ -2307,15 +3416,25 @@
       if (els.composeSlot) {
         var titleInput = els.composeSlot.querySelector('[data-compose-field="title"]');
         var contentInput = els.composeSlot.querySelector('[data-compose-field="content"]');
+        var linkUrlInput = els.composeSlot.querySelector('[data-compose-field="link-url"]');
         var scheduleInput = els.composeSlot.querySelector('[data-compose-field="scheduled-at"]');
+        var loadedContent = String(draft.content || '');
+        if (state.compose.postType === 'link-share') {
+          var parsedLink = parseComposeLinkShareContent(loadedContent);
+          state.compose.linkUrl = parsedLink.url;
+          loadedContent = parsedLink.body;
+        }
         if (titleInput instanceof HTMLInputElement) {
           titleInput.value = String(draft.title || '');
         }
         if (contentInput instanceof HTMLTextAreaElement) {
-          contentInput.value = String(draft.content || '');
+          contentInput.value = loadedContent;
+        }
+        if (linkUrlInput instanceof HTMLInputElement) {
+          linkUrlInput.value = String(state.compose.linkUrl || '');
         }
         if (scheduleInput instanceof HTMLInputElement) {
-          scheduleInput.value = String(draft.scheduled_at_local || '');
+          scheduleInput.value = composeNormalizeScheduledDate(String(draft.scheduled_at_local || ''));
         }
       }
       if (els.composeSlot && typeof els.composeSlot.scrollIntoView === 'function') {
@@ -2357,15 +3476,25 @@
       textarea.focus();
       textarea.setSelectionRange(start, end);
     }
+    function applyEdit(start, end, nextText, cursorStart, cursorEnd) {
+      var replacement = String(nextText || '');
+      var selStart = Math.max(0, Number(start) || 0);
+      var selEnd = Math.max(selStart, Number(end) || selStart);
+      if (typeof textarea.setRangeText === 'function') {
+        textarea.focus();
+        textarea.setRangeText(replacement, selStart, selEnd, 'preserve');
+      } else {
+        var currentValue = String(textarea.value || '');
+        textarea.value = currentValue.slice(0, selStart) + replacement + currentValue.slice(selEnd);
+      }
+      placeCursor(selStart + (Number(cursorStart) || 0), selStart + (Number(cursorEnd) || 0));
+    }
     function replaceSelection(transformer) {
       var start = textarea.selectionStart;
       var end = textarea.selectionEnd;
       var selected = textarea.value.slice(start, end);
       var updated = transformer(selected);
-      var prefix = textarea.value.slice(0, start);
-      var suffix = textarea.value.slice(end);
-      textarea.value = prefix + updated.text + suffix;
-      placeCursor(start + updated.cursorStart, start + updated.cursorEnd);
+      applyEdit(start, end, updated.text, updated.cursorStart, updated.cursorEnd);
     }
     function replaceSelectedLines(transformer) {
       var value = textarea.value;
@@ -2381,8 +3510,7 @@
         return;
       }
       var next = result.lines.join('\n');
-      textarea.value = value.slice(0, lineStart) + next + value.slice(lineEnd);
-      placeCursor(lineStart, lineStart + next.length);
+      applyEdit(lineStart, lineEnd, next, 0, next.length);
     }
 
     if (action === 'bold' || action === 'italic' || action === 'code') {
@@ -2469,6 +3597,17 @@
         var start = text.indexOf('https://');
         return { text: text, cursorStart: start, cursorEnd: start + 8 };
       });
+    } else if (action === 'audio_record') {
+      if (composePostType() !== 'audio-note') {
+        setComposePostType('audio-note', { skipAutosave: true, interactive: true });
+        return;
+      }
+      if (state.compose.audioRecording) {
+        stopComposeAudioRecording();
+      } else {
+        startComposeAudioRecording();
+      }
+      return;
     } else if (action === 'attachment') {
       openComposePickerForType('attachment');
       return;
@@ -2547,12 +3686,23 @@
       scheduledAt: '',
       tags: '',
       linkUrl: String(state.compose.linkUrl || ''),
-      linkBody: String(state.compose.linkBody || ''),
       postType: composePostType()
     };
     var mode = composePublishMode();
     var destination = composePublishDestination();
     var postType = normalizeComposePostType(fields.postType);
+    if (Array.isArray(state.compose.pendingContentAdditions) && state.compose.pendingContentAdditions.length) {
+      var pendingJoined = state.compose.pendingContentAdditions
+        .map(function (item) { return String(item || '').trim(); })
+        .filter(Boolean)
+        .join('\n\n');
+      if (pendingJoined) {
+        fields.content = String(fields.content || '').trim()
+          ? (String(fields.content).replace(/\s*$/, '') + '\n\n' + pendingJoined)
+          : pendingJoined;
+      }
+      state.compose.pendingContentAdditions = [];
+    }
     var showTitleField = postType !== 'shortform';
     if (postType !== 'shortform') {
       state.compose.shortformLimitEditing = false;
@@ -2560,7 +3710,6 @@
     state.compose.postType = postType;
     state.compose.publishDestination = destination;
     state.compose.linkUrl = String(fields.linkUrl || '');
-    state.compose.linkBody = String(fields.linkBody || '');
     var postTypeLocked = !!state.compose.postTypeLocked;
     var waitingForPostType = !state.compose.postTypeChosen && !postTypeLocked;
     if (waitingForPostType) {
@@ -2593,15 +3742,15 @@
     }
     var previewContent = fields.content;
     if (postType === 'link-share') {
-      var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.linkBody, fields.title);
+      var linkPreview = composeBuildLinkMarkdown(fields.linkUrl, fields.content, fields.title);
       if (linkPreview) {
         previewContent = linkPreview;
       }
     }
     var previewTitle = showTitleField ? fields.title : '';
     var previewHtml = renderComposePreviewHtml(previewTitle, previewContent);
-    var contentLabel = composePostTypeIsTextual(postType) ? 'Content' : 'Body';
-    var contentPlaceholder = '# Write in Markdown';
+    var contentLabel = 'Body';
+    var contentPlaceholder = 'Post body';
     if (postType === 'shortform') {
       contentPlaceholder = 'Write a short post...';
     } else if (postType === 'link-share') {
@@ -2624,35 +3773,34 @@
       titlePlaceholder = 'Media title (optional)';
     }
     var mediaToolsHtml = composeModePanelHtml(postType, fields);
-    var forcePreview = postType === 'capture-media' || postType === 'upload-media';
-    var showPreview = forcePreview || !!state.compose.preview;
-    var previewIslandLayout = !!(showPreview && window.matchMedia && window.matchMedia('(min-width: 1220px)').matches);
+    var showPreview = !!state.compose.preview;
+    var previewIslandLayout = showPreview;
     var headRowClass = 'field-row blog-compose-head-row' + (state.compose.postTypeToolbarCollapsed ? ' is-type-collapsed' : '');
     var typeControlClass = state.compose.postTypeToolbarCollapsed ? 'compose-post-type-control is-collapsed' : 'compose-post-type-control';
+    var shortform = postType === 'shortform';
+    var autosaveClass = 'autosave-indicator compose-editor-autosave' +
+      (state.compose.saveStatus === 'saving' ? ' is-saving' : '') +
+      (state.compose.saveStatus === 'error' ? ' is-error' : '') +
+      (shortform ? ' is-shortform-corner' : '');
+    var shortformCornerHtml = shortform
+      ? ('<div class="blog-compose-shortform-corner">' +
+          '<div class="' + autosaveClass + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : '✓ Saved')) + '</div>' +
+          composeShortformMeterHtml(fields.content) +
+        '</div>')
+      : '';
     var editorBlockHtml = '' +
       '<div class="field-row">' +
         '<label><strong>' + escapeHtml(contentLabel) + '</strong></label>' +
         '<div class="editor-shell blog-compose-editor-shell">' +
           composeToolbarHtml() +
           '<textarea data-compose-field="content" rows="' + String(composeTextareaRows(postType)) + '"' + (postType === 'shortform' ? (' maxlength="' + escapeHtml(String(currentComposeShortformLimit())) + '"') : '') + ' placeholder="' + escapeHtml(contentPlaceholder) + '">' + escapeHtml(fields.content) + '</textarea>' +
-          '<div class="autosave-indicator compose-editor-autosave' + (state.compose.saveStatus === 'saving' ? ' is-saving' : '') + (state.compose.saveStatus === 'error' ? ' is-error' : '') + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : 'Saved')) + '</div>' +
+          (shortform
+            ? shortformCornerHtml
+            : ('<div class="' + autosaveClass + '"' + (state.compose.saveStatus ? '' : ' hidden') + '>' + (state.compose.saveStatus === 'saving' ? 'Saving...' : (state.compose.saveStatus === 'error' ? 'Save failed' : '✓ Saved')) + '</div>')) +
         '</div>' +
-        (postType === 'shortform' ? composeShortformMeterHtml(fields.content) : '') +
+        composeUploadProgressHtml() +
       '</div>';
-    var contentPaneHtml = '';
-    if (showPreview && !previewIslandLayout) {
-      if (forcePreview) {
-        contentPaneHtml = editorBlockHtml + '<div class="preview-box blog-compose-preview blog-compose-inline-preview">' + previewHtml + '</div>';
-      } else {
-        contentPaneHtml = '<div class="preview-box blog-compose-preview">' + previewHtml + '</div>' +
-          '<textarea data-compose-field="content" rows="14" hidden>' + escapeHtml(fields.content) + '</textarea>';
-      }
-    } else {
-      contentPaneHtml = editorBlockHtml;
-    }
-    var tagsHtml = state.compose.tags.map(function (tag) {
-      return '<span class="tag-pill"><span>' + escapeHtml(tag) + '</span><button type="button" class="tag-pill-remove" data-compose-action="remove-tag" data-compose-tag="' + escapeHtml(tag) + '" aria-label="Remove tag ' + escapeHtml(tag) + '">×</button></span>';
-    }).join('');
+    var contentPaneHtml = editorBlockHtml;
     var outputClass = 'output';
     if (state.compose.outputTone) {
       outputClass += ' ' + state.compose.outputTone;
@@ -2662,24 +3810,23 @@
     var previewToggleTitle = state.compose.preview ? 'Preview is on' : 'Preview';
     var previewTogglePressed = state.compose.preview ? 'true' : 'false';
     var previewToggleClass = 'unobtrusive-icon-button blog-compose-preview-toggle' + (state.compose.preview ? ' is-active' : '');
-    var previewToggleHtml = forcePreview
-      ? ''
-      : ('<button type="button" class="' + previewToggleClass + '" data-compose-action="toggle-preview" aria-label="' + previewActionLabel + '" aria-pressed="' + previewTogglePressed + '" title="' + previewToggleTitle + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + previewActionLabel + '</span></button>');
+    var previewToggleHtml = '<button type="button" class="' + previewToggleClass + '" data-compose-action="toggle-preview" aria-label="' + previewActionLabel + '" aria-pressed="' + previewTogglePressed + '" title="' + previewToggleTitle + '">' + composePreviewToggleIconSvg() + '<span class="sr-only">' + previewActionLabel + '</span></button>';
+    var postKindFooterHtml = composeNostrPillsHtml(postType) + (postTypeLocked ? '<span class="nostr-target-pill">Post type locked</span>' : '');
     var composeCardHtml = '' +
       '<article class="' + composeCardClass + '">' +
         '<div class="blog-compose-body">' +
           '<div class="' + headRowClass + '" data-compose-head-row>' +
             '<div class="' + typeControlClass + '" data-compose-type-control>' +
-              '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button"' + (postTypeLocked ? ' disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts"' : ' data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type"') + '>' + composePostTypeIconSvg(postType) + '</button>' +
+              '<button type="button" class="compose-post-type-current-btn unobtrusive-icon-button"' + (postTypeLocked ? ' disabled aria-disabled="true" aria-label="Post type is locked for existing posts" title="Post type is locked for existing posts"' : ' data-compose-action="toggle-post-type-toolbar" aria-label="Choose post type" title="Choose post type"') + '>' + composePostTypeIconSvg(composeBackingPostType(postType)) + '</button>' +
               '<div class="compose-post-type-toolbar-wrap"><div class="compose-post-type-row">' + composeTypeButtonsHtml(postType, { lockAll: postTypeLocked }) + '</div></div>' +
             '</div>' +
             '<div class="blog-compose-head-actions">' +
               previewToggleHtml +
               '<button type="button" class="unobtrusive-icon-button blog-compose-close" data-compose-action="close-compose" aria-label="Close compose" title="Close compose">' + composeCloseIconSvg() + '<span class="sr-only">Close compose</span></button>' +
             '</div>' +
-            '<div class="compose-nostr-target-row">' + composeNostrPillsHtml(postType) + (postTypeLocked ? '<span class="nostr-target-pill">Post type locked</span>' : '') + '</div>' +
           '</div>' +
           '<div class="field-row blog-compose-title-row"' + (showTitleField ? '' : ' hidden aria-hidden="true"') + '>' +
+            '<label><strong>Title</strong></label>' +
             '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +
           '</div>' +
           mediaToolsHtml +
@@ -2692,13 +3839,9 @@
             '<div class="field-row">' +
               '<label><strong>Tags</strong></label>' +
               '<input type="hidden" data-compose-field="tags" value="' + escapeHtml(fields.tags) + '">' +
-              (state.compose.tagsOpen
-                ? '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
-                    '<div class="tag-editor-pills">' + tagsHtml + '</div>' +
-                    '<input type="text" class="tag-editor-input" data-compose-field="tags-input" placeholder="tag, tag, tag">' +
-                    '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="true">Hide tags</button>' +
-                  '</div>'
-                : '<button type="button" class="unobtrusive-icon-button compose-tags-toggle" data-compose-action="toggle-tags" aria-expanded="false">+tags</button>') +
+              '<div class="tag-editor' + (state.compose.tags.length ? ' has-tags' : '') + '" role="group" aria-label="Post tags">' +
+                composeTagsEditorHtml() +
+              '</div>' +
             '</div>' +
           '</div>' +
           '<div class="field-row compose-release-row">' +
@@ -2709,21 +3852,17 @@
               '<label><input type="radio" name="blog-inline-compose-mode" value="scheduled"' + (mode === 'scheduled' ? ' checked' : '') + '> Schedule...</label>' +
             '</div>' +
             '<div class="compose-scheduled-value" data-compose-scheduled-value' + (mode === 'scheduled' ? '' : ' hidden') + '>' + escapeHtml(composeScheduledDisplayValue(fields.scheduledAt)) + '</div>' +
-            '<input type="datetime-local" class="compose-scheduled-picker-hidden" data-compose-field="scheduled-at" value="' + escapeHtml(fields.scheduledAt) + '" aria-label="Scheduled release date and time">' +
+            '<input type="date" class="compose-scheduled-picker-hidden" data-compose-field="scheduled-at" value="' + escapeHtml(composeNormalizeScheduledDate(fields.scheduledAt)) + '" aria-label="Scheduled release date">' +
           '</div>' +
           '<div class="field-row compose-destination-row">' +
-            '<strong>Publish Destination</strong>' +
-            '<div class="mode-row">' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="local_only"' + (destination === 'local_only' ? ' checked' : '') + '> Publish to server only</label>' +
-              '<label><input type="radio" name="blog-inline-compose-destination" value="nostr_now"' + (destination === 'nostr_now' ? ' checked' : '') + '> Publish to Nostr now</label>' +
-            '</div>' +
+              composePublishDestinationFieldHtml(destination) +
           '</div>' +
         '</div>' +
         '<div class="compose-footer blog-compose-footer">' +
           '<div class="compose-actions blog-compose-footer-actions">' +
             '<button type="button" class="icon-danger unobtrusive-icon-button blog-compose-delete" data-compose-action="delete" aria-label="Delete draft" title="Delete draft"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + composeTrashIconSvg() + '</button>' +
             '<div class="blog-compose-publish-stack">' +
-              '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode, destination)) + '</button>' +
+              '<div class="blog-compose-publish-row">' + postKindFooterHtml + '<button type="button" class="list-admin-primary-btn blog-compose-btn" data-compose-action="publish"' + (state.compose.busy ? ' disabled aria-disabled="true"' : '') + '>' + escapeHtml(composePrimaryLabel(mode, destination)) + '</button></div>' +
             '</div>' +
           '</div>' +
           '<div class="blog-compose-status-row">' +
@@ -2739,6 +3878,7 @@
     els.composeSlot.innerHTML = previewIslandLayout
       ? ('<div class="blog-compose-islands">' + composeCardHtml + previewCardHtml + '</div>')
       : composeCardHtml;
+    hydrateComposeTagsEditor();
     openComposeSlotAnimated();
     requestAnimationFrame(function () {
       applyComposeModeEffects(postType);
@@ -2763,6 +3903,7 @@
       output.textContent = state.compose.output || '';
       output.className = 'output' + (state.compose.outputTone ? (' ' + state.compose.outputTone) : '');
     }
+    renderComposeUploadProgressOnly();
     var scheduleValue = els.composeSlot.querySelector('[data-compose-scheduled-value]');
     if (scheduleValue) {
       scheduleValue.hidden = mode !== 'scheduled';
@@ -2781,7 +3922,7 @@
       autosave.hidden = !modeStatus;
       autosave.classList.toggle('is-saving', modeStatus === 'saving');
       autosave.classList.toggle('is-error', modeStatus === 'error');
-      autosave.textContent = modeStatus === 'saving' ? 'Saving...' : (modeStatus === 'error' ? 'Save failed' : 'Saved');
+      autosave.textContent = modeStatus === 'saving' ? 'Saving...' : (modeStatus === 'error' ? 'Save failed' : '✓ Saved');
     }
   }
 
@@ -2912,7 +4053,11 @@
     if (!shown.length) {
       els.list.innerHTML = '';
       if (!state.posts.length && !hasFilters) {
-        els.empty.textContent = 'No posts published yet.';
+        if (!postsCatalogReady) {
+          els.empty.hidden = true;
+          return;
+        }
+        els.empty.textContent = 'No posts to show yet.';
       } else {
         els.empty.textContent = 'No posts match these filters.';
       }
@@ -2966,7 +4111,7 @@
             '</div>' +
             adminMenuHtml +
           '</div>' +
-          (postSummary ? '<p class="post-summary">' + markdownInline(postSummary) + '</p>' : '') +
+          renderPostSummaryHtml(post.summary) +
           '<div class="blog-meta-row' + (hasTags ? '' : ' blog-meta-row-with-comments') + '"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span>' + (hasTags ? '' : commentsHtml) + '</div>' +
           (hasTags
             ? '<div class="post-card-footer"><div class="tags">' + tagsHtml + '</div>' + commentsHtml + '</div>'
@@ -3069,6 +4214,7 @@
   function renderAll() {
     renderHead();
     renderAdmin();
+    renderDraftNotice();
     renderValidation();
     renderExtrasAfter();
     renderFilters();
@@ -3277,6 +4423,7 @@
       if (!opts.deferRender) {
         renderAll();
       }
+      loadDraftNoticeData();
     }).catch(function (err) {
       var message = String(err && err.message || '');
       if (/unknown nostr page slug/i.test(message) || /unknown_page/i.test(message)) {
@@ -3285,6 +4432,7 @@
       if (!opts.deferRender) {
         renderAll();
       }
+      loadDraftNoticeData();
     }).finally(function () {
       if (!opts.deferInitialFlags) {
         state.initialPageStateLoaded = true;
@@ -3316,6 +4464,7 @@
         if (!data || !data.success || !Array.isArray(data.posts)) {
           return;
         }
+        postsCatalogReady = true;
         state.posts = data.posts;
         writeCache(state.posts);
         if (!opts.deferRender) {
@@ -3340,6 +4489,15 @@
 
   root.addEventListener('click', function (event) {
     var target = eventTargetElement(event.target);
+    var draftBannerAction = target ? target.closest('[data-draft-banner-action]') : null;
+    if (draftBannerAction) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (String(draftBannerAction.getAttribute('data-draft-banner-action') || '') === 'continue') {
+        openDraftFromNotice(String(draftBannerAction.getAttribute('data-draft-id') || ''));
+      }
+      return;
+    }
     var postCardMenuTrigger = target ? target.closest('.post-page-menu-trigger[data-post-card-menu-toggle]') : null;
     if (postCardMenuTrigger) {
       event.preventDefault();
@@ -3368,6 +4526,38 @@
       event.stopPropagation();
       toggleComposeFromUi(!state.compose.open);
       return;
+    }
+
+    var composeTagToken = target ? target.closest('[data-compose-tag-token]') : null;
+    if (composeTagToken instanceof HTMLElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      var tokenEditor = composeTagsEditorNode();
+      if (tokenEditor && tokenEditor.contains(composeTagToken)) {
+        composeTagsEditorSelectToken(tokenEditor, composeTagToken);
+      }
+      return;
+    }
+
+    var composeTagEditor = target ? target.closest('[data-compose-field="tags-editor"]') : null;
+    if (composeTagEditor instanceof HTMLElement) {
+      composeTagsEditorClearSelection(composeTagEditor);
+      try {
+        composeTagEditor.focus({ preventScroll: true });
+      } catch (_focusErr) {
+        composeTagEditor.focus();
+      }
+      if (!composeTagsEditorPlaceCaretFromPoint(composeTagEditor, Number(event.clientX) || 0, Number(event.clientY) || 0)) {
+        var draftNode = composeTagsEditorDraftNode(composeTagEditor);
+        if (target === composeTagEditor || !(draftNode && draftNode.contains(target))) {
+          composeTagsEditorFocusDraft(composeTagEditor);
+        }
+      }
+      setTimeout(function () {
+        if (document.activeElement === composeTagEditor) {
+          composeTagsEditorSyncDraft(composeTagEditor);
+        }
+      }, 0);
     }
 
     var composeAction = target ? target.closest('[data-compose-action]') : null;
@@ -3400,7 +4590,6 @@
         }
         if (state.compose.postTypeToolbarCollapsed) {
           setComposePostTypeToolbarCollapsed(false);
-          scheduleComposePostTypeCollapse(2600);
         } else {
           setComposePostTypeToolbarCollapsed(true);
         }
@@ -3547,6 +4736,51 @@
     renderList();
   });
 
+  root.addEventListener('dragover', function (event) {
+    var target = eventTargetElement(event.target);
+    if (!composeDropInComposeCard(target)) {
+      return;
+    }
+    if (!composeDragHasFiles(event)) {
+      return;
+    }
+    if (!composeCanAcceptDroppedFiles(state.compose.postTypeChosen ? composePostType() : '')) {
+      return;
+    }
+    event.preventDefault();
+    setComposeDropHover(target);
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  });
+
+  root.addEventListener('dragleave', function () {
+    clearComposeDropHover();
+  });
+
+  root.addEventListener('drop', function (event) {
+    var target = eventTargetElement(event.target);
+    if (!composeDropInComposeCard(target)) {
+      return;
+    }
+    var files = composeDroppedFiles(event);
+    if (!files.length) {
+      return;
+    }
+    if (!composeCanAcceptDroppedFiles(state.compose.postTypeChosen ? composePostType() : '')) {
+      event.preventDefault();
+      clearComposeDropHover();
+      setComposeOutput('File drop is disabled for this post type.', 'warn');
+      renderComposeStatusOnly();
+      return;
+    }
+    event.preventDefault();
+    clearComposeDropHover();
+    var currentType = state.compose.postTypeChosen ? composePostType() : '';
+    var preferredType = composePreferredDropType(files, currentType);
+    handleComposeUploads(files, preferredType || undefined);
+  });
+
   document.addEventListener('click', function (event) {
     var target = eventTargetElement(event.target);
     if (!target) {
@@ -3586,16 +4820,25 @@
     if (!(target instanceof HTMLElement) || !state.compose.open) {
       return;
     }
+    var tagEditorTarget = target.closest('[data-compose-field="tags-editor"]');
+    if (tagEditorTarget instanceof HTMLElement) {
+      composeTagsEditorClearSelection(tagEditorTarget);
+      var changed = composeTagsEditorCommit(tagEditorTarget, false);
+      composeTagsEditorSyncDraft(tagEditorTarget);
+      syncComposeTagsField();
+      if (changed || String(state.compose.tagsDraftText || '').trim()) {
+        queueComposeAutosave();
+      } else {
+        renderComposeStatusOnly();
+      }
+      return;
+    }
     if (target.matches('[data-compose-field="shortform-limit"]')) {
       return;
     }
-    if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"], [data-compose-field="link-url"], [data-compose-field="link-body"]')) {
-      if (target.matches('[data-compose-field="link-url"], [data-compose-field="link-body"]')) {
-        if (target.matches('[data-compose-field="link-url"]')) {
-          state.compose.linkUrl = String(target.value || '');
-        } else {
-          state.compose.linkBody = String(target.value || '');
-        }
+    if (target.matches('[data-compose-field="title"], [data-compose-field="content"], [data-compose-field="scheduled-at"], [data-compose-field="link-url"]')) {
+      if (target.matches('[data-compose-field="link-url"]')) {
+        state.compose.linkUrl = String(target.value || '');
         if (composePostType() !== 'link-share') {
           state.compose.postType = 'link-share';
           state.compose.postTypeChosen = true;
@@ -3612,7 +4855,7 @@
       }
       queueComposeAutosave();
       if (state.compose.preview) {
-        renderComposeUi();
+        renderComposeUiPreserveFieldFocus();
       } else {
         renderComposeStatusOnly();
       }
@@ -3677,29 +4920,63 @@
         return;
       }
     }
-    if (target.matches('[data-compose-field="tags-input"]')) {
-      if (event.key === 'Enter' || event.key === ',') {
+    var tagEditor = target.closest('[data-compose-field="tags-editor"]');
+    if (tagEditor instanceof HTMLElement) {
+      var selectedToken = composeTagsEditorSelectedToken(tagEditor);
+      if (event.key === 'Enter' || event.key === ',' || event.code === 'Comma') {
         event.preventDefault();
-        if (commitComposeTagInput()) {
-          renderComposeUi();
+        if (composeTagsEditorCommit(tagEditor, true)) {
           queueComposeAutosave();
+        } else {
+          renderComposeStatusOnly();
         }
         return;
       }
-      if (event.key === 'Backspace') {
-        var input = target;
-        if (!String(input.value || '').trim() && state.compose.tags.length) {
-          removeComposeTag(state.compose.tags[state.compose.tags.length - 1]);
-          renderComposeUi();
-          queueComposeAutosave();
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        if (selectedToken) {
+          event.preventDefault();
+          if (composeTagsEditorRemoveTagByNode(tagEditor, selectedToken)) {
+            queueComposeAutosave();
+          } else {
+            renderComposeStatusOnly();
+          }
+          return;
         }
+        var draftText = composeTagsEditorReadDraftText(tagEditor);
+        if (!draftText.trim() && state.compose.tags.length) {
+          event.preventDefault();
+          var edgeTag = event.key === 'Delete' ? state.compose.tags[0] : state.compose.tags[state.compose.tags.length - 1];
+          if (edgeTag) {
+            removeComposeTag(edgeTag);
+            composeTagsEditorRender(tagEditor);
+            composeTagsEditorFocusDraft(tagEditor);
+            queueComposeAutosave();
+          }
+          return;
+        }
+      }
+      if (event.key === 'Escape') {
+        composeTagsEditorClearSelection(tagEditor);
       }
     }
   });
 
   root.addEventListener('focusout', function (event) {
     var target = event.target;
-    if (!(target instanceof HTMLInputElement) || !state.compose.open) {
+    if (!(target instanceof HTMLElement) || !state.compose.open) {
+      return;
+    }
+    var tagEditorTarget = target.closest('[data-compose-field="tags-editor"]');
+    if (tagEditorTarget instanceof HTMLElement) {
+      if (composeTagsEditorCommit(tagEditorTarget, true)) {
+        queueComposeAutosave();
+      } else {
+        composeTagsEditorSyncDraft(tagEditorTarget);
+        renderComposeStatusOnly();
+      }
+      return;
+    }
+    if (!(target instanceof HTMLInputElement)) {
       return;
     }
     if (!target.matches('[data-compose-field="shortform-limit"]')) {
@@ -3784,9 +5061,11 @@
   removeLegacyTitleBlock();
   clearRouteRepairParam();
   ensureFilterGutterLayout();
+  ensureDraftNoticeHost();
 
   (function bootstrapOnce() {
     var hasWarmPosts = false;
+    hydrateDraftNoticeFromCache();
     var prerenderedPayload = readPrerenderPageBootstrap();
     if (prerenderedPayload) {
       state.payload = prerenderedPayload;
@@ -3795,12 +5074,14 @@
 
     var prerenderedPosts = readPrerenderPostsBootstrap(prerenderedPayload);
     if (prerenderedPosts) {
+      postsCatalogReady = true;
       state.posts = prerenderedPosts;
       writeCache(prerenderedPosts);
       hasWarmPosts = true;
     } else {
       var cached = readCache();
       if (cached) {
+        postsCatalogReady = true;
         state.posts = cached;
         hasWarmPosts = true;
       }
@@ -3810,13 +5091,16 @@
     state.renderSignature = renderSignature();
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
-    markInitialContentPainted();
+    waitForInitialDraftNotice().finally(function () {
+      markInitialContentPainted();
+    });
 
     Promise.allSettled([
       loadPageState({ deferRender: true, deferInitialFlags: true }),
       loadPosts({ deferRender: true, deferInitialFlags: true })
     ]).finally(function () {
       state.postsLoading = false;
+      loadDraftNoticeData();
       var nextSignature = renderSignature();
       if (state.renderSignature !== nextSignature) {
         state.renderSignature = nextSignature;

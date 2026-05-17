@@ -20,21 +20,19 @@ if [ -z "$post_path" ]; then
   exit 0
 fi
 
-post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##' -e 's#^pages/##')
-case "$post_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##')
 case "$post_path" in
   *'..'*|*'\\'*|*'//'*)
     blog_json_error "Invalid post path" "invalid_post_path"
     exit 0
     ;;
 esac
-file="$blog_site_root/site/pages/$post_path"
+
+file=$(blog_resolve_post_markdown_file "$post_path" 2>/dev/null || printf '')
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
 case "$file" in
   "$blog_posts_dir"/*) ;;
   *)
@@ -42,10 +40,15 @@ case "$file" in
     exit 0
     ;;
 esac
-if [ ! -f "$file" ]; then
-  blog_json_error "Post not found" "not_found"
-  exit 0
-fi
+
+post_path=${file#"$blog_site_root/site/pages/"}
+case "$post_path" in
+  posts/*.md) ;;
+  *)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
 
 title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
 summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
@@ -63,9 +66,10 @@ tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
 tags_csv=$(printf '%s' "$tags_raw" | sed 's/^\[//; s/\]$//; s/"//g; s/, */,/g')
 tags=$(blog_normalize_tags "$tags_csv")
 content=$(blog_read_markdown_body "$file")
+origin_platforms_json=$(blog_origin_post_platforms_json "$post_path" "$(blog_origin_enabled_platforms_json)")
 
 draft_id=$(blog_new_draft_id)
 post_filename=$(blog_normalize_post_filename "$post_path" 2>/dev/null || printf '')
-blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type" "$post_path" "$post_filename"
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type" "$post_path" "$post_filename" "$origin_platforms_json"
 
 printf '{"success":true,"draft_id":"%s","message":"Draft created from published post."}\n' "$(blog_json_escape "$draft_id")"

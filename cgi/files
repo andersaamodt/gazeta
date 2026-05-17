@@ -1,0 +1,6 @@
+#!/bin/sh
+# Compatibility wrapper for /files/* style CGI route.
+
+set -eu
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+exec "$SCRIPT_DIR/blog-file"
