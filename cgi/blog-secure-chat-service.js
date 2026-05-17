@@ -149,6 +149,14 @@ function validateNpub(npub) {
   return value;
 }
 
+function optionalNpub(npub) {
+  try {
+    return npub ? validateNpub(npub) : '';
+  } catch (_err) {
+    return '';
+  }
+}
+
 function contactFilePath(npub) {
   return path.join(CONTACTS_DIR, `${validateNpub(npub)}.json`);
 }
@@ -229,6 +237,7 @@ function normalizeOwnerDirectMessageRow(row) {
     seq,
     contact_id: contactId,
     thread_id: String(row.thread_id || `secure-chat-contact-${contactId}`),
+    npub: optionalNpub(row.npub),
     contact_name: sanitizeSimplexDisplayName(row.contact_name || '', `SimpleX ${contactId}`),
     message_ref: messageRef,
     message_kind: String(row.message_kind || 'text'),
@@ -241,6 +250,7 @@ function normalizeOwnerDirectMessageRow(row) {
     attachment_mime: row.attachment_mime == null ? '' : String(row.attachment_mime),
     attachment_size: row.attachment_size == null || row.attachment_size === '' ? null : Number(row.attachment_size),
     attachment_path: row.attachment_path == null ? '' : String(row.attachment_path),
+    attachment_data_url: row.attachment_data_url == null ? '' : String(row.attachment_data_url),
     error_code: row.error_code == null ? '' : String(row.error_code),
     error_detail: row.error_detail == null ? '' : String(row.error_detail)
   };
@@ -628,6 +638,8 @@ function mapMessageRow(row) {
   const attachmentSize = row.attachment_size != null ? row.attachment_size : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
   const attachmentDataUrl = parsedAttachment && parsedAttachment.attachment
     ? parsedAttachment.attachment.data_url
+    : row.attachment_data_url
+      ? String(row.attachment_data_url)
     : dataUrlFromAttachmentPath(row.attachment_path, attachmentMime, attachmentSize);
   if (
     String(row.message_kind || '') === 'file' &&
@@ -800,8 +812,11 @@ function mapOwnerDirectOwlExportRow(row) {
   const attachmentSize = row.attachment_size != null ? row.attachment_size : (parsedAttachment && parsedAttachment.attachment ? parsedAttachment.attachment.size : null);
   const attachmentDataUrl = parsedAttachment && parsedAttachment.attachment
     ? parsedAttachment.attachment.data_url
+    : row.attachment_data_url
+      ? String(row.attachment_data_url)
     : dataUrlFromAttachmentPath(row.attachment_path, attachmentMime, attachmentSize);
   const body = String(text || '').trim() || (attachmentName ? `Attachment: ${attachmentName}` : '');
+  const stableThreadId = String(row.npub || '').trim() || String(row.thread_id || `secure-chat-contact-${row.contact_id}`);
   return {
     seq: Number(row.seq),
     direction: String(row.direction || 'incoming'),
@@ -821,8 +836,8 @@ function mapOwnerDirectOwlExportRow(row) {
     error_code: row.error_code || '',
     error_detail: row.error_detail || '',
     id: `simplex-owner-direct:${row.contact_id}:${row.message_ref}`,
-    npub: '',
-    thread_id: String(row.thread_id || `secure-chat-contact-${row.contact_id}`),
+    npub: String(row.npub || ''),
+    thread_id: stableThreadId,
     contact_name: displayName || `SimpleX ${row.contact_id}`,
     simplex_address: `secure-chat:${row.contact_id}`,
     body,
@@ -2076,6 +2091,26 @@ function contactDisplayName(contact) {
   );
 }
 
+function contactNpub(contact) {
+  const profile = contact && contact.profile ? contact.profile : {};
+  const text = [
+    profile.fullName,
+    profile.full_name,
+    profile.displayName,
+    profile.display_name,
+    contact && contact.fullName,
+    contact && contact.displayName,
+    contact && contact.localDisplayName
+  ].filter(Boolean).join(' ');
+  const match = text.match(/\bnostr-pubkey:([0-9a-f]{64})\b/i);
+  if (!match) return '';
+  try {
+    return pubkeyToNpub(match[1]);
+  } catch (_err) {
+    return '';
+  }
+}
+
 function findExistingProvisionedContacts(ownerContacts, bridgeContacts, ownerUser, bridgeUser) {
   const ownerName = userDisplayName(ownerUser);
   const bridgeName = userDisplayName(bridgeUser);
@@ -2454,11 +2489,11 @@ function ownerDirectRowFromChatItem(contact, aChatItem) {
   ) {
     attachmentName = String(displayText || '').trim();
   }
-  return {
+  const row = {
     seq: 1,
     contact_id: contactId,
     thread_id: `secure-chat-contact-${contactId}`,
-    npub: '',
+    npub: contactNpub(contact),
     contact_name: contactDisplayName(contact),
     message_ref: messageRef,
     message_kind: messageKind,
@@ -2474,6 +2509,7 @@ function ownerDirectRowFromChatItem(contact, aChatItem) {
     error_code: '',
     error_detail: ''
   };
+  return row;
 }
 
 function ownerDirectChunkRowFromGroup(contact, group) {
@@ -2517,6 +2553,7 @@ function upsertOwnerDirectRow(byKey, next) {
   if (existing) {
     existing.contact_name = next.contact_name || existing.contact_name;
     existing.thread_id = next.thread_id || existing.thread_id;
+    existing.npub = next.npub || existing.npub || '';
     existing.delivery_status = next.delivery_status || existing.delivery_status;
     existing.updated_at = nowIso();
     existing.text = next.text || existing.text || '';
@@ -2524,11 +2561,64 @@ function upsertOwnerDirectRow(byKey, next) {
     existing.attachment_mime = existing.attachment_mime || next.attachment_mime || '';
     existing.attachment_size = existing.attachment_size || next.attachment_size || null;
     existing.attachment_path = existing.attachment_path || next.attachment_path || '';
+    existing.attachment_data_url = existing.attachment_data_url || next.attachment_data_url || '';
     return true;
   }
   next.seq = nextMessageSeq();
   byKey.set(key, normalizeOwnerDirectMessageRow(next));
   return true;
+}
+
+function ownerDirectStateRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  const direction = String(row.direction || '') === 'incoming' ? 'outgoing' : 'incoming';
+  return Object.assign({}, row, { direction });
+}
+
+function ownerDirectContactContext(contactId) {
+  const rows = loadOwnerDirectMessages().filter((row) => String(row.contact_id || '') === String(contactId || ''));
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    const row = rows[i];
+    if (row && (row.npub || row.contact_name)) {
+      return {
+        npub: row.npub || '',
+        contact_name: row.contact_name || ''
+      };
+    }
+  }
+  return { npub: '', contact_name: '' };
+}
+
+function rememberOwnerDirectSentAttachment(contactId, attachment, text, chatItems) {
+  const first = chatItems && chatItems[0] && chatItems[0].chatItem ? chatItems[0].chatItem : null;
+  const messageRef = first && first.meta && first.meta.itemId != null ? String(first.meta.itemId) : '';
+  if (!messageRef || !attachment) return;
+  const context = ownerDirectContactContext(contactId);
+  const rows = loadOwnerDirectMessages();
+  const byKey = new Map(rows.map((row) => [`${row.contact_id}:${row.message_ref}`, row]));
+  const createdAt = first && first.meta && (first.meta.itemTs || first.meta.createdAt) ? String(first.meta.itemTs || first.meta.createdAt) : nowIso();
+  upsertOwnerDirectRow(byKey, {
+    seq: 1,
+    contact_id: String(contactId),
+    thread_id: `secure-chat-contact-${contactId}`,
+    npub: context.npub,
+    contact_name: context.contact_name || `SimpleX ${contactId}`,
+    message_ref: messageRef,
+    message_kind: 'file',
+    direction: 'outgoing',
+    delivery_status: first ? deliveryStatusFromChatItem(first) : 'sent',
+    created_at: createdAt,
+    updated_at: nowIso(),
+    text: String(text || ''),
+    attachment_name: attachment.fileName || '',
+    attachment_mime: attachment.mimeType || '',
+    attachment_size: attachment.fileSize || null,
+    attachment_path: attachment.filePath || '',
+    attachment_data_url: dataUrlFromAttachmentPath(attachment.filePath, attachment.mimeType, attachment.fileSize),
+    error_code: '',
+    error_detail: ''
+  });
+  saveOwnerDirectMessages(Array.from(byKey.values()).filter(Boolean));
 }
 
 async function reconcileOwnerDirectMessages() {
@@ -2803,9 +2893,10 @@ async function sendOwnerDirectFileMessage(target, attachment, text) {
     throw new Error('Secure Chat owner contact id is required');
   }
   const owner = await ensureOwnerUser();
-  await sendComposedMessages(String(owner.userId), `@${contactId}`, [
+  const chatItems = await sendComposedMessages(String(owner.userId), `@${contactId}`, [
     fileComposedMessage(attachment, text)
   ]);
+  rememberOwnerDirectSentAttachment(contactId, attachment, text, chatItems);
   return { target: `secure-chat-contact-${contactId}` };
 }
 
@@ -2986,11 +3077,19 @@ function statePayload(pubkeyHex, sinceSeq, admin, sessionDisplayName) {
   const npub = pubkeyToNpub(pubkeyHex);
   const mapping = contactRowToJson(selectContactByNpubStmt.get(npub));
   const limit = 100;
-  const rawRows = sinceSeq > 0
+  const mappedRows = sinceSeq > 0
     ? selectMessagesSinceStmt.all(npub, Number(sinceSeq), limit)
     : selectRecentMessagesStmt.all(npub, limit).reverse();
+  const ownerDirectRows = loadOwnerDirectMessages()
+    .filter((row) => row.npub === npub)
+    .filter((row) => sinceSeq <= 0 || Number(row.seq || 0) > sinceSeq)
+    .map(ownerDirectStateRow)
+    .filter(Boolean);
+  const rawRows = mappedRows.concat(ownerDirectRows)
+    .sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0))
+    .slice(-limit);
   const cursorSeq = rawRows.length
-    ? Number(rawRows[rawRows.length - 1].seq || sinceSeq || 0)
+    ? Math.max(Number(sinceSeq || 0), ...rawRows.map((row) => Number(row.seq || 0) || 0))
     : Number(sinceSeq || 0);
   const rows = rawRows.filter(visibleMessageRow);
   const tickets = Array.from(uploads.values())

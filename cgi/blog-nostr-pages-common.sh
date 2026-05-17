@@ -5,8 +5,8 @@ set -eu
 
 blog_nostr_list_page_js_version='20260517-post-url-column'
 blog_nostr_blog_page_js_version='20260514-blog-utf8'
-blog_nostr_contact_page_js_version='20260517-contactv28'
-blog_nostr_simplex_web_default_chat_js_version='20260517-defaultchatv6'
+blog_nostr_contact_page_js_version='20260517-contactv30'
+blog_nostr_simplex_web_default_chat_js_version='20260517-defaultchatv8'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260404-nip23v1'
 blog_nostr_public_ranking_page_js_version='20260404-rankingv1'

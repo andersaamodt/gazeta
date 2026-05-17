@@ -195,6 +195,37 @@
     return out.slice(0, 32);
   }
 
+  function normalizeEmojiLabel(value) {
+    return limitString(String(value || '').trim(), MAX_LABEL_LENGTH);
+  }
+
+  function normalizeEmojiItem(value) {
+    var next = value && typeof value === 'object' ? value : {};
+    var unicode = normalizeEmoji(next.unicode || next.emoji || '');
+    if (!unicode) return null;
+    return {
+      unicode: unicode,
+      label: normalizeEmojiLabel(next.label || next.annotation || next.name || unicode)
+    };
+  }
+
+  function normalizeEmojiGroups(value) {
+    return (Array.isArray(value) ? value : []).slice(0, 12).map(function (group) {
+      var next = group && typeof group === 'object' ? group : {};
+      return {
+        id: normalizeEmojiLabel(next.id || ''),
+        label: normalizeEmojiLabel(next.label || ''),
+        emojis: (Array.isArray(next.emojis) ? next.emojis : []).slice(0, 400).map(normalizeEmojiItem).filter(Boolean)
+      };
+    }).filter(function (group) {
+      return group.id && group.label;
+    });
+  }
+
+  function normalizeEmojiItems(value) {
+    return (Array.isArray(value) ? value : []).slice(0, 200).map(normalizeEmojiItem).filter(Boolean);
+  }
+
   function normalizeAdminRow(value) {
     var next = value && typeof value === 'object' ? value : {};
     return {
@@ -364,6 +395,9 @@
       emojiPickerOpen: next.emojiPickerOpen === true,
       emojiPickerLoading: next.emojiPickerLoading === true,
       emojiPickerError: limitString(next.emojiPickerError || '', MAX_TEXT_LENGTH),
+      emojiPickerQuery: limitString(next.emojiPickerQuery || '', MAX_LABEL_LENGTH),
+      emojiGroups: normalizeEmojiGroups(next.emojiGroups),
+      emojiSearchResults: normalizeEmojiItems(next.emojiSearchResults),
       recentEmojis: normalizeRecentEmojis(next.recentEmojis),
       voiceNoteSupported: next.voiceNoteSupported !== false,
       voicePermission: normalizeVoicePermission(next.voicePermission),
@@ -398,6 +432,82 @@
     return '<svg class="secure-chat-emoji-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M8.4 10.1h.01M15.6 10.1h.01M8.6 14.2c.78 1.2 1.9 1.8 3.4 1.8s2.62-.6 3.4-1.8"/></svg>';
   }
 
+  function renderEmojiSectionIcon(id) {
+    var icons = {
+      recent: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2"/><path d="M4 12a8 8 0 1 0 2.35-5.65"/><path d="M4 4v5h5"/></svg>',
+      'smileys-emotion': '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.4c1.7 1.6 5.3 1.6 7 0"/></svg>',
+      'people-body': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a2 2 0 0 1 4 0v3"/><path d="M11 10V6a2 2 0 0 1 4 0v5"/><path d="M15 11V8a2 2 0 0 1 4 0v5c0 4-2.6 7-6.6 7H11c-3.4 0-6-2.6-6-6v-2.5a1.8 1.8 0 0 1 3.2-1.1L10 13"/></svg>',
+      'animals-nature': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 14c3-5 8-7 14-7-1 6-4 11-10 12"/><path d="M5 14c1.2 1.2 2.5 2.5 4 5"/><path d="M7 13c3 0 6-1 9-4"/></svg>',
+      'food-drink': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c1.7-2.4 4-1.8 5.1-.3 2.2 3 .1 10.3-5.1 12-5.2-1.7-7.3-9-5.1-12C8 5.2 10.3 4.6 12 7Z"/><path d="M12 7c0-2 1-3.5 3-4"/></svg>',
+      'travel-places': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l2-5h12l2 5"/><path d="M5 13h14v5H5z"/><path d="M7 18v2M17 18v2M7.5 15h.01M16.5 15h.01"/></svg>',
+      activities: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M5 10c4 0 7-2 9-5"/><path d="M9 20c.3-4 2.7-7.3 8-10"/><path d="M4 14c4 .2 7 2 9 6"/></svg>',
+      objects: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8 14c-1.5-1.2-2.5-3-2.5-5a6.5 6.5 0 0 1 13 0c0 2-1 3.8-2.5 5-.7.6-1 1.2-1 2H9c0-.8-.3-1.4-1-2Z"/></svg>',
+      symbols: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v12H5z"/><path d="M8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01"/></svg>',
+      flags: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4"/><path d="M6 5h11l-2 4 2 4H6"/></svg>'
+    };
+    return icons[id] || icons['smileys-emotion'];
+  }
+
+  function renderEmojiSectionTabs() {
+    var tabs = [
+      ['recent', 'Recently Used'],
+      ['smileys-emotion', 'Smileys & Emotion'],
+      ['people-body', 'People & Body'],
+      ['animals-nature', 'Animals & Nature'],
+      ['food-drink', 'Food & Drink'],
+      ['travel-places', 'Travel & Places'],
+      ['activities', 'Activities'],
+      ['objects', 'Objects'],
+      ['symbols', 'Symbols'],
+      ['flags', 'Flags']
+    ];
+    var html = '<div class="secure-chat-emoji-section-tabs" role="tablist" aria-label="Emoji sections">';
+    tabs.forEach(function (tab, index) {
+      html += '<button type="button" class="' + (index === 0 ? 'is-active' : '') + '" role="tab" aria-selected="' + (index === 0 ? 'true' : 'false') + '" data-secure-chat-action="emoji-section" data-secure-chat-section="' + escapeAttr(tab[0]) + '" aria-label="Show ' + escapeAttr(tab[1]) + '" title="' + escapeAttr(tab[1]) + '">' + renderEmojiSectionIcon(tab[0]) + '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderEmojiGrid(emojis, emptyText) {
+    if (!emojis.length) {
+      return '<p class="secure-chat-emoji-empty">' + escapeHtml(emptyText || 'No emojis found.') + '</p>';
+    }
+    var html = '<div class="secure-chat-emoji-grid">';
+    emojis.forEach(function (emoji) {
+      html += '<button type="button" class="secure-chat-emoji-choice" data-secure-chat-action="emoji-pick" data-secure-chat-emoji="' + escapeAttr(emoji.unicode) + '" aria-label="Insert ' + escapeAttr(emoji.label) + '">' + escapeHtml(emoji.unicode) + '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function recentEmojiItems(state) {
+    return normalizeRecentEmojis(state.recentEmojis).map(function (emoji) {
+      return { unicode: emoji, label: emoji };
+    });
+  }
+
+  function renderEmojiScrollableSections(state) {
+    var query = String(state.emojiPickerQuery || '').trim();
+    var html = '<div class="secure-chat-emoji-scroll" data-secure-chat-emoji-scroll>';
+    html += '<section class="secure-chat-emoji-section secure-chat-emoji-recent" data-secure-chat-section-panel="recent" aria-label="Recently Used"><h3>Recently Used</h3>';
+    html += renderEmojiGrid(recentEmojiItems(state), 'No recent emojis yet.');
+    html += '</section>';
+    if (query) {
+      html += '<section class="secure-chat-emoji-section" data-secure-chat-section-panel="search" aria-label="Search Results"><h3>Search Results</h3>';
+      html += renderEmojiGrid(state.emojiSearchResults, 'No matching emojis.');
+      html += '</section>';
+    } else {
+      state.emojiGroups.forEach(function (group) {
+        html += '<section class="secure-chat-emoji-section" data-secure-chat-section-panel="' + escapeAttr(group.id) + '" aria-label="' + escapeAttr(group.label) + '"><h3>' + escapeHtml(group.label) + '</h3>';
+        html += renderEmojiGrid(group.emojis, 'No emojis in this section.');
+        html += '</section>';
+      });
+    }
+    html += '</div>';
+    return html;
+  }
+
   function voiceButtonLabel(state) {
     if (!state.voiceNoteSupported) return 'Voice notes are not supported in this browser';
     if (state.voiceRecording) return 'Stop recording voice note';
@@ -413,22 +523,16 @@
   function renderEmojiPicker(state) {
     if (state.emojiPickerOpen !== true) return '';
     var html = '<div class="secure-chat-emoji-popover" role="dialog" aria-label="Emoji picker">';
-    html += '<div class="secure-chat-emoji-mode-row" role="tablist" aria-label="Emoji modes"><button type="button" class="is-active" role="tab" aria-selected="true">Emoji</button></div>';
-    if (state.recentEmojis.length) {
-      html += '<section class="secure-chat-emoji-recent" aria-label="Recently Used"><h3>Recently Used</h3><div class="secure-chat-emoji-recent-grid">';
-      state.recentEmojis.forEach(function (emoji) {
-        html += '<button type="button" class="secure-chat-emoji-recent-btn" data-secure-chat-action="emoji-recent" data-secure-chat-emoji="' + escapeAttr(emoji) + '" aria-label="Insert ' + escapeAttr(emoji) + '">' + escapeHtml(emoji) + '</button>';
-      });
-      html += '</div></section>';
-    }
+    html += '<div class="secure-chat-emoji-search-wrap"><input class="secure-chat-emoji-search" type="search" placeholder="Search emoji" value="' + escapeAttr(state.emojiPickerQuery) + '" data-secure-chat-action="emoji-search" aria-label="Search emoji" autocomplete="off" spellcheck="false"></div>';
     if (state.emojiPickerError) {
       html += '<p class="secure-chat-emoji-status is-error">' + escapeHtml(state.emojiPickerError) + '</p>';
     } else {
       if (state.emojiPickerLoading) {
         html += '<p class="secure-chat-emoji-status">Loading emoji...</p>';
       }
-      html += '<emoji-picker class="secure-chat-emoji-picker" emoji-version="17.0"></emoji-picker>';
+      html += renderEmojiScrollableSections(state);
     }
+    html += renderEmojiSectionTabs();
     html += '</div>';
     return html;
   }
@@ -614,6 +718,14 @@
         actions.onEmojiSelect(normalizeEmoji(actionNode.getAttribute('data-secure-chat-emoji') || ''));
         return;
       }
+      if (action === 'emoji-pick' && typeof actions.onEmojiSelect === 'function') {
+        actions.onEmojiSelect(normalizeEmoji(actionNode.getAttribute('data-secure-chat-emoji') || ''));
+        return;
+      }
+      if (action === 'emoji-section' && typeof actions.onEmojiSection === 'function') {
+        actions.onEmojiSection(limitString(actionNode.getAttribute('data-secure-chat-section') || '', MAX_LABEL_LENGTH));
+        return;
+      }
       if (action === 'remove-pending-file' && typeof actions.onRemovePendingFile === 'function') {
         actions.onRemovePendingFile(limitString(actionNode.getAttribute('data-secure-chat-file-id') || '', MAX_LABEL_LENGTH));
         return;
@@ -634,7 +746,13 @@
 
     function onInput(event) {
       var target = event.target;
-      if (!target || target.id !== 'secure-chat-input') return;
+      if (!target) return;
+      if (target.id !== 'secure-chat-input') {
+        if (target.getAttribute && target.getAttribute('data-secure-chat-action') === 'emoji-search' && typeof actions.onEmojiSearch === 'function') {
+          actions.onEmojiSearch(limitString(target.value || '', MAX_LABEL_LENGTH));
+        }
+        return;
+      }
       state.draftText = limitString(target.value || '', MAX_TEXT_LENGTH);
       if (typeof actions.onDraftChange === 'function') {
         actions.onDraftChange(state.draftText);

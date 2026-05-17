@@ -5007,6 +5007,8 @@ body.nav-cart-open {
 }
 
 .secure-chat-voice-btn {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5019,6 +5021,8 @@ body.nav-cart-open {
   border: 0;
   border-radius: 999px;
   background: transparent;
+  background-image: none;
+  box-shadow: none;
   color: var(--admin-text, #0b132b);
   cursor: pointer;
   z-index: 2;
@@ -5036,7 +5040,7 @@ body.nav-cart-open {
 }
 
 .secure-chat-voice-btn.is-recording {
-  background: var(--danger-soft, rgba(180, 35, 24, 0.14));
+  background: transparent;
   color: var(--danger, #b42318);
   transform: scale(1.03);
 }
@@ -5131,6 +5135,8 @@ body.nav-cart-open {
 }
 
 .secure-chat-emoji-button {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5143,6 +5149,8 @@ body.nav-cart-open {
   border-radius: 999px;
   border: 0;
   background: transparent;
+  background-image: none;
+  box-shadow: none;
   color: var(--admin-text, #0b132b);
   cursor: pointer;
   z-index: 2;
@@ -5150,8 +5158,7 @@ body.nav-cart-open {
 }
 
 .secure-chat-emoji-button:hover,
-.secure-chat-emoji-button:focus-visible,
-.secure-chat-emoji-button[aria-expanded="true"] {
+.secure-chat-emoji-button:focus-visible {
   background: color-mix(in srgb, var(--light-bg, #e0e7ff) 72%, white 28%);
   color: var(--accent, #2f4aa6);
 }
@@ -5172,84 +5179,16 @@ body.nav-cart-open {
   left: 0.58rem;
   bottom: 3.08rem;
   z-index: 8;
-  width: min(23rem, calc(100vw - 2.2rem));
+  width: min(24rem, calc(100vw - 2.2rem));
   max-height: min(31rem, calc(100vh - 7.5rem));
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.42rem;
   padding: 0.46rem;
   border: 1px solid color-mix(in srgb, var(--admin-border, #c7d2fe) 82%, white 18%);
   border-radius: 13px;
   background: rgba(255, 255, 252, 0.98);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-}
-
-.secure-chat-emoji-mode-row {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  max-width: 100%;
-  padding: 0.12rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--light-bg, #e0e7ff) 58%, white 42%);
-}
-
-.secure-chat-emoji-mode-row button {
-  width: fit-content;
-  min-width: 5.6rem;
-  height: 1.82rem;
-  padding: 0 0.72rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--admin-muted, #5f6f92);
-  font-size: 0.86rem;
-}
-
-.secure-chat-emoji-mode-row button.is-active {
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--admin-text, #0b132b);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-}
-
-.secure-chat-emoji-recent {
-  min-width: 0;
-}
-
-.secure-chat-emoji-recent h3 {
-  margin: 0.12rem 0 0.32rem;
-  color: var(--admin-muted, #5f6f92);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.secure-chat-emoji-recent-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 0.1rem;
-}
-
-.secure-chat-emoji-recent-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  min-width: 0;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-  font-size: 1.36rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.secure-chat-emoji-recent-btn:hover,
-.secure-chat-emoji-recent-btn:focus-visible {
-  background: color-mix(in srgb, var(--light-bg, #e0e7ff) 72%, white 28%);
 }
 
 .secure-chat-emoji-status {
@@ -5262,26 +5201,130 @@ body.nav-cart-open {
   color: var(--danger, #b42318);
 }
 
-.secure-chat-emoji-picker {
+.secure-chat-emoji-search-wrap {
+  min-width: 0;
+}
+
+.secure-chat-emoji-search {
   width: 100%;
-  height: min(22rem, calc(100vh - 13rem));
+  min-width: 0;
+  height: 2.15rem;
+  padding: 0 0.72rem;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--light-bg, #e0e7ff) 54%, white 46%);
+  color: var(--admin-text, #0b132b);
+  font-size: 0.94rem;
+}
+
+.secure-chat-emoji-scroll {
+  min-width: 0;
   min-height: 17rem;
-  --num-columns: 8;
-  --emoji-size: 1.45rem;
-  --emoji-padding: 0.36rem;
-  --category-emoji-size: 1.16rem;
-  --background: rgba(255, 255, 252, 0.98);
-  --border-color: color-mix(in srgb, var(--admin-border, #c7d2fe) 74%, white 26%);
-  --border-radius: 10px;
-  --button-hover-background: color-mix(in srgb, var(--light-bg, #e0e7ff) 72%, white 28%);
-  --button-active-background: color-mix(in srgb, var(--accent, #2f4aa6) 14%, white 86%);
-  --indicator-color: var(--accent, #2f4aa6);
-  --input-border-color: color-mix(in srgb, var(--admin-border, #c7d2fe) 76%, white 24%);
-  --input-border-radius: 8px;
-  --input-font-color: var(--admin-text, #0b132b);
-  --input-placeholder-color: var(--admin-muted, #5f6f92);
-  --category-font-color: var(--admin-muted, #5f6f92);
-  --outline-color: var(--accent, #2f4aa6);
+  height: min(22rem, calc(100vh - 13rem));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.12rem 0.08rem 0.34rem;
+}
+
+.secure-chat-emoji-section {
+  min-width: 0;
+  scroll-margin-top: 0.4rem;
+}
+
+.secure-chat-emoji-section + .secure-chat-emoji-section {
+  margin-top: 0.44rem;
+}
+
+.secure-chat-emoji-section h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.2rem 0 0.32rem;
+  background: rgba(255, 255, 252, 0.98);
+  color: var(--admin-muted, #5f6f92);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.secure-chat-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.1rem;
+}
+
+.secure-chat-emoji-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 1.68rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.secure-chat-emoji-choice:hover,
+.secure-chat-emoji-choice:focus-visible {
+  background: color-mix(in srgb, var(--light-bg, #e0e7ff) 72%, white 28%);
+}
+
+.secure-chat-emoji-empty {
+  margin: 0.14rem 0 0.32rem;
+  color: var(--admin-muted, #5f6f92);
+  font-size: 0.86rem;
+}
+
+.secure-chat-emoji-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  padding: 0.22rem;
+  border-top: 1px solid color-mix(in srgb, var(--admin-border, #c7d2fe) 64%, white 36%);
+  border-radius: 0 0 10px 10px;
+  background: color-mix(in srgb, var(--light-bg, #e0e7ff) 36%, white 64%);
+}
+
+.secure-chat-emoji-section-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: auto;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--admin-muted, #5f6f92);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.secure-chat-emoji-section-tabs svg {
+  width: 1.14rem;
+  height: 1.14rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.secure-chat-emoji-section-tabs button:hover,
+.secure-chat-emoji-section-tabs button:focus-visible,
+.secure-chat-emoji-section-tabs button.is-active {
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--accent, #2f4aa6);
 }
 
 .secure-chat-compose-hint {
