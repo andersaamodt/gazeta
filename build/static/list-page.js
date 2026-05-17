@@ -58,6 +58,8 @@
     rowMenuOpenUid: '',
     activeEntryUid: '',
     activeCellField: '',
+    readInlineEditUid: '',
+    readInlineEditField: '',
     activeHeadField: '',
     dragUid: '',
     dragMoved: false,
@@ -1656,6 +1658,8 @@
     state.pendingToggleEditOff = false;
     state.activeEntryUid = '';
     state.activeCellField = '';
+    state.readInlineEditUid = '';
+    state.readInlineEditField = '';
     state.activeHeadField = '';
     state.rowMenuOpenUid = '';
     state.navTitleEditing = false;
@@ -2062,6 +2066,10 @@
       state.activeEntryUid = '';
       state.activeCellField = '';
     }
+    if (state.readInlineEditUid && findElementIndex(state.readInlineEditUid) < 0) {
+      state.readInlineEditUid = '';
+      state.readInlineEditField = '';
+    }
     return state.draft.elements.length !== beforeLen;
   }
 
@@ -2203,7 +2211,27 @@
     return '';
   }
 
+  function isReadInlineEditing() {
+    return !state.editMode && !!(state.readInlineEditUid && state.readInlineEditField);
+  }
+
+  function renderReadModeInlineEntry(entry) {
+    var uid = String(entry && entry._uid || '');
+    var markdownText = String(entry && entry.markdown || '');
+    var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
+    var html = '';
+    html += '<li class="list-entry-line list-entry-read-inline is-active" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
+    html += '<input type="text" class="list-entry-read-inline-input" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '" aria-label="Edit row text">';
+    html += '<button type="button" class="list-entry-read-inline-done" data-list-read-action="finish-row" data-element-uid="' + escapeHtml(uid) + '">Done</button>';
+    html += '</li>';
+    return html;
+  }
+
   function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
+    var rowUid = String(entry && entry._uid || '');
+    if (isAdmin() && !state.editMode && rowUid && state.readInlineEditUid === rowUid) {
+      return renderReadModeInlineEntry(entry);
+    }
     var line = String(entry && entry.markdown || '').trim();
     var description = String(entry && entry.description || '').trim();
     var postUrl = String(entry && entry.post_url || '');
@@ -2228,7 +2256,6 @@
     }
     var rightMeta = '';
     var readMenu = '';
-    var rowUid = String(entry && entry._uid || '');
     if (isAdmin() && !state.editMode && rowUid) {
       var rowMenuOpen = state.readRowMenuOpenUid === rowUid;
       readMenu = '' +
