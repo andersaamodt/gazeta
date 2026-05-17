@@ -129,6 +129,20 @@ function decodeConfigBytes(value, label) {
   return decodeBase64Url(text, label);
 }
 
+function normalizeLocalProfile(profile) {
+  var input = profile && typeof profile === 'object' ? profile : {};
+  var displayName = String(input.displayName || input.display_name || '').trim().slice(0, 64);
+  var fullName = String(input.fullName || input.full_name || displayName).trim().slice(0, 160);
+  var out = {};
+  if (displayName) out.displayName = displayName;
+  if (fullName) out.fullName = fullName;
+  return out;
+}
+
+function hasProfile(profile) {
+  return !!(profile && typeof profile === 'object' && (profile.displayName || profile.display_name || profile.fullName || profile.full_name));
+}
+
 function generatedMessageRef(prefix) {
   var random = Math.random().toString(36).slice(2);
   return prefix + '-' + Date.now().toString(36) + '-' + random;
@@ -334,6 +348,7 @@ export class SimplexWebTransportAdapter {
     this.history = [];
     this.receipts = new Map();
     this.connected = !!this.contactClient;
+    this.profile = normalizeLocalProfile(options.profile || {});
   }
 
   async connect(params = {}) {
@@ -377,6 +392,7 @@ export class SimplexWebTransportAdapter {
       ...(config.storeOptions || {}),
       namespace: config.namespace || (config.storeOptions && config.storeOptions.namespace) || 'simplex-web'
     });
+    if (hasProfile(config.profile)) this.setProfile(config.profile);
     var xftpClient = config.xftpClient || (this.xftpWebClient ? createXftpWebFileTransferClient(this.xftpWebClient) : null);
     this.contactClient = this.contactClient || config.contactClient || createBrowserSimplexContactClient({
       ...config,
@@ -392,6 +408,27 @@ export class SimplexWebTransportAdapter {
     if (!this.contactClient) await this.connect(params);
     if (!this.contactClient) fail('SIMPLEX_WEB_ADAPTER_CONNECT', 'browser SimpleX contact client is not connected');
     return this.contactClient;
+  }
+
+  setProfile(profile = {}) {
+    this.profile = normalizeLocalProfile(profile);
+    if (this.store && typeof this.store.saveProfile === 'function') this.store.saveProfile(this.profile);
+    return this.profile;
+  }
+
+  getProfile() {
+    if (this.store && typeof this.store.loadProfile === 'function') {
+      var stored = normalizeLocalProfile(this.store.loadProfile());
+      if (hasProfile(stored)) {
+        this.profile = stored;
+        return stored;
+      }
+    }
+    return normalizeLocalProfile(this.profile || {});
+  }
+
+  messageProfile(message = {}) {
+    return hasProfile(message.profile) ? normalizeLocalProfile(message.profile) : this.getProfile();
   }
 
   getStatus() {
@@ -451,7 +488,7 @@ export class SimplexWebTransportAdapter {
           ...message,
           allowNativeAgentProfile: true,
           corrId: message.contact_corr_id || message.contactCorrId || message.corr_id || message.corrId,
-          profile: message.profile || this.options.profile || {}
+          profile: this.messageProfile(message)
         });
       } catch (error) {
         if (!timeoutError(error)) throw error;
@@ -548,7 +585,7 @@ export class SimplexWebTransportAdapter {
           ...message,
           allowNativeAgentProfile: true,
           corrId: message.contact_corr_id || message.contactCorrId || message.corr_id || message.corrId,
-          profile: message.profile || this.options.profile || {}
+          profile: this.messageProfile(message)
         });
       } catch (error) {
         if (!timeoutError(error)) throw error;

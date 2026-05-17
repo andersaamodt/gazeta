@@ -278,6 +278,9 @@ export class BrowserSimplexStore {
   saveRatchet(id, ratchet) { return this.save('ratchet', id, ratchet); }
   loadRatchet(id) { return this.load('ratchet', id); }
   deleteRatchet(id) { return this.delete('ratchet', id); }
+  saveProfile(profile) { return this.save('profile', 'local', profile || {}); }
+  loadProfile() { return this.load('profile', 'local') || {}; }
+  deleteProfile() { return this.delete('profile', 'local'); }
 
   enqueuePending(id, task) {
     var queue = this.load('pending', 'queue') || [];

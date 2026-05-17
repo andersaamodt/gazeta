@@ -1850,6 +1850,10 @@ function isMissingUserContactLinkError(resp) {
   );
 }
 
+function isReusableSimplexContactLink(link) {
+  return /^simplex:\/contact#/i.test(String(link || '').trim());
+}
+
 async function enableOwnerAddress(userId) {
   if (nativeDriverAvailable()) {
     const chat = await ensureNativeChatStarted();
@@ -2963,7 +2967,7 @@ async function ensureRuntime() {
       return;
     }
     const owner = await ensureOwnerUser();
-    if (owner && owner.userId && !state.ownerContactLink) {
+    if (owner && owner.userId && !isReusableSimplexContactLink(state.ownerContactLink)) {
       const ownerLink = await ownerAddressLink(String(owner.userId), false);
       if (ownerLink) {
         state.ownerContactLink = ownerLink;

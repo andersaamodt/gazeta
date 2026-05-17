@@ -52,6 +52,7 @@
     saveStatus: 'saved',
     saveError: '',
     autosaveQueued: false,
+    pendingToggleEditOff: false,
     saveIndicatorVisible: false,
     editMode: false,
     rowMenuOpenUid: '',
@@ -1540,7 +1541,7 @@
   async function persistDraft(options) {
     if (state.busy || !isAdmin()) {
       state.autosaveQueued = true;
-      return;
+      return false;
     }
     var opts = options || {};
     var shouldRetryAuth = false;
@@ -1602,7 +1603,18 @@
       state.busy = false;
       if (state.autosaveQueued) {
         state.autosaveQueued = false;
-        queueAutosave(500);
+        if (state.pendingToggleEditOff) {
+          persistDraft({ alertOnError: false }).then(function (saved) {
+            if (saved) {
+              maybeFinalizeEditModeExit();
+            } else {
+              state.pendingToggleEditOff = false;
+              renderAdmin();
+            }
+          });
+        } else {
+          queueAutosave(500);
+        }
       }
     }
     if (shouldRetryAuth) {
@@ -1612,6 +1624,58 @@
       });
     }
     return true;
+  }
+
+  function exitEditModeNow() {
+    state.editMode = false;
+    state.pendingToggleEditOff = false;
+    state.activeEntryUid = '';
+    state.activeCellField = '';
+    state.activeHeadField = '';
+    state.rowMenuOpenUid = '';
+    state.navTitleEditing = false;
+    state.navTitleInput = '';
+    state.settingsPanelReveal = false;
+    resetInlineHistory();
+    renderList();
+    renderAdmin();
+  }
+
+  function maybeFinalizeEditModeExit() {
+    if (!state.pendingToggleEditOff) {
+      return;
+    }
+    if (state.busy || state.autosaveQueued || state.saveTimer) {
+      return;
+    }
+    exitEditModeNow();
+  }
+
+  function requestExitEditModeWithSave() {
+    if (!isAdmin() || !state.editMode) {
+      return;
+    }
+    state.pendingToggleEditOff = true;
+    if (state.saveTimer) {
+      clearTimeout(state.saveTimer);
+      state.saveTimer = null;
+    }
+    pruneTransientEntries();
+    syncMetaFromInputs();
+    state.saveIndicatorVisible = true;
+    renderAdmin();
+    if (state.busy) {
+      state.autosaveQueued = true;
+      return;
+    }
+    persistDraft({ alertOnError: true }).then(function (saved) {
+      if (saved) {
+        maybeFinalizeEditModeExit();
+      } else {
+        state.pendingToggleEditOff = false;
+        renderAdmin();
+      }
+    });
   }
 
   async function publishDraft() {
@@ -2955,29 +3019,17 @@
           return;
         }
         if (topActionName === 'toggle-edit') {
-          var removedTransient = false;
           if (state.editMode) {
-            removedTransient = pruneTransientEntries();
+            requestExitEditModeWithSave();
+            return;
           }
-          state.editMode = !state.editMode;
-          if (state.editMode) {
-            state.settingsPanelReveal = true;
-            resetInlineHistory();
-          }
-          if (!state.editMode) {
-            state.activeEntryUid = '';
-            state.activeCellField = '';
-            state.rowMenuOpenUid = '';
-            state.navTitleEditing = false;
-            state.navTitleInput = '';
-            state.settingsPanelReveal = false;
-            resetInlineHistory();
-          }
+          state.editMode = true;
+          state.settingsPanelReveal = true;
+          state.pendingToggleEditOff = false;
+          state.activeHeadField = '';
+          resetInlineHistory();
           renderList();
           renderAdmin();
-          if (removedTransient) {
-            queueAutosave(120);
-          }
           return;
         }
         if (topActionName === 'publish') {
