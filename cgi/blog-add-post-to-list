@@ -60,7 +60,7 @@ case "$post_path" in
     ;;
 esac
 
-event_id=$(blog_read_front_matter_value "$file" nostr_event_id 2>/dev/null || printf '')
+post_url=$(blog_rel_post_html_url "$file")
 if [ -z "$entry_markdown" ]; then
   entry_markdown=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
 fi
@@ -72,18 +72,20 @@ fi
 state_json=$(blog_list_normalize_state_json "$list_slug" "$state_json")
 
 next_state=$(printf '%s\n' "$state_json" | jq -c \
-  --arg event_id "$event_id" \
-  --arg relay_hint "$relay_hint" \
+  --arg event_id "" \
+  --arg relay_hint "" \
   --arg marker "$marker" \
   --arg date "$entry_date" \
-  --arg markdown "$entry_markdown" '
+  --arg markdown "$entry_markdown" \
+  --arg post_url "$post_url" '
   .elements = ((.elements // []) + [{
     type: "entry",
     event_id: $event_id,
     relay_hint: $relay_hint,
     marker: $marker,
     date: $date,
-    markdown: $markdown
+    markdown: $markdown,
+    post_url: $post_url
   }])
   | .entries = (.elements // [])
 ')

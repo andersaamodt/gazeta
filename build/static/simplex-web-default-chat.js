@@ -174,6 +174,27 @@
     };
   }
 
+  function normalizeVoicePermission(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    return raw === 'granted' || raw === 'requested' || raw === 'denied' ? raw : 'locked';
+  }
+
+  function normalizeEmoji(value) {
+    return limitString(String(value || '').trim(), 32);
+  }
+
+  function normalizeRecentEmojis(value) {
+    var seen = {};
+    var out = [];
+    (Array.isArray(value) ? value : []).forEach(function (item) {
+      var emoji = normalizeEmoji(item);
+      if (!emoji || seen[emoji]) return;
+      seen[emoji] = true;
+      out.push(emoji);
+    });
+    return out.slice(0, 32);
+  }
+
   function normalizeAdminRow(value) {
     var next = value && typeof value === 'object' ? value : {};
     return {
@@ -340,8 +361,16 @@
       pendingFiles: pendingFiles,
       sendWithModifier: next.sendWithModifier === true,
       shortcutModifierLabel: shortcutModifierLabel(next),
+      emojiPickerOpen: next.emojiPickerOpen === true,
+      emojiPickerLoading: next.emojiPickerLoading === true,
+      emojiPickerError: limitString(next.emojiPickerError || '', MAX_TEXT_LENGTH),
+      recentEmojis: normalizeRecentEmojis(next.recentEmojis),
+      voiceNoteSupported: next.voiceNoteSupported !== false,
+      voicePermission: normalizeVoicePermission(next.voicePermission),
+      voiceRecording: next.voiceRecording === true,
       simplexWebIntroDismissed: next.simplexWebIntroDismissed === true,
       chatStarted: next.chatStarted !== false,
+      chatOpening: next.chatOpening === true,
       admin: !!next.admin,
       adminMappings: adminMappings
     };
@@ -361,15 +390,54 @@
     return '<svg class="secure-chat-send-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 9-18 9 4-9-4-9Z"/><path d="M7 12h14"/></svg>';
   }
 
+  function renderMicIcon() {
+    return '<svg class="secure-chat-mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg>';
+  }
+
+  function renderEmojiIcon() {
+    return '<svg class="secure-chat-emoji-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M8.4 10.1h.01M15.6 10.1h.01M8.6 14.2c.78 1.2 1.9 1.8 3.4 1.8s2.62-.6 3.4-1.8"/></svg>';
+  }
+
+  function voiceButtonLabel(state) {
+    if (!state.voiceNoteSupported) return 'Voice notes are not supported in this browser';
+    if (state.voiceRecording) return 'Stop recording voice note';
+    if (state.voicePermission === 'granted') return 'Record voice note';
+    if (state.voicePermission === 'requested') return 'Voice note permission requested';
+    return 'Ask permission to send voice notes';
+  }
+
   function renderRemoveIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  }
+
+  function renderEmojiPicker(state) {
+    if (state.emojiPickerOpen !== true) return '';
+    var html = '<div class="secure-chat-emoji-popover" role="dialog" aria-label="Emoji picker">';
+    html += '<div class="secure-chat-emoji-mode-row" role="tablist" aria-label="Emoji modes"><button type="button" class="is-active" role="tab" aria-selected="true">Emoji</button></div>';
+    if (state.recentEmojis.length) {
+      html += '<section class="secure-chat-emoji-recent" aria-label="Recently Used"><h3>Recently Used</h3><div class="secure-chat-emoji-recent-grid">';
+      state.recentEmojis.forEach(function (emoji) {
+        html += '<button type="button" class="secure-chat-emoji-recent-btn" data-secure-chat-action="emoji-recent" data-secure-chat-emoji="' + escapeAttr(emoji) + '" aria-label="Insert ' + escapeAttr(emoji) + '">' + escapeHtml(emoji) + '</button>';
+      });
+      html += '</div></section>';
+    }
+    if (state.emojiPickerError) {
+      html += '<p class="secure-chat-emoji-status is-error">' + escapeHtml(state.emojiPickerError) + '</p>';
+    } else {
+      if (state.emojiPickerLoading) {
+        html += '<p class="secure-chat-emoji-status">Loading emoji...</p>';
+      }
+      html += '<emoji-picker class="secure-chat-emoji-picker" emoji-version="17.0"></emoji-picker>';
+    }
+    html += '</div>';
+    return html;
   }
 
   function renderPanel(model) {
     // renderPanel is pure: model in, HTML string out. Event handling lives in
     // mount(), which keeps UI rendering testable without a browser framework.
     var state = normalizeModel(model);
-    var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
+    var html = '<section class="secure-chat-panel' + (state.chatStarted ? ' is-chat-started' : '') + (state.chatOpening ? ' is-chat-opening' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     if (!state.loggedIn && state.loading) {
@@ -388,8 +456,11 @@
       html += '</section>';
       return html;
     }
+    html += '<div class="secure-chat-body' + (state.chatOpening ? ' is-opening' : '') + '"><div class="secure-chat-body-inner">';
     if (!state.hasSigner) {
       html += '<p class="secure-chat-empty">Secure Chat requires a browser signer extension so each request can be signed.</p>';
+      html += '</div>';
+      html += '</div>';
       html += '</section>';
       return html;
     }
@@ -451,9 +522,14 @@
     }
     html += '<textarea id="secure-chat-input" class="secure-chat-input" rows="2" placeholder="Write a secure message">' + escapeHtml(state.draftText) + '</textarea>';
     html += '<label class="secure-chat-attach-button" aria-label="Attach files" title="Attach files"><input id="secure-chat-file-input" class="secure-chat-file-input" type="file" multiple><svg class="secure-chat-attach-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 1 1-2.83-2.83l8.49-8.49"/></svg></label>';
+    html += '<button type="button" class="secure-chat-emoji-button" data-secure-chat-action="emoji-toggle" aria-label="Insert emoji" title="Insert emoji" aria-haspopup="dialog" aria-expanded="' + (state.emojiPickerOpen === true ? 'true' : 'false') + '">' + renderEmojiIcon() + '</button>';
+    html += renderEmojiPicker(state);
+    html += '<button type="button" class="secure-chat-voice-btn' + (state.voiceRecording ? ' is-recording' : '') + (state.voicePermission !== 'granted' ? ' is-locked' : '') + '" data-secure-chat-action="voice-note" aria-label="' + escapeAttr(voiceButtonLabel(state)) + '" title="' + escapeAttr(voiceButtonLabel(state)) + '"' + (!state.voiceNoteSupported || state.sending ? ' disabled' : '') + '>' + renderMicIcon() + '</button>';
     html += '<button type="button" class="secure-chat-send-btn" data-secure-chat-action="send" aria-label="' + (state.sending ? 'Sending...' : 'Send secure message') + '" title="' + (state.sending ? 'Sending...' : 'Send secure message') + '"' + (state.sending ? ' disabled aria-busy="true"' : '') + '>' + (state.sending ? spinnerHtml('secure-chat-send-spinner') : renderSendIcon()) + '</button>';
     html += '</div>';
     html += '<label class="secure-chat-compose-hint secure-chat-send-shortcut"><input id="secure-chat-send-modifier" type="checkbox"' + (state.sendWithModifier === true ? ' checked' : '') + '> ' + escapeHtml(state.shortcutModifierLabel) + ' + Enter to send</label>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     html += '</section>';
     return html;
@@ -524,6 +600,18 @@
       }
       if (action === 'send' && typeof actions.onSend === 'function') {
         actions.onSend(currentDraftValue());
+        return;
+      }
+      if (action === 'voice-note' && typeof actions.onVoiceNoteAction === 'function') {
+        actions.onVoiceNoteAction(currentDraftValue());
+        return;
+      }
+      if (action === 'emoji-toggle' && typeof actions.onEmojiToggle === 'function') {
+        actions.onEmojiToggle(state.emojiPickerOpen !== true);
+        return;
+      }
+      if (action === 'emoji-recent' && typeof actions.onEmojiSelect === 'function') {
+        actions.onEmojiSelect(normalizeEmoji(actionNode.getAttribute('data-secure-chat-emoji') || ''));
         return;
       }
       if (action === 'remove-pending-file' && typeof actions.onRemovePendingFile === 'function') {

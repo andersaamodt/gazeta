@@ -412,6 +412,22 @@
     return escapeHtml(value);
   }
 
+  function markdownInlineLinkLabel(md) {
+    var value = String(md || '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    return markdownInline(value);
+  }
+
+  function renderLinkedInlineText(md, postUrl, className, title) {
+    var url = String(postUrl || '').trim();
+    var text = String(md || '').trim();
+    var label = url ? (markdownInlineLinkLabel(text) || escapeHtml(url)) : markdownInline(text);
+    var cssClass = String(className || '').trim();
+    if (!url) {
+      return '<span class="' + escapeHtml(cssClass) + '">' + label + '</span>';
+    }
+    return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '" title="' + escapeHtml(title || 'Open linked post') + '">' + label + '</a>';
+  }
+
   function markdownBlock(md) {
     var value = String(md || '');
     if (!value) {
@@ -1503,6 +1519,8 @@
       clearTimeout(state.saveTimer);
     }
     state.saveIndicatorVisible = true;
+    state.saveStatus = 'saving';
+    state.saveError = '';
     renderAdmin();
     state.saveTimer = setTimeout(function () {
       state.saveTimer = null;
@@ -1576,7 +1594,7 @@
     try {
       var auth = getAuthPayload();
       var elements = cloneEditableElements(state.draft.elements || []);
-      await apiPostJson('/cgi/blog-save-nostr-page-draft', {
+      var savedPayload = await apiPostJson('/cgi/blog-save-nostr-page-draft', {
         page_slug: slug,
         state_json: {
           slug: slug,
@@ -1598,8 +1616,15 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
+      if (savedPayload && savedPayload.state) {
+        state.payload.state = savedPayload.state;
+      }
+      if (savedPayload && savedPayload.validation) {
+        state.payload.validation = savedPayload.validation;
+      }
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
+      writeBootstrapCache(state.payload);
       setSaveStatus('saved');
       refreshValidation();
     } catch (err) {
@@ -1848,6 +1873,7 @@
       var nextPath = String(data && data.path || '').trim();
       if (nextPath) {
         state.draft.elements[idx].post_url = nextPath;
+        state.draft.elements[idx].event_id = '';
         queueAutosave(150);
       }
       renderList();
@@ -1919,7 +1945,8 @@
       marker: defaultMarker,
       date: defaultDate,
       depth: 0,
-      markdown: ''
+      markdown: '',
+      post_url: ''
     };
     var insertIndex = Number(opts.insertIndex);
     if (!isFinite(insertIndex) || insertIndex < 0 || insertIndex > state.draft.elements.length) {
@@ -1936,7 +1963,8 @@
         marker: defaultMarker,
         date: defaultDate,
         depth: 0,
-        markdown: ''
+        markdown: '',
+        post_url: ''
       }
     };
     return entry._uid;
@@ -1953,7 +1981,7 @@
     }
     var entry = state.draft.elements[idx] || {};
     var d = state.pendingNewEntry.defaults || {};
-    var hasRealContent = String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '';
+    var hasRealContent = String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '' || String(entry.post_url || '').trim() !== '';
     if (hasRealContent) {
       return false;
     }
@@ -1989,7 +2017,8 @@
       String(entry.marker || '') !== String(d.marker || '') ||
       String(entry.date || '') !== String(d.date || '') ||
       Math.max(0, Number(entry.depth || 0) || 0) !== Math.max(0, Number(d.depth || 0) || 0) ||
-      String(entry.markdown || '') !== String(d.markdown || '')
+      String(entry.markdown || '') !== String(d.markdown || '') ||
+      String(entry.post_url || '') !== String(d.post_url || '')
     );
   }
 
@@ -2039,7 +2068,7 @@
     if (!entry) {
       return false;
     }
-    return String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '';
+    return String(entry.markdown || '').trim() !== '' || String(entry.event_id || '').trim() !== '' || String(entry.post_url || '').trim() !== '';
   }
 
   function pruneTransientEntries() {
@@ -2220,10 +2249,10 @@
     var markdownText = String(entry && entry.markdown || '');
     var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
     var html = '';
-    html += '<li class="list-entry-line list-entry-read-inline is-active" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
+    html += '<div class="list-entry-read-inline is-active" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
     html += '<input type="text" class="list-entry-read-inline-input" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '" aria-label="Edit row text">';
     html += '<button type="button" class="list-entry-read-inline-done" data-list-read-action="finish-row" data-element-uid="' + escapeHtml(uid) + '">Done</button>';
-    html += '</li>';
+    html += '</div>';
     return html;
   }
 
@@ -2271,9 +2300,6 @@
       var metaPills = markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '');
       rightMeta = '<span class="list-entry-meta-right">' + (metaPills ? '<span class="list-entry-meta-pills">' + metaPills + '</span>' : '') + readMenu + '</span>';
     }
-    var linked = postUrl
-      ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
-      : '';
     var listIcon = '';
     if (isProductGalleryPage() && imageUrl) {
       listIcon = '<img class="list-entry-list-icon" src="' + escapeHtml(imageUrl) + '" alt=""' + galleryImageAttrs() + '>';
@@ -2284,7 +2310,7 @@
     }
     var cartButton = renderProductCartButton(productSlug, '');
     var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '"><span class="list-entry-main-inline">' + listIcon + linked + '<span class="list-entry-markdown">' + markdownInline(line) + '</span>' + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '"><span class="list-entry-main-inline">' + listIcon + renderLinkedInlineText(line, postUrl, 'list-entry-markdown', 'Open linked post') + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
@@ -2362,10 +2388,7 @@
       var entry = node && node.entry ? node.entry : {};
       var line = String(entry.markdown || '').trim();
       var postUrl = String(entry.post_url || '');
-      var linked = postUrl
-        ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
-        : '';
-      html += '<li>' + linked + '<span class="list-tile-child-text">' + markdownInline(line) + '</span>';
+      html += '<li>' + renderLinkedInlineText(line, postUrl, 'list-tile-child-text', 'Open linked post');
       if (node && Array.isArray(node.children) && node.children.length) {
         html += renderTileTreeChildren(node.children);
       }
@@ -2406,9 +2429,6 @@
       var tileDescription = String(entry.description || '').trim();
       var postUrl = String(entry.post_url || '');
       var productSlug = entryProductSlug(entry);
-      var linked = postUrl
-        ? '<a class="list-entry-post-link" href="' + escapeHtml(postUrl) + '" title="Open linked post">↗</a>'
-        : '';
       var cartButton = renderProductCartButton(productSlug, 'list-entry-cart-btn-tile');
       html += '<li class="list-tile">';
       html += '<div class="list-tile-content">';
@@ -2425,7 +2445,7 @@
         html += '<div class="list-tile-cart-row">' + cartButton + '</div>';
       }
       html += '</div>';
-      html += '<div class="list-tile-main">' + linked + '<div class="list-tile-label"><span class="list-tile-text">' + markdownInline(line) + '</span>' + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div></div>';
+      html += '<div class="list-tile-main"><div class="list-tile-label">' + renderLinkedInlineText(line, postUrl, 'list-tile-text', 'Open linked post') + (tileDescription ? '<span class="list-tile-description">' + markdownInline(tileDescription) + '</span>' : '') + '</div></div>';
       html += '</li>';
     });
     html += '</ul>';
@@ -2539,6 +2559,7 @@
     var dateText = String(el && el.date || '');
     var markerText = String(el && el.marker || '');
     var imageUrl = String(el && el.image_url || '').trim();
+    var postUrl = String(el && el.post_url || '').trim();
     var showImageField = isProductGalleryPage();
     var eventId = String(el && el.event_id || '');
     var productReady = entryHasProductBasics(el);
@@ -2553,6 +2574,11 @@
       html += '<div class="list-inline-cell list-inline-markdown"><input type="text" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '"></div>';
     } else {
       html += '<div role="button" tabindex="0" class="list-inline-cell list-inline-open list-inline-markdown" data-list-inline-action="edit" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (markdownText ? escapeHtml(markdownText) : placeholderHtml('Add text...')) + '</span></div>';
+    }
+    if (active && activeField === 'post_url') {
+      html += '<div class="list-inline-cell list-inline-post-url"><input type="text" data-inline-field="post_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(postUrl) + '" placeholder="https://... or /posts/..."></div>';
+    } else {
+      html += '<div class="list-inline-cell list-inline-post-url"><button type="button" class="list-inline-open list-inline-post-url-button" data-list-inline-action="edit" data-inline-field="post_url" data-element-uid="' + escapeHtml(uid) + '"><span class="list-inline-value">' + (postUrl ? escapeHtml(postUrl) : placeholderHtml('Add post URL...')) + '</span></button></div>';
     }
     if (active && activeField === 'description') {
       html += '<div class="list-inline-cell list-inline-description"><input type="text" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(tileDescription) + '" placeholder="Tiny description..."></div>';
@@ -2653,6 +2679,7 @@
       '<button type="button" class="list-inline-history-icon-btn" data-list-action="redo" title="Redo" aria-label="Redo"' + (canRedo ? '' : ' disabled aria-disabled="true"') + '>' + listHistoryIconSvg('redo') + '</button>' +
     '</span></span>';
     html += '<span class="list-inline-head-markdown">Text</span>';
+    html += '<span class="list-inline-head-post-url">Post URL</span>';
     html += '<span class="list-inline-head-description">Description</span>';
     html += '<span class="list-inline-head-date">Date</span>';
     html += '<span class="list-inline-head-marker">Marker</span>';
@@ -2897,12 +2924,13 @@
   }
 
   function closeActiveInlineEditor(options) {
-    if (!state.editMode || !isAdmin()) {
+    if ((!state.editMode && !isReadInlineEditing()) || !isAdmin()) {
       return false;
     }
     var opts = options || {};
-    var activeUid = String(state.activeEntryUid || '');
-    var activeField = String(state.activeCellField || '');
+    var readInline = isReadInlineEditing();
+    var activeUid = readInline ? String(state.readInlineEditUid || '') : String(state.activeEntryUid || '');
+    var activeField = readInline ? String(state.readInlineEditField || '') : String(state.activeCellField || '');
     if (!activeUid && !activeField) {
       return false;
     }
@@ -2915,12 +2943,17 @@
     if (removedTransient) {
       shouldSave = true;
     }
-    state.activeEntryUid = '';
-    state.activeCellField = '';
-    state.historyCellEditKey = '';
+    if (readInline) {
+      state.readInlineEditUid = '';
+      state.readInlineEditField = '';
+    } else {
+      state.activeEntryUid = '';
+      state.activeCellField = '';
+      state.historyCellEditKey = '';
+    }
     renderList();
     renderAdmin();
-    if (shouldSave) {
+    if (shouldSave && !opts.skipAutosave) {
       queueAutosave(Number(opts.delayMs) > 0 ? Number(opts.delayMs) : 120);
     }
     return true;
@@ -2998,6 +3031,8 @@
     state.draft.elements = cloneEditableElements(record.elements);
     state.activeEntryUid = '';
     state.activeCellField = '';
+    state.readInlineEditUid = '';
+    state.readInlineEditField = '';
     state.rowMenuOpenUid = '';
     state.pendingNewEntry = null;
     state.historyCellEditKey = '';
@@ -3079,6 +3114,8 @@
           state.settingsPanelReveal = true;
           state.pendingToggleEditOff = false;
           state.activeHeadField = '';
+          state.readInlineEditUid = '';
+          state.readInlineEditField = '';
           resetInlineHistory();
           renderList();
           renderAdmin();
@@ -3235,14 +3272,19 @@
           }
           if (readActionType === 'edit-row') {
             state.readRowMenuOpenUid = '';
-            state.editMode = true;
-            state.settingsPanelReveal = true;
-            state.activeEntryUid = readUid;
-            state.activeCellField = 'markdown';
+            state.readInlineEditUid = readUid;
+            state.readInlineEditField = 'markdown';
+            state.activeEntryUid = '';
+            state.activeCellField = '';
             state.historyCellEditKey = '';
             renderList();
             renderAdmin();
             focusInlineField(readUid, 'markdown');
+            return;
+          }
+          if (readActionType === 'finish-row') {
+            closeActiveInlineEditor({ forceAutosave: true, skipAutosave: true });
+            persistDraft({ alertOnError: true });
             return;
           }
           if (readActionType === 'remove-row') {
@@ -3256,6 +3298,10 @@
             if (state.activeEntryUid === readUid) {
               state.activeEntryUid = '';
               state.activeCellField = '';
+            }
+            if (state.readInlineEditUid === readUid) {
+              state.readInlineEditUid = '';
+              state.readInlineEditField = '';
             }
             if (state.pendingNewEntry && state.pendingNewEntry.uid === readUid) {
               state.pendingNewEntry = null;
@@ -3311,6 +3357,9 @@
           }
           pushUndoHistorySnapshot();
           state.draft.elements[eventIdx].event_id = String(nextEventId || '').trim();
+          if (state.draft.elements[eventIdx].event_id) {
+            state.draft.elements[eventIdx].post_url = '';
+          }
           updatePendingNewEntryState();
           renderList();
           if (shouldAutosaveForUid(uid)) {
@@ -3340,6 +3389,10 @@
           if (state.activeEntryUid === uid) {
             state.activeEntryUid = '';
             state.activeCellField = '';
+          }
+          if (state.readInlineEditUid === uid) {
+            state.readInlineEditUid = '';
+            state.readInlineEditField = '';
           }
           if (state.pendingNewEntry && state.pendingNewEntry.uid === uid) {
             state.pendingNewEntry = null;
@@ -3478,11 +3531,15 @@
     });
 
     els.content.addEventListener('input', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       var target = event.target;
       if (target instanceof HTMLTextAreaElement) {
+        if (readInline) {
+          return;
+        }
         if (target.hasAttribute('data-list-intro')) {
           state.draft.description = String(target.value || '');
           renderHead();
@@ -3499,7 +3556,16 @@
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
         return;
       }
+      if (readInline && !(target instanceof HTMLInputElement)) {
+        return;
+      }
+      if (readInline && target.getAttribute('data-element-uid') !== state.readInlineEditUid) {
+        return;
+      }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-default-markers')) {
+        if (readInline) {
+          return;
+        }
         state.draft.default_markers = String(target.value || '');
         queueAutosave(500);
         return;
@@ -3514,12 +3580,18 @@
         return;
       }
       state.activeEntryUid = uid;
+      if (readInline) {
+        state.readInlineEditField = field;
+      }
       var editKey = uid + ':' + field;
-      if (state.historyCellEditKey !== editKey) {
+      if (state.editMode && state.historyCellEditKey !== editKey) {
         pushUndoHistorySnapshot();
         state.historyCellEditKey = editKey;
       }
       state.draft.elements[idx][field] = String(target.value || '');
+      if (field === 'post_url' && String(state.draft.elements[idx].post_url || '').trim()) {
+        state.draft.elements[idx].event_id = '';
+      }
       updatePendingNewEntryState();
       if (shouldAutosaveForUid(uid)) {
         queueAutosave(500);
@@ -3706,7 +3778,8 @@
     });
 
     els.content.addEventListener('focusout', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       var target = event.target;
@@ -3717,7 +3790,8 @@
         return;
       }
       var uid = String(target.getAttribute('data-element-uid') || '');
-      if (!uid || uid !== String(state.activeEntryUid || '')) {
+      var activeUid = readInline ? String(state.readInlineEditUid || '') : String(state.activeEntryUid || '');
+      if (!uid || uid !== activeUid) {
         return;
       }
       setTimeout(function () {
@@ -3733,7 +3807,7 @@
         if (pointerIsSameRow) {
           return;
         }
-        var sameRow = activeEl.closest('.list-entry-inline[data-element-uid]');
+        var sameRow = activeEl.closest('.list-entry-inline[data-element-uid], .list-entry-read-inline[data-element-uid]');
         var sameUid = sameRow ? String(sameRow.getAttribute('data-element-uid') || '') : '';
         if (sameUid === uid) {
           return;
@@ -3746,7 +3820,7 @@
     });
 
     els.content.addEventListener('keydown', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      if ((!state.editMode && !isReadInlineEditing()) || !isAdmin()) {
         return;
       }
       var target = event.target;
@@ -4099,7 +4173,11 @@
 
   bindAdminEvents();
   document.addEventListener('mousedown', function (event) {
-    if (!state.editMode || !isAdmin() || !state.activeEntryUid) {
+    if ((!state.editMode && !isReadInlineEditing()) || !isAdmin()) {
+      return;
+    }
+    var activeUid = isReadInlineEditing() ? String(state.readInlineEditUid || '') : String(state.activeEntryUid || '');
+    if (!activeUid) {
       return;
     }
     var target = event.target;
@@ -4111,7 +4189,13 @@
     }
   });
   document.addEventListener('click', function (event) {
-    if (!state.editMode || !isAdmin() || !state.activeEntryUid || !state.activeCellField) {
+    var readInline = isReadInlineEditing();
+    if ((!state.editMode && !readInline) || !isAdmin()) {
+      return;
+    }
+    var activeUid = readInline ? String(state.readInlineEditUid || '') : String(state.activeEntryUid || '');
+    var activeField = readInline ? String(state.readInlineEditField || '') : String(state.activeCellField || '');
+    if (!activeUid || !activeField) {
       return;
     }
     var target = event.target;
@@ -4127,12 +4211,11 @@
     if (target.closest('[data-inline-field], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
       return;
     }
-    var activeUid = String(state.activeEntryUid || '');
-    var activeRow = target.closest('.list-entry-inline[data-element-uid]');
+    var activeRow = target.closest('.list-entry-inline[data-element-uid], .list-entry-read-inline[data-element-uid]');
     if (activeRow && String(activeRow.getAttribute('data-element-uid') || '') === activeUid) {
       return;
     }
-    var activeFieldSelector = '[data-inline-field="' + String(state.activeCellField || '') + '"][data-element-uid="' + activeUid + '"]';
+    var activeFieldSelector = '[data-inline-field="' + activeField + '"][data-element-uid="' + activeUid + '"]';
     var onActiveField = !!target.closest(activeFieldSelector);
     if (onActiveField) {
       return;

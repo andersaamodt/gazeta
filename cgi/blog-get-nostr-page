@@ -204,8 +204,7 @@ case "$page_type" in
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$view_state_json" false)
     ;;
   *)
-    validation_json=$(blog_list_validate_and_enrich_state_json "$view_state_json" false)
-    view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    validation_json='{"elements":[],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
     ;;
 esac
 

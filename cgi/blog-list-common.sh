@@ -383,14 +383,23 @@ blog_list_validate_and_enrich_state_json() {
     markdown=$(printf '%s\n' "$element" | jq -r '.markdown // .[6] // .[5] // ""' 2>/dev/null || printf '')
     image_url=$(printf '%s\n' "$element" | jq -r '.image_url // .[7] // ""' 2>/dev/null || printf '')
     tile_description=$(printf '%s\n' "$element" | jq -r '.description // .[8] // ""' 2>/dev/null || printf '')
+    explicit_post_url=$(printf '%s\n' "$element" | jq -r '.post_url // .[9] // ""' 2>/dev/null || printf '')
 
     resolved=false
-    post_url=""
+    post_url=$explicit_post_url
     post_created_at=""
     post_list_date=""
 
     if [ -n "$relay_hint" ] && ! printf '%s' "$relay_hint" | grep -Eq '^wss://'; then
       printf 'Entry %s has a relay hint that does not start with wss://\n' "$((idx + 1))" >> "$warnings_tmp"
+    fi
+
+    if [ -n "$event_id" ] && [ -n "$explicit_post_url" ]; then
+      if [ "$strict_publish" = "true" ]; then
+        printf 'Entry %s has both POST_URL and EVENT_ID; use one link source\n' "$((idx + 1))" >> "$errors_tmp"
+      else
+        printf 'Entry %s has both POST_URL and EVENT_ID; POST_URL is the visible link and EVENT_ID will not replace it\n' "$((idx + 1))" >> "$warnings_tmp"
+      fi
     fi
 
     if [ -n "$event_id" ]; then
@@ -403,7 +412,9 @@ blog_list_validate_and_enrich_state_json() {
           file="$blog_site_root/site/pages/$md_path"
           if [ -f "$file" ]; then
             post_list_date=$(blog_read_front_matter_value "$file" list_date 2>/dev/null || printf '')
-            post_url=$(blog_rel_post_html_url "$file")
+            if [ -z "$explicit_post_url" ]; then
+              post_url=$(blog_rel_post_html_url "$file")
+            fi
           fi
         fi
       else

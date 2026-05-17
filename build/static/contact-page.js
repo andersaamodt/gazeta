@@ -23,6 +23,9 @@
   var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
   var secureChatSimplexXftpUrl = 'https://new.andersaamodt.com:18443/';
   var secureChatSimplexXftpKeyHash = 'R-xa4iaMWHaCAK8iMzmJKFtODWn-nSw1FSl3ycoqDXQ=';
+  var secureChatEmojiPickerModuleUrl = 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
+  var secureChatEmojiPickerLoadPromise = null;
+  var secureChatRecentEmojiLimit = 32;
 
   var els = {
     title: document.getElementById('contact-page-title'),
@@ -83,13 +86,24 @@
       pollTimer: null,
       browserReceiveInFlight: false,
       attachedFilesToken: 0,
+      emojiPickerOpen: false,
+      emojiPickerLoading: false,
+      emojiPickerError: '',
+      recentEmojis: [],
       filePickerOpen: false,
       renderDeferredWhileFilePickerOpen: false,
       threadPinnedToBottom: true,
       simplexBrowserTransportConfigured: false,
       simplexWebIntroDismissed: false,
       adminMappings: [],
-      chatStarted: false
+      chatStarted: false,
+      chatOpening: false,
+      voicePermission: 'locked',
+      voiceRecording: false,
+      voiceRecorder: null,
+      voiceStream: null,
+      voiceChunks: [],
+      voiceNotesRequested: false
     }
   };
   var videoChatScriptLoading = null;
@@ -97,6 +111,9 @@
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var SECURE_CHAT_STATE_TIMEOUT_MS = 12000;
+  var SECURE_CHAT_VOICE_REQUEST_TEXT = 'Voice note permission request';
+  var SECURE_CHAT_VOICE_GRANTED_TEXT = 'allow voice notes';
+  var SECURE_CHAT_VOICE_DENIED_TEXT = 'deny voice notes';
 
   function markPageLifecycleClosing() {
     pageLifecycleClosing = true;
@@ -328,6 +345,62 @@
       return npub;
     }
     return secureChatStoredPubkey();
+  }
+
+  function secureChatRecentEmojiStorageKey() {
+    var accountKey = secureChatStorageAccountKey() || 'anonymous';
+    return 'secure-chat-recent-emoji-v1:' + secureChatStorageSiteKey() + ':' + accountKey;
+  }
+
+  function normalizeSecureChatEmoji(value) {
+    return String(value || '').trim().slice(0, 32);
+  }
+
+  function normalizeSecureChatRecentEmojis(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    var seen = {};
+    var out = [];
+    value.forEach(function (item) {
+      var emoji = normalizeSecureChatEmoji(item);
+      if (!emoji || seen[emoji]) {
+        return;
+      }
+      seen[emoji] = true;
+      out.push(emoji);
+    });
+    return out.slice(0, secureChatRecentEmojiLimit);
+  }
+
+  function loadSecureChatRecentEmojis() {
+    try {
+      state.chat.recentEmojis = normalizeSecureChatRecentEmojis(JSON.parse(window.localStorage.getItem(secureChatRecentEmojiStorageKey()) || '[]'));
+    } catch (_err) {
+      state.chat.recentEmojis = [];
+    }
+    return state.chat.recentEmojis;
+  }
+
+  function saveSecureChatRecentEmojis() {
+    try {
+      window.localStorage.setItem(secureChatRecentEmojiStorageKey(), JSON.stringify(normalizeSecureChatRecentEmojis(state.chat.recentEmojis)));
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function recordSecureChatRecentEmoji(emoji) {
+    var nextEmoji = normalizeSecureChatEmoji(emoji);
+    if (!nextEmoji) {
+      return;
+    }
+    var recents = normalizeSecureChatRecentEmojis(state.chat.recentEmojis);
+    state.chat.recentEmojis = [nextEmoji].concat(recents.filter(function (item) {
+      return item !== nextEmoji;
+    })).slice(0, secureChatRecentEmojiLimit);
+    saveSecureChatRecentEmojis();
   }
 
   function secureChatSimplexInfoDismissStorageKey() {
@@ -973,6 +1046,97 @@
     return (Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles : []).map(secureChatPendingFileMeta);
   }
 
+  function secureChatVoicePermissionStorageKey() {
+    return [
+      'secure-chat-voice-permission-v1',
+      secureChatStorageSiteKey(),
+      secureChatStorageAccountKey(),
+      secureChatOwnerContactId(secureChatOwnerContactLink() || '')
+    ].join(':');
+  }
+
+  function normalizeSecureChatVoicePermission(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    return raw === 'granted' || raw === 'requested' || raw === 'denied' ? raw : 'locked';
+  }
+
+  function loadSecureChatVoicePermissionFromBrowser() {
+    try {
+      state.chat.voicePermission = normalizeSecureChatVoicePermission(window.localStorage.getItem(secureChatVoicePermissionStorageKey()));
+    } catch (_err) {
+      state.chat.voicePermission = normalizeSecureChatVoicePermission(state.chat.voicePermission);
+    }
+  }
+
+  function saveSecureChatVoicePermissionToBrowser(value) {
+    var next = normalizeSecureChatVoicePermission(value);
+    state.chat.voicePermission = next;
+    state.chat.voiceNotesRequested = next === 'requested';
+    try {
+      window.localStorage.setItem(secureChatVoicePermissionStorageKey(), next);
+    } catch (_err) {
+      // Losing this preference should not break text or attachment messaging.
+    }
+    persistSecureChatSessionToBrowser();
+  }
+
+  function secureChatVoiceNoteSupported() {
+    return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function' && typeof window.MediaRecorder === 'function' && typeof window.File === 'function');
+  }
+
+  function secureChatVoiceMimeType() {
+    var choices = [
+      'audio/mp4',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg'
+    ];
+    if (!window.MediaRecorder || typeof window.MediaRecorder.isTypeSupported !== 'function') {
+      return '';
+    }
+    for (var i = 0; i < choices.length; i += 1) {
+      if (window.MediaRecorder.isTypeSupported(choices[i])) {
+        return choices[i];
+      }
+    }
+    return '';
+  }
+
+  function secureChatVoiceExtension(mime) {
+    var raw = String(mime || '').toLowerCase();
+    if (raw.indexOf('audio/mp4') === 0) return 'm4a';
+    if (raw.indexOf('audio/ogg') === 0) return 'ogg';
+    return 'webm';
+  }
+
+  function secureChatAudioFileLike(file) {
+    var mime = String(file && file.type || '').toLowerCase();
+    var name = String(file && file.name || '').toLowerCase();
+    return mime.indexOf('audio/') === 0 || /\.(m4a|mp3|ogg|oga|opus|wav|webm)$/.test(name);
+  }
+
+  function secureChatApplyVoicePermissionMessages(messages) {
+    var changed = false;
+    (Array.isArray(messages) ? messages : []).forEach(function (message) {
+      if (!message || String(message.direction || '') !== 'incoming') return;
+      var text = String(message.text || '').trim().toLowerCase();
+      if (!text) return;
+      if (text === '/allow-voice-notes' || text === SECURE_CHAT_VOICE_GRANTED_TEXT || text === 'voice notes allowed' || text === 'yes voice notes') {
+        if (state.chat.voicePermission !== 'granted') {
+          saveSecureChatVoicePermissionToBrowser('granted');
+          changed = true;
+        }
+      } else if (text === '/deny-voice-notes' || text === SECURE_CHAT_VOICE_DENIED_TEXT || text === 'voice notes denied' || text === 'no voice notes') {
+        if (state.chat.voicePermission !== 'denied') {
+          saveSecureChatVoicePermissionToBrowser('denied');
+          changed = true;
+        }
+      }
+    });
+    return changed;
+  }
+
   function secureChatPendingFileReceipt(fileRef, messageRef) {
     var meta = secureChatPendingFileMeta(fileRef);
     return {
@@ -1051,8 +1215,19 @@
   }
 
   function addSecureChatPendingFiles(files) {
-    var list = Array.prototype.slice.call(files || []).filter(Boolean);
+    var blockedAudio = false;
+    var list = Array.prototype.slice.call(files || []).filter(Boolean).filter(function (file) {
+      if (secureChatAudioFileLike(file) && state.chat.voicePermission !== 'granted') {
+        blockedAudio = true;
+        return false;
+      }
+      return true;
+    });
+    if (blockedAudio) {
+      state.chat.error = 'Voice notes are locked for this chat. Ask permission before sending audio.';
+    }
     if (!list.length) {
+      if (blockedAudio) renderContent();
       return false;
     }
     var current = Array.isArray(state.chat.pendingFiles) ? state.chat.pendingFiles.slice() : [];
@@ -1089,7 +1264,7 @@
       current.push(item);
     });
     state.chat.pendingFiles = current;
-    state.chat.error = '';
+    state.chat.error = blockedAudio ? state.chat.error : '';
     renderContent();
     return true;
   }
@@ -1120,6 +1295,124 @@
     });
   }
 
+  function stopSecureChatVoiceTracks() {
+    var stream = state.chat.voiceStream;
+    state.chat.voiceStream = null;
+    if (!stream || typeof stream.getTracks !== 'function') return;
+    stream.getTracks().forEach(function (track) {
+      try {
+        track.stop();
+      } catch (_err) {
+        // Track cleanup is best-effort after MediaRecorder finishes.
+      }
+    });
+  }
+
+  function finishSecureChatVoiceRecording() {
+    var chunks = Array.isArray(state.chat.voiceChunks) ? state.chat.voiceChunks.slice() : [];
+    var mime = state.chat.voiceMime || (chunks[0] && chunks[0].type) || 'audio/webm';
+    state.chat.voiceChunks = [];
+    state.chat.voiceRecorder = null;
+    state.chat.voiceRecording = false;
+    stopSecureChatVoiceTracks();
+    if (!chunks.length) {
+      state.chat.error = 'No voice note audio was recorded.';
+      renderContent();
+      return;
+    }
+    var blob = new Blob(chunks, { type: mime });
+    var ext = secureChatVoiceExtension(mime);
+    var file = new File([blob], 'voice-note-' + new Date().toISOString().replace(/[:.]/g, '-') + '.' + ext, {
+      type: mime || 'audio/webm',
+      lastModified: Date.now()
+    });
+    addSecureChatPendingFiles([file]);
+    state.chat.error = '';
+    renderContent();
+  }
+
+  function startSecureChatVoiceRecording() {
+    if (!secureChatVoiceNoteSupported()) {
+      state.chat.error = 'Voice recording is not supported in this browser.';
+      renderContent();
+      return Promise.resolve(false);
+    }
+    if (state.chat.voicePermission !== 'granted') {
+      return requestSecureChatVoicePermission();
+    }
+    state.chat.error = '';
+    return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mime = secureChatVoiceMimeType();
+      var options = mime ? { mimeType: mime } : {};
+      var recorder = new window.MediaRecorder(stream, options);
+      state.chat.voiceStream = stream;
+      state.chat.voiceRecorder = recorder;
+      state.chat.voiceChunks = [];
+      state.chat.voiceMime = mime || recorder.mimeType || 'audio/webm';
+      recorder.addEventListener('dataavailable', function (event) {
+        if (event && event.data && event.data.size > 0) {
+          state.chat.voiceChunks.push(event.data);
+        }
+      });
+      recorder.addEventListener('stop', finishSecureChatVoiceRecording);
+      recorder.addEventListener('error', function () {
+        state.chat.voiceRecording = false;
+        state.chat.error = 'Voice recording failed.';
+        stopSecureChatVoiceTracks();
+        renderContent();
+      });
+      recorder.start();
+      state.chat.voiceRecording = true;
+      renderContent();
+      return true;
+    }).catch(function (err) {
+      state.chat.voiceRecording = false;
+      stopSecureChatVoiceTracks();
+      state.chat.error = err && err.message ? err.message : 'Microphone permission was not granted.';
+      renderContent();
+      return false;
+    });
+  }
+
+  function stopSecureChatVoiceRecording() {
+    var recorder = state.chat.voiceRecorder;
+    if (recorder && recorder.state === 'recording') {
+      recorder.stop();
+      return true;
+    }
+    state.chat.voiceRecording = false;
+    stopSecureChatVoiceTracks();
+    renderContent();
+    return false;
+  }
+
+  function requestSecureChatVoicePermission() {
+    if (state.chat.voicePermission === 'requested') {
+      state.chat.error = 'Voice note permission has already been requested. Your contact can reply "allow voice notes" to unlock recording.';
+      renderContent();
+      return Promise.resolve(false);
+    }
+    var ok = true;
+    if (typeof window.confirm === 'function') {
+      ok = window.confirm('Ask this contact for permission to send voice notes?');
+    }
+    if (!ok) return Promise.resolve(false);
+    saveSecureChatVoicePermissionToBrowser('requested');
+    state.chat.error = 'Voice note permission request sent. Your contact can reply "allow voice notes" to unlock recording.';
+    renderContent();
+    return sendSecureChatMessage(SECURE_CHAT_VOICE_REQUEST_TEXT);
+  }
+
+  function handleSecureChatVoiceNoteAction() {
+    if (state.chat.sending) {
+      return Promise.resolve(false);
+    }
+    if (state.chat.voiceRecording) {
+      return Promise.resolve(stopSecureChatVoiceRecording());
+    }
+    return startSecureChatVoiceRecording();
+  }
+
   function secureChatInferLastSeq(messages) {
     return (Array.isArray(messages) ? messages : []).reduce(function (maxSeq, message) {
       var seq = Number(message && message.seq || 0);
@@ -1136,8 +1429,50 @@
     return '<svg class="secure-chat-send-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 9-18 9 4-9-4-9Z"/><path d="M7 12h14"/></svg>';
   }
 
+  function secureChatMicIcon() {
+    return '<svg class="secure-chat-mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg>';
+  }
+
+  function secureChatVoiceButtonLabel() {
+    if (!secureChatVoiceNoteSupported()) return 'Voice notes are not supported in this browser';
+    if (state.chat.voiceRecording) return 'Stop recording voice note';
+    if (state.chat.voicePermission === 'granted') return 'Record voice note';
+    if (state.chat.voicePermission === 'requested') return 'Voice note permission requested';
+    return 'Ask permission to send voice notes';
+  }
+
   function secureChatRemoveIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  }
+
+  function secureChatEmojiIcon() {
+    return '<svg class="secure-chat-emoji-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M8.4 10.1h.01M15.6 10.1h.01M8.6 14.2c.78 1.2 1.9 1.8 3.4 1.8s2.62-.6 3.4-1.8"/></svg>';
+  }
+
+  function renderSecureChatEmojiPicker() {
+    if (state.chat.emojiPickerOpen !== true) {
+      return '';
+    }
+    var recents = normalizeSecureChatRecentEmojis(state.chat.recentEmojis);
+    var html = '<div class="secure-chat-emoji-popover" role="dialog" aria-label="Emoji picker">';
+    html += '<div class="secure-chat-emoji-mode-row" role="tablist" aria-label="Emoji modes"><button type="button" class="is-active" role="tab" aria-selected="true">Emoji</button></div>';
+    if (recents.length) {
+      html += '<section class="secure-chat-emoji-recent" aria-label="Recently Used"><h3>Recently Used</h3><div class="secure-chat-emoji-recent-grid">';
+      recents.forEach(function (emoji) {
+        html += '<button type="button" class="secure-chat-emoji-recent-btn" data-secure-chat-action="emoji-recent" data-secure-chat-emoji="' + escapeHtml(emoji) + '" aria-label="Insert ' + escapeHtml(emoji) + '">' + escapeHtml(emoji) + '</button>';
+      });
+      html += '</div></section>';
+    }
+    if (state.chat.emojiPickerError) {
+      html += '<p class="secure-chat-emoji-status is-error">' + escapeHtml(state.chat.emojiPickerError) + '</p>';
+    } else {
+      if (state.chat.emojiPickerLoading) {
+        html += '<p class="secure-chat-emoji-status">Loading emoji...</p>';
+      }
+      html += '<emoji-picker class="secure-chat-emoji-picker" emoji-version="17.0"></emoji-picker>';
+    }
+    html += '</div>';
+    return html;
   }
 
   function secureChatComparableMessage(message) {
@@ -1171,6 +1506,14 @@
         sendButton.removeAttribute('aria-busy');
         sendButton.innerHTML = secureChatSendIcon();
       }
+    }
+    var voiceButton = document.querySelector('[data-secure-chat-action="voice-note"]');
+    if (voiceButton instanceof HTMLButtonElement) {
+      voiceButton.disabled = state.chat.sending === true || !secureChatVoiceNoteSupported();
+      voiceButton.classList.toggle('is-recording', state.chat.voiceRecording === true);
+      voiceButton.classList.toggle('is-locked', state.chat.voicePermission !== 'granted');
+      voiceButton.setAttribute('aria-label', secureChatVoiceButtonLabel());
+      voiceButton.setAttribute('title', secureChatVoiceButtonLabel());
     }
   }
 
@@ -1340,6 +1683,7 @@
       return aTime.localeCompare(bTime);
     });
     state.chat.messages = rows;
+    secureChatApplyVoicePermissionMessages(rows);
     return true;
   }
 
@@ -1390,9 +1734,12 @@
     state.chat.uploads = Array.isArray(session.uploads) ? session.uploads : [];
     state.chat.service = session.service && typeof session.service === 'object' ? session.service : state.chat.service;
     state.chat.mapping = session.mapping && typeof session.mapping === 'object' ? session.mapping : state.chat.mapping;
+    state.chat.voicePermission = normalizeSecureChatVoicePermission(session.voicePermission || state.chat.voicePermission);
+    loadSecureChatVoicePermissionFromBrowser();
     state.chat.localUploads = {};
     state.chat.lastSeq = Number(session.lastSeq || secureChatInferLastSeq(state.chat.messages) || 0);
     state.chat.simplexWebIntroDismissed = secureChatSimplexInfoDismissedFromBrowser();
+    loadSecureChatRecentEmojis();
     return true;
   }
 
@@ -1408,7 +1755,8 @@
       messages: state.chat.messages || [],
       uploads: secureChatPersistableUploads(),
       service: state.chat.service || null,
-      mapping: state.chat.mapping || null
+      mapping: state.chat.mapping || null,
+      voicePermission: normalizeSecureChatVoicePermission(state.chat.voicePermission)
     });
     return true;
   }
@@ -1437,11 +1785,20 @@
     state.chat.authCheckComplete = false;
     state.chat.authCheckPromise = null;
     state.chat.error = '';
+    state.chat.emojiPickerOpen = false;
+    state.chat.emojiPickerLoading = false;
+    state.chat.emojiPickerError = '';
     state.chat.filePickerOpen = false;
     state.chat.renderDeferredWhileFilePickerOpen = false;
     state.chat.simplexWebIntroDismissed = false;
     state.chat.adminMappings = [];
     state.chat.chatStarted = false;
+    state.chat.chatOpening = false;
+    state.chat.voicePermission = 'locked';
+    state.chat.voiceRecording = false;
+    state.chat.voiceRecorder = null;
+    state.chat.voiceChunks = [];
+    stopSecureChatVoiceTracks();
   }
 
   function hasVerifiedSecureChatSession() {
@@ -1481,7 +1838,13 @@
       draftText: String(chat.draftText || ''),
       simplexWebIntroDismissed: chat.simplexWebIntroDismissed === true,
       sendWithModifier: chat.sendWithModifier === true,
-      chatStarted: chat.chatStarted === true
+      emojiPickerOpen: chat.emojiPickerOpen === true,
+      emojiPickerLoading: chat.emojiPickerLoading === true,
+      emojiPickerError: String(chat.emojiPickerError || ''),
+      recentEmojis: normalizeSecureChatRecentEmojis(chat.recentEmojis),
+      chatStarted: chat.chatStarted === true,
+      voicePermission: String(chat.voicePermission || ''),
+      voiceRecording: chat.voiceRecording === true
     });
   }
 
@@ -1578,6 +1941,7 @@
       state.chat.sessionDisplayName = String(data.session_display_name || state.chat.sessionDisplayName || secureChatSessionDisplayName() || '');
       state.chat.service = data.service || null;
       state.chat.mapping = data.mapping || null;
+      loadSecureChatVoicePermissionFromBrowser();
       secureChatRegisterBrowserNativeTransport();
       state.chat.uploads = Array.isArray(data.uploads) ? data.uploads : [];
       state.chat.adminMappings = data.admin && Array.isArray(data.admin.mappings) ? data.admin.mappings : [];
@@ -1755,9 +2119,14 @@
 
   function handleSecureChatStartClick() {
     state.chat.chatStarted = true;
+    state.chat.chatOpening = true;
     state.chat.error = '';
     state.chat.loading = true;
     renderContent();
+    window.setTimeout(function () {
+      state.chat.chatOpening = false;
+      renderContent();
+    }, 260);
     return refreshSecureChatState({ reset: true }).finally(function () {
       scheduleSecureChatPoll();
     });
@@ -2049,14 +2418,22 @@
         pendingFiles: secureChatPendingFileMetas(),
         sendWithModifier: state.chat.sendWithModifier === true,
         shortcutModifierLabel: secureChatShortcutModifierLabel(),
+        emojiPickerOpen: state.chat.emojiPickerOpen === true,
+        emojiPickerLoading: state.chat.emojiPickerLoading === true,
+        emojiPickerError: state.chat.emojiPickerError || '',
+        recentEmojis: normalizeSecureChatRecentEmojis(state.chat.recentEmojis),
+        voiceNoteSupported: secureChatVoiceNoteSupported(),
+        voicePermission: state.chat.voicePermission || 'locked',
+        voiceRecording: state.chat.voiceRecording === true,
         simplexWebIntroDismissed: state.chat.simplexWebIntroDismissed === true,
         chatStarted: state.chat.chatStarted === true,
+        chatOpening: state.chat.chatOpening === true,
         admin: isAdmin(),
         adminMappings: state.chat.adminMappings || []
       });
     }
 
-    var html = '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">';
+    var html = '<section class="secure-chat-panel' + (state.chat.chatStarted === true ? ' is-chat-started' : '') + (state.chat.chatOpening === true ? ' is-chat-opening' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     var fallbackLoggedIn = hasUsableSecureChatSession();
@@ -2077,6 +2454,7 @@
       html += '</section>';
       return html;
     }
+    html += '<div class="secure-chat-body' + (state.chat.chatOpening === true ? ' is-opening' : '') + '"><div class="secure-chat-body-inner">';
     if (state.chat.error) {
       html += '<div class="secure-chat-banner is-error">' + escapeHtml(state.chat.error) + '</div>';
     }
@@ -2136,9 +2514,14 @@
     }
     html += '<textarea id="secure-chat-input" class="secure-chat-input" rows="2" placeholder="Write a secure message">' + escapeHtml(state.chat.draftText || '') + '</textarea>';
     html += '<label class="secure-chat-attach-button" aria-label="Attach files" title="Attach files"><input id="secure-chat-file-input" class="secure-chat-file-input" type="file" multiple><svg class="secure-chat-attach-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 1 1-2.83-2.83l8.49-8.49"/></svg></label>';
+    html += '<button type="button" class="secure-chat-emoji-button" data-secure-chat-action="emoji-toggle" aria-label="Insert emoji" title="Insert emoji" aria-haspopup="dialog" aria-expanded="' + (state.chat.emojiPickerOpen === true ? 'true' : 'false') + '">' + secureChatEmojiIcon() + '</button>';
+    html += renderSecureChatEmojiPicker();
+    html += '<button type="button" class="secure-chat-voice-btn' + (state.chat.voiceRecording ? ' is-recording' : '') + (state.chat.voicePermission !== 'granted' ? ' is-locked' : '') + '" data-secure-chat-action="voice-note" aria-label="' + escapeHtml(secureChatVoiceButtonLabel()) + '" title="' + escapeHtml(secureChatVoiceButtonLabel()) + '"' + (!secureChatVoiceNoteSupported() || state.chat.sending ? ' disabled' : '') + '>' + secureChatMicIcon() + '</button>';
     html += '<button type="button" class="secure-chat-send-btn" data-secure-chat-action="send" aria-label="' + (state.chat.sending ? 'Sending...' : 'Send secure message') + '" title="' + (state.chat.sending ? 'Sending...' : 'Send secure message') + '"' + (state.chat.sending ? ' disabled aria-busy="true"' : '') + '>' + (state.chat.sending ? secureChatSpinnerHtml('secure-chat-send-spinner') : secureChatSendIcon()) + '</button>';
     html += '</div>';
     html += '<label class="secure-chat-compose-hint secure-chat-send-shortcut"><input id="secure-chat-send-modifier" type="checkbox"' + (state.chat.sendWithModifier === true ? ' checked' : '') + '> ' + escapeHtml(secureChatShortcutModifierLabel()) + ' + Enter to send</label>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     html += '</section>';
     return html;
@@ -2196,6 +2579,86 @@
       return String(input.value || '');
     }
     return String(state.chat.draftText || '');
+  }
+
+  function focusSecureChatEmojiSearchSoon() {
+    window.setTimeout(function () {
+      var picker = root.querySelector('emoji-picker.secure-chat-emoji-picker');
+      if (!picker || !picker.shadowRoot) {
+        return;
+      }
+      var input = picker.shadowRoot.querySelector('input[type="search"], input');
+      if (input && typeof input.focus === 'function') {
+        input.focus();
+      }
+    }, 120);
+  }
+
+  function ensureSecureChatEmojiPickerLoaded() {
+    if (window.customElements && window.customElements.get && window.customElements.get('emoji-picker')) {
+      state.chat.emojiPickerLoading = false;
+      state.chat.emojiPickerError = '';
+      focusSecureChatEmojiSearchSoon();
+      return Promise.resolve(true);
+    }
+    if (!secureChatEmojiPickerLoadPromise) {
+      state.chat.emojiPickerLoading = true;
+      state.chat.emojiPickerError = '';
+      secureChatEmojiPickerLoadPromise = import(secureChatEmojiPickerModuleUrl);
+    }
+    return secureChatEmojiPickerLoadPromise.then(function () {
+      state.chat.emojiPickerLoading = false;
+      state.chat.emojiPickerError = '';
+      renderContent();
+      focusSecureChatEmojiSearchSoon();
+      return true;
+    }).catch(function () {
+      secureChatEmojiPickerLoadPromise = null;
+      state.chat.emojiPickerLoading = false;
+      state.chat.emojiPickerError = 'Emoji could not be loaded.';
+      renderContent();
+      return false;
+    });
+  }
+
+  function setSecureChatEmojiPickerOpen(open) {
+    state.chat.emojiPickerOpen = open === true;
+    if (state.chat.emojiPickerOpen) {
+      loadSecureChatRecentEmojis();
+      ensureSecureChatEmojiPickerLoaded();
+    }
+    renderContent();
+  }
+
+  function insertSecureChatEmoji(emoji) {
+    var nextEmoji = normalizeSecureChatEmoji(emoji);
+    if (!nextEmoji) {
+      return;
+    }
+    var input = document.getElementById('secure-chat-input');
+    var current = currentSecureChatDraftValue();
+    var start = current.length;
+    var end = current.length;
+    if (input instanceof HTMLTextAreaElement) {
+      start = Number(input.selectionStart || 0);
+      end = Number(input.selectionEnd || start);
+    }
+    state.chat.draftText = current.slice(0, start) + nextEmoji + current.slice(end);
+    persistSecureChatSessionToBrowser();
+    recordSecureChatRecentEmoji(nextEmoji);
+    if (input instanceof HTMLTextAreaElement) {
+      input.value = state.chat.draftText;
+      input.focus();
+      var caret = start + nextEmoji.length;
+      try {
+        input.setSelectionRange(caret, caret);
+      } catch (_err) {
+        // Ignore unsupported selection updates.
+      }
+    } else {
+      renderContent();
+    }
+    syncSecureChatLastContentHtmlFromDom();
   }
 
   function normalizeRows(rows) {
@@ -3450,6 +3913,19 @@
           }
           return;
         }
+        if (secureChatAction === 'emoji-toggle') {
+          setSecureChatEmojiPickerOpen(state.chat.emojiPickerOpen !== true);
+          return;
+        }
+        if (secureChatAction === 'emoji-recent') {
+          insertSecureChatEmoji(secureChatActionNode.getAttribute('data-secure-chat-emoji') || '');
+          renderContent();
+          return;
+        }
+        if (secureChatAction === 'voice-note') {
+          handleSecureChatVoiceNoteAction();
+          return;
+        }
         if (secureChatAction === 'remove-pending-file') {
           removeSecureChatPendingFile(secureChatActionNode.getAttribute('data-secure-chat-file-id') || '');
           return;
@@ -3488,6 +3964,9 @@
           });
           return;
         }
+      }
+      if (state.chat.emojiPickerOpen && !target.closest('.secure-chat-emoji-popover, .secure-chat-emoji-button')) {
+        setSecureChatEmojiPickerOpen(false);
       }
       if (isAdmin() && state.editMode) {
         var navTitleActionNode = target.closest('[data-page-nav-title-action]');
@@ -3808,6 +4287,14 @@
       queueAutosave(500);
     });
 
+    root.addEventListener('emoji-click', function (event) {
+      if (!event || !event.detail) {
+        return;
+      }
+      insertSecureChatEmoji(event.detail.unicode || '');
+      renderContent();
+    });
+
     root.addEventListener('change', function (event) {
       var secureChatTarget = event.target;
       if (secureChatTarget instanceof HTMLInputElement && secureChatTarget.id === 'secure-chat-file-input') {
@@ -3905,6 +4392,11 @@
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
+      if (state.chat.emojiPickerOpen && event.key === 'Escape') {
+        event.preventDefault();
+        setSecureChatEmojiPickerOpen(false);
+        return;
+      }
       if (target instanceof HTMLTextAreaElement && target.id === 'secure-chat-input' && event.key === 'Enter') {
         if (event.shiftKey) {
           return;
