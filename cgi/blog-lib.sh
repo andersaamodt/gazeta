@@ -1641,7 +1641,7 @@ blog_read_request_body() {
     return 0
   fi
 
-  BLOG_REQUEST_BODY=$(dd bs=1 count="$cl" 2>/dev/null || true)
+  BLOG_REQUEST_BODY=$(dd bs="$cl" count=1 2>/dev/null || true)
 }
 
 blog_param_decode_component() {
@@ -1710,7 +1710,28 @@ blog_param() {
   key=${1-}
   val=$(blog_param_lookup "$key" "${QUERY_STRING-}" 2>/dev/null || printf '')
   if [ -n "${BLOG_REQUEST_BODY-}" ]; then
-    body_val=$(blog_param_lookup "$key" "$BLOG_REQUEST_BODY" 2>/dev/null || printf '')
+    case "${CONTENT_TYPE-}" in
+      application/json|application/json\;*|text/plain|text/plain\;*)
+        body_is_json=true
+        ;;
+      *)
+        case "$BLOG_REQUEST_BODY" in
+          \{*) body_is_json=true ;;
+          *) body_is_json=false ;;
+        esac
+        ;;
+    esac
+    if [ "$body_is_json" = "true" ]; then
+        body_val=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r --arg key "$key" '
+          if type == "object" and has($key) and .[$key] != null then
+            .[$key] | if type == "string" then . else tojson end
+          else
+            empty
+          end
+        ' 2>/dev/null || printf '')
+    else
+        body_val=$(blog_param_lookup "$key" "$BLOG_REQUEST_BODY" 2>/dev/null || printf '')
+    fi
     if [ -n "$body_val" ]; then
       val=$body_val
     fi

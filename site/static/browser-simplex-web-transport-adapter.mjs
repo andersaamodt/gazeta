@@ -226,6 +226,20 @@ function timeoutError(error) {
   );
 }
 
+function staleNativeContactError(error) {
+  if (!error) return false;
+  var code = String(error.code || '');
+  var message = String(error.message || '');
+  var detail = error.detail || error.cause || null;
+  var detailText = '';
+  try {
+    detailText = detail ? JSON.stringify(detail) : '';
+  } catch (_err) {
+    detailText = String(detail || '');
+  }
+  return code === 'SIMPLEX_CLIENT_BROKER_ERR' && /\b(AUTH|NO_AUTH)\b/i.test(message + ' ' + detailText);
+}
+
 function statusTimeoutMs(message = {}) {
   var ms = Number(message.status_timeout_ms || message.statusTimeoutMs || 0);
   return Number.isFinite(ms) && ms > 0 ? Math.min(120000, Math.floor(ms)) : 0;
@@ -527,11 +541,41 @@ export class SimplexWebTransportAdapter {
       });
       return requested;
     }
-    await contacts.sendText(contactId, text, {
-      clientMessageId: ref,
-      corrId: message.corr_id || message.corrId,
-      timeoutMs: message.timeout_ms || message.timeoutMs
-    });
+    try {
+      await contacts.sendText(contactId, text, {
+        clientMessageId: ref,
+        corrId: message.corr_id || message.corrId,
+        timeoutMs: message.timeout_ms || message.timeoutMs
+      });
+    } catch (error) {
+      if (!(parsedLink && parsedLink.nativeAgentProfile && staleNativeContactError(error))) throw error;
+      if (typeof contacts.deleteContact === 'function') contacts.deleteContact(contactId, { hardDelete: true, localOnly: true });
+      try {
+        await contacts.requestContact(contactId, linkText, {
+          ...message,
+          allowNativeAgentProfile: true,
+          corrId: message.contact_corr_id || message.contactCorrId || message.corr_id || message.corrId,
+          profile: this.messageProfile(message)
+        });
+      } catch (requestError) {
+        if (!timeoutError(requestError)) throw requestError;
+      }
+      var reRequested = {
+        ...makeReceipt(ref, 'contact-requested'),
+        delivery_status: 'contact-requested',
+        contact_state: 'requested'
+      };
+      this.receipts.set(ref, reRequested);
+      this.history.push({
+        direction: 'outgoing',
+        message_ref: ref,
+        message_kind: 'text',
+        delivery_status: 'contact-requested',
+        created_at: new Date().toISOString(),
+        text
+      });
+      return reRequested;
+    }
     var receipt = makeReceipt(ref, 'sent');
     this.receipts.set(ref, receipt);
     this.history.push({

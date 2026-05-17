@@ -8,7 +8,7 @@
 // configure browser-compatible SMP/XFTP endpoints before the facade becomes
 // available.
 
-import { createSimplexWebTransportAdapter } from './browser-simplex-web-transport-adapter.mjs?v=20260516-browserprofilev1';
+import { createSimplexWebTransportAdapter } from './browser-simplex-web-transport-adapter.mjs?v=20260516-browserprofilev2';
 import { encodeBase64Url, parseSimplexConnectionLink } from './browser-smp-core.mjs';
 
 const STORAGE_KEYS = {

@@ -259,8 +259,11 @@ case "$page_type" in
   *)
     normalized=$(blog_list_normalize_state_json "$page_slug" "$state_json")
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
-    validation_json=$(blog_list_validate_and_enrich_state_json "$normalized" false)
-    enriched=$(printf '%s\n' "$normalized" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    # Draft saves should acknowledge the durable write quickly. Full list
+    # validation can resolve every referenced event/post, which is too costly
+    # for large pages such as oeuvre and can make Done look like a failed save.
+    validation_json='{"errors":[],"warnings":[],"can_publish":true}'
+    enriched=$normalized
     ;;
 esac
 

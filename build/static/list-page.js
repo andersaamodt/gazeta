@@ -785,6 +785,28 @@
     return data;
   }
 
+  async function apiPostJson(path, payload) {
+    var response = await fetch(path, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: JSON.stringify(payload || {})
+    });
+    var data = {};
+    try {
+      data = await response.json();
+    } catch (_err) {
+      throw new Error('Invalid server response');
+    }
+    if (!response.ok || !data || data.success === false) {
+      var err = new Error((data && data.error) ? data.error : ('Request failed (' + response.status + ')'));
+      err.code = (data && data.code) ? String(data.code) : '';
+      err.httpStatus = response.status;
+      throw err;
+    }
+    return data;
+  }
+
   function nextUid() {
     return 'el-' + String(state.uidCounter++);
   }
@@ -1552,22 +1574,25 @@
     try {
       var auth = getAuthPayload();
       var elements = cloneEditableElements(state.draft.elements || []);
-      await apiPost('/cgi/blog-save-nostr-page-draft', {
+      await apiPostJson('/cgi/blog-save-nostr-page-draft', {
         page_slug: slug,
-        title: state.draft.title || '',
-        description: state.draft.description || '',
-        publish_intro_to_nostr: state.draft.publish_intro_to_nostr ? 'true' : 'false',
-        show_marker_filters: state.draft.show_marker_filters ? 'true' : 'false',
-        show_markers: state.draft.show_markers ? 'true' : 'false',
-        alphabetize_markers: state.draft.alphabetize_markers ? 'true' : 'false',
-        default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
-        group_by: state.draft.group_by || '',
-        view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
-        content: state.draft.content || '',
-        extras_after: state.draft.extras_after || '',
-        extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
-        elements_json: JSON.stringify(elements),
-        entries_json: JSON.stringify(toEntries(elements)),
+        state_json: {
+          slug: slug,
+          title: state.draft.title || '',
+          description: state.draft.description || '',
+          publish_intro_to_nostr: !!state.draft.publish_intro_to_nostr,
+          show_marker_filters: !!state.draft.show_marker_filters,
+          show_markers: !!state.draft.show_markers,
+          alphabetize_markers: !!state.draft.alphabetize_markers,
+          default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
+          group_by: state.draft.group_by || '',
+          view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
+          content: state.draft.content || '',
+          extras_after: state.draft.extras_after || '',
+          extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
+          elements: elements,
+          entries: toEntries(elements)
+        },
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
