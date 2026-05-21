@@ -358,9 +358,14 @@
         <div class="auth-nip46-pairing">
           <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
           <div class="auth-nip46-controls">
+            <ol class="auth-nip46-steps" aria-label="Phone signer login steps">
+              <li><span>1</span><strong>Signer app</strong><small>App link or QR.</small></li>
+              <li><span>2</span><strong>Pairing approval</strong><small>Return here after approval.</small></li>
+              <li><span>3</span><strong>Login approval</strong><small>Sign-in finishes here.</small></li>
+            </ol>
             <div class="auth-nip46-link-actions">
               <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Connect Nostr</a>
-              <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link">
+              <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link" title="Copy Nostr Connect link">
                 <svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>
                   <path d="M5 15.5V5.75A2.75 2.75 0 0 1 7.75 3H15"></path>
@@ -370,7 +375,7 @@
             <p class="auth-nip46-uri" id="auth-nip46-uri" hidden></p>
             <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
             <div class="auth-actions">
-              <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled hidden>Finish sign-in</button>
+              <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled hidden>Continue sign-in</button>
             </div>
           </div>
         </div>
@@ -429,7 +434,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260430-signin-learn1"></script>
+<script src="/static/nav-auth.js?v=20260519-android-login1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

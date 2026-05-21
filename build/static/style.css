@@ -6388,6 +6388,10 @@ nav.site-nav .btn-login {
   margin: 0;
 }
 
+.auth-nip46-pairing .auth-qr[hidden] {
+  display: none;
+}
+
 .auth-nip46-controls {
   display: grid;
   justify-items: start;
@@ -6399,6 +6403,47 @@ nav.site-nav .btn-login {
 .auth-nip46-controls .auth-actions {
   justify-content: flex-start;
   margin-top: 0;
+}
+
+.auth-nip46-steps {
+  display: grid;
+  gap: 0.34rem;
+  list-style: none;
+  margin: 0 0 0.1rem;
+  padding: 0;
+  width: fit-content;
+}
+
+.auth-nip46-steps li {
+  display: grid;
+  grid-template-columns: 1.35rem max-content;
+  gap: 0.08rem 0.42rem;
+  align-items: center;
+  color: var(--text);
+}
+
+.auth-nip46-steps li > span {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--link) 12%, var(--surface-raised-strong, #fff));
+  color: color-mix(in srgb, var(--link) 78%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.auth-nip46-steps strong {
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.auth-nip46-steps small {
+  color: var(--light-text);
+  font-size: 0.73rem;
+  line-height: 1.15;
 }
 
 .auth-nip46-uri {
@@ -6470,6 +6515,10 @@ nav.site-nav .btn-login {
   align-items: center;
   gap: 0.42rem 0.58rem;
   justify-content: flex-start;
+}
+
+.auth-nip46-link-actions[hidden] {
+  display: none;
 }
 
 .auth-nip46-link-actions .machine-string-copy {
@@ -6800,6 +6849,20 @@ nav.site-nav .btn-login {
     font-size: 0.75rem;
   }
 
+  .auth-nip46-steps {
+    gap: 0.28rem;
+  }
+
+  .auth-nip46-steps li {
+    grid-template-columns: 1.25rem max-content;
+    column-gap: 0.36rem;
+  }
+
+  .auth-nip46-steps li > span {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
   .auth-key-row {
     flex-direction: column;
   }
@@ -6816,6 +6879,26 @@ nav.site-nav .btn-login {
 
   .auth-manual-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-nip46-pairing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-nip46-controls {
+    order: -1;
+    justify-items: center;
+  }
+
+  .auth-nip46-pairing .auth-qr {
+    order: 2;
+  }
+
+  .auth-nip46-controls .auth-actions,
+  .auth-nip46-link-actions {
+    justify-content: center;
   }
 }
 

@@ -25,10 +25,10 @@
     }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <link rel="stylesheet" href="/static/style.css?v=1858372691" />
-  <script src="/static/js/htmx.min.js?v=1858372691"></script>
-  <script src="/static/js/idiomorph-ext.min.js?v=1858372691"></script>
-  <script src="/static/site-bootstrap.js?v=1858372691"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3122137071" />
+  <script src="/static/js/htmx.min.js?v=3122137071"></script>
+  <script src="/static/js/idiomorph-ext.min.js?v=3122137071"></script>
+  <script src="/static/site-bootstrap.js?v=3122137071"></script>
   <script>
   (function () {
     var theme = 'archmage';
@@ -52,10 +52,10 @@
     (document.head || document.documentElement).appendChild(link);
   })();
   </script>
-  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=1858372691" data-theme-href="/static/themes/archmage.css?v=1858372691" /></noscript>
-  <script defer src="/static/zap-ui.js?v=1858372691"></script>
-  <script defer src="/static/post-context.js?v=1858372691"></script>
-  <script defer src="/static/post-resize.js?v=1858372691"></script>
+  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=3122137071" data-theme-href="/static/themes/archmage.css?v=3122137071" /></noscript>
+  <script defer src="/static/zap-ui.js?v=3122137071"></script>
+  <script defer src="/static/post-context.js?v=3122137071"></script>
+  <script defer src="/static/post-resize.js?v=3122137071"></script>
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
@@ -735,9 +735,14 @@
         <div class="auth-nip46-pairing">
           <div id="auth-nip46-qr" class="auth-qr" aria-label="Nostr Connect QR code"></div>
           <div class="auth-nip46-controls">
+            <ol class="auth-nip46-steps" aria-label="Phone signer login steps">
+              <li><span>1</span><strong>Signer app</strong><small>App link or QR.</small></li>
+              <li><span>2</span><strong>Pairing approval</strong><small>Return here after approval.</small></li>
+              <li><span>3</span><strong>Login approval</strong><small>Sign-in finishes here.</small></li>
+            </ol>
             <div class="auth-nip46-link-actions">
               <a id="auth-nip46-open" class="auth-secondary-btn auth-nip46-open-link" href="#">Connect Nostr</a>
-              <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link">
+              <button id="auth-nip46-uri-copy" class="machine-string-copy" type="button" aria-label="Copy Nostr Connect link" title="Copy Nostr Connect link">
                 <svg class="machine-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M8 7.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"></path>
                   <path d="M5 15.5V5.75A2.75 2.75 0 0 1 7.75 3H15"></path>
@@ -747,7 +752,7 @@
             <p class="auth-nip46-uri" id="auth-nip46-uri" hidden></p>
             <p class="auth-nip46-diagnostics" id="auth-nip46-diagnostics" aria-live="polite"></p>
             <div class="auth-actions">
-              <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled hidden>Finish sign-in</button>
+              <button id="auth-phone-btn" class="auth-primary-btn" type="button" disabled hidden>Continue sign-in</button>
             </div>
           </div>
         </div>
@@ -806,8 +811,8 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=1858372691"></script>
-<script src="/static/shop-cart.js?v=1858372691"></script>
+<script src="/static/nav-auth.js?v=3122137071"></script>
+<script src="/static/shop-cart.js?v=3122137071"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 <div id="admin-access-message" class="admin-access-message" hidden="">
@@ -2130,8 +2135,8 @@ Cross-post selected
 Drop files to upload
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nostr-publish-dialog.js?v=1858372691"></script>
-<script src="/static/admin.js?v=1858372691"></script>
+<script src="/static/nostr-publish-dialog.js?v=3122137071"></script>
+<script src="/static/admin.js?v=3122137071"></script>
 <style>
 header#title-block-header {
   display: none !important;
@@ -7168,6 +7173,6 @@ body {
     </a>
   </div>
 </footer>
-<script defer src="/static/footer-pages.js?v=1858372691"></script>
+<script defer src="/static/footer-pages.js?v=3122137071"></script>
 </body>
 </html>

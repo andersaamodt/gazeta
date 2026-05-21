@@ -55,6 +55,9 @@
       pending: {},
       pendingTimers: {},
       seenEvents: {},
+      toolsWaitPromise: null,
+      returnRefreshTimer: 0,
+      deepLinkFallbackTimer: 0,
       autoLoginInFlight: false,
       diagnostics: {
         eventsSeen: 0,
@@ -578,6 +581,38 @@
       typeof window.NostrTools.SimplePool === 'function');
   }
 
+  function waitForNostrTools(timeoutMs) {
+    if (hasNostrTools()) {
+      state.nip46.toolsWaitPromise = null;
+      return Promise.resolve();
+    }
+    if (state.nip46.toolsWaitPromise) {
+      return state.nip46.toolsWaitPromise;
+    }
+    var startedAt = Date.now();
+    var timeout = Number(timeoutMs || 8000);
+    if (!isFinite(timeout) || timeout < 1000) {
+      timeout = 8000;
+    }
+    state.nip46.toolsWaitPromise = new Promise(function (resolve, reject) {
+      function check() {
+        if (hasNostrTools()) {
+          state.nip46.toolsWaitPromise = null;
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt >= timeout) {
+          state.nip46.toolsWaitPromise = null;
+          reject(new Error('Phone signer setup is still loading. The browser may have blocked the Nostr tools script. Advanced signed JSON remains available.'));
+          return;
+        }
+        window.setTimeout(check, 80);
+      }
+      check();
+    });
+    return state.nip46.toolsWaitPromise;
+  }
+
   function getBrowserSigner() {
     var signer = window.nostr || null;
     if (!signer) {
@@ -816,13 +851,33 @@
   }
 
   function updatePhoneContinueState() {
+    var paired = !!state.nip46.signerPubkey;
+    var controls = els.authPhonePanel && els.authPhonePanel.querySelector
+      ? els.authPhonePanel.querySelector('.auth-nip46-controls')
+      : null;
+    var linkActions = els.authPhonePanel && els.authPhonePanel.querySelector
+      ? els.authPhonePanel.querySelector('.auth-nip46-link-actions')
+      : null;
+    if (controls) {
+      controls.classList.toggle('is-paired', paired);
+    }
+    if (linkActions) {
+      linkActions.hidden = paired;
+    }
+    if (els.authNip46Qr) {
+      els.authNip46Qr.hidden = paired;
+    }
+    if (paired && !hasPendingNip46Requests()) {
+      setNip46Diagnostics('Signer connected. Continue sign-in.', 'ok');
+      setAuthMessage('Phone signer is already paired. Continue sign-in and approve the login request in Amber.', 'plain');
+    }
     if (!els.authPhoneBtn) {
       return;
     }
-    var paired = !!state.nip46.signerPubkey;
     els.authPhoneBtn.disabled = !paired;
     els.authPhoneBtn.setAttribute('aria-disabled', paired ? 'false' : 'true');
-    els.authPhoneBtn.hidden = true;
+    els.authPhoneBtn.hidden = !paired;
+    els.authPhoneBtn.textContent = 'Continue sign-in';
   }
 
   function resetAuthPanels() {
@@ -1470,6 +1525,15 @@
       state.nip46.pending = {};
       state.nip46.pendingTimers = {};
       state.nip46.seenEvents = {};
+      state.nip46.toolsWaitPromise = null;
+      if (state.nip46.returnRefreshTimer) {
+        clearTimeout(state.nip46.returnRefreshTimer);
+        state.nip46.returnRefreshTimer = 0;
+      }
+      if (state.nip46.deepLinkFallbackTimer) {
+        clearTimeout(state.nip46.deepLinkFallbackTimer);
+        state.nip46.deepLinkFallbackTimer = 0;
+      }
       state.nip46.autoLoginInFlight = false;
       state.nip46.diagnostics = {
         eventsSeen: 0,
@@ -2052,6 +2116,7 @@
       els.authNip46Open.setAttribute('title', 'Connect Nostr with a signer app');
     }
     renderQrCode(uri);
+    updatePhoneContinueState();
   }
 
   function currentNip46Uri() {
@@ -2061,6 +2126,49 @@
     return buildNostrConnectUri(state.nip46.appPubkey, state.nip46.pairSecret, state.nip46.relays);
   }
 
+  function hasPendingNip46Requests() {
+    return Object.keys(state.nip46.pending || {}).length > 0;
+  }
+
+  function scheduleDeepLinkFallbackHint() {
+    if (state.nip46.deepLinkFallbackTimer) {
+      clearTimeout(state.nip46.deepLinkFallbackTimer);
+      state.nip46.deepLinkFallbackTimer = 0;
+    }
+    state.nip46.deepLinkFallbackTimer = window.setTimeout(function () {
+      state.nip46.deepLinkFallbackTimer = 0;
+      if (!isPhonePairingPanelActive() || document.hidden || state.nip46.signerPubkey) {
+        return;
+      }
+      setNip46Diagnostics('No signer app response yet. The copy button gives the same Nostr Connect link.', 'warn');
+      setAuthMessage('No signer app response yet. Recommended Apps lists signer options, and the copy button gives a manual Nostr Connect link.', 'warn');
+    }, 1800);
+  }
+
+  function refreshPhoneSignerListenerAfterReturn(reason) {
+    if (!state.nip46.active || !state.nip46.appPubkey || !isPhonePairingPanelActive()) {
+      return;
+    }
+    if (state.nip46.returnRefreshTimer) {
+      clearTimeout(state.nip46.returnRefreshTimer);
+    }
+    state.nip46.returnRefreshTimer = window.setTimeout(function () {
+      state.nip46.returnRefreshTimer = 0;
+      waitForNostrTools(4000).then(function () {
+        var status = 'Listening again for the signer response.';
+        if (hasPendingNip46Requests()) {
+          status = 'Checking signer approval after return.';
+        } else if (state.nip46.signerPubkey) {
+          status = 'Signer connected. Waiting for login approval.';
+        }
+        ensureNip46Subscription(180, status);
+        updateNip46PairingLink();
+      }).catch(function (err) {
+        setNip46Diagnostics((err && err.message) || 'Phone signer setup is still loading.', 'error');
+      });
+    }, reason === 'focus' ? 120 : 0);
+  }
+
   function openNativeDeepLink(uri, notReadyMessage) {
     var href = String(uri || '').trim();
     if (!href || href === '#') {
@@ -2068,6 +2176,9 @@
       return false;
     }
     try {
+      setNip46Diagnostics('Opening signer app. Return here after approval.', 'info');
+      setAuthMessage('Android may switch to the signer app. After approving pairing, return here for the login approval.', 'plain');
+      scheduleDeepLinkFallbackHint();
       window.location.href = href;
       return true;
     } catch (_err) {
@@ -2077,12 +2188,15 @@
   }
 
   function initNip46Pairing() {
-    if (!hasNostrTools()) {
-      throw new Error('NIP-46 requires nostr-tools support in this browser.');
-    }
+    return waitForNostrTools(8500).then(function () {
+      return initNip46PairingWithTools();
+    });
+  }
 
+  function initNip46PairingWithTools() {
     if (state.nip46.active) {
       updateNip46PairingLink();
+      ensureNip46Subscription(180, state.nip46.signerPubkey ? '' : 'Waiting for signer');
       return Promise.resolve();
     }
 
@@ -2138,29 +2252,59 @@
         lastMessage: ''
       };
 
-      state.nip46.subscription = state.nip46.pool.subscribeMany(
-        state.nip46.relays,
-        [{ kinds: [NIP46_KIND], '#p': [state.nip46.appPubkey], since: nowEpoch() - 30 }],
-        {
-          onevent: function (event) {
-            handleNip46RelayEvent(event);
-          },
-          oneose: function () {
-            setNip46Diagnostics('Waiting for signer', 'waiting');
-          },
-          onclose: function () {
-            if (isPhonePairingPanelActive() && !state.nip46.signerPubkey && state.nip46.diagnostics.eventsSeen > 0) {
-              setNip46Diagnostics('Phone signer listener paused after relay activity. If pairing stalls, reopen this panel for a fresh link.', 'warn');
-            }
-          }
-        }
-      );
-      setNip46Diagnostics('Waiting for signer', 'waiting');
+      ensureNip46Subscription(30, 'Waiting for signer');
 
       return saveNip46PairState();
     }).then(function () {
       updateNip46PairingLink();
     });
+  }
+
+  function closeNip46Subscription() {
+    if (state.nip46.subscription && typeof state.nip46.subscription.close === 'function') {
+      state.nip46.subscription.close();
+    }
+    state.nip46.subscription = null;
+  }
+
+  function ensureNip46Pool() {
+    if (!state.nip46.pool) {
+      state.nip46.pool = new window.NostrTools.SimplePool();
+    }
+  }
+
+  function ensureNip46Subscription(sinceSeconds, statusMessage) {
+    if (!hasNostrTools() || !state.nip46.appPubkey) {
+      return;
+    }
+    ensureNip46Pool();
+    closeNip46Subscription();
+    var lookback = Number(sinceSeconds || 30);
+    if (!isFinite(lookback) || lookback < 30) {
+      lookback = 30;
+    }
+    state.nip46.subscription = state.nip46.pool.subscribeMany(
+      state.nip46.relays,
+      [{ kinds: [NIP46_KIND], '#p': [state.nip46.appPubkey], since: nowEpoch() - lookback }],
+      {
+        onevent: function (event) {
+          handleNip46RelayEvent(event);
+        },
+        oneose: function () {
+          if (!state.nip46.signerPubkey) {
+            setNip46Diagnostics(statusMessage || 'Waiting for signer', 'waiting');
+          }
+        },
+        onclose: function () {
+          if (isPhonePairingPanelActive() && !state.nip46.signerPubkey && state.nip46.diagnostics.eventsSeen > 0) {
+            setNip46Diagnostics('Signer listener paused after relay activity. Returning to this panel refreshes it automatically.', 'warn');
+          }
+        }
+      }
+    );
+    if (statusMessage) {
+      setNip46Diagnostics(statusMessage, statusMessage === 'Waiting for signer' ? 'waiting' : 'info');
+    }
   }
 
   function resolveNip46Pending(id, payload, isError) {
@@ -2466,20 +2610,27 @@
     );
   }
 
-  function resetPhonePairingLink() {
-    return idbGet(KEY_NIP46_PAIR).then(function (saved) {
-      var keepSecret = saved && typeof saved === 'object' ? String(saved.appSecretHex || '') : '';
-      if (!keepSecret) {
-        keepSecret = state.nip46.appSecretHex || '';
+  function resetPhonePairingLink(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var rotateAppKey = opts.rotateAppKey !== false;
+    return waitForNostrTools(8500).then(function () {
+      return idbGet(KEY_NIP46_PAIR);
+    }).then(function (saved) {
+      var nextSecret = '';
+      if (!rotateAppKey) {
+        nextSecret = saved && typeof saved === 'object' ? String(saved.appSecretHex || '') : '';
+        if (!nextSecret) {
+          nextSecret = state.nip46.appSecretHex || '';
+        }
       }
-      if (!keepSecret) {
-        keepSecret = bytesToHex(window.NostrTools.generateSecretKey());
+      if (!nextSecret) {
+        nextSecret = bytesToHex(window.NostrTools.generateSecretKey());
       }
       return idbSet(KEY_NIP46_PAIR, {
         version: 2,
         domain: currentHost(),
-        appSecretHex: keepSecret,
-        appPubkey: window.NostrTools.getPublicKey(hexToBytes(keepSecret)),
+        appSecretHex: nextSecret,
+        appPubkey: window.NostrTools.getPublicKey(hexToBytes(nextSecret)),
         pairSecret: randomHex(16),
         relays: NIP46_RELAYS.slice(),
         signerPubkey: '',
@@ -2503,6 +2654,51 @@
     });
   }
 
+  function rotateUnpairedNip46StateNow() {
+    if (!hasNostrTools() || state.nip46.signerPubkey) {
+      return false;
+    }
+    closeNip46Subscription();
+    if (state.nip46.pool && typeof state.nip46.pool.destroy === 'function') {
+      state.nip46.pool.destroy();
+    }
+    var appSecretHex = bytesToHex(window.NostrTools.generateSecretKey());
+    state.nip46.active = true;
+    state.nip46.appSecretHex = appSecretHex;
+    state.nip46.appPubkey = window.NostrTools.getPublicKey(hexToBytes(appSecretHex));
+    state.nip46.pairSecret = randomHex(16);
+    state.nip46.relays = NIP46_RELAYS.slice();
+    state.nip46.signerPubkey = '';
+    state.nip46.accountPubkey = '';
+    state.nip46.pool = new window.NostrTools.SimplePool();
+    state.nip46.pending = {};
+    state.nip46.pendingTimers = {};
+    state.nip46.seenEvents = {};
+    state.nip46.autoLoginInFlight = false;
+    state.nip46.diagnostics = {
+      eventsSeen: 0,
+      decryptErrors: 0,
+      ignoredSecrets: 0,
+      lastEventPubkey: '',
+      lastMessage: ''
+    };
+    ensureNip46Subscription(30, 'Waiting for signer');
+    updateNip46PairingLink();
+    saveNip46PairState().catch(function () {
+      // The in-memory fresh link remains valid even if persistence is unavailable.
+    });
+    return true;
+  }
+
+  function refreshUnpairedNip46Link() {
+    if (state.nip46.signerPubkey) {
+      updateNip46PairingLink();
+      return Promise.resolve();
+    }
+    setNip46Diagnostics('Making a fresh signer link.', 'info');
+    return resetPhonePairingLink({ rotateAppKey: true });
+  }
+
   function startDesktopSignerLogin(registerAttempt, usernameHint) {
     var asRegister = !!registerAttempt;
     if (!hasDesktopSigner()) {
@@ -2518,30 +2714,29 @@
   }
 
   function loginWithPhoneSigner() {
-    if (!hasNostrTools()) {
-      return Promise.reject(new Error('Phone signer pairing requires nostr-tools support.'));
-    }
-
-    showPanel(els.authPhonePanel, true);
-    showPanel(els.authManualPanel, false);
-
-    return initNip46Pairing()
+    return waitForNostrTools(8500)
       .then(function () {
-        if (!state.nip46.signerPubkey) {
-          throw new Error('Phone signer is not paired yet. Connect it first via QR.');
-        }
-        return signInWithSigner(
-          function (template) {
-            return nip46SignEvent(template);
-          },
-          {
-            getPubkeyFn: function () {
-              return getNip46AccountPubkey();
-            },
-            pubkeyHint: '',
-            allowStoredPubkeyHint: false
-          }
-        );
+        showPanel(els.authPhonePanel, true);
+        showPanel(els.authManualPanel, false);
+
+        return initNip46Pairing()
+          .then(function () {
+            if (!state.nip46.signerPubkey) {
+              throw new Error('Phone signer is not paired yet. Open the signer link or scan the QR first.');
+            }
+            return signInWithSigner(
+              function (template) {
+                return nip46SignEvent(template);
+              },
+              {
+                getPubkeyFn: function () {
+                  return getNip46AccountPubkey();
+                },
+                pubkeyHint: '',
+                allowStoredPubkeyHint: false
+              }
+            );
+          });
       });
   }
 
@@ -3699,6 +3894,8 @@
 
     function copyNip46Uri() {
       return initNip46Pairing().then(function () {
+        return refreshUnpairedNip46Link();
+      }).then(function () {
         var uri = currentNip46Uri();
         if (!uri) {
           throw new Error('Nostr Connect link is not ready yet.');
@@ -3720,11 +3917,19 @@
 
     if (els.authNip46Open) {
       els.authNip46Open.addEventListener('click', function (event) {
+        event.preventDefault();
+        if (!state.nip46.signerPubkey && !hasNostrTools()) {
+          setAuthMessage('Phone signer setup is still loading. Tap Connect Nostr again in a moment.', 'warn');
+          initNip46Pairing().catch(function (err) {
+            setAuthMessage(err.message || 'Could not prepare a fresh Nostr Connect link.', 'error');
+          });
+          return;
+        }
+        rotateUnpairedNip46StateNow();
         var uri = String(els.authNip46Open.getAttribute('data-nip46-uri') || els.authNip46Open.getAttribute('href') || '');
         if (uri.indexOf('nostrconnect://') !== 0) {
           uri = currentNip46Uri();
         }
-        event.preventDefault();
         openNativeDeepLink(uri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
       });
     }
@@ -3774,6 +3979,16 @@
           });
       });
     }
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) {
+        refreshPhoneSignerListenerAfterReturn('visibility');
+      }
+    });
+
+    window.addEventListener('focus', function () {
+      refreshPhoneSignerListenerAfterReturn('focus');
+    });
   }
 
   function bootstrap() {
