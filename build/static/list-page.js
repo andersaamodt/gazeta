@@ -5,7 +5,9 @@
   if (!root) {
     return;
   }
-  root.classList.add('is-loading');
+  if (!root.hasAttribute('data-prerender-painted')) {
+    root.classList.add('is-loading');
+  }
 
   function removeLegacyTitleBlock() {
     var prev = root.previousElementSibling;
@@ -21,6 +23,10 @@
   }
 
   removeLegacyTitleBlock();
+
+  function overflowMenuIconSvg() {
+    return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
+  }
 
   var querySlug = '';
   try {
@@ -85,6 +91,7 @@
     productPriceBatchPending: {},
     uidCounter: 1,
     initialContentPainted: false,
+    publicSubmitBusy: false,
     renderSignature: ''
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
@@ -348,12 +355,37 @@
     return true;
   }
 
-  function maybeReloadForAuthChange() {
+  function authEventIsAdmin(event) {
+    if (event && event.detail && event.detail.is_admin === true) {
+      return true;
+    }
+    try {
+      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function applyOptimisticAdminFromAuthEvent(event) {
+    if (!authEventIsAdmin(event) || !state.payload || !state.draft || state.payload.is_admin) {
+      return;
+    }
+    state.payload = Object.assign({}, state.payload, { is_admin: true });
+    state.draft = readEditableStateFromPayload();
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+    renderList();
+    renderAdmin();
+    renderValidation();
+  }
+
+  function maybeReloadForAuthChange(event) {
     var nextSig = authSignature();
     if (nextSig === state.authSignature) {
       return;
     }
     state.authSignature = nextSig;
+    applyOptimisticAdminFromAuthEvent(event);
     load();
   }
 
@@ -854,7 +886,18 @@
       image_url: String(raw && raw.image_url || ''),
       description: String(raw && raw.description || ''),
       year: String(raw && raw.year || ''),
-      post_url: String(raw && raw.post_url || '')
+      post_url: String(raw && raw.post_url || ''),
+      _list_entry_id: String(raw && raw._list_entry_id || ''),
+      _public_entry_id: String(raw && raw._public_entry_id || ''),
+      public_submitter: String(raw && raw.public_submitter || ''),
+      public_created_at: Number(raw && raw.public_created_at || 0) || 0,
+      list_score: Number(raw && raw.list_score || 0) || 0,
+      viewer_vote: Number(raw && raw.viewer_vote || 0) || 0,
+      viewer_vote_created_at: Number(raw && raw.viewer_vote_created_at || 0) || 0,
+      viewer_vote_total: Number(raw && raw.viewer_vote_total || 0) || 0,
+      viewer_next_vote_at: Number(raw && raw.viewer_next_vote_at || 0) || 0,
+      viewer_can_vote_now: raw && raw.viewer_can_vote_now === false ? false : true,
+      vote_cooldown_seconds: Number(raw && raw.vote_cooldown_seconds || 64800) || 64800
     };
   }
 
@@ -908,6 +951,8 @@
       show_markers: !!s.show_markers,
       alphabetize_markers: !!s.alphabetize_markers,
       default_markers: normalizeMarkerListText(s.default_markers || ''),
+      allow_signed_in_submissions: !!s.allow_signed_in_submissions,
+      allow_signed_in_votes: !!s.allow_signed_in_votes,
       group_by: String(s.group_by || ''),
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
@@ -1328,6 +1373,8 @@
         show_markers: !!state.draft.show_markers,
         alphabetize_markers: !!state.draft.alphabetize_markers,
         default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
+        allow_signed_in_submissions: !!state.draft.allow_signed_in_submissions,
+        allow_signed_in_votes: !!state.draft.allow_signed_in_votes,
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
@@ -1344,6 +1391,8 @@
       show_markers: !!src.show_markers,
       alphabetize_markers: !!src.alphabetize_markers,
       default_markers: normalizeMarkerListText(src.default_markers || ''),
+      allow_signed_in_submissions: !!src.allow_signed_in_submissions,
+      allow_signed_in_votes: !!src.allow_signed_in_votes,
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
@@ -1552,6 +1601,14 @@
     if (defaultMarkersInput instanceof HTMLInputElement) {
       state.draft.default_markers = normalizeMarkerListText(defaultMarkersInput.value || '');
     }
+    var allowSubmissionsInput = els.content ? els.content.querySelector('[data-list-allow-submissions]') : null;
+    if (allowSubmissionsInput instanceof HTMLInputElement) {
+      state.draft.allow_signed_in_submissions = !!allowSubmissionsInput.checked;
+    }
+    var allowVotesInput = els.content ? els.content.querySelector('[data-list-allow-votes]') : null;
+    if (allowVotesInput instanceof HTMLInputElement) {
+      state.draft.allow_signed_in_votes = !!allowVotesInput.checked;
+    }
   }
 
   async function refreshValidation() {
@@ -1593,7 +1650,9 @@
     setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
-      var elements = cloneEditableElements(state.draft.elements || []);
+      var elements = cloneEditableElements(state.draft.elements || []).filter(function (el) {
+        return !String(el && el._public_entry_id || '');
+      });
       var savedPayload = await apiPostJson('/cgi/blog-save-nostr-page-draft', {
         page_slug: slug,
         state_json: {
@@ -1605,6 +1664,8 @@
           show_markers: !!state.draft.show_markers,
           alphabetize_markers: !!state.draft.alphabetize_markers,
           default_markers: normalizeMarkerListText(state.draft.default_markers || ''),
+          allow_signed_in_submissions: !!state.draft.allow_signed_in_submissions,
+          allow_signed_in_votes: !!state.draft.allow_signed_in_votes,
           group_by: state.draft.group_by || '',
           view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
           content: state.draft.content || '',
@@ -1783,6 +1844,154 @@
     } finally {
       state.busy = false;
     }
+  }
+
+  function refreshListPayloadFromResponse(data) {
+    if (!data || !data.state) {
+      return;
+    }
+    if (!state.payload || typeof state.payload !== 'object') {
+      state.payload = { success: true, slug: slug, page_type: 'list' };
+    }
+    state.payload.state = data.state;
+    if (data.validation) {
+      state.payload.validation = data.validation;
+    }
+    state.draft = readEditableStateFromPayload();
+    writeBootstrapCache(state.payload);
+    renderList();
+    renderAdmin();
+    renderValidation();
+  }
+
+  async function submitPublicListEntry() {
+    if (state.publicSubmitBusy) {
+      return;
+    }
+    var input = document.getElementById('list-public-submit-title');
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    var title = String(input.value || '').trim();
+    if (!title) {
+      input.focus();
+      return;
+    }
+    var auth = getAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      window.alert('Sign in first to add entries.');
+      return;
+    }
+    setPublicSubmitBusy(true);
+    try {
+      var data = await apiPost('/cgi/blog-submit-list-entry', {
+        page_slug: slug,
+        markdown: title,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      state.publicSubmitBusy = false;
+      input.value = '';
+      refreshListPayloadFromResponse(data);
+    } catch (err) {
+      setPublicSubmitBusy(false);
+      window.alert(err && err.message ? err.message : 'Could not add entry');
+    }
+  }
+
+  function setPublicSubmitBusy(isBusy) {
+    state.publicSubmitBusy = !!isBusy;
+    var input = document.getElementById('list-public-submit-title');
+    var button = document.querySelector('[data-list-public-action="submit"]');
+    if (input instanceof HTMLInputElement) {
+      input.disabled = !!isBusy;
+      if (isBusy) {
+        input.setAttribute('aria-disabled', 'true');
+      } else {
+        input.removeAttribute('aria-disabled');
+      }
+    }
+    if (button instanceof HTMLButtonElement) {
+      button.disabled = !!isBusy;
+      button.classList.toggle('is-loading', !!isBusy);
+      if (isBusy) {
+        button.setAttribute('aria-busy', 'true');
+        button.setAttribute('aria-disabled', 'true');
+        button.innerHTML = '<span class="save-spinner" aria-hidden="true"></span><span>Adding</span>';
+      } else {
+        button.removeAttribute('aria-busy');
+        button.removeAttribute('aria-disabled');
+        button.textContent = 'Add';
+      }
+    }
+  }
+
+  async function submitPublicListVote(entryId, value) {
+    var auth = getAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      window.alert('Sign in first to vote.');
+      return;
+    }
+    try {
+      var data = await apiPost('/cgi/blog-submit-list-vote', {
+        page_slug: slug,
+        entry_id: entryId,
+        value: value,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      refreshListPayloadFromResponse(data);
+    } catch (err) {
+      window.alert(err && err.message ? err.message : 'Could not vote');
+    }
+  }
+
+  function publicEntryForUid(uid) {
+    var idx = findElementIndex(uid);
+    if (idx < 0) {
+      return null;
+    }
+    var entry = state.draft.elements[idx] || {};
+    return String(entry && entry._public_entry_id || '') ? entry : null;
+  }
+
+  async function savePublicListEntryEdit(uid) {
+    var entry = publicEntryForUid(uid);
+    if (!entry) {
+      return false;
+    }
+    var auth = getAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      window.alert('Sign in first to edit entries.');
+      return false;
+    }
+    var entryId = String(entry._public_entry_id || '');
+    var markdown = String(entry.markdown || '').trim();
+    if (!markdown) {
+      window.alert('Entry text is required.');
+      focusInlineField(uid, 'markdown');
+      return true;
+    }
+    state.readInlineEditUid = '';
+    state.readInlineEditField = '';
+    setSaveStatus('saving');
+    renderList();
+    renderAdmin();
+    try {
+      var data = await apiPost('/cgi/blog-update-list-entry', {
+        page_slug: slug,
+        entry_id: entryId,
+        markdown: markdown,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      refreshListPayloadFromResponse(data);
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not update entry');
+      window.alert(err && err.message ? err.message : 'Could not update entry');
+    }
+    return true;
   }
 
   function moveEntryByYear(uid) {
@@ -2256,6 +2465,62 @@
     return html;
   }
 
+  function listVoteArrowSvg(direction) {
+    var path = String(direction || '') === 'down'
+      ? 'M12 20 4.5 10.8h4.25V4h6.5v6.8h4.25L12 20Z'
+      : 'M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z';
+    return '<svg class="list-entry-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path d="' + path + '" fill="currentColor"/>' +
+    '</svg>';
+  }
+
+  function formatVoteDuration(seconds, compact) {
+    var value = Math.max(0, Math.floor(Number(seconds || 0) || 0));
+    var units = [
+      { label: compact ? 'd' : 'day', seconds: 86400 },
+      { label: compact ? 'h' : 'hour', seconds: 3600 },
+      { label: compact ? 'm' : 'minute', seconds: 60 }
+    ];
+    for (var i = 0; i < units.length; i += 1) {
+      if (value >= units[i].seconds || units[i].seconds === 60) {
+        var amount = Math.max(1, Math.floor(value / units[i].seconds));
+        if (compact) {
+          return String(amount) + units[i].label;
+        }
+        return String(amount) + ' ' + units[i].label + (amount === 1 ? '' : 's');
+      }
+    }
+    return compact ? '1m' : '1 minute';
+  }
+
+  function voteVerb(value) {
+    return Number(value || 0) < 0 ? 'downvoted' : 'upvoted';
+  }
+
+  function renderVoteTooltip(entry) {
+    var nowSeconds = Math.floor(Date.now() / 1000);
+    var lastVoteAt = Number(entry && entry.viewer_vote_created_at || 0) || 0;
+    var nextVoteAt = Number(entry && entry.viewer_next_vote_at || 0) || 0;
+    var cooldownSeconds = Number(entry && entry.vote_cooldown_seconds || 64800) || 64800;
+    var lines = [];
+    if (nextVoteAt > nowSeconds) {
+      lines.push('You can vote again in ' + formatVoteDuration(nextVoteAt - nowSeconds, true) + '. Everyone can vote every ' + formatVoteDuration(cooldownSeconds, false) + '.');
+    } else {
+      lines.push('You can vote now. Everyone can vote every ' + formatVoteDuration(cooldownSeconds, false) + '.');
+    }
+    if (lastVoteAt > 0) {
+      var verb = voteVerb(entry && entry.viewer_vote);
+      var total = Math.max(1, Number(entry && entry.viewer_vote_total || 0) || 0);
+      lines.push('You ' + verb + ' this ' + formatVoteDuration(nowSeconds - lastVoteAt, true) + ' ago.');
+      lines.push("You've " + verb + ' this ' + String(total) + ' ' + (total === 1 ? 'time' : 'times') + ' total.');
+    } else {
+      lines.push('You have not voted on this yet.');
+    }
+    return '<span class="list-entry-vote-tooltip" role="tooltip">' + lines.map(function (line) {
+      return '<span>' + escapeHtml(line) + '</span>';
+    }).join('') + '</span>';
+  }
+
   function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
     var rowUid = String(entry && entry._uid || '');
     if (isAdmin() && !state.editMode && rowUid && state.readInlineEditUid === rowUid) {
@@ -2285,16 +2550,33 @@
     }
     var rightMeta = '';
     var readMenu = '';
-    if (isAdmin() && !state.editMode && rowUid) {
+    var readMenuPanel = '';
+    var entryId = String(entry && entry._list_entry_id || '');
+    var canShowVotes = !!(getRenderState().allow_signed_in_votes && entryId);
+    var voteControls = '';
+    if (canShowVotes) {
+      var score = Number(entry && entry.list_score || 0) || 0;
+      var viewerVote = Number(entry && entry.viewer_vote || 0) || 0;
+      voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score">' +
+        '<button type="button" class="list-entry-vote-btn' + (viewerVote > 0 ? ' is-active' : '') + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote">' + listVoteArrowSvg('up') + '</button>' +
+        '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
+        '<button type="button" class="list-entry-vote-btn' + (viewerVote < 0 ? ' is-active' : '') + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote">' + listVoteArrowSvg('down') + '</button>' +
+        renderVoteTooltip(entry) +
+      '</span>';
+    }
+    var canEditReadRow = !!(isAdmin() && !state.editMode && rowUid);
+    if (canEditReadRow) {
       var rowMenuOpen = state.readRowMenuOpenUid === rowUid;
+      var readMenuItems = '' +
+        '<button type="button" role="menuitem" data-list-read-action="edit-row" data-element-uid="' + escapeHtml(rowUid) + '">Edit</button>' +
+        '<button type="button" role="menuitem" class="list-inline-row-menu-danger" data-list-read-action="remove-row" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Delete entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l.9 1.5H20a1 1 0 1 1 0 2h-1l-.7 11a2 2 0 0 1-2 1.9H7.7a2 2 0 0 1-2-1.9L5 7H4a1 1 0 1 1 0-2h4.1L9 3.5Zm-2 3.5.7 11h8.6L17 7H7Zm2.5 2a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm5 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" fill="currentColor"/></svg><span>Delete</span></button>';
       readMenu = '' +
         '<span class="list-entry-read-menu list-inline-row-menu-wrap">' +
-          '<button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋮</button>' +
-          '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>' +
-            '<button type="button" role="menuitem" data-list-read-action="edit-row" data-element-uid="' + escapeHtml(rowUid) + '">Edit</button>' +
-            '<button type="button" role="menuitem" class="list-inline-row-menu-danger" data-list-read-action="remove-row" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Delete entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l.9 1.5H20a1 1 0 1 1 0 2h-1l-.7 11a2 2 0 0 1-2 1.9H7.7a2 2 0 0 1-2-1.9L5 7H4a1 1 0 1 1 0-2h4.1L9 3.5Zm-2 3.5.7 11h8.6L17 7H7Zm2.5 2a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm5 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" fill="currentColor"/></svg><span>Delete</span></button>' +
-          '</div>' +
+          '<button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">' + overflowMenuIconSvg() + '</button>' +
         '</span>';
+      if (rowMenuOpen) {
+        readMenuPanel = '<div class="list-entry-row-menu-panel list-entry-read-menu"><div class="list-inline-row-menu" role="menu">' + readMenuItems + '</div></div>';
+      }
     }
     if (markerPills || datePill || readMenu) {
       var metaPills = markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '');
@@ -2309,8 +2591,28 @@
       descriptionInline = '<span class="list-entry-description-inline">' + markdownInline(description) + '</span>';
     }
     var cartButton = renderProductCartButton(productSlug, '');
-    var firstLineClass = 'list-entry-first-line' + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '"><span class="list-entry-main-inline">' + listIcon + renderLinkedInlineText(line, postUrl, 'list-entry-markdown', 'Open linked post') + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
+    var firstLineClass = 'list-entry-first-line' + (voteControls ? ' has-votes' : '') + (cartButton ? ' has-cart-button' : '');
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + voteControls + '<span class="list-entry-main-inline">' + listIcon + renderLinkedInlineText(line, postUrl, 'list-entry-markdown', 'Open linked post') + descriptionInline + '</span>' + rightMeta + cartButton + '</div>' + readMenuPanel + '</li>';
+  }
+
+  function renderPublicListSubmissionForm(renderState) {
+    if (!renderState || !renderState.allow_signed_in_submissions) {
+      return '';
+    }
+    var signedIn = hasLikelyAuthenticatedSession();
+    var isSubmitting = !!state.publicSubmitBusy;
+    var disabled = signedIn && !isSubmitting ? '' : ' disabled aria-disabled="true"';
+    var placeholder = signedIn ? 'New entry' : 'Sign in to add entries';
+    var buttonAttrs = disabled + (isSubmitting ? ' aria-busy="true"' : '');
+    var buttonClass = 'list-admin-primary-btn list-public-submit-add' + (isSubmitting ? ' is-loading' : '');
+    var buttonLabel = isSubmitting ? '<span class="save-spinner" aria-hidden="true"></span><span>Adding</span>' : 'Add';
+    var html = '<section class="list-public-submit" aria-label="Add list entry">';
+    html += '<div class="list-public-submit-inline">';
+    html += '<input type="text" id="list-public-submit-title" placeholder="' + escapeHtml(placeholder) + '"' + disabled + '>';
+    html += '<button type="button" class="' + buttonClass + '" data-list-public-action="submit"' + buttonAttrs + '>' + buttonLabel + '</button>';
+    html += '</div>';
+    html += '</section>';
+    return html;
   }
 
   function renderEntryInner(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
@@ -2551,7 +2853,8 @@
     var canToggle = !(idx === 0 && guiDepth === 0);
     var html = '';
 
-    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(guiDepth) + '" style="--list-depth:' + String(guiDepth) + ';" draggable="false">';
+    var activeFieldClass = active ? ' is-editing-' + activeField.replace(/_/g, '-') : '';
+    html += '<li class="list-entry-line list-entry-inline' + (active ? ' is-active' : '') + activeFieldClass + '" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(guiDepth) + '" style="--list-depth:' + String(guiDepth) + ';" draggable="false">';
     html += '<div class="list-inline-cell list-inline-handle" title="Drag to reorder" aria-label="Drag to reorder" draggable="true" data-list-drag-handle="true">⋮⋮</div>';
 
     var markdownText = String(el && el.markdown || '').trim();
@@ -2608,7 +2911,7 @@
       }
     }
     html += '<div class="list-inline-row-menu-wrap">';
-    html += '<button type="button" class="list-inline-row-menu-trigger" data-list-inline-action="toggle-menu" data-element-uid="' + escapeHtml(uid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">⋮</button>';
+    html += '<button type="button" class="list-inline-row-menu-trigger" data-list-inline-action="toggle-menu" data-element-uid="' + escapeHtml(uid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">' + overflowMenuIconSvg() + '</button>';
     html += '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>';
     html += '<button type="button" role="menuitem" data-list-inline-action="edit-event-id" data-element-uid="' + escapeHtml(uid) + '">' + eventMenuLabel + '</button>';
     html += '<button type="button" role="menuitem" class="list-inline-row-menu-danger" data-list-inline-action="remove" data-element-uid="' + escapeHtml(uid) + '" aria-label="Delete entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l.9 1.5H20a1 1 0 1 1 0 2h-1l-.7 11a2 2 0 0 1-2 1.9H7.7a2 2 0 0 1-2-1.9L5 7H4a1 1 0 1 1 0-2h4.1L9 3.5Zm-2 3.5.7 11h8.6L17 7H7Zm2.5 2a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm5 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Z" fill="currentColor"/></svg><span>Delete</span></button>';
@@ -2639,6 +2942,8 @@
     var alphabetizeMarkersTip = 'Sort marker pills alphabetically on each list item.';
     var showMarkerFiltersTip = 'Show clickable marker pills for filtering.';
     var defaultMarkersTip = 'Comma-delimited markers preselected on page load for all users. Filter changes reset on refresh.';
+    var allowSubmissionsTip = 'Allow signed-in users to add entries from the public list view.';
+    var allowVotesTip = 'Allow signed-in users to upvote and downvote list entries.';
     html += '<section class="nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
@@ -2654,6 +2959,8 @@
     html += '<label class="list-alphabetize-markers-setting' + (state.draft.show_markers ? '' : ' is-disabled') + '" title="' + escapeHtml(alphabetizeMarkersTip) + '"><input type="checkbox" data-list-alphabetize-markers="true" title="' + escapeHtml(alphabetizeMarkersTip) + '"' + (state.draft.alphabetize_markers ? ' checked' : '') + (state.draft.show_markers ? '' : ' disabled aria-disabled="true"') + '><span title="' + escapeHtml(alphabetizeMarkersTip) + '">Alphabetize markers</span></label>';
     html += '<label class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true" title="' + escapeHtml(showMarkerFiltersTip) + '"' + (state.draft.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label class="list-default-markers-setting" title="' + escapeHtml(defaultMarkersTip) + '"><span title="' + escapeHtml(defaultMarkersTip) + '">Default markers</span><input type="text" data-list-default-markers="true" title="' + escapeHtml(defaultMarkersTip) + '" value="' + escapeHtml(state.draft.default_markers || '') + '" placeholder="marker one, marker two"></label>';
+    html += '<label class="list-allow-submissions-setting" title="' + escapeHtml(allowSubmissionsTip) + '"><input type="checkbox" data-list-allow-submissions="true" title="' + escapeHtml(allowSubmissionsTip) + '"' + (state.draft.allow_signed_in_submissions ? ' checked' : '') + '><span title="' + escapeHtml(allowSubmissionsTip) + '">Signed-in adds</span></label>';
+    html += '<label class="list-allow-votes-setting" title="' + escapeHtml(allowVotesTip) + '"><input type="checkbox" data-list-allow-votes="true" title="' + escapeHtml(allowVotesTip) + '"' + (state.draft.allow_signed_in_votes ? ' checked' : '') + '><span title="' + escapeHtml(allowVotesTip) + '">Signed-in votes</span></label>';
     html += '</div></div>';
     html += '</div>';
     html += '</section>';
@@ -2750,7 +3057,7 @@
       if (inlineMode) {
         els.content.innerHTML = renderInlineEditor([]) + afterContent;
       } else {
-        els.content.innerHTML = '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
+        els.content.innerHTML = renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
       }
       renderAdmin();
       return;
@@ -2763,7 +3070,7 @@
     }
 
     var readViewMode = currentReadViewMode(s);
-    els.content.innerHTML = renderGroupByReadOnly(elements.filter(function (el) {
+    els.content.innerHTML = renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
     refreshProductCartButtons();
@@ -3073,7 +3380,7 @@
       return;
     }
 
-    root.addEventListener('click', function (event) {
+    root.addEventListener('click', async function (event) {
       var target = event.target;
       if (!(target instanceof Element) || !isAdmin()) {
         return;
@@ -3283,6 +3590,9 @@
             return;
           }
           if (readActionType === 'finish-row') {
+            if (await savePublicListEntryEdit(readUid)) {
+              return;
+            }
             closeActiveInlineEditor({ forceAutosave: true, skipAutosave: true });
             persistDraft({ alertOnError: true });
             return;
@@ -3656,6 +3966,16 @@
         queueAutosave(280);
         return;
       }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-submissions')) {
+        state.draft.allow_signed_in_submissions = !!target.checked;
+        queueAutosave(280);
+        return;
+      }
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-votes')) {
+        state.draft.allow_signed_in_votes = !!target.checked;
+        queueAutosave(280);
+        return;
+      }
       if (target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
         state.draft.publish_intro_to_nostr = !!target.checked;
         queueAutosave(500);
@@ -3705,7 +4025,7 @@
       }
     });
 
-    els.content.addEventListener('click', function (event) {
+    els.content.addEventListener('click', async function (event) {
       if (!event.target) {
         return;
       }
@@ -3775,6 +4095,22 @@
         renderList();
         return;
       }
+      var publicAction = target.closest('[data-list-public-action]');
+      if (publicAction instanceof HTMLElement) {
+        event.preventDefault();
+        var publicActionName = String(publicAction.getAttribute('data-list-public-action') || '');
+        if (publicActionName === 'submit') {
+          submitPublicListEntry();
+          return;
+        }
+        if (publicActionName === 'vote') {
+          submitPublicListVote(
+            String(publicAction.getAttribute('data-list-entry-id') || ''),
+            String(publicAction.getAttribute('data-list-vote-value') || '')
+          );
+          return;
+        }
+      }
     });
 
     els.content.addEventListener('focusout', function (event) {
@@ -3817,6 +4153,18 @@
           closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
         }
       }, 0);
+    });
+
+    els.content.addEventListener('keydown', function (event) {
+      if (state.editMode || event.key !== 'Enter') {
+        return;
+      }
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.id !== 'list-public-submit-title') {
+        return;
+      }
+      event.preventDefault();
+      submitPublicListEntry();
     });
 
     els.content.addEventListener('keydown', function (event) {

@@ -204,7 +204,28 @@ case "$page_type" in
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$view_state_json" false)
     ;;
   *)
-    validation_json='{"elements":[],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
+    viewer_username=''
+    if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
+      viewer_username=${BLOG_SESSION_USERNAME-}
+    fi
+    validation_json=$(jq -cn --argjson state "$view_state_json" '{
+      elements: ($state.elements // []),
+      entries: ($state.entries // []),
+      errors: [],
+      warnings: [],
+      can_publish: true
+    }')
+    validation_json=$(blog_list_merge_public_activity_json "$view_state_json" "$validation_json" "$viewer_username")
+    view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    canonical_validation_json=$(jq -cn --argjson state "$canonical_state_json" '{
+      elements: ($state.elements // []),
+      entries: ($state.entries // []),
+      errors: [],
+      warnings: [],
+      can_publish: true
+    }')
+    canonical_validation_json=$(blog_list_merge_public_activity_json "$canonical_state_json" "$canonical_validation_json" "")
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$canonical_validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
     ;;
 esac
 

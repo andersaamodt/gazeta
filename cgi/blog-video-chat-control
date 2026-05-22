@@ -1,0 +1,349 @@
+#!/bin/sh
+# Authenticated presence and operator controls for the video chat widget.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_plugin_enabled "video_chat"; then
+  blog_json_error "Video calling plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
+
+action=$(printf '%s' "$(blog_param action)" | tr '[:upper:]' '[:lower:]')
+[ -n "$action" ] || action=status
+
+require_admin=false
+case "$action" in
+  admin_status|admin_call_user|admin_cancel_call) require_admin=true ;;
+esac
+
+if ! blog_require_session "$require_admin" false; then
+  exit 0
+fi
+
+video_state_dir="$blog_site_data/video-chat"
+presence_dir="$video_state_dir/presence"
+calls_dir="$video_state_dir/calls"
+mkdir -p "$presence_dir" "$calls_dir"
+
+now=$(blog_now_epoch)
+presence_ttl_seconds=90
+call_ttl_seconds=300
+
+json_bool() {
+  case "${1-}" in
+    true|1|yes|on) printf 'true' ;;
+    *) printf 'false' ;;
+  esac
+}
+
+safe_key() {
+  printf '%s' "${1-}" | sed 's/[^A-Za-z0-9_.-]/_/g; s/^_\+//; s/_\+$//'
+}
+
+room_key() {
+  printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-\+//; s/-\+$//'
+}
+
+profile_allows_admin_calls() {
+  profile=$(blog_user_profile "${1-}")
+  allow=$(config-get "$profile" video_chat_allow_admin_calls 2>/dev/null || printf 'false')
+  case "$allow" in true|1|yes|on) return 0 ;; *) return 1 ;; esac
+}
+
+user_display_name() {
+  profile=$(blog_user_profile "${1-}")
+  name=$(config-get "$profile" player_name 2>/dev/null || printf '')
+  [ -n "$name" ] || name=$(config-get "$profile" publish_name 2>/dev/null || printf '')
+  [ -n "$name" ] || name=${1-}
+  printf '%s' "$name"
+}
+
+presence_path_for() {
+  key=$(safe_key "${1-}")
+  [ -n "$key" ] || key=unknown
+  printf '%s/%s.conf\n' "$presence_dir" "$key"
+}
+
+call_path_for() {
+  key=$(safe_key "${1-}")
+  [ -n "$key" ] || key=unknown
+  printf '%s/%s.conf\n' "$calls_dir" "$key"
+}
+
+cleanup_stale_video_chat_state() {
+  for file in "$presence_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    updated=$(config-get "$file" updated_at 2>/dev/null || printf '0')
+    case "$updated" in ''|*[!0-9]*) updated=0 ;; esac
+    if [ "$updated" -lt $((now - presence_ttl_seconds)) ]; then
+      rm -f "$file"
+    fi
+  done
+  for file in "$calls_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    expires=$(config-get "$file" expires_at 2>/dev/null || printf '0')
+    status=$(config-get "$file" status 2>/dev/null || printf '')
+    case "$expires" in ''|*[!0-9]*) expires=0 ;; esac
+    if [ "$expires" -lt "$now" ] || [ "$status" = "expired" ]; then
+      rm -f "$file"
+    fi
+  done
+}
+
+write_presence() {
+  username=$BLOG_SESSION_USERNAME
+  path=$(presence_path_for "$username")
+  room=$(room_key "$(blog_param current_room)")
+  page_url=$(printf '%s' "$(blog_param page_url)" | cut -c1-240)
+  status=$(printf '%s' "$(blog_param status)" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g' | cut -c1-32)
+  [ -n "$status" ] || status=online
+  allow=false
+  if profile_allows_admin_calls "$username"; then
+    allow=true
+  fi
+  config-set "$path" username "$username"
+  config-set "$path" player_name "$(user_display_name "$username")"
+  config-set "$path" allow_admin_calls "$allow"
+  config-set "$path" current_room "$room"
+  config-set "$path" page_url "$page_url"
+  config-set "$path" status "$status"
+  config-set "$path" updated_at "$now"
+}
+
+json_call_object() {
+  file=$1
+  call_id=$(config-get "$file" call_id 2>/dev/null || printf '')
+  room_id=$(config-get "$file" room_id 2>/dev/null || printf '')
+  from_admin=$(config-get "$file" from_admin 2>/dev/null || printf '')
+  from_admin_name=$(config-get "$file" from_admin_name 2>/dev/null || printf "$from_admin")
+  to_user=$(config-get "$file" to_user 2>/dev/null || printf '')
+  status=$(config-get "$file" status 2>/dev/null || printf 'ringing')
+  created_at=$(config-get "$file" created_at 2>/dev/null || printf '0')
+  expires_at=$(config-get "$file" expires_at 2>/dev/null || printf '0')
+  answered_at=$(config-get "$file" answered_at 2>/dev/null || printf '0')
+  case "$created_at" in ''|*[!0-9]*) created_at=0 ;; esac
+  case "$expires_at" in ''|*[!0-9]*) expires_at=0 ;; esac
+  case "$answered_at" in ''|*[!0-9]*) answered_at=0 ;; esac
+  printf '{"call_id":"%s","room_id":"%s","from_admin":"%s","from_admin_name":"%s","to_user":"%s","status":"%s","created_at":%s,"expires_at":%s,"answered_at":%s}' \
+    "$(blog_json_escape "$call_id")" \
+    "$(blog_json_escape "$room_id")" \
+    "$(blog_json_escape "$from_admin")" \
+    "$(blog_json_escape "$from_admin_name")" \
+    "$(blog_json_escape "$to_user")" \
+    "$(blog_json_escape "$status")" \
+    "$created_at" "$expires_at" "$answered_at"
+}
+
+json_calls_for_user() {
+  username=$1
+  first=true
+  printf '['
+  for file in "$calls_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    to_user=$(config-get "$file" to_user 2>/dev/null || printf '')
+    status=$(config-get "$file" status 2>/dev/null || printf '')
+    expires=$(config-get "$file" expires_at 2>/dev/null || printf '0')
+    case "$expires" in ''|*[!0-9]*) expires=0 ;; esac
+    [ "$to_user" = "$username" ] || continue
+    [ "$status" = "ringing" ] || continue
+    [ "$expires" -ge "$now" ] || continue
+    if [ "$first" = true ]; then first=false; else printf ','; fi
+    json_call_object "$file"
+  done
+  printf ']'
+}
+
+json_presence_list() {
+  first=true
+  printf '['
+  for file in "$presence_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    username=$(config-get "$file" username 2>/dev/null || printf '')
+    [ -n "$username" ] || continue
+    player_name=$(config-get "$file" player_name 2>/dev/null || printf "$username")
+    allow=$(config-get "$file" allow_admin_calls 2>/dev/null || printf 'false')
+    room=$(config-get "$file" current_room 2>/dev/null || printf '')
+    page_url=$(config-get "$file" page_url 2>/dev/null || printf '')
+    status=$(config-get "$file" status 2>/dev/null || printf 'online')
+    updated=$(config-get "$file" updated_at 2>/dev/null || printf '0')
+    case "$updated" in ''|*[!0-9]*) updated=0 ;; esac
+    if [ "$first" = true ]; then first=false; else printf ','; fi
+    printf '{"username":"%s","player_name":"%s","allow_admin_calls":%s,"current_room":"%s","page_url":"%s","status":"%s","updated_at":%s,"age_seconds":%s}' \
+      "$(blog_json_escape "$username")" \
+      "$(blog_json_escape "$player_name")" \
+      "$(json_bool "$allow")" \
+      "$(blog_json_escape "$room")" \
+      "$(blog_json_escape "$page_url")" \
+      "$(blog_json_escape "$status")" \
+      "$updated" "$((now - updated))"
+  done
+  printf ']'
+}
+
+json_room_list() {
+  rooms_tmp=$(mktemp "${TMPDIR:-/tmp}/video-chat-rooms.XXXXXX")
+  trap 'rm -f "$rooms_tmp"' EXIT HUP INT TERM
+  for file in "$presence_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    room=$(config-get "$file" current_room 2>/dev/null || printf '')
+    username=$(config-get "$file" username 2>/dev/null || printf '')
+    [ -n "$room" ] || continue
+    [ -n "$username" ] || continue
+    printf '%s\t%s\t%s\n' "$room" "$username" "$(config-get "$file" player_name 2>/dev/null || printf "$username")" >>"$rooms_tmp"
+  done
+  first_room=true
+  printf '['
+  cut -f1 "$rooms_tmp" 2>/dev/null | sort -u | while IFS= read -r room; do
+    [ -n "$room" ] || continue
+    if [ "$first_room" = true ]; then first_room=false; else printf ','; fi
+    printf '{"room_id":"%s","members":[' "$(blog_json_escape "$room")"
+    first_member=true
+    awk -F '\t' -v room="$room" '$1 == room { print $2 "\t" $3 }' "$rooms_tmp" | while IFS="$(printf '\t')" read -r username player_name; do
+      if [ "$first_member" = true ]; then first_member=false; else printf ','; fi
+      printf '{"username":"%s","player_name":"%s"}' "$(blog_json_escape "$username")" "$(blog_json_escape "$player_name")"
+    done
+    printf ']}'
+  done
+  printf ']'
+}
+
+json_call_list() {
+  first=true
+  printf '['
+  for file in "$calls_dir"/*.conf; do
+    [ -f "$file" ] || continue
+    if [ "$first" = true ]; then first=false; else printf ','; fi
+    json_call_object "$file"
+  done
+  printf ']'
+}
+
+cleanup_stale_video_chat_state
+
+case "$action" in
+  status|heartbeat)
+    if [ "$action" = "heartbeat" ]; then
+      write_presence
+    fi
+    allow=false
+    if profile_allows_admin_calls "$BLOG_SESSION_USERNAME"; then
+      allow=true
+    fi
+    printf '{"success":true,"username":"%s","player_name":"%s","is_admin":%s,"allow_admin_calls":%s,"incoming_calls":' \
+      "$(blog_json_escape "$BLOG_SESSION_USERNAME")" \
+      "$(blog_json_escape "$(user_display_name "$BLOG_SESSION_USERNAME")")" \
+      "$(json_bool "$BLOG_SESSION_IS_ADMIN")" \
+      "$(json_bool "$allow")"
+    json_calls_for_user "$BLOG_SESSION_USERNAME"
+    printf '}\n'
+    ;;
+  set_preference)
+    allow=$(blog_param allow_admin_calls)
+    case "$allow" in true|1|yes|on) allow=true ;; *) allow=false ;; esac
+    profile=$(blog_user_profile "$BLOG_SESSION_USERNAME")
+    config-set "$profile" username "$BLOG_SESSION_USERNAME"
+    config-set "$profile" video_chat_allow_admin_calls "$allow"
+    config-set "$profile" updated_at "$(blog_now_iso)"
+    write_presence
+    printf '{"success":true,"allow_admin_calls":%s}\n' "$(json_bool "$allow")"
+    ;;
+  admin_status)
+    printf '{"success":true,"now":%s,"presence_ttl_seconds":%s,"call_ttl_seconds":%s,"users":' "$now" "$presence_ttl_seconds" "$call_ttl_seconds"
+    json_presence_list
+    printf ',"rooms":'
+    json_room_list
+    printf ',"calls":'
+    json_call_list
+    printf '}\n'
+    ;;
+  admin_call_user)
+    target=$(printf '%s' "$(blog_param username)" | tr -d '\r\n')
+    if [ -z "$target" ] || [ ! -f "$(blog_user_profile "$target")" ]; then
+      blog_json_error "Unknown user" "unknown_user"
+      exit 0
+    fi
+    if ! profile_allows_admin_calls "$target"; then
+      blog_json_error "This user has not allowed admin calls" "not_allowed"
+      exit 0
+    fi
+    presence=$(presence_path_for "$target")
+    updated=$(config-get "$presence" updated_at 2>/dev/null || printf '0')
+    case "$updated" in ''|*[!0-9]*) updated=0 ;; esac
+    if [ "$updated" -lt $((now - presence_ttl_seconds)) ]; then
+      blog_json_error "This user is not currently online" "not_online"
+      exit 0
+    fi
+    call_id=$(blog_random_token 12)
+    room_id=$(room_key "admin-${BLOG_SESSION_USERNAME}-${target}-${call_id}")
+    call_path=$(call_path_for "$call_id")
+    config-set "$call_path" call_id "$call_id"
+    config-set "$call_path" room_id "$room_id"
+    config-set "$call_path" from_admin "$BLOG_SESSION_USERNAME"
+    config-set "$call_path" from_admin_name "$(user_display_name "$BLOG_SESSION_USERNAME")"
+    config-set "$call_path" to_user "$target"
+    config-set "$call_path" status ringing
+    config-set "$call_path" created_at "$now"
+    config-set "$call_path" expires_at "$((now + call_ttl_seconds))"
+    config-set "$call_path" answered_at 0
+    printf '{"success":true,"call":'
+    json_call_object "$call_path"
+    printf '}\n'
+    ;;
+  answer_call)
+    call_id=$(safe_key "$(blog_param call_id)")
+    call_path=$(call_path_for "$call_id")
+    if [ -z "$call_id" ] || [ ! -f "$call_path" ]; then
+      blog_json_error "Call was not found" "call_not_found"
+      exit 0
+    fi
+    to_user=$(config-get "$call_path" to_user 2>/dev/null || printf '')
+    if [ "$to_user" != "$BLOG_SESSION_USERNAME" ]; then
+      blog_json_error "Call is for a different user" "call_not_allowed"
+      exit 0
+    fi
+    expires=$(config-get "$call_path" expires_at 2>/dev/null || printf '0')
+    case "$expires" in ''|*[!0-9]*) expires=0 ;; esac
+    if [ "$expires" -lt "$now" ]; then
+      config-set "$call_path" status expired
+      blog_json_error "Call expired" "call_expired"
+      exit 0
+    fi
+    config-set "$call_path" status accepted
+    config-set "$call_path" answered_at "$now"
+    room_id=$(config-get "$call_path" room_id 2>/dev/null || printf '')
+    printf '{"success":true,"room_id":"%s","call":' "$(blog_json_escape "$room_id")"
+    json_call_object "$call_path"
+    printf '}\n'
+    ;;
+  decline_call|admin_cancel_call)
+    call_id=$(safe_key "$(blog_param call_id)")
+    call_path=$(call_path_for "$call_id")
+    if [ -z "$call_id" ] || [ ! -f "$call_path" ]; then
+      blog_json_error "Call was not found" "call_not_found"
+      exit 0
+    fi
+    if [ "$action" = "decline_call" ]; then
+      to_user=$(config-get "$call_path" to_user 2>/dev/null || printf '')
+      [ "$to_user" = "$BLOG_SESSION_USERNAME" ] || {
+        blog_json_error "Call is for a different user" "call_not_allowed"
+        exit 0
+      }
+      config-set "$call_path" status declined
+    else
+      config-set "$call_path" status cancelled
+    fi
+    printf '{"success":true,"call":'
+    json_call_object "$call_path"
+    printf '}\n'
+    ;;
+  *)
+    blog_json_error "Unknown video calling action" "unknown_action"
+    ;;
+esac

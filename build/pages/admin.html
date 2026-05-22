@@ -25,10 +25,10 @@
     }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <link rel="stylesheet" href="/static/style.css?v=3122137071" />
-  <script src="/static/js/htmx.min.js?v=3122137071"></script>
-  <script src="/static/js/idiomorph-ext.min.js?v=3122137071"></script>
-  <script src="/static/site-bootstrap.js?v=3122137071"></script>
+  <link rel="stylesheet" href="/static/style.css?v=1942556372" />
+  <script src="/static/js/htmx.min.js?v=1942556372"></script>
+  <script src="/static/js/idiomorph-ext.min.js?v=1942556372"></script>
+  <script src="/static/site-bootstrap.js?v=1942556372"></script>
   <script>
   (function () {
     var theme = 'archmage';
@@ -43,7 +43,7 @@
     } catch (_err) {
       // Ignore storage failures.
     }
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css';
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260521-vote-arrow-chrome3';
     var link = document.createElement('link');
     link.id = 'theme-stylesheet';
     link.rel = 'stylesheet';
@@ -52,10 +52,10 @@
     (document.head || document.documentElement).appendChild(link);
   })();
   </script>
-  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=3122137071" data-theme-href="/static/themes/archmage.css?v=3122137071" /></noscript>
-  <script defer src="/static/zap-ui.js?v=3122137071"></script>
-  <script defer src="/static/post-context.js?v=3122137071"></script>
-  <script defer src="/static/post-resize.js?v=3122137071"></script>
+  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=1942556372" data-theme-href="/static/themes/archmage.css?v=1942556372" /></noscript>
+  <script defer src="/static/zap-ui.js?v=1942556372"></script>
+  <script defer src="/static/post-context.js?v=1942556372"></script>
+  <script defer src="/static/post-resize.js?v=1942556372"></script>
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
@@ -472,7 +472,7 @@
 </button>
 <a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
-  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋮</button>
+  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
@@ -590,6 +590,70 @@
   try {
     var navCenter = document.querySelector('.nav-center');
     var cachedRaw = localStorage.getItem('cached_navbar_pages_v1');
+    function normalizeNavPath(path) {
+      var p = String(path || '').trim();
+      var search = '';
+      if (!p) {
+        return '/';
+      }
+      if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
+        try {
+          var parsed = new URL(p, window.location.href);
+          p = parsed.pathname || '/';
+          search = parsed.search || '';
+        } catch (_urlErr) {
+          p = '/';
+          search = '';
+        }
+      }
+      if (!search && p.indexOf('?') >= 0) {
+        var split = p.split('?', 2);
+        p = split[0] || '/';
+        search = split[1] ? ('?' + split[1]) : '';
+      }
+      p = p.replace(/\/+$/, '') || '/';
+      if (p === '/pages/index' || p === '/pages/index.html') {
+        try {
+          var params = new URLSearchParams(search || '');
+          var slug = String(params.get('page_slug') || params.get('slug') || '').trim().toLowerCase();
+          slug = slug.replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+          if (slug && slug !== 'index') {
+            return '/' + slug;
+          }
+        } catch (_paramErr) {
+          // Ignore malformed page query strings.
+        }
+        return '/';
+      }
+      if (p.indexOf('/pages/') === 0) {
+        p = '/' + p.slice('/pages/'.length);
+        p = p.replace(/\.html?$/i, '');
+      }
+      return p || '/';
+    }
+    function highlightCurrentNavNow() {
+      if (!navCenter) {
+        return;
+      }
+      var current = normalizeNavPath(window.location.href);
+      if (current.indexOf('/posts/') === 0 || current === '/cgi/blog-open-post' || current.indexOf('/cgi/blog-open-post/') === 0) {
+        current = '/';
+      }
+      var links = navCenter.querySelectorAll('a[data-page]');
+      links.forEach(function (link) {
+        var active = normalizeNavPath(link.getAttribute('href') || '') === current;
+        link.classList.toggle('active', active);
+        if (active) {
+          link.setAttribute('aria-current', 'page');
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('tabindex', '-1');
+        } else {
+          link.removeAttribute('aria-current');
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
+        }
+      });
+    }
     if (navCenter && cachedRaw) {
       var cachedPages = JSON.parse(cachedRaw);
       if (!Array.isArray(cachedPages)) {
@@ -626,6 +690,7 @@
         navCenter.innerHTML = html;
       }
     }
+    highlightCurrentNavNow();
   } catch (_err2) {
     // Ignore cache parse failures and let runtime fetch reconcile state.
   }
@@ -811,8 +876,8 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=3122137071"></script>
-<script src="/static/shop-cart.js?v=3122137071"></script>
+<script src="/static/nav-auth.js?v=1942556372"></script>
+<script src="/static/shop-cart.js?v=1942556372"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 <div id="admin-access-message" class="admin-access-message" hidden="">
@@ -907,7 +972,21 @@ class="sr-only">Loading</span></span></span>
 </button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false">
 <span class="admin-nav-icon-slot" aria-hidden="true"></span><span
-class="admin-nav-label">BTCPay</span>
+class="admin-nav-label admin-nav-label-with-pill">BTCPay <span
+id="admin-nav-btcpay-checkout-status"
+class="admin-nav-status-pill is-loading"
+aria-label="Loading status"><span class="admin-nav-status-spinner"
+aria-hidden="true"></span><span
+class="sr-only">Loading</span></span></span>
+</button>
+<button type="button" class="admin-nav-item" data-admin-nav="video-calling" aria-selected="false">
+<span class="admin-nav-icon-slot" aria-hidden="true"></span><span
+class="admin-nav-label admin-nav-label-with-pill">Video Calling <span
+id="admin-nav-video-calling-status"
+class="admin-nav-status-pill is-loading"
+aria-label="Loading status"><span class="admin-nav-status-spinner"
+aria-hidden="true"></span><span
+class="sr-only">Loading</span></span></span>
 </button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false">
 <span class="admin-nav-icon-slot" aria-hidden="true"></span><span
@@ -1266,6 +1345,121 @@ Loading BTCPay checkout runtime…
 </section>
 </div>
 <div id="output-btcpay-checkout" class="output">
+
+</div>
+</div>
+</section>
+<section class="admin-section" data-admin-section="video-calling" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>
+Video Calling
+</h3>
+<p class="muted">
+Configure the embeddable WebRTC widget. Add it to local page content
+with <code>{{video-chat}}</code>.
+</p>
+</div>
+</div>
+<div class="settings-stack">
+<section class="sub-card">
+<h4>
+Widget Settings
+</h4>
+<div class="grid-two">
+<div class="field-row">
+<p><label for="video-chat-participant-limit"><strong>Participant
+Limit</strong></label>
+<input type="number" id="video-chat-participant-limit" min="2" max="24" step="1" value="6"></p>
+</div>
+<div class="field-row">
+<p><label for="video-chat-token-ttl-seconds"><strong>Invite
+TTL</strong></label>
+<input type="number" id="video-chat-token-ttl-seconds" min="60" max="86400" step="60" value="3600">
+<span class="field-unit">seconds</span></p>
+</div>
+</div>
+<div class="field-row">
+<p><label for="video-chat-janus-wss"><strong>Janus WSS</strong></label>
+<input type="url" id="video-chat-janus-wss" placeholder="wss://janus.example.com/janus" autocomplete="off"></p>
+</div>
+<div class="field-row">
+<p><label for="video-chat-signaling-wss"><strong>Signaling
+WSS</strong></label>
+<input type="url" id="video-chat-signaling-wss" placeholder="wss://signal.example.com/ws" autocomplete="off"></p>
+</div>
+<div class="field-row">
+<label class="checkbox-control" for="video-chat-public-rooms"><input type="checkbox" id="video-chat-public-rooms"><span><strong>Allow
+public rooms</strong></span></label>
+<p class="muted">
+When enabled, visitors can create or join named rooms from the widget.
+The direct call button remains available.
+</p>
+</div>
+<div class="field-row">
+<label for="video-chat-rooms"><strong>Public Rooms</strong></label>
+<textarea id="video-chat-rooms" rows="3" placeholder="Lobby&#10;Office hours&#10;Reading room"></textarea>
+</div>
+<p class="muted">
+Blank WSS fields let the widget use its default bootstrap. Camera and
+microphone access still require an explicit click inside the widget.
+</p>
+</section>
+<section class="sub-card">
+<div class="row-head compact-row-head">
+<div>
+<h4>
+Operator Console
+</h4>
+<p class="muted">
+See logged-in users, background-call opt-in state, browser-reported
+rooms, and active call requests.
+</p>
+</div>
+<button id="btn-video-chat-operator-refresh" type="button">
+Refresh
+</button>
+</div>
+<div id="video-chat-operator-status"
+class="runtime-settings-list video-chat-operator-list">
+<div class="placeholder">
+Loading video call presence…
+</div>
+</div>
+<div id="video-chat-operator-call-panel"
+class="video-chat-operator-call-panel" hidden="">
+<div class="row-head compact-row-head">
+<div>
+<h5>
+Operator Call
+</h5>
+<p id="video-chat-operator-call-status" class="muted">
+No active operator call.
+</p>
+</div>
+<button id="btn-video-chat-operator-leave" type="button">
+Leave
+</button>
+</div>
+<div id="video-chat-operator-widget" class="video-chat-operator-widget">
+
+</div>
+</div>
+</section>
+<section class="sub-card">
+<h4>
+Page Include
+</h4>
+<p class="muted">
+Use <code>{{video-chat}}</code> for video calling and
+<code>{{secure-chat}}</code> for Secure Chat in local-only page content.
+These includes render on the website and are not published into the
+Nostr event.
+</p>
+</section>
+</div>
+<div id="output-video-calling" class="output">
 
 </div>
 </div>
@@ -1991,6 +2185,14 @@ Short account name shown in nav/account UI.
 This is the author name shown on your published blog posts.
 </p>
 </div>
+<div class="field-row">
+<label class="checkbox-control" for="account-video-chat-allow-admin-calls"><input type="checkbox" id="account-video-chat-allow-admin-calls"><span><strong>Allow
+site admin video calls</strong></span></label>
+<p class="muted account-note">
+When enabled, the site can show an incoming-call notice while you are
+logged in, even if the Contact page is not open.
+</p>
+</div>
 <div class="field-row account-passkey-row">
 <label><strong>Passkey</strong><span class="inline-tip" tabindex="0"
 aria-label="A passkey lets you sign in with your device authenticator with less typing, while still tied to your account.">?</span></label>
@@ -2135,8 +2337,8 @@ Cross-post selected
 Drop files to upload
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nostr-publish-dialog.js?v=3122137071"></script>
-<script src="/static/admin.js?v=3122137071"></script>
+<script src="/static/nostr-publish-dialog.js?v=1942556372"></script>
+<script src="/static/admin.js?v=1942556372"></script>
 <style>
 header#title-block-header {
   display: none !important;
@@ -2528,10 +2730,45 @@ body {
 
 .admin-section {
   display: none;
+  position: relative;
 }
 
 .admin-section.is-active {
   display: block;
+}
+
+.admin-section.is-loading {
+  min-height: 10rem;
+}
+
+.admin-section.is-loading::before {
+  content: "Loading...";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4rem;
+  background: color-mix(in srgb, var(--admin-bg, var(--bg)) 92%, transparent);
+  color: var(--admin-muted, var(--light-text));
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.admin-section.is-loading::after {
+  content: "";
+  position: absolute;
+  z-index: 21;
+  top: 4.08rem;
+  left: calc(50% + 3.25rem);
+  width: 0.88rem;
+  height: 0.88rem;
+  border: 2px solid var(--admin-accent, var(--accent));
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: admin-spin 0.75s linear infinite;
+  pointer-events: none;
 }
 
 .demo-box {
@@ -7173,6 +7410,6 @@ body {
     </a>
   </div>
 </footer>
-<script defer src="/static/footer-pages.js?v=3122137071"></script>
+<script defer src="/static/footer-pages.js?v=1942556372"></script>
 </body>
 </html>

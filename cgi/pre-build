@@ -24,6 +24,28 @@ site_title=$(config-get "$blog_site_conf" site_title 2>/dev/null || printf '')
 theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf '')
 append_site_title_to_page_title=$(config-get "$blog_site_conf" append_site_title_to_page_title 2>/dev/null || printf 'false')
 plugins_json=$(blog_plugins_json)
+video_chat_participant_limit=$(config-get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
+case "$video_chat_participant_limit" in ''|*[!0-9]*) video_chat_participant_limit=6 ;; esac
+if [ "$video_chat_participant_limit" -lt 2 ]; then video_chat_participant_limit=2; fi
+if [ "$video_chat_participant_limit" -gt 24 ]; then video_chat_participant_limit=24; fi
+video_chat_token_ttl_seconds=$(config-get "$blog_site_conf" video_chat_token_ttl_seconds 2>/dev/null || printf '3600')
+case "$video_chat_token_ttl_seconds" in ''|*[!0-9]*) video_chat_token_ttl_seconds=3600 ;; esac
+if [ "$video_chat_token_ttl_seconds" -lt 60 ]; then video_chat_token_ttl_seconds=60; fi
+if [ "$video_chat_token_ttl_seconds" -gt 86400 ]; then video_chat_token_ttl_seconds=86400; fi
+video_chat_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
+case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=false ;; esac
+video_chat_rooms=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf 'Lobby')
+video_chat_rooms_json=$(printf '%s\n' "$video_chat_rooms" | tr ',' '\n' | awk '{ gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0); if ($0 != "" && !seen[$0]++) print $0; }' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
+video_chat_janus_wss=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
+video_chat_signaling_wss=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
+video_chat_json=$(jq -cn \
+  --argjson participant_limit "$video_chat_participant_limit" \
+  --argjson token_ttl_seconds "$video_chat_token_ttl_seconds" \
+  --arg janus_wss "$video_chat_janus_wss" \
+  --arg signaling_wss "$video_chat_signaling_wss" \
+  --argjson public_rooms "$video_chat_public_rooms" \
+  --argjson rooms "$video_chat_rooms_json" \
+  '{participant_limit:$participant_limit,token_ttl_seconds:$token_ttl_seconds,janus_wss:$janus_wss,signaling_wss:$signaling_wss,public_rooms:$public_rooms,rooms:$rooms,include_syntax:"{{video-chat}}"}')
 navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
 footer_json=$(blog_nostr_footer_pages_json "$pages_json")
 navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
@@ -66,7 +88,8 @@ cat > "$site_bootstrap_tmp" <<EOF
       site_title: "$(blog_json_escape "$site_title")",
       append_site_title_to_page_title: $append_site_title_to_page_title,
       theme: "$(blog_json_escape "$theme")",
-      plugins: $plugins_json
+      plugins: $plugins_json,
+      video_chat: $video_chat_json
     },
     navbar_pages: $navbar_pages_json,
     footer_pages: $footer_pages_json

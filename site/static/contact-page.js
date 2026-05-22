@@ -146,6 +146,10 @@
   }
 
   function videoChatPluginEnabled() {
+    var bootstrapConfig = window.__wizardrySiteBootstrap && window.__wizardrySiteBootstrap.config;
+    if (bootstrapConfig && bootstrapConfig.plugins && typeof bootstrapConfig.plugins === 'object') {
+      return bootstrapConfig.plugins.video_chat === true;
+    }
     var plugins = window.__wizardryPlugins;
     if (plugins && typeof plugins === 'object') {
       return plugins.video_chat === true;
@@ -170,7 +174,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js';
+      script.src = '/static/video-chat-widget.js?v=20260521-video-initial1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
@@ -237,6 +241,100 @@
       return window.marked.parse(value);
     }
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function normalizeWidgetIncludeName(value) {
+    var name = String(value || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
+    if (name === 'video-calling' || name === 'video-call' || name === 'videochat') {
+      return 'video-chat';
+    }
+    if (name === 'securechat' || name === 'simplex-chat' || name === 'simplex') {
+      return 'secure-chat';
+    }
+    if (name === 'video-chat' || name === 'secure-chat') {
+      return name;
+    }
+    return '';
+  }
+
+  function renderWidgetInclude(name) {
+    var widget = normalizeWidgetIncludeName(name);
+    if (widget === 'secure-chat') {
+      return renderSecureChatPanel();
+    }
+    if (widget === 'video-chat') {
+      var videoConfig = {};
+      try {
+        videoConfig = (window.__wizardrySiteBootstrap && window.__wizardrySiteBootstrap.config && window.__wizardrySiteBootstrap.config.video_chat) || {};
+      } catch (_err) {
+        videoConfig = {};
+      }
+      var publicRooms = videoConfig && videoConfig.public_rooms === true;
+      var rooms = Array.isArray(videoConfig && videoConfig.rooms) ? videoConfig.rooms.join(',') : 'Lobby';
+      return '<section class="contact-widget contact-widget-video-chat" aria-label="Video calling">' +
+        '<div data-video-chat ' +
+        'data-video-chat-token-endpoint="/cgi/blog-video-chat-token" ' +
+        'data-video-chat-call-room-id="call-me" ' +
+        'data-video-chat-call-label="Call me" ' +
+        'data-video-chat-public-rooms="' + (publicRooms ? 'true' : 'false') + '" ' +
+        'data-video-chat-room-list="' + escapeHtml(rooms) + '" ' +
+        'data-video-chat-room-policy="open" ' +
+        'data-video-chat-max-participants="6" ' +
+        'data-video-chat-allow-join-link="true"></div>' +
+        '</section>';
+    }
+    return '';
+  }
+
+  function textHasWidgetInclude(text, widgetName) {
+    var wanted = normalizeWidgetIncludeName(widgetName);
+    if (!wanted) {
+      return false;
+    }
+    var re = /\{\{\s*([a-z0-9 _-]+)\s*\}\}/ig;
+    var match;
+    while ((match = re.exec(String(text || '')))) {
+      if (normalizeWidgetIncludeName(match[1]) === wanted) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function renderMarkdownWithWidgetIncludes(md, skipWidgetName) {
+    var value = String(md || '');
+    if (!value) {
+      return '';
+    }
+    var skipWidget = normalizeWidgetIncludeName(skipWidgetName || '');
+    var re = /(^|\n)[ \t]*\{\{\s*([a-z0-9 _-]+)\s*\}\}[ \t]*(?=\n|$)/ig;
+    var html = '';
+    var lastIndex = 0;
+    var match;
+    while ((match = re.exec(value))) {
+      var widgetName = normalizeWidgetIncludeName(match[2]);
+      var shouldSkipWidget = !!(widgetName && widgetName === skipWidget);
+      var includeHtml = widgetName && !shouldSkipWidget ? renderWidgetInclude(widgetName) : '';
+      if (!includeHtml && !shouldSkipWidget) {
+        continue;
+      }
+      var markdownBefore = value.slice(lastIndex, match.index);
+      if (markdownBefore) {
+        html += markdownBlock(markdownBefore);
+      }
+      if (includeHtml) {
+        html += includeHtml;
+      }
+      lastIndex = re.lastIndex;
+      if (value.charAt(lastIndex) === '\n') {
+        lastIndex += 1;
+      }
+    }
+    var markdownAfter = value.slice(lastIndex);
+    if (markdownAfter) {
+      html += markdownBlock(markdownAfter);
+    }
+    return html;
   }
 
   function markdownInline(md) {
@@ -1003,6 +1101,55 @@
     }
     var session = store.readSession(window.localStorage, secureChatStorageSiteKey(), accountKey);
     return secureChatLocalBrowserRows(session.messages);
+  }
+
+  function secureChatStoredHistorySummary() {
+    var store = secureChatSessionStore();
+    var accountKey = secureChatStorageAccountKey();
+    if (!store || !accountKey) {
+      return { messages: 0, attachments: 0 };
+    }
+    var session = store.readSession(window.localStorage, secureChatStorageSiteKey(), accountKey);
+    var messages = Array.isArray(session.messages) ? session.messages : [];
+    var uploads = Array.isArray(session.uploads) ? session.uploads : [];
+    var attachmentCount = messages.reduce(function (count, message) {
+      return count + (message && message.attachment ? 1 : 0);
+    }, 0);
+    return {
+      messages: messages.length,
+      attachments: Math.max(attachmentCount, uploads.length)
+    };
+  }
+
+  function secureChatPlural(count, singular, plural) {
+    return String(count) + ' ' + (count === 1 ? singular : (plural || singular + 's'));
+  }
+
+  function secureChatSavedHistorySummaryText(summary) {
+    var messages = Number(summary && summary.messages || 0);
+    var attachments = Number(summary && summary.attachments || 0);
+    if (messages <= 0 && attachments <= 0) {
+      return '';
+    }
+    var parts = [];
+    if (messages > 0) {
+      parts.push(secureChatPlural(messages, 'saved message'));
+    }
+    if (attachments > 0) {
+      parts.push(secureChatPlural(attachments, 'attachment'));
+    }
+    return parts.join(', ');
+  }
+
+  function renderSecureChatStartGate(summary) {
+    var label = secureChatSavedHistorySummaryText(summary);
+    var html = '<div class="secure-chat-start-gate">';
+    if (label) {
+      html += '<span class="secure-chat-saved-hint">' + escapeHtml(label) + '</span>';
+    }
+    html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="start">' + (label ? 'Open Chat' : 'Start Chat') + '</button>';
+    html += '</div>';
+    return html;
   }
 
   function secureChatMergeLocalOutgoingRows(rows) {
@@ -2518,6 +2665,7 @@
         simplexWebIntroDismissed: state.chat.simplexWebIntroDismissed === true,
         chatStarted: state.chat.chatStarted === true,
         chatOpening: state.chat.chatOpening === true,
+        savedSummary: secureChatStoredHistorySummary(),
         admin: isAdmin(),
         adminMappings: state.chat.adminMappings || []
       });
@@ -2533,7 +2681,7 @@
     } else if (!fallbackLoggedIn) {
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     } else if (state.chat.chatStarted !== true) {
-      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="start">Start Chat</button>';
+      html += renderSecureChatStartGate(secureChatStoredHistorySummary());
     }
     html += '</div>';
     if (!fallbackLoggedIn) {
@@ -3694,6 +3842,10 @@
     return html;
   }
 
+  function renderContactInformationHeading() {
+    return '<h2 class="contact-section-heading">Contact Information</h2>';
+  }
+
   function renderReadOnly(rows, editable) {
     var normalized = normalizeRows(rows || []);
     var filtered = editable ? normalized : normalized.filter(function (row) {
@@ -3707,7 +3859,7 @@
       return html + '<p class="list-page-empty-state">No content yet.</p>';
     }
     if (editable) {
-      html += renderProfileTable(filtered, true);
+      html += renderContactInformationHeading() + renderProfileTable(filtered, true);
       return html;
     }
     var archivedRows = filtered.filter(function (row) {
@@ -3717,7 +3869,7 @@
       return String(row.qualifier || '').trim().toLowerCase() !== 'archive';
     });
     if (visibleRows.length) {
-      html += renderProfileTable(visibleRows, false);
+      html += renderContactInformationHeading() + renderProfileTable(visibleRows, false);
     }
     if (archivedRows.length) {
       html += '<details class="contact-archived-group">';
@@ -3741,15 +3893,19 @@
   function renderContentHtml() {
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
+    var extrasAfter = String(s.extras_after || '');
+    var renderedAfter = String(extrasAfter).trim() ? renderMarkdownWithWidgetIncludes(extrasAfter, 'video-chat') : '';
     var afterContent = '';
-    if (String(s.extras_after || '').trim()) {
+    if (String(renderedAfter || '').trim()) {
       afterContent = '<section class="nostr-page-extra nostr-page-extra-after">' +
-        markdownBlock(s.extras_after || '') +
+        renderedAfter +
         '</section>';
     }
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    return renderSecureChatPanel() + managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent;
+    var secureChatHtml = textHasWidgetInclude(extrasAfter, 'secure-chat') ? '' : renderSecureChatPanel();
+    var videoChatHtml = videoChatPluginEnabled() || textHasWidgetInclude(extrasAfter, 'video-chat') ? renderWidgetInclude('video-chat') : '';
+    return secureChatHtml + videoChatHtml + managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent;
   }
 
   function syncSecureChatLastContentHtml() {
@@ -3768,6 +3924,45 @@
     return String(html || '').replace(/animation-delay:-[0-9]+ms/g, 'animation-delay:-0ms');
   }
 
+  function captureVideoChatWidgetHost() {
+    if (!els.content) {
+      return null;
+    }
+    var host = els.content.querySelector('[data-video-chat]');
+    if (!host || !host.shadowRoot) {
+      return null;
+    }
+    if (!window.__wizardryVideoChatRoomId) {
+      return null;
+    }
+    return host;
+  }
+
+  function restoreVideoChatWidgetHost(host) {
+    if (!host || !els.content) {
+      return;
+    }
+    var nextHost = els.content.querySelector('[data-video-chat]');
+    if (nextHost && nextHost !== host) {
+      nextHost.replaceWith(host);
+    }
+  }
+
+  function disconnectVideoChatAutoMountForRender(host) {
+    if (!host || !window.VideoChatWidgetAutoMount || typeof window.VideoChatWidgetAutoMount.disconnect !== 'function') {
+      return false;
+    }
+    window.VideoChatWidgetAutoMount.disconnect();
+    return true;
+  }
+
+  function reconnectVideoChatAutoMountAfterRender(disconnected) {
+    if (!disconnected || !window.VideoChatWidgetAutoMount || typeof window.VideoChatWidgetAutoMount.observe !== 'function') {
+      return;
+    }
+    window.VideoChatWidgetAutoMount.observe();
+  }
+
   function renderContent() {
     if (!els.content) {
       return;
@@ -3777,6 +3972,8 @@
       return;
     }
     var secureChatRenderState = captureSecureChatRenderState();
+    var videoChatHost = captureVideoChatWidgetHost();
+    var videoChatObserverPaused = disconnectVideoChatAutoMountForRender(videoChatHost);
     var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
     var inlineMode = isAdmin() && state.editMode;
     var nextContentHtml = renderContentHtml();
@@ -3788,6 +3985,8 @@
     }
     state.lastContentHtml = nextContentSignature;
     els.content.innerHTML = nextContentHtml;
+    restoreVideoChatWidgetHost(videoChatHost);
+    reconnectVideoChatAutoMountAfterRender(videoChatObserverPaused);
     if (stableSimplexInfo && state.chat.simplexWebIntroDismissed !== true) {
       var nextSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
       if (nextSimplexInfo && nextSimplexInfo !== stableSimplexInfo) {

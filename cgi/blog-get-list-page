@@ -65,6 +65,11 @@ if [ "$draft_exists" = "true" ]; then
 fi
 
 validation_json=$(blog_list_validate_and_enrich_state_json "$view_state_json" false)
+viewer_username=''
+if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
+  viewer_username=${BLOG_SESSION_USERNAME-}
+fi
+validation_json=$(blog_list_merge_public_activity_json "$view_state_json" "$validation_json" "$viewer_username")
 
 jq -cn \
   --arg slug "$list_slug" \

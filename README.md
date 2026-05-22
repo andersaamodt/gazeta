@@ -352,10 +352,16 @@ Access admin panel (if in blog-admin group)
 - Auto-mount for any `[data-video-chat]` node
 - Deferred mount support for dynamically injected content (MutationObserver scan)
 - Janus `videoroom` integration over WSS, including SDP/ICE flow
-- In-widget controls: mic, camera, leave, copy invite link
+- In-widget controls: one-click site-owner call, optional public room list, custom room join/create, mic, camera, leave, copy invite link
 - Lifecycle hooks: `onJoin`, `onLeave`, `onError`
 - Metrics callback hook: `onMetric` or `metricsCallback`
 - Feature flag support via plugin state and per-widget `featureEnabled` option
+
+### Admin settings
+
+- Enable the plugin from Admin -> Plugins.
+- Configure participant limit, invite TTL, Janus WSS, signaling WSS, and optional public rooms from Admin -> Video Calling.
+- Add the widget to local-only Nostr-backed page content with `{{video-chat}}`. Secure Chat can also be placed explicitly with `{{secure-chat}}`.
 
 ### Contact page loading
 
@@ -368,6 +374,10 @@ Access admin panel (if in blog-admin group)
 <div
   data-video-chat
   data-video-chat-token-endpoint="/cgi/blog-video-chat-token"
+  data-video-chat-call-room-id="call-me"
+  data-video-chat-call-label="Call me"
+  data-video-chat-public-rooms="true"
+  data-video-chat-room-list="Lobby,Office hours"
   data-video-chat-janus-endpoint="wss://janus.example.com/janus"
   data-video-chat-signaling-endpoint="wss://signal.example.com/ws"
   data-video-chat-participant-limit="6"
@@ -487,4 +497,3 @@ See `.github/MUD_BLOG_INTEGRATION.md` for complete documentation.
 ## License
 
 Part of the wizardry project.
-

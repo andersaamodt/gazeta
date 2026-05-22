@@ -42,4 +42,4 @@ body:has(#video-chat-embed-root) main {
 }
 </style>
 
-<script src="/static/video-chat-widget.js"></script>
+<script src="/static/video-chat-widget.js?v=20260521-video-initial1"></script>

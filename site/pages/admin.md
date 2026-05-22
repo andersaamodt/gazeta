@@ -31,7 +31,8 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">BTCPay</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-checkout-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="video-calling" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Video Calling <span id="admin-nav-video-calling-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
@@ -300,6 +301,81 @@ title: ""
 </div>
 
 <div id="output-btcpay-checkout" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="video-calling" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Video Calling</h3>
+<p class="muted">Configure the embeddable WebRTC widget. Add it to local page content with <code>{{video-chat}}</code>.</p>
+</div>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Widget Settings</h4>
+<div class="grid-two">
+<div class="field-row">
+<label for="video-chat-participant-limit"><strong>Participant Limit</strong></label>
+<input type="number" id="video-chat-participant-limit" min="2" max="24" step="1" value="6">
+</div>
+<div class="field-row">
+<label for="video-chat-token-ttl-seconds"><strong>Invite TTL</strong></label>
+<input type="number" id="video-chat-token-ttl-seconds" min="60" max="86400" step="60" value="3600">
+<span class="field-unit">seconds</span>
+</div>
+</div>
+<div class="field-row">
+<label for="video-chat-janus-wss"><strong>Janus WSS</strong></label>
+<input type="url" id="video-chat-janus-wss" placeholder="wss://janus.example.com/janus" autocomplete="off">
+</div>
+<div class="field-row">
+<label for="video-chat-signaling-wss"><strong>Signaling WSS</strong></label>
+<input type="url" id="video-chat-signaling-wss" placeholder="wss://signal.example.com/ws" autocomplete="off">
+</div>
+<div class="field-row">
+<label class="checkbox-control" for="video-chat-public-rooms"><input type="checkbox" id="video-chat-public-rooms"><span><strong>Allow public rooms</strong></span></label>
+<p class="muted">When enabled, visitors can create or join named rooms from the widget. The direct call button remains available.</p>
+</div>
+<div class="field-row">
+<label for="video-chat-rooms"><strong>Public Rooms</strong></label>
+<textarea id="video-chat-rooms" rows="3" placeholder="Lobby&#10;Office hours&#10;Reading room"></textarea>
+</div>
+<p class="muted">Blank WSS fields let the widget use its default bootstrap. Camera and microphone access still require an explicit click inside the widget.</p>
+</section>
+
+<section class="sub-card">
+<div class="row-head compact-row-head">
+<div>
+<h4>Operator Console</h4>
+<p class="muted">See logged-in users, background-call opt-in state, browser-reported rooms, and active call requests.</p>
+</div>
+<button id="btn-video-chat-operator-refresh" type="button">Refresh</button>
+</div>
+<div id="video-chat-operator-status" class="runtime-settings-list video-chat-operator-list">
+<div class="placeholder">Loading video call presence...</div>
+</div>
+<div id="video-chat-operator-call-panel" class="video-chat-operator-call-panel" hidden>
+<div class="row-head compact-row-head">
+<div>
+<h5>Operator Call</h5>
+<p id="video-chat-operator-call-status" class="muted">No active operator call.</p>
+</div>
+<button id="btn-video-chat-operator-leave" type="button">Leave</button>
+</div>
+<div id="video-chat-operator-widget" class="video-chat-operator-widget"></div>
+</div>
+</section>
+
+<section class="sub-card">
+<h4>Page Include</h4>
+<p class="muted">Use <code>{{video-chat}}</code> for video calling and <code>{{secure-chat}}</code> for Secure Chat in local-only page content. These includes render on the website and are not published into the Nostr event.</p>
+</section>
+</div>
+
+<div id="output-video-calling" class="output"></div>
 </div>
 </section>
 
@@ -805,6 +881,11 @@ title: ""
 <p class="muted account-note">This is the author name shown on your published blog posts.</p>
 </div>
 
+<div class="field-row">
+<label class="checkbox-control" for="account-video-chat-allow-admin-calls"><input type="checkbox" id="account-video-chat-allow-admin-calls"><span><strong>Allow site admin video calls</strong></span></label>
+<p class="muted account-note">When enabled, the site can show an incoming-call notice while you are logged in, even if the Contact page is not open.</p>
+</div>
+
 <div class="field-row account-passkey-row">
 <label><strong>Passkey</strong><span class="inline-tip" tabindex="0" aria-label="A passkey lets you sign in with your device authenticator with less typing, while still tied to your account.">?</span></label>
 <div class="account-passkey-wrap">
@@ -908,7 +989,7 @@ title: ""
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js?v=20260514-crossposting"></script>
+<script src="/static/admin.js?v=20260521-admin-loading1"></script>
 
 <style>
 header#title-block-header {
@@ -1301,10 +1382,45 @@ body {
 
 .admin-section {
   display: none;
+  position: relative;
 }
 
 .admin-section.is-active {
   display: block;
+}
+
+.admin-section.is-loading {
+  min-height: 10rem;
+}
+
+.admin-section.is-loading::before {
+  content: "Loading...";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4rem;
+  background: color-mix(in srgb, var(--admin-bg, var(--bg)) 92%, transparent);
+  color: var(--admin-muted, var(--light-text));
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.admin-section.is-loading::after {
+  content: "";
+  position: absolute;
+  z-index: 21;
+  top: 4.08rem;
+  left: calc(50% + 3.25rem);
+  width: 0.88rem;
+  height: 0.88rem;
+  border: 2px solid var(--admin-accent, var(--accent));
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: admin-spin 0.75s linear infinite;
+  pointer-events: none;
 }
 
 .demo-box {

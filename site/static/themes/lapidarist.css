@@ -181,6 +181,11 @@ body {
   background-attachment: fixed;
 }
 
+body:has(#blog-page-root) {
+  background: transparent !important;
+  background-image: none !important;
+}
+
 h1,
 h2,
 h3,
@@ -601,7 +606,7 @@ pre,
   box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn),
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
@@ -615,8 +620,13 @@ input[type="reset"],
   box-shadow: var(--lapidarist-control-shadow) !important;
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):hover:not(:disabled),
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):focus-visible:not(:disabled),
+.list-page-admin-bar button[data-list-action="toggle-edit"] {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):hover:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):focus-visible:not(:disabled),
 input[type="button"]:hover:not(:disabled),
 input[type="button"]:focus-visible:not(:disabled),
 input[type="submit"]:hover:not(:disabled),
@@ -699,17 +709,33 @@ input[type="reset"]:disabled,
   transform: none !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn) {
   border-color: transparent !important;
   box-shadow: var(--lapidarist-control-shadow) !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):hover:not(:disabled),
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):focus-visible:not(:disabled) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):focus-visible:not(:disabled) {
   border-color: transparent !important;
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
     0 3px 8px rgba(48, 34, 16, 0.09) !important;
+  transform: none !important;
+}
+
+#main-content .post-page-menu-panel button,
+#main-content .post-page-menu-panel button:hover,
+#main-content .post-page-menu-panel button:focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.post-page-menu .post-page-menu-panel button[role="menuitem"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item),
+.post-page-menu .post-page-menu-panel button[role="menuitem"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):hover,
+.post-page-menu .post-page-menu-panel button[role="menuitem"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
   transform: none !important;
 }
 
@@ -855,7 +881,25 @@ textarea:focus {
   }
 }
 
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"],
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"]:hover:not(:disabled),
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"]:focus-visible:not(:disabled),
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"]:active:not(:disabled) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
 ::selection {
   background: rgba(47, 95, 184, 0.22);
   color: #1a140d;
+}
+
+.blog-main-column .post-list > .blog-post-item.blog-post-resizable,
+.blog-main-column .post-list > .blog-post-item.blog-post-resizable:hover,
+.blog-main-column .post-list > .blog-post-item.blog-post-resizable:focus,
+.blog-main-column .post-list > .blog-post-item.blog-post-resizable:focus-within {
+  width: 100% !important;
+  max-width: 100% !important;
+  transform: none !important;
+  box-shadow: var(--lapidarist-float-shadow-soft) !important;
 }

@@ -522,10 +522,54 @@ blog_post_rel_path_for_file() {
     "$blog_site_root/site/pages/"*)
       printf '%s\n' "${file#"$blog_site_root/site/pages/"}"
       ;;
+    "$blog_posts_store_dir/"*)
+      printf 'posts/%s\n' "${file#"$blog_posts_store_dir/"}"
+      ;;
     *)
+      if [ -f "$file" ] && [ -d "$blog_posts_store_dir" ]; then
+        store_real_dir=$(CDPATH= cd -- "$blog_posts_store_dir" 2>/dev/null && pwd -P || printf '')
+        case "$store_real_dir" in
+          '')
+            ;;
+          *)
+            case "$file" in
+              "$store_real_dir/"*)
+                printf 'posts/%s\n' "${file#"$store_real_dir/"}"
+                return 0
+                ;;
+            esac
+            ;;
+        esac
+      fi
       return 1
       ;;
   esac
+}
+
+blog_canonical_post_file_path() {
+  file=${1-}
+  [ -n "$file" ] || return 1
+  [ -f "$file" ] || return 1
+  case "$file" in
+    "$blog_posts_dir"/*|"$blog_posts_store_dir"/*) ;;
+    *)
+      store_real_dir=$(CDPATH= cd -- "$blog_posts_store_dir" 2>/dev/null && pwd -P || printf '')
+      case "$store_real_dir" in
+        '') return 1 ;;
+        *)
+          case "$file" in
+            "$store_real_dir"/*) ;;
+            *) return 1 ;;
+          esac
+          ;;
+      esac
+      ;;
+  esac
+
+  dir=$(dirname "$file")
+  base=$(basename "$file")
+  real_dir=$(CDPATH= cd -- "$dir" 2>/dev/null && pwd -P) || return 1
+  printf '%s/%s\n' "$real_dir" "$base"
 }
 
 blog_origin_resolve_dir() {
@@ -1144,7 +1188,7 @@ blog_resolve_post_markdown_file() {
 
   direct_file="$blog_posts_dir/$rel_md"
   if [ -f "$direct_file" ]; then
-    printf '%s\n' "$direct_file"
+    blog_canonical_post_file_path "$direct_file" 2>/dev/null || printf '%s\n' "$direct_file"
     return 0
   fi
 
@@ -1165,14 +1209,14 @@ blog_resolve_post_markdown_file() {
 
   canonical_file="$blog_posts_dir/${canonical_rel}.md"
   if [ -f "$canonical_file" ]; then
-    printf '%s\n' "$canonical_file"
+    blog_canonical_post_file_path "$canonical_file" 2>/dev/null || printf '%s\n' "$canonical_file"
     return 0
   fi
 
   [ -d "$search_dir" ] || return 1
   dated_match=$(find -L "$search_dir" -maxdepth 1 -type f -name "????-??-??-${canonical_base}.md" 2>/dev/null | sort -r | head -n 1)
   if [ -n "$dated_match" ] && [ -f "$dated_match" ]; then
-    printf '%s\n' "$dated_match"
+    blog_canonical_post_file_path "$dated_match" 2>/dev/null || printf '%s\n' "$dated_match"
     return 0
   fi
 
@@ -1779,7 +1823,7 @@ blog_json_error() {
 blog_plugin_supported() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
-    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|btcpay|video_chat) return 0 ;;
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|btcpay|video_chat|overworld) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -1787,7 +1831,7 @@ blog_plugin_supported() {
 blog_plugin_default_enabled() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
-    video_chat) printf 'false\n' ;;
+    video_chat|overworld) printf 'false\n' ;;
     nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|btcpay) printf 'true\n' ;;
     *) printf 'false\n' ;;
   esac
@@ -1847,6 +1891,7 @@ blog_plugins_json() {
   zaps=$(blog_plugin_enabled_json "zaps")
   btcpay=$(blog_plugin_enabled_json "btcpay")
   video_chat=$(blog_plugin_enabled_json "video_chat")
+  overworld=$(blog_plugin_enabled_json "overworld")
   printf '{'
   printf '"nostr_support":%s,' "$nostr_support"
   printf '"nostr_login":%s,' "$nostr_login"
@@ -1854,7 +1899,8 @@ blog_plugins_json() {
   printf '"nostr_posts":%s,' "$nostr_posts"
   printf '"zaps":%s,' "$zaps"
   printf '"btcpay":%s,' "$btcpay"
-  printf '"video_chat":%s' "$video_chat"
+  printf '"video_chat":%s,' "$video_chat"
+  printf '"overworld":%s' "$overworld"
   printf '}\n'
 }
 
@@ -2077,7 +2123,7 @@ blog_post_nostr_address_for_file() {
   fi
 
   if [ -f "$blog_nostr_posts_index" ]; then
-    rel=${file#"$blog_site_root/site/pages/"}
+    rel=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
     idx_addr=$(jq -r --arg rel "$rel" '.[] | select(.md_path == $rel) | .address' "$blog_nostr_posts_index" 2>/dev/null | head -n 1)
     if [ -n "$idx_addr" ]; then
       printf '%s\n' "$idx_addr"
@@ -2156,6 +2202,81 @@ blog_auto_summary_from_content() {
     summary="$summary..."
   fi
   printf '%s\n' "$summary"
+}
+
+blog_condensed_preview_plain_text() {
+  content=${1-}
+  if [ -z "$content" ]; then
+    printf '%s\n' ''
+    return 0
+  fi
+  printf '%s\n' "$content" \
+    | sed -E 's/```[^`]*```/ /g; s/`([^`]*)`/\1/g; s/!\[[^]]*\]\([^)]*\)/ /g; s/\[([^]]*)\]\([^)]*\)/\1/g; s/^[[:space:]]{0,3}[#>*-]+[[:space:]]*//g; s/[*_~]+//g' \
+    | awk '
+      { lines[NR] = $0; if ($0 !~ /^[[:space:]]*$/) last = NR }
+      END {
+        first = 1
+        while (first <= last && lines[first] ~ /^[[:space:]]*$/) {
+          first++
+        }
+        for (i = first; i <= last; i++) {
+          print lines[i]
+        }
+      }'
+}
+
+blog_condensed_preview_from_content() {
+  content=${1-}
+  if [ -z "$content" ]; then
+    printf '%s\n' ''
+    return 0
+  fi
+  blog_condensed_preview_plain_text "$content" | awk -v max_words=48 '
+    BEGIN { words = 0; truncated = 0; printed = 0 }
+    {
+      line = $0
+      out = ""
+      while (match(line, /[^[:space:]]+/)) {
+        prefix = substr(line, 1, RSTART - 1)
+        word = substr(line, RSTART, RLENGTH)
+        rest = substr(line, RSTART + RLENGTH)
+        if (words >= max_words) {
+          truncated = 1
+          break
+        }
+        out = out prefix word
+        words++
+        line = rest
+      }
+      if (!truncated) {
+        out = out line
+      }
+      if (printed) {
+        printf "\n"
+      }
+      printf "%s", out
+      printed = 1
+      if (truncated) {
+        exit
+      }
+    }
+    END {
+      if (truncated) {
+        printf "..."
+      }
+      printf "\n"
+    }'
+}
+
+blog_condensed_preview_truncated() {
+  content=${1-}
+  word_count=$(blog_condensed_preview_plain_text "$content" | wc -w | tr -d ' ')
+  case "$word_count" in ''|*[!0-9]*) word_count=0 ;; esac
+  if [ "$word_count" -gt 48 ]; then
+    printf 'true\n'
+  else
+    printf 'false\n'
+  fi
 }
 
 blog_validate_nostr_pubkey() {
@@ -3305,8 +3426,13 @@ blog_normalize_tags() {
       if (length(s) > 64) return "";
       return s;
     }
+    function canonical_tag(s) {
+      key = tolower(s);
+      if (key == "ai-shitpost" || key == "ai-quickpost") return "AI quickpost";
+      return s;
+    }
     {
-      tag = sanitize($0);
+      tag = canonical_tag(sanitize($0));
       if (tag == "") next;
       if (!seen[tag]++) {
         if (out != "") out = out ", ";
@@ -4389,6 +4515,9 @@ blog_nostr_rebuild_derived() {
   blocked_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_blocklist_file")
 
   jq -s --argjson hidden "$hidden_json" '
+    def blog_canonical_visible_tag:
+      if (. | ascii_downcase) == "ai-shitpost" or (. | ascii_downcase) == "ai-quickpost" then "AI quickpost" else . end;
+    def blog_visible_tags: map(select((. | ascii_downcase) != "blog") | blog_canonical_visible_tag);
     map(select(
       type=="object"
       and (.kind|type)=="number"
@@ -4420,7 +4549,8 @@ blog_nostr_rebuild_derived() {
         . as $ev
         | ($ev.d | ascii_downcase | gsub("[^a-z0-9]+";"-") | gsub("(^-+|-+$)";"")) as $slug_raw
         | ($ev.post_type_tag // "") as $tagged_type
-        | ($ev.tag_list | unique) as $tag_list
+        | ($ev.tag_list | unique) as $source_tag_list
+        | ($source_tag_list | blog_visible_tags) as $tag_list
         | {
             id: $ev.id,
             pubkey: $ev.pubkey,
@@ -4477,6 +4607,16 @@ blog_nostr_rebuild_derived() {
 
   mv "$nostr_posts_tmp" "$blog_nostr_posts_index"
   mv "$nostr_comments_tmp" "$blog_nostr_comments_index"
+  posts_canonical_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-posts-canonical.XXXXXX")
+  if jq '
+    def canonical_tag:
+      if (. | ascii_downcase) == "ai-shitpost" or (. | ascii_downcase) == "ai-quickpost" then "AI quickpost" else . end;
+    map(if (.tags | type) == "array" then .tags = (.tags | map(if type == "string" then canonical_tag else . end)) else . end)
+  ' "$blog_nostr_posts_index" > "$posts_canonical_tmp" 2>/dev/null; then
+    mv "$posts_canonical_tmp" "$blog_nostr_posts_index"
+  else
+    rm -f "$posts_canonical_tmp"
+  fi
   chmod 644 "$blog_nostr_posts_index" "$blog_nostr_comments_index" 2>/dev/null || true
 
   blog_nostr_write_projection_posts "$blog_nostr_posts_index"
@@ -5510,8 +5650,9 @@ blog_public_posts_catalog_build_json() {
       author=$(blog_post_author_display_for_file "$file")
       published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
       published_date=$(blog_iso_to_human_date "$published_at")
-      summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
       body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
+      summary=$(blog_condensed_preview_from_content "$body")
+      summary_truncated=$(blog_condensed_preview_truncated "$body")
       word_count=$(blog_word_count "$body")
       reading_minutes=$(blog_estimated_read_minutes "$word_count")
       post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
@@ -5562,6 +5703,7 @@ blog_public_posts_catalog_build_json() {
         --arg published_date "$published_date" \
         --arg pub_date "$pub_date" \
         --arg summary "$summary" \
+        --argjson summary_truncated "$summary_truncated" \
         --arg post_type "$post_type" \
         --arg year "$year" \
         --arg source "$source" \
@@ -5578,6 +5720,7 @@ blog_public_posts_catalog_build_json() {
           published_date: $published_date,
           pub_date: $pub_date,
           summary: $summary,
+          summary_truncated: $summary_truncated,
           type: $post_type,
           year: $year,
           source: $source,
@@ -5625,7 +5768,11 @@ blog_base_url() {
 
 blog_rel_post_url() {
   file=$1
-  rel=${file#"$blog_posts_dir/"}
+  rel=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+  if [ -z "$rel" ]; then
+    rel=${file#"$blog_posts_dir/"}
+  fi
+  rel=${rel#posts/}
   rel_slug_raw=${rel%.md}
   rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
   # Canonical public post URLs are pretty extensionless paths.

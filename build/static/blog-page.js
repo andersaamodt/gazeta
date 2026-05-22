@@ -119,6 +119,10 @@
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
 
+  function overflowMenuIconSvg() {
+    return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
+  }
+
   function clearRouteRepairParam() {
     var url;
     try {
@@ -365,12 +369,16 @@
       .replace(/\\'/g, "'");
   }
 
-  function renderPostSummaryHtml(summary) {
+  function renderPostSummaryHtml(summary, url, truncated) {
     var text = cleanMarkdownText(summary).trim();
     if (!text) {
       return '';
     }
-    return '<p class="post-summary">' + markdownInline(text) + '</p>';
+    var readMore = '';
+    if (truncated && String(url || '').trim()) {
+      readMore = '<a class="post-summary-read-more" href="' + escapeHtml(url) + '">Read more</a>';
+    }
+    return '<div class="post-summary">' + markdownBlock(text) + readMore + '</div>';
   }
 
   function titleizeSlug(value) {
@@ -3981,6 +3989,15 @@
     return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
   }
 
+  function inlineFilterPillHtml(className, group, value, label) {
+    var normalized = String(value || '').trim();
+    var display = String(label || normalized || 'Unknown').trim();
+    if (!normalized) {
+      normalized = display;
+    }
+    return '<button type="button" class="' + escapeHtml(className) + '" data-inline-filter-group="' + escapeHtml(group) + '" data-inline-filter-value="' + escapeHtml(normalized) + '" aria-label="Filter by ' + escapeHtml(display) + '">' + escapeHtml(display) + '</button>';
+  }
+
   function uniqueSorted(items, compareFn) {
     var map = {};
     items.forEach(function (item) {
@@ -4076,7 +4093,9 @@
       var tagsHtml = (post.tags || []).map(function (tag) {
         return '<button type="button" class="tag blog-inline-tag" data-inline-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
       }).join('');
-      var hasTags = !!tagsHtml;
+      var postType = String(post.type || 'post');
+      var postYear = String(post.year || 'Unknown');
+      var metaPillsHtml = inlineFilterPillHtml('blog-type-pill', 'types', postType, formatType(postType)) + inlineFilterPillHtml('blog-year-pill', 'years', postYear, postYear);
       var comments = Number(post.comment_count || 0);
       var commentsLabel = comments === 1 ? '1 comment' : String(comments) + ' comments';
       var commentsHtml = '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>';
@@ -4092,7 +4111,7 @@
       if (isAdmin() && postPath) {
         adminMenuHtml = '' +
           '<div class="post-page-menu">' +
-            '<button type="button" class="post-page-menu-trigger" data-post-card-menu-toggle="' + escapeHtml(postPath) + '" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
+            '<button type="button" class="post-page-menu-trigger" data-post-card-menu-toggle="' + escapeHtml(postPath) + '" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
             '<div class="post-page-menu-panel" role="menu" hidden>' +
               '<button type="button" data-post-card-action="edit_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Edit post...</button>' +
               '<button type="button" class="post-page-menu-delete" data-post-card-action="delete_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Delete post...</button>' +
@@ -4111,11 +4130,8 @@
             '</div>' +
             adminMenuHtml +
           '</div>' +
-          renderPostSummaryHtml(post.summary) +
-          '<div class="blog-meta-row' + (hasTags ? '' : ' blog-meta-row-with-comments') + '"><span class="blog-type-pill">' + escapeHtml(formatType(post.type)) + '</span> <span class="blog-year-pill">' + escapeHtml(post.year || 'Unknown') + '</span>' + (hasTags ? '' : commentsHtml) + '</div>' +
-          (hasTags
-            ? '<div class="post-card-footer"><div class="tags">' + tagsHtml + '</div>' + commentsHtml + '</div>'
-            : '') +
+          renderPostSummaryHtml(post.summary, post.url, !!post.summary_truncated) +
+          '<div class="post-card-footer"><div class="tags post-card-meta-tags">' + metaPillsHtml + tagsHtml + '</div>' + commentsHtml + '</div>' +
         '</article>';
     }).join('');
   }
@@ -4292,9 +4308,13 @@
       if (wasHidden) {
         els.panel.classList.remove('is-open');
         void els.panel.offsetHeight;
-        window.requestAnimationFrame(function () {
-          els.panel.classList.add('is-open');
-        });
+        var finishOpen = function () {
+          if (els.toggle.getAttribute('aria-expanded') === 'true') {
+            els.panel.classList.add('is-open');
+          }
+        };
+        window.requestAnimationFrame(finishOpen);
+        window.setTimeout(finishOpen, 32);
       } else {
         els.panel.classList.add('is-open');
       }
@@ -4701,6 +4721,18 @@
       event.preventDefault();
       setPanelOpen(true);
       toggleFilter('tags', inlineTag.getAttribute('data-inline-tag'), !!(event.metaKey || event.ctrlKey));
+      return;
+    }
+
+    var inlineFilter = target ? target.closest('[data-inline-filter-group][data-inline-filter-value]') : null;
+    if (inlineFilter) {
+      event.preventDefault();
+      setPanelOpen(true);
+      toggleFilter(
+        inlineFilter.getAttribute('data-inline-filter-group'),
+        inlineFilter.getAttribute('data-inline-filter-value'),
+        !!(event.metaKey || event.ctrlKey)
+      );
       return;
     }
 

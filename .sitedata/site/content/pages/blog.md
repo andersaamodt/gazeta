@@ -57,4 +57,4 @@ license: "CC BY 4.0"
 </section>
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
-<script src="/static/blog-page.js?v=20260514-blog-utf8"></script>
+<script src="/static/blog-page.js?v=20260521-readmore"></script>

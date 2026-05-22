@@ -173,6 +173,8 @@ if [ -z "$state_json" ]; then
       show_markers=$(blog_param show_markers)
       alphabetize_markers=$(blog_param alphabetize_markers)
       default_markers=$(blog_param default_markers)
+      allow_signed_in_submissions=$(blog_param allow_signed_in_submissions)
+      allow_signed_in_votes=$(blog_param allow_signed_in_votes)
       group_by=$(blog_param group_by)
       view_mode=$(blog_param view_mode)
       content=$(blog_param content)
@@ -205,6 +207,8 @@ if [ -z "$state_json" ]; then
         --arg show_markers "$show_markers" \
         --arg alphabetize_markers "$alphabetize_markers" \
         --arg default_markers "$default_markers" \
+        --arg allow_signed_in_submissions "$allow_signed_in_submissions" \
+        --arg allow_signed_in_votes "$allow_signed_in_votes" \
         --arg group_by "$group_by" \
         --arg view_mode "$view_mode" \
         --arg content "$content" \
@@ -223,6 +227,8 @@ if [ -z "$state_json" ]; then
           show_markers: (($show_markers | ascii_downcase) == "true"),
           alphabetize_markers: (($alphabetize_markers | ascii_downcase) == "true"),
           default_markers: $default_markers,
+          allow_signed_in_submissions: (($allow_signed_in_submissions | ascii_downcase) == "true"),
+          allow_signed_in_votes: (($allow_signed_in_votes | ascii_downcase) == "true"),
           group_by: $group_by,
           view_mode: $view_mode,
           content: $content,

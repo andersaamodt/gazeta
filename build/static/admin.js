@@ -47,6 +47,16 @@
       video_chat: false
     },
     pluginsSaveTimer: null,
+    videoChatConfig: {
+      participant_limit: 6,
+      token_ttl_seconds: 3600,
+      janus_wss: '',
+      signaling_wss: ''
+    },
+    videoChatSaveTimer: null,
+    videoChatOperatorInfo: null,
+    videoChatOperatorPollTimer: null,
+    videoChatAllowAdminCalls: false,
     lastLinkedSshKeyText: '',
     users: [],
     actorRank: 0,
@@ -138,6 +148,7 @@
     composeSubmitAction: '',
     initialContentPainted: false,
     loadedAdminSections: {},
+    loadingAdminSections: {},
     preloadAdminStarted: false,
     preloadAdminDone: false,
     sidebarCollapsed: false
@@ -157,6 +168,7 @@
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
     outputPlugins: document.getElementById('output-plugins'),
+    outputVideoCalling: document.getElementById('output-video-calling'),
     outputZaps: document.getElementById('output-zaps'),
     outputBtcpay: document.getElementById('output-btcpay'),
     outputBtcpayCheckout: document.getElementById('output-btcpay-checkout'),
@@ -165,6 +177,8 @@
     navNosterStatus: document.getElementById('admin-nav-noster-status'),
     navZapsStatus: document.getElementById('admin-nav-zaps-status'),
     navBtcpayStatus: document.getElementById('admin-nav-btcpay-status'),
+    navBtcpayCheckoutStatus: document.getElementById('admin-nav-btcpay-checkout-status'),
+    navVideoCallingStatus: document.getElementById('admin-nav-video-calling-status'),
     siteTitle: document.getElementById('site-title'),
     adminTheme: document.getElementById('admin-theme'),
     registrationEnabled: document.getElementById('registration-enabled'),
@@ -184,6 +198,18 @@
     pluginZaps: document.getElementById('plugin-zaps'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
     pluginVideoChat: document.getElementById('plugin-video-chat'),
+    videoChatParticipantLimit: document.getElementById('video-chat-participant-limit'),
+    videoChatTokenTtlSeconds: document.getElementById('video-chat-token-ttl-seconds'),
+    videoChatJanusWss: document.getElementById('video-chat-janus-wss'),
+    videoChatSignalingWss: document.getElementById('video-chat-signaling-wss'),
+    videoChatPublicRooms: document.getElementById('video-chat-public-rooms'),
+    videoChatRooms: document.getElementById('video-chat-rooms'),
+    videoChatOperatorStatus: document.getElementById('video-chat-operator-status'),
+    videoChatOperatorRefresh: document.getElementById('btn-video-chat-operator-refresh'),
+    videoChatOperatorCallPanel: document.getElementById('video-chat-operator-call-panel'),
+    videoChatOperatorCallStatus: document.getElementById('video-chat-operator-call-status'),
+    videoChatOperatorWidget: document.getElementById('video-chat-operator-widget'),
+    videoChatOperatorLeave: document.getElementById('btn-video-chat-operator-leave'),
     zapLud16: document.getElementById('zap-lud16'),
     zapWalletSummary: document.getElementById('zap-wallet-summary'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
@@ -292,6 +318,7 @@
     accountSimplexContactCopyButton: document.getElementById('btn-account-simplex-copy'),
     accountSimplexContactToggleButton: document.getElementById('btn-account-simplex-toggle'),
     accountSshPublicKey: document.getElementById('account-ssh-public-key'),
+    accountVideoChatAllowAdminCalls: document.getElementById('account-video-chat-allow-admin-calls'),
     autosaveStatus: document.getElementById('autosave-status'),
     publishNowButton: document.getElementById('btn-publish-now'),
     mirrorNostrButton: document.getElementById('btn-mirror-nostr'),
@@ -929,6 +956,48 @@
     }
   }
 
+  function adminSectionHasLazyLoader(sectionName) {
+    const section = String(sectionName || '').trim();
+    return [
+      'settings',
+      'plugins',
+      'video-calling',
+      'nostr-bridge',
+      'zaps',
+      'btcpay',
+      'btcpay-checkout',
+      'users',
+      'drafts',
+      'queue',
+      'posts',
+      'nostr-pages',
+      'pages',
+      'files',
+      'moderation'
+    ].indexOf(section) >= 0;
+  }
+
+  function adminSectionNeedsLazyLoad(sectionName) {
+    const section = String(sectionName || '').trim();
+    return !!(state.isAdmin && adminSectionHasLazyLoader(section) && !state.loadedAdminSections[section]);
+  }
+
+  function setAdminSectionLoading(sectionName, loading) {
+    const section = String(sectionName || '').trim();
+    const node = sectionNodeForName(section);
+    if (!section || !node) {
+      return;
+    }
+    const busy = !!loading;
+    state.loadingAdminSections[section] = busy;
+    node.classList.toggle('is-loading', busy);
+    if (busy) {
+      node.setAttribute('aria-busy', 'true');
+    } else {
+      node.removeAttribute('aria-busy');
+    }
+  }
+
   function activateSection(name, updateHash) {
     let sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
     if (state.isAdmin) {
@@ -969,6 +1038,9 @@
       section.classList.toggle('is-active', active);
       section.hidden = !active;
     });
+    if (adminSectionNeedsLazyLoad(sectionName)) {
+      setAdminSectionLoading(sectionName, true);
+    }
     if (updateHash) {
       if (window.location.hash !== '#' + sectionName) {
         history.replaceState(null, '', '#' + sectionName);
@@ -983,6 +1055,7 @@
     syncZapsAutoRefresh();
     syncBtcpayAutoRefresh();
     syncModerationAutoRefresh();
+    syncVideoChatOperatorAutoRefresh();
     renderUploadJobs();
     maybeLoadAdminSection(sectionName, true);
   }
@@ -992,62 +1065,84 @@
     if (!state.isAdmin || !section || section === 'account') {
       return;
     }
+    if (!adminSectionHasLazyLoader(section)) {
+      return;
+    }
     if (state.loadedAdminSections[section]) {
       return;
     }
-    state.loadedAdminSections[section] = true;
+    setAdminSectionLoading(section, true);
     try {
       if (section === 'settings') {
         await loadConfig();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'plugins') {
         await loadConfig();
+        state.loadedAdminSections[section] = true;
+        return;
+      }
+      if (section === 'video-calling') {
+        await loadConfig();
+        await loadVideoChatOperatorStatus({ background: !!silent });
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'nostr-bridge') {
         await loadNosterRuntime();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'zaps') {
         await loadConfig();
         await loadZapsRuntime();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'btcpay') {
         await loadBtcpayRuntime();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'btcpay-checkout') {
         await loadBtcpayCheckoutRuntime();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'users') {
         await loadUsers(false);
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'drafts') {
         await loadDrafts();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'queue') {
         await loadQueue();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'posts') {
         await loadPosts();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'nostr-pages' || section === 'pages') {
         await loadNostrPages();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'files') {
         await loadFiles();
+        state.loadedAdminSections[section] = true;
         return;
       }
       if (section === 'moderation') {
         await loadModeration();
+        state.loadedAdminSections[section] = true;
       }
     } catch (err) {
       state.loadedAdminSections[section] = false;
@@ -1060,6 +1155,10 @@
       }
       if (section === 'plugins') {
         setOutput(els.outputPlugins, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'video-calling') {
+        setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'nostr-bridge') {
@@ -1101,6 +1200,8 @@
       if (section === 'moderation') {
         setOutput(els.outputModeration, 'Error: ' + err.message, 'error');
       }
+    } finally {
+      setAdminSectionLoading(section, false);
     }
   }
 
@@ -1137,6 +1238,10 @@
       {
         sections: ['btcpay'],
         task: loadBtcpayRuntime()
+      },
+      {
+        sections: ['btcpay-checkout'],
+        task: loadBtcpayCheckoutRuntime()
       }
     ].filter(function (job) {
       return !job.sections.every(function (section) {
@@ -1586,7 +1691,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260521-vote-arrow-chrome3';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
@@ -1820,6 +1925,31 @@
       script.onerror = function () {
         resolve(false);
       };
+      document.head.appendChild(script);
+    });
+  }
+
+  function ensureVideoChatWidgetScript() {
+    if (window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function') {
+      return Promise.resolve(true);
+    }
+    return new Promise(function (resolve) {
+      const existing = document.querySelector('script[data-video-chat-widget="1"]');
+      if (existing) {
+        existing.addEventListener('load', function () {
+          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+        }, { once: true });
+        existing.addEventListener('error', function () { resolve(false); }, { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = '/static/video-chat-widget.js?v=20260521-video-operator2';
+      script.async = true;
+      script.setAttribute('data-video-chat-widget', '1');
+      script.onload = function () {
+        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+      };
+      script.onerror = function () { resolve(false); };
       document.head.appendChild(script);
     });
   }
@@ -3551,6 +3681,7 @@
           : 'ssh-ed25519 AAAA...';
       }
       syncSshAccountActionState();
+      loadVideoChatAccountPreference().catch(function () {});
 
       if (!state.isAdmin) {
         stopLocalDripWorker();
@@ -3631,6 +3762,59 @@
     return normalized;
   }
 
+  function clampInt(value, fallback, minValue, maxValue) {
+    let parsed = parseInt(String(value || ''), 10);
+    if (!Number.isFinite(parsed)) {
+      parsed = Number(fallback || 0);
+    }
+    if (!Number.isFinite(parsed)) {
+      parsed = 0;
+    }
+    return Math.max(minValue, Math.min(maxValue, parsed));
+  }
+
+  function normalizeVideoChatConfig(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    const rooms = Array.isArray(src.rooms) ? src.rooms : String(src.rooms || 'Lobby').split(/[,\n]/);
+    return {
+      participant_limit: clampInt(src.participant_limit, 6, 2, 24),
+      token_ttl_seconds: clampInt(src.token_ttl_seconds, 3600, 60, 86400),
+      janus_wss: String(src.janus_wss || '').trim(),
+      signaling_wss: String(src.signaling_wss || '').trim(),
+      public_rooms: src.public_rooms === true,
+      rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12)
+    };
+  }
+
+  function setVideoChatConfigFields() {
+    const cfg = normalizeVideoChatConfig(state.videoChatConfig || {});
+    state.videoChatConfig = cfg;
+    if (els.videoChatParticipantLimit) {
+      els.videoChatParticipantLimit.value = String(cfg.participant_limit);
+      els.videoChatParticipantLimit.disabled = !(state.plugins && state.plugins.video_chat);
+    }
+    if (els.videoChatTokenTtlSeconds) {
+      els.videoChatTokenTtlSeconds.value = String(cfg.token_ttl_seconds);
+      els.videoChatTokenTtlSeconds.disabled = !(state.plugins && state.plugins.video_chat);
+    }
+    if (els.videoChatJanusWss) {
+      els.videoChatJanusWss.value = cfg.janus_wss;
+      els.videoChatJanusWss.disabled = !(state.plugins && state.plugins.video_chat);
+    }
+    if (els.videoChatSignalingWss) {
+      els.videoChatSignalingWss.value = cfg.signaling_wss;
+      els.videoChatSignalingWss.disabled = !(state.plugins && state.plugins.video_chat);
+    }
+    if (els.videoChatPublicRooms) {
+      els.videoChatPublicRooms.checked = !!cfg.public_rooms;
+      els.videoChatPublicRooms.disabled = !(state.plugins && state.plugins.video_chat);
+    }
+    if (els.videoChatRooms) {
+      els.videoChatRooms.value = (cfg.rooms && cfg.rooms.length ? cfg.rooms : ['Lobby']).join('\n');
+      els.videoChatRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
+    }
+  }
+
   function setPluginCheckboxStates() {
     const p = normalizePlugins(state.plugins || {});
     state.plugins = p;
@@ -3671,6 +3855,7 @@
       'nostr-bridge': !!plugins.nostr_bridge,
       'zaps': !!plugins.zaps,
       'btcpay-checkout': !!plugins.btcpay,
+      'video-calling': !!plugins.video_chat,
       'nostr-pages': !!plugins.nostr_posts
     };
     Object.keys(sectionByPlugin).forEach(function (sectionName) {
@@ -3736,6 +3921,313 @@
     }, Math.max(120, Number(delayMs || 220)));
   }
 
+  function readVideoChatConfigFromUi() {
+    return normalizeVideoChatConfig({
+      participant_limit: els.videoChatParticipantLimit ? els.videoChatParticipantLimit.value : 6,
+      token_ttl_seconds: els.videoChatTokenTtlSeconds ? els.videoChatTokenTtlSeconds.value : 3600,
+      janus_wss: els.videoChatJanusWss ? els.videoChatJanusWss.value : '',
+      signaling_wss: els.videoChatSignalingWss ? els.videoChatSignalingWss.value : '',
+      public_rooms: !!(els.videoChatPublicRooms && els.videoChatPublicRooms.checked),
+      rooms: els.videoChatRooms ? els.videoChatRooms.value : 'Lobby'
+    });
+  }
+
+  async function saveVideoChatConfig() {
+    const cfg = readVideoChatConfigFromUi();
+    state.videoChatConfig = cfg;
+    setVideoChatConfigFields();
+    try {
+      const data = await apiPost('/cgi/blog-update-config', {
+        video_chat_participant_limit: String(cfg.participant_limit),
+        video_chat_token_ttl_seconds: String(cfg.token_ttl_seconds),
+        video_chat_janus_wss: cfg.janus_wss,
+        video_chat_signaling_wss: cfg.signaling_wss,
+        video_chat_public_rooms: cfg.public_rooms ? 'true' : 'false',
+        video_chat_rooms: cfg.rooms.join('\n')
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save video calling settings');
+      }
+      setOutput(els.outputVideoCalling, 'Video calling settings updated.', 'ok');
+      await loadConfig();
+    } catch (err) {
+      setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  function queueVideoChatConfigSave(delayMs) {
+    if (state.isLoadingConfig) {
+      return;
+    }
+    if (state.videoChatSaveTimer) {
+      clearTimeout(state.videoChatSaveTimer);
+    }
+    state.videoChatSaveTimer = setTimeout(function () {
+      saveVideoChatConfig().catch(function () {});
+    }, Math.max(180, Number(delayMs || 500)));
+  }
+
+  async function startVideoChatOperatorRoom(roomId, mode, label) {
+    const normalizedRoom = String(roomId || '').trim();
+    if (!normalizedRoom || !els.videoChatOperatorWidget) {
+      return false;
+    }
+    const ok = await ensureVideoChatWidgetScript();
+    if (!ok || typeof window.initVideoChatWidget !== 'function') {
+      throw new Error('Video call widget is not available.');
+    }
+    if (els.videoChatOperatorCallPanel) {
+      els.videoChatOperatorCallPanel.hidden = false;
+    }
+    if (els.videoChatOperatorCallStatus) {
+      els.videoChatOperatorCallStatus.textContent = label || ('Joining room ' + normalizedRoom + '.');
+    }
+    els.videoChatOperatorWidget.innerHTML = '';
+    const host = document.createElement('div');
+    host.setAttribute('data-video-chat', '');
+    host.setAttribute('data-video-chat-token-endpoint', '/cgi/blog-video-chat-token');
+    host.setAttribute('data-video-chat-room-id', normalizedRoom);
+    host.setAttribute('data-video-chat-call-room-id', normalizedRoom);
+    host.setAttribute('data-video-chat-call-mode', mode === 'voice' ? 'voice' : 'video');
+    host.setAttribute('data-video-chat-auto-start', 'true');
+    host.setAttribute('data-video-chat-public-rooms', 'false');
+    host.setAttribute('data-video-chat-room-policy', 'open');
+    host.setAttribute('data-video-chat-allow-join-link', 'false');
+    host.setAttribute('data-video-chat-max-participants', '8');
+    host.setAttribute('data-video-chat-display-name', state.playerName || state.username || 'Admin');
+    els.videoChatOperatorWidget.appendChild(host);
+    window.initVideoChatWidget(host, {
+      roomId: normalizedRoom,
+      callRoomId: normalizedRoom,
+      autoStart: true,
+      callMode: mode === 'voice' ? 'voice' : 'video',
+      allowJoinViaLink: false,
+      publicRooms: false,
+      maxParticipants: 8,
+      displayName: state.playerName || state.username || 'Admin'
+    });
+    return true;
+  }
+
+  function leaveVideoChatOperatorRoom() {
+    if (els.videoChatOperatorWidget && window.VideoChatWidgetAutoMount && typeof window.VideoChatWidgetAutoMount.unmount === 'function') {
+      const host = els.videoChatOperatorWidget.querySelector('[data-video-chat]');
+      if (host) {
+        window.VideoChatWidgetAutoMount.unmount(host);
+      }
+    }
+    if (els.videoChatOperatorWidget) {
+      els.videoChatOperatorWidget.innerHTML = '';
+    }
+    if (els.videoChatOperatorCallPanel) {
+      els.videoChatOperatorCallPanel.hidden = true;
+    }
+    if (els.videoChatOperatorCallStatus) {
+      els.videoChatOperatorCallStatus.textContent = 'No active operator call.';
+    }
+  }
+
+  function renderVideoChatOperatorStatus() {
+    if (!els.videoChatOperatorStatus) {
+      return;
+    }
+    const info = state.videoChatOperatorInfo || {};
+    const users = Array.isArray(info.users) ? info.users : [];
+    const rooms = Array.isArray(info.rooms) ? info.rooms : [];
+    const calls = Array.isArray(info.calls) ? info.calls : [];
+    let html = '';
+    html += '<div class="runtime-setting-item">';
+    html += '<div><strong>Online users</strong><span class="runtime-setting-help">' + String(users.length) + ' browser session' + (users.length === 1 ? '' : 's') + ' reporting presence</span></div>';
+    html += '</div>';
+    if (!users.length) {
+      html += '<div class="placeholder">No logged-in users are reporting video call presence right now.</div>';
+    } else {
+      users.forEach(function (user) {
+        const username = String(user && user.username || '');
+        const canCall = !!(user && user.allow_admin_calls);
+        const age = Number(user && user.age_seconds || 0);
+        html += '<div class="runtime-setting-item video-chat-operator-user">';
+        html += '<div>';
+        html += '<strong>' + escapeHtml(user && user.player_name || username || 'User') + '</strong>';
+        html += '<span class="runtime-setting-help">@' + escapeHtml(username) + (user && user.current_room ? ' · room ' + escapeHtml(user.current_room) : '') + ' · seen ' + String(Math.max(0, age)) + 's ago</span>';
+        html += '</div>';
+        html += '<div class="runtime-setting-actions">';
+        if (user && user.current_room) {
+          html += '<button type="button" data-video-chat-join-room="' + escapeAttr(user.current_room) + '">Join</button>';
+        }
+        html += '<button type="button" data-video-chat-call-user="' + escapeAttr(username) + '"' + (canCall ? '' : ' disabled') + '>Call</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+    html += '<div class="runtime-setting-item"><div><strong>Rooms</strong><span class="runtime-setting-help">Browser-reported room membership from active widgets.</span></div></div>';
+    if (!rooms.length) {
+      html += '<div class="placeholder">No rooms are reporting members.</div>';
+    } else {
+      rooms.forEach(function (room) {
+        const members = Array.isArray(room && room.members) ? room.members : [];
+        const roomId = String(room && room.room_id || '');
+        html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(roomId || 'Room') + '</strong><span class="runtime-setting-help">' + members.map(function (member) {
+          return escapeHtml(member && member.player_name || member && member.username || 'User');
+        }).join(', ') + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
+      });
+    }
+    html += '<div class="runtime-setting-item"><div><strong>Call requests</strong><span class="runtime-setting-help">' + String(calls.length) + ' active or recent request' + (calls.length === 1 ? '' : 's') + '</span></div></div>';
+    if (!calls.length) {
+      html += '<div class="placeholder">No active call requests.</div>';
+    } else {
+      calls.forEach(function (call) {
+        const callId = String(call && call.call_id || '');
+        const roomId = String(call && call.room_id || '');
+        const status = String(call && call.status || 'call');
+        html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(status) + '</strong><span class="runtime-setting-help">' + escapeHtml(call && call.from_admin_name || call && call.from_admin || 'Admin') + ' to @' + escapeHtml(call && call.to_user || '') + ' · room ' + escapeHtml(roomId) + '</span></div><div class="runtime-setting-actions">';
+        html += '<button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '"' + (roomId ? '' : ' disabled') + '>Join</button>';
+        if (status === 'ringing') {
+          html += '<button type="button" data-video-chat-cancel-call="' + escapeAttr(callId) + '"' + (callId ? '' : ' disabled') + '>Cancel</button>';
+        }
+        html += '</div></div>';
+      });
+    }
+    els.videoChatOperatorStatus.innerHTML = html;
+  }
+
+  async function loadVideoChatOperatorStatus(options) {
+    if (!state.isAdmin || !els.videoChatOperatorStatus || !(state.plugins && state.plugins.video_chat)) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-video-chat-control', { action: 'admin_status' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load video call presence');
+      }
+      state.videoChatOperatorInfo = data;
+      renderVideoChatOperatorStatus();
+      if (!(options && options.background)) {
+        setOutput(els.outputVideoCalling, 'Video call operator view refreshed.', 'ok');
+      }
+    } catch (err) {
+      if (els.videoChatOperatorStatus) {
+        els.videoChatOperatorStatus.innerHTML = '<div class="placeholder">Could not load video call presence.</div>';
+      }
+      if (!(options && options.background)) {
+        setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+      }
+    }
+  }
+
+  function syncVideoChatOperatorAutoRefresh() {
+    if (state.videoChatOperatorPollTimer) {
+      clearInterval(state.videoChatOperatorPollTimer);
+      state.videoChatOperatorPollTimer = null;
+    }
+    if (!(state.isAdmin && state.activeSection === 'video-calling' && state.plugins && state.plugins.video_chat)) {
+      return;
+    }
+    state.videoChatOperatorPollTimer = setInterval(function () {
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'video-calling') {
+        loadVideoChatOperatorStatus({ background: true }).catch(function () {});
+      }
+    }, 8000);
+  }
+
+  async function callVideoChatUser(username) {
+    const target = String(username || '').trim();
+    if (!target) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-video-chat-control', {
+        action: 'admin_call_user',
+        username: target
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Could not start call');
+      }
+      const call = data.call || {};
+      const roomId = String(call.room_id || '').trim();
+      setOutput(els.outputVideoCalling, 'Calling @' + target + '.', 'ok');
+      await loadVideoChatOperatorStatus({ background: true });
+      if (roomId) {
+        await startVideoChatOperatorRoom(roomId, 'video', 'Calling @' + target + ' in room ' + roomId + '.');
+      }
+    } catch (err) {
+      setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  async function joinVideoChatOperatorRoom(roomId) {
+    const room = String(roomId || '').trim();
+    if (!room) {
+      return;
+    }
+    try {
+      await startVideoChatOperatorRoom(room, 'video', 'Joined room ' + room + '.');
+      setOutput(els.outputVideoCalling, 'Joined room ' + room + '.', 'ok');
+    } catch (err) {
+      setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  async function cancelVideoChatCall(callId) {
+    const id = String(callId || '').trim();
+    if (!id) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-video-chat-control', {
+        action: 'admin_cancel_call',
+        call_id: id
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Could not cancel call');
+      }
+      setOutput(els.outputVideoCalling, 'Call cancelled.', 'ok');
+      await loadVideoChatOperatorStatus({ background: true });
+    } catch (err) {
+      setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  async function loadVideoChatAccountPreference() {
+    if (!els.accountVideoChatAllowAdminCalls || !state.sessionToken || !state.csrfToken) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-video-chat-control', { action: 'status' }, true);
+      if (!data.success) {
+        return;
+      }
+      state.videoChatAllowAdminCalls = !!data.allow_admin_calls;
+      els.accountVideoChatAllowAdminCalls.checked = state.videoChatAllowAdminCalls;
+    } catch (_err) {
+      // Account preferences are non-blocking for the rest of the admin page.
+    }
+  }
+
+  async function saveVideoChatAccountPreference() {
+    if (!els.accountVideoChatAllowAdminCalls) {
+      return;
+    }
+    const allow = !!els.accountVideoChatAllowAdminCalls.checked;
+    state.videoChatAllowAdminCalls = allow;
+    try {
+      const data = await apiPost('/cgi/blog-video-chat-control', {
+        action: 'set_preference',
+        allow_admin_calls: allow ? 'true' : 'false'
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save video call preference');
+      }
+      state.videoChatAllowAdminCalls = !!data.allow_admin_calls;
+      els.accountVideoChatAllowAdminCalls.checked = state.videoChatAllowAdminCalls;
+      setOutput(els.outputAccount, 'Video call preference saved.', 'ok');
+    } catch (err) {
+      els.accountVideoChatAllowAdminCalls.checked = !allow;
+      state.videoChatAllowAdminCalls = !allow;
+      setOutput(els.outputAccount, 'Error: ' + err.message, 'error');
+    }
+  }
+
   async function loadConfig() {
     state.isLoadingConfig = true;
     try {
@@ -3744,9 +4236,13 @@
         throw new Error(data.error || 'Failed to load configuration');
       }
       state.plugins = normalizePlugins(data.plugins || {});
+      state.videoChatConfig = normalizeVideoChatConfig(data.video_chat || {});
       state.originConfig = normalizeOriginConfig(data.origin || {});
       setPluginCheckboxStates();
+      setVideoChatConfigFields();
+      setVideoCallingNavStatus();
       syncPluginControlledSections();
+      syncVideoChatOperatorAutoRefresh();
       renderCrosspostingSettingsUi();
       window.__wizardryPlugins = state.plugins;
       window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
@@ -4147,6 +4643,65 @@
     els.navBtcpayStatus.textContent = label;
     els.navBtcpayStatus.className = 'admin-nav-status-pill ' + statusClass;
     els.navBtcpayStatus.setAttribute('aria-label', label);
+  }
+
+  function setBtcpayCheckoutNavStatus(runtime, loading) {
+    if (!els.navBtcpayCheckoutStatus) {
+      return;
+    }
+    if (loading) {
+      setAdminNavStatusLoading(els.navBtcpayCheckoutStatus);
+      return;
+    }
+    const info = runtime && typeof runtime === 'object' ? runtime : {};
+    const checkoutReady = !!info.checkout_ready;
+    const apiReady = !!info.btcpay_api_ready;
+    const publicReady = !!info.btcpay_public_ready;
+    const apiConfigured = !!info.btcpay_api_configured;
+    const serverConfigured = !!String(info.btcpay_url || info.btcpay_host || '').trim();
+    let label = 'Offline';
+    let statusClass = 'is-offline';
+    if (checkoutReady) {
+      label = 'Ready';
+      statusClass = 'is-connected';
+    } else if (apiReady || (publicReady && apiConfigured)) {
+      label = 'Partial';
+      statusClass = 'is-installed';
+    } else if (publicReady) {
+      label = 'Reachable';
+      statusClass = 'is-online';
+    } else if (apiConfigured || serverConfigured) {
+      label = 'Configured';
+      statusClass = 'is-installed';
+    }
+    els.navBtcpayCheckoutStatus.textContent = label;
+    els.navBtcpayCheckoutStatus.className = 'admin-nav-status-pill ' + statusClass;
+    els.navBtcpayCheckoutStatus.setAttribute('aria-label', label);
+  }
+
+  function setVideoCallingNavStatus(loading) {
+    if (!els.navVideoCallingStatus) {
+      return;
+    }
+    if (loading) {
+      setAdminNavStatusLoading(els.navVideoCallingStatus);
+      return;
+    }
+    const plugins = normalizePlugins(state.plugins || {});
+    const cfg = normalizeVideoChatConfig(state.videoChatConfig || {});
+    const hasBackend = !!(cfg.janus_wss || cfg.signaling_wss);
+    let label = 'Off';
+    let statusClass = 'is-offline';
+    if (plugins.video_chat && hasBackend) {
+      label = 'Ready';
+      statusClass = 'is-connected';
+    } else if (plugins.video_chat) {
+      label = 'Enabled';
+      statusClass = 'is-installed';
+    }
+    els.navVideoCallingStatus.textContent = label;
+    els.navVideoCallingStatus.className = 'admin-nav-status-pill ' + statusClass;
+    els.navVideoCallingStatus.setAttribute('aria-label', label);
   }
 
   function statusValueHtml(ok, okLabel, badLabel) {
@@ -4828,6 +5383,7 @@
     }
     const info = runtime && typeof runtime === 'object' ? runtime : {};
     state.btcpayCheckoutRuntimeInfo = info;
+    setBtcpayCheckoutNavStatus(info);
     const btcpayUrl = String(info.btcpay_url || '').trim();
     const storeId = String(info.btcpay_store_id || '').trim();
     const authorizeUrl = String(info.btcpay_authorize_url || '').trim();
@@ -4865,6 +5421,7 @@
     if (!els.btcpayCheckoutRuntime) {
       return;
     }
+    setBtcpayCheckoutNavStatus(null, true);
     try {
       const data = await apiPost('/cgi/blog-manage-btcpay', { action: 'status' }, true);
       if (!data.success) {
@@ -7863,10 +8420,66 @@
       input.addEventListener('change', function () {
         state.plugins = readPluginsFromUi();
         setPluginCheckboxStates();
+        setVideoChatConfigFields();
         syncPluginControlledSections();
         queuePluginsSave(140);
       });
     });
+    [
+      els.videoChatParticipantLimit,
+      els.videoChatTokenTtlSeconds,
+      els.videoChatJanusWss,
+      els.videoChatSignalingWss,
+      els.videoChatPublicRooms,
+      els.videoChatRooms
+    ].filter(Boolean).forEach(function (input) {
+      input.addEventListener('input', function () {
+        if (input === els.videoChatPublicRooms) {
+          state.videoChatConfig = readVideoChatConfigFromUi();
+          setVideoChatConfigFields();
+        }
+        queueVideoChatConfigSave(600);
+      });
+      input.addEventListener('change', function () {
+        if (input === els.videoChatPublicRooms) {
+          state.videoChatConfig = readVideoChatConfigFromUi();
+          setVideoChatConfigFields();
+        }
+        queueVideoChatConfigSave(180);
+      });
+    });
+    if (els.videoChatOperatorRefresh) {
+      els.videoChatOperatorRefresh.addEventListener('click', function () {
+        loadVideoChatOperatorStatus().catch(function () {});
+      });
+    }
+    if (els.videoChatOperatorStatus) {
+      els.videoChatOperatorStatus.addEventListener('click', function (event) {
+        const button = event.target instanceof Element
+          ? event.target.closest('[data-video-chat-call-user], [data-video-chat-join-room], [data-video-chat-cancel-call]')
+          : null;
+        if (!button) {
+          return;
+        }
+        if (button.hasAttribute('data-video-chat-call-user')) {
+          callVideoChatUser(button.getAttribute('data-video-chat-call-user') || '').catch(function () {});
+        } else if (button.hasAttribute('data-video-chat-join-room')) {
+          joinVideoChatOperatorRoom(button.getAttribute('data-video-chat-join-room') || '').catch(function () {});
+        } else if (button.hasAttribute('data-video-chat-cancel-call')) {
+          cancelVideoChatCall(button.getAttribute('data-video-chat-cancel-call') || '').catch(function () {});
+        }
+      });
+    }
+    if (els.videoChatOperatorLeave) {
+      els.videoChatOperatorLeave.addEventListener('click', function () {
+        leaveVideoChatOperatorRoom();
+      });
+    }
+    if (els.accountVideoChatAllowAdminCalls) {
+      els.accountVideoChatAllowAdminCalls.addEventListener('change', function () {
+        saveVideoChatAccountPreference().catch(function () {});
+      });
+    }
     if (els.sidebarToggleButton) {
       els.sidebarToggleButton.addEventListener('click', function () {
         applySidebarCollapseState(!state.sidebarCollapsed, true);
@@ -9119,6 +9732,9 @@
       if (state.isAdmin && state.activeSection === 'files') {
         loadFiles().catch(function () {});
       }
+      if (state.isAdmin && state.activeSection === 'video-calling') {
+        loadVideoChatOperatorStatus({ background: true }).catch(function () {});
+      }
       if (state.isAdmin) {
         localDripWorkerTick(true).catch(function () {});
       }
@@ -9147,6 +9763,9 @@
       }
       if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'files') {
         loadFiles().catch(function () {});
+      }
+      if (document.visibilityState === 'visible' && state.isAdmin && state.activeSection === 'video-calling') {
+        loadVideoChatOperatorStatus({ background: true }).catch(function () {});
       }
       if (document.visibilityState === 'visible') {
         localDripWorkerTick(true).catch(function () {});

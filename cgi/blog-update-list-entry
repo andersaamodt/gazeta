@@ -1,0 +1,108 @@
+#!/bin/sh
+# Update a signed-in public entry for an open Nostr-backed list page.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
+fi
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+case "$page_type" in
+  list|icon-gallery) ;;
+  *)
+    blog_json_error "Page is not a list page" "invalid_page_type"
+    exit 0
+    ;;
+esac
+
+entry_id=$(blog_param entry_id)
+if [ -z "$entry_id" ]; then
+  blog_json_error "entry_id is required" "missing_entry_id"
+  exit 0
+fi
+
+markdown=$(blog_param markdown)
+markdown=$(printf '%s' "$markdown" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if [ -z "$markdown" ]; then
+  blog_json_error "Entry text is required" "missing_entry_text"
+  exit 0
+fi
+
+entries_json=$(blog_list_public_entries_json "$page_slug")
+found=$(printf '%s\n' "$entries_json" | jq -r --arg id "$entry_id" 'any(.[]?; (.id // "") == $id)')
+if [ "$found" != "true" ]; then
+  blog_json_error "Entry not found" "entry_not_found"
+  exit 0
+fi
+
+submitter=$(printf '%s\n' "$entries_json" | jq -r --arg id "$entry_id" '[.[]? | select((.id // "") == $id) | .submitter // ""] | first // ""')
+is_admin=false
+if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+  is_admin=true
+fi
+if [ "$is_admin" != "true" ] && [ "$submitter" != "$BLOG_SESSION_USERNAME" ]; then
+  blog_json_error "You cannot edit this entry" "entry_edit_forbidden"
+  exit 0
+fi
+
+updated_entries=$(printf '%s\n' "$entries_json" | jq -c --arg id "$entry_id" --arg markdown "$markdown" --argjson updated_at "$(blog_now_epoch)" '
+  map(if (.id // "") == $id then . + { markdown: $markdown, updated_at: $updated_at } else . end)
+')
+entries_path=$(blog_list_public_entries_path "$page_slug")
+tmp=$(mktemp "${entries_path}.tmp.XXXXXX")
+printf '%s\n' "$updated_entries" | jq -c '.[]' > "$tmp"
+mv "$tmp" "$entries_path"
+chmod 644 "$entries_path" 2>/dev/null || true
+
+canonical_event_json=$(blog_nostr_list_latest_event_json "$page_slug" 2>/dev/null || printf '')
+if [ -n "$canonical_event_json" ]; then
+  state_json=$(blog_list_state_from_event_json "$page_slug" "$canonical_event_json")
+else
+  state_json=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
+  if [ -z "$state_json" ]; then
+    state_json=$(blog_list_default_state_json "$page_slug")
+  fi
+fi
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
+viewer=${BLOG_SESSION_USERNAME-}
+merged_validation=$(blog_list_merge_public_activity_json "$state_json" "$validation_json" "$viewer")
+state_with_entries=$(printf '%s\n' "$state_json" | jq -c --argjson merged "$merged_validation" '. + { elements: $merged.elements, entries: $merged.entries }')
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg entry_id "$entry_id" \
+  --argjson state "$state_with_entries" \
+  --argjson validation "$merged_validation" \
+  '{
+    success: true,
+    slug: $slug,
+    entry_id: $entry_id,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Entry updated."
+  }'
+printf '\n'

@@ -31,6 +31,12 @@ plugin_nostr_posts_raw=''
 plugin_zaps_raw=''
 plugin_btcpay_raw=''
 plugin_video_chat_raw=''
+video_chat_participant_limit_raw='6'
+video_chat_token_ttl_seconds_raw='3600'
+video_chat_janus_wss=''
+video_chat_signaling_wss=''
+video_chat_public_rooms='false'
+video_chat_rooms='Lobby'
 
 load_site_conf_values() {
   conf_file=$1
@@ -66,6 +72,12 @@ load_site_conf_values() {
           plugin_zaps) plugin_zaps_raw=$conf_value ;;
           plugin_btcpay) plugin_btcpay_raw=$conf_value ;;
           plugin_video_chat) plugin_video_chat_raw=$conf_value ;;
+          video_chat_participant_limit) video_chat_participant_limit_raw=$conf_value ;;
+          video_chat_token_ttl_seconds) video_chat_token_ttl_seconds_raw=$conf_value ;;
+          video_chat_janus_wss) video_chat_janus_wss=$conf_value ;;
+          video_chat_signaling_wss) video_chat_signaling_wss=$conf_value ;;
+          video_chat_public_rooms) video_chat_public_rooms=$conf_value ;;
+          video_chat_rooms) video_chat_rooms=$conf_value ;;
         esac
         ;;
     esac
@@ -176,6 +188,29 @@ case "$feed_items" in ''|*[!0-9]*) feed_items=50 ;; esac
 case "$append_site_title_to_page_title" in true|false) ;; *) append_site_title_to_page_title=false ;; esac
 case "$nostr_bridge_enabled" in true|false) ;; *) nostr_bridge_enabled=false ;; esac
 case "$new_users_are_admins" in true|false) ;; *) new_users_are_admins=true ;; esac
+case "$video_chat_participant_limit_raw" in ''|*[!0-9]*) video_chat_participant_limit_raw=6 ;; esac
+if [ "$video_chat_participant_limit_raw" -lt 2 ]; then
+  video_chat_participant_limit_raw=2
+fi
+if [ "$video_chat_participant_limit_raw" -gt 24 ]; then
+  video_chat_participant_limit_raw=24
+fi
+case "$video_chat_token_ttl_seconds_raw" in ''|*[!0-9]*) video_chat_token_ttl_seconds_raw=3600 ;; esac
+if [ "$video_chat_token_ttl_seconds_raw" -lt 60 ]; then
+  video_chat_token_ttl_seconds_raw=60
+fi
+if [ "$video_chat_token_ttl_seconds_raw" -gt 86400 ]; then
+  video_chat_token_ttl_seconds_raw=86400
+fi
+case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=false ;; esac
+video_chat_rooms_json=$(printf '%s\n' "$video_chat_rooms" | tr ',' '\n' | awk '
+  {
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+    if ($0 != "" && !seen[$0]++) {
+      print $0
+    }
+  }
+' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
 
 printf '{"success":true,'
 printf '"registration_enabled":%s,' "$registration_enabled"
@@ -199,6 +234,13 @@ printf '"zap_demo_wallet_active":%s,' "$zap_demo_wallet_active"
 printf '"zap_demo_wallet_npub":"%s",' "$(blog_json_escape "$zap_demo_wallet_npub")"
 printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"plugins":%s,' "$plugins_json"
+printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":"%s","signaling_wss":"%s","public_rooms":%s,"rooms":%s,"include_syntax":"{{video-chat}}"},' \
+  "$video_chat_participant_limit_raw" \
+  "$video_chat_token_ttl_seconds_raw" \
+  "$(blog_json_escape "$video_chat_janus_wss")" \
+  "$(blog_json_escape "$video_chat_signaling_wss")" \
+  "$video_chat_public_rooms" \
+  "$video_chat_rooms_json"
 printf '"origin":%s,' "$origin_crossposting_json"
 printf '"nostr_authors":%s,' "$nostr_authors"
 printf '"nostr_relays":%s,' "$nostr_relays"

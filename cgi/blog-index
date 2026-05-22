@@ -44,21 +44,20 @@ printf '<div class="post-list">\n'
 if [ "$total_posts" -eq 0 ]; then
   printf '<p>No posts to show yet.</p>\n'
 else
-  jq -r \
+  jq -c \
     --argjson start_index $((start - 1)) \
     --argjson end_index "$end" \
-    '.posts[$start_index:$end_index][] |
-      [
-        (.url // ""),
-        (.title // ""),
-        (.author // ""),
-        ((.reading_minutes // 1) | tostring),
-        (.pub_date // ""),
-        ((.comment_count // 0) | tostring),
-        (.summary // ""),
-        ((.tags // []) | join(","))
-      ] | @tsv' \
-    "$catalog_file" 2>/dev/null | while IFS="$(printf '\t')" read -r url title author reading_minutes pub_date comment_count summary tags_csv || [ -n "$url" ]; do
+    '.posts[$start_index:$end_index][]' \
+    "$catalog_file" 2>/dev/null | while IFS= read -r post_json || [ -n "$post_json" ]; do
+    url=$(printf '%s\n' "$post_json" | jq -r '.url // ""')
+    title=$(printf '%s\n' "$post_json" | jq -r '.title // ""')
+    author=$(printf '%s\n' "$post_json" | jq -r '.author // ""')
+    reading_minutes=$(printf '%s\n' "$post_json" | jq -r '(.reading_minutes // 1) | tostring')
+    pub_date=$(printf '%s\n' "$post_json" | jq -r '.pub_date // ""')
+    comment_count=$(printf '%s\n' "$post_json" | jq -r '(.comment_count // 0) | tostring')
+    summary=$(printf '%s\n' "$post_json" | jq -r '.summary // ""')
+    summary_truncated=$(printf '%s\n' "$post_json" | jq -r '(.summary_truncated // false) | tostring')
+    tags_csv=$(printf '%s\n' "$post_json" | jq -r '(.tags // []) | join(",")')
     if [ -z "$pub_date" ]; then
       pub_date="Unknown date"
     fi
@@ -84,7 +83,11 @@ else
     printf '  </div>\n'
 
     if [ -n "$summary" ]; then
-      printf '  <p class="post-summary">%s</p>\n' "$(blog_html_escape "$summary")"
+      printf '  <div class="post-summary">%s' "$(blog_html_escape "$summary")"
+      if [ "$summary_truncated" = "true" ]; then
+        printf ' <a class="post-summary-read-more" href="%s">Read more</a>' "$(blog_html_escape "$url")"
+      fi
+      printf '</div>\n'
     fi
 
     if [ -n "$tags_csv" ]; then

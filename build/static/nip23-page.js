@@ -1019,9 +1019,32 @@
     });
   }
 
-  function maybeReloadForAuthChange() {
+  function authEventIsAdmin(event) {
+    if (event && event.detail && event.detail.is_admin === true) {
+      return true;
+    }
+    try {
+      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function applyOptimisticAdminFromAuthEvent(event) {
+    if (!authEventIsAdmin(event) || !state.payload || !state.draft || state.payload.is_admin) {
+      return;
+    }
+    state.payload = Object.assign({}, state.payload, { is_admin: true });
+    state.draft = normalizeDraftState((state.payload && state.payload.state) || state.draft || { title: '', content: '' });
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+    renderAll();
+  }
+
+  function maybeReloadForAuthChange(event) {
     var nextSig = authSignature();
     if (nextSig !== state.authSignature) {
+      applyOptimisticAdminFromAuthEvent(event);
       load();
     }
   }

@@ -22,6 +22,8 @@ blog_list_default_state_json() {
     show_markers: false,
     alphabetize_markers: false,
     default_markers: "",
+    allow_signed_in_submissions: false,
+    allow_signed_in_votes: false,
     group_by: "year",
     view_mode: "list",
     content: "",
@@ -211,6 +213,20 @@ blog_list_normalize_state_json() {
             end
           )
         ),
+        allow_signed_in_submissions: (
+          if (.allow_signed_in_submissions // null) == null then
+            ((first_tag("allow_signed_in_submissions") // first_tag("signed_in_submissions") // "") | tostring | ascii_downcase) == "true"
+          else
+            ((.allow_signed_in_submissions == true) or ((.allow_signed_in_submissions | tostring | ascii_downcase) == "true"))
+          end
+        ),
+        allow_signed_in_votes: (
+          if (.allow_signed_in_votes // null) == null then
+            ((first_tag("allow_signed_in_votes") // first_tag("signed_in_votes") // "") | tostring | ascii_downcase) == "true"
+          else
+            ((.allow_signed_in_votes == true) or ((.allow_signed_in_votes | tostring | ascii_downcase) == "true"))
+          end
+        ),
         group_by: ((.group_by // first_tag("group_by") // "") | tostring),
         view_mode: norm_view_mode(.view_mode // first_tag("view_mode") // "list"),
         content: ((.content // "") | tostring),
@@ -229,6 +245,8 @@ blog_list_normalize_state_json() {
           (if .show_markers then ["show_markers", "true"] else empty end),
           (if .alphabetize_markers then ["alphabetize_markers", "true"] else empty end),
           (if (.default_markers | length) > 0 then ["default_markers", .default_markers] else empty end),
+          (if .allow_signed_in_submissions then ["allow_signed_in_submissions", "true"] else empty end),
+          (if .allow_signed_in_votes then ["allow_signed_in_votes", "true"] else empty end),
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end),
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
@@ -253,12 +271,141 @@ blog_list_state_signature_json() {
     show_markers: (.show_markers // false),
     alphabetize_markers: (.alphabetize_markers // false),
     default_markers: (.default_markers // ""),
+    allow_signed_in_submissions: (.allow_signed_in_submissions // false),
+    allow_signed_in_votes: (.allow_signed_in_votes // false),
     group_by: (.group_by // ""),
     view_mode: (.view_mode // "list"),
     content: (.content // ""),
     elements: (.elements // []),
     entries: (.entries // [])
   }' 2>/dev/null || printf '{}\n'
+}
+
+blog_list_public_entries_path() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  dir="$blog_site_data/list-public-entries"
+  mkdir -p "$dir"
+  printf '%s/%s.jsonl\n' "$dir" "$slug"
+}
+
+blog_list_public_votes_path() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  dir="$blog_site_data/list-public-votes"
+  mkdir -p "$dir"
+  printf '%s/%s.jsonl\n' "$dir" "$slug"
+}
+
+blog_list_public_entries_json() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  path=$(blog_list_public_entries_path "$slug")
+  if [ ! -s "$path" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  jq -s '[.[] | select(type=="object" and ((.id // "") | length > 0) and ((.markdown // "") | length > 0))]' "$path" 2>/dev/null || printf '[]\n'
+}
+
+blog_list_public_votes_json() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  path=$(blog_list_public_votes_path "$slug")
+  if [ ! -s "$path" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  jq -s '[.[] | select(type=="object" and ((.entry_id // "") | length > 0) and ((.voter // "") | length > 0) and ((.value // 0) == 1 or (.value // 0) == -1))]' "$path" 2>/dev/null || printf '[]\n'
+}
+
+blog_list_vote_cooldown_seconds() {
+  printf '64800\n'
+}
+
+blog_list_merge_public_activity_json() {
+  state_json=${1-}
+  validation_json=${2-}
+  viewer=${3-}
+  [ -n "$state_json" ] || state_json='{}'
+  [ -n "$validation_json" ] || validation_json='{"elements":[],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
+  slug=$(printf '%s\n' "$state_json" | jq -r '.slug // ""' 2>/dev/null || printf '')
+  [ -n "$slug" ] || slug='list'
+  submissions_json=$(blog_list_public_entries_json "$slug")
+  votes_json=$(blog_list_public_votes_json "$slug")
+  now_epoch=$(blog_now_epoch)
+  vote_cooldown_seconds=$(blog_list_vote_cooldown_seconds)
+  jq -cn \
+    --argjson validation "$validation_json" \
+    --argjson submissions "$submissions_json" \
+    --argjson votes "$votes_json" \
+    --arg viewer "$viewer" \
+    --argjson now_epoch "$now_epoch" \
+    --argjson vote_cooldown_seconds "$vote_cooldown_seconds" \
+    '
+      ($votes
+        | sort_by((.entry_id // ""), (.voter // ""), (.created_at // 0))
+        | group_by([(.entry_id // ""), (.voter // "")])
+        | map(max_by(.created_at // 0))
+      ) as $latest_votes
+      | def score_for($id):
+          ([$latest_votes[]? | select((.entry_id // "") == $id) | (.value // 0)] | add // 0);
+        def viewer_vote_for($id):
+          ([$latest_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer) | (.value // 0)] | last // 0);
+        def viewer_votes_for($id):
+          [$votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer)];
+        def viewer_latest_vote_for($id):
+          (viewer_votes_for($id) | max_by(.created_at // 0) // {});
+        def viewer_vote_created_at_for($id):
+          ((viewer_latest_vote_for($id).created_at // 0) | tonumber? // 0);
+        def viewer_vote_total_for($id):
+          (viewer_latest_vote_for($id).value // 0) as $latest_value
+          | if ($latest_value == 1 or $latest_value == -1) then
+              ([viewer_votes_for($id)[]? | select((.value // 0) == $latest_value)] | length)
+            else
+              0
+            end;
+        def viewer_next_vote_at_for($id):
+          (viewer_vote_created_at_for($id)) as $last_vote_at
+          | if $last_vote_at > 0 then ($last_vote_at + $vote_cooldown_seconds) else 0 end;
+        def viewer_can_vote_now_for($id):
+          (viewer_next_vote_at_for($id)) as $next_vote_at
+          | ($next_vote_at == 0 or $now_epoch >= $next_vote_at);
+        def vote_fields($id): {
+          list_score: score_for($id),
+          viewer_vote: viewer_vote_for($id),
+          viewer_vote_created_at: viewer_vote_created_at_for($id),
+          viewer_vote_total: viewer_vote_total_for($id),
+          viewer_next_vote_at: viewer_next_vote_at_for($id),
+          viewer_can_vote_now: viewer_can_vote_now_for($id),
+          vote_cooldown_seconds: $vote_cooldown_seconds
+        };
+        (($validation.elements // []) | to_entries | map(.value + {_list_entry_id: ("entry-" + (.key | tostring))})) as $base
+      | ($submissions | map({
+          type: "entry",
+          event_id: "",
+          relay_hint: "",
+          marker: (.marker // ""),
+          date: (.date // ""),
+          depth: 0,
+          markdown: (.markdown // ""),
+          image_url: "",
+          description: (.description // ""),
+          year: "",
+          resolved: false,
+          post_url: (.post_url // ""),
+          post_created_at: "",
+          post_list_date: "",
+          _list_entry_id: (.id // ""),
+          _public_entry_id: (.id // ""),
+          public_submitter: (.submitter // ""),
+          public_created_at: (.created_at // 0)
+        })) as $public_entries
+      | ($base + $public_entries) as $merged
+      | $validation + {
+          elements: ($merged | map(. + vote_fields(._list_entry_id // ""))),
+          entries: ($merged | map(. + vote_fields(._list_entry_id // ""))),
+          public_entry_count: ($public_entries | length)
+        }
+    '
 }
 
 blog_list_state_from_event_json() {

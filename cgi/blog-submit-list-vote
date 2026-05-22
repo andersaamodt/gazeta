@@ -1,0 +1,124 @@
+#!/bin/sh
+# Store a signed-in up/down vote for an open Nostr-backed list page entry.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
+fi
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+case "$page_type" in
+  list|icon-gallery) ;;
+  *)
+    blog_json_error "Page is not a list page" "invalid_page_type"
+    exit 0
+    ;;
+esac
+
+canonical_event_json=$(blog_nostr_list_latest_event_json "$page_slug" 2>/dev/null || printf '')
+if [ -n "$canonical_event_json" ]; then
+  state_json=$(blog_list_state_from_event_json "$page_slug" "$canonical_event_json")
+else
+  state_json=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
+  if [ -z "$state_json" ]; then
+    state_json=$(blog_list_default_state_json "$page_slug")
+  fi
+fi
+
+allow=$(printf '%s\n' "$state_json" | jq -r '.allow_signed_in_votes // false | if . then "true" else "false" end' 2>/dev/null || printf 'false')
+if [ "$allow" != "true" ]; then
+  blog_json_error "This list is not open for signed-in voting" "votes_closed"
+  exit 0
+fi
+
+entry_id=$(blog_param entry_id)
+value=$(blog_param value)
+case "$value" in
+  1|+1|up) value=1 ;;
+  -1|down) value=-1 ;;
+  *)
+    blog_json_error "value must be 1 or -1" "invalid_vote"
+    exit 0
+    ;;
+esac
+if [ -z "$entry_id" ]; then
+  blog_json_error "entry_id is required" "missing_entry_id"
+  exit 0
+fi
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
+viewer=${BLOG_SESSION_USERNAME-}
+merged_before=$(blog_list_merge_public_activity_json "$state_json" "$validation_json" "$viewer")
+entry_exists=$(printf '%s\n' "$merged_before" | jq -r --arg id "$entry_id" 'if ((.elements // []) | map(._list_entry_id // "") | index($id)) == null then "false" else "true" end' 2>/dev/null || printf 'false')
+if [ "$entry_exists" != "true" ]; then
+  blog_json_error "Entry is not part of this list" "entry_not_found"
+  exit 0
+fi
+can_vote_now=$(printf '%s\n' "$merged_before" | jq -r --arg id "$entry_id" '([.elements[]? | select((._list_entry_id // "") == $id)] | first | .viewer_can_vote_now // true) | if . then "true" else "false" end' 2>/dev/null || printf 'true')
+if [ "$can_vote_now" != "true" ]; then
+  next_vote_at=$(printf '%s\n' "$merged_before" | jq -r --arg id "$entry_id" '([.elements[]? | select((._list_entry_id // "") == $id)] | first | .viewer_next_vote_at // 0)' 2>/dev/null || printf '0')
+  jq -cn --argjson next_vote_at "$next_vote_at" '{
+    success: false,
+    error: "You can vote on this entry again after the cooldown.",
+    code: "vote_cooldown",
+    next_vote_at: $next_vote_at
+  }'
+  printf '\n'
+  exit 0
+fi
+
+vote_json=$(jq -cn \
+  --arg entry_id "$entry_id" \
+  --arg voter "$viewer" \
+  --argjson value "$value" \
+  --argjson created_at "$(blog_now_epoch)" \
+  '{
+    entry_id: $entry_id,
+    voter: $voter,
+    value: $value,
+    created_at: $created_at
+  }')
+votes_path=$(blog_list_public_votes_path "$page_slug")
+printf '%s\n' "$vote_json" >> "$votes_path"
+chmod 644 "$votes_path" 2>/dev/null || true
+
+merged_validation=$(blog_list_merge_public_activity_json "$state_json" "$validation_json" "$viewer")
+state_with_entries=$(printf '%s\n' "$state_json" | jq -c --argjson merged "$merged_validation" '. + { elements: $merged.elements, entries: $merged.entries }')
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg entry_id "$entry_id" \
+  --argjson state "$state_with_entries" \
+  --argjson validation "$merged_validation" \
+  '{
+    success: true,
+    slug: $slug,
+    entry_id: $entry_id,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Vote stored."
+  }'
+printf '\n'

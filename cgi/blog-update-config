@@ -43,6 +43,12 @@ plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
 plugin_btcpay=$(blog_param plugin_btcpay)
 plugin_video_chat=$(blog_param plugin_video_chat)
+video_chat_participant_limit=$(blog_param video_chat_participant_limit)
+video_chat_token_ttl_seconds=$(blog_param video_chat_token_ttl_seconds)
+video_chat_janus_wss=$(blog_param video_chat_janus_wss)
+video_chat_signaling_wss=$(blog_param video_chat_signaling_wss)
+video_chat_public_rooms=$(blog_param video_chat_public_rooms)
+video_chat_rooms=$(blog_param video_chat_rooms)
 origin_enabled_platforms=$(blog_param origin_enabled_platforms)
 origin_default_platforms=$(blog_param origin_default_platforms)
 
@@ -190,6 +196,73 @@ set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
 set_plugin_flag "btcpay" "$plugin_btcpay"
 set_plugin_flag "video_chat" "$plugin_video_chat"
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_participant_limit=*)
+    case "$video_chat_participant_limit" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$video_chat_participant_limit" -lt 2 ]; then
+          video_chat_participant_limit=2
+        fi
+        if [ "$video_chat_participant_limit" -gt 24 ]; then
+          video_chat_participant_limit=24
+        fi
+        config-set "$blog_site_conf" video_chat_participant_limit "$video_chat_participant_limit"
+        ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_token_ttl_seconds=*)
+    case "$video_chat_token_ttl_seconds" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$video_chat_token_ttl_seconds" -lt 60 ]; then
+          video_chat_token_ttl_seconds=60
+        fi
+        if [ "$video_chat_token_ttl_seconds" -gt 86400 ]; then
+          video_chat_token_ttl_seconds=86400
+        fi
+        config-set "$blog_site_conf" video_chat_token_ttl_seconds "$video_chat_token_ttl_seconds"
+        ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_janus_wss=*)
+    case "$video_chat_janus_wss" in
+      ''|wss://*|ws://*) config-set "$blog_site_conf" video_chat_janus_wss "$video_chat_janus_wss" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_signaling_wss=*)
+    case "$video_chat_signaling_wss" in
+      ''|wss://*|ws://*) config-set "$blog_site_conf" video_chat_signaling_wss "$video_chat_signaling_wss" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_public_rooms=*)
+    case "$video_chat_public_rooms" in
+      true|false) config-set "$blog_site_conf" video_chat_public_rooms "$video_chat_public_rooms" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *video_chat_rooms=*)
+    tmp_rooms=$(mktemp "${TMPDIR:-/tmp}/blog-video-chat-rooms.XXXXXX")
+    printf '%s' "$video_chat_rooms" | tr ',\r' '\n\n' | sed -e 's/[[:space:]]\+$//' -e 's/^[[:space:]]*//' | awk 'NF { if (!seen[$0]++) print $0; }' | head -n 12 > "$tmp_rooms"
+    config-set "$blog_site_conf" video_chat_rooms "$(paste -sd, "$tmp_rooms")"
+    rm -f "$tmp_rooms"
+    ;;
+esac
 
 case "$BLOG_REQUEST_BODY" in
   *origin_enabled_platforms=*)

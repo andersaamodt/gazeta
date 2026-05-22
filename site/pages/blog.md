@@ -1,6 +1,6 @@
 ---
 title: "Blog"
-published_at: "2026-05-14T23:53:10Z"
+published_at: "2026-05-21T20:28:43Z"
 content_hash: ""
 tags: ["nostr", "blog"]
 author: "author"
@@ -57,4 +57,4 @@ license: "CC BY 4.0"
 </section>
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
-<script src="/static/blog-page.js?v=20260514-blog-utf8"></script>
+<script src="/static/blog-page.js?v=20260521-inline-meta-filters1"></script>

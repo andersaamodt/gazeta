@@ -70,6 +70,10 @@
     prefetchedNostrPageSlugs: {},
     navOverflowRaf: 0,
     navOverflowTimer: 0,
+    videoCallPresenceTimer: 0,
+    videoCallNotification: null,
+    videoCallCurrentCallId: '',
+    videoCallAllowAdminCalls: false,
     activeAuthTab: 'register',
     activeAuthFlavor: 'desktop'
   };
@@ -233,6 +237,7 @@
     } catch (_err) {
       // Ignore event dispatch failures.
     }
+    syncVideoCallPresencePolling();
   }
 
   function syncPluginAuthUi() {
@@ -904,18 +909,38 @@
     return base;
   }
 
+  function recommendationPlatformLabel(tabName, flavor) {
+    var tab = String(tabName || 'register');
+    var key = String(flavor || '').trim();
+    if (tab === 'phone' && key === 'android') {
+      return 'Android';
+    }
+    if (tab === 'phone' && key === 'ios') {
+      return 'iPhone / iPad';
+    }
+    if (tab === 'phone' && key === 'remote') {
+      return 'Remote signer';
+    }
+    if (tab === 'manual') {
+      return 'Manual login';
+    }
+    return 'Desktop';
+  }
+
   function loginOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
+    var platformLabel = recommendationPlatformLabel(tab, key);
     var amberFDroid = { source: 'F-Droid', label: 'Download Amber', url: 'https://f-droid.org/packages/com.greenart7c3.nostrsigner/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'Login',
-        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
+        summary: platformLabel + ' login',
+        note: 'Recommended for iPhone and iPad Nostr Connect login.',
         apps: [
           {
             iconKey: 'nostr-connect',
-            name: 'Nostr Connect',
+            name: 'Nostr Connect-compatible signer',
+            platformLabel: platformLabel,
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
@@ -925,12 +950,13 @@
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Login',
-        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
+        summary: platformLabel + ' login',
+        note: 'Recommended for remote Nostr Connect signers.',
         apps: [
           {
             iconKey: 'nostr-connect',
             name: 'Nostr Connect remote signer',
+            platformLabel: platformLabel,
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
             stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
@@ -940,12 +966,13 @@
     }
     if (tab === 'phone') {
       return {
-        summary: 'Login',
-        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
+        summary: platformLabel + ' login',
+        note: 'Recommended for Android Nostr Connect login.',
         apps: [
           {
             iconKey: 'amber',
             name: 'Amber',
+            platformLabel: platformLabel,
             purpose: 'Login via Nostr',
             url: 'https://github.com/greenart7c3/Amber',
             stores: [amberFDroid]
@@ -955,12 +982,13 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Login',
-        note: 'Use a Nostr event signer to log in to andersaamodt.com.',
+        summary: platformLabel,
+        note: 'Fallback for signing the login challenge outside this page.',
         apps: [
           {
             iconKey: 'signed-challenge',
             name: 'Signed challenge',
+            platformLabel: 'Any platform',
             purpose: 'Login via Nostr',
             url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
             stores: [{ source: 'NIP-98', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
@@ -969,12 +997,13 @@
       };
     }
     return {
-      summary: 'Login',
-      note: 'Use a Nostr event signer to log in to andersaamodt.com.',
+      summary: platformLabel + ' login',
+      note: 'Recommended for desktop browser sign-in.',
       apps: [
         {
           iconKey: 'nos2x',
           name: 'nos2x-fox',
+          platformLabel: 'Desktop Firefox',
           purpose: 'Login via Nostr',
           url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
           stores: [{ source: 'Firefox Add-ons', label: 'Download nos2x-fox', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
@@ -986,17 +1015,19 @@
   function zapOnboardingRecommendation(tabName, flavor) {
     var tab = String(tabName || 'register');
     var key = String(flavor || '').trim();
+    var platformLabel = recommendationPlatformLabel(tab, key);
     var amethystDownload = { source: 'GitHub', label: 'Download Amethyst', url: 'https://github.com/vitorpamplona/amethyst#installation' };
     var zeusDownload = { source: 'ZEUS', label: 'Download ZEUS', url: 'https://github.com/ZeusLN/zeus#app-store-links' };
     var auroraStore = { source: 'Aurora', label: 'Download Aurora Store', url: 'https://auroraoss.com/downloads/AuroraStore/' };
     if (tab === 'phone' && key === 'ios') {
       return {
-        summary: 'Zaps',
-        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
+        summary: platformLabel + ' zaps',
+        note: 'Recommended for sending zaps from iPhone and iPad.',
         apps: [
           {
             iconKey: 'damus',
             name: 'Damus',
+            platformLabel: platformLabel,
             purpose: 'Zaps: Nostr client',
             url: 'https://damus.io/',
             stores: [{ source: 'App Store', label: 'Download Damus', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
@@ -1004,6 +1035,7 @@
           {
             iconKey: 'nostur',
             name: 'Nostur',
+            platformLabel: platformLabel,
             purpose: 'Zaps: Nostr client',
             url: 'https://nostur.com/',
             stores: [{ source: 'App Store', label: 'Download Nostur', url: 'https://nostur.com/appstore' }]
@@ -1011,6 +1043,7 @@
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            platformLabel: platformLabel,
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [{ source: 'App Store', label: 'Download ZEUS', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
@@ -1020,12 +1053,13 @@
     }
     if (tab === 'phone' && key === 'remote') {
       return {
-        summary: 'Zaps',
-        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
+        summary: platformLabel + ' zaps',
+        note: 'Recommended when the signer is remote or the current platform is unknown.',
         apps: [
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            platformLabel: 'Remote signer',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [zeusDownload, auroraStore]
@@ -1035,12 +1069,13 @@
     }
     if (tab === 'phone') {
       return {
-        summary: 'Zaps',
-        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
+        summary: platformLabel + ' zaps',
+        note: 'Recommended for sending zaps from Android.',
         apps: [
           {
             iconKey: 'amethyst',
             name: 'Amethyst',
+            platformLabel: platformLabel,
             purpose: 'Zaps: Nostr client',
             url: 'https://github.com/vitorpamplona/amethyst#installation',
             stores: [amethystDownload, auroraStore]
@@ -1048,6 +1083,7 @@
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            platformLabel: platformLabel,
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [zeusDownload, auroraStore]
@@ -1057,12 +1093,13 @@
     }
     if (tab === 'manual') {
       return {
-        summary: 'Zaps',
-        note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
+        summary: 'Manual login zaps',
+        note: 'Zap recommendations are separate from manual login and can use any compatible wallet.',
         apps: [
           {
             iconKey: 'zeus',
             name: 'ZEUS',
+            platformLabel: 'Any platform',
             purpose: 'Zaps: Lightning wallet',
             url: 'https://github.com/ZeusLN/zeus#app-store-links',
             stores: [zeusDownload, auroraStore]
@@ -1071,12 +1108,13 @@
       };
     }
     return {
-      summary: 'Zaps',
-      note: 'Zaps are small Lightning payments. To send them, use a Nostr client and a Lightning wallet.',
+      summary: platformLabel + ' zaps',
+      note: 'Recommended for desktop or browser-based zap flows.',
       apps: [
         {
           iconKey: 'zeus',
           name: 'ZEUS',
+          platformLabel: 'Desktop / web',
           purpose: 'Zaps: Lightning wallet',
           url: 'https://github.com/ZeusLN/zeus#app-store-links',
           stores: [zeusDownload, auroraStore]
@@ -1140,6 +1178,7 @@
       var label = document.createElement('span');
       var name = document.createElement('strong');
       var purpose = document.createElement('span');
+      var platform = document.createElement('span');
       var stores = document.createElement('span');
       appLink.className = 'auth-reco-app-link';
       appLink.href = app.url;
@@ -1151,9 +1190,14 @@
       name.textContent = app.name;
       purpose.className = 'auth-reco-app-purpose';
       purpose.textContent = app.purpose || recommendation.purpose || '';
+      platform.className = 'auth-reco-platform';
+      platform.textContent = app.platformLabel || recommendation.platformLabel || '';
       label.appendChild(name);
       if (purpose.textContent) {
         label.appendChild(purpose);
+      }
+      if (platform.textContent) {
+        label.appendChild(platform);
       }
       appLink.appendChild(icon);
       appLink.appendChild(label);
@@ -1340,6 +1384,158 @@
     });
   }
 
+  function videoCallAuthPayload(payload) {
+    var next = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
+    next.session_token = getSessionToken();
+    next.csrf_token = getCsrfToken();
+    return next;
+  }
+
+  function ensureVideoCallNotificationStyles() {
+    if (document.getElementById('video-call-notification-styles')) {
+      return;
+    }
+    var style = document.createElement('style');
+    style.id = 'video-call-notification-styles';
+    style.textContent = ''
+      + '.video-call-notification{position:fixed;right:16px;bottom:18px;z-index:2147482600;max-width:min(22rem,calc(100vw - 32px));background:#fffaf1;color:#241b12;border:1px solid rgba(98,75,42,.28);box-shadow:0 16px 40px rgba(36,27,18,.2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:9px;font-family:Georgia,Times New Roman,serif;}'
+      + '.video-call-notification strong{font-size:1rem;line-height:1.2;}'
+      + '.video-call-notification p{margin:0;color:#5c4b36;font-size:.92rem;line-height:1.35;}'
+      + '.video-call-notification-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}'
+      + '.video-call-notification button{appearance:none;border:1px solid rgba(98,75,42,.36);background:#f5ead7;color:#241b12;border-radius:999px;padding:7px 12px;font:inherit;font-size:.92rem;line-height:1;cursor:pointer;}'
+      + '.video-call-notification button.primary{background:#2f63be;border-color:#2b56a4;color:white;}'
+      + '.video-call-notification button:hover{filter:brightness(.98);}';
+    document.head.appendChild(style);
+  }
+
+  function hideVideoCallNotification(callId) {
+    if (callId && state.videoCallCurrentCallId && callId !== state.videoCallCurrentCallId) {
+      return;
+    }
+    state.videoCallCurrentCallId = '';
+    if (state.videoCallNotification && state.videoCallNotification.parentNode) {
+      state.videoCallNotification.parentNode.removeChild(state.videoCallNotification);
+    }
+    state.videoCallNotification = null;
+  }
+
+  function answerVideoCall(callId) {
+    return postForm('/cgi/blog-video-chat-control', videoCallAuthPayload({
+      action: 'answer_call',
+      call_id: callId
+    })).then(function (data) {
+      if (!data || !data.success) {
+        throw new Error((data && data.error) || 'Could not answer call.');
+      }
+      hideVideoCallNotification(callId);
+      var roomId = String(data.room_id || (data.call && data.call.room_id) || '').trim();
+      if (roomId) {
+        window.location.href = '/contact?room=' + encodeURIComponent(roomId) + '&auto_start=1&mode=video';
+      }
+    }).catch(function () {
+      hideVideoCallNotification(callId);
+    });
+  }
+
+  function declineVideoCall(callId) {
+    return postForm('/cgi/blog-video-chat-control', videoCallAuthPayload({
+      action: 'decline_call',
+      call_id: callId
+    })).catch(function () {
+      return false;
+    }).then(function () {
+      hideVideoCallNotification(callId);
+    });
+  }
+
+  function showVideoCallNotification(call) {
+    if (!call || !call.call_id) {
+      return;
+    }
+    var callId = String(call.call_id);
+    if (state.videoCallCurrentCallId === callId && state.videoCallNotification) {
+      return;
+    }
+    hideVideoCallNotification();
+    ensureVideoCallNotificationStyles();
+    var node = document.createElement('section');
+    node.className = 'video-call-notification';
+    node.setAttribute('role', 'alertdialog');
+    node.setAttribute('aria-live', 'assertive');
+    node.innerHTML = ''
+      + '<strong>Incoming video call</strong>'
+      + '<p>' + escapeHtml(call.from_admin_name || call.from_admin || 'Site admin') + ' is calling you on this site.</p>'
+      + '<div class="video-call-notification-actions">'
+      + '<button type="button" class="primary" data-video-call-action="answer">Answer</button>'
+      + '<button type="button" data-video-call-action="decline">Decline</button>'
+      + '</div>';
+    node.addEventListener('click', function (event) {
+      var button = event.target instanceof Element ? event.target.closest('[data-video-call-action]') : null;
+      if (!button) {
+        return;
+      }
+      var action = button.getAttribute('data-video-call-action');
+      if (action === 'answer') {
+        answerVideoCall(callId);
+      } else if (action === 'decline') {
+        declineVideoCall(callId);
+      }
+    });
+    document.body.appendChild(node);
+    state.videoCallNotification = node;
+    state.videoCallCurrentCallId = callId;
+  }
+
+  function pollVideoCallPresence() {
+    if (!state.isAuthenticated || !(state.plugins && state.plugins.video_chat) || !hasStoredSessionToken() || !getCsrfToken()) {
+      hideVideoCallNotification();
+      return Promise.resolve(false);
+    }
+    var roomId = '';
+    try {
+      roomId = String(window.__wizardryVideoChatRoomId || '').trim();
+    } catch (_err) {
+      roomId = '';
+    }
+    return postForm('/cgi/blog-video-chat-control', videoCallAuthPayload({
+      action: 'heartbeat',
+      current_room: roomId,
+      status: roomId ? 'in-room' : 'online',
+      page_url: window.location.pathname + window.location.search
+    })).then(function (data) {
+      if (!data || !data.success) {
+        return false;
+      }
+      state.videoCallAllowAdminCalls = !!data.allow_admin_calls;
+      var calls = Array.isArray(data.incoming_calls) ? data.incoming_calls : [];
+      if (calls.length) {
+        showVideoCallNotification(calls[0]);
+      } else {
+        hideVideoCallNotification();
+      }
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function syncVideoCallPresencePolling() {
+    if (state.videoCallPresenceTimer) {
+      window.clearInterval(state.videoCallPresenceTimer);
+      state.videoCallPresenceTimer = 0;
+    }
+    if (!state.isAuthenticated || !(state.plugins && state.plugins.video_chat) || !hasStoredSessionToken()) {
+      hideVideoCallNotification();
+      return;
+    }
+    pollVideoCallPresence();
+    state.videoCallPresenceTimer = window.setInterval(function () {
+      if (document.visibilityState !== 'hidden') {
+        pollVideoCallPresence();
+      }
+    }, 12000);
+  }
+
   function encodeBase64Utf8(text) {
     var raw = String(text || '');
     try {
@@ -1362,10 +1558,14 @@
     return !!token && token !== 'null' && token !== 'undefined';
   }
 
-  function emitAuthChanged() {
+  function emitAuthChanged(detail) {
+    var extra = detail && typeof detail === 'object' ? detail : {};
     try {
       window.dispatchEvent(new CustomEvent('blog-auth-changed', {
-        detail: { session_token: getSessionToken(), csrf_token: getCsrfToken() }
+        detail: Object.assign({
+          session_token: getSessionToken(),
+          csrf_token: getCsrfToken()
+        }, extra)
       }));
     } catch (_err) {
       // Ignore event dispatch failures.
@@ -1385,7 +1585,6 @@
     if (data.pubkey) {
       localStorage.setItem('last_auth_pubkey', data.pubkey);
     }
-    emitAuthChanged();
   }
 
   function clearLocalStorageAuth() {
@@ -1728,6 +1927,7 @@
         updateUserNameActiveState();
       }
       scheduleNavOverflowMenuSync();
+      syncVideoCallPresencePolling();
       return;
     }
 
@@ -1744,6 +1944,7 @@
     updateLogoutOtherSessionsUi(0);
     syncPluginAuthUi();
     scheduleNavOverflowMenuSync();
+    syncVideoCallPresencePolling();
   }
 
   function updateLogoutOtherSessionsUi(countRaw) {
@@ -1821,7 +2022,13 @@
           data.player_name || localStorage.getItem('last_auth_player_name') || data.username || ''
         );
         updateLogoutOtherSessionsUi(data.other_sessions_count || 0);
-        emitAuthChanged();
+        emitAuthChanged({
+          authenticated: true,
+          is_admin: !!data.is_admin,
+          username: data.username || '',
+          player_name: data.player_name || localStorage.getItem('last_auth_player_name') || data.username || '',
+          other_sessions_count: data.other_sessions_count || 0
+        });
         return true;
       })
       .catch(function (err) {
@@ -1855,9 +2062,6 @@
   }
 
   function finalizeLoginUiAfterSuccess(finishData) {
-    var data = finishData && typeof finishData === 'object' ? finishData : {};
-    var optimisticName = data.player_name || localStorage.getItem('last_auth_player_name') || data.username || localStorage.getItem('last_auth_username') || 'signed-in';
-    applyLoggedInUi(true, !!data.is_admin, optimisticName);
     return verifySessionWithRetry(6, 180).then(function (ok) {
       if (!ok) {
         clearLocalStorageAuth();
@@ -1910,6 +2114,10 @@
   function isMobileLikeRuntime() {
     var nav = typeof navigator === 'object' ? navigator : null;
     var ua = String((nav && nav.userAgent) || '');
+    var uaData = nav && nav.userAgentData ? nav.userAgentData : null;
+    if (uaData && uaData.mobile === true) {
+      return true;
+    }
     if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) {
       return true;
     }
@@ -1927,7 +2135,8 @@
     var nav = typeof navigator === 'object' ? navigator : null;
     var ua = String((nav && nav.userAgent) || '');
     var platform = String((nav && nav.platform) || '');
-    var uaPlatform = String((nav && nav.userAgentData && nav.userAgentData.platform) || '');
+    var uaData = nav && nav.userAgentData ? nav.userAgentData : null;
+    var uaPlatform = String((uaData && uaData.platform) || '');
     var combined = [ua, platform, uaPlatform].join(' ');
     var touchPoints = Number((nav && nav.maxTouchPoints) || 0);
     if (/Android/i.test(combined)) {
@@ -1937,18 +2146,18 @@
       return 'ios';
     }
     // iPadOS can present itself as desktop Safari on MacIntel.
-    if (/Mac/i.test(platform) && touchPoints > 1 && isMobileLikeRuntime()) {
+    if (/Mac/i.test(platform) && touchPoints > 1) {
       return 'ios';
     }
     if (isMobileLikeRuntime()) {
-      return 'android';
+      return 'remote';
     }
     return 'desktop';
   }
 
   function preferredAuthInitialSelection() {
     var flavor = detectedAuthPlatformFlavor();
-    if (flavor === 'android' || flavor === 'ios') {
+    if (flavor === 'android' || flavor === 'ios' || flavor === 'remote') {
       return { tab: 'phone', flavor: flavor };
     }
     return { tab: 'register', flavor: 'desktop' };
@@ -1967,7 +2176,7 @@
     if (tab === 'phone') {
       if (!flavor) {
         var detected = detectedAuthPlatformFlavor();
-        flavor = detected === 'ios' ? 'ios' : 'android';
+        flavor = (detected === 'android' || detected === 'ios') ? detected : 'remote';
       }
       return { tab: 'phone', flavor: flavor };
     }
@@ -3232,46 +3441,9 @@
     }
   }
 
-  function isDynamicPageRootPresent() {
-    return !!(
-      document.getElementById('blog-page-root') ||
-      document.getElementById('nip23-page-root') ||
-      document.getElementById('list-page-root') ||
-      document.getElementById('public-ranking-root') ||
-      document.getElementById('contact-page-root') ||
-      document.getElementById('search-page-root') ||
-      document.getElementById('admin-panel')
-    );
-  }
-
   function applyInitialHighlightInSyncWithContent() {
-    var applied = false;
-    function applyOnce() {
-      if (applied) {
-        return;
-      }
-      applied = true;
-      highlightCurrentPage();
-      markHydrationNavReady();
-    }
-
-    if (!isDynamicPageRootPresent()) {
-      applyOnce();
-      return;
-    }
-
-    if (window.__wizardryPageInitialContentReady) {
-      applyOnce();
-      return;
-    }
-
-    window.addEventListener('blog-page-initial-content-ready', function () {
-      applyOnce();
-    }, { once: true });
-
-    setTimeout(function () {
-      applyOnce();
-    }, 1600);
+    highlightCurrentPage();
+    markHydrationNavReady();
   }
 
   function renderNavbarNostrPages(pageRows) {
@@ -3609,7 +3781,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260521-vote-arrow-chrome3';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

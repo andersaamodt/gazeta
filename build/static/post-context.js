@@ -38,6 +38,10 @@
     dirtyDuringSave: false
   };
 
+  function overflowMenuIconSvg() {
+    return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
+  }
+
   function isPostPage(pathname) {
     var path = String(pathname || '');
     if (/^\/posts\/[^/?#]+\/?$/.test(path)) {
@@ -335,6 +339,7 @@
     panel.hidden = true;
     var trigger = menu.querySelector('.post-page-menu-trigger');
     if (trigger) {
+      trigger.innerHTML = overflowMenuIconSvg();
       trigger.setAttribute('aria-expanded', 'false');
     }
 
@@ -393,7 +398,7 @@
     wrap.className = 'post-page-menu';
     wrap.hidden = true;
     wrap.innerHTML = '' +
-      '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
+      '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
       '<div class="post-page-menu-panel" role="menu" hidden>' +
       '<button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button>' +
       '<button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button>' +
@@ -425,23 +430,35 @@
       });
   }
 
-  function refreshPostPageMenuVisibility() {
+  function setPostPageMenuVisibility(menu, isAdmin, hasReaderActions) {
+    menu.querySelectorAll('[data-post-page-admin-action]').forEach(function (node) {
+      node.hidden = !isAdmin;
+    });
+    menu.querySelectorAll('[data-post-page-admin-separator]').forEach(function (node) {
+      node.hidden = !(isAdmin && hasReaderActions);
+    });
+    menu.hidden = !(isAdmin || hasReaderActions);
+    if (menu.hidden) {
+      closePostPageMenu();
+    }
+  }
+
+  function eventHasVerifiedAdminState(event) {
+    return !!(event && event.detail && event.detail.authenticated === true && typeof event.detail.is_admin !== 'undefined');
+  }
+
+  function refreshPostPageMenuVisibility(event) {
     var menu = normalizePostPageMenu(document.querySelector('.post-page-menu'));
     if (!menu) {
       return;
     }
     var hasReaderActions = setReaderMenuEnabled();
+    if (eventHasVerifiedAdminState(event)) {
+      setPostPageMenuVisibility(menu, event.detail.is_admin === true, hasReaderActions);
+      return;
+    }
     checkAdminSession().then(function (isAdmin) {
-      menu.querySelectorAll('[data-post-page-admin-action]').forEach(function (node) {
-        node.hidden = !isAdmin;
-      });
-      menu.querySelectorAll('[data-post-page-admin-separator]').forEach(function (node) {
-        node.hidden = !(isAdmin && hasReaderActions);
-      });
-      menu.hidden = !(isAdmin || hasReaderActions);
-      if (menu.hidden) {
-        closePostPageMenu();
-      }
+      setPostPageMenuVisibility(menu, isAdmin, hasReaderActions);
     });
   }
 
@@ -977,10 +994,11 @@
         return clean;
       })
       .filter(function (tag) {
-        if (!tag || seen[tag]) {
+        var key = tag.toLowerCase();
+        if (!tag || seen[key]) {
           return false;
         }
-        seen[tag] = true;
+        seen[key] = true;
         return true;
       })
       .join(', ');
@@ -998,18 +1016,27 @@
 
   function syncInlineTagsFromList() {
     inlineEditState.tags = normalizeInlineTags(inlineEditState.tagList || []);
+    var hiddenTags = document.querySelector('input[data-post-inline-field="tags"]');
+    if (hiddenTags instanceof HTMLInputElement) {
+      hiddenTags.value = inlineEditState.tags;
+    }
   }
 
   function inlineTagTokenHtml(tag) {
-    return '<span class="tag-token" contenteditable="false" data-post-inline-tag-token="' + escapeHtml(tag) + '" tabindex="-1"><span class="tag-token-label">' + escapeHtml(tag) + '</span></span>';
+    var label = String(tag || '').trim();
+    return '<span class="tag-token" data-post-inline-tag-token="' + escapeHtml(label) + '">' +
+      '<span class="tag-token-label">' + escapeHtml(label) + '</span>' +
+      '<button type="button" class="tag-token-remove" data-post-inline-tag-remove="' + escapeHtml(label) + '" aria-label="Remove tag ' + escapeHtml(label) + '">×</button>' +
+    '</span>';
   }
 
   function inlineTagsEditorHtml() {
     var tokensHtml = (inlineEditState.tagList || []).map(inlineTagTokenHtml).join('');
+    var emptyClass = ((inlineEditState.tagList || []).length || String(inlineEditState.tagsDraftText || '').trim()) ? '' : ' is-empty';
     return '' +
-      '<div class="tag-token-editor' + ((inlineEditState.tagList || []).length ? '' : ' is-empty') + '" data-post-inline-field="tags-editor" contenteditable="true" role="textbox" aria-label="Post tags" spellcheck="false" data-placeholder="tag, tag, tag">' +
+      '<div class="tag-token-editor' + emptyClass + '" data-post-inline-field="tags-editor" role="group" aria-label="Post tags">' +
         tokensHtml +
-        '<span class="tag-token-editor-draft" data-post-inline-tag-draft>' + escapeHtml(inlineEditState.tagsDraftText || '') + '</span>' +
+        '<input type="text" class="tag-token-editor-input" data-post-inline-field="tags-input" value="' + escapeHtml(inlineEditState.tagsDraftText || '') + '" placeholder="tag, tag, tag" autocomplete="off" autocapitalize="none" spellcheck="false">' +
       '</div>';
   }
 
@@ -1017,23 +1044,26 @@
     return document.querySelector('[data-post-inline-field="tags-editor"]');
   }
 
-  function inlineTagsEditorDraftNode(editor) {
+  function inlineTagsEditorInputNode(editor) {
     if (!(editor instanceof HTMLElement)) {
       return null;
     }
-    return editor.querySelector('[data-post-inline-tag-draft]');
+    return editor.querySelector('[data-post-inline-field="tags-input"]');
   }
 
   function inlineTagsEditorReadDraft(editor) {
-    var node = inlineTagsEditorDraftNode(editor);
-    if (!node) {
+    var node = inlineTagsEditorInputNode(editor);
+    if (!(node instanceof HTMLInputElement)) {
       return '';
     }
-    return String(node.textContent || '');
+    return String(node.value || '');
   }
 
   function inlineTagsEditorSyncDraft(editor) {
     inlineEditState.tagsDraftText = inlineTagsEditorReadDraft(editor);
+    if (editor instanceof HTMLElement) {
+      editor.classList.toggle('is-empty', !(inlineEditState.tagList || []).length && !String(inlineEditState.tagsDraftText || '').trim());
+    }
   }
 
   function inlineTagsEditorRender(editor) {
@@ -1041,32 +1071,26 @@
       return;
     }
     var html = (inlineEditState.tagList || []).map(inlineTagTokenHtml).join('');
-    html += '<span class="tag-token-editor-draft" data-post-inline-tag-draft>' + escapeHtml(inlineEditState.tagsDraftText || '') + '</span>';
+    html += '<input type="text" class="tag-token-editor-input" data-post-inline-field="tags-input" value="' + escapeHtml(inlineEditState.tagsDraftText || '') + '" placeholder="tag, tag, tag" autocomplete="off" autocapitalize="none" spellcheck="false">';
     editor.innerHTML = html;
     editor.classList.toggle('is-empty', !(inlineEditState.tagList || []).length && !String(inlineEditState.tagsDraftText || '').trim());
   }
 
   function inlineTagsEditorFocusDraft(editor) {
-    var node = inlineTagsEditorDraftNode(editor);
-    if (!(node instanceof HTMLElement)) {
+    var node = inlineTagsEditorInputNode(editor);
+    if (!(node instanceof HTMLInputElement)) {
       return;
     }
-    var selection = window.getSelection && window.getSelection();
-    if (!selection) {
-      return;
-    }
-    var range = document.createRange();
-    range.selectNodeContents(node);
-    range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    if (document.activeElement !== editor) {
+    if (document.activeElement !== node) {
       try {
-        editor.focus({ preventScroll: true });
+        node.focus({ preventScroll: true });
       } catch (_focusErr) {
-        editor.focus();
+        node.focus();
       }
     }
+    try {
+      node.setSelectionRange(node.value.length, node.value.length);
+    } catch (_selectionErr) {}
   }
 
   function inlineTagsEditorCommit(editor, force) {
@@ -1094,7 +1118,11 @@
       if (!tag) {
         return;
       }
-      if (inlineEditState.tagList.indexOf(tag) !== -1) {
+      var lowerTag = tag.toLowerCase();
+      var exists = (inlineEditState.tagList || []).some(function (item) {
+        return String(item || '').trim().toLowerCase() === lowerTag;
+      });
+      if (exists) {
         return;
       }
       inlineEditState.tagList.push(tag);
@@ -1113,7 +1141,7 @@
       return false;
     }
     var next = (inlineEditState.tagList || []).filter(function (item) {
-      return item !== value;
+      return String(item || '').trim().toLowerCase() !== value.toLowerCase();
     });
     if (next.length === (inlineEditState.tagList || []).length) {
       return false;
@@ -2126,10 +2154,10 @@
       return;
     }
 
-    var inlineTagToken = target.closest('[data-post-inline-tag-token]');
-    if (inlineTagToken instanceof HTMLElement) {
+    var inlineTagRemove = target.closest('[data-post-inline-tag-remove]');
+    if (inlineTagRemove instanceof HTMLElement) {
       event.preventDefault();
-      var tagValue = String(inlineTagToken.getAttribute('data-post-inline-tag-token') || '').trim();
+      var tagValue = String(inlineTagRemove.getAttribute('data-post-inline-tag-remove') || '').trim();
       if (inlineRemoveTag(tagValue)) {
         var editorNode = inlineTagsEditorNode();
         if (editorNode) {
@@ -2144,9 +2172,6 @@
     var inlineTagEditor = target.closest('[data-post-inline-field="tags-editor"]');
     if (inlineTagEditor instanceof HTMLElement) {
       inlineTagsEditorSyncDraft(inlineTagEditor);
-      if (document.activeElement !== inlineTagEditor) {
-        inlineTagEditor.focus();
-      }
       inlineTagsEditorFocusDraft(inlineTagEditor);
       return;
     }
@@ -2184,8 +2209,14 @@
     if (!inlineEditState.open) {
       return;
     }
-    if (target instanceof HTMLElement && String(target.getAttribute('data-post-inline-field') || '') === 'tags-editor') {
-      inlineTagsEditorSyncDraft(target);
+    if (target instanceof HTMLInputElement && String(target.getAttribute('data-post-inline-field') || '') === 'tags-input') {
+      var editorNode = target.closest('[data-post-inline-field="tags-editor"]');
+      inlineTagsEditorSyncDraft(editorNode);
+      if (/[,\n]/.test(String(target.value || ''))) {
+        if (inlineTagsEditorCommit(editorNode, false)) {
+          queueInlineAutosave();
+        }
+      }
       var hiddenTags = document.querySelector('input[data-post-inline-field="tags"]');
       if (hiddenTags instanceof HTMLInputElement) {
         hiddenTags.value = inlineEditState.tags;
@@ -2255,33 +2286,34 @@
     if (!(target instanceof HTMLElement) || !inlineEditState.open) {
       return;
     }
-    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-editor') {
+    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-input') {
       return;
     }
+    var editorNode = target.closest('[data-post-inline-field="tags-editor"]');
     if (event.key === 'Enter') {
       event.preventDefault();
-      if (inlineTagsEditorCommit(target, true)) {
+      if (inlineTagsEditorCommit(editorNode, true)) {
         queueInlineAutosave();
       }
       return;
     }
     if (event.key === ',' || event.code === 'Comma' || event.key === 'Tab') {
-      if (event.key === 'Tab' || inlineTagsEditorReadDraft(target).indexOf(',') !== -1 || /\S/.test(inlineTagsEditorReadDraft(target))) {
+      if (event.key === 'Tab' || inlineTagsEditorReadDraft(editorNode).indexOf(',') !== -1 || /\S/.test(inlineTagsEditorReadDraft(editorNode))) {
         event.preventDefault();
-        if (inlineTagsEditorCommit(target, true)) {
+        if (inlineTagsEditorCommit(editorNode, true)) {
           queueInlineAutosave();
         }
       }
       return;
     }
     if (event.key === 'Backspace') {
-      var draft = inlineTagsEditorReadDraft(target);
+      var draft = inlineTagsEditorReadDraft(editorNode);
       if (!String(draft || '').trim() && (inlineEditState.tagList || []).length) {
         event.preventDefault();
         var last = inlineEditState.tagList[inlineEditState.tagList.length - 1];
         if (inlineRemoveTag(last)) {
-          inlineTagsEditorRender(target);
-          inlineTagsEditorFocusDraft(target);
+          inlineTagsEditorRender(editorNode);
+          inlineTagsEditorFocusDraft(editorNode);
           queueInlineAutosave();
         }
       }
@@ -2293,15 +2325,16 @@
     if (!(target instanceof HTMLElement) || !inlineEditState.open) {
       return;
     }
-    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-editor') {
+    if (String(target.getAttribute('data-post-inline-field') || '') !== 'tags-input') {
       return;
     }
+    var editorNode = target.closest('[data-post-inline-field="tags-editor"]');
     window.setTimeout(function () {
       var active = document.activeElement;
-      if (active instanceof HTMLElement && target.contains(active)) {
+      if (editorNode instanceof HTMLElement && active instanceof HTMLElement && editorNode.contains(active)) {
         return;
       }
-      if (inlineTagsEditorCommit(target, true)) {
+      if (inlineTagsEditorCommit(editorNode, true)) {
         queueInlineAutosave();
       }
     }, 0);

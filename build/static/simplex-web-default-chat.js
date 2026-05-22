@@ -235,6 +235,42 @@
     };
   }
 
+  function normalizeSavedCount(value) {
+    var count = Number(value);
+    if (!isFinite(count) || count < 0) {
+      return 0;
+    }
+    return Math.floor(count);
+  }
+
+  function normalizeSavedSummary(value) {
+    var next = value && typeof value === 'object' ? value : {};
+    return {
+      messages: normalizeSavedCount(next.messages),
+      attachments: normalizeSavedCount(next.attachments)
+    };
+  }
+
+  function pluralizeCount(count, singular, plural) {
+    return String(count) + ' ' + (count === 1 ? singular : (plural || singular + 's'));
+  }
+
+  function savedSummaryText(summary) {
+    var messages = Number(summary && summary.messages || 0);
+    var attachments = Number(summary && summary.attachments || 0);
+    if (messages <= 0 && attachments <= 0) {
+      return '';
+    }
+    var parts = [];
+    if (messages > 0) {
+      parts.push(pluralizeCount(messages, 'saved message'));
+    }
+    if (attachments > 0) {
+      parts.push(pluralizeCount(attachments, 'attachment'));
+    }
+    return parts.join(', ');
+  }
+
   function normalizeService(value) {
     var next = value && typeof value === 'object' ? value : null;
     if (!next) {
@@ -405,6 +441,7 @@
       simplexWebIntroDismissed: next.simplexWebIntroDismissed === true,
       chatStarted: next.chatStarted !== false,
       chatOpening: next.chatOpening === true,
+      savedSummary: normalizeSavedSummary(next.savedSummary),
       admin: !!next.admin,
       adminMappings: adminMappings
     };
@@ -537,6 +574,17 @@
     return html;
   }
 
+  function renderStartGate(state) {
+    var label = savedSummaryText(state.savedSummary);
+    var html = '<div class="secure-chat-start-gate">';
+    if (label) {
+      html += '<span class="secure-chat-saved-hint">' + escapeHtml(label) + '</span>';
+    }
+    html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="start">' + (label ? 'Open Chat' : 'Start Chat') + '</button>';
+    html += '</div>';
+    return html;
+  }
+
   function renderPanel(model) {
     // renderPanel is pure: model in, HTML string out. Event handling lives in
     // mount(), which keeps UI rendering testable without a browser framework.
@@ -549,7 +597,7 @@
     } else if (!state.loggedIn) {
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     } else if (!state.chatStarted) {
-      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="start">Start Chat</button>';
+      html += renderStartGate(state);
     }
     html += '</div>';
     if (!state.loggedIn) {

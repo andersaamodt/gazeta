@@ -1,0 +1,121 @@
+#!/bin/sh
+# Store a signed-in public entry for an open Nostr-backed list page.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session false; then
+  exit 0
+fi
+
+page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+if [ -z "$page_slug" ]; then
+  page_slug=$(blog_nostr_page_slug "$(blog_param list_slug)")
+fi
+if [ -z "$page_slug" ]; then
+  blog_json_error "page_slug is required" "missing_page_slug"
+  exit 0
+fi
+
+page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
+case "$page_type" in
+  list|icon-gallery) ;;
+  *)
+    blog_json_error "Page is not a list page" "invalid_page_type"
+    exit 0
+    ;;
+esac
+
+is_admin=false
+if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
+  is_admin=true
+fi
+
+canonical_event_json=$(blog_nostr_list_latest_event_json "$page_slug" 2>/dev/null || printf '')
+if [ -n "$canonical_event_json" ]; then
+  state_json=$(blog_list_state_from_event_json "$page_slug" "$canonical_event_json")
+else
+  state_json=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
+  if [ -z "$state_json" ]; then
+    state_json=$(blog_list_default_state_json "$page_slug")
+  fi
+fi
+
+allow=$(printf '%s\n' "$state_json" | jq -r '.allow_signed_in_submissions // false | if . then "true" else "false" end' 2>/dev/null || printf 'false')
+if [ "$allow" != "true" ] && [ "$is_admin" != "true" ]; then
+  blog_json_error "This list is not open for signed-in submissions" "submissions_closed"
+  exit 0
+fi
+
+markdown=$(blog_param markdown)
+if [ -z "$markdown" ]; then
+  markdown=$(blog_param title)
+fi
+markdown=$(printf '%s' "$markdown" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if [ -z "$markdown" ]; then
+  blog_json_error "Entry text is required" "missing_entry_text"
+  exit 0
+fi
+
+marker=$(blog_param marker)
+date_value=$(blog_param date)
+post_url=$(blog_param post_url)
+description=$(blog_param description)
+entry_id="public-$(blog_now_epoch)-$(blog_random_token 6)"
+now=$(blog_now_epoch)
+submitter=${BLOG_SESSION_USERNAME-}
+entry_json=$(jq -cn \
+  --arg id "$entry_id" \
+  --arg markdown "$markdown" \
+  --arg marker "$marker" \
+  --arg date "$date_value" \
+  --arg post_url "$post_url" \
+  --arg description "$description" \
+  --arg submitter "$submitter" \
+  --argjson created_at "$now" \
+  '{
+    id: $id,
+    markdown: $markdown,
+    marker: $marker,
+    date: $date,
+    post_url: $post_url,
+    description: $description,
+    submitter: $submitter,
+    created_at: $created_at
+  }')
+
+entries_path=$(blog_list_public_entries_path "$page_slug")
+printf '%s\n' "$entry_json" >> "$entries_path"
+chmod 644 "$entries_path" 2>/dev/null || true
+
+validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
+viewer=${BLOG_SESSION_USERNAME-}
+merged_validation=$(blog_list_merge_public_activity_json "$state_json" "$validation_json" "$viewer")
+state_with_entries=$(printf '%s\n' "$state_json" | jq -c --argjson merged "$merged_validation" '. + { elements: $merged.elements, entries: $merged.entries }')
+
+jq -cn \
+  --arg slug "$page_slug" \
+  --arg entry_id "$entry_id" \
+  --argjson state "$state_with_entries" \
+  --argjson validation "$merged_validation" \
+  '{
+    success: true,
+    slug: $slug,
+    entry_id: $entry_id,
+    state: $state,
+    validation: {
+      errors: $validation.errors,
+      warnings: $validation.warnings,
+      can_publish: $validation.can_publish
+    },
+    message: "Entry added."
+  }'
+printf '\n'

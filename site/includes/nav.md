@@ -95,7 +95,7 @@
 </button>
 <a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
-  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu">⋮</button>
+  <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
@@ -213,6 +213,70 @@
   try {
     var navCenter = document.querySelector('.nav-center');
     var cachedRaw = localStorage.getItem('cached_navbar_pages_v1');
+    function normalizeNavPath(path) {
+      var p = String(path || '').trim();
+      var search = '';
+      if (!p) {
+        return '/';
+      }
+      if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
+        try {
+          var parsed = new URL(p, window.location.href);
+          p = parsed.pathname || '/';
+          search = parsed.search || '';
+        } catch (_urlErr) {
+          p = '/';
+          search = '';
+        }
+      }
+      if (!search && p.indexOf('?') >= 0) {
+        var split = p.split('?', 2);
+        p = split[0] || '/';
+        search = split[1] ? ('?' + split[1]) : '';
+      }
+      p = p.replace(/\/+$/, '') || '/';
+      if (p === '/pages/index' || p === '/pages/index.html') {
+        try {
+          var params = new URLSearchParams(search || '');
+          var slug = String(params.get('page_slug') || params.get('slug') || '').trim().toLowerCase();
+          slug = slug.replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+          if (slug && slug !== 'index') {
+            return '/' + slug;
+          }
+        } catch (_paramErr) {
+          // Ignore malformed page query strings.
+        }
+        return '/';
+      }
+      if (p.indexOf('/pages/') === 0) {
+        p = '/' + p.slice('/pages/'.length);
+        p = p.replace(/\.html?$/i, '');
+      }
+      return p || '/';
+    }
+    function highlightCurrentNavNow() {
+      if (!navCenter) {
+        return;
+      }
+      var current = normalizeNavPath(window.location.href);
+      if (current.indexOf('/posts/') === 0 || current === '/cgi/blog-open-post' || current.indexOf('/cgi/blog-open-post/') === 0) {
+        current = '/';
+      }
+      var links = navCenter.querySelectorAll('a[data-page]');
+      links.forEach(function (link) {
+        var active = normalizeNavPath(link.getAttribute('href') || '') === current;
+        link.classList.toggle('active', active);
+        if (active) {
+          link.setAttribute('aria-current', 'page');
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('tabindex', '-1');
+        } else {
+          link.removeAttribute('aria-current');
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
+        }
+      });
+    }
     if (navCenter && cachedRaw) {
       var cachedPages = JSON.parse(cachedRaw);
       if (!Array.isArray(cachedPages)) {
@@ -249,6 +313,7 @@
         navCenter.innerHTML = html;
       }
     }
+    highlightCurrentNavNow();
   } catch (_err2) {
     // Ignore cache parse failures and let runtime fetch reconcile state.
   }
@@ -434,7 +499,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260519-android-login1"></script>
+<script src="/static/nav-auth.js?v=20260521-video-operator1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
