@@ -107,7 +107,8 @@
       loading: false,
       loaded: false,
       requestSeq: 0,
-      drafts: []
+      drafts: [],
+      dismissedSignature: ''
     }
   };
   var panelHideTimer = null;
@@ -121,6 +122,10 @@
 
   function overflowMenuIconSvg() {
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
+  }
+
+  function closeIconSvg() {
+    return '<svg class="blog-draft-notice-close-svg" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
 
   function clearRouteRepairParam() {
@@ -768,6 +773,21 @@
     return { mode: 'count', count: sorted.length };
   }
 
+  function draftNoticeSignature(drafts) {
+    var list = Array.isArray(drafts) ? drafts : [];
+    return list.map(function (draft) {
+      return [
+        String(draft && draft.draft_id || '').trim(),
+        String(draft && draft.updated_at || '').trim(),
+        String(draft && draft.created_at || '').trim()
+      ].join(':');
+    }).sort().join('|');
+  }
+
+  function draftNoticeDismissButtonHtml() {
+    return '<button type="button" class="blog-draft-notice-close" data-draft-banner-action="dismiss" aria-label="Close draft notice">' + closeIconSvg() + '</button>';
+  }
+
   function renderDraftNotice() {
     var host = ensureDraftNoticeHost();
     if (!host) {
@@ -789,10 +809,16 @@
       host.innerHTML = '';
       return;
     }
+    var signature = draftNoticeSignature(state.draftNotice.drafts);
+    if (signature && state.draftNotice.dismissedSignature === signature) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
     if (summary.mode === 'count') {
       var count = Number(summary.count) || 0;
       var noun = count === 1 ? 'saved draft' : 'saved drafts';
-      host.innerHTML = '<div class="blog-draft-notice-card"><span>You have </span><a href="/admin#drafts" class="blog-draft-notice-link">' + escapeHtml(String(count) + ' ' + noun) + '</a><span>.</span></div>';
+      host.innerHTML = '<div class="blog-draft-notice-card"><span class="blog-draft-notice-main"><span>You have </span><a href="/admin#drafts" class="blog-draft-notice-link">' + escapeHtml(String(count) + ' ' + noun) + '</a><span>.</span></span>' + draftNoticeDismissButtonHtml() + '</div>';
       host.hidden = false;
       return;
     }
@@ -809,6 +835,7 @@
           '<a href="#" class="blog-draft-notice-link blog-draft-notice-continue-link" data-draft-banner-action="continue" data-draft-id="' + escapeHtml(draftId) + '"><strong>' + escapeHtml(title) + '</strong></a>' +
         '</span>' +
         allDraftsLink +
+        draftNoticeDismissButtonHtml() +
       '</div>';
     host.hidden = false;
   }
@@ -4587,8 +4614,12 @@
     if (draftBannerAction) {
       event.preventDefault();
       event.stopPropagation();
-      if (String(draftBannerAction.getAttribute('data-draft-banner-action') || '') === 'continue') {
+      var draftBannerActionName = String(draftBannerAction.getAttribute('data-draft-banner-action') || '');
+      if (draftBannerActionName === 'continue') {
         openDraftFromNotice(String(draftBannerAction.getAttribute('data-draft-id') || ''));
+      } else if (draftBannerActionName === 'dismiss') {
+        state.draftNotice.dismissedSignature = draftNoticeSignature(state.draftNotice.drafts);
+        renderDraftNotice();
       }
       return;
     }
