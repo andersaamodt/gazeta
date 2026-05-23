@@ -1938,10 +1938,16 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
+  margin-right: 0;
   align-self: flex-start;
   transform: translateY(-2px);
+  padding: 0 0.45rem 0.4rem 0.55rem;
   font-size: 0;
   line-height: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+  border-radius: 10px;
 }
 
 .list-page-title-actions > * {
@@ -12286,7 +12292,15 @@ nav.site-nav .nav-center a[aria-current="page"]:focus-visible {
 
 /* Final nav overflow lock: keep site title visible and collapse links into right overflow one-by-one. */
 nav.site-nav {
-  display: flex !important;
+  --site-nav-panel-width: min(1120px, calc(100vw - 1.5rem));
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  grid-template-rows: auto auto !important;
+  width: var(--site-nav-panel-width);
+  min-height: 5.15rem;
+  margin-left: calc((100% - var(--site-nav-panel-width)) / 2);
+  margin-right: calc((100% - var(--site-nav-panel-width)) / 2);
+  display: grid !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: flex-start !important;
@@ -12298,6 +12312,9 @@ nav.site-nav {
 }
 
 nav.site-nav .nav-overflow-menu {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
   order: 0;
   flex: 0 0 auto !important;
   margin-left: 0;
@@ -12305,6 +12322,8 @@ nav.site-nav .nav-overflow-menu {
 }
 
 nav.site-nav > .nav-site-signature {
+  grid-column: 1 / 2;
+  grid-row: 1;
   order: 0;
   display: inline-flex !important;
   flex: 0 0 auto !important;
@@ -12313,6 +12332,8 @@ nav.site-nav > .nav-site-signature {
 }
 
 nav.site-nav > .nav-center {
+  grid-column: 1 / -1;
+  grid-row: 2;
   order: 1;
   flex: 1 1 auto !important;
   min-width: 0 !important;
@@ -12338,6 +12359,9 @@ nav.site-nav > .nav-center a {
 }
 
 nav.site-nav > .nav-right {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  justify-self: end;
   order: 4;
   flex: 0 0 auto !important;
   min-width: 0 !important;
@@ -12806,4 +12830,7 @@ nav.site-nav > .nav-right .nav-search button {
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
+  clip-path: inset(0 round 8px);
+  contain: paint;
+  overflow: hidden;
 }

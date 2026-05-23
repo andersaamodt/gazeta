@@ -421,6 +421,13 @@ strong {
   border-radius: 8px;
 }
 
+.list-page-title-actions {
+  background-color: color-mix(in srgb, var(--post-card-bg-single) 86%, transparent);
+  background-image: var(--lapidarist-parchment-surface);
+  background-size: auto, auto, var(--lapidarist-parchment-size);
+  background-position: center, center, center;
+}
+
 .inline-tip {
   border-color: color-mix(in srgb, var(--gold-leaf) 58%, var(--border) 42%);
   color: var(--malachite);
@@ -945,6 +952,9 @@ textarea:focus {
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
+  clip-path: inset(0 round 8px);
+  contain: paint;
+  overflow: hidden;
 }
 
 ::selection {

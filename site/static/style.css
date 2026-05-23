@@ -1958,13 +1958,16 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
-  margin-right: -0.35rem;
+  margin-right: 0;
   align-self: flex-start;
   transform: translateY(-2px);
-  padding: 0 0.35rem 0.4rem 0;
+  padding: 0 0.45rem 0.4rem 0.55rem;
   font-size: 0;
   line-height: 0;
   overflow: visible;
+  position: relative;
+  z-index: 1;
+  border-radius: 10px;
 }
 
 .list-page-title-actions > * {
@@ -11275,6 +11278,7 @@ button.loading::after {
 
 /* Final nav layout overrides */
 nav.site-nav {
+  --site-nav-panel-width: min(1120px, calc(100vw - 1.5rem));
   width: min(900px, calc(100vw - 1rem));
   max-width: none;
   margin-left: 50%;
@@ -12327,10 +12331,10 @@ nav.site-nav {
   position: static !important;
   top: auto !important;
   z-index: 1200;
-  width: min(1120px, calc(100vw - 1.5rem));
+  width: var(--site-nav-panel-width);
   min-height: 5.15rem;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: calc((100% - var(--site-nav-panel-width)) / 2);
+  margin-right: calc((100% - var(--site-nav-panel-width)) / 2);
   transform: none;
   padding: 0.72rem 1.05rem 0.82rem;
   border-radius: 0 0 18px 18px;
@@ -12859,4 +12863,7 @@ nav.site-nav > .nav-right .nav-search button {
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
+  clip-path: inset(0 round 8px);
+  contain: paint;
+  overflow: hidden;
 }
