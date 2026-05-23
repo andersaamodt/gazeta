@@ -12317,18 +12317,23 @@ nav.site-nav {
   grid-template-columns: auto minmax(0, 1fr) auto !important;
   grid-template-rows: auto auto !important;
   width: var(--site-nav-panel-width);
-  min-height: 5.15rem;
+  min-height: 4.35rem;
   margin-left: calc((100% - var(--site-nav-panel-width)) / 2);
   margin-right: calc((100% - var(--site-nav-panel-width)) / 2);
   display: grid !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  gap: 0.45rem !important;
+  gap: 0.38rem 0.72rem !important;
   overflow: visible !important;
   position: static !important;
   top: auto !important;
   z-index: 1200;
+  padding: 0.54rem 1rem 0.62rem;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid color-mix(in srgb, var(--nav-border, var(--border)) 82%, transparent) !important;
+  border-top: 0 !important;
+  box-sizing: border-box;
 }
 
 nav.site-nav .nav-overflow-menu {
@@ -12361,12 +12366,16 @@ nav.site-nav > .nav-center {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.45rem !important;
+  gap: 0.28rem !important;
   overflow: hidden !important;
   white-space: nowrap !important;
   scrollbar-width: none !important;
   box-sizing: border-box;
-  padding-inline: 3rem;
+  justify-self: center;
+  max-width: min(760px, calc(100% - 5.5rem));
+  margin-inline: auto;
+  padding: 0.18rem 0.36rem;
+  border-radius: 999px;
 }
 
 nav.site-nav > .nav-center::-webkit-scrollbar {
@@ -12376,6 +12385,9 @@ nav.site-nav > .nav-center::-webkit-scrollbar {
 nav.site-nav > .nav-center a {
   flex: 0 0 auto !important;
   white-space: nowrap !important;
+  padding: 0.25rem 0.58rem !important;
+  border-radius: 8px !important;
+  line-height: 1.1 !important;
 }
 
 nav.site-nav > .nav-right {
@@ -12770,6 +12782,8 @@ nav.site-nav > .nav-right .nav-search button {
   nav.site-nav > .nav-center {
     grid-column: 1 / -1;
     grid-row: 2;
+    max-width: 100%;
+    justify-self: stretch;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     padding-bottom: 0.06rem;
