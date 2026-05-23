@@ -8853,6 +8853,12 @@ footer {
 }
 
 .blog-inline-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
   text-decoration: none;
 }
 

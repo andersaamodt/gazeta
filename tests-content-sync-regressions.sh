@@ -396,6 +396,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-inline-filter
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_blog_page_js_version='20260523-byline-bottom1'" 'blog page script cache buster tracks byline positioning'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-type-pill,' 'blog listing type pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-year-pill,' 'blog listing year pill color does not require main-content wrapper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-inline-tag {' 'blog list inline tags have a dedicated style hook'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'flex: 0 0 auto;' 'blog list inline tags keep intrinsic width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-blog-action=\"toggle-compose\"" 'blog page exposes inline compose toggle action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-action=\"publish\"" 'blog page inline composer exposes publish action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "'/cgi/blog-save-post'" 'blog inline composer uses canonical blog-save-post endpoint'
