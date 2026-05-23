@@ -12614,14 +12614,29 @@ nav.site-nav .nav-login-menu {
   z-index: 1300;
 }
 
+@keyframes nav-search-input-expand {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
 nav.site-nav > .nav-right .nav-search {
   order: 1;
+  display: flex !important;
+  align-items: center !important;
   flex: 0 0 auto !important;
-  width: auto !important;
+  width: 40px !important;
   min-width: 40px !important;
   max-width: 40px !important;
   margin: 0 !important;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 4;
   transition: box-shadow 160ms ease;
 }
 
@@ -12629,8 +12644,8 @@ nav.site-nav > .nav-right .nav-search.is-search-expanded,
 nav.site-nav > .nav-right .nav-search.has-search-value,
 nav.site-nav > .nav-right .nav-search:focus-within {
   flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: 220px !important;
+  width: 40px !important;
+  max-width: 40px !important;
 }
 
 nav.site-nav > .nav-right .nav-compose-tools,
@@ -12642,18 +12657,22 @@ nav.site-nav > .nav-right .nav-login-split {
 }
 
 nav.site-nav > .nav-right .nav-search input[type="text"] {
-  width: 0 !important;
+  position: absolute;
+  right: 40px;
+  top: 0;
+  bottom: 0;
+  width: 180px !important;
   min-width: 0 !important;
-  max-width: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  max-width: 180px !important;
+  box-sizing: border-box;
+  padding-left: 0.8rem !important;
+  padding-right: 0.8rem !important;
   opacity: 0;
   pointer-events: none;
-  transition:
-    width 180ms ease,
-    max-width 180ms ease,
-    padding 180ms ease,
-    opacity 120ms ease;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: none;
+  will-change: transform, opacity;
 }
 
 nav.site-nav > .nav-right .nav-search.is-search-expanded input[type="text"],
@@ -12665,6 +12684,8 @@ nav.site-nav > .nav-right .nav-search:focus-within input[type="text"] {
   padding-right: 0.8rem !important;
   opacity: 1;
   pointer-events: auto;
+  transform: scaleX(1);
+  animation: nav-search-input-expand 240ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 nav.site-nav > .nav-right .nav-search button,
@@ -12679,6 +12700,8 @@ nav.site-nav > .nav-right .nav-overflow-menu {
 }
 
 nav.site-nav > .nav-right .nav-search button {
+  position: relative;
+  z-index: 1;
   width: 40px !important;
   min-width: 40px !important;
   padding: 0 !important;
@@ -12699,7 +12722,7 @@ nav.site-nav > .nav-right .nav-search:focus-within button {
 @media (max-width: 780px) {
   nav.site-nav > .nav-right .nav-search {
     flex: 0 0 auto !important;
-    width: auto !important;
+    width: 40px !important;
     min-width: 0 !important;
     max-width: 40px !important;
   }
@@ -12708,8 +12731,8 @@ nav.site-nav > .nav-right .nav-search:focus-within button {
   nav.site-nav > .nav-right .nav-search.has-search-value,
   nav.site-nav > .nav-right .nav-search:focus-within {
     flex: 0 0 auto !important;
-    width: auto !important;
-    max-width: 220px !important;
+    width: 40px !important;
+    max-width: 40px !important;
   }
 
   nav.site-nav > .nav-right .nav-search input[type="text"] {
