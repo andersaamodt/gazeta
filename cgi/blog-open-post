@@ -242,6 +242,7 @@ if command -v pandoc >/dev/null 2>&1; then
     fi
     published_at=$(blog_read_front_matter_value "$md_file" published_at 2>/dev/null || printf '')
     published_date=$(blog_iso_to_human_date "$published_at")
+    published_timestamp=$(blog_iso_to_human_timestamp "$published_at")
     post_type=$(blog_read_front_matter_value "$md_file" post_type 2>/dev/null || printf '')
     if [ -z "$post_type" ]; then
       post_type=$(blog_read_front_matter_value "$md_file" type 2>/dev/null || printf '')
@@ -255,6 +256,11 @@ if command -v pandoc >/dev/null 2>&1; then
     safe_title=$(blog_html_escape "$title")
     safe_author=$(blog_html_escape "$author")
     safe_date=$(blog_html_escape "$published_date")
+    safe_timestamp=$(blog_html_escape "$published_timestamp")
+    safe_date_title_attr=''
+    if [ -n "$safe_timestamp" ]; then
+      safe_date_title_attr=" title=\"$safe_timestamp\""
+    fi
     safe_read_minutes=$(blog_html_escape "$reading_minutes")
 
     http-status 200 "OK"
@@ -292,7 +298,7 @@ HTML
         <div class="post-byline post-byline-bottom">
           <span class="post-author">$safe_author</span>
           <span class="post-reading-inline">$safe_read_minutes min read</span>
-          <span class="post-date">$safe_date</span>
+          <span class="post-date"$safe_date_title_attr>$safe_date</span>
         </div>
       </div>
     </div>

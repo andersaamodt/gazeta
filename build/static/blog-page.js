@@ -341,6 +341,38 @@
       .replace(/'/g, '&#39;');
   }
 
+  function longTimestampTitle(raw) {
+    var value = String(raw || '').trim();
+    if (!value || value.indexOf('T') < 0) {
+      return '';
+    }
+    var date = new Date(value);
+    if (!isFinite(date.getTime())) {
+      return value;
+    }
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short'
+      }).format(date);
+    } catch (_err) {
+      return value;
+    }
+  }
+
+  function postDateHtml(post, fallback) {
+    var label = String(fallback || '').trim() || 'Unknown date';
+    var explicit = String(post && post.published_timestamp || '').trim();
+    var title = explicit || longTimestampTitle(post && post.published_at);
+    return '<span class="post-date"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</span>';
+  }
+
   function markdownInline(md) {
     var value = String(md || '');
     if (!value) {
@@ -4131,7 +4163,7 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
-              '<div class="post-byline post-byline-top"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-date">' + escapeHtml(post.published_date || post.pub_date || 'Unknown date') + '</span></div>' +
+              '<div class="post-byline post-byline-top"><span class="post-author">' + escapeHtml(author) + '</span>' + postDateHtml(post, post.published_date || post.pub_date || 'Unknown date') + '</div>' +
               '<div class="post-head-divider" aria-hidden="true"></div>' +
               '<div class="post-byline post-byline-bottom"><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span></div>' +
             '</div>' +

@@ -41,6 +41,8 @@ assert_file_not_contains() {
 # Backend: draft/publish post_type plumbing.
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_normalize_post_type() {' 'post_type normalizer exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'case "$raw" in' 'normalizer uses explicit case mapping'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_iso_to_human_timestamp() {' 'post date hover timestamp formatter exists'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" "at %I:%M:%S %p UTC" 'post date hover formatter emits long timestamp text'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" "short|shortform)" 'normalizer supports shortform aliases'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" "''|long|longform)" 'normalizer defaults empty/long aliases to longform'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'capture|capture-media|capture_media|take-photo|take-photo-video)' 'normalizer supports capture-media aliases'
@@ -72,6 +74,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type_tag:' 'derived rebui
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type: (' 'derived rebuild writes post_type in posts index'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'set -- nak req -k 1 -k 15 -k 20 -k 21 -k 30311 -t "t=blog"' 'mirror fetch includes non-longform kinds constrained by blog tag'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'printf '\''%s:%s:%s\n'\'' "$ref_kind" "$ref_pubkey" "$ref_d"' 'list event a-ref preserves referenced post kind'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'published_timestamp: $published_timestamp' 'public posts catalog exposes long hover timestamp when available'
+assert_file_contains "$ROOT_DIR/cgi/blog-index" '<span class="post-date"%s>' 'fallback blog feed preserves date hover title attribute'
+assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'safe_date_title_attr=" title=\"$safe_timestamp\""' 'single post page adds title hover when timestamp is available'
+assert_file_contains "$ROOT_DIR/cgi/blog-post-context" 'printf '\''"published_timestamp":"%s",'\'' "$(blog_json_escape "$published_timestamp")"' 'post context endpoint exposes long hover timestamp'
 
 # Backend endpoints: save/get/move preserve post_type.
 assert_file_contains "$ROOT_DIR/cgi/blog-save-post" 'post_type=$(blog_param post_type)' 'save endpoint reads post_type param'
@@ -183,6 +189,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "btn('go-live', 'Go
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composePostTypeIconSvg(type) {' 'blog compose defines icon renderer for post type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return '<div class=\"post-summary\">' + markdownBlock(text) + readMore + '</div>';" 'blog index renders condensed previews as block markdown'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'post-summary-read-more' 'blog index includes Read more link for truncated condensed previews'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postDateHtml(post, fallback)' 'blog feed renders date with hover title helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'published_timestamp ||' 'blog feed prefers server long timestamp for hover title'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composeNostrTarget(postType) {' 'blog compose defines nostr target mapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function setComposeShortformLimit(raw, opts) {' 'blog compose supports editable shortform limits'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-action="shortform-limit-toggle"' 'blog compose renders shortform counter toggle'
@@ -204,6 +212,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "blog-compose-title
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "state.compose.postType = 'longform';" 'blog compose reset restores longform default'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" "title: postType === 'shortform' ? '' : String(inlineEditState.title || '').trim()," 'inline post editor sends empty title for shortform payloads'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" "blog-compose-title-row\"' + (showTitleField ? '' : ' hidden aria-hidden=\"true\"')" 'inline post editor hides title row when shortform is selected'
+assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'function postDateHtml(current, className)' 'single post context renderer preserves date hover title helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-action="capture-photo"' 'blog compose camera mode has capture action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-action="open-mode-picker"' 'blog compose mode panels provide picker action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-mode-target="upload-media"' 'blog compose upload-media panel opens media picker'

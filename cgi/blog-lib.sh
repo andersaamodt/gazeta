@@ -390,6 +390,29 @@ blog_iso_to_human_date() {
   printf '%s\n' "$date_only"
 }
 
+blog_iso_to_human_timestamp() {
+  iso=${1-}
+  if [ -z "$iso" ]; then
+    printf '\n'
+    return 0
+  fi
+
+  if date -u -d "$iso" '+%B %e, %Y at %I:%M:%S %p UTC' >/dev/null 2>&1; then
+    date -u -d "$iso" '+%B %e, %Y at %I:%M:%S %p UTC' | sed 's/  / /g'
+    return 0
+  fi
+
+  if date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$iso" '+%B %e, %Y at %I:%M:%S %p UTC' >/dev/null 2>&1; then
+    date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$iso" '+%B %e, %Y at %I:%M:%S %p UTC' | sed 's/  / /g'
+    return 0
+  fi
+
+  case "$iso" in
+    *T*) printf '%s\n' "$iso" ;;
+    *) printf '\n' ;;
+  esac
+}
+
 blog_word_count() {
   text=${1-}
   printf '%s' "$text" | tr -cs '[:alnum:]' '\n' | awk 'NF { c++ } END { print c + 0 }'
@@ -5678,6 +5701,7 @@ blog_public_posts_catalog_build_json() {
       author=$(blog_post_author_display_for_file "$file")
       published_at=$(blog_read_front_matter_value "$file" published_at 2>/dev/null || printf '')
       published_date=$(blog_iso_to_human_date "$published_at")
+      published_timestamp=$(blog_iso_to_human_timestamp "$published_at")
       body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
       summary=$(blog_condensed_preview_from_content "$body")
       summary_truncated=$(blog_condensed_preview_truncated "$body")
@@ -5729,6 +5753,7 @@ blog_public_posts_catalog_build_json() {
         --arg author "$author" \
         --arg published_at "$published_at" \
         --arg published_date "$published_date" \
+        --arg published_timestamp "$published_timestamp" \
         --arg pub_date "$pub_date" \
         --arg summary "$summary" \
         --argjson summary_truncated "$summary_truncated" \
@@ -5746,6 +5771,7 @@ blog_public_posts_catalog_build_json() {
           author: $author,
           published_at: $published_at,
           published_date: $published_date,
+          published_timestamp: $published_timestamp,
           pub_date: $pub_date,
           summary: $summary,
           summary_truncated: $summary_truncated,

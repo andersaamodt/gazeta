@@ -156,6 +156,38 @@
       .replace(/'/g, '&#39;');
   }
 
+  function longTimestampTitle(raw) {
+    var value = String(raw || '').trim();
+    if (!value || value.indexOf('T') < 0) {
+      return '';
+    }
+    var date = new Date(value);
+    if (!isFinite(date.getTime())) {
+      return value;
+    }
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short'
+      }).format(date);
+    } catch (_err) {
+      return value;
+    }
+  }
+
+  function postDateHtml(current, className) {
+    var label = String(current && current.published_date || '').trim();
+    var explicit = String(current && current.published_timestamp || '').trim();
+    var title = explicit || longTimestampTitle(current && current.published_at);
+    return '<span class="' + escapeHtml(className || 'post-date') + '"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</span>';
+  }
+
   function normalizeListSlug(raw) {
     return String(raw || '')
       .trim()
@@ -836,7 +868,7 @@
     var detail = [
       author,
       author ? '<span aria-hidden="true">•</span>' : '',
-      '<span class="post-context-date">' + escapeHtml(current.published_date || '') + '</span>',
+      postDateHtml(current, 'post-context-date'),
       '<span aria-hidden="true">•</span>',
       '<span class="post-context-reading">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>',
       '<span aria-hidden="true">•</span>',
@@ -879,7 +911,7 @@
       '<div class="post-byline post-byline-bottom">' +
       '<span class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</span>' +
       '<span class="post-reading-inline">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>' +
-      '<span class="post-date">' + escapeHtml(current.published_date || '') + '</span>' +
+      postDateHtml(current, 'post-date') +
       '</div>' +
       '</div>';
 
