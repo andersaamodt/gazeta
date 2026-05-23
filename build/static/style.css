@@ -11825,6 +11825,30 @@ nav.site-nav {
   -webkit-text-fill-color: var(--post-tag-year-text) !important;
 }
 
+button.blog-type-pill,
+button.blog-type-pill:hover:not(:disabled),
+button.blog-type-pill:focus-visible:not(:disabled) {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border-color: var(--post-tag-type-border) !important;
+  background: #dff4d7 !important;
+  background-color: #dff4d7 !important;
+  color: var(--post-tag-type-text) !important;
+  -webkit-text-fill-color: var(--post-tag-type-text) !important;
+}
+
+button.blog-year-pill,
+button.blog-year-pill:hover:not(:disabled),
+button.blog-year-pill:focus-visible:not(:disabled) {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border-color: var(--post-tag-year-border) !important;
+  background: #dcecff !important;
+  background-color: #dcecff !important;
+  color: var(--post-tag-year-text) !important;
+  -webkit-text-fill-color: var(--post-tag-year-text) !important;
+}
+
 #main-content .list-entry-vote-btn,
 #main-content .list-entry-vote-btn:hover:not(:disabled),
 #main-content .list-entry-vote-btn:focus-visible:not(:disabled),
