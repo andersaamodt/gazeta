@@ -2554,10 +2554,13 @@
     if (canShowVotes) {
       var score = Number(entry && entry.list_score || 0) || 0;
       var viewerVote = Number(entry && entry.viewer_vote || 0) || 0;
+      var viewerCanVoteNow = !entry || entry.viewer_can_vote_now !== false;
+      var upvoteClass = 'list-entry-vote-btn is-upvote' + (viewerVote > 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
+      var downvoteClass = 'list-entry-vote-btn is-downvote' + (viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
       voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score">' +
-        '<button type="button" class="list-entry-vote-btn' + (viewerVote > 0 ? ' is-active' : '') + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote">' + listVoteArrowSvg('up') + '</button>' +
+        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote">' + listVoteArrowSvg('up') + '</button>' +
         '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
-        '<button type="button" class="list-entry-vote-btn' + (viewerVote < 0 ? ' is-active' : '') + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote">' + listVoteArrowSvg('down') + '</button>' +
+        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote">' + listVoteArrowSvg('down') + '</button>' +
         renderVoteTooltip(entry) +
       '</span>';
     }

@@ -347,7 +347,7 @@ blog_list_merge_public_activity_json() {
         | map(max_by(.created_at // 0))
       ) as $latest_votes
       | def score_for($id):
-          ([$latest_votes[]? | select((.entry_id // "") == $id) | (.value // 0)] | add // 0);
+          ([$votes[]? | select((.entry_id // "") == $id) | (.value // 0)] | add // 0);
         def viewer_vote_for($id):
           ([$latest_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer) | (.value // 0)] | last // 0);
         def viewer_votes_for($id):

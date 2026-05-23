@@ -3839,13 +3839,29 @@ body.nav-cart-open {
   border: 0;
   border-radius: 0;
   background: transparent !important;
-  color: var(--muted-text, #4f617f);
+  color: #c9ced8;
   line-height: 1;
 }
 
-.list-entry-vote-btn.is-active,
-.list-entry-vote-btn:hover {
-  color: var(--text-color, #1d2740);
+.list-entry-vote-btn.is-upvote.is-active,
+.list-entry-vote-btn.is-upvote:hover {
+  color: #d13939;
+  background: transparent !important;
+}
+
+.list-entry-vote-btn.is-upvote.is-stale {
+  color: #b77a7a;
+  background: transparent !important;
+}
+
+.list-entry-vote-btn.is-downvote.is-active,
+.list-entry-vote-btn.is-downvote:hover {
+  color: #286dc8;
+  background: transparent !important;
+}
+
+.list-entry-vote-btn.is-downvote.is-stale {
+  color: #718bad;
   background: transparent !important;
 }
 
@@ -11948,17 +11964,34 @@ button.blog-year-pill:focus-visible:not(:disabled) {
   background-image: none !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
-  color: var(--muted-text, #4f617f) !important;
-  -webkit-text-fill-color: var(--muted-text, #4f617f) !important;
+  color: #c9ced8 !important;
+  -webkit-text-fill-color: #c9ced8 !important;
   filter: none !important;
   transform: none !important;
 }
 
-#main-content .list-entry-vote-btn.is-active,
-#main-content .list-entry-vote-btn:hover:not(:disabled),
-#main-content .list-entry-vote-btn:focus-visible:not(:disabled) {
-  color: var(--text-color, #1d2740) !important;
-  -webkit-text-fill-color: var(--text-color, #1d2740) !important;
+#main-content .list-entry-vote-btn.is-upvote.is-active,
+#main-content .list-entry-vote-btn.is-upvote:hover:not(:disabled),
+#main-content .list-entry-vote-btn.is-upvote:focus-visible:not(:disabled) {
+  color: #d13939 !important;
+  -webkit-text-fill-color: #d13939 !important;
+}
+
+#main-content .list-entry-vote-btn.is-upvote.is-stale {
+  color: #b77a7a !important;
+  -webkit-text-fill-color: #b77a7a !important;
+}
+
+#main-content .list-entry-vote-btn.is-downvote.is-active,
+#main-content .list-entry-vote-btn.is-downvote:hover:not(:disabled),
+#main-content .list-entry-vote-btn.is-downvote:focus-visible:not(:disabled) {
+  color: #286dc8 !important;
+  -webkit-text-fill-color: #286dc8 !important;
+}
+
+#main-content .list-entry-vote-btn.is-downvote.is-stale {
+  color: #718bad !important;
+  -webkit-text-fill-color: #718bad !important;
 }
 
 /* Keep nav/login hovers in primary color space (never tan fallback). */

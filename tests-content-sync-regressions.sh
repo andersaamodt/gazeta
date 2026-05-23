@@ -145,10 +145,10 @@ EOF_VOTES
   state='{"slug":"probe-votes","elements":[{"type":"entry","markdown":"One"}]}'
   validation='{"elements":[{"type":"entry","markdown":"One"}],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
   expected_next_vote_at=$((recent_vote_at + 64800))
-  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" '.elements[0].list_score == 0 and .elements[0].viewer_vote == 1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
+  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" '.elements[0].list_score == 1 and .elements[0].viewer_vote == 1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
     pass
   else
-    fail "list vote merge exposes viewer cooldown and total vote metadata"
+    fail "list vote merge counts every vote and exposes viewer cooldown metadata"
   fi
 }
 
@@ -730,6 +730,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '<div class="list-i
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'list-entry-row-menu-panel' 'read-mode row menu no longer pushes adjacent content down'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-row-menu-panel .list-inline-row-menu' 'read-mode row menu does not override the absolute menu layout'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#main-content .list-entry-vote-btn' 'reading list vote arrows override global button chrome'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-upvote.is-stale' 'reading list vote arrows show stale upvotes in dull red'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-downvote.is-stale' 'reading list vote arrows show stale downvotes in dull blue'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" ':not(.list-entry-vote-btn)' 'lapidarist theme excludes vote arrows from button chrome'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'blog_list_vote_cooldown_seconds()' 'list votes define a shared cooldown helper'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" "printf '64800" 'list votes use an 18-hour cooldown'
