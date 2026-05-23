@@ -356,6 +356,43 @@
         }
       });
     }
+    function collapseOverflowingNavLinksNow() {
+      if (!navCenter) {
+        return;
+      }
+      var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page]'));
+      if (links.length < 2) {
+        return;
+      }
+      links.forEach(function (link) {
+        link.classList.remove('is-nav-overflow-hidden');
+      });
+      var activeLink = links.find(function (link) {
+        return link.classList.contains('active');
+      }) || null;
+      var guard = 0;
+      while (navCenter.scrollWidth > (navCenter.clientWidth + 1) && guard < links.length) {
+        var hide = null;
+        for (var i = links.length - 1; i >= 0; i -= 1) {
+          if (links[i].classList.contains('is-nav-overflow-hidden')) {
+            continue;
+          }
+          if (activeLink && links[i] === activeLink) {
+            continue;
+          }
+          hide = links[i];
+          break;
+        }
+        if (!hide && activeLink && !activeLink.classList.contains('is-nav-overflow-hidden')) {
+          hide = activeLink;
+        }
+        if (!hide) {
+          break;
+        }
+        hide.classList.add('is-nav-overflow-hidden');
+        guard += 1;
+      }
+    }
     if (navCenter && cachedRaw) {
       var cachedPages = JSON.parse(cachedRaw);
       if (!Array.isArray(cachedPages)) {
@@ -393,6 +430,7 @@
       }
     }
     highlightCurrentNavNow();
+    collapseOverflowingNavLinksNow();
   } catch (_err2) {
     // Ignore cache parse failures and let runtime fetch reconcile state.
   }

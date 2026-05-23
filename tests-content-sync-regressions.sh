@@ -829,6 +829,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'highlightCurrentNavNow
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" "link.setAttribute('aria-current', 'page');" 'inline navbar bootstrap marks active page accessibly'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'var selected = null;' 'inline navbar bootstrap tracks one selected page'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" "var active = !selected && normalizeNavPath(link.getAttribute('href') || '') === current;" 'inline navbar bootstrap activates only the first matching page'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'function collapseOverflowingNavLinksNow()' 'inline navbar bootstrap hides overflowing mobile links before nav-auth loads'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" "hide.classList.add('is-nav-overflow-hidden');" 'inline navbar bootstrap uses the shared overflow-hidden class'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function applyInitialHighlightInSyncWithContent() {' 'runtime navbar highlight entrypoint exists'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'highlightCurrentPage();' 'runtime navbar selection is applied immediately'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'var selectedMatch = matches.length ? matches[0] : null;' 'runtime navbar selects at most one matching page'
