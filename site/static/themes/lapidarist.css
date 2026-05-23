@@ -421,16 +421,20 @@ strong {
   border-radius: 8px;
 }
 
-.list-page-title-actions {
-  background-color: color-mix(in srgb, var(--post-card-bg-single) 86%, transparent);
-  background-image: var(--lapidarist-parchment-surface);
-  background-size: auto, auto, var(--lapidarist-parchment-size);
-  background-position: center, center, center;
-}
-
 .inline-tip {
   border-color: color-mix(in srgb, var(--gold-leaf) 58%, var(--border) 42%);
   color: var(--malachite);
+}
+
+#list-page-title:has(.list-page-title-actions) .list-page-title-text,
+#list-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#blog-page-title:has(.list-page-title-actions) .list-page-title-text,
+#blog-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#contact-page-title:has(.list-page-title-actions) .list-page-title-text,
+#contact-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+  border-bottom: 2px solid transparent;
+  border-image-slice: 1;
+  border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);
 }
 
 .icon-danger,

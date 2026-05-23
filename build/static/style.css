@@ -1947,7 +1947,6 @@ body.nav-cart-open {
   overflow: visible;
   position: relative;
   z-index: 1;
-  border-radius: 10px;
 }
 
 .list-page-title-actions > * {
@@ -1974,6 +1973,27 @@ body.nav-cart-open {
   width: 100%;
   align-items: baseline;
   gap: 0;
+}
+
+#list-page-title:has(.list-page-title-actions),
+#blog-page-title:has(.list-page-title-actions),
+#contact-page-title:has(.list-page-title-actions) {
+  border-bottom: 0;
+  border-image: none;
+  padding-bottom: 0;
+}
+
+#list-page-title:has(.list-page-title-actions) .list-page-title-text,
+#list-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#blog-page-title:has(.list-page-title-actions) .list-page-title-text,
+#blog-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#contact-page-title:has(.list-page-title-actions) .list-page-title-text,
+#contact-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.08rem;
 }
 
 #list-page-title .list-inline-edit-link,
