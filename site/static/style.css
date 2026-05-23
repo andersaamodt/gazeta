@@ -12343,7 +12343,7 @@ nav.site-nav .nav-overflow-menu {
   grid-column: 3;
   grid-row: 2;
   justify-self: end;
-  order: 99;
+  order: 0;
   flex: 0 0 auto !important;
   margin-left: 0;
   margin-right: 0;
@@ -12412,10 +12412,19 @@ nav.site-nav .nav-login-menu {
 }
 
 nav.site-nav > .nav-right .nav-search {
+  order: 1;
   flex: 0 1 clamp(118px, 20vw, 220px) !important;
   min-width: 92px !important;
   max-width: 220px !important;
   margin: 0 !important;
+}
+
+nav.site-nav > .nav-right .nav-compose-tools,
+nav.site-nav > .nav-right .nav-cart-toggle,
+nav.site-nav > .nav-right .nav-username,
+nav.site-nav > .nav-right .nav-user-menu,
+nav.site-nav > .nav-right .nav-login-split {
+  order: 2;
 }
 
 nav.site-nav > .nav-right .nav-search input[type="text"] {

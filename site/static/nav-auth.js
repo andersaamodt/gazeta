@@ -3414,7 +3414,7 @@
     }
   }
 
-  function placeNavOverflowMenuAtNavRightEdge() {
+  function placeNavOverflowMenuBeforeSearch() {
     if (!els.navOverflowMenu) {
       return;
     }
@@ -3430,10 +3430,14 @@
       nav.appendChild(els.navOverflowMenu);
       return;
     }
-    if (els.navOverflowMenu.parentNode === navRight && navRight.lastElementChild === els.navOverflowMenu) {
+    var search = navRight.querySelector('.nav-search');
+    if (search && els.navOverflowMenu.parentNode === navRight && els.navOverflowMenu.nextElementSibling === search) {
       return;
     }
-    navRight.appendChild(els.navOverflowMenu);
+    if (!search && els.navOverflowMenu.parentNode === navRight) {
+      return;
+    }
+    navRight.insertBefore(els.navOverflowMenu, search || navRight.firstElementChild);
   }
 
   function scheduleNavOverflowMenuSync() {
@@ -4187,7 +4191,7 @@
     }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
-    placeNavOverflowMenuAtNavRightEdge();
+    placeNavOverflowMenuBeforeSearch();
 
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');
