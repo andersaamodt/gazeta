@@ -12379,19 +12379,20 @@ nav.site-nav .nav-center a[aria-current="page"]:focus-visible {
 /* Final nav overflow lock: keep site title visible and collapse links into overflow one-by-one. */
 nav.site-nav {
   display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  grid-template-columns: auto auto auto !important;
   grid-template-rows: auto auto !important;
   align-items: center !important;
-  justify-content: stretch !important;
+  justify-content: center !important;
   gap: 0.38rem 0.72rem !important;
   overflow: visible !important;
   position: static !important;
   top: auto !important;
   z-index: 1200;
-  width: var(--site-nav-panel-width);
+  width: fit-content;
+  max-width: calc(100vw - 1.5rem);
   min-height: 4.35rem;
-  margin-left: calc((100% - var(--site-nav-panel-width)) / 2);
-  margin-right: calc((100% - var(--site-nav-panel-width)) / 2);
+  margin-left: auto;
+  margin-right: auto;
   transform: none;
   padding: 0.54rem 1rem 0.62rem;
   border-radius: 0 0 16px 16px;
@@ -12415,6 +12416,8 @@ nav.site-nav > .nav-site-signature {
   grid-row: 1;
   display: inline-flex !important;
   flex: 0 0 auto !important;
+  color: color-mix(in srgb, var(--nav-signature-color, var(--text)) 42%, var(--text, #2f2517) 58%) !important;
+  font-size: 1.15rem;
   min-width: max-content !important;
   white-space: nowrap !important;
   margin-left: 0 !important;
@@ -12424,9 +12427,9 @@ nav.site-nav > .nav-site-signature {
 nav.site-nav > .nav-center {
   grid-column: 1 / -1;
   grid-row: 2;
-  flex: 1 1 auto !important;
+  flex: 0 1 auto !important;
   min-width: 0 !important;
-  width: 100% !important;
+  width: fit-content !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -12436,7 +12439,7 @@ nav.site-nav > .nav-center {
   scrollbar-width: none !important;
   box-sizing: border-box;
   justify-self: center;
-  max-width: min(760px, calc(100% - 5.5rem));
+  max-width: min(760px, calc(100vw - 3rem));
   margin-inline: auto;
   padding: 0.18rem 0.36rem;
   border-radius: 999px;
