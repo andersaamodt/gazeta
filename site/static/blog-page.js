@@ -381,7 +381,42 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
-    return escapeHtml(value);
+    return markdownInlineFallback(value);
+  }
+
+  function safeMarkdownHref(raw) {
+    var href = String(raw || '').trim().replace(/^<|>$/g, '');
+    if (!href) {
+      return '';
+    }
+    if (/^(https?:|mailto:|\/|#)/i.test(href)) {
+      return href;
+    }
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href)) {
+      return '';
+    }
+    return href;
+  }
+
+  function markdownInlineFallback(md) {
+    var value = String(md || '');
+    var linkPattern = /\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+    var html = '';
+    var lastIndex = 0;
+    var match;
+    while ((match = linkPattern.exec(value)) !== null) {
+      html += escapeHtml(value.slice(lastIndex, match.index));
+      var label = String(match[1] || '');
+      var href = safeMarkdownHref(match[2] || '');
+      if (href) {
+        html += '<a href="' + escapeHtml(href) + '">' + escapeHtml(label) + '</a>';
+      } else {
+        html += escapeHtml(label);
+      }
+      lastIndex = linkPattern.lastIndex;
+    }
+    html += escapeHtml(value.slice(lastIndex));
+    return html;
   }
 
   function markdownBlock(md) {
@@ -392,7 +427,7 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
-    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+    return '<p>' + markdownInlineFallback(value).replace(/\n/g, '<br>') + '</p>';
   }
 
   function cleanMarkdownText(value) {

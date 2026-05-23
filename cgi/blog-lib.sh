@@ -2234,7 +2234,7 @@ blog_condensed_preview_plain_text() {
     return 0
   fi
   printf '%s\n' "$content" \
-    | sed -E 's/```[^`]*```/ /g; s/`([^`]*)`/\1/g; s/!\[[^]]*\]\([^)]*\)/ /g; s/\[([^]]*)\]\([^)]*\)/\1/g; s/^[[:space:]]{0,3}[#>*-]+[[:space:]]*//g; s/[*_~]+//g' \
+    | sed -E 's/```[^`]*```/ /g; s/`([^`]*)`/\1/g; s/!\[[^]]*\]\([^)]*\)/ /g; s/^[[:space:]]{0,3}[#>*-]+[[:space:]]*//g; s/[*_~]+//g' \
     | awk '
       { lines[NR] = $0; if ($0 !~ /^[[:space:]]*$/) last = NR }
       END {
@@ -2260,9 +2260,17 @@ blog_condensed_preview_from_content() {
       line = $0
       out = ""
       while (match(line, /[^[:space:]]+/)) {
-        prefix = substr(line, 1, RSTART - 1)
-        word = substr(line, RSTART, RLENGTH)
-        rest = substr(line, RSTART + RLENGTH)
+        token_start = RSTART
+        token_len = RLENGTH
+        prefix = substr(line, 1, token_start - 1)
+        segment = substr(line, token_start)
+        if (match(segment, /^\[[^]]+\]\([^)]*\)/)) {
+          word = substr(segment, 1, RLENGTH)
+          rest = substr(segment, RLENGTH + 1)
+        } else {
+          word = substr(line, token_start, token_len)
+          rest = substr(line, token_start + token_len)
+        }
         if (words >= max_words) {
           truncated = 1
           break
@@ -2293,13 +2301,34 @@ blog_condensed_preview_from_content() {
 
 blog_condensed_preview_truncated() {
   content=${1-}
-  word_count=$(blog_condensed_preview_plain_text "$content" | wc -w | tr -d ' ')
-  case "$word_count" in ''|*[!0-9]*) word_count=0 ;; esac
-  if [ "$word_count" -gt 48 ]; then
-    printf 'true\n'
-  else
-    printf 'false\n'
-  fi
+  blog_condensed_preview_plain_text "$content" | awk -v max_words=48 '
+    BEGIN { words = 0; truncated = 0 }
+    {
+      line = $0
+      while (match(line, /[^[:space:]]+/)) {
+        token_start = RSTART
+        token_len = RLENGTH
+        segment = substr(line, token_start)
+        if (match(segment, /^\[[^]]+\]\([^)]*\)/)) {
+          rest = substr(segment, RLENGTH + 1)
+        } else {
+          rest = substr(line, token_start + token_len)
+        }
+        if (words >= max_words) {
+          truncated = 1
+          exit
+        }
+        words++
+        line = rest
+      }
+    }
+    END {
+      if (truncated) {
+        print "true"
+      } else {
+        print "false"
+      }
+    }'
 }
 
 blog_validate_nostr_pubkey() {

@@ -589,6 +589,24 @@ actual_preview=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_from_cont
 assert_eq "$expected_preview" "$actual_preview" 'condensed blog previews preserve paragraph whitespace while truncating'
 actual_preview_truncated=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_truncated "$2"' sh "$ROOT_DIR" "$preview_fixture")
 assert_eq 'true' "$actual_preview_truncated" 'condensed blog previews expose truncation state'
+link_preview_words=''
+link_preview_i=1
+while [ "$link_preview_i" -le 47 ]; do
+  if [ -n "$link_preview_words" ]; then
+    link_preview_words="$link_preview_words "
+  fi
+  link_preview_words="${link_preview_words}word$link_preview_i"
+  link_preview_i=$((link_preview_i + 1))
+done
+link_preview_fixture=$(printf '%s [read the guide](https://example.com/really/long/path) tail words keep going\n' "$link_preview_words")
+expected_link_preview=$(printf '%s [read the guide](https://example.com/really/long/path)...' "$link_preview_words")
+actual_link_preview=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_from_content "$2"' sh "$ROOT_DIR" "$link_preview_fixture")
+assert_eq "$expected_link_preview" "$actual_link_preview" 'condensed blog previews keep markdown links whole when truncating'
+actual_link_preview_truncated=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_truncated "$2"' sh "$ROOT_DIR" "$link_preview_fixture")
+assert_eq 'true' "$actual_link_preview_truncated" 'condensed blog previews mark truncation after a whole markdown link'
+whole_link_preview_fixture=$(printf '%s [read the guide](https://example.com/really/long/path)\n' "$link_preview_words")
+actual_whole_link_preview_truncated=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_truncated "$2"' sh "$ROOT_DIR" "$whole_link_preview_fixture")
+assert_eq 'false' "$actual_whole_link_preview_truncated" 'condensed blog previews do not mark whole-link previews truncated when no text remains'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '*/releases/*' 'blog lib detects managed releases path when resolving shared site data'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
@@ -1153,6 +1171,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-actio
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "apiPost('/cgi/blog-delete-draft'" 'in-blog compose can delete local draft via delete endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'return '\''<div class="post-summary">'\'' + markdownBlock(text) + readMore + '\''</div>'\'';' 'blog index renders post summaries as block markdown'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function markdownInlineFallback(md)' 'blog index markdown fallback renders summary links when marked is unavailable'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "cache: 'no-store'" 'contact-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'id="nip23-price-input"' 'nip23 editor exposes product USD price input'
