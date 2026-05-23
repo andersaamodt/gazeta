@@ -11,6 +11,11 @@
   --violet: #a5b4fc;
   --amethyst: #6a4fa3;
   --amethyst-dark: #553f83;
+  --list-vote-up-color: #2c8b6e;
+  --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 56%, var(--muted-text, #64748b) 44%);
+  --list-vote-down-color: var(--accent);
+  --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 56%, var(--muted-text, #64748b) 44%);
+  --list-vote-idle-color: #c9ced8;
   --text: #0b132b;
   --light-text: #475569;
   --heading-color: var(--text);
@@ -3869,29 +3874,29 @@ body.nav-cart-open {
   border: 0;
   border-radius: 0;
   background: transparent !important;
-  color: #c9ced8;
+  color: var(--list-vote-idle-color, #c9ced8);
   line-height: 1;
 }
 
 .list-entry-vote-btn.is-upvote.is-active,
 .list-entry-vote-btn.is-upvote:hover {
-  color: #d13939;
+  color: var(--list-vote-up-color, #2c8b6e);
   background: transparent !important;
 }
 
 .list-entry-vote-btn.is-upvote.is-stale {
-  color: #b77a7a;
+  color: var(--list-vote-up-stale-color, #6e9586);
   background: transparent !important;
 }
 
 .list-entry-vote-btn.is-downvote.is-active,
 .list-entry-vote-btn.is-downvote:hover {
-  color: #286dc8;
+  color: var(--list-vote-down-color, #2f4aa6);
   background: transparent !important;
 }
 
 .list-entry-vote-btn.is-downvote.is-stale {
-  color: #718bad;
+  color: var(--list-vote-down-stale-color, #718bad);
   background: transparent !important;
 }
 
@@ -6192,6 +6197,36 @@ nav.site-nav .btn-login {
   border-color: var(--status-error-border);
   background: var(--status-error-bg);
   color: var(--status-error-text);
+}
+
+.nav-top-toast.list-vote-error-toast {
+  gap: 0.6rem;
+  justify-content: space-between;
+  pointer-events: auto;
+}
+
+.list-vote-error-toast-message {
+  min-width: 0;
+}
+
+.list-vote-error-toast-copy {
+  width: fit-content;
+  min-width: max-content;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 48%, transparent);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: currentColor !important;
+  -webkit-text-fill-color: currentColor;
+  box-shadow: none !important;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.1;
+}
+
+.list-vote-error-toast-copy:hover,
+.list-vote-error-toast-copy:focus-visible {
+  background: rgba(255, 255, 255, 0.24) !important;
 }
 
 .auth-modal[hidden] {

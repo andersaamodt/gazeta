@@ -1874,6 +1874,129 @@
     renderValidation();
   }
 
+  function clonePayloadForRollback(payload) {
+    try {
+      return JSON.parse(JSON.stringify(payload || null));
+    } catch (_err) {
+      return payload || null;
+    }
+  }
+
+  function findListEntryByPublicId(elements, entryId) {
+    var targetId = String(entryId || '');
+    var list = Array.isArray(elements) ? elements : [];
+    for (var i = 0; i < list.length; i += 1) {
+      var item = list[i] || {};
+      if (String(item._list_entry_id || item._public_entry_id || '') === targetId) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  function applyOptimisticListVote(entryId, value) {
+    var voteValue = Number(value || 0) < 0 ? -1 : 1;
+    var nowSeconds = Math.floor(Date.now() / 1000);
+    var changed = false;
+    var sources = [];
+    if (state.payload && state.payload.state && Array.isArray(state.payload.state.elements)) {
+      sources.push(state.payload.state.elements);
+    }
+    if (state.draft && Array.isArray(state.draft.elements)) {
+      sources.push(state.draft.elements);
+    }
+    sources.forEach(function (elements) {
+      var entry = findListEntryByPublicId(elements, entryId);
+      if (!entry) {
+        return;
+      }
+      var cooldownSeconds = Number(entry.vote_cooldown_seconds || 64800) || 64800;
+      entry.list_score = (Number(entry.list_score || 0) || 0) + voteValue;
+      entry.viewer_vote = voteValue;
+      entry.viewer_vote_created_at = nowSeconds;
+      entry.viewer_vote_total = (Number(entry.viewer_vote_total || 0) || 0) + 1;
+      entry.viewer_next_vote_at = nowSeconds + cooldownSeconds;
+      entry.viewer_can_vote_now = false;
+      changed = true;
+    });
+    if (changed && state.payload) {
+      writeBootstrapCache(state.payload);
+    }
+    return changed;
+  }
+
+  function restoreListVoteSnapshot(snapshot, beforeRects) {
+    if (snapshot && typeof snapshot === 'object') {
+      state.payload = snapshot;
+      state.draft = readEditableStateFromPayload();
+      writeBootstrapCache(state.payload);
+    }
+    if (beforeRects) {
+      renderListWithFlip(beforeRects);
+    } else {
+      renderList();
+    }
+    renderAdmin();
+    renderValidation();
+  }
+
+  function copyTextToClipboard(text) {
+    var value = String(text || '');
+    if (!value) {
+      return Promise.resolve(false);
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(value).then(function () {
+        return true;
+      }).catch(function () {
+        return false;
+      });
+    }
+    return Promise.resolve(false);
+  }
+
+  function showVoteErrorToast(message) {
+    var text = String(message || 'Could not vote').trim() || 'Could not vote';
+    var host = document.getElementById('nav-top-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'nav-top-toast-host';
+      host.className = 'nav-top-toast-host';
+      host.setAttribute('aria-live', 'polite');
+      host.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+    var toast = document.createElement('div');
+    toast.className = 'nav-top-toast is-error list-vote-error-toast';
+    var messageNode = document.createElement('span');
+    messageNode.className = 'list-vote-error-toast-message';
+    messageNode.textContent = text;
+    var copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'list-vote-error-toast-copy';
+    copyButton.textContent = 'Copy';
+    copyButton.addEventListener('click', function () {
+      copyTextToClipboard(text).then(function (copied) {
+        copyButton.textContent = copied ? 'Copied' : 'Copy failed';
+      });
+    });
+    toast.appendChild(messageNode);
+    toast.appendChild(copyButton);
+    host.appendChild(toast);
+    requestAnimationFrame(function () {
+      toast.classList.add('is-visible');
+    });
+    setTimeout(function () {
+      toast.classList.add('is-closing');
+      setTimeout(function () {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 230);
+    }, 5200);
+  }
+
   async function submitPublicListEntry() {
     if (state.publicSubmitBusy) {
       return;
@@ -1939,10 +2062,15 @@
   async function submitPublicListVote(entryId, value) {
     var auth = getAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
-      window.alert('Sign in first to vote.');
+      showVoteErrorToast('Sign in first to vote.');
       return;
     }
     var beforeRects = captureEntryRects();
+    var rollbackPayload = clonePayloadForRollback(state.payload);
+    var optimisticallyChanged = applyOptimisticListVote(entryId, value);
+    if (optimisticallyChanged) {
+      renderListWithFlip(beforeRects);
+    }
     try {
       var data = await apiPost('/cgi/blog-submit-list-vote', {
         page_slug: slug,
@@ -1953,7 +2081,8 @@
       });
       refreshListPayloadFromResponse(data, beforeRects);
     } catch (err) {
-      window.alert(err && err.message ? err.message : 'Could not vote');
+      restoreListVoteSnapshot(rollbackPayload, beforeRects);
+      showVoteErrorToast(err && err.message ? err.message : 'Could not vote');
     }
   }
 

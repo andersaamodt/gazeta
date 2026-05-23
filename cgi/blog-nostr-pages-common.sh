@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260523-read-inline1'
+blog_nostr_list_page_js_version='20260523-optimistic-votes1'
 blog_nostr_blog_page_js_version='20260523-byline-bottom1'
 blog_nostr_contact_page_js_version='20260523-github-link1'
 blog_nostr_simplex_web_default_chat_js_version='20260517-defaultchatv8'
