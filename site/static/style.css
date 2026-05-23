@@ -7635,6 +7635,7 @@ body.blog-post-resizing {
 }
 
 .post-head-divider {
+  order: 2;
   width: 100%;
   border-top: 1px solid var(--border);
   margin: 0.4rem 0 0.34rem;
@@ -7654,6 +7655,7 @@ body.blog-post-resizing {
 }
 
 .post-byline {
+  order: 3;
   width: 100%;
 }
 
@@ -7694,10 +7696,12 @@ body.blog-post-resizing {
 }
 
 .post-byline-bottom .post-author {
+  grid-column: 1;
   justify-self: start;
 }
 
 .post-byline-bottom .post-reading-inline {
+  grid-column: 2;
   justify-self: center;
 }
 
@@ -7705,6 +7709,7 @@ body.blog-post-resizing {
 .post-byline-bottom .post-date-published,
 .post-byline-top .post-date,
 .post-byline-top .post-date-published {
+  grid-column: 3;
   justify-self: end;
   color: var(--light-text);
   font-size: 0.82rem;

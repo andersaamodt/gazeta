@@ -4225,9 +4225,8 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
-              '<div class="post-byline post-byline-top"><span class="post-author">' + escapeHtml(author) + '</span>' + postDateHtml(post, post.published_date || post.pub_date || 'Unknown date') + '</div>' +
               '<div class="post-head-divider" aria-hidden="true"></div>' +
-              '<div class="post-byline post-byline-bottom"><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span></div>' +
+              '<div class="post-byline post-byline-bottom"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span>' + postDateHtml(post, post.published_date || post.pub_date || 'Unknown date') + '</div>' +
             '</div>' +
             adminMenuHtml +
           '</div>' +

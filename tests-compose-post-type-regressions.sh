@@ -76,6 +76,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'set -- nak req -k 1 -k 15 -k 2
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'printf '\''%s:%s:%s\n'\'' "$ref_kind" "$ref_pubkey" "$ref_d"' 'list event a-ref preserves referenced post kind'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'published_timestamp: $published_timestamp' 'public posts catalog exposes long hover timestamp when available'
 assert_file_contains "$ROOT_DIR/cgi/blog-index" '<span class="post-date"%s>' 'fallback blog feed preserves date hover title attribute'
+assert_file_contains "$ROOT_DIR/cgi/blog-index" '<div class="post-head-divider" aria-hidden="true"></div>' 'fallback blog feed keeps byline below divider'
+assert_file_contains "$ROOT_DIR/cgi/blog-index" 'post-byline post-byline-bottom' 'fallback blog feed aligns author reading time and date in bottom byline'
 assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'safe_date_title_attr=" title=\"$safe_timestamp\""' 'single post page adds title hover when timestamp is available'
 assert_file_contains "$ROOT_DIR/cgi/blog-post-context" 'printf '\''"published_timestamp":"%s",'\'' "$(blog_json_escape "$published_timestamp")"' 'post context endpoint exposes long hover timestamp'
 
