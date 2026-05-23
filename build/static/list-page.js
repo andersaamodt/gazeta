@@ -1982,6 +1982,10 @@
         page_slug: slug,
         entry_id: entryId,
         markdown: markdown,
+        marker: String(entry.marker || ''),
+        date: String(entry.date || ''),
+        post_url: String(entry.post_url || ''),
+        description: String(entry.description || ''),
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -2454,15 +2458,9 @@
   }
 
   function renderReadModeInlineEntry(entry) {
-    var uid = String(entry && entry._uid || '');
-    var markdownText = String(entry && entry.markdown || '');
-    var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
-    var html = '';
-    html += '<div class="list-entry-read-inline is-active" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
-    html += '<input type="text" class="list-entry-read-inline-input" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '" aria-label="Edit row text">';
-    html += '<button type="button" class="list-entry-read-inline-done" data-list-read-action="finish-row" data-element-uid="' + escapeHtml(uid) + '">Done</button>';
-    html += '</div>';
-    return html;
+    return renderElementInline(entry)
+      .replace(/^<li\b/, '<div')
+      .replace(/<\/li>$/, '</div>');
   }
 
   function listVoteArrowSvg(direction) {
@@ -2841,8 +2839,9 @@
 
   function renderElementInline(el) {
     var uid = String(el && el._uid || '');
-    var rowSelected = uid && uid === state.activeEntryUid;
-    var activeField = rowSelected ? String(state.activeCellField || '') : '';
+    var rowInlineEdit = !!(!state.editMode && isReadInlineEditing() && uid && uid === state.readInlineEditUid);
+    var rowSelected = uid && (uid === state.activeEntryUid || rowInlineEdit);
+    var activeField = rowInlineEdit ? String(state.readInlineEditField || 'markdown') : (rowSelected ? String(state.activeCellField || '') : '');
     var active = !!activeField;
     var depth = Math.max(0, Number(el && el.depth || 0) || 0);
     var guiDepth = depth;
@@ -2901,6 +2900,9 @@
     html += '<div class="list-inline-cell list-inline-actions">';
     var rowMenuOpen = state.rowMenuOpenUid === uid;
     var eventMenuLabel = eventId ? 'Edit Nostr event_id...' : 'Add Nostr event_id...';
+    if (rowInlineEdit) {
+      html += '<button type="button" class="list-entry-read-inline-done" data-list-read-action="finish-row" data-element-uid="' + escapeHtml(uid) + '">Done</button>';
+    }
     if (isProductGalleryPage()) {
       html += '<button type="button" data-list-inline-action="create-product" data-element-uid="' + escapeHtml(uid) + '" title="' + (productReady ? (hasProductLink ? 'Update product page from this row' : 'Create product page from this row') : 'Add text first to create a product') + '"' + (productReady && !productBusy ? '' : ' disabled aria-disabled="true"') + '>' + (productBusy ? 'Creating...' : (hasProductLink ? 'Update Product' : 'Create Product')) + '</button>';
       if (hasProductLink) {
@@ -3041,17 +3043,18 @@
     var s = getRenderState();
     var elements = Array.isArray(s.elements) ? s.elements : [];
     var afterContent = renderExtraContent(s.extras_after, s.extras_after_format, 'after');
-    var inlineMode = isAdmin() && state.editMode;
+    var fullEditMode = isAdmin() && state.editMode;
+    var wideEditMode = isAdmin() && (state.editMode || isReadInlineEditing());
     if (root && root.classList) {
-      root.classList.toggle('is-editing', inlineMode);
+      root.classList.toggle('is-editing', wideEditMode);
     }
     if (document.body && document.body.classList) {
       document.body.classList.add('list-page-width-anim');
-      document.body.classList.toggle('list-page-wide', inlineMode);
+      document.body.classList.toggle('list-page-wide', wideEditMode);
     }
 
     if (!elements.length) {
-      if (inlineMode) {
+      if (fullEditMode) {
         els.content.innerHTML = renderInlineEditor([]) + afterContent;
       } else {
         els.content.innerHTML = renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
@@ -3060,7 +3063,7 @@
       return;
     }
 
-    if (inlineMode) {
+    if (fullEditMode) {
       els.content.innerHTML = renderInlineEditor(elements) + afterContent;
       renderAdmin();
       return;
@@ -3561,6 +3564,103 @@
       }
 
       if (!state.editMode) {
+        var readInlineActive = isReadInlineEditing();
+        var readInlineAction = readInlineActive ? target.closest('[data-list-inline-action]') : null;
+        if (readInlineAction instanceof HTMLElement) {
+          event.preventDefault();
+          var readInlineActionType = String(readInlineAction.getAttribute('data-list-inline-action') || '');
+          var readInlineUid = String(readInlineAction.getAttribute('data-element-uid') || '');
+          if (!readInlineUid || readInlineUid !== String(state.readInlineEditUid || '')) {
+            return;
+          }
+          if (readInlineActionType === 'edit') {
+            state.rowMenuOpenUid = '';
+            state.readInlineEditField = String(readInlineAction.getAttribute('data-inline-field') || 'markdown') || 'markdown';
+            state.activeEntryUid = '';
+            state.activeCellField = '';
+            state.historyCellEditKey = '';
+            renderList();
+            focusInlineField(readInlineUid, state.readInlineEditField);
+            return;
+          }
+          if (readInlineActionType === 'toggle-menu') {
+            state.rowMenuOpenUid = state.rowMenuOpenUid === readInlineUid ? '' : readInlineUid;
+            renderList();
+            return;
+          }
+          if (readInlineActionType === 'edit-event-id') {
+            var readEventIdx = findElementIndex(readInlineUid);
+            if (readEventIdx < 0) {
+              return;
+            }
+            var readCurrentEventId = String(state.draft.elements[readEventIdx].event_id || '');
+            var readNextEventId = window.prompt('Nostr event_id', readCurrentEventId);
+            state.rowMenuOpenUid = '';
+            if (readNextEventId === null) {
+              renderList();
+              return;
+            }
+            state.draft.elements[readEventIdx].event_id = String(readNextEventId || '').trim();
+            if (state.draft.elements[readEventIdx].event_id) {
+              state.draft.elements[readEventIdx].post_url = '';
+            }
+            updatePendingNewEntryState();
+            renderList();
+            if (shouldAutosaveForUid(readInlineUid)) {
+              queueAutosave(180);
+            }
+            return;
+          }
+          if (readInlineActionType === 'create-product') {
+            if (readInlineAction.hasAttribute('disabled')) {
+              return;
+            }
+            createProductFromEntry(readInlineUid);
+            return;
+          }
+          if (readInlineActionType === 'remove') {
+            var readRemoveIdx = findElementIndex(readInlineUid);
+            if (readRemoveIdx < 0) {
+              return;
+            }
+            var beforeReadInlineRemove = captureEntryRects();
+            state.draft.elements.splice(readRemoveIdx, 1);
+            state.rowMenuOpenUid = '';
+            state.readInlineEditUid = '';
+            state.readInlineEditField = '';
+            state.activeEntryUid = '';
+            state.activeCellField = '';
+            if (state.pendingNewEntry && state.pendingNewEntry.uid === readInlineUid) {
+              state.pendingNewEntry = null;
+            }
+            renderListWithFlip(beforeReadInlineRemove);
+            queueAutosave(120);
+            return;
+          }
+          if (readInlineActionType === 'toggle-depth') {
+            if (readInlineAction.hasAttribute('disabled')) {
+              return;
+            }
+            var readDepthIdx = findElementIndex(readInlineUid);
+            if (readDepthIdx < 0) {
+              return;
+            }
+            var beforeReadDepth = captureEntryRects();
+            var readCurrentDepth = Math.max(0, Number(state.draft.elements[readDepthIdx].depth || 0) || 0);
+            if (readCurrentDepth > 0) {
+              state.draft.elements[readDepthIdx].depth = readCurrentDepth - 1;
+            } else if (readDepthIdx > 0) {
+              var readPrevDepth = Math.max(0, Number(state.draft.elements[readDepthIdx - 1].depth || 0) || 0);
+              state.draft.elements[readDepthIdx].depth = Math.min(readCurrentDepth + 1, readPrevDepth + 1);
+            }
+            renderListWithFlip(beforeReadDepth);
+            updatePendingNewEntryState();
+            if (shouldAutosaveForUid(readInlineUid)) {
+              queueAutosave(120);
+            }
+            return;
+          }
+        }
         var readMenuAction = target.closest('[data-list-read-action]');
         if (readMenuAction instanceof HTMLElement) {
           event.preventDefault();
@@ -3736,7 +3836,8 @@
     });
 
     els.content.addEventListener('mousedown', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       var target = event.target;
@@ -3748,7 +3849,7 @@
         renderList();
         return;
       }
-      var row = target.closest('.list-entry-inline[data-element-uid]');
+      var row = target.closest('.list-entry-inline[data-element-uid], .list-entry-read-inline[data-element-uid]');
       state.pointerDownEntryUid = row ? String(row.getAttribute('data-element-uid') || '') : '';
       state.pointerDownAt = Date.now();
     });
@@ -3906,7 +4007,8 @@
     });
 
     els.content.addEventListener('change', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       var target = event.target;
@@ -3914,14 +4016,14 @@
         return;
       }
 
-      if (target.id === 'list-admin-group-by' && target instanceof HTMLSelectElement) {
+      if (!readInline && target.id === 'list-admin-group-by' && target instanceof HTMLSelectElement) {
         var beforeGroupBy = captureEntryRects();
         state.draft.group_by = String(target.value || '').trim();
         renderListWithFlip(beforeGroupBy);
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-marker-filters')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-show-marker-filters')) {
         state.draft.show_marker_filters = !!target.checked;
         if (!state.draft.show_marker_filters) {
           state.markerFilterInclude = [];
@@ -3934,13 +4036,13 @@
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-show-markers')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-show-markers')) {
         state.draft.show_markers = !!target.checked;
         renderList();
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-alphabetize-markers')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-alphabetize-markers')) {
         var enablingAlphabetize = !!target.checked && !state.draft.alphabetize_markers;
         state.draft.alphabetize_markers = !!target.checked;
         if (enablingAlphabetize) {
@@ -3953,7 +4055,7 @@
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-default-markers')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-default-markers')) {
         state.draft.default_markers = normalizeMarkerListText(target.value || '');
         target.value = state.draft.default_markers;
         state.markerFilterInclude = [];
@@ -3963,17 +4065,17 @@
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-submissions')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-submissions')) {
         state.draft.allow_signed_in_submissions = !!target.checked;
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-votes')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-allow-votes')) {
         state.draft.allow_signed_in_votes = !!target.checked;
         queueAutosave(280);
         return;
       }
-      if (target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
+      if (!readInline && target instanceof HTMLInputElement && target.hasAttribute('data-list-intro-publish')) {
         state.draft.publish_intro_to_nostr = !!target.checked;
         queueAutosave(500);
         return;
@@ -3985,6 +4087,9 @@
       var uid = String(target.getAttribute('data-element-uid') || '');
       var field = String(target.getAttribute('data-inline-field') || '');
       if (!uid || !field) {
+        return;
+      }
+      if (readInline && uid !== String(state.readInlineEditUid || '')) {
         return;
       }
       var idx = findElementIndex(uid);
@@ -4192,7 +4297,8 @@
     });
 
     els.content.addEventListener('keydown', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       var target = event.target;
@@ -4210,7 +4316,8 @@
     });
 
     els.content.addEventListener('keydown', function (event) {
-      if (!state.editMode || !isAdmin() || event.key !== 'Tab') {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin() || event.key !== 'Tab') {
         return;
       }
       var target = event.target;
@@ -4282,15 +4389,23 @@
 
       event.preventDefault();
       state.tabNavigationUntil = Date.now() + 320;
-      state.activeEntryUid = nextUid;
-      state.activeCellField = nextField;
+      if (readInline) {
+        state.readInlineEditUid = nextUid;
+        state.readInlineEditField = nextField;
+        state.activeEntryUid = '';
+        state.activeCellField = '';
+      } else {
+        state.activeEntryUid = nextUid;
+        state.activeCellField = nextField;
+      }
       renderList();
       renderAdmin();
       focusInlineField(nextUid, nextField);
     });
 
     els.content.addEventListener('keydown', function (event) {
-      if (!state.editMode || !isAdmin()) {
+      var readInline = isReadInlineEditing();
+      if ((!state.editMode && !readInline) || !isAdmin()) {
         return;
       }
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
@@ -4325,8 +4440,15 @@
         return;
       }
       event.preventDefault();
-      state.activeEntryUid = nextUid;
-      state.activeCellField = field;
+      if (readInline) {
+        state.readInlineEditUid = nextUid;
+        state.readInlineEditField = field;
+        state.activeEntryUid = '';
+        state.activeCellField = '';
+      } else {
+        state.activeEntryUid = nextUid;
+        state.activeCellField = field;
+      }
       renderList();
       renderAdmin();
       focusInlineField(nextUid, field);

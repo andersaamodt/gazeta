@@ -46,6 +46,42 @@ if [ -z "$markdown" ]; then
   blog_json_error "Entry text is required" "missing_entry_text"
   exit 0
 fi
+marker=$(blog_param marker)
+date_value=$(blog_param date)
+post_url=$(blog_param post_url)
+description=$(blog_param description)
+
+blog_update_list_entry_param_present() {
+  key=${1-}
+  [ -n "$key" ] || return 1
+  case "&${QUERY_STRING-}&" in
+    *"&$key="*) return 0 ;;
+  esac
+  [ -n "${BLOG_REQUEST_BODY-}" ] || return 1
+  case "${CONTENT_TYPE-}" in
+    application/json|application/json\;*|text/plain|text/plain\;*)
+      printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e --arg key "$key" 'type == "object" and has($key)' >/dev/null 2>&1
+      return $?
+      ;;
+  esac
+  case "$BLOG_REQUEST_BODY" in
+    \{*)
+      printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e --arg key "$key" 'type == "object" and has($key)' >/dev/null 2>&1
+      return $?
+      ;;
+    *"&$key="*|"$key="*) return 0 ;;
+  esac
+  return 1
+}
+
+marker_present=false
+date_present=false
+post_url_present=false
+description_present=false
+if blog_update_list_entry_param_present marker; then marker_present=true; fi
+if blog_update_list_entry_param_present date; then date_present=true; fi
+if blog_update_list_entry_param_present post_url; then post_url_present=true; fi
+if blog_update_list_entry_param_present description; then description_present=true; fi
 
 entries_json=$(blog_list_public_entries_json "$page_slug")
 found=$(printf '%s\n' "$entries_json" | jq -r --arg id "$entry_id" 'any(.[]?; (.id // "") == $id)')
@@ -64,8 +100,27 @@ if [ "$is_admin" != "true" ] && [ "$submitter" != "$BLOG_SESSION_USERNAME" ]; th
   exit 0
 fi
 
-updated_entries=$(printf '%s\n' "$entries_json" | jq -c --arg id "$entry_id" --arg markdown "$markdown" --argjson updated_at "$(blog_now_epoch)" '
-  map(if (.id // "") == $id then . + { markdown: $markdown, updated_at: $updated_at } else . end)
+updated_entries=$(printf '%s\n' "$entries_json" | jq -c \
+  --arg id "$entry_id" \
+  --arg markdown "$markdown" \
+  --arg marker "$marker" \
+  --arg date "$date_value" \
+  --arg post_url "$post_url" \
+  --arg description "$description" \
+  --argjson marker_present "$marker_present" \
+  --argjson date_present "$date_present" \
+  --argjson post_url_present "$post_url_present" \
+  --argjson description_present "$description_present" \
+  --argjson updated_at "$(blog_now_epoch)" '
+  map(if (.id // "") == $id then . + {
+    markdown: $markdown,
+    updated_at: $updated_at
+  }
+  + (if $marker_present then { marker: $marker } else {} end)
+  + (if $date_present then { date: $date } else {} end)
+  + (if $post_url_present then { post_url: $post_url } else {} end)
+  + (if $description_present then { description: $description } else {} end)
+  else . end)
 ')
 entries_path=$(blog_list_public_entries_path "$page_slug")
 tmp=$(mktemp "${entries_path}.tmp.XXXXXX")
