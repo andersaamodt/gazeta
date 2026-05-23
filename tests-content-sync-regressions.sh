@@ -757,6 +757,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 1.25rem auto 
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-page-shell {' 'list shell block exists for shared inline-grid variable definitions'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Public surface depth replaces thin framing lines.' 'public theme uses surface shadows instead of thin island borders'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav {' 'surface override targets navbar'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(900px, calc(100vw - 1rem));' 'desktop navbar is centered and wider than content without spanning the full viewport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'position: static !important;' 'navbar stays in page flow instead of pinning to the viewport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'top: auto !important;' 'navbar has no viewport top offset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 0 !important;' 'navbar removes the thin bottom border'
