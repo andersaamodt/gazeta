@@ -607,6 +607,7 @@ else
 fi
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/site-bootstrap.js' 'document head loads static site bootstrap before app code'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" '/cgi/blog-theme.css' 'document head no longer depends on CGI theme css for startup'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'document.write(markup);' 'document head emits theme stylesheet during parsing to avoid unthemed first paint'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"' 'document head sets no-store cache control meta'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" "var ROUTE_REFRESH_PARAM = '__route_refresh';" 'document head defines stale route refresh sentinel'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'function slugsEquivalent(expected, root)' 'document head normalizes index/blog slug equivalence for route checks'
