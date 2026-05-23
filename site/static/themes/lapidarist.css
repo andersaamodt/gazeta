@@ -20,10 +20,10 @@
   --heading-fill: transparent;
   --heading-glow: none;
 
-  --border: #d4c19c;
-  --bg: #f3e9d7;
-  --light-bg: #e8dbc2;
-  --code-bg: #efe2c8;
+  --border: #d0b78b;
+  --bg: #f1e2c8;
+  --light-bg: #e3d0ac;
+  --code-bg: #ead6b4;
   --shadow: rgba(46, 34, 20, 0.14);
 
   --nav-link-hover: rgba(106, 79, 163, 0.13);
@@ -34,13 +34,13 @@
   --nav-search-icon-hover: #1b614d;
   --nav-username-color: #6a4fa3;
   --nav-username-hover: #23775e;
-  --nav-button-bg: #ede3d0;
-  --nav-button-bg-dark: #e3d6c1;
+  --nav-button-bg: #eadcc4;
+  --nav-button-bg-dark: #ddc89f;
   --nav-button-hover-bg: #efe4f5;
   --nav-button-hover-bg-dark: #e5d7ef;
   --nav-button-hover-border: rgba(106, 79, 163, 0.34);
-  --nav-bg: #e7dbc4;
-  --nav-border: rgba(175, 145, 88, 0.36);
+  --nav-bg: #e2cfab;
+  --nav-border: rgba(163, 128, 65, 0.40);
   --accent-hover-end: #1d3f84;
   --button-primary-start: var(--lapis);
   --button-primary-end: #234b8f;
@@ -57,7 +57,7 @@
     radial-gradient(circle at 66% 18%, rgba(235, 206, 126, 0.31) 0 0.86px, transparent 1.44px),
     radial-gradient(circle at 78% 55%, rgba(213, 179, 97, 0.38) 0 1.02px, transparent 1.74px),
     radial-gradient(circle at 91% 73%, rgba(241, 214, 137, 0.28) 0 0.82px, transparent 1.4px);
-  --select-bg: #f5eddf;
+  --select-bg: #f3e6d0;
   --select-option-selected-bg: rgba(106, 79, 163, 0.26);
   --select-option-selected-text: #2f2517;
   --feed-rss-start: #b54b3b;
@@ -72,14 +72,14 @@
   --admin-nav-selected-bg: color-mix(in srgb, var(--lapis) 32%, var(--amethyst) 26%, var(--bg) 42%);
   --admin-nav-selected-text: #2f2517;
 
-  --post-card-bg: #f8efdd;
-  --post-card-bg-single: #f9f2e4;
-  --surface-raised: #f9f2e4;
-  --surface-raised-strong: #fbf5e9;
-  --surface-muted: #eee3ce;
+  --post-card-bg: #f5e5ca;
+  --post-card-bg-single: #f7ead4;
+  --surface-raised: #f7ead4;
+  --surface-raised-strong: #f9eedb;
+  --surface-muted: #ead8b8;
   --surface-overlay: rgba(47, 37, 23, 0.56);
-  --menu-bg: #fbf5e9;
-  --menu-border: #d6c49f;
+  --menu-bg: #f9eedb;
+  --menu-border: #d1b98c;
   --menu-shadow: 0 12px 30px rgba(54, 39, 20, 0.18);
   --menu-hover-bg: rgba(106, 79, 163, 0.16);
   --menu-danger-text: #a73b2f;
@@ -87,16 +87,16 @@
   --status-ok-bg: #e4f2eb;
   --status-ok-border: #8ebea8;
   --status-ok-text: #1e5f4b;
-  --status-warn-bg: #f3e7cc;
+  --status-warn-bg: #f1dfbd;
   --status-warn-border: #c9ad6f;
   --status-warn-text: #5f4615;
   --status-error-bg: #f3dfdc;
   --status-error-border: #c68d86;
   --status-error-text: #69251d;
-  --toast-info-bg: #f5ebd6;
-  --toast-info-border: #d6c49f;
+  --toast-info-bg: #f3e3c7;
+  --toast-info-border: #d1b98c;
   --toast-info-text: #2f2517;
-  --modal-bg: #f8efdd;
+  --modal-bg: #f5e5ca;
   --modal-shadow: 0 20px 48px rgba(54, 39, 20, 0.26);
   --tag-bg: rgba(47, 95, 184, 0.11);
   --tag-border: rgba(47, 95, 184, 0.34);
@@ -132,15 +132,15 @@
   --lapidarist-parchment-size: 768px 768px;
   --lapidarist-page-parchment-size: 640px 640px;
   --lapidarist-parchment-surface:
-    radial-gradient(900px 360px at 18% 6%, rgba(255, 250, 236, 0.62) 0%, rgba(255, 250, 236, 0) 62%),
-    linear-gradient(180deg, rgba(255, 249, 235, 0.58) 0%, rgba(239, 224, 193, 0.34) 100%),
+    radial-gradient(900px 360px at 18% 6%, rgba(255, 246, 224, 0.48) 0%, rgba(255, 246, 224, 0) 62%),
+    linear-gradient(180deg, rgba(250, 238, 213, 0.58) 0%, rgba(226, 199, 153, 0.36) 100%),
     var(--lapidarist-parchment-smooth-texture);
   --lapidarist-parchment-muted:
-    radial-gradient(640px 260px at 18% 4%, rgba(255, 249, 232, 0.52) 0%, rgba(255, 249, 232, 0) 64%),
-    linear-gradient(180deg, rgba(252, 244, 226, 0.70) 0%, rgba(231, 214, 180, 0.42) 100%),
+    radial-gradient(640px 260px at 18% 4%, rgba(253, 241, 216, 0.44) 0%, rgba(253, 241, 216, 0) 64%),
+    linear-gradient(180deg, rgba(246, 232, 203, 0.72) 0%, rgba(219, 190, 142, 0.46) 100%),
     var(--lapidarist-parchment-fiber-texture);
   --lapidarist-parchment-control:
-    linear-gradient(180deg, rgba(255, 250, 239, 0.70), rgba(240, 226, 197, 0.45)),
+    linear-gradient(180deg, rgba(251, 240, 218, 0.70), rgba(226, 202, 160, 0.48)),
     var(--lapidarist-parchment-smooth-texture);
   --lapidarist-float-shadow:
     0 28px 54px rgba(48, 34, 16, 0.18),
@@ -158,9 +158,9 @@
     0 8px 18px rgba(48, 34, 16, 0.12),
     0 2px 5px rgba(48, 34, 16, 0.08);
   --page-canvas-bg:
-    radial-gradient(1300px 540px at 18% -16%, rgba(190, 152, 67, 0.12) 0%, rgba(190, 152, 67, 0) 56%),
-    radial-gradient(900px 400px at 87% -7%, rgba(47, 95, 184, 0.08) 0%, rgba(47, 95, 184, 0) 60%),
-    linear-gradient(180deg, rgba(246, 237, 220, 0.90) 0%, rgba(239, 227, 204, 0.91) 100%),
+    radial-gradient(1300px 540px at 18% -16%, rgba(176, 130, 46, 0.16) 0%, rgba(176, 130, 46, 0) 56%),
+    radial-gradient(900px 400px at 87% -7%, rgba(92, 70, 45, 0.06) 0%, rgba(92, 70, 45, 0) 60%),
+    linear-gradient(180deg, rgba(241, 225, 197, 0.92) 0%, rgba(229, 207, 168, 0.93) 100%),
     var(--lapidarist-parchment-page-texture);
   --page-canvas-bg-size: auto, auto, auto, var(--lapidarist-page-parchment-size);
   --page-canvas-bg-position: center, center, center, center;
@@ -355,7 +355,7 @@ strong {
 
 .nav-search button:hover,
 .nav-search button:focus-visible {
-  background: linear-gradient(135deg, #f4ebdc 0%, #eadfc9 100%);
+  background: linear-gradient(135deg, #f1e2ca 0%, #e3cfa9 100%);
   border-color: color-mix(in srgb, var(--border) 72%, var(--gold-leaf) 28%);
   color: var(--nav-search-icon-hover);
 }
@@ -489,7 +489,7 @@ strong {
 }
 
 nav.site-nav {
-  background-color: #eadcc0;
+  background-color: var(--nav-bg);
   background-image: var(--lapidarist-parchment-muted);
   background-size: auto, auto, var(--lapidarist-parchment-size);
   background-position: center, center, center;
