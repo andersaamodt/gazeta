@@ -914,7 +914,8 @@
       callMode: 'video',
       micEnabled: true,
       cameraEnabled: true,
-      prefilledInviteLink: merged.initialInviteLink || ''
+      prefilledInviteLink: merged.initialInviteLink || '',
+      inviteLinkOpen: !!merged.initialInviteLink
     };
 
     this.boundOnOnline = this._handleOnline.bind(this);
@@ -1004,11 +1005,16 @@
       + '.vcw-call-help{margin:0;font-size:.84rem;color:var(--muted,#5a4935);}'
       + '.vcw-precall-help{margin:0;font-size:.82rem;color:var(--muted,#6f5b42);}'
       + '.vcw-join-row[hidden]{display:none;}'
+      + '.vcw-invite-panel{display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-height:0;opacity:0;overflow:hidden;transform:translateY(-4px);transition:max-height 210ms ease,opacity 180ms ease,transform 210ms ease;}'
+      + '.vcw-invite-panel.is-open{max-height:9rem;opacity:1;transform:translateY(0);}'
+      + '.vcw-invite-panel .vcw-label{width:min(28rem,100%);}'
       + '.vcw-public-rooms .vcw-label{min-width:min(16rem,100%);}'
       + '@keyframes vcw-wave{0%,100%{height:12px}50%{height:38px}}'
+      + '@media (prefers-reduced-motion:reduce){.vcw-invite-panel{transition:none;transform:none;}}'
       + '@media (max-width:560px){.vcw-shell{padding:10px}.vcw-btn{padding:8px 12px}.vcw-grid{grid-template-columns:repeat(auto-fit,minmax(126px,1fr));}}';
 
     var joinRowHidden = showJoinByLink ? '' : ' hidden';
+    var invitePanelOpen = this.state && this.state.inviteLinkOpen;
 
     this.shadowRoot.innerHTML = ''
       + '<style>' + style + '</style>'
@@ -1029,10 +1035,11 @@
       + '      </div>'
       + '    </section>'
       + '    <div class="vcw-join-row"' + joinRowHidden + '>'
-      + '      <label class="vcw-label">Invite Link<input class="vcw-input vcw-invite-input" type="text" autocomplete="off" placeholder="https://example.com/contact?room=..."></label>'
-      + '    </div>'
-      + '    <div class="vcw-precall-actions">'
-      + (showJoinByLink ? '<button type="button" class="vcw-btn vcw-join-link-btn">Join via Link</button>' : '')
+      + '      <button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="' + (invitePanelOpen ? 'true' : 'false') + '" aria-controls="vcw-invite-panel-' + escapeAttr(this.instanceId) + '">Invite Link...</button>'
+      + '      <div id="vcw-invite-panel-' + escapeAttr(this.instanceId) + '" class="vcw-invite-panel' + (invitePanelOpen ? ' is-open' : '') + '" aria-hidden="' + (invitePanelOpen ? 'false' : 'true') + '">'
+      + '        <label class="vcw-label">Invite Link<input class="vcw-input vcw-invite-input" type="text" autocomplete="off" placeholder="https://example.com/contact?room=..."' + (invitePanelOpen ? '' : ' tabindex="-1"') + '></label>'
+      + (showJoinByLink ? '        <button type="button" class="vcw-btn vcw-join-link-btn"' + (invitePanelOpen ? '' : ' tabindex="-1"') + '>Join via Link</button>' : '')
+      + '      </div>'
       + '    </div>'
       + '  </section>'
       + '  <section class="vcw-fullroom" hidden></section>'
@@ -1068,6 +1075,8 @@
       roomInput: this.shadowRoot.querySelector('.vcw-room-input'),
       roomPasswordInput: this.shadowRoot.querySelector('.vcw-room-password-input'),
       inviteInput: this.shadowRoot.querySelector('.vcw-invite-input'),
+      invitePanel: this.shadowRoot.querySelector('.vcw-invite-panel'),
+      inviteToggleBtn: this.shadowRoot.querySelector('.vcw-invite-toggle-btn'),
       callOwnerBtns: Array.prototype.slice.call(this.shadowRoot.querySelectorAll('.vcw-call-owner-btn')),
       voiceCallOwnerBtn: this.shadowRoot.querySelector('.vcw-voice-call-owner-btn'),
       videoCallOwnerBtn: this.shadowRoot.querySelector('.vcw-video-call-owner-btn'),
@@ -1121,6 +1130,11 @@
         });
       });
     }
+    if (self.nodes.inviteToggleBtn) {
+      self.nodes.inviteToggleBtn.addEventListener('click', function () {
+        self.toggleInviteLinkPanel();
+      });
+    }
     if (self.nodes.micBtn) {
       self.nodes.micBtn.addEventListener('click', function () {
         self.toggleMic();
@@ -1163,6 +1177,38 @@
     this.nodes.status.setAttribute('data-tone', tone || 'info');
   };
 
+  VideoChatWidget.prototype._syncInviteLinkPanel = function () {
+    if (!this.nodes || !this.nodes.invitePanel || !this.nodes.inviteToggleBtn) {
+      return;
+    }
+    var open = !!this.state.inviteLinkOpen;
+    this.nodes.invitePanel.classList.toggle('is-open', open);
+    this.nodes.invitePanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    this.nodes.inviteToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (this.nodes.inviteInput) {
+      if (open) {
+        this.nodes.inviteInput.removeAttribute('tabindex');
+      } else {
+        this.nodes.inviteInput.setAttribute('tabindex', '-1');
+      }
+    }
+    if (this.nodes.joinViaLinkBtn) {
+      if (open) {
+        this.nodes.joinViaLinkBtn.removeAttribute('tabindex');
+      } else {
+        this.nodes.joinViaLinkBtn.setAttribute('tabindex', '-1');
+      }
+    }
+  };
+
+  VideoChatWidget.prototype.toggleInviteLinkPanel = function () {
+    this.state.inviteLinkOpen = !this.state.inviteLinkOpen;
+    this._syncInviteLinkPanel();
+    if (this.state.inviteLinkOpen && this.nodes && this.nodes.inviteInput) {
+      this.nodes.inviteInput.focus();
+    }
+  };
+
   VideoChatWidget.prototype._syncFeatureFlag = function () {
     var enabled = this.options.featureEnabled !== false && isGlobalFeatureEnabled();
     this.state.featureDisabled = !enabled;
@@ -1185,6 +1231,9 @@
       }
       if (this.nodes.joinViaLinkBtn) {
         this.nodes.joinViaLinkBtn.disabled = true;
+      }
+      if (this.nodes.inviteToggleBtn) {
+        this.nodes.inviteToggleBtn.disabled = true;
       }
       return;
     }
@@ -1209,6 +1258,9 @@
     }
     if (this.nodes.joinViaLinkBtn) {
       this.nodes.joinViaLinkBtn.disabled = !!busy || this.state.featureDisabled;
+    }
+    if (this.nodes.inviteToggleBtn) {
+      this.nodes.inviteToggleBtn.disabled = !!busy || this.state.featureDisabled;
     }
     if (this.nodes.roomInput) {
       this.nodes.roomInput.disabled = !!busy;

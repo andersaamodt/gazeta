@@ -175,7 +175,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260521-video-initial1';
+      script.src = '/static/video-chat-widget.js?v=20260523-invite-panel1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
