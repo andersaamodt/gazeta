@@ -1762,11 +1762,15 @@
       '</div>';
   }
 
+  function postNavHtml(newerHtml, olderHtml) {
+    return '<nav class="post-nav post-nav-enhanced" aria-label="Post navigation">' + newerHtml + olderHtml + '</nav>';
+  }
+
   function renderPostNav(payload) {
-    return '<nav class="post-nav post-nav-enhanced" aria-label="Post navigation">' +
-      navColumn('Newer', payload.newer, 'post-nav-prev') +
-      navColumn('Older', payload.older, 'post-nav-next') +
-      '</nav>';
+    return postNavHtml(
+      navColumn('Newer', payload.newer, 'post-nav-prev'),
+      navColumn('Older', payload.older, 'post-nav-next')
+    );
   }
 
   function normalizeMarkdownSeparators(body) {

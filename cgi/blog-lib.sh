@@ -474,6 +474,30 @@ blog_post_page_menu_html() {
   printf '<div class="post-page-menu" hidden><button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">%s</button><div class="post-page-menu-panel" role="menu" hidden><button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button><button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button><button type="button" data-post-page-action="open_nostr" data-post-page-reader-action="open_nostr" role="menuitem" hidden>Open in Nostr client</button><div class="post-page-menu-separator" data-post-page-admin-separator hidden></div><button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button><button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button><button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button></div></div>' "$icon"
 }
 
+blog_post_nav_column_html() {
+  label=${1:-}
+  cls=${2:-}
+  url=${3:-}
+  title=${4:-}
+  if [ -z "$url$title" ]; then
+    printf '<div class="%s"><span class="post-nav-empty">%s: none</span></div>' \
+      "$(blog_html_escape "$cls")" \
+      "$(blog_html_escape "$label")"
+    return 0
+  fi
+  printf '<div class="%s"><span class="post-nav-label">%s</span><a href="%s">%s</a></div>' \
+    "$(blog_html_escape "$cls")" \
+    "$(blog_html_escape "$label")" \
+    "$(blog_html_escape "$url")" \
+    "$(blog_html_escape "$title")"
+}
+
+blog_post_nav_html() {
+  newer_html=${1:-}
+  older_html=${2:-}
+  printf '<nav class="post-nav post-nav-enhanced" aria-label="Post navigation">%s%s</nav>' "$newer_html" "$older_html"
+}
+
 blog_url_encode() {
   # URL-encode common path/query characters without external deps.
   printf '%s' "${1-}" | sed \

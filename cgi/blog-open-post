@@ -83,16 +83,12 @@ post_nav_json() {
   label=${2-}
   cls=${3-}
   if [ -z "$file" ] || [ ! -f "$file" ]; then
-    printf '<div class="%s"><span class="post-nav-empty">%s: none</span></div>' "$cls" "$(blog_html_escape "$label")"
+    blog_post_nav_column_html "$label" "$cls"
     return 0
   fi
   title=$(post_nav_title "$file")
   url=$(blog_rel_post_html_url "$file")
-  printf '<div class="%s"><span class="post-nav-label">%s</span><a href="%s">%s</a></div>' \
-    "$cls" \
-    "$(blog_html_escape "$label")" \
-    "$(blog_html_escape "$url")" \
-    "$(blog_html_escape "$title")"
+  blog_post_nav_column_html "$label" "$cls" "$url" "$title"
 }
 
 blog_post_type_label() {
@@ -171,10 +167,7 @@ while IFS= read -r post_file; do
 done < "$posts_tmp"
 rm -f "$posts_tmp"
 
-post_nav_html='<nav class="post-nav post-nav-enhanced" aria-label="Post navigation">'
-post_nav_html="${post_nav_html}$(post_nav_json "$newer_file" "Newer" "post-nav-prev")"
-post_nav_html="${post_nav_html}$(post_nav_json "$older_file" "Older" "post-nav-next")"
-post_nav_html="${post_nav_html}</nav>"
+post_nav_html=$(blog_post_nav_html "$(post_nav_json "$newer_file" "Newer" "post-nav-prev")" "$(post_nav_json "$older_file" "Older" "post-nav-next")")
 
 post_menu_html=$(blog_post_page_menu_html)
 
