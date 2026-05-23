@@ -404,6 +404,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJ
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-columns: minmax(0, 1fr) auto;' 'blog layout reserves the right column for the filter button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-filter-column {' 'blog layout defines a dedicated filter column'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-column: 2;' 'blog filter button sits in the right grid column'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-columns: minmax(0, 1fr);' 'mobile blog layout removes the filter gutter'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'position: absolute;' 'mobile blog filter button overlays without reserving a gutter'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'Bellheim zap target' 'zaps admin names the Bellheim-compatible zap target'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Nostr Wallet Connect is a separate wallet-control secret' 'zaps admin distinguishes Lightning Address from NWC secret'

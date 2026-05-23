@@ -10116,9 +10116,26 @@ body.blog-camera-mode-active {
 
 @media (max-width: 900px) {
   .blog-layout {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
     margin-left: 0;
     padding-left: 0;
-    column-gap: 0.5rem;
+    padding-right: 0;
+    column-gap: 0;
+  }
+
+  .blog-filter-column {
+    grid-column: 1;
+    position: absolute;
+    top: 0.14rem;
+    right: 0;
+    z-index: 5;
+    width: 1.9rem;
+    padding-top: 0;
+  }
+
+  .blog-main-column {
+    grid-column: 1;
   }
 
   .blog-filter-grid {
