@@ -1497,9 +1497,12 @@
     if (!els.content) {
       return map;
     }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid]');
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid], .list-entry-line[data-list-entry-id]');
     nodes.forEach(function (node) {
       var uid = node.getAttribute('data-element-uid') || '';
+      if (!uid) {
+        uid = 'entry:' + String(node.getAttribute('data-list-entry-id') || '');
+      }
       if (uid) {
         map[uid] = node.getBoundingClientRect();
       }
@@ -1511,9 +1514,12 @@
     if (!els.content || !beforeRects) {
       return;
     }
-    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid]');
+    var nodes = els.content.querySelectorAll('.list-entry-inline[data-element-uid], .list-entry-line[data-list-entry-id]');
     nodes.forEach(function (node) {
       var uid = node.getAttribute('data-element-uid') || '';
+      if (!uid) {
+        uid = 'entry:' + String(node.getAttribute('data-list-entry-id') || '');
+      }
       var first = beforeRects[uid];
       if (!first) {
         return;
@@ -1846,7 +1852,7 @@
     }
   }
 
-  function refreshListPayloadFromResponse(data) {
+  function refreshListPayloadFromResponse(data, beforeRects) {
     if (!data || !data.state) {
       return;
     }
@@ -1859,7 +1865,11 @@
     }
     state.draft = readEditableStateFromPayload();
     writeBootstrapCache(state.payload);
-    renderList();
+    if (beforeRects) {
+      renderListWithFlip(beforeRects);
+    } else {
+      renderList();
+    }
     renderAdmin();
     renderValidation();
   }
@@ -1932,6 +1942,7 @@
       window.alert('Sign in first to vote.');
       return;
     }
+    var beforeRects = captureEntryRects();
     try {
       var data = await apiPost('/cgi/blog-submit-list-vote', {
         page_slug: slug,
@@ -1940,7 +1951,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshListPayloadFromResponse(data);
+      refreshListPayloadFromResponse(data, beforeRects);
     } catch (err) {
       window.alert(err && err.message ? err.message : 'Could not vote');
     }
@@ -2621,6 +2632,14 @@
     return '<span class="list-inline-placeholder">' + escapeHtml(label) + '</span>';
   }
 
+  function readOnlyEntryKey(entry) {
+    var entryId = String(entry && (entry._list_entry_id || entry._public_entry_id) || '');
+    if (entryId) {
+      return entryId;
+    }
+    return String(entry && entry._uid || '');
+  }
+
   function renderStructuredReadOnly(elements, listClass, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
     var html = '<ul class="' + escapeHtml(listClass || 'list-entries') + '">';
     var openDepth = -1;
@@ -2642,14 +2661,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2658,7 +2677,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2667,7 +2686,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
     });
 
     if (started) {
@@ -2804,7 +2823,32 @@
       return html;
     }
 
-    return html + renderReadOnlyByView(filteredEntries, viewMode, '', '', showMarkers, alphabetizeMarkers);
+    return html + renderReadOnlyByView(sortEntriesForReadOnlyVotes(filteredEntries), viewMode, '', '', showMarkers, alphabetizeMarkers);
+  }
+
+  function sortEntriesForReadOnlyVotes(entries) {
+    var list = Array.isArray(entries) ? entries : [];
+    var s = getRenderState();
+    if (!s || !s.allow_signed_in_votes) {
+      return list;
+    }
+    var canScoreSort = list.length > 1 && list.every(function (entry) {
+      return Math.max(0, Number(entry && entry.depth || 0) || 0) === 0;
+    });
+    if (!canScoreSort) {
+      return list;
+    }
+    return list.map(function (entry, index) {
+      return { entry: entry, index: index };
+    }).sort(function (a, b) {
+      var scoreDelta = (Number(b.entry && b.entry.list_score || 0) || 0) - (Number(a.entry && a.entry.list_score || 0) || 0);
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+      return a.index - b.index;
+    }).map(function (item) {
+      return item.entry;
+    });
   }
 
   function renderExtraContent(text, format, role) {
