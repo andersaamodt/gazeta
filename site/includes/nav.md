@@ -117,6 +117,129 @@
 </nav>
 <script>
 (function () {
+  function setupExpandableSearch() {
+    var forms = document.querySelectorAll('form.nav-search');
+    for (var i = 0; i < forms.length; i += 1) {
+      (function (form) {
+        if (!form || form.getAttribute('data-expandable-search-ready') === 'true') {
+          return;
+        }
+        form.setAttribute('data-expandable-search-ready', 'true');
+        var input = form.querySelector('input[type="text"]');
+        var button = form.querySelector('button[type="submit"], button:not([type])');
+        if (!input || !button) {
+          return;
+        }
+        var searchAnimationFrame = 0;
+
+        function hasValue() {
+          return String(input.value || '').trim().length > 0;
+        }
+
+        function writeSearchSize(formWidth, inputWidth) {
+          var inputPadding = inputWidth > 0 ? 12.8 : 0;
+          form.style.setProperty('transition', 'box-shadow 160ms ease', 'important');
+          form.style.setProperty('width', formWidth + 'px', 'important');
+          form.style.setProperty('max-width', '220px', 'important');
+          input.style.setProperty('transition', 'opacity 120ms ease', 'important');
+          input.style.setProperty('width', inputWidth + 'px', 'important');
+          input.style.setProperty('max-width', inputWidth + 'px', 'important');
+          input.style.setProperty('padding-left', inputPadding + 'px', 'important');
+          input.style.setProperty('padding-right', inputPadding + 'px', 'important');
+          input.style.opacity = inputWidth > 8 ? '1' : '0';
+          input.style.pointerEvents = inputWidth > 0 ? 'auto' : 'none';
+        }
+
+        function applySearchSize(expanded, animate) {
+          var targetFormWidth = expanded ? 220 : 40;
+          var targetInputWidth = expanded ? 180 : 0;
+          var startFormWidth = Math.max(40, Math.round(form.getBoundingClientRect().width || 40));
+          var startInputWidth = Math.max(0, Math.round(input.getBoundingClientRect().width || 0));
+          if (searchAnimationFrame && typeof window.cancelAnimationFrame === 'function') {
+            window.cancelAnimationFrame(searchAnimationFrame);
+            searchAnimationFrame = 0;
+          }
+          if (!animate || typeof window.requestAnimationFrame !== 'function') {
+            writeSearchSize(targetFormWidth, targetInputWidth);
+            return;
+          }
+          var startTime = 0;
+          function step(timestamp) {
+            if (!startTime) {
+              startTime = timestamp;
+            }
+            var progress = Math.min(1, (timestamp - startTime) / 180);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            var formWidth = Math.round(startFormWidth + ((targetFormWidth - startFormWidth) * eased));
+            var inputWidth = Math.round(startInputWidth + ((targetInputWidth - startInputWidth) * eased));
+            writeSearchSize(formWidth, inputWidth);
+            if (progress < 1) {
+              searchAnimationFrame = window.requestAnimationFrame(step);
+            } else {
+              searchAnimationFrame = 0;
+              writeSearchSize(targetFormWidth, targetInputWidth);
+            }
+          }
+          searchAnimationFrame = window.requestAnimationFrame(step);
+        }
+
+        function setExpanded(expanded, animate) {
+          form.classList.toggle('is-search-expanded', !!expanded);
+          form.classList.toggle('has-search-value', hasValue());
+          applySearchSize(!!expanded, animate !== false);
+          button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        function expand() {
+          setExpanded(true, true);
+        }
+
+        function collapseIfEmpty() {
+          var active = document.activeElement;
+          var hasFormFocus = !!(active && (active === form || form.contains(active)));
+          if (!hasValue() && !hasFormFocus) {
+            setExpanded(false, true);
+          } else {
+            setExpanded(true, true);
+          }
+        }
+
+        setExpanded(hasValue(), false);
+        input.addEventListener('focus', expand);
+        input.addEventListener('input', function () {
+          setExpanded(true, true);
+        });
+        button.addEventListener('click', function (event) {
+          if (!form.classList.contains('is-search-expanded') && !hasValue()) {
+            event.preventDefault();
+            expand();
+            input.focus();
+          }
+        });
+        form.addEventListener('submit', function (event) {
+          if (!hasValue()) {
+            event.preventDefault();
+            expand();
+            input.focus();
+          }
+        });
+        document.addEventListener('pointerdown', function (event) {
+          if (!form.contains(event.target) && !hasValue()) {
+            setExpanded(false, true);
+          }
+        });
+      })(forms[i]);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupExpandableSearch, { once: true });
+  } else {
+    setupExpandableSearch();
+  }
+})();
+
+(function () {
   function dedupeTopLevelNav() {
     try {
       var navs = document.querySelectorAll('nav.site-nav');

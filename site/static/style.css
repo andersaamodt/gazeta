@@ -12524,10 +12524,21 @@ nav.site-nav .nav-login-menu {
 
 nav.site-nav > .nav-right .nav-search {
   order: 1;
-  flex: 0 1 clamp(118px, 20vw, 220px) !important;
-  min-width: 92px !important;
-  max-width: 220px !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
   margin: 0 !important;
+  overflow: hidden;
+  transition: box-shadow 160ms ease;
+}
+
+nav.site-nav > .nav-right .nav-search.is-search-expanded,
+nav.site-nav > .nav-right .nav-search.has-search-value,
+nav.site-nav > .nav-right .nav-search:focus-within {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: 220px !important;
 }
 
 nav.site-nav > .nav-right .nav-compose-tools,
@@ -12539,8 +12550,29 @@ nav.site-nav > .nav-right .nav-login-split {
 }
 
 nav.site-nav > .nav-right .nav-search input[type="text"] {
-  width: 100% !important;
+  width: 0 !important;
   min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    width 180ms ease,
+    max-width 180ms ease,
+    padding 180ms ease,
+    opacity 120ms ease;
+}
+
+nav.site-nav > .nav-right .nav-search.is-search-expanded input[type="text"],
+nav.site-nav > .nav-right .nav-search.has-search-value input[type="text"],
+nav.site-nav > .nav-right .nav-search:focus-within input[type="text"] {
+  width: 180px !important;
+  max-width: 180px !important;
+  padding-left: 0.8rem !important;
+  padding-right: 0.8rem !important;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 nav.site-nav > .nav-right .nav-search button,
@@ -12554,15 +12586,42 @@ nav.site-nav > .nav-right .nav-overflow-menu {
   flex: 0 0 auto !important;
 }
 
+nav.site-nav > .nav-right .nav-search button {
+  width: 40px !important;
+  min-width: 40px !important;
+  padding: 0 !important;
+  border-radius: 20px !important;
+  transition:
+    border-radius 180ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+nav.site-nav > .nav-right .nav-search.is-search-expanded button,
+nav.site-nav > .nav-right .nav-search.has-search-value button,
+nav.site-nav > .nav-right .nav-search:focus-within button {
+  border-radius: 0 20px 20px 0 !important;
+}
+
 @media (max-width: 780px) {
   nav.site-nav > .nav-right .nav-search {
     flex: 0 0 auto !important;
+    width: auto !important;
     min-width: 0 !important;
-    max-width: none !important;
+    max-width: 40px !important;
+  }
+
+  nav.site-nav > .nav-right .nav-search.is-search-expanded,
+  nav.site-nav > .nav-right .nav-search.has-search-value,
+  nav.site-nav > .nav-right .nav-search:focus-within {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: 220px !important;
   }
 
   nav.site-nav > .nav-right .nav-search input[type="text"] {
-    display: none !important;
+    display: block !important;
   }
 
   nav.site-nav > .nav-right .nav-search button {
