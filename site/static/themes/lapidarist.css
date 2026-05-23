@@ -622,7 +622,22 @@ input[type="reset"],
 
 .list-page-admin-bar button[data-list-action="toggle-edit"] {
   border: 0 !important;
+  border-image: none !important;
   box-shadow: none !important;
+}
+
+.list-page-admin-bar button[data-blog-action="toggle-page-settings"],
+.list-page-admin-bar button[data-blog-action="toggle-page-settings"]:hover:not(:disabled),
+.list-page-admin-bar button[data-blog-action="toggle-page-settings"]:focus-visible:not(:disabled),
+.list-page-admin-bar button[data-blog-action="toggle-page-settings"]:active:not(:disabled) {
+  border: 0 !important;
+  border-right: 0 !important;
+  border-image: none !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
 }
 
 button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover:not(:disabled),
@@ -921,7 +936,22 @@ textarea:focus {
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"]:focus-visible:not(:disabled),
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn[data-list-action="toggle-edit"]:active:not(:disabled) {
   border: 0 !important;
+  border-image: none !important;
   box-shadow: none !important;
+}
+
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn[data-blog-action="toggle-page-settings"],
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn[data-blog-action="toggle-page-settings"]:hover:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn[data-blog-action="toggle-page-settings"]:focus-visible:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn[data-blog-action="toggle-page-settings"]:active:not(:disabled) {
+  border: 0 !important;
+  border-right: 0 !important;
+  border-image: none !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
 }
 
 ::selection {
