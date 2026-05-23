@@ -12730,3 +12730,91 @@ nav.site-nav > .nav-right .nav-search button {
     max-height: min(34dvh, 16rem);
   }
 }
+
+/* Compact public pages: keep the control-panel nav and list shells usable below tablet width. */
+@media (max-width: 920px) {
+  body {
+    max-width: 100%;
+    padding-left: 0.72rem;
+    padding-right: 0.72rem;
+  }
+
+  nav.site-nav {
+    display: grid !important;
+    width: min(100%, calc(100vw - 0.72rem)) !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto !important;
+    min-height: 0;
+    padding: 0.5rem 0.62rem 0.58rem !important;
+    gap: 0.42rem 0.48rem !important;
+  }
+
+  nav.site-nav > .nav-site-signature {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0 !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  nav.site-nav > .nav-right {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto !important;
+    justify-self: end !important;
+  }
+
+  nav.site-nav > .nav-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.06rem;
+  }
+
+  #main-content,
+  .list-page-shell,
+  .list-page-head,
+  .list-page-content,
+  .list-entries,
+  .list-entry-line,
+  .list-entry-first-line,
+  .list-entry-main-inline {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .list-page-shell {
+    width: 100%;
+    margin-top: 0.82rem;
+    padding: 0.88rem 0.78rem 0.86rem;
+    border-radius: 12px;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 720px) {
+  .list-page-head h1 {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.38rem 0.54rem;
+    font-size: clamp(1.85rem, 8.8vw, 2.35rem);
+  }
+
+  .list-page-title-actions {
+    width: 100%;
+    margin: 0;
+    padding: 0 0 0.34rem;
+    transform: none;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 0.36rem;
+  }
+
+  .list-page-admin-bar {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
