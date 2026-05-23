@@ -365,6 +365,20 @@
     return '<button type="button" data-post-page-action="' + escapeHtml(action) + '" data-post-page-reader-action="' + escapeHtml(action) + '" role="menuitem" hidden>' + escapeHtml(label) + '</button>';
   }
 
+  function postPageMenuHtml() {
+    return '' +
+      '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
+      '<div class="post-page-menu-panel" role="menu" hidden>' +
+      postPageReaderMenuItemHtml('copy_nostr_address', 'Copy Nostr address') +
+      postPageReaderMenuItemHtml('copy_nostr_event', 'Copy Nostr event') +
+      postPageReaderMenuItemHtml('open_nostr', 'Open in Nostr client') +
+      '<div class="post-page-menu-separator" data-post-page-admin-separator hidden></div>' +
+      '<button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button>' +
+      '<button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button>' +
+      '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button>' +
+      '</div>';
+  }
+
   function normalizePostPageMenu(menu) {
     if (!(menu instanceof HTMLElement)) {
       return null;
@@ -439,17 +453,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'post-page-menu';
     wrap.hidden = true;
-    wrap.innerHTML = '' +
-      '<button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
-      '<div class="post-page-menu-panel" role="menu" hidden>' +
-      '<button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button>' +
-      '<button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button>' +
-      '<button type="button" data-post-page-action="open_nostr" data-post-page-reader-action="open_nostr" role="menuitem" hidden>Open in Nostr client</button>' +
-      '<div class="post-page-menu-separator" data-post-page-admin-separator hidden></div>' +
-      '<button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button>' +
-      '<button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button>' +
-      '<button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button>' +
-      '</div>';
+    wrap.innerHTML = postPageMenuHtml();
     head.appendChild(wrap);
     wrap.setAttribute('data-post-page-menu-normalized', 'true');
     return wrap;

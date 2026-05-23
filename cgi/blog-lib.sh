@@ -465,6 +465,15 @@ blog_post_header_meta_html() {
     "$safe_author" "$safe_read_minutes" "$safe_date_title_attr" "$safe_date"
 }
 
+blog_overflow_menu_icon_svg() {
+  printf '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>'
+}
+
+blog_post_page_menu_html() {
+  icon=$(blog_overflow_menu_icon_svg)
+  printf '<div class="post-page-menu" hidden><button type="button" class="post-page-menu-trigger" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">%s</button><div class="post-page-menu-panel" role="menu" hidden><button type="button" data-post-page-action="copy_nostr_address" data-post-page-reader-action="copy_nostr_address" role="menuitem" hidden>Copy Nostr address</button><button type="button" data-post-page-action="copy_nostr_event" data-post-page-reader-action="copy_nostr_event" role="menuitem" hidden>Copy Nostr event</button><button type="button" data-post-page-action="open_nostr" data-post-page-reader-action="open_nostr" role="menuitem" hidden>Open in Nostr client</button><div class="post-page-menu-separator" data-post-page-admin-separator hidden></div><button type="button" data-post-page-action="edit_post" data-post-page-admin-action role="menuitem" hidden>Edit post...</button><button type="button" data-post-page-action="add_to_list" data-post-page-admin-action role="menuitem" hidden>Add to list...</button><button type="button" class="post-page-menu-delete" data-post-page-action="delete_post" data-post-page-admin-action role="menuitem" hidden>Delete post...</button></div></div>' "$icon"
+}
+
 blog_url_encode() {
   # URL-encode common path/query characters without external deps.
   printf '%s' "${1-}" | sed \
