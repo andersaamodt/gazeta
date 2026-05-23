@@ -2469,9 +2469,25 @@
   }
 
   function renderReadModeInlineEntry(entry) {
-    return renderElementInline(entry)
-      .replace(/^<li\b/, '<div')
-      .replace(/<\/li>$/, '</div>');
+    var uid = String(entry && entry._uid || '');
+    var depth = Math.max(0, Number(entry && entry.depth || 0) || 0);
+    var markdownText = String(entry && entry.markdown || '').trim();
+    var postUrl = String(entry && entry.post_url || '').trim();
+    var description = String(entry && entry.description || '').trim();
+    var dateText = String(entry && entry.date || '');
+    var markerText = String(entry && entry.marker || '');
+    var html = '';
+    html += '<div class="list-entry-line list-entry-read-inline" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
+    html += '<input type="text" class="list-entry-read-inline-input" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '" placeholder="Entry text">';
+    html += '<div class="list-entry-read-inline-meta" aria-label="Entry details">';
+    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="post_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(postUrl) + '" placeholder="Post URL">';
+    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(description) + '" placeholder="Description">';
+    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="Date">';
+    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="marker" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markerText) + '" placeholder="Marker">';
+    html += '</div>';
+    html += '<button type="button" class="list-entry-read-inline-done" data-list-read-action="finish-row" data-element-uid="' + escapeHtml(uid) + '">Done</button>';
+    html += '</div>';
+    return html;
   }
 
   function listVoteArrowSvg(direction) {
@@ -3738,7 +3754,7 @@
               return;
             }
             closeActiveInlineEditor({ forceAutosave: true, skipAutosave: true });
-            persistDraft({ alertOnError: true });
+            await persistDraft({ alertOnError: true });
             return;
           }
           if (readActionType === 'remove-row') {

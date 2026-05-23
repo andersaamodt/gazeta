@@ -2494,14 +2494,44 @@ body.nav-cart-open {
   font: inherit;
 }
 
+.list-entry-read-inline-meta {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(8rem, 1fr));
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.list-entry-read-inline-detail {
+  min-width: 0;
+}
+
 .list-entry-read-inline-input:focus {
   outline: 2px solid color-mix(in srgb, var(--accent, #4466ff) 45%, transparent);
   outline-offset: 1px;
 }
 
 .list-entry-read-inline-done {
+  grid-column: 2;
+  grid-row: 1;
   width: fit-content;
   white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .list-entry-read-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list-entry-read-inline-done {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .list-entry-read-inline-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .list-inline-actions .list-inline-row-menu-trigger:hover,
@@ -10587,6 +10617,7 @@ button.list-inline-edit-link:focus-visible:not(:disabled),
 
 /* Keep inline list text inputs compact; do not inherit oversized generic field sizing. */
 .list-page-shell .list-entry-inline input[type="text"],
+.list-page-shell .list-entry-read-inline input[type="text"],
 .list-page-shell .list-inline-eventid input[type="text"] {
   height: 2rem !important;
   min-height: 2rem !important;
