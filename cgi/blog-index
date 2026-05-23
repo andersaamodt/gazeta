@@ -65,19 +65,14 @@ else
     if [ -z "$author" ]; then
       author="Blog Author"
     fi
-    safe_date_title_attr=''
-    if [ -n "$published_timestamp" ]; then
-      safe_date_title_attr=$(printf ' title="%s"' "$(blog_html_escape "$published_timestamp")")
-    fi
+    post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$pub_date" "$published_timestamp")
 
     printf '<article class="post-item">\n'
     printf '  <div class="post-head">\n'
     printf '    <div class="post-head-main">\n'
     printf '      <h2 class="post-title"><a href="%s">%s</a></h2>\n' \
       "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
-    printf '      <div class="post-head-divider" aria-hidden="true"></div>\n'
-    printf '      <div class="post-byline post-byline-bottom"><span class="post-author">%s</span><span class="post-reading-inline">%s min read</span><span class="post-date"%s>%s</span></div>\n' \
-      "$(blog_html_escape "$author")" "$(blog_html_escape "$reading_minutes")" "$safe_date_title_attr" "$(blog_html_escape "$pub_date")"
+    printf '      %s' "$post_header_meta_html"
     printf '    </div>\n'
     printf '    <div class="post-meta">'
     if [ "$comment_count" -gt 0 ]; then

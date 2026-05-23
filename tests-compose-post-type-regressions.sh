@@ -75,10 +75,11 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type: (' 'derived rebuild
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'set -- nak req -k 1 -k 15 -k 20 -k 21 -k 30311 -t "t=blog"' 'mirror fetch includes non-longform kinds constrained by blog tag'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'printf '\''%s:%s:%s\n'\'' "$ref_kind" "$ref_pubkey" "$ref_d"' 'list event a-ref preserves referenced post kind'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'published_timestamp: $published_timestamp' 'public posts catalog exposes long hover timestamp when available'
-assert_file_contains "$ROOT_DIR/cgi/blog-index" '<span class="post-date"%s>' 'fallback blog feed preserves date hover title attribute'
-assert_file_contains "$ROOT_DIR/cgi/blog-index" '<div class="post-head-divider" aria-hidden="true"></div>' 'fallback blog feed keeps byline below divider'
-assert_file_contains "$ROOT_DIR/cgi/blog-index" 'post-byline post-byline-bottom' 'fallback blog feed aligns author reading time and date in bottom byline'
-assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'safe_date_title_attr=" title=\"$safe_timestamp\""' 'single post page adds title hover when timestamp is available'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_post_header_meta_html()' 'server renderers share post header metadata template'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'safe_date_title_attr=" title=\"$safe_timestamp\""' 'shared post header metadata template preserves date hover title attribute'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '<div class="post-head-divider" aria-hidden="true"></div>' 'shared post header metadata template keeps byline below divider'
+assert_file_contains "$ROOT_DIR/cgi/blog-index" 'post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$pub_date" "$published_timestamp")' 'fallback blog feed uses shared post header metadata template'
+assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$published_date" "$published_timestamp")' 'single post fallback uses shared post header metadata template'
 assert_file_contains "$ROOT_DIR/cgi/blog-post-context" 'printf '\''"published_timestamp":"%s",'\'' "$(blog_json_escape "$published_timestamp")"' 'post context endpoint exposes long hover timestamp'
 
 # Backend endpoints: save/get/move preserve post_type.
@@ -192,6 +193,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composePo
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return '<div class=\"post-summary\">' + markdownBlock(text) + readMore + '</div>';" 'blog index renders condensed previews as block markdown'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'post-summary-read-more' 'blog index includes Read more link for truncated condensed previews'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postDateHtml(post, fallback)' 'blog feed renders date with hover title helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postHeaderMetaHtml(post, author, readMinutes, fallbackDate)' 'blog feed uses a shared post header metadata helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'published_timestamp ||' 'blog feed prefers server long timestamp for hover title'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composeNostrTarget(postType) {' 'blog compose defines nostr target mapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function setComposeShortformLimit(raw, opts) {' 'blog compose supports editable shortform limits'

@@ -378,6 +378,16 @@
     return '<span class="post-date"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</span>';
   }
 
+  function postHeaderMetaHtml(post, author, readMinutes, fallbackDate) {
+    return '' +
+      '<div class="post-head-divider" aria-hidden="true"></div>' +
+      '<div class="post-byline post-byline-bottom">' +
+      '<span class="post-author">' + escapeHtml(author || 'Blog Author') + '</span>' +
+      '<span class="post-reading-inline">' + escapeHtml(String(readMinutes || 1)) + ' min read</span>' +
+      postDateHtml(post, fallbackDate || 'Unknown date') +
+      '</div>';
+  }
+
   function markdownInline(md) {
     var value = String(md || '');
     if (!value) {
@@ -4225,8 +4235,7 @@
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
-              '<div class="post-head-divider" aria-hidden="true"></div>' +
-              '<div class="post-byline post-byline-bottom"><span class="post-author">' + escapeHtml(author) + '</span><span class="post-reading-inline">' + escapeHtml(String(readMinutes)) + ' min read</span>' + postDateHtml(post, post.published_date || post.pub_date || 'Unknown date') + '</div>' +
+              postHeaderMetaHtml(post, author, readMinutes, post.published_date || post.pub_date || 'Unknown date') +
             '</div>' +
             adminMenuHtml +
           '</div>' +

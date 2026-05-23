@@ -445,6 +445,26 @@ blog_html_escape() {
   printf '%s' "${1-}" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&#39;/g"
 }
 
+blog_post_header_meta_html() {
+  author=${1:-Blog Author}
+  reading_minutes=${2:-1}
+  published_date=${3:-Unknown date}
+  published_timestamp=${4:-}
+
+  safe_author=$(blog_html_escape "$author")
+  safe_read_minutes=$(blog_html_escape "$reading_minutes")
+  safe_date=$(blog_html_escape "$published_date")
+  safe_timestamp=$(blog_html_escape "$published_timestamp")
+  safe_date_title_attr=''
+  if [ -n "$safe_timestamp" ]; then
+    safe_date_title_attr=" title=\"$safe_timestamp\""
+  fi
+
+  printf '<div class="post-head-divider" aria-hidden="true"></div>\n'
+  printf '<div class="post-byline post-byline-bottom"><span class="post-author">%s</span><span class="post-reading-inline">%s min read</span><span class="post-date"%s>%s</span></div>\n' \
+    "$safe_author" "$safe_read_minutes" "$safe_date_title_attr" "$safe_date"
+}
+
 blog_url_encode() {
   # URL-encode common path/query characters without external deps.
   printf '%s' "${1-}" | sed \
