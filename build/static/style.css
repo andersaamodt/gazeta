@@ -12854,3 +12854,26 @@ nav.site-nav > .nav-right .nav-search button {
   contain: paint;
   overflow: hidden;
 }
+
+#list-page-title .list-page-title-actions .list-admin-primary-btn,
+#list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#blog-page-title .list-page-title-actions .list-admin-primary-btn,
+#blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#contact-page-title .list-page-title-actions .list-admin-primary-btn,
+#contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+  border: 1px solid var(--action-soft-border, #c58f6f) !important;
+  border-image: none !important;
+  box-shadow: 0 7px 16px rgba(48, 34, 16, 0.09) !important;
+  -webkit-box-shadow: 0 7px 16px rgba(48, 34, 16, 0.09) !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+  clip-path: none;
+  contain: none;
+  overflow: visible;
+}
