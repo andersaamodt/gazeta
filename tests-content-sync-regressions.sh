@@ -707,7 +707,7 @@ assert_file_contains "$ROOT_DIR/.headquarters/scripts/ensure-site-video-chat-bac
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" "new WebSocket(self.url, 'janus-protocol')" 'video chat widget uses the Janus WebSocket subprotocol'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'video-chat-widget.js?v=20260521-video-initial1' 'contact page loads the initial-paint video widget build'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '<script src="/static/video-chat-widget.js?v=20260521-video-initial1" data-video-chat-widget="1"></script>' 'contact page HTML loads the video widget before contact-page hydration'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_contact_page_js_version='20260521-video-initial1'" 'contact page cache buster tracks initial video widget rendering'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_contact_page_js_version='20260523-github-link1'" 'contact page cache buster tracks GitHub contact link rendering'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="image_url"' 'list inline editor supports image_url cell editing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="post_url"' 'list inline editor supports post_url cell editing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "state.draft.elements[idx].event_id = '';" 'editing post_url clears event_id so link source is exclusive'

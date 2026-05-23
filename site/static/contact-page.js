@@ -3480,6 +3480,11 @@
         return 'https://reddit.com/u/' + raw;
       }
     }
+    if (transportKey === 'github') {
+      if (/^[a-z0-9][a-z0-9-]{0,38}$/i.test(raw) && !/--/.test(raw) && !/-$/.test(raw)) {
+        return 'https://github.com/' + raw;
+      }
+    }
     if (transportKey === 'facebook' && /^[a-z0-9.]{3,}$/i.test(raw)) {
       return 'https://facebook.com/' + raw;
     }
@@ -3561,6 +3566,10 @@
 
     if (normalizeTransportKey(transport) === 'email') {
       normalized = normalized.replace(/^mailto:\s*/i, '');
+    }
+    if (normalizeTransportKey(transport) === 'github') {
+      normalized = normalized.replace(/^https?:\/\/(?:www\.)?github\.com\/([a-z0-9][a-z0-9-]{0,38})\/?$/i, '$1');
+      normalized = normalized.replace(/^@([a-z0-9][a-z0-9-]{0,38})$/i, '$1');
     }
 
     normalized = normalized.replace(/\s*;\s*/g, '; ');
