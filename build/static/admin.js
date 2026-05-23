@@ -1731,7 +1731,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260523-contact-nav5';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260523-contact-nav6';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');

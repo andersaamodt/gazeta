@@ -1097,3 +1097,30 @@ textarea:focus {
   contain: none !important;
   overflow: visible !important;
 }
+
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn,
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+  border: 1px solid transparent !important;
+  border-image: none !important;
+  box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  -webkit-box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+  clip-path: none !important;
+  contain: none !important;
+  overflow: visible !important;
+}
