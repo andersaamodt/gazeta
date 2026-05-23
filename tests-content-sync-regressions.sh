@@ -732,6 +732,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-row-m
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#main-content .list-entry-vote-btn' 'reading list vote arrows override global button chrome'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-upvote.is-stale' 'reading list vote arrows show stale upvotes in dull red'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-downvote.is-stale' 'reading list vote arrows show stale downvotes in dull blue'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'cursor: default;' 'reading list score text keeps a default cursor'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'user-select: none;' 'reading list score text avoids text-selection affordance'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(filteredEntries)' 'vote-enabled read lists sort by live score'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '.list-entry-line[data-list-entry-id]' 'read-mode list rows are keyed for score-change animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" ':not(.list-entry-vote-btn)' 'lapidarist theme excludes vote arrows from button chrome'

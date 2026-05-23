@@ -3909,6 +3909,9 @@ body.nav-cart-open {
   line-height: 1.05;
   font-weight: 700;
   color: var(--muted-text, #4f617f);
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .public-ranking-submit-cancel {
