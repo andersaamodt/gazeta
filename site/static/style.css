@@ -12361,18 +12361,20 @@ nav.site-nav > .nav-site-signature {
 }
 
 nav.site-nav > .nav-center {
-  grid-column: 1 / 3;
+  grid-column: 1 / -1;
   grid-row: 2;
   flex: 1 1 auto !important;
   min-width: 0 !important;
   width: 100% !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: flex-start !important;
+  justify-content: center !important;
   gap: 0.45rem !important;
   overflow: hidden !important;
   white-space: nowrap !important;
   scrollbar-width: none !important;
+  box-sizing: border-box;
+  padding-inline: 3rem;
 }
 
 nav.site-nav > .nav-center::-webkit-scrollbar {
@@ -12831,7 +12833,15 @@ nav.site-nav > .nav-right .nav-search button {
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn,
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
-#list-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
   border: 0 !important;
   border-top: 0 !important;
   border-right: 0 !important;

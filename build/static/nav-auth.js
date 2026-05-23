@@ -3783,7 +3783,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-button-seams1';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-contact-nav1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

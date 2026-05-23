@@ -919,7 +919,15 @@ textarea:focus {
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn,
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
 #list-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
-#list-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
+#list-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#blog-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
   border: 0 !important;
   border-top: 0 !important;
   border-right: 0 !important;
