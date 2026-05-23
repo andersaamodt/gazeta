@@ -634,8 +634,12 @@ input[type="reset"],
   border-right: 0 !important;
   border-image: none !important;
   outline: 0 !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+  box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  -webkit-box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
 }
@@ -948,8 +952,12 @@ textarea:focus {
   border-right: 0 !important;
   border-image: none !important;
   outline: 0 !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+  box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  -webkit-box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
 }

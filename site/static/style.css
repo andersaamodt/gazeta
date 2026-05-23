@@ -1789,8 +1789,12 @@ body.nav-cart-open {
   border-right: 0 !important;
   border-image: none !important;
   outline: 0 !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+  box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  -webkit-box-shadow:
+    0 7px 16px rgba(48, 34, 16, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
 }
@@ -1954,10 +1958,13 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
+  margin-right: -0.35rem;
   align-self: flex-start;
   transform: translateY(-2px);
+  padding: 0 0.35rem 0.4rem 0;
   font-size: 0;
   line-height: 0;
+  overflow: visible;
 }
 
 .list-page-title-actions > * {
