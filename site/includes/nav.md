@@ -11,6 +11,7 @@
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
+      document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
@@ -52,17 +53,6 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
-  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 4.25H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 11.75H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
-  </button>
-  <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
-</div>
 <span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
 <div class="nav-center">
 <a href="/" data-page="blog">Blog</a>
@@ -93,6 +83,17 @@
 </svg>
 <span id="nav-cart-count" class="nav-cart-count" hidden>0</span>
 </button>
+<div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
+  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 4.25H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 11.75H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
+  </button>
+  <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
+</div>
 <a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
@@ -263,8 +264,12 @@
         current = '/';
       }
       var links = navCenter.querySelectorAll('a[data-page]');
+      var selected = null;
       links.forEach(function (link) {
-        var active = normalizeNavPath(link.getAttribute('href') || '') === current;
+        var active = !selected && normalizeNavPath(link.getAttribute('href') || '') === current;
+        if (active) {
+          selected = link;
+        }
         link.classList.toggle('active', active);
         if (active) {
           link.setAttribute('aria-current', 'page');
@@ -324,6 +329,7 @@
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
+      document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
@@ -499,7 +505,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260521-video-operator1"></script>
+<script src="/static/nav-auth.js?v=20260522-amber-reuse1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

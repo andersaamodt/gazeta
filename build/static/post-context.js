@@ -771,18 +771,59 @@
     node.setAttribute('content', value);
   }
 
-  function renderTags(tags) {
-    var clean = Array.isArray(tags) ? tags : [];
-    if (!clean.length) {
+  function formatType(value) {
+    var raw = String(value || '').trim();
+    if (!raw) {
+      return 'Post';
+    }
+    return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+  }
+
+  function postYear(current) {
+    var explicitYear = String((current && current.year) || '').trim();
+    if (/^[0-9]{4}$/.test(explicitYear)) {
+      return explicitYear;
+    }
+    var published = String((current && current.published_at) || '').trim();
+    var match = published.match(/^([0-9]{4})/);
+    return match ? match[1] : '';
+  }
+
+  function renderTagChip(tag, className) {
+    var t = String(tag || '').trim();
+    if (!t) {
       return '';
     }
-    var chips = clean.map(function (tag) {
+    return '<a class="' + escapeHtml(className || 'tag') + '" href="/tags#' + encodeURIComponent(t) + '">' + escapeHtml(t) + '</a>';
+  }
+
+  function renderTags(current) {
+    var clean = Array.isArray(current && current.tags) ? current.tags : [];
+    var chips = [];
+    var type = String((current && current.type) || 'post').trim() || 'post';
+    var year = postYear(current);
+    var seen = {};
+
+    chips.push('<a class="tag blog-type-pill" href="/blog?type=' + encodeURIComponent(type) + '">' + escapeHtml(formatType(type)) + '</a>');
+    if (year) {
+      chips.push('<a class="tag blog-year-pill" href="/blog?year=' + encodeURIComponent(year) + '">' + escapeHtml(year) + '</a>');
+      seen[year.toLowerCase()] = true;
+    }
+    seen[type.toLowerCase()] = true;
+    seen[formatType(type).toLowerCase()] = true;
+
+    clean.forEach(function (tag) {
       var t = String(tag || '').trim();
       if (!t) {
-        return '';
+        return;
       }
-      return '<a class="tag" href="/tags#' + encodeURIComponent(t) + '">' + escapeHtml(t) + '</a>';
-    }).filter(Boolean);
+      if (seen[t.toLowerCase()]) {
+        return;
+      }
+      seen[t.toLowerCase()] = true;
+      chips.push(renderTagChip(t, 'tag'));
+    });
+
     if (!chips.length) {
       return '';
     }
@@ -834,13 +875,11 @@
     head.innerHTML =
       '<div class="post-head-main">' +
       '<h1 id="main-content" class="post-title">' + escapeHtml(current.title || document.title || 'Untitled') + '</h1>' +
-      '<div class="post-byline post-byline-top">' +
-      '<span class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</span>' +
-      '<span class="post-date">' + escapeHtml(current.published_date || '') + '</span>' +
-      '</div>' +
       '<div class="post-head-divider" aria-hidden="true"></div>' +
       '<div class="post-byline post-byline-bottom">' +
+      '<span class="post-author">' + escapeHtml(current.author || 'Blog Author') + '</span>' +
       '<span class="post-reading-inline">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>' +
+      '<span class="post-date">' + escapeHtml(current.published_date || '') + '</span>' +
       '</div>' +
       '</div>';
 
@@ -882,15 +921,12 @@
     return { anchor: root, card: card, body: body };
   }
 
-  function renderPostEndTags(tags) {
-    var content = renderTags(tags);
+  function renderPostEndTags(current) {
+    var content = renderTags(current);
     if (!content) {
       return '';
     }
-    return '<section class="post-end-tags">' +
-      '<p class="post-end-tags-label">Tags</p>' +
-      content +
-      '</section>';
+    return '<section class="post-end-tags">' + content + '</section>';
   }
 
   function ensureZapHost(layout) {
@@ -1158,7 +1194,7 @@
     if (value === 'upload-media') return 'Upload Media';
     if (value === 'attachment') return 'Attachment';
     if (value === 'audio-note') return 'Audio Note';
-    if (value === 'link-share') return 'Link Share';
+    if (value === 'link-share') return 'Link';
     if (value === 'go-live') return 'Go Live';
     return 'Longform';
   }
@@ -1975,7 +2011,7 @@
     }
 
     if (!layout.card.querySelector('.post-end-tags')) {
-      var tagsHtml = renderPostEndTags(payload.current.tags);
+      var tagsHtml = renderPostEndTags(payload.current);
       if (tagsHtml) {
         layout.body.insertAdjacentHTML('beforeend', tagsHtml);
       }

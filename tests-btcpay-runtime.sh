@@ -177,6 +177,12 @@ run_lightning_cgi() {
   QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-manage-lightning" 2>&1
 }
 
+run_zaps_cgi() {
+  query=$1
+  host=$2
+  QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-manage-zaps" 2>&1
+}
+
 # 1) auth required when session is missing.
 auth_out=$(run_lightning_cgi 'action=status' 'blog.example.com')
 assert_contains "$auth_out" '"code":"auth_required"' 'status requires auth'
@@ -199,7 +205,34 @@ assert_contains "$status_out" '"zap_endpoint_ready":false' 'status reports Light
 assert_contains "$status_out" '"public_address":"node.blog.example.com:19777"' 'status emits public peer address'
 assert_contains "$status_out" '"site_signer_ready":true' 'status reports site signer readiness from cached site pubkey'
 
-# 4) status reports live Lightning + Lightning Address endpoint when the public services answer.
+# 4) status prefers the Headquarters-managed zap wrapper when it is present.
+mkdir -p "$SITE_DATA/zaps/bin"
+cat > "$SITE_DATA/zaps/bin/lightning-cli" <<'EOS'
+#!/bin/sh
+set -eu
+if [ "${1-}" != "" ] && printf '%s' "$1" | grep -Eq '^--lightning-dir='; then
+  shift
+fi
+cmd=${1-}
+case "$cmd" in
+  getinfo)
+    printf '{"id":"2222222222222222222222222222222222222222222222222222222222222222","alias":"managed-zap-node","num_peers":3,"num_active_channels":2,"num_pending_channels":0}\n'
+    ;;
+  listfunds)
+    printf '{"channels":[{"amount_msat":1200000,"our_amount_msat":200000}]}\n'
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+EOS
+chmod +x "$SITE_DATA/zaps/bin/lightning-cli"
+managed_out=$(run_lightning_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+assert_contains "$managed_out" '"lightning_online":true' 'status uses managed zap lightning-cli wrapper when available'
+assert_contains "$managed_out" '"node_alias":"managed-zap-node"' 'status reports node info from managed zap wrapper'
+assert_contains "$managed_out" '"inbound_liquidity_sats":1000' 'status reports managed wrapper inbound liquidity'
+
+# 5) status reports live Lightning + Lightning Address endpoint when the public services answer.
 MOCK_LIGHTNING_ONLINE=1
 MOCK_ZAP_ENDPOINT_READY=1
 export MOCK_LIGHTNING_ONLINE MOCK_ZAP_ENDPOINT_READY
@@ -209,11 +242,26 @@ assert_contains "$live_out" '"zap_endpoint_ready":true' 'status reports Lightnin
 assert_contains "$live_out" '"zap_endpoint_url":"https://blog.example.com/.well-known/lnurlp/zap"' 'status emits Lightning Address endpoint URL'
 assert_contains "$live_out" '"can_receive_zaps":true' 'status reports zap receive readiness when endpoint and inbound liquidity exist'
 
-# 5) install actions are blocked because provisioning moved to Headquarters.
+# 6) install actions are blocked because provisioning moved to Headquarters.
 managed_out=$(run_lightning_cgi "action=install_lightning&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
 assert_contains "$managed_out" '"success":false' 'install action returns failure in site admin'
 assert_contains "$managed_out" '"code":"managed_externally"' 'install action reports external management boundary'
 assert_contains "$managed_out" 'Bitcoin, Core Lightning, and the Lightning Address endpoint are provisioned in Headquarters.' 'install action explains Headquarters ownership'
+
+# 7) Zap status treats a live Headquarters-managed public endpoint as receive-ready
+# even when the blog server cannot inspect the remote Lightning node directly.
+config-set "$blog_site_conf" zaps_enabled true
+rm -f "$NOSTR_STATE_DIR/site_npub" "$NOSTR_STATE_DIR/site_pubkey"
+rm -f "$SITE_DATA/zaps/bin/lightning-cli"
+MOCK_ZAP_ENDPOINT_READY=1
+unset MOCK_LIGHTNING_ONLINE || true
+export MOCK_ZAP_ENDPOINT_READY
+zaps_live_out=$(run_zaps_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token" 'blog.example.com')
+assert_contains "$zaps_live_out" '"zap_endpoint_ready":true' 'zaps status reports the public Lightning Address endpoint as live'
+assert_contains "$zaps_live_out" '"zap_endpoint_nostr_pubkey":"1111111111111111111111111111111111111111111111111111111111111111"' 'zaps status reads the zap recipient pubkey from endpoint metadata'
+assert_contains "$zaps_live_out" '"site_signer_ready":true' 'zaps status treats endpoint metadata as signer readiness when local site npub cache is absent'
+assert_contains "$zaps_live_out" '"lightning_online":false' 'zaps status still reports local Lightning visibility separately'
+assert_contains "$zaps_live_out" '"can_receive_zaps":true' 'zaps status reports receive readiness through the managed endpoint'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

@@ -56,6 +56,10 @@ existing=$(ssh_auth_find_delegate_by_credential "$username" "$credential_id" 2>/
 if [ -n "$existing" ]; then
   delegate_file="$existing"
   delegate_id=$(basename "$existing" .conf)
+  if ! ssh_auth_validate_delegate_id "$delegate_id"; then
+    delegate_id=$(blog_random_token 10)
+    delegate_file="$delegates_dir/$delegate_id.conf"
+  fi
 else
   delegate_id=$(blog_random_token 10)
   delegate_file="$delegates_dir/$delegate_id.conf"

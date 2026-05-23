@@ -112,8 +112,48 @@ chmod 644 "$site_bootstrap_path" 2>/dev/null || true
 cp "$site_bootstrap_path" "$build_site_bootstrap_path"
 chmod 644 "$build_site_bootstrap_path" 2>/dev/null || true
 
+write_local_embed_bootstraps() {
+  mkdir -p "$site_bootstrap_dir/nostr-page-bootstrap"
+  printf '%s\n' "$pages_json" | jq -r '.pages[]? | select((.type // "") == "overworld") | (.slug // "")' 2>/dev/null | while IFS= read -r local_slug || [ -n "$local_slug" ]; do
+    local_slug=$(blog_nostr_page_slug "$local_slug")
+    [ -n "$local_slug" ] || continue
+    local_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-local-embed-bootstrap.XXXXXX")
+    {
+      printf '%s\n' '(function () {'
+      printf '%s\n' '  window.__wizardryNostrPageBootstrap = window.__wizardryNostrPageBootstrap || {};'
+      printf '  window.__wizardryNostrPageBootstrap[%s] = {' "$(printf '%s\n' "$local_slug" | jq -R .)"
+      printf 'success:true,slug:%s,page_type:"overworld",local_embed:true' "$(printf '%s\n' "$local_slug" | jq -R .)"
+      printf '%s\n' '};'
+      printf '%s\n' '})();'
+    } > "$local_tmp"
+    mv "$local_tmp" "$site_bootstrap_dir/nostr-page-bootstrap/$local_slug.js"
+    chmod 644 "$site_bootstrap_dir/nostr-page-bootstrap/$local_slug.js" 2>/dev/null || true
+  done
+}
+
+write_local_embed_bootstraps
+
 if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
-  "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
+  prerender_timeout=${BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS-}
+  [ -n "$prerender_timeout" ] || prerender_timeout=$(config-get "$blog_site_conf" nostr_page_prerender_timeout_seconds 2>/dev/null || printf '25')
+  case "$prerender_timeout" in ''|*[!0-9]*) prerender_timeout=25 ;; esac
+  if [ "$prerender_timeout" -lt 1 ]; then prerender_timeout=1; fi
+  if [ "$prerender_timeout" -gt 300 ]; then prerender_timeout=300; fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$prerender_timeout" "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" <<'PY' || true
+import subprocess
+import sys
+
+timeout = int(sys.argv[1])
+cmd = sys.argv[2:]
+try:
+    subprocess.run(cmd, timeout=timeout, check=False)
+except subprocess.TimeoutExpired:
+    pass
+PY
+  else
+    "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
+  fi
   if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
     rm -rf "$build_bootstrap_dir/nostr-page-bootstrap"
     mkdir -p "$build_bootstrap_dir"

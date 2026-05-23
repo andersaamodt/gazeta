@@ -1,0 +1,69 @@
+#!/bin/sh
+# Admin status endpoint for Overworld.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
+
+blog_init
+blog_overworld_setup
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+start_path=$(blog_overworld_start_path)
+sandbox_path=$(blog_overworld_sandbox_dir)
+anonymous_enabled=$(blog_overworld_anonymous_enabled)
+anonymous_limit=$(blog_overworld_anonymous_time_limit_seconds)
+show_hidden=$(blog_overworld_show_hidden)
+access_mode=$(blog_overworld_access_mode)
+
+guest_count=0
+if [ -d "$(blog_overworld_guests_dir)" ]; then
+  guest_count=$(find "$(blog_overworld_guests_dir)" -type f -name '*.conf' 2>/dev/null | wc -l | tr -d ' ')
+fi
+
+account_count=0
+needs_setup_count=0
+key_installed_count=0
+if [ -d "$blog_users_dir" ]; then
+  for profile in "$blog_users_dir"/*/profile.conf; do
+    [ -f "$profile" ] || continue
+    account=$(config-get "$profile" overworld_ssh_username 2>/dev/null || printf '')
+    [ -n "$account" ] || continue
+    account_count=$((account_count + 1))
+    if ! blog_overworld_account_exists "$account"; then
+      needs_setup_count=$((needs_setup_count + 1))
+    fi
+    key_status=$(config-get "$profile" overworld_ssh_key_status 2>/dev/null || printf '')
+    if [ "$key_status" = "installed" ]; then
+      key_installed_count=$((key_installed_count + 1))
+    fi
+  done
+fi
+
+sudo_available=false
+if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+  sudo_available=true
+fi
+
+printf '{"success":true,'
+printf '"enabled":%s,' "$(blog_plugin_enabled_json overworld)"
+printf '"anonymous_enabled":%s,' "$anonymous_enabled"
+printf '"anonymous_time_limit_seconds":%s,' "$anonymous_limit"
+printf '"show_hidden":%s,' "$show_hidden"
+printf '"access_mode":"%s",' "$(blog_json_escape "$access_mode")"
+printf '"start_path":"%s",' "$(blog_json_escape "$start_path")"
+printf '"sandbox_path":"%s",' "$(blog_json_escape "$sandbox_path")"
+printf '"include_syntax":"{{overworld-game}}",'
+printf '"sudo_available":%s,' "$sudo_available"
+printf '"guest_count":%s,' "$guest_count"
+printf '"account_count":%s,' "$account_count"
+printf '"accounts_needing_setup":%s,' "$needs_setup_count"
+printf '"authorized_key_count":%s' "$key_installed_count"
+printf '}\n'

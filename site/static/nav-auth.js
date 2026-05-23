@@ -1429,8 +1429,16 @@
       }
       hideVideoCallNotification(callId);
       var roomId = String(data.room_id || (data.call && data.call.room_id) || '').trim();
+      var roomPassword = String(data.room_password || (data.call && data.call.room_password) || '').trim();
       if (roomId) {
-        window.location.href = '/contact?room=' + encodeURIComponent(roomId) + '&auto_start=1&mode=video';
+        var url = '/contact?room=' + encodeURIComponent(roomId) + '&auto_start=1&mode=video';
+        if (callId) {
+          url += '&call_id=' + encodeURIComponent(callId);
+        }
+        if (roomPassword) {
+          url += '&room_password=' + encodeURIComponent(roomPassword);
+        }
+        window.location.href = url;
       }
     }).catch(function () {
       hideVideoCallNotification(callId);
@@ -1462,9 +1470,11 @@
     node.className = 'video-call-notification';
     node.setAttribute('role', 'alertdialog');
     node.setAttribute('aria-live', 'assertive');
+    var isSelfTest = !!call.self_test;
+    var isOwnerCall = !!call.owner_call;
     node.innerHTML = ''
-      + '<strong>Incoming video call</strong>'
-      + '<p>' + escapeHtml(call.from_admin_name || call.from_admin || 'Site admin') + ' is calling you on this site.</p>'
+      + '<strong>' + (isOwnerCall ? 'Private call for Anders' : (isSelfTest ? 'Self-test video call' : 'Incoming video call')) + '</strong>'
+      + '<p>' + (isOwnerCall ? escapeHtml(call.from_admin_name || 'Website visitor') + ' is waiting in a private 1:1 room.' : (isSelfTest ? 'You started a test call to this signed-in account.' : escapeHtml(call.from_admin_name || call.from_admin || 'Site admin') + ' is calling you on this site.')) + '</p>'
       + '<div class="video-call-notification-actions">'
       + '<button type="button" class="primary" data-video-call-action="answer">Answer</button>'
       + '<button type="button" data-video-call-action="decline">Decline</button>'
@@ -2588,7 +2598,13 @@
       setAuthMessage('Starting phone signer login...', 'warn');
     }
     setAuthControlsDisabled(true);
-    return loginWithPhoneSigner().catch(function (err) {
+    var loginPromise = loginWithPhoneSigner();
+    if (!autoStarted && state.nip46.signerPubkey) {
+      window.setTimeout(function () {
+        openNativeDeepLink(currentNip46Uri(), 'Phone signer link is not ready yet.');
+      }, 80);
+    }
+    return loginPromise.catch(function (err) {
       if (els.authPhoneBtn) {
         els.authPhoneBtn.hidden = false;
       }
@@ -3398,7 +3414,7 @@
     }
   }
 
-  function placeNavOverflowMenuAtLeadingEdge() {
+  function placeNavOverflowMenuAtNavRightEdge() {
     if (!els.navOverflowMenu) {
       return;
     }
@@ -3406,10 +3422,18 @@
     if (!nav) {
       return;
     }
-    if (nav.firstElementChild === els.navOverflowMenu) {
+    var navRight = nav.querySelector('.nav-right');
+    if (!navRight) {
+      if (nav.lastElementChild === els.navOverflowMenu) {
+        return;
+      }
+      nav.appendChild(els.navOverflowMenu);
       return;
     }
-    nav.insertBefore(els.navOverflowMenu, nav.firstChild);
+    if (els.navOverflowMenu.parentNode === navRight && navRight.lastElementChild === els.navOverflowMenu) {
+      return;
+    }
+    navRight.appendChild(els.navOverflowMenu);
   }
 
   function scheduleNavOverflowMenuSync() {
@@ -3612,18 +3636,6 @@
     var matches = [];
     var navCenter = document.querySelector('.nav-center');
 
-    function titleizePathLabel(path) {
-      var raw = String(path || '').replace(/^\/+/, '').replace(/\/+$/, '');
-      if (!raw) {
-        return 'Home';
-      }
-      raw = raw.replace(/\.html?$/i, '');
-      raw = raw.replace(/-/g, ' ');
-      return raw.split(' ').filter(Boolean).map(function (word) {
-        return word.charAt(0).toUpperCase() + word.slice(1);
-      }).join(' ');
-    }
-
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href') || '';
       if (normalizeNavPath(href) === navTargetPath) {
@@ -3631,43 +3643,29 @@
       }
     });
 
-    if (matches.length === 0 && navCenter && navTargetPath !== '/' && !isAccountAreaPath()) {
+    if (navCenter) {
       var existingTemp = navCenter.querySelector('a[data-temp-nav-current="true"]');
-      if (existingTemp && normalizeNavPath(existingTemp.getAttribute('href') || '') !== navTargetPath) {
+      if (existingTemp) {
         existingTemp.parentNode.removeChild(existingTemp);
-        existingTemp = null;
       }
-      if (!existingTemp) {
-        existingTemp = document.createElement('a');
-        existingTemp.setAttribute('data-page', 'temp-current');
-        existingTemp.setAttribute('data-temp-nav-current', 'true');
-        existingTemp.setAttribute('href', currentPath || navTargetPath);
-        existingTemp.textContent = titleizePathLabel(navTargetPath);
-        navCenter.appendChild(existingTemp);
-      } else {
-        existingTemp.setAttribute('href', currentPath || navTargetPath);
-        existingTemp.textContent = titleizePathLabel(navTargetPath);
-      }
-      matches.push(existingTemp);
       navLinks = document.querySelectorAll('.nav-center a[data-page]');
     }
 
-    if (matches.length > 0) {
-      navLinks.forEach(function (link) {
-        var active = matches.indexOf(link) !== -1;
-        link.classList.toggle('active', active);
-        link.classList.remove('allow-active-click');
-        if (active) {
-          link.setAttribute('aria-current', 'page');
-          link.setAttribute('aria-disabled', 'true');
-          link.setAttribute('tabindex', '-1');
-        } else {
-          link.removeAttribute('aria-current');
-          link.removeAttribute('aria-disabled');
-          link.removeAttribute('tabindex');
-        }
-      });
-    }
+    var selectedMatch = matches.length ? matches[0] : null;
+    navLinks.forEach(function (link) {
+      var active = link === selectedMatch;
+      link.classList.toggle('active', active);
+      link.classList.remove('allow-active-click');
+      if (active) {
+        link.setAttribute('aria-current', 'page');
+        link.setAttribute('aria-disabled', 'true');
+        link.setAttribute('tabindex', '-1');
+      } else {
+        link.removeAttribute('aria-current');
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
+      }
+    });
 
     if (els.composeLink) {
       var normalizedComposePath = normalizeNavPath(currentPath);
@@ -3781,7 +3779,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260521-vote-arrow-chrome3';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260522-blog-filter-right1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();
@@ -4189,7 +4187,7 @@
     }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
-    placeNavOverflowMenuAtLeadingEdge();
+    placeNavOverflowMenuAtNavRightEdge();
 
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');

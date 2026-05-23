@@ -11,6 +11,9 @@
     nostrPubkey: '',
     simplexContactInfo: '',
     simplexStatus: '',
+    overworldSshUsername: '',
+    overworldSshAccountStatus: '',
+    overworldSshKeyStatus: '',
     sshFingerprint: '',
     isAdmin: false,
     composeTags: [],
@@ -44,7 +47,8 @@
       nostr_posts: true,
       zaps: true,
       btcpay: true,
-      video_chat: false
+      video_chat: false,
+      overworld: false
     },
     pluginsSaveTimer: null,
     videoChatConfig: {
@@ -57,6 +61,17 @@
     videoChatOperatorInfo: null,
     videoChatOperatorPollTimer: null,
     videoChatAllowAdminCalls: false,
+    overworldConfig: {
+      anonymous_enabled: true,
+      anonymous_time_limit_seconds: 900,
+      show_hidden: false,
+      start_path: '',
+      effective_start_path: '',
+      access_mode: 'player',
+      max_entries: 96
+    },
+    overworldSaveTimer: null,
+    overworldRuntimeInfo: null,
     lastLinkedSshKeyText: '',
     users: [],
     actorRank: 0,
@@ -169,6 +184,7 @@
     outputAccount: document.getElementById('output-account'),
     outputPlugins: document.getElementById('output-plugins'),
     outputVideoCalling: document.getElementById('output-video-calling'),
+    outputOverworld: document.getElementById('output-overworld'),
     outputZaps: document.getElementById('output-zaps'),
     outputBtcpay: document.getElementById('output-btcpay'),
     outputBtcpayCheckout: document.getElementById('output-btcpay-checkout'),
@@ -198,6 +214,7 @@
     pluginZaps: document.getElementById('plugin-zaps'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
     pluginVideoChat: document.getElementById('plugin-video-chat'),
+    pluginOverworld: document.getElementById('plugin-overworld'),
     videoChatParticipantLimit: document.getElementById('video-chat-participant-limit'),
     videoChatTokenTtlSeconds: document.getElementById('video-chat-token-ttl-seconds'),
     videoChatJanusWss: document.getElementById('video-chat-janus-wss'),
@@ -210,6 +227,14 @@
     videoChatOperatorCallStatus: document.getElementById('video-chat-operator-call-status'),
     videoChatOperatorWidget: document.getElementById('video-chat-operator-widget'),
     videoChatOperatorLeave: document.getElementById('btn-video-chat-operator-leave'),
+    overworldAnonymousEnabled: document.getElementById('overworld-anonymous-enabled'),
+    overworldAnonymousTimeLimitSeconds: document.getElementById('overworld-anonymous-time-limit-seconds'),
+    overworldShowHidden: document.getElementById('overworld-show-hidden'),
+    overworldAccessMode: document.getElementById('overworld-access-mode'),
+    overworldStartPath: document.getElementById('overworld-start-path'),
+    overworldMaxEntries: document.getElementById('overworld-max-entries'),
+    overworldAdminStatus: document.getElementById('overworld-admin-status'),
+    overworldRefreshButton: document.getElementById('btn-overworld-refresh'),
     zapLud16: document.getElementById('zap-lud16'),
     zapWalletSummary: document.getElementById('zap-wallet-summary'),
     zapDefaultAmountSats: document.getElementById('zap-default-amount-sats'),
@@ -317,6 +342,7 @@
     accountSimplexContact: document.getElementById('account-simplex-contact'),
     accountSimplexContactCopyButton: document.getElementById('btn-account-simplex-copy'),
     accountSimplexContactToggleButton: document.getElementById('btn-account-simplex-toggle'),
+    accountOverworldSshUser: document.getElementById('account-overworld-ssh-user'),
     accountSshPublicKey: document.getElementById('account-ssh-public-key'),
     accountVideoChatAllowAdminCalls: document.getElementById('account-video-chat-allow-admin-calls'),
     autosaveStatus: document.getElementById('autosave-status'),
@@ -940,6 +966,9 @@
     if (key === 'btcpay') {
       return 'Lightning';
     }
+    if (key === 'overworld') {
+      return 'Overworld';
+    }
     if (key === 'plugins') {
       return 'Plugins';
     }
@@ -966,6 +995,7 @@
       'zaps',
       'btcpay',
       'btcpay-checkout',
+      'overworld',
       'users',
       'drafts',
       'queue',
@@ -1089,6 +1119,12 @@
         state.loadedAdminSections[section] = true;
         return;
       }
+      if (section === 'overworld') {
+        await loadConfig();
+        await loadOverworldAdminStatus({ background: !!silent });
+        state.loadedAdminSections[section] = true;
+        return;
+      }
       if (section === 'nostr-bridge') {
         await loadNosterRuntime();
         state.loadedAdminSections[section] = true;
@@ -1159,6 +1195,10 @@
       }
       if (section === 'video-calling') {
         setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'overworld') {
+        setOutput(els.outputOverworld, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'nostr-bridge') {
@@ -1691,7 +1731,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260521-vote-arrow-chrome3';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260522-blog-filter-right1';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
@@ -2472,7 +2512,7 @@
     if (type === 'upload-media') { return 'media upload'; }
     if (type === 'attachment') { return 'attachment'; }
     if (type === 'audio-note') { return 'audio note'; }
-    if (type === 'link-share') { return 'link share'; }
+    if (type === 'link-share') { return 'link'; }
     if (type === 'go-live') { return 'go live'; }
     return 'longform';
   }
@@ -2545,7 +2585,7 @@
     if (type === 'capture-media') { return 'Media Capture (kind ' + target.kind + ')'; }
     if (type === 'upload-media') { return 'Media Upload (kind ' + target.kind + ')'; }
     if (type === 'audio-note') { return 'Audio Note (kind ' + target.kind + ')'; }
-    if (type === 'link-share') { return 'Link Share (kind ' + target.kind + ')'; }
+    if (type === 'link-share') { return 'Link (kind ' + target.kind + ')'; }
     return 'Go Live (kind ' + target.kind + ')';
   }
 
@@ -3653,6 +3693,9 @@
       state.nostrPubkey = data.nostr_pubkey || '';
       state.simplexContactInfo = data.simplex_contact_info || '';
       state.simplexStatus = data.simplex_status || '';
+      state.overworldSshUsername = data.overworld_ssh_username || '';
+      state.overworldSshAccountStatus = data.overworld_ssh_account_status || '';
+      state.overworldSshKeyStatus = data.overworld_ssh_key_status || '';
       state.sshFingerprint = data.ssh_fingerprint || '';
       state.isAdmin = !!data.is_admin;
       state.csrfToken = data.csrf_token || state.csrfToken;
@@ -3674,6 +3717,15 @@
           ? 'Not provisioned yet'
           : (state.simplexStatus === 'unavailable' ? 'Unavailable' : 'Not provisioned yet');
         lockSimplexContactField();
+      }
+      if (els.accountOverworldSshUser) {
+        els.accountOverworldSshUser.value = state.overworldSshUsername || '';
+        els.accountOverworldSshUser.title = state.overworldSshKeyStatus === 'installed'
+          ? 'Linked SSH key is installed for this server account'
+          : '';
+        els.accountOverworldSshUser.placeholder = state.overworldSshAccountStatus === 'needs_server_setup'
+          ? 'Server setup pending'
+          : (state.overworldSshAccountStatus === 'nostr_required' ? 'Nostr account required' : 'Created when you start playing');
       }
       if (els.accountSshPublicKey) {
         els.accountSshPublicKey.placeholder = state.sshFingerprint
@@ -3757,7 +3809,8 @@
       nostr_posts: src.nostr_posts !== false,
       zaps: src.zaps !== false,
       btcpay: src.btcpay !== false,
-      video_chat: src.video_chat === true
+      video_chat: src.video_chat === true,
+      overworld: src.overworld === true
     };
     return normalized;
   }
@@ -3783,6 +3836,20 @@
       signaling_wss: String(src.signaling_wss || '').trim(),
       public_rooms: src.public_rooms === true,
       rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12)
+    };
+  }
+
+  function normalizeOverworldConfig(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    const accessMode = String(src.access_mode || 'player').trim();
+    return {
+      anonymous_enabled: src.anonymous_enabled !== false,
+      anonymous_time_limit_seconds: clampInt(src.anonymous_time_limit_seconds, 900, 60, 86400),
+      show_hidden: src.show_hidden === true,
+      start_path: String(src.start_path || '').trim(),
+      effective_start_path: String(src.effective_start_path || '').trim(),
+      access_mode: accessMode === 'web' ? 'web' : 'player',
+      max_entries: clampInt(src.max_entries, 96, 8, 300)
     };
   }
 
@@ -3815,6 +3882,37 @@
     }
   }
 
+  function setOverworldConfigFields() {
+    const cfg = normalizeOverworldConfig(state.overworldConfig || {});
+    state.overworldConfig = cfg;
+    const enabled = !!(state.plugins && state.plugins.overworld);
+    if (els.overworldAnonymousEnabled) {
+      els.overworldAnonymousEnabled.checked = !!cfg.anonymous_enabled;
+      els.overworldAnonymousEnabled.disabled = !enabled;
+    }
+    if (els.overworldAnonymousTimeLimitSeconds) {
+      els.overworldAnonymousTimeLimitSeconds.value = String(cfg.anonymous_time_limit_seconds);
+      els.overworldAnonymousTimeLimitSeconds.disabled = !enabled || !cfg.anonymous_enabled;
+    }
+    if (els.overworldShowHidden) {
+      els.overworldShowHidden.checked = !!cfg.show_hidden;
+      els.overworldShowHidden.disabled = !enabled;
+    }
+    if (els.overworldAccessMode) {
+      els.overworldAccessMode.value = cfg.access_mode;
+      els.overworldAccessMode.disabled = !enabled;
+    }
+    if (els.overworldStartPath) {
+      els.overworldStartPath.value = cfg.start_path || '';
+      els.overworldStartPath.placeholder = cfg.effective_start_path ? ('Default: ' + cfg.effective_start_path) : 'Default sandbox';
+      els.overworldStartPath.disabled = !enabled;
+    }
+    if (els.overworldMaxEntries) {
+      els.overworldMaxEntries.value = String(cfg.max_entries);
+      els.overworldMaxEntries.disabled = !enabled;
+    }
+  }
+
   function setPluginCheckboxStates() {
     const p = normalizePlugins(state.plugins || {});
     state.plugins = p;
@@ -3825,6 +3923,7 @@
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
     if (els.pluginVideoChat) els.pluginVideoChat.checked = !!p.video_chat;
+    if (els.pluginOverworld) els.pluginOverworld.checked = !!p.overworld;
     if (els.pluginNostrSupport) els.pluginNostrSupport.disabled = true;
     if (els.pluginNostrLogin) els.pluginNostrLogin.disabled = true;
     const nostrSupportOn = !!p.nostr_support;
@@ -3834,6 +3933,7 @@
       }
       input.disabled = !nostrSupportOn;
     });
+    setOverworldConfigFields();
   }
 
   function sectionButtonForName(name) {
@@ -3856,6 +3956,7 @@
       'zaps': !!plugins.zaps,
       'btcpay-checkout': !!plugins.btcpay,
       'video-calling': !!plugins.video_chat,
+      'overworld': !!plugins.overworld,
       'nostr-pages': !!plugins.nostr_posts
     };
     Object.keys(sectionByPlugin).forEach(function (sectionName) {
@@ -3883,7 +3984,8 @@
       nostr_posts: !!(els.pluginNostrPosts && els.pluginNostrPosts.checked),
       zaps: !!(els.pluginZaps && els.pluginZaps.checked),
       btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
-      video_chat: !!(els.pluginVideoChat && els.pluginVideoChat.checked)
+      video_chat: !!(els.pluginVideoChat && els.pluginVideoChat.checked),
+      overworld: !!(els.pluginOverworld && els.pluginOverworld.checked)
     });
   }
 
@@ -3900,7 +4002,8 @@
         plugin_nostr_posts: plugins.nostr_posts ? 'true' : 'false',
         plugin_zaps: plugins.zaps ? 'true' : 'false',
         plugin_btcpay: plugins.btcpay ? 'true' : 'false',
-        plugin_video_chat: plugins.video_chat ? 'true' : 'false'
+        plugin_video_chat: plugins.video_chat ? 'true' : 'false',
+        plugin_overworld: plugins.overworld ? 'true' : 'false'
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save plugins');
@@ -3967,8 +4070,106 @@
     }, Math.max(180, Number(delayMs || 500)));
   }
 
-  async function startVideoChatOperatorRoom(roomId, mode, label) {
+  function readOverworldConfigFromUi() {
+    return normalizeOverworldConfig({
+      anonymous_enabled: !!(els.overworldAnonymousEnabled && els.overworldAnonymousEnabled.checked),
+      anonymous_time_limit_seconds: els.overworldAnonymousTimeLimitSeconds ? els.overworldAnonymousTimeLimitSeconds.value : 900,
+      show_hidden: !!(els.overworldShowHidden && els.overworldShowHidden.checked),
+      start_path: els.overworldStartPath ? els.overworldStartPath.value : '',
+      effective_start_path: state.overworldConfig && state.overworldConfig.effective_start_path,
+      access_mode: els.overworldAccessMode ? els.overworldAccessMode.value : 'player',
+      max_entries: els.overworldMaxEntries ? els.overworldMaxEntries.value : 96
+    });
+  }
+
+  async function saveOverworldConfig() {
+    const cfg = readOverworldConfigFromUi();
+    state.overworldConfig = cfg;
+    setOverworldConfigFields();
+    try {
+      const data = await apiPost('/cgi/blog-update-config', {
+        overworld_anonymous_enabled: cfg.anonymous_enabled ? 'true' : 'false',
+        overworld_anonymous_time_limit_seconds: String(cfg.anonymous_time_limit_seconds),
+        overworld_show_hidden: cfg.show_hidden ? 'true' : 'false',
+        overworld_start_path: cfg.start_path,
+        overworld_access_mode: cfg.access_mode,
+        overworld_max_entries: String(cfg.max_entries)
+      }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save Overworld settings');
+      }
+      setOutput(els.outputOverworld, 'Overworld settings updated.', 'ok');
+      await loadConfig();
+      await loadOverworldAdminStatus({ background: true });
+    } catch (err) {
+      setOutput(els.outputOverworld, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  function queueOverworldConfigSave(delayMs) {
+    if (state.isLoadingConfig) {
+      return;
+    }
+    if (state.overworldSaveTimer) {
+      clearTimeout(state.overworldSaveTimer);
+    }
+    state.overworldSaveTimer = setTimeout(function () {
+      saveOverworldConfig().catch(function () {});
+    }, Math.max(180, Number(delayMs || 500)));
+  }
+
+  function renderOverworldAdminStatus(info) {
+    if (!els.overworldAdminStatus) {
+      return;
+    }
+    if (!info || !info.success) {
+      els.overworldAdminStatus.innerHTML = '<div class="placeholder">Overworld status is unavailable.</div>';
+      return;
+    }
+    const accountText = String(info.account_count || 0) + ' player account' + (Number(info.account_count || 0) === 1 ? '' : 's');
+    const setupText = Number(info.accounts_needing_setup || 0) > 0
+      ? String(info.accounts_needing_setup) + ' need server setup'
+      : 'all provisioned accounts exist';
+    const rows = [
+      ['Plugin', info.enabled ? 'enabled' : 'disabled'],
+      ['Include', info.include_syntax || '{{overworld-game}}'],
+      ['Starting folder', info.start_path || ''],
+      ['Sandbox folder', info.sandbox_path || ''],
+      ['Filesystem access', info.access_mode === 'web' ? 'web process permissions' : 'player SSH account permissions'],
+      ['Run as player', info.sudo_available ? 'sudo is available' : 'sudo is not available to this process'],
+      ['Anonymous sessions', String(info.guest_count || 0)],
+      ['Player accounts', accountText + ', ' + setupText],
+      ['SSH keys', String(info.authorized_key_count || 0) + ' installed for Overworld accounts']
+    ];
+    let html = '';
+    rows.forEach(function (row) {
+      html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(row[0]) + '</strong><span class="runtime-setting-help">' + escapeHtml(String(row[1] || '')) + '</span></div></div>';
+    });
+    els.overworldAdminStatus.innerHTML = html;
+  }
+
+  async function loadOverworldAdminStatus(options) {
+    const opts = options || {};
+    if (!state.isAdmin || !els.overworldAdminStatus || !(state.plugins && state.plugins.overworld)) {
+      if (els.overworldAdminStatus && !(state.plugins && state.plugins.overworld)) {
+        els.overworldAdminStatus.innerHTML = '<div class="placeholder">Enable the Overworld plugin to see runtime status.</div>';
+      }
+      return;
+    }
+    if (!opts.background) {
+      els.overworldAdminStatus.innerHTML = '<div class="placeholder">Loading Overworld status...</div>';
+    }
+    const data = await apiPost('/cgi/blog-overworld-admin', { action: 'status' }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load Overworld status');
+    }
+    state.overworldRuntimeInfo = data;
+    renderOverworldAdminStatus(data);
+  }
+
+  async function startVideoChatOperatorRoom(roomId, mode, label, roomPassword) {
     const normalizedRoom = String(roomId || '').trim();
+    const password = String(roomPassword || '').trim();
     if (!normalizedRoom || !els.videoChatOperatorWidget) {
       return false;
     }
@@ -3988,6 +4189,9 @@
     host.setAttribute('data-video-chat-token-endpoint', '/cgi/blog-video-chat-token');
     host.setAttribute('data-video-chat-room-id', normalizedRoom);
     host.setAttribute('data-video-chat-call-room-id', normalizedRoom);
+    if (password) {
+      host.setAttribute('data-video-chat-room-password', password);
+    }
     host.setAttribute('data-video-chat-call-mode', mode === 'voice' ? 'voice' : 'video');
     host.setAttribute('data-video-chat-auto-start', 'true');
     host.setAttribute('data-video-chat-public-rooms', 'false');
@@ -3999,6 +4203,7 @@
     window.initVideoChatWidget(host, {
       roomId: normalizedRoom,
       callRoomId: normalizedRoom,
+      roomPassword: password,
       autoStart: true,
       callMode: mode === 'voice' ? 'voice' : 'video',
       allowJoinViaLink: false,
@@ -4044,18 +4249,19 @@
     } else {
       users.forEach(function (user) {
         const username = String(user && user.username || '');
-        const canCall = !!(user && user.allow_admin_calls);
+        const isSelf = !!(user && user.is_self);
+        const canCall = isSelf || !!(user && user.allow_admin_calls);
         const age = Number(user && user.age_seconds || 0);
         html += '<div class="runtime-setting-item video-chat-operator-user">';
         html += '<div>';
         html += '<strong>' + escapeHtml(user && user.player_name || username || 'User') + '</strong>';
-        html += '<span class="runtime-setting-help">@' + escapeHtml(username) + (user && user.current_room ? ' · room ' + escapeHtml(user.current_room) : '') + ' · seen ' + String(Math.max(0, age)) + 's ago</span>';
+        html += '<span class="runtime-setting-help">@' + escapeHtml(username) + (isSelf ? ' · self-test available' : '') + (user && user.current_room ? ' · room ' + escapeHtml(user.current_room) : '') + ' · seen ' + String(Math.max(0, age)) + 's ago</span>';
         html += '</div>';
         html += '<div class="runtime-setting-actions">';
         if (user && user.current_room) {
           html += '<button type="button" data-video-chat-join-room="' + escapeAttr(user.current_room) + '">Join</button>';
         }
-        html += '<button type="button" data-video-chat-call-user="' + escapeAttr(username) + '"' + (canCall ? '' : ' disabled') + '>Call</button>';
+        html += '<button type="button" data-video-chat-call-user="' + escapeAttr(username) + '"' + (canCall ? '' : ' disabled') + '>' + (isSelf ? 'Call self' : 'Call') + '</button>';
         html += '</div>';
         html += '</div>';
       });
@@ -4067,9 +4273,10 @@
       rooms.forEach(function (room) {
         const members = Array.isArray(room && room.members) ? room.members : [];
         const roomId = String(room && room.room_id || '');
+        const roomPassword = String(room && room.room_password || '');
         html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(roomId || 'Room') + '</strong><span class="runtime-setting-help">' + members.map(function (member) {
           return escapeHtml(member && member.player_name || member && member.username || 'User');
-        }).join(', ') + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
+        }).join(', ') + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '" data-video-chat-room-password="' + escapeAttr(roomPassword) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
       });
     }
     html += '<div class="runtime-setting-item"><div><strong>Call requests</strong><span class="runtime-setting-help">' + String(calls.length) + ' active or recent request' + (calls.length === 1 ? '' : 's') + '</span></div></div>';
@@ -4079,9 +4286,12 @@
       calls.forEach(function (call) {
         const callId = String(call && call.call_id || '');
         const roomId = String(call && call.room_id || '');
+        const roomPassword = String(call && call.room_password || '');
         const status = String(call && call.status || 'call');
-        html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(status) + '</strong><span class="runtime-setting-help">' + escapeHtml(call && call.from_admin_name || call && call.from_admin || 'Admin') + ' to @' + escapeHtml(call && call.to_user || '') + ' · room ' + escapeHtml(roomId) + '</span></div><div class="runtime-setting-actions">';
-        html += '<button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '"' + (roomId ? '' : ' disabled') + '>Join</button>';
+        const selfTest = !!(call && call.self_test);
+        const ownerCall = !!(call && call.owner_call);
+        html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(ownerCall ? 'personal ' + status : (selfTest ? 'self-test ' + status : status)) + '</strong><span class="runtime-setting-help">' + escapeHtml(call && call.from_admin_name || call && call.from_admin || 'Admin') + ' to @' + escapeHtml(call && call.to_user_name || call && call.to_user || '') + (selfTest ? ' · self-test' : '') + (ownerCall ? ' · private 1:1' : '') + ' · room ' + escapeHtml(roomId) + '</span></div><div class="runtime-setting-actions">';
+        html += '<button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '" data-video-chat-room-password="' + escapeAttr(roomPassword) + '"' + (roomId ? '' : ' disabled') + '>Join</button>';
         if (status === 'ringing') {
           html += '<button type="button" data-video-chat-cancel-call="' + escapeAttr(callId) + '"' + (callId ? '' : ' disabled') + '>Cancel</button>';
         }
@@ -4145,23 +4355,24 @@
       }
       const call = data.call || {};
       const roomId = String(call.room_id || '').trim();
-      setOutput(els.outputVideoCalling, 'Calling @' + target + '.', 'ok');
+      const selfTest = !!call.self_test;
+      setOutput(els.outputVideoCalling, selfTest ? 'Starting self-test call.' : 'Calling @' + target + '.', 'ok');
       await loadVideoChatOperatorStatus({ background: true });
       if (roomId) {
-        await startVideoChatOperatorRoom(roomId, 'video', 'Calling @' + target + ' in room ' + roomId + '.');
+        await startVideoChatOperatorRoom(roomId, 'video', (selfTest ? 'Self-test call' : 'Calling @' + target) + ' in room ' + roomId + '.', String(call.room_password || ''));
       }
     } catch (err) {
       setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
     }
   }
 
-  async function joinVideoChatOperatorRoom(roomId) {
+  async function joinVideoChatOperatorRoom(roomId, roomPassword) {
     const room = String(roomId || '').trim();
     if (!room) {
       return;
     }
     try {
-      await startVideoChatOperatorRoom(room, 'video', 'Joined room ' + room + '.');
+      await startVideoChatOperatorRoom(room, 'video', 'Joined room ' + room + '.', roomPassword || '');
       setOutput(els.outputVideoCalling, 'Joined room ' + room + '.', 'ok');
     } catch (err) {
       setOutput(els.outputVideoCalling, 'Error: ' + err.message, 'error');
@@ -4237,15 +4448,18 @@
       }
       state.plugins = normalizePlugins(data.plugins || {});
       state.videoChatConfig = normalizeVideoChatConfig(data.video_chat || {});
+      state.overworldConfig = normalizeOverworldConfig(data.overworld || {});
       state.originConfig = normalizeOriginConfig(data.origin || {});
       setPluginCheckboxStates();
       setVideoChatConfigFields();
+      setOverworldConfigFields();
       setVideoCallingNavStatus();
       syncPluginControlledSections();
       syncVideoChatOperatorAutoRefresh();
       renderCrosspostingSettingsUi();
       window.__wizardryPlugins = state.plugins;
       window.__wizardryVideoChatEnabled = !!state.plugins.video_chat;
+      window.__wizardryOverworldEnabled = !!state.plugins.overworld;
       els.siteTitle.value = normalizeSiteTitle(data.site_title);
       applyNavSiteTitle(els.siteTitle.value);
       if (els.adminTheme && data.theme) {
@@ -6364,6 +6578,9 @@
     if (type === 'public-ranking') {
       return 'Public Ranking (kind 30040)';
     }
+    if (type === 'overworld') {
+      return 'Overworld Game (kind 30023)';
+    }
     if (type === 'contact') {
       return 'User Metadata (kind 0)';
     }
@@ -6383,6 +6600,9 @@
     }
     if (type === 'public-ranking') {
       return 'is-type-public-ranking';
+    }
+    if (type === 'overworld') {
+      return 'is-type-overworld';
     }
     if (type === 'contact') {
       return 'is-type-contact';
@@ -6627,6 +6847,7 @@
       const showInNav = !!page.show_in_nav;
       const showInFooter = !!page.show_in_footer;
       const draftDiffers = !!page.draft_differs;
+      const publishable = pageType !== 'overworld';
       const typeLabel = nostrPageTypeLabel(pageType);
       const typePillClass = nostrPageTypePillClass(pageType);
       html += '<div class="nostr-page-row" data-index="' + String(idx) + '" data-slug="' + escapeAttr(slug) + '" draggable="true">';
@@ -6669,7 +6890,7 @@
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in footer"><input type="checkbox" data-nostr-page-action="toggle-footer" data-index="' + String(idx) + '"' + (showInFooter ? ' checked' : '') + ' aria-label="Show in footer"></label>';
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
-      if (draftDiffers) {
+      if (draftDiffers && publishable) {
         html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish...</button>';
       } else {
         html += '<span class="nostr-page-publish-empty" aria-hidden="true"></span>';
@@ -6751,6 +6972,10 @@
       throw new Error('Publish dialog unavailable');
     }
     const page = state.nostrPages[index] || {};
+    if (String(page.type || '').trim().toLowerCase() === 'overworld') {
+      setOutput(els.outputNostrPages, 'Overworld is a local game page; its embed is not published into a Nostr event.', 'warn');
+      return;
+    }
     const slug = normalizeNostrPageSlug(page.slug || '');
     if (!slug) {
       throw new Error('Page slug missing');
@@ -7018,9 +7243,11 @@
         ? 'nip23'
         : ((pickedType === 'blog-index' || pickedType === 'blog_page')
           ? 'blog'
-          : ((pickedType === 'public_ranking' || pickedType === 'ranking') ? 'public-ranking' : pickedType)));
-    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog' && normalizedType !== 'public-ranking') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, public-ranking, metadata, or long-form.', 'warn');
+          : ((pickedType === 'public_ranking' || pickedType === 'ranking')
+            ? 'public-ranking'
+            : ((pickedType === 'overworld-game' || pickedType === 'overworld_game') ? 'overworld' : pickedType))));
+    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog' && normalizedType !== 'public-ranking' && normalizedType !== 'overworld') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, public-ranking, overworld, metadata, or long-form.', 'warn');
       return false;
     }
     if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -7040,7 +7267,7 @@
     next.push({
       slug: slug,
       type: normalizedType,
-      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'public-ranking' ? 30040 : ((normalizedType === 'nip23' || normalizedType === 'blog') ? 30023 : 30004))),
+      kind: (normalizedType === 'contact' ? 0 : (normalizedType === 'public-ranking' ? 30040 : ((normalizedType === 'nip23' || normalizedType === 'blog' || normalizedType === 'overworld') ? 30023 : 30004))),
       show_in_nav: true,
       show_in_footer: false,
       placeholder_title: defaultNostrPageTitleFromSlug(slug),
@@ -7074,6 +7301,8 @@
         els.nostrPageSlugInput.value = 'blog';
       } else if (els.nostrPageTypeSelect.value === 'public-ranking') {
         els.nostrPageSlugInput.value = 'ranking';
+      } else if (els.nostrPageTypeSelect.value === 'overworld') {
+        els.nostrPageSlugInput.value = 'overworld';
       } else if (els.nostrPageTypeSelect.value === 'contact') {
         els.nostrPageSlugInput.value = 'profile';
       } else if (els.nostrPageTypeSelect.value === 'nip23') {
@@ -7086,12 +7315,12 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: blog, list, public-ranking, metadata, or long-form', 'blog');
+      const pickedTypeRaw = window.prompt('Page type: blog, list, public-ranking, overworld, metadata, or long-form', 'blog');
       if (pickedTypeRaw === null) {
         return;
       }
       const fallbackType = String(pickedTypeRaw || '').trim().toLowerCase();
-      const fallbackSlug = window.prompt('Page slug/path (example: essay)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : ((fallbackType === 'public-ranking' || fallbackType === 'public_ranking' || fallbackType === 'ranking') ? 'ranking' : ((fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : '')));
+      const fallbackSlug = window.prompt('Page slug/path (example: essay)', (fallbackType === 'blog' || fallbackType === 'blog-index') ? 'blog' : ((fallbackType === 'public-ranking' || fallbackType === 'public_ranking' || fallbackType === 'ranking') ? 'ranking' : ((fallbackType === 'overworld' || fallbackType === 'overworld-game') ? 'overworld' : ((fallbackType === 'contact' || fallbackType === 'profile' || fallbackType === 'metadata') ? 'profile' : ''))));
       if (fallbackSlug === null) {
         return;
       }
@@ -8414,13 +8643,15 @@
       els.pluginNostrPosts,
       els.pluginZaps,
       els.pluginBtcpay,
-      els.pluginVideoChat
+      els.pluginVideoChat,
+      els.pluginOverworld
     ].filter(Boolean);
     pluginInputs.forEach(function (input) {
       input.addEventListener('change', function () {
         state.plugins = readPluginsFromUi();
         setPluginCheckboxStates();
         setVideoChatConfigFields();
+        setOverworldConfigFields();
         syncPluginControlledSections();
         queuePluginsSave(140);
       });
@@ -8448,6 +8679,36 @@
         queueVideoChatConfigSave(180);
       });
     });
+    [
+      els.overworldAnonymousEnabled,
+      els.overworldAnonymousTimeLimitSeconds,
+      els.overworldShowHidden,
+      els.overworldAccessMode,
+      els.overworldStartPath,
+      els.overworldMaxEntries
+    ].filter(Boolean).forEach(function (input) {
+      input.addEventListener('input', function () {
+        if (input === els.overworldAnonymousEnabled) {
+          state.overworldConfig = readOverworldConfigFromUi();
+          setOverworldConfigFields();
+        }
+        queueOverworldConfigSave(600);
+      });
+      input.addEventListener('change', function () {
+        if (input === els.overworldAnonymousEnabled) {
+          state.overworldConfig = readOverworldConfigFromUi();
+          setOverworldConfigFields();
+        }
+        queueOverworldConfigSave(180);
+      });
+    });
+    if (els.overworldRefreshButton) {
+      els.overworldRefreshButton.addEventListener('click', function () {
+        loadOverworldAdminStatus().catch(function (err) {
+          setOutput(els.outputOverworld, 'Error: ' + err.message, 'error');
+        });
+      });
+    }
     if (els.videoChatOperatorRefresh) {
       els.videoChatOperatorRefresh.addEventListener('click', function () {
         loadVideoChatOperatorStatus().catch(function () {});
@@ -8464,7 +8725,7 @@
         if (button.hasAttribute('data-video-chat-call-user')) {
           callVideoChatUser(button.getAttribute('data-video-chat-call-user') || '').catch(function () {});
         } else if (button.hasAttribute('data-video-chat-join-room')) {
-          joinVideoChatOperatorRoom(button.getAttribute('data-video-chat-join-room') || '').catch(function () {});
+          joinVideoChatOperatorRoom(button.getAttribute('data-video-chat-join-room') || '', button.getAttribute('data-video-chat-room-password') || '').catch(function () {});
         } else if (button.hasAttribute('data-video-chat-cancel-call')) {
           cancelVideoChatCall(button.getAttribute('data-video-chat-cancel-call') || '').catch(function () {});
         }

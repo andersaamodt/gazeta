@@ -36,6 +36,15 @@ is_prerender_type() {
   return 1
 }
 
+is_local_embed_type() {
+  case "$1" in
+    overworld)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 render_payload_json() {
   slug_in=${1-}
   slug=$(blog_nostr_page_slug "$slug_in")
@@ -262,11 +271,35 @@ EOBOOT
   printf '%s\n' "$slug" >> "$manifest_tmp"
 }
 
+write_local_embed_bootstrap_js() {
+  slug_in=${1-}
+  page_type=${2-local}
+  slug=$(blog_nostr_page_slug "$slug_in")
+  [ -n "$slug" ] || return 1
+  js_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-local-js.XXXXXX")
+  {
+    printf '%s\n' '(function () {'
+    printf '%s\n' '  window.__wizardryNostrPageBootstrap = window.__wizardryNostrPageBootstrap || {};'
+    printf '  window.__wizardryNostrPageBootstrap[%s] = {' "$(printf '%s\n' "$slug" | jq -R .)"
+    printf 'success:true,slug:%s,page_type:%s,local_embed:true' "$(printf '%s\n' "$slug" | jq -R .)" "$(printf '%s\n' "$page_type" | jq -R .)"
+    printf '%s\n' '};'
+    printf '%s\n' '})();'
+  } > "$js_tmp"
+  out_file="$bootstrap_dir/$slug.js"
+  mv "$js_tmp" "$out_file"
+  chmod 644 "$out_file" 2>/dev/null || true
+  printf '%s\n' "$slug" >> "$manifest_tmp"
+}
+
 cfg_json=$(blog_nostr_pages_load_json)
 printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
   slug=$(blog_nostr_page_slug "$raw_slug")
   page_type=$(printf '%s' "${raw_type-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || continue
+  if is_local_embed_type "$page_type"; then
+    write_local_embed_bootstrap_js "$slug" "$page_type" || true
+    continue
+  fi
   is_prerender_type "$page_type" || continue
   payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
   [ -n "$payload_json" ] || continue

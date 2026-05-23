@@ -3,7 +3,9 @@
 
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+if [ -z "${SCRIPT_DIR+x}" ]; then
+  SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+fi
 . "$SCRIPT_DIR/blog-lib.sh"
 
 ssh_auth_registration_enabled() {
@@ -54,6 +56,12 @@ ssh_auth_user_home() {
   if [ -z "$username" ]; then
     return 1
   fi
+  blog_validate_username "$username" || return 1
+  case "$username" in
+    .|..|-*)
+      return 1
+      ;;
+  esac
 
   # Try shell expansion first.
   if eval "home=~$username" 2>/dev/null; then
@@ -147,9 +155,13 @@ ssh_auth_create_login_request() {
   printf '%s;%s\n' "$request_id" "$challenge_b64"
 }
 
+ssh_auth_validate_login_request_id() {
+  blog_validate_hex_token "${1-}" 24
+}
+
 ssh_auth_get_login_request_challenge() {
   request_id=${1-}
-  [ -n "$request_id" ] || return 1
+  ssh_auth_validate_login_request_id "$request_id" || return 1
   request_file="$(ssh_auth_login_request_dir)/$request_id.conf"
   [ -f "$request_file" ] || return 1
   config-get "$request_file" challenge 2>/dev/null || return 1
@@ -157,7 +169,7 @@ ssh_auth_get_login_request_challenge() {
 
 ssh_auth_clear_login_request() {
   request_id=${1-}
-  [ -n "$request_id" ] || return 0
+  ssh_auth_validate_login_request_id "$request_id" || return 0
   request_file="$(ssh_auth_login_request_dir)/$request_id.conf"
   rm -f "$request_file"
 }
@@ -227,6 +239,10 @@ ssh_auth_verify_client_data() {
 ssh_auth_delegate_dir() {
   username=$1
   printf '%s/delegates\n' "$(blog_user_dir "$username")"
+}
+
+ssh_auth_validate_delegate_id() {
+  blog_validate_hex_token "${1-}" 20
 }
 
 ssh_auth_find_delegate_by_credential() {

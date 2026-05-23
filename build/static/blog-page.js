@@ -711,6 +711,11 @@
       host.innerHTML = '';
       return;
     }
+    if (state.compose && state.compose.open && String(state.compose.draftId || '').trim()) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
     var summary = pickDraftNoticeSummary(state.draftNotice.drafts);
     if (summary.mode === 'none') {
       host.hidden = true;
@@ -1096,7 +1101,7 @@
     if (type === 'upload-media') return 'Upload Photo/Video';
     if (type === 'attachment') return 'Upload Attachment/File';
     if (type === 'audio-note') return 'Audio Note';
-    if (type === 'link-share') return 'Link Share';
+    if (type === 'link-share') return 'Link';
     return 'Go Live';
   }
 
@@ -1108,7 +1113,7 @@
     if (type === 'capture-media') return 'Media Capture (kind ' + target.kind + ')';
     if (type === 'upload-media') return 'Media Upload (kind ' + target.kind + ')';
     if (type === 'audio-note') return 'Audio Note (kind ' + target.kind + ')';
-    if (type === 'link-share') return 'Link Share (kind ' + target.kind + ')';
+    if (type === 'link-share') return 'Link (kind ' + target.kind + ')';
     return 'Go Live (kind ' + target.kind + ')';
   }
 
@@ -1278,7 +1283,7 @@
       btn('upload-media', 'Upload Photo/Video', false) +
       btn('attachment', 'Upload Attachment/File', false) +
       btn('audio-note', 'Audio Note', false) +
-      btn('link-share', 'Link Share', false) +
+      btn('link-share', 'Link', false) +
       btn('go-live', 'Go Live', true) +
       '</div>';
   }
@@ -3315,6 +3320,7 @@
     }
     try {
       renderComposeUi();
+      renderDraftNotice();
     } catch (err) {
       state.compose.open = false;
       clearComposePostTypeCollapseTimer();
@@ -3421,6 +3427,7 @@
         els.composeSlot.innerHTML = '';
       }
       renderComposeUi();
+      renderDraftNotice();
       if (els.composeSlot) {
         var titleInput = els.composeSlot.querySelector('[data-compose-field="title"]');
         var contentInput = els.composeSlot.querySelector('[data-compose-field="content"]');
@@ -4095,7 +4102,7 @@
       }).join('');
       var postType = String(post.type || 'post');
       var postYear = String(post.year || 'Unknown');
-      var metaPillsHtml = inlineFilterPillHtml('blog-type-pill', 'types', postType, formatType(postType)) + inlineFilterPillHtml('blog-year-pill', 'years', postYear, postYear);
+      var metaPillsHtml = inlineFilterPillHtml('tag blog-type-pill', 'types', postType, formatType(postType)) + inlineFilterPillHtml('tag blog-year-pill', 'years', postYear, postYear);
       var comments = Number(post.comment_count || 0);
       var commentsLabel = comments === 1 ? '1 comment' : String(comments) + ' comments';
       var commentsHtml = '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>';

@@ -116,6 +116,7 @@
       adminMappings: [],
       chatStarted: false,
       chatOpening: false,
+      chatClosing: false,
       voicePermission: 'locked',
       voiceRecording: false,
       voiceRecorder: null,
@@ -275,7 +276,8 @@
         '<div data-video-chat ' +
         'data-video-chat-token-endpoint="/cgi/blog-video-chat-token" ' +
         'data-video-chat-call-room-id="call-me" ' +
-        'data-video-chat-call-label="Call me" ' +
+        'data-video-chat-call-label="Call Anders Now" ' +
+        'data-video-chat-owner-call-private="true" ' +
         'data-video-chat-public-rooms="' + (publicRooms ? 'true' : 'false') + '" ' +
         'data-video-chat-room-list="' + escapeHtml(rooms) + '" ' +
         'data-video-chat-room-policy="open" ' +
@@ -1133,7 +1135,7 @@
     }
     var parts = [];
     if (messages > 0) {
-      parts.push(secureChatPlural(messages, 'saved message'));
+      parts.push(secureChatPlural(messages, 'message'));
     }
     if (attachments > 0) {
       parts.push(secureChatPlural(attachments, 'attachment'));
@@ -2026,6 +2028,7 @@
     state.chat.adminMappings = [];
     state.chat.chatStarted = false;
     state.chat.chatOpening = false;
+    state.chat.chatClosing = false;
     state.chat.voicePermission = 'locked';
     state.chat.voiceRecording = false;
     state.chat.voiceRecorder = null;
@@ -2075,6 +2078,8 @@
       emojiPickerError: String(chat.emojiPickerError || ''),
       recentEmojis: normalizeSecureChatRecentEmojis(chat.recentEmojis),
       chatStarted: chat.chatStarted === true,
+      chatOpening: chat.chatOpening === true,
+      chatClosing: chat.chatClosing === true,
       voicePermission: String(chat.voicePermission || ''),
       voiceRecording: chat.voiceRecording === true
     });
@@ -2354,6 +2359,7 @@
   function handleSecureChatStartClick() {
     state.chat.chatStarted = true;
     state.chat.chatOpening = true;
+    state.chat.chatClosing = false;
     state.chat.error = '';
     state.chat.loading = true;
     renderContent();
@@ -2364,6 +2370,25 @@
     return refreshSecureChatState({ reset: true }).finally(function () {
       scheduleSecureChatPoll();
     });
+  }
+
+  function handleSecureChatCloseClick() {
+    if (state.chat.chatStarted !== true || state.chat.chatClosing === true) {
+      return;
+    }
+    state.chat.chatOpening = false;
+    state.chat.chatClosing = true;
+    state.chat.emojiPickerOpen = false;
+    renderContent();
+    window.setTimeout(function () {
+      if (state.chat.chatClosing !== true) {
+        return;
+      }
+      state.chat.chatStarted = false;
+      state.chat.chatClosing = false;
+      state.chat.threadPinnedToBottom = true;
+      renderContent();
+    }, 240);
   }
 
   function sendSecureChatPendingFiles(text) {
@@ -2665,13 +2690,14 @@
         simplexWebIntroDismissed: state.chat.simplexWebIntroDismissed === true,
         chatStarted: state.chat.chatStarted === true,
         chatOpening: state.chat.chatOpening === true,
+        chatClosing: state.chat.chatClosing === true,
         savedSummary: secureChatStoredHistorySummary(),
         admin: isAdmin(),
         adminMappings: state.chat.adminMappings || []
       });
     }
 
-    var html = '<section class="secure-chat-panel' + (state.chat.chatStarted === true ? ' is-chat-started' : '') + (state.chat.chatOpening === true ? ' is-chat-opening' : '') + '" aria-labelledby="secure-chat-title">';
+    var html = '<section class="secure-chat-panel' + (state.chat.chatStarted === true ? ' is-chat-started' : '') + (state.chat.chatOpening === true ? ' is-chat-opening' : '') + (state.chat.chatClosing === true ? ' is-chat-closing' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     var fallbackLoggedIn = hasUsableSecureChatSession();
@@ -2682,6 +2708,8 @@
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     } else if (state.chat.chatStarted !== true) {
       html += renderSecureChatStartGate(secureChatStoredHistorySummary());
+    } else {
+      html += '<button type="button" class="secure-chat-close-btn" data-secure-chat-action="close" aria-label="Close Secure Chat" title="Close Secure Chat"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
     }
     html += '</div>';
     if (!fallbackLoggedIn) {
@@ -2692,7 +2720,7 @@
       html += '</section>';
       return html;
     }
-    html += '<div class="secure-chat-body' + (state.chat.chatOpening === true ? ' is-opening' : '') + '"><div class="secure-chat-body-inner">';
+    html += '<div class="secure-chat-body' + (state.chat.chatOpening === true ? ' is-opening' : '') + (state.chat.chatClosing === true ? ' is-closing' : '') + '"><div class="secure-chat-body-inner">';
     if (state.chat.error) {
       html += '<div class="secure-chat-banner is-error">' + escapeHtml(state.chat.error) + '</div>';
     }
@@ -4274,6 +4302,10 @@
         }
         if (secureChatAction === 'start') {
           handleSecureChatStartClick();
+          return;
+        }
+        if (secureChatAction === 'close') {
+          handleSecureChatCloseClick();
           return;
         }
         if (secureChatAction === 'send') {

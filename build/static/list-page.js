@@ -2550,7 +2550,6 @@
     }
     var rightMeta = '';
     var readMenu = '';
-    var readMenuPanel = '';
     var entryId = String(entry && entry._list_entry_id || '');
     var canShowVotes = !!(getRenderState().allow_signed_in_votes && entryId);
     var voteControls = '';
@@ -2573,10 +2572,8 @@
       readMenu = '' +
         '<span class="list-entry-read-menu list-inline-row-menu-wrap">' +
           '<button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(rowUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="' + (rowMenuOpen ? 'true' : 'false') + '">' + overflowMenuIconSvg() + '</button>' +
+          '<div class="list-inline-row-menu" role="menu"' + (rowMenuOpen ? '' : ' hidden') + '>' + readMenuItems + '</div>' +
         '</span>';
-      if (rowMenuOpen) {
-        readMenuPanel = '<div class="list-entry-row-menu-panel list-entry-read-menu"><div class="list-inline-row-menu" role="menu">' + readMenuItems + '</div></div>';
-      }
     }
     if (markerPills || datePill || readMenu) {
       var metaPills = markerPills + (datePill ? '<span class="list-entry-date-pill">' + escapeHtml(datePill) + '</span>' : '');
@@ -2592,7 +2589,7 @@
     }
     var cartButton = renderProductCartButton(productSlug, '');
     var firstLineClass = 'list-entry-first-line' + (voteControls ? ' has-votes' : '') + (cartButton ? ' has-cart-button' : '');
-    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + voteControls + '<span class="list-entry-main-inline">' + listIcon + renderLinkedInlineText(line, postUrl, 'list-entry-markdown', 'Open linked post') + descriptionInline + '</span>' + rightMeta + cartButton + '</div>' + readMenuPanel + '</li>';
+    return '<li class="list-entry-line"><div class="' + firstLineClass + '">' + voteControls + '<span class="list-entry-main-inline">' + listIcon + renderLinkedInlineText(line, postUrl, 'list-entry-markdown', 'Open linked post') + descriptionInline + '</span>' + rightMeta + cartButton + '</div></li>';
   }
 
   function renderPublicListSubmissionForm(renderState) {

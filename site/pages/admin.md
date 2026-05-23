@@ -33,6 +33,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-checkout-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="video-calling" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Video Calling <span id="admin-nav-video-calling-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="overworld" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Overworld</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
@@ -379,6 +380,72 @@ title: ""
 </div>
 </section>
 
+<section class="admin-section" data-admin-section="overworld" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Overworld</h3>
+<p class="muted">Configure the server-folder RPG. Add it to a local page with <code>{{overworld-game}}</code>.</p>
+</div>
+<a class="button-link" href="/overworld" target="_blank" rel="noopener">Open Overworld</a>
+</div>
+
+<div class="settings-stack">
+<section class="sub-card">
+<h4>Game Settings</h4>
+<div class="grid-two">
+<div class="field-row">
+<label class="checkbox-control" for="overworld-anonymous-enabled"><input type="checkbox" id="overworld-anonymous-enabled"><span><strong>Allow anonymous players</strong></span></label>
+</div>
+<div class="field-row">
+<label for="overworld-anonymous-time-limit-seconds"><strong>Anonymous Time Limit</strong></label>
+<input type="number" id="overworld-anonymous-time-limit-seconds" min="60" max="86400" step="60" value="900">
+<span class="field-unit">seconds</span>
+</div>
+</div>
+<div class="grid-two">
+<div class="field-row">
+<label for="overworld-access-mode"><strong>Filesystem Access</strong></label>
+<select id="overworld-access-mode">
+<option value="player">Player SSH account permissions</option>
+<option value="web">Web server process permissions</option>
+</select>
+</div>
+<div class="field-row">
+<label class="checkbox-control" for="overworld-show-hidden"><input type="checkbox" id="overworld-show-hidden"><span><strong>Show dotfiles</strong></span></label>
+</div>
+</div>
+<div class="grid-two">
+<div class="field-row">
+<label for="overworld-max-entries"><strong>Room Entry Limit</strong></label>
+<input type="number" id="overworld-max-entries" min="8" max="300" step="1" value="96">
+</div>
+<div class="field-row">
+<label for="overworld-start-path"><strong>Starting Folder</strong></label>
+<input type="text" id="overworld-start-path" placeholder="Default sandbox">
+</div>
+</div>
+<p class="muted">The default starting room is a sandbox with a door into the website. Anonymous players cannot leave that first room.</p>
+</section>
+
+<section class="sub-card">
+<div class="row-head compact-row-head">
+<div>
+<h4>Runtime Status</h4>
+<p class="muted">Checks server paths, anonymous sessions, and whether player account execution is available.</p>
+</div>
+<button id="btn-overworld-refresh" type="button">Refresh</button>
+</div>
+<div id="overworld-admin-status" class="runtime-settings-list">
+<div class="placeholder">Loading Overworld status...</div>
+</div>
+</section>
+</div>
+
+<div id="output-overworld" class="output"></div>
+</div>
+</section>
+
 <section class="admin-section" data-admin-section="plugins" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
@@ -426,6 +493,10 @@ title: ""
 <tr data-plugin-row="video_chat">
 <td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Video calling</strong><span class="plugin-setting-help">Embeddable WebRTC/Janus video chat widget and iframe endpoint.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="overworld">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Overworld</strong><span class="plugin-setting-help">Server-folder RPG page, anonymous sandbox play, and Nostr player account provisioning.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-overworld"><input type="checkbox" id="plugin-overworld"><span>Enabled</span></label></td>
 </tr>
 </tbody>
 </table>
@@ -497,9 +568,9 @@ title: ""
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="4.2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M6.6 11.2C6.6 14.4 9.1 16.9 12 16.9C14.9 16.9 17.4 14.4 17.4 11.2M12 16.9V20.2M9.3 20.2H14.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
 <span class="sr-only">Audio Note</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link Share" title="Link Share">
+<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link" title="Link">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.7" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><rect x="12.5" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M9.8 12H14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-<span class="sr-only">Link Share</span>
+<span class="sr-only">Link</span>
 </button>
 <button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="Go Live" title="Coming soon: Go Live">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
@@ -865,6 +936,14 @@ title: ""
 </div>
 
 <div class="field-row">
+<label for="account-overworld-ssh-user"><strong>Overworld SSH Account</strong></label>
+<div class="account-row">
+<input type="text" id="account-overworld-ssh-user" readonly placeholder="Created when you start playing">
+</div>
+<p class="muted account-note">Provisioned on first Overworld play. This server username is tied to your Nostr account and cannot be changed.</p>
+</div>
+
+<div class="field-row">
 <label for="account-player-name"><strong>Player Name</strong></label>
 <div class="account-row">
 <input type="text" id="account-player-name" placeholder="Your name">
@@ -930,6 +1009,7 @@ title: ""
 <option value="list">List Page (kind 30004)</option>
 <option value="icon-gallery">Product Gallery (kind 30004)</option>
 <option value="public-ranking">Public Ranking (kind 30040)</option>
+<option value="overworld">Overworld Game (kind 30023)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>
 </select>
@@ -5393,8 +5473,10 @@ body {
 #admin-panel .user-menu-panel,
 #admin-panel .draft-menu-panel {
   background: var(--menu-bg, var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)))) !important;
-  border-color: var(--menu-border, var(--admin-border, var(--border))) !important;
-  box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16)) !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: var(--popup-menu-shadow, 0 18px 44px rgba(15, 23, 42, 0.18)) !important;
 }
 
 #admin-panel .post-menu-panel button,

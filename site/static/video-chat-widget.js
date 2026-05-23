@@ -233,6 +233,14 @@
     if (token) {
       out.inviteToken = token;
     }
+    var callId = first(['call_id', 'call']);
+    if (callId) {
+      out.callId = callId;
+    }
+    var roomPassword = first(['room_password', 'password', 'pin']);
+    if (roomPassword) {
+      out.roomPassword = roomPassword;
+    }
     var display = first(['display', 'display_name', 'name']);
     if (display) {
       out.displayName = display;
@@ -322,6 +330,14 @@
     if (inviteToken) {
       out.inviteToken = inviteToken;
     }
+    var callId = read('data-video-chat-call-id');
+    if (callId) {
+      out.callId = callId;
+    }
+    var roomPassword = read('data-video-chat-room-password');
+    if (roomPassword) {
+      out.roomPassword = roomPassword;
+    }
     var inviteBase = read('data-video-chat-invite-base-url');
     if (inviteBase) {
       out.inviteBaseUrl = inviteBase;
@@ -345,6 +361,10 @@
     var callLabel = read('data-video-chat-call-label');
     if (callLabel) {
       out.callLabel = callLabel;
+    }
+    var ownerCallPrivate = read('data-video-chat-owner-call-private');
+    if (ownerCallPrivate) {
+      out.ownerCallPrivate = toBool(ownerCallPrivate, true);
     }
     var publicRooms = read('data-video-chat-public-rooms');
     if (publicRooms) {
@@ -398,6 +418,7 @@
       allowJoinViaLink: true,
       callRoomId: 'call-me',
       callLabel: 'Call me',
+      ownerCallPrivate: false,
       publicRooms: false,
       rooms: ['Lobby'],
       includeTokenInInvite: false,
@@ -436,6 +457,7 @@
     merged.roomId = compact(merged.roomId || '') ? slugifyRoom(merged.roomId) : '';
     merged.callRoomId = compact(merged.callRoomId || '') ? slugifyRoom(merged.callRoomId) : 'call-me';
     merged.callLabel = compact(merged.callLabel || 'Call me') || 'Call me';
+    merged.ownerCallPrivate = toBool(merged.ownerCallPrivate, false);
     merged.rooms = parseRoomList(merged.rooms);
     if (!merged.rooms.length) {
       merged.rooms = ['Lobby'];
@@ -445,6 +467,8 @@
     merged.janusEndpoint = compact(merged.janusEndpoint || '');
     merged.signalingEndpoint = compact(merged.signalingEndpoint || '');
     merged.inviteToken = compact(merged.inviteToken || '');
+    merged.callId = compact(merged.callId || '');
+    merged.roomPassword = compact(merged.roomPassword || '');
     merged.inviteBaseUrl = compact(merged.inviteBaseUrl || '');
     merged.initialInviteLink = compact(merged.initialInviteLink || '');
     merged.metricsCallback = resolveMaybeFunction(merged.metricsCallback);
@@ -480,6 +504,22 @@
     var err = new Error(message || 'Video chat error');
     err.code = code || 'video_chat_error';
     return err;
+  }
+
+  function normalizeMediaCaptureError(err, mode) {
+    var name = String((err && err.name) || '');
+    var message = String((err && err.message) || '');
+    var lower = (name + ' ' + message).toLowerCase();
+    if (lower.indexOf('notallowed') >= 0 || lower.indexOf('permission') >= 0 || lower.indexOf('denied') >= 0) {
+      return makeWidgetError('media_permission_denied', 'Camera or microphone permission was denied by the browser or operating system.');
+    }
+    if (lower.indexOf('notfound') >= 0 || lower.indexOf('not found') >= 0 || lower.indexOf('object can not be found') >= 0 || lower.indexOf('overconstrained') >= 0) {
+      if (mode === 'voice') {
+        return makeWidgetError('microphone_not_found', 'No browser-accessible microphone was found.');
+      }
+      return makeWidgetError('camera_or_microphone_not_found', 'No browser-accessible camera or microphone was found.');
+    }
+    return makeWidgetError('media_capture_failed', message || 'Could not start camera or microphone capture.');
   }
 
   function roomHashToNumber(roomId) {
@@ -850,8 +890,10 @@
       roomId: merged.roomId,
       roomNumeric: roomHashToNumber(merged.roomId),
       inviteToken: merged.inviteToken,
+      callId: merged.callId,
       capabilityToken: '',
       tokenExpiresAt: 0,
+      roomPassword: merged.roomPassword,
       participantLimit: merged.participantLimit,
       privateId: 0,
       ownFeedId: 0,
@@ -862,6 +904,11 @@
       reconnectAttempts: 0,
       reconnectTimer: 0,
       iceRestartTimer: 0,
+      recorder: null,
+      recordingChunks: [],
+      recordingUrl: '',
+      recordingName: '',
+      isRecording: false,
       online: navigator.onLine !== false,
       hasSeenRelayCandidate: false,
       callMode: 'video',
@@ -902,6 +949,9 @@
   VideoChatWidget.prototype._render = function () {
     var showJoinByLink = this.options.allowJoinViaLink !== false;
     var publicRoomsEnabled = this.options.publicRooms === true;
+    var ownerLabel = compact(this.options.callLabel || 'Call');
+    var voiceLabel = ownerLabel === 'Call' ? 'Voice' : 'Voice ' + ownerLabel;
+    var videoLabel = ownerLabel === 'Call' ? 'Video' : 'Video ' + ownerLabel;
     var roomButtonsHtml = '';
     if (publicRoomsEnabled) {
       roomButtonsHtml = this.options.rooms.map(function (roomName) {
@@ -936,11 +986,26 @@
       + '.vcw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;align-items:stretch;}'
       + '.vcw-tile{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 68%,transparent);border-radius:14px;background:rgba(23,24,29,0.84);min-height:120px;display:flex;align-items:center;justify-content:center;}'
       + '.vcw-tile video{width:100%;height:100%;object-fit:cover;display:block;background:#17181d;min-height:120px;}'
+      + '.vcw-audio-tile{min-height:150px;background:linear-gradient(145deg,rgba(36,27,18,.94),rgba(80,54,38,.82));color:#f9efe0;padding:14px;box-sizing:border-box;flex-direction:column;gap:12px;}'
+      + '.vcw-audio-icon{width:40px;height:40px;border-radius:999px;border:1px solid rgba(249,239,224,.32);display:flex;align-items:center;justify-content:center;background:rgba(249,239,224,.12);}'
+      + '.vcw-audio-icon svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.9;fill:none;}'
+      + '.vcw-audio-media{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);}'
+      + '.vcw-waveform{display:flex;align-items:center;justify-content:center;gap:4px;width:min(13rem,90%);height:42px;}'
+      + '.vcw-waveform span{width:5px;border-radius:999px;background:linear-gradient(180deg,#fff8e8,#d9a76b);height:14px;opacity:.88;animation:vcw-wave 1.15s ease-in-out infinite;animation-delay:calc(var(--vcw-i,0) * -90ms);}'
+      + '.vcw-audio-tile:not(.vcw-audio-live) .vcw-waveform span{animation:none;opacity:.58;}'
+      + '.vcw-audio-meta{font-size:.86rem;color:rgba(249,239,224,.82);}'
+      + '.vcw-audio-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;align-items:center;}'
+      + '.vcw-audio-action{appearance:none;border:1px solid rgba(249,239,224,.38);border-radius:999px;background:rgba(249,239,224,.12);color:#fff8e8;padding:.36rem .68rem;font:inherit;font-size:.84rem;line-height:1.15;cursor:pointer;}'
+      + '.vcw-audio-action:hover,.vcw-audio-action:focus-visible{background:rgba(249,239,224,.2);outline:0;}'
+      + '.vcw-audio-action[disabled]{opacity:.55;cursor:default;}'
+      + '.vcw-audio-action.vcw-recording{background:rgba(178,42,42,.78);border-color:rgba(255,215,194,.6);}'
+      + '.vcw-recording-link{color:#fff8e8;font-size:.84rem;text-decoration:underline;text-underline-offset:2px;}'
       + '.vcw-tile-label{position:absolute;left:6px;bottom:6px;display:inline-block;font-size:.78rem;line-height:1;padding:3px 7px;border-radius:999px;background:rgba(245,234,212,.92);color:#2b2417;}'
       + '.vcw-call-help{margin:0;font-size:.84rem;color:var(--muted,#5a4935);}'
       + '.vcw-precall-help{margin:0;font-size:.82rem;color:var(--muted,#6f5b42);}'
       + '.vcw-join-row[hidden]{display:none;}'
       + '.vcw-public-rooms .vcw-label{min-width:min(16rem,100%);}'
+      + '@keyframes vcw-wave{0%,100%{height:12px}50%{height:38px}}'
       + '@media (max-width:560px){.vcw-shell{padding:10px}.vcw-btn{padding:8px 12px}.vcw-grid{grid-template-columns:repeat(auto-fit,minmax(126px,1fr));}}';
 
     var joinRowHidden = showJoinByLink ? '' : ' hidden';
@@ -952,13 +1017,14 @@
       + '  <div class="vcw-status" data-tone="info" role="status" aria-live="polite"></div>'
       + '  <section class="vcw-precall" part="precall">'
       + '    <div class="vcw-precall-actions">'
-      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-voice-call-owner-btn">Voice</button>'
-      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-video-call-owner-btn">Video</button>'
+      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-voice-call-owner-btn">' + escapeHtml(voiceLabel) + '</button>'
+      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-video-call-owner-btn">' + escapeHtml(videoLabel) + '</button>'
       + '    </div>'
       + '    <section class="vcw-public-rooms"' + (publicRoomsEnabled ? '' : ' hidden') + '>'
       + '      <div class="vcw-room-list">' + roomButtonsHtml + '</div>'
       + '      <div class="vcw-room-create-row">'
       + '        <label class="vcw-label">Room name<input class="vcw-input vcw-room-input" type="text" autocomplete="off" placeholder="room-name"></label>'
+      + '        <label class="vcw-label">Password (optional)<input class="vcw-input vcw-room-password-input" type="password" autocomplete="off" placeholder="private room password"></label>'
       + '        <button type="button" class="vcw-btn vcw-start-btn">Join or start room</button>'
       + '      </div>'
       + '    </section>'
@@ -1000,6 +1066,7 @@
       fullRoom: this.shadowRoot.querySelector('.vcw-fullroom'),
       call: this.shadowRoot.querySelector('.vcw-call'),
       roomInput: this.shadowRoot.querySelector('.vcw-room-input'),
+      roomPasswordInput: this.shadowRoot.querySelector('.vcw-room-password-input'),
       inviteInput: this.shadowRoot.querySelector('.vcw-invite-input'),
       callOwnerBtns: Array.prototype.slice.call(this.shadowRoot.querySelectorAll('.vcw-call-owner-btn')),
       voiceCallOwnerBtn: this.shadowRoot.querySelector('.vcw-voice-call-owner-btn'),
@@ -1019,14 +1086,14 @@
     var self = this;
     if (self.nodes.voiceCallOwnerBtn) {
       self.nodes.voiceCallOwnerBtn.addEventListener('click', function () {
-        self.startCallInRoom(self.options.callRoomId, 'voice').catch(function () {
+        self.startOwnerCall('voice').catch(function () {
           // Errors are already surfaced in UI.
         });
       });
     }
     if (self.nodes.videoCallOwnerBtn) {
       self.nodes.videoCallOwnerBtn.addEventListener('click', function () {
-        self.startCallInRoom(self.options.callRoomId, 'video').catch(function () {
+        self.startOwnerCall('video').catch(function () {
           // Errors are already surfaced in UI.
         });
       });
@@ -1076,6 +1143,16 @@
         self.copyInviteLink();
       });
     }
+    if (self.nodes.grid) {
+      self.nodes.grid.addEventListener('click', function (event) {
+        var button = event.target && event.target.closest ? event.target.closest('[data-vcw-record]') : null;
+        if (button) {
+          self.toggleLocalRecording().catch(function (err) {
+            self._setStatus(String(err && err.message ? err.message : err), 'error');
+          });
+        }
+      });
+    }
   };
 
   VideoChatWidget.prototype._setStatus = function (message, tone) {
@@ -1099,6 +1176,12 @@
       }
       if (this.nodes.roomBtns) {
         this.nodes.roomBtns.forEach(function (button) { button.disabled = true; });
+      }
+      if (this.nodes.roomInput) {
+        this.nodes.roomInput.disabled = true;
+      }
+      if (this.nodes.roomPasswordInput) {
+        this.nodes.roomPasswordInput.disabled = true;
       }
       if (this.nodes.joinViaLinkBtn) {
         this.nodes.joinViaLinkBtn.disabled = true;
@@ -1129,6 +1212,9 @@
     }
     if (this.nodes.roomInput) {
       this.nodes.roomInput.disabled = !!busy;
+    }
+    if (this.nodes.roomPasswordInput) {
+      this.nodes.roomPasswordInput.disabled = !!busy;
     }
     if (this.nodes.inviteInput) {
       this.nodes.inviteInput.disabled = !!busy;
@@ -1194,6 +1280,8 @@
       return {
         roomId: roomId,
         token: compact(query.inviteToken || ''),
+        callId: compact(query.callId || ''),
+        roomPassword: compact(query.roomPassword || ''),
         displayName: compact(query.displayName || ''),
         raw: parsed.toString()
       };
@@ -1206,6 +1294,9 @@
     var roomText = '';
     if (this.nodes && this.nodes.roomInput) {
       roomText = compact(this.nodes.roomInput.value || '');
+    }
+    if (this.nodes && this.nodes.roomPasswordInput) {
+      this.state.roomPassword = compact(this.nodes.roomPasswordInput.value || '');
     }
     if (!roomText && this.state.roomId) {
       roomText = this.state.roomId;
@@ -1228,6 +1319,19 @@
     body.set('room_id', roomId);
     body.set('room', roomId);
     body.set('client_id', randomId('vcw-client'));
+    if (self.state.roomPassword) {
+      body.set('room_password', self.state.roomPassword);
+    }
+    if (self.state.callId) {
+      body.set('call_id', self.state.callId);
+    }
+    if (self.state.ownerCallPending || self.options.ownerCallPrivate || self.state.roomPassword) {
+      body.set('private_room', 'true');
+    }
+    if (self.state.ownerCallPending) {
+      body.set('owner_call', 'true');
+      body.set('display_name', self.options.displayName || 'Website visitor');
+    }
     if (inviteToken) {
       body.set('provided_token', inviteToken);
     }
@@ -1249,6 +1353,14 @@
       });
     }).then(function (data) {
       self.state.capabilityToken = compact(data.token || '');
+      if (compact(data.room_id || '') && slugifyRoom(data.room_id) !== self.state.roomId) {
+        self.state.roomId = slugifyRoom(data.room_id);
+        self.state.roomNumeric = roomHashToNumber(self.state.roomId);
+      }
+      if (compact(data.room_password || '')) {
+        self.state.roomPassword = compact(data.room_password || '');
+        self.options.roomPassword = self.state.roomPassword;
+      }
       self.state.tokenExpiresAt = toInt(data.expires_at, 0, 0, Number.MAX_SAFE_INTEGER);
       self.state.participantLimit = toInt(data.participant_limit, self.options.participantLimit, 2, 24);
       self.options.maxParticipants = Math.max(self.options.maxParticipants, Math.min(self.state.participantLimit, 16));
@@ -1258,6 +1370,7 @@
       if (isWsUrl(data.signaling_wss || '')) {
         self.options.signalingEndpoint = String(data.signaling_wss);
       }
+      self.state.ownerCallPending = false;
       return data;
     });
   };
@@ -1431,6 +1544,7 @@
         description: self.state.roomId,
         publishers: self.state.participantLimit,
         permanent: false,
+        pin: self.state.roomPassword || undefined,
         notify_joining: true
       }).then(function () {
         return true;
@@ -1474,6 +1588,23 @@
         video_tracks: stream.getVideoTracks().length
       });
       return stream;
+    }).catch(function (err) {
+      if (self.state.callMode === 'video') {
+        return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
+          self.state.localStream = stream;
+          self.state.cameraEnabled = false;
+          self._setControlButtonStates();
+          self._setStatus('Camera unavailable; joining with microphone only.', 'warn');
+          self._emitMetric('local_media_granted', {
+            audio_tracks: stream.getAudioTracks().length,
+            video_tracks: stream.getVideoTracks().length
+          });
+          return stream;
+        }).catch(function (audioErr) {
+          throw normalizeMediaCaptureError(audioErr || err, 'video');
+        });
+      }
+      throw normalizeMediaCaptureError(err, self.state.callMode);
     });
   };
 
@@ -1528,6 +1659,7 @@
       request: 'join',
       ptype: 'publisher',
       room: self.state.roomNumeric,
+      pin: self.state.roomPassword || undefined,
       display: self.options.displayName
     }).then(function (msg) {
       var data = (msg && msg.plugindata && msg.plugindata.data) ? msg.plugindata.data : {};
@@ -1686,6 +1818,7 @@
         ptype: 'subscriber',
         room: self.state.roomNumeric,
         feed: feed,
+        pin: self.state.roomPassword || undefined,
         private_id: self.state.privateId
       });
     }).then(function (msg) {
@@ -1782,23 +1915,87 @@
       return;
     }
     var grid = this.nodes.grid;
-    grid.innerHTML = '';
 
     var maxTiles = this.options.maxParticipants;
     var added = 0;
+    var self = this;
+    var seenTileKeys = Object.create(null);
+    var existingTiles = Object.create(null);
 
-    function appendTile(stream, label, muted) {
-      var wrap = document.createElement('article');
-      wrap.className = 'vcw-tile';
-      var video = document.createElement('video');
-      video.autoplay = true;
-      video.playsInline = true;
-      video.muted = !!muted;
-      video.setAttribute('aria-label', label);
-      if (stream) {
-        video.srcObject = stream;
+    Array.prototype.slice.call(grid.children).forEach(function (child) {
+      var key = child && child.getAttribute ? child.getAttribute('data-vcw-tile-key') : '';
+      if (key) {
+        existingTiles[key] = child;
       }
-      wrap.appendChild(video);
+    });
+
+    function streamHasVideo(stream) {
+      return !!(stream && stream.getVideoTracks && stream.getVideoTracks().some(function (track) {
+        return track && track.readyState !== 'ended';
+      }));
+    }
+
+    function appendWaveform(wrap) {
+      var wave = document.createElement('div');
+      wave.className = 'vcw-waveform';
+      wave.setAttribute('aria-hidden', 'true');
+      for (var i = 0; i < 15; i += 1) {
+        var bar = document.createElement('span');
+        bar.style.setProperty('--vcw-i', String(i));
+        wave.appendChild(bar);
+      }
+      wrap.appendChild(wave);
+    }
+
+    function replaceExistingTile(key) {
+      var existing = key ? existingTiles[key] : null;
+      if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+      }
+    }
+
+    function appendAudioTile(key, stream, label, muted, isLocal) {
+      replaceExistingTile(key);
+      var wrap = document.createElement('article');
+      wrap.setAttribute('data-vcw-tile-key', key);
+      wrap.className = 'vcw-tile vcw-audio-tile' + (stream && stream.getAudioTracks && stream.getAudioTracks().length ? ' vcw-audio-live' : '');
+      if (stream) {
+        var audio = document.createElement('audio');
+        audio.className = 'vcw-audio-media';
+        audio.autoplay = true;
+        audio.muted = !!muted;
+        audio.srcObject = stream;
+        wrap.appendChild(audio);
+      }
+      var icon = document.createElement('div');
+      icon.className = 'vcw-audio-icon';
+      icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg>';
+      wrap.appendChild(icon);
+      appendWaveform(wrap);
+      var meta = document.createElement('div');
+      meta.className = 'vcw-audio-meta';
+      meta.textContent = muted ? 'Your microphone audio' : 'Audio participant';
+      wrap.appendChild(meta);
+      if (isLocal) {
+        var actions = document.createElement('div');
+        actions.className = 'vcw-audio-actions';
+        var recordButton = document.createElement('button');
+        recordButton.type = 'button';
+        recordButton.className = 'vcw-audio-action' + (self.state.isRecording ? ' vcw-recording' : '');
+        recordButton.setAttribute('data-vcw-record', 'local');
+        recordButton.disabled = !window.MediaRecorder || !stream || !stream.getAudioTracks || !stream.getAudioTracks().length;
+        recordButton.textContent = self.state.isRecording ? 'Stop recording' : 'Record';
+        actions.appendChild(recordButton);
+        if (self.state.recordingUrl) {
+          var link = document.createElement('a');
+          link.className = 'vcw-recording-link';
+          link.href = self.state.recordingUrl;
+          link.download = self.state.recordingName || 'call-recording.webm';
+          link.textContent = 'Save recording';
+          actions.appendChild(link);
+        }
+        wrap.appendChild(actions);
+      }
       var badge = document.createElement('span');
       badge.className = 'vcw-tile-label';
       badge.textContent = label;
@@ -1807,11 +2004,55 @@
       added += 1;
     }
 
-    if (this.state.localStream && added < maxTiles) {
-      appendTile(this.state.localStream, this.options.displayName + ' (You)', true);
+    function appendTile(key, stream, label, muted, isLocal) {
+      seenTileKeys[key] = true;
+      if (!streamHasVideo(stream)) {
+        appendAudioTile(key, stream, label, muted, !!isLocal);
+        return;
+      }
+      var wrap = existingTiles[key];
+      var video;
+      if (!wrap || !wrap.classList || !wrap.classList.contains('vcw-video-tile')) {
+        replaceExistingTile(key);
+        wrap = document.createElement('article');
+        wrap.setAttribute('data-vcw-tile-key', key);
+        wrap.className = 'vcw-tile vcw-video-tile';
+        video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        wrap.appendChild(video);
+        var createdBadge = document.createElement('span');
+        createdBadge.className = 'vcw-tile-label';
+        wrap.appendChild(createdBadge);
+      } else {
+        video = wrap.querySelector('video');
+        if (!video) {
+          video = document.createElement('video');
+          video.autoplay = true;
+          video.playsInline = true;
+          wrap.insertBefore(video, wrap.firstChild);
+        }
+      }
+      video.muted = !!muted;
+      video.setAttribute('aria-label', label);
+      if (stream && video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+      var badge = wrap.querySelector('.vcw-tile-label');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'vcw-tile-label';
+        wrap.appendChild(badge);
+      }
+      badge.textContent = label;
+      grid.appendChild(wrap);
+      added += 1;
     }
 
-    var self = this;
+    if (this.state.localStream && added < maxTiles) {
+      appendTile('local', this.state.localStream, this.options.displayName + ' (You)', true, true);
+    }
+
     Object.keys(this.state.subscribersByFeed).sort(function (a, b) {
       return Number(a) - Number(b);
     }).forEach(function (feedKey) {
@@ -1819,8 +2060,97 @@
         return;
       }
       var sub = self.state.subscribersByFeed[feedKey];
-      appendTile(sub && sub.stream ? sub.stream : null, (sub && sub.displayName) ? sub.displayName : ('Participant ' + String(feedKey)), false);
+      appendTile('feed-' + String(feedKey), sub && sub.stream ? sub.stream : null, (sub && sub.displayName) ? sub.displayName : ('Participant ' + String(feedKey)), false, false);
     });
+
+    Array.prototype.slice.call(grid.children).forEach(function (child) {
+      var key = child && child.getAttribute ? child.getAttribute('data-vcw-tile-key') : '';
+      if (key && !seenTileKeys[key] && child.parentNode) {
+        child.parentNode.removeChild(child);
+      }
+    });
+  };
+
+  VideoChatWidget.prototype._clearRecordingUrl = function () {
+    if (this.state.recordingUrl) {
+      try {
+        URL.revokeObjectURL(this.state.recordingUrl);
+      } catch (_err) {
+        // Ignore revoke errors.
+      }
+    }
+    this.state.recordingUrl = '';
+    this.state.recordingName = '';
+  };
+
+  VideoChatWidget.prototype._resetLocalRecording = function () {
+    if (this.state.recorder && this.state.recorder.state === 'recording') {
+      try {
+        this.state.recorder.stop();
+      } catch (_err) {
+        // Ignore stop errors during teardown.
+      }
+    }
+    this.state.recorder = null;
+    this.state.recordingChunks = [];
+    this.state.isRecording = false;
+    this._clearRecordingUrl();
+  };
+
+  VideoChatWidget.prototype._startLocalRecording = function () {
+    var self = this;
+    if (!window.MediaRecorder) {
+      return Promise.reject(makeWidgetError('recording_not_supported', 'This browser cannot record call audio.'));
+    }
+    if (!self.state.localStream || !self.state.localStream.getAudioTracks().length) {
+      return Promise.reject(makeWidgetError('recording_no_audio', 'No microphone audio is available to record.'));
+    }
+    self._clearRecordingUrl();
+    var audioStream = new MediaStream(self.state.localStream.getAudioTracks());
+    var recorder;
+    try {
+      recorder = new MediaRecorder(audioStream);
+    } catch (err) {
+      return Promise.reject(makeWidgetError('recording_start_failed', 'Could not start audio recording: ' + String(err && err.message ? err.message : err)));
+    }
+    self.state.recordingChunks = [];
+    recorder.addEventListener('dataavailable', function (event) {
+      if (event.data && event.data.size) {
+        self.state.recordingChunks.push(event.data);
+      }
+    });
+    recorder.addEventListener('stop', function () {
+      var chunks = self.state.recordingChunks.slice();
+      self.state.recorder = null;
+      self.state.recordingChunks = [];
+      self.state.isRecording = false;
+      if (chunks.length) {
+        var type = chunks[0].type || 'audio/webm';
+        var blob = new Blob(chunks, { type: type });
+        self.state.recordingUrl = URL.createObjectURL(blob);
+        self.state.recordingName = 'call-recording-' + new Date().toISOString().replace(/[:.]/g, '-') + '.webm';
+      }
+      self._renderGrid();
+    });
+    recorder.start();
+    self.state.recorder = recorder;
+    self.state.isRecording = true;
+    self._renderGrid();
+    return Promise.resolve(true);
+  };
+
+  VideoChatWidget.prototype._stopLocalRecording = function () {
+    if (this.state.recorder && this.state.recorder.state === 'recording') {
+      this.state.recorder.stop();
+    }
+    return Promise.resolve(true);
+  };
+
+  VideoChatWidget.prototype.toggleLocalRecording = function () {
+    if (this.state.isRecording) {
+      return this._stopLocalRecording();
+    }
+    return this._startLocalRecording();
   };
 
   VideoChatWidget.prototype._showCallUi = function () {
@@ -2020,6 +2350,15 @@
     return self._startJoinFlow(roomId, self.state.inviteToken || '');
   };
 
+  VideoChatWidget.prototype.startOwnerCall = function (mode) {
+    if (!this.options.ownerCallPrivate) {
+      return this.startCallInRoom(this.options.callRoomId, mode || 'video');
+    }
+    this.state.ownerCallPending = true;
+    this.state.roomPassword = '';
+    return this.startCallInRoom(randomId('anders'), mode || 'video');
+  };
+
   VideoChatWidget.prototype.startCallInRoom = function (roomId, mode) {
     var normalized = slugifyRoom(roomId || '');
     if (!normalized) {
@@ -2059,6 +2398,8 @@
     }
     self.state.roomId = parsed.roomId;
     self.state.roomNumeric = roomHashToNumber(parsed.roomId);
+    self.state.callId = parsed.callId || '';
+    self.state.roomPassword = parsed.roomPassword || '';
     if (self.nodes && self.nodes.roomInput) {
       self.nodes.roomInput.value = parsed.roomId;
     }
@@ -2220,6 +2561,9 @@
     }
 
     return closeJanus.then(function () {
+      if (!keepLocalStream) {
+        self._resetLocalRecording();
+      }
       if (!keepLocalStream && self.state.localStream) {
         self.state.localStream.getTracks().forEach(function (track) {
           try {
@@ -2346,6 +2690,9 @@
     url.searchParams.set('room', this.state.roomId || this._ensureRoomId());
     if (this.options.includeTokenInInvite && this.state.capabilityToken) {
       url.searchParams.set('token', this.state.capabilityToken);
+    }
+    if (this.state.roomPassword) {
+      url.searchParams.set('room_password', this.state.roomPassword);
     }
     return url.toString();
   };

@@ -21,13 +21,119 @@ if ! blog_rate_limit_check video_chat_token_ip "$client_ip" 80 300; then
   exit 0
 fi
 
+json_bool() {
+  case "${1-}" in
+    true|1|yes|on) printf 'true' ;;
+    *) printf 'false' ;;
+  esac
+}
+
+safe_key() {
+  printf '%s' "${1-}" | sed 's/[^A-Za-z0-9_.-]/_/g; s/^_\+//; s/_\+$//'
+}
+
+room_key() {
+  printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-\+//; s/-\+$//'
+}
+
+video_state_dir="$blog_site_data/video-chat"
+rooms_dir="$video_state_dir/rooms"
+calls_dir="$video_state_dir/calls"
+mkdir -p "$rooms_dir" "$calls_dir"
+
+room_path_for() {
+  key=$(safe_key "${1-}")
+  [ -n "$key" ] || key=unknown
+  printf '%s/%s.conf\n' "$rooms_dir" "$key"
+}
+
+call_path_for() {
+  key=$(safe_key "${1-}")
+  [ -n "$key" ] || key=unknown
+  printf '%s/%s.conf\n' "$calls_dir" "$key"
+}
+
+user_display_name() {
+  profile=$(blog_user_profile "${1-}")
+  name=$(config-get "$profile" player_name 2>/dev/null || printf '')
+  [ -n "$name" ] || name=$(config-get "$profile" publish_name 2>/dev/null || printf '')
+  [ -n "$name" ] || name=${1-}
+  printf '%s' "$name"
+}
+
+primary_admin_user() {
+  for profile in "$blog_users_dir"/*/profile.conf; do
+    [ -f "$profile" ] || continue
+    username=$(config-get "$profile" username 2>/dev/null || basename "$(dirname "$profile")")
+    [ -n "$username" ] || continue
+    if blog_user_is_admin "$username"; then
+      printf '%s' "$username"
+      return 0
+    fi
+  done
+  printf 'site-owner'
+}
+
 room_id=$(printf '%s' "$(blog_param room_id)" | tr '[:upper:]' '[:lower:]')
 if [ -z "$room_id" ]; then
   room_id=$(printf '%s' "$(blog_param room)" | tr '[:upper:]' '[:lower:]')
 fi
-room_id=$(printf '%s' "$room_id" | sed 's/[^a-z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-\+//; s/-\+$//')
+room_id=$(room_key "$room_id")
+
+owner_call=$(blog_param owner_call)
+case "$owner_call" in true|1|yes|on) owner_call=true ;; *) owner_call=false ;; esac
+
+requested_private=$(blog_param private_room)
+case "$requested_private" in true|1|yes|on) requested_private=true ;; *) requested_private=false ;; esac
+
+if [ "$owner_call" = "true" ]; then
+  requested_private=true
+  room_id=$(room_key "anders-$(blog_random_token 9)")
+fi
 if [ -z "$room_id" ]; then
-  room_id=$(printf '%s' "$(blog_random_token 6)" | cut -c1-12 | tr '[:upper:]' '[:lower:]')
+  room_id=$(room_key "$(blog_random_token 6)")
+fi
+
+provided_room_password=$(printf '%s' "$(blog_param room_password)" | tr -d '\r\n' | cut -c1-160)
+if [ -z "$provided_room_password" ]; then
+  provided_room_password=$(printf '%s' "$(blog_param pin)" | tr -d '\r\n' | cut -c1-160)
+fi
+call_id=$(safe_key "$(blog_param call_id)")
+if [ -n "$call_id" ]; then
+  call_path=$(call_path_for "$call_id")
+  if [ -f "$call_path" ]; then
+    call_room=$(room_key "$(config-get "$call_path" room_id 2>/dev/null || printf '')")
+    call_password=$(config-get "$call_path" room_password 2>/dev/null || printf '')
+    call_status=$(config-get "$call_path" status 2>/dev/null || printf '')
+    if [ -n "$call_room" ] && [ "$call_room" = "$room_id" ] && [ "$call_status" = "accepted" ] && [ -n "$call_password" ] && [ -z "$provided_room_password" ]; then
+      provided_room_password=$call_password
+    fi
+  fi
+fi
+room_path=$(room_path_for "$room_id")
+stored_room_password=''
+stored_private=false
+if [ -f "$room_path" ]; then
+  stored_room_password=$(config-get "$room_path" room_password 2>/dev/null || printf '')
+  stored_private=$(config-get "$room_path" private_room 2>/dev/null || printf 'false')
+  case "$stored_private" in true|1|yes|on) stored_private=true ;; *) stored_private=false ;; esac
+fi
+
+if [ "$requested_private" = "true" ] && [ -z "$stored_room_password" ]; then
+  stored_room_password=$provided_room_password
+  [ -n "$stored_room_password" ] || stored_room_password=$(blog_random_token 18)
+  stored_private=true
+  config-set "$room_path" room_id "$room_id"
+  config-set "$room_path" private_room true
+  config-set "$room_path" room_password "$stored_room_password"
+  config-set "$room_path" created_at "$(blog_now_epoch)"
+fi
+if [ "$stored_private" = "true" ] && [ -n "$stored_room_password" ] && [ "$owner_call" != "true" ] && [ "$provided_room_password" != "$stored_room_password" ]; then
+  blog_json_error "Room password is required" "room_password_required"
+  exit 0
+fi
+if [ -f "$room_path" ]; then
+  config-set "$room_path" updated_at "$(blog_now_epoch)"
 fi
 
 participant_limit=$(config-get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
@@ -55,6 +161,30 @@ fi
 issued_at=$(blog_now_epoch)
 expires_at=$((issued_at + ttl_seconds))
 capability_token=$(blog_random_token 24)
+
+if [ "$owner_call" = "true" ]; then
+  call_id=$(blog_random_token 12)
+  call_path=$(call_path_for "$call_id")
+  caller_name=$(printf '%s' "$(blog_param display_name)" | tr -d '\r\n' | cut -c1-80)
+  [ -n "$caller_name" ] || caller_name="Website visitor"
+  target_admin=$(primary_admin_user)
+  target_admin_name=$(user_display_name "$target_admin")
+  config-set "$call_path" call_id "$call_id"
+  config-set "$call_path" room_id "$room_id"
+  config-set "$call_path" room_password "$stored_room_password"
+  config-set "$call_path" private_room "$stored_private"
+  config-set "$call_path" from_admin "visitor"
+  config-set "$call_path" from_admin_name "$caller_name"
+  config-set "$call_path" to_user "$target_admin"
+  config-set "$call_path" to_user_name "$target_admin_name"
+  config-set "$call_path" status ringing
+  config-set "$call_path" owner_call true
+  config-set "$call_path" self_test false
+  config-set "$call_path" created_at "$issued_at"
+  config-set "$call_path" expires_at "$((issued_at + 300))"
+  config-set "$call_path" answered_at 0
+fi
+
 janus_ws=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
 signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
 public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
@@ -73,6 +203,8 @@ printf '{'
 printf '"success":true,'
 printf '"room_id":"%s",' "$(blog_json_escape "$room_id")"
 printf '"token":"%s",' "$(blog_json_escape "$capability_token")"
+printf '"private_room":%s,' "$(json_bool "$stored_private")"
+printf '"room_password":"%s",' "$(blog_json_escape "$stored_room_password")"
 printf '"issued_at":%s,' "$issued_at"
 printf '"expires_at":%s,' "$expires_at"
 printf '"participant_limit":%s,' "$participant_limit"

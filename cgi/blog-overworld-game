@@ -1,0 +1,206 @@
+#!/bin/sh
+# Server-backed Overworld game API.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
+
+blog_init
+blog_overworld_setup
+blog_read_request_body
+blog_send_json_headers
+
+blog_overworld_api_error() {
+  code=$1
+  message=$2
+  printf '{"success":false,"code":"%s","error":"%s"}\n' "$(blog_json_escape "$code")" "$(blog_json_escape "$message")"
+}
+
+blog_overworld_require_loaded_csrf() {
+  req_csrf=$(blog_param csrf_token)
+  if [ -z "$req_csrf" ]; then
+    req_csrf=$(printf '%s' "${HTTP_X_OVERWORLD_CSRF-}" | tr -d '\r\n')
+  fi
+  if [ -z "$req_csrf" ] || [ "$req_csrf" != "$BLOG_SESSION_CSRF" ]; then
+    blog_overworld_api_error csrf_invalid "Invalid CSRF token"
+    return 1
+  fi
+  return 0
+}
+
+blog_overworld_save_current_path() {
+  save_path=$1
+  if [ "$authenticated" = "true" ]; then
+    blog_overworld_set_profile_value "$username" overworld_current_path "$save_path"
+  else
+    save_guest_file=$(blog_overworld_guest_file "$guest_id")
+    config-set "$save_guest_file" current_path "$save_path"
+  fi
+}
+
+if ! blog_plugin_enabled "overworld"; then
+  blog_overworld_api_error overworld_disabled "Overworld is not enabled on this site."
+  exit 0
+fi
+
+action=$(blog_param action)
+[ -n "$action" ] || action=state
+
+authenticated=false
+username=
+player_name=
+account=
+account_status=anonymous
+key_status=
+session_token=$(blog_param session_token)
+if [ -z "$session_token" ]; then
+  session_token=$(printf '%s' "${HTTP_X_OVERWORLD_SESSION-}" | tr -d '\r\n')
+fi
+if blog_load_session "$session_token"; then
+  blog_extend_session
+  authenticated=true
+  username=$BLOG_SESSION_USERNAME
+  player_name=$(blog_get_player_name "$username" 2>/dev/null || printf '%s' "$username")
+  account=$(blog_overworld_get_profile_value "$username" overworld_ssh_username)
+  account_status=$(blog_overworld_get_profile_value "$username" overworld_ssh_account_status)
+  key_status=$(blog_overworld_get_profile_value "$username" overworld_ssh_key_status)
+  [ -n "$account_status" ] || account_status=not_started
+fi
+
+start_path=$(blog_overworld_start_path)
+guest_id=
+guest_expires_at=0
+guest_time_remaining=0
+anonymous_enabled=$(blog_overworld_anonymous_enabled)
+
+if [ "$authenticated" != "true" ]; then
+  if [ "$anonymous_enabled" != "true" ]; then
+    blog_overworld_api_error auth_required "Log in with Nostr to play Overworld."
+    exit 0
+  fi
+  guest_id=$(blog_overworld_get_or_create_guest_id "$(blog_param guest_id)")
+  guest_expires_at=$(blog_overworld_guest_expires_at "$guest_id")
+  now_epoch=$(blog_now_epoch)
+  if [ "$now_epoch" -ge "$guest_expires_at" ]; then
+    printf '{"success":false,"code":"anonymous_expired","error":"Anonymous time is up. Log in with Nostr to keep playing.","guest_id":"%s","expires_at":%s}\n' \
+      "$(blog_json_escape "$guest_id")" "$guest_expires_at"
+    exit 0
+  fi
+  guest_time_remaining=$((guest_expires_at - now_epoch))
+fi
+
+case "$action" in
+  state|start|enter|reset) ;;
+  *)
+    blog_overworld_api_error bad_action "Unknown Overworld action."
+    exit 0
+    ;;
+esac
+
+case "$action" in
+  start|enter|reset)
+    if [ "$authenticated" = "true" ]; then
+      blog_overworld_require_loaded_csrf || exit 0
+    fi
+    ;;
+esac
+
+if [ "$authenticated" = "true" ]; then
+  case "$action" in
+    state|start|enter|reset)
+      if ensured_account=$(blog_overworld_ensure_user_account "$username" 2>/dev/null); then
+        account=$ensured_account
+      else
+        account=$(blog_overworld_get_profile_value "$username" overworld_ssh_username)
+      fi
+      account_status=$(blog_overworld_get_profile_value "$username" overworld_ssh_account_status)
+      key_status=$(blog_overworld_get_profile_value "$username" overworld_ssh_key_status)
+      [ -n "$account_status" ] || account_status=needs_server_setup
+      ;;
+  esac
+fi
+
+current_path=
+if [ "$authenticated" = "true" ]; then
+  current_path=$(blog_overworld_get_profile_value "$username" overworld_current_path)
+else
+  current_path=$(config-get "$(blog_overworld_guest_file "$guest_id")" current_path 2>/dev/null || printf '')
+fi
+current_path=$(blog_overworld_canonical_path "$current_path" 2>/dev/null || printf '')
+[ -n "$current_path" ] || current_path=$start_path
+
+if [ "$authenticated" != "true" ]; then
+  current_path=$start_path
+fi
+
+case "$action" in
+  reset|start)
+    current_path=$start_path
+    blog_overworld_save_current_path "$current_path"
+    ;;
+  enter)
+    target_raw=$(blog_param path)
+    case "$target_raw" in
+      overworld-locked://*)
+        if [ "$authenticated" != "true" ]; then
+          blog_overworld_api_error auth_required "Log in with Nostr to leave the starting room."
+          exit 0
+        fi
+        ;;
+    esac
+    target_path=$(blog_overworld_canonical_path "$target_raw" 2>/dev/null || printf '')
+    if [ -z "$target_path" ]; then
+      blog_overworld_api_error bad_path "That door does not lead to a valid folder."
+      exit 0
+    fi
+    if [ "$authenticated" != "true" ] && ! blog_overworld_path_is_start "$target_path" "$start_path"; then
+      blog_overworld_api_error auth_required "Log in with Nostr to leave the starting room."
+      exit 0
+    fi
+    if ! blog_overworld_can_enter_path "$target_path" "$start_path" "$account"; then
+      blog_overworld_api_error permission_denied "That folder is locked by the server's UNIX permissions."
+      exit 0
+    fi
+    current_path=$target_path
+    blog_overworld_save_current_path "$current_path"
+    ;;
+esac
+
+if ! blog_overworld_can_enter_path "$current_path" "$start_path" "$account"; then
+  current_path=$start_path
+  blog_overworld_save_current_path "$current_path"
+fi
+
+access_mode=$(blog_overworld_effective_access_mode "$account")
+can_leave_default=false
+if [ "$authenticated" = "true" ] && [ "$access_mode" != "start_room_only" ]; then
+  can_leave_default=true
+fi
+room_json=$(blog_overworld_room_json "$current_path" "$account" "$start_path")
+response_start_path=$start_path
+response_current_path=$current_path
+if [ "$authenticated" != "true" ]; then
+  response_start_path=/overworld/start
+  response_current_path=/overworld/start
+  room_json=$(blog_overworld_public_room_json "$room_json" "$response_current_path")
+fi
+
+printf '{"success":true,'
+printf '"authenticated":%s,' "$authenticated"
+printf '"username":"%s",' "$(blog_json_escape "$username")"
+printf '"player_name":"%s",' "$(blog_json_escape "$player_name")"
+printf '"overworld_ssh_username":"%s",' "$(blog_json_escape "$account")"
+printf '"overworld_ssh_account_status":"%s",' "$(blog_json_escape "$account_status")"
+printf '"overworld_ssh_key_status":"%s",' "$(blog_json_escape "$key_status")"
+printf '"access_mode":"%s",' "$(blog_json_escape "$access_mode")"
+printf '"anonymous_enabled":%s,' "$anonymous_enabled"
+printf '"guest_id":"%s",' "$(blog_json_escape "$guest_id")"
+printf '"anonymous_expires_at":%s,' "$guest_expires_at"
+printf '"anonymous_time_remaining_seconds":%s,' "$guest_time_remaining"
+printf '"start_path":"%s",' "$(blog_json_escape "$response_start_path")"
+printf '"current_path":"%s",' "$(blog_json_escape "$response_current_path")"
+printf '"can_leave_default":%s,' "$can_leave_default"
+printf '"room":%s' "$room_json"
+printf '}\n'

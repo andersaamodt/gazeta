@@ -2166,7 +2166,7 @@ blog_nostr_comment_count_lookup() {
 blog_validate_username() {
   name=${1-}
   case "$name" in
-    ''|*[!a-zA-Z0-9._-]*) return 1 ;;
+    ''|.|..|-*|.*|*[!a-zA-Z0-9._-]*) return 1 ;;
     *) return 0 ;;
   esac
 }
@@ -3015,12 +3015,36 @@ blog_save_user_profile() {
   blog_ensure_user_rank "$username" >/dev/null 2>&1 || true
 }
 
+blog_validate_hex_token() {
+  token=${1-}
+  expected_count=${2-}
+  case "$expected_count" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  count=$(printf '%s' "$token" | wc -c | tr -d ' ')
+  [ "$count" -eq "$expected_count" ] || return 1
+  case "$token" in
+    *[!abcdef0123456789]*) return 1 ;;
+  esac
+}
+
+blog_validate_session_token() {
+  blog_validate_hex_token "${1-}" 48
+}
+
 blog_session_path() {
-  printf '%s/%s.conf\n' "$blog_sessions_dir" "$1"
+  token=${1-}
+  blog_validate_session_token "$token" || return 1
+  printf '%s/%s.conf\n' "$blog_sessions_dir" "$token"
+}
+
+blog_validate_nostr_login_request_id() {
+  blog_validate_hex_token "${1-}" 32
 }
 
 blog_nostr_login_request_path() {
   request_id=${1-}
+  blog_validate_nostr_login_request_id "$request_id" || return 1
   printf '%s/%s.conf\n' "$blog_nostr_login_requests_dir" "$request_id"
 }
 
@@ -3046,6 +3070,7 @@ blog_create_nostr_login_request() {
 
 blog_get_nostr_login_request() {
   request_id=${1-}
+  blog_validate_nostr_login_request_id "$request_id" || return 1
   request_path=$(blog_nostr_login_request_path "$request_id")
   [ -f "$request_path" ] || return 1
   pubkey=$(config-get "$request_path" pubkey_hint 2>/dev/null || printf '')
@@ -3070,12 +3095,15 @@ blog_get_nostr_login_request() {
 
 blog_clear_nostr_login_request() {
   request_id=${1-}
-  [ -n "$request_id" ] || return 0
-  rm -f "$(blog_nostr_login_request_path "$request_id")"
+  blog_validate_nostr_login_request_id "$request_id" || return 0
+  request_path=$(blog_nostr_login_request_path "$request_id" 2>/dev/null || printf '')
+  [ -n "$request_path" ] || return 0
+  rm -f "$request_path"
 }
 
 blog_nostr_delegation_path() {
   delegation_id=${1-}
+  blog_validate_hex_token "$delegation_id" 64 || return 1
   printf '%s/%s.conf\n' "$blog_nostr_delegations_dir" "$delegation_id"
 }
 
@@ -3142,7 +3170,7 @@ blog_nostr_delegation_activate() {
   fi
 
   event_id=$(printf '%s\n' "$delegation_json" | jq -r '.id // ""' 2>/dev/null || printf '')
-  if [ -n "$event_id" ]; then
+  if blog_validate_hex_token "$event_id" 64; then
     delegation_id=$event_id
   else
     delegation_id=$(printf '%s:%s:%s:%s' "$delegator" "$session_pubkey" "$domain" "$expires_at" | blog_sha256)
@@ -3275,7 +3303,7 @@ blog_create_session() {
 
 blog_load_session() {
   load_token=${1-}
-  if [ -z "$load_token" ]; then
+  if ! blog_validate_session_token "$load_token"; then
     return 1
   fi
 
@@ -4061,7 +4089,7 @@ blog_nostr_alt_for_post_type() {
   case "$post_type" in
     shortform) default_alt='Shortform post' ;;
     longform) default_alt='Longform post' ;;
-    link-share) default_alt='Link share' ;;
+    link-share) default_alt='Link' ;;
     audio-note) default_alt='Audio note' ;;
     capture-media|upload-media)
       case "$mime_type" in

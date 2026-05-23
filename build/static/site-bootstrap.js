@@ -4,7 +4,7 @@
       site_title: "Anders' Blog",
       append_site_title_to_page_title: false,
       theme: "lapidarist",
-      plugins: {"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"video_chat":true,"overworld":false},
+      plugins: {"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"video_chat":true,"overworld":true},
       video_chat: {"participant_limit":6,"token_ttl_seconds":3600,"janus_wss":"","signaling_wss":"","public_rooms":false,"rooms":["Lobby"],"include_syntax":"{{video-chat}}"}
     },
     navbar_pages: [{"slug":"blog","title":"Blog","path":"/blog","type":"blog","kind":30023}],

@@ -606,7 +606,7 @@ pre,
   box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn),
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
@@ -625,8 +625,8 @@ input[type="reset"],
   box-shadow: none !important;
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):hover:not(:disabled),
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):focus-visible:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible:not(:disabled),
 input[type="button"]:hover:not(:disabled),
 input[type="button"]:focus-visible:not(:disabled),
 input[type="submit"]:hover:not(:disabled),
@@ -709,13 +709,13 @@ input[type="reset"]:disabled,
   transform: none !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger) {
   border-color: transparent !important;
   box-shadow: var(--lapidarist-control-shadow) !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):hover:not(:disabled),
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):focus-visible:not(:disabled) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):focus-visible:not(:disabled) {
   border-color: transparent !important;
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
@@ -747,13 +747,18 @@ input[type="reset"]:disabled,
 
 .nav-search input[type="text"],
 .nav-search button,
-.nav-cart-toggle,
-.nav-menu-panel,
-.nav-overflow-panel,
-.post-page-menu-panel,
-.list-inline-row-menu {
+.nav-cart-toggle {
   border-color: transparent !important;
   box-shadow: var(--lapidarist-control-shadow);
+}
+
+.nav-menu-panel,
+.nav-overflow-panel,
+.nav-login-menu,
+.post-page-menu-panel,
+.list-inline-row-menu {
+  border: 0 !important;
+  box-shadow: var(--popup-menu-shadow, 0 18px 44px rgba(54, 39, 20, 0.18));
 }
 
 .nav-search input[type="text"],
@@ -772,11 +777,40 @@ input[type="reset"]:disabled,
 
 .nav-menu-panel,
 .nav-overflow-panel,
+.nav-login-menu,
 .post-page-menu-panel,
 .list-inline-row-menu {
   background-color: var(--menu-bg);
-  background-image: var(--lapidarist-parchment-muted);
-  background-size: auto, auto, var(--lapidarist-parchment-size);
+  background-image: none !important;
+  background-size: auto;
+}
+
+#main-content .list-entry-read-menu .list-inline-row-menu-trigger,
+#main-content .list-entry-read-menu .list-inline-row-menu-trigger:not(:disabled) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+#main-content .list-entry-read-menu .list-inline-row-menu-trigger:hover:not(:disabled),
+#main-content .list-entry-read-menu .list-inline-row-menu-trigger:focus-visible:not(:disabled),
+#main-content .list-entry-read-menu .list-inline-row-menu-trigger:active:not(:disabled) {
+  background-color: var(--light-bg, #eef3ff) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+#main-content .list-inline-row-menu button[role="menuitem"],
+#main-content .list-inline-row-menu button[role="menuitem"]:hover,
+#main-content .list-inline-row-menu button[role="menuitem"]:focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 input[type="text"],
@@ -866,7 +900,7 @@ textarea:focus {
   }
 
   nav.site-nav > .nav-center {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
     grid-row: 2;
     width: 100% !important;
     max-width: 100% !important;
@@ -876,8 +910,9 @@ textarea:focus {
   }
 
   nav.site-nav > .nav-overflow-menu {
-    grid-column: 1;
+    grid-column: 3;
     grid-row: 2;
+    justify-self: end !important;
   }
 }
 

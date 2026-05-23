@@ -25,10 +25,10 @@
     }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <link rel="stylesheet" href="/static/style.css?v=1942556372" />
-  <script src="/static/js/htmx.min.js?v=1942556372"></script>
-  <script src="/static/js/idiomorph-ext.min.js?v=1942556372"></script>
-  <script src="/static/site-bootstrap.js?v=1942556372"></script>
+  <link rel="stylesheet" href="/static/style.css?v=144642402" />
+  <script src="/static/js/htmx.min.js?v=144642402"></script>
+  <script src="/static/js/idiomorph-ext.min.js?v=144642402"></script>
+  <script src="/static/site-bootstrap.js?v=144642402"></script>
   <script>
   (function () {
     var theme = 'archmage';
@@ -43,7 +43,7 @@
     } catch (_err) {
       // Ignore storage failures.
     }
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260521-vote-arrow-chrome3';
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260522-blog-filter-right1';
     var link = document.createElement('link');
     link.id = 'theme-stylesheet';
     link.rel = 'stylesheet';
@@ -52,10 +52,10 @@
     (document.head || document.documentElement).appendChild(link);
   })();
   </script>
-  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=1942556372" data-theme-href="/static/themes/archmage.css?v=1942556372" /></noscript>
-  <script defer src="/static/zap-ui.js?v=1942556372"></script>
-  <script defer src="/static/post-context.js?v=1942556372"></script>
-  <script defer src="/static/post-resize.js?v=1942556372"></script>
+  <noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=144642402" data-theme-href="/static/themes/archmage.css?v=144642402" /></noscript>
+  <script defer src="/static/zap-ui.js?v=144642402"></script>
+  <script defer src="/static/post-context.js?v=144642402"></script>
+  <script defer src="/static/post-resize.js?v=144642402"></script>
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
@@ -388,6 +388,7 @@
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
+      document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
@@ -429,17 +430,6 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
-  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 4.25H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M3 11.75H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
-  </button>
-  <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
-</div>
 <span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
 <div class="nav-center">
 <a href="/" data-page="blog">Blog</a>
@@ -470,6 +460,17 @@
 </svg>
 <span id="nav-cart-count" class="nav-cart-count" hidden>0</span>
 </button>
+<div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
+  <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 4.25H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 11.75H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-overflow-count" id="nav-overflow-count" hidden>0</span>
+  </button>
+  <div class="nav-menu-panel nav-overflow-panel" id="nav-overflow-panel" role="menu" hidden></div>
+</div>
 <a id="nav-user-name" class="nav-username" href="/admin#account" style="display:none;"></a>
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
@@ -640,8 +641,12 @@
         current = '/';
       }
       var links = navCenter.querySelectorAll('a[data-page]');
+      var selected = null;
       links.forEach(function (link) {
-        var active = normalizeNavPath(link.getAttribute('href') || '') === current;
+        var active = !selected && normalizeNavPath(link.getAttribute('href') || '') === current;
+        if (active) {
+          selected = link;
+        }
         link.classList.toggle('active', active);
         if (active) {
           link.setAttribute('aria-current', 'page');
@@ -701,6 +706,7 @@
       document.getElementById('nip23-page-root') ||
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
+      document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
@@ -876,8 +882,8 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=1942556372"></script>
-<script src="/static/shop-cart.js?v=1942556372"></script>
+<script src="/static/nav-auth.js?v=144642402"></script>
+<script src="/static/shop-cart.js?v=144642402"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 <div id="admin-access-message" class="admin-access-message" hidden="">
@@ -987,6 +993,10 @@ class="admin-nav-status-pill is-loading"
 aria-label="Loading status"><span class="admin-nav-status-spinner"
 aria-hidden="true"></span><span
 class="sr-only">Loading</span></span></span>
+</button>
+<button type="button" class="admin-nav-item" data-admin-nav="overworld" aria-selected="false">
+<span class="admin-nav-icon-slot" aria-hidden="true"></span><span
+class="admin-nav-label">Overworld</span>
 </button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false">
 <span class="admin-nav-icon-slot" aria-hidden="true"></span><span
@@ -1464,6 +1474,95 @@ Nostr event.
 </div>
 </div>
 </section>
+<section class="admin-section" data-admin-section="overworld" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>
+Overworld
+</h3>
+<p class="muted">
+Configure the server-folder RPG. Add it to a local page with
+<code>{{overworld-game}}</code>.
+</p>
+</div>
+<p><a class="button-link" href="/overworld" target="_blank" rel="noopener">Open
+Overworld</a></p>
+</div>
+<div class="settings-stack">
+<section class="sub-card">
+<h4>
+Game Settings
+</h4>
+<div class="grid-two">
+<div class="field-row">
+<p><label class="checkbox-control" for="overworld-anonymous-enabled"><input type="checkbox" id="overworld-anonymous-enabled"><span><strong>Allow
+anonymous players</strong></span></label></p>
+</div>
+<div class="field-row">
+<p><label for="overworld-anonymous-time-limit-seconds"><strong>Anonymous
+Time Limit</strong></label>
+<input type="number" id="overworld-anonymous-time-limit-seconds" min="60" max="86400" step="60" value="900">
+<span class="field-unit">seconds</span></p>
+</div>
+</div>
+<div class="grid-two">
+<div class="field-row">
+<p><label for="overworld-access-mode"><strong>Filesystem
+Access</strong></label> <select id="overworld-access-mode">
+<option value="player">Player SSH account permissions</option>
+<option value="web">Web server process permissions</option>
+</select></p>
+</div>
+<div class="field-row">
+<p><label class="checkbox-control" for="overworld-show-hidden"><input type="checkbox" id="overworld-show-hidden"><span><strong>Show
+dotfiles</strong></span></label></p>
+</div>
+</div>
+<div class="grid-two">
+<div class="field-row">
+<p><label for="overworld-max-entries"><strong>Room Entry
+Limit</strong></label>
+<input type="number" id="overworld-max-entries" min="8" max="300" step="1" value="96"></p>
+</div>
+<div class="field-row">
+<p><label for="overworld-start-path"><strong>Starting
+Folder</strong></label>
+<input type="text" id="overworld-start-path" placeholder="Default sandbox"></p>
+</div>
+</div>
+<p class="muted">
+The default starting room is a sandbox with a door into the website.
+Anonymous players cannot leave that first room.
+</p>
+</section>
+<section class="sub-card">
+<div class="row-head compact-row-head">
+<div>
+<h4>
+Runtime Status
+</h4>
+<p class="muted">
+Checks server paths, anonymous sessions, and whether player account
+execution is available.
+</p>
+</div>
+<button id="btn-overworld-refresh" type="button">
+Refresh
+</button>
+</div>
+<div id="overworld-admin-status" class="runtime-settings-list">
+<div class="placeholder">
+Loading Overworld status…
+</div>
+</div>
+</section>
+</div>
+<div id="output-overworld" class="output">
+
+</div>
+</div>
+</section>
 <section class="admin-section" data-admin-section="plugins" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
@@ -1579,6 +1678,18 @@ and iframe endpoint.</span>
 <label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label>
 </td>
 </tr>
+<tr data-plugin-row="overworld">
+<td>
+<div class="setting-label plugin-setting-main">
+<strong class="plugin-setting-name">Overworld</strong><span
+class="plugin-setting-help">Server-folder RPG page, anonymous sandbox
+play, and Nostr player account provisioning.</span>
+</div>
+</td>
+<td>
+<label class="checkbox-control plugin-enabled-control" for="plugin-overworld"><input type="checkbox" id="plugin-overworld"><span>Enabled</span></label>
+</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -1668,11 +1779,11 @@ role="tablist" aria-label="Post type">
 </svg>
 <span class="sr-only">Audio Note</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link Share" title="Link Share">
+<button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link" title="Link">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 <rect x="2.7" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><rect x="12.5" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M9.8 12H14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
 </svg>
-<span class="sr-only">Link Share</span>
+<span class="sr-only">Link</span>
 </button>
 <button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="Go Live" title="Coming soon: Go Live">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -2167,6 +2278,17 @@ routing handle tied to your Nostr account.
 </p>
 </div>
 <div class="field-row">
+<label for="account-overworld-ssh-user"><strong>Overworld SSH
+Account</strong></label>
+<div class="account-row">
+<p><input type="text" id="account-overworld-ssh-user" readonly placeholder="Created when you start playing"></p>
+</div>
+<p class="muted account-note">
+Provisioned on first Overworld play. This server username is tied to
+your Nostr account and cannot be changed.
+</p>
+</div>
+<div class="field-row">
 <label for="account-player-name"><strong>Player Name</strong></label>
 <div class="account-row">
 <p><input type="text" id="account-player-name" placeholder="Your name"></p>
@@ -2257,6 +2379,7 @@ Type</strong></label>
 <option value="list">List Page (kind 30004)</option>
 <option value="icon-gallery">Product Gallery (kind 30004)</option>
 <option value="public-ranking">Public Ranking (kind 30040)</option>
+<option value="overworld">Overworld Game (kind 30023)</option>
 <option value="contact">User Metadata (kind 0)</option>
 <option value="nip23">Long-form Content (kind 30023)</option>
 </select></p>
@@ -2337,8 +2460,8 @@ Cross-post selected
 Drop files to upload
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nostr-publish-dialog.js?v=1942556372"></script>
-<script src="/static/admin.js?v=1942556372"></script>
+<script src="/static/nostr-publish-dialog.js?v=144642402"></script>
+<script src="/static/admin.js?v=144642402"></script>
 <style>
 header#title-block-header {
   display: none !important;
@@ -6741,8 +6864,10 @@ body {
 #admin-panel .user-menu-panel,
 #admin-panel .draft-menu-panel {
   background: var(--menu-bg, var(--surface-raised, var(--admin-surface, var(--post-card-bg-single)))) !important;
-  border-color: var(--menu-border, var(--admin-border, var(--border))) !important;
-  box-shadow: var(--menu-shadow, 0 12px 28px rgba(15, 23, 42, 0.16)) !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: var(--popup-menu-shadow, 0 18px 44px rgba(15, 23, 42, 0.18)) !important;
 }
 
 #admin-panel .post-menu-panel button,
@@ -7410,6 +7535,6 @@ body {
     </a>
   </div>
 </footer>
-<script defer src="/static/footer-pages.js?v=1942556372"></script>
+<script defer src="/static/footer-pages.js?v=144642402"></script>
 </body>
 </html>

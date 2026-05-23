@@ -1041,7 +1041,7 @@ class Handler(BaseHTTPRequestHandler):
 
         pay_path = f"/.well-known/lnurlp/{ALIAS_NAME}"
         callback_path = pay_path + "/callback"
-        if parsed.path == pay_path:
+        if parsed.path == pay_path or parsed.path == "/.well-known/lnurlp/anders":
             try:
                 self.send_json(load_pay_info())
             except ServiceError as exc:
@@ -1089,12 +1089,13 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/.well-known/nostr.json":
             name = (urllib.parse.parse_qs(parsed.query).get("name") or [""])[0].strip().lower()
-            if name != ALIAS_NAME:
+            supported_names = [ALIAS_NAME, "anders"]
+            if name and name not in supported_names:
                 self.send_json({"names": {}, "relays": {}}, status=404)
                 return
             pubkey = read_site_pubkey()
             relays = load_relay_hints()
-            self.send_json({"names": {ALIAS_NAME: pubkey}, "relays": {ALIAS_NAME: relays}})
+            self.send_json({"names": {item: pubkey for item in supported_names}, "relays": {item: relays for item in supported_names}})
             return
 
         self.send_json({"status": "ERROR", "reason": "not found"}, status=404)
@@ -1386,8 +1387,9 @@ write_remote_lightning_cli_wrapper
 write_service_script
 write_service_file
 
+write_server_hook
 if [ "$(zap_alias_domain)" = "$site_domain" ]; then
-  write_server_hook
+  :
 else
   remove_legacy_alias_hooks
   write_alias_server_hook

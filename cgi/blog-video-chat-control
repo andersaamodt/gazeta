@@ -30,7 +30,8 @@ fi
 video_state_dir="$blog_site_data/video-chat"
 presence_dir="$video_state_dir/presence"
 calls_dir="$video_state_dir/calls"
-mkdir -p "$presence_dir" "$calls_dir"
+rooms_dir="$video_state_dir/rooms"
+mkdir -p "$presence_dir" "$calls_dir" "$rooms_dir"
 
 now=$(blog_now_epoch)
 presence_ttl_seconds=90
@@ -75,6 +76,12 @@ call_path_for() {
   key=$(safe_key "${1-}")
   [ -n "$key" ] || key=unknown
   printf '%s/%s.conf\n' "$calls_dir" "$key"
+}
+
+room_path_for() {
+  key=$(safe_key "${1-}")
+  [ -n "$key" ] || key=unknown
+  printf '%s/%s.conf\n' "$rooms_dir" "$key"
 }
 
 cleanup_stale_video_chat_state() {
@@ -124,20 +131,30 @@ json_call_object() {
   from_admin=$(config-get "$file" from_admin 2>/dev/null || printf '')
   from_admin_name=$(config-get "$file" from_admin_name 2>/dev/null || printf "$from_admin")
   to_user=$(config-get "$file" to_user 2>/dev/null || printf '')
+  to_user_name=$(config-get "$file" to_user_name 2>/dev/null || printf "$to_user")
   status=$(config-get "$file" status 2>/dev/null || printf 'ringing')
+  self_test=$(config-get "$file" self_test 2>/dev/null || printf 'false')
+  owner_call=$(config-get "$file" owner_call 2>/dev/null || printf 'false')
+  private_room=$(config-get "$file" private_room 2>/dev/null || printf 'false')
+  room_password=$(config-get "$file" room_password 2>/dev/null || printf '')
   created_at=$(config-get "$file" created_at 2>/dev/null || printf '0')
   expires_at=$(config-get "$file" expires_at 2>/dev/null || printf '0')
   answered_at=$(config-get "$file" answered_at 2>/dev/null || printf '0')
   case "$created_at" in ''|*[!0-9]*) created_at=0 ;; esac
   case "$expires_at" in ''|*[!0-9]*) expires_at=0 ;; esac
   case "$answered_at" in ''|*[!0-9]*) answered_at=0 ;; esac
-  printf '{"call_id":"%s","room_id":"%s","from_admin":"%s","from_admin_name":"%s","to_user":"%s","status":"%s","created_at":%s,"expires_at":%s,"answered_at":%s}' \
+  printf '{"call_id":"%s","room_id":"%s","room_password":"%s","private_room":%s,"from_admin":"%s","from_admin_name":"%s","to_user":"%s","to_user_name":"%s","status":"%s","self_test":%s,"owner_call":%s,"created_at":%s,"expires_at":%s,"answered_at":%s}' \
     "$(blog_json_escape "$call_id")" \
     "$(blog_json_escape "$room_id")" \
+    "$(blog_json_escape "$room_password")" \
+    "$(json_bool "$private_room")" \
     "$(blog_json_escape "$from_admin")" \
     "$(blog_json_escape "$from_admin_name")" \
     "$(blog_json_escape "$to_user")" \
+    "$(blog_json_escape "$to_user_name")" \
     "$(blog_json_escape "$status")" \
+    "$(json_bool "$self_test")" \
+    "$(json_bool "$owner_call")" \
     "$created_at" "$expires_at" "$answered_at"
 }
 
@@ -175,10 +192,15 @@ json_presence_list() {
     updated=$(config-get "$file" updated_at 2>/dev/null || printf '0')
     case "$updated" in ''|*[!0-9]*) updated=0 ;; esac
     if [ "$first" = true ]; then first=false; else printf ','; fi
-    printf '{"username":"%s","player_name":"%s","allow_admin_calls":%s,"current_room":"%s","page_url":"%s","status":"%s","updated_at":%s,"age_seconds":%s}' \
+    is_self=false
+    if [ "$username" = "$BLOG_SESSION_USERNAME" ]; then
+      is_self=true
+    fi
+    printf '{"username":"%s","player_name":"%s","allow_admin_calls":%s,"is_self":%s,"current_room":"%s","page_url":"%s","status":"%s","updated_at":%s,"age_seconds":%s}' \
       "$(blog_json_escape "$username")" \
       "$(blog_json_escape "$player_name")" \
       "$(json_bool "$allow")" \
+      "$(json_bool "$is_self")" \
       "$(blog_json_escape "$room")" \
       "$(blog_json_escape "$page_url")" \
       "$(blog_json_escape "$status")" \
@@ -269,7 +291,11 @@ case "$action" in
       blog_json_error "Unknown user" "unknown_user"
       exit 0
     fi
-    if ! profile_allows_admin_calls "$target"; then
+    self_test=false
+    if [ "$target" = "$BLOG_SESSION_USERNAME" ]; then
+      self_test=true
+    fi
+    if [ "$self_test" != "true" ] && ! profile_allows_admin_calls "$target"; then
       blog_json_error "This user has not allowed admin calls" "not_allowed"
       exit 0
     fi
@@ -282,13 +308,25 @@ case "$action" in
     fi
     call_id=$(blog_random_token 12)
     room_id=$(room_key "admin-${BLOG_SESSION_USERNAME}-${target}-${call_id}")
+    room_password=$(blog_random_token 18)
+    room_path=$(room_path_for "$room_id")
+    config-set "$room_path" room_id "$room_id"
+    config-set "$room_path" private_room true
+    config-set "$room_path" room_password "$room_password"
+    config-set "$room_path" created_at "$now"
+    config-set "$room_path" updated_at "$now"
     call_path=$(call_path_for "$call_id")
     config-set "$call_path" call_id "$call_id"
     config-set "$call_path" room_id "$room_id"
+    config-set "$call_path" room_password "$room_password"
+    config-set "$call_path" private_room true
     config-set "$call_path" from_admin "$BLOG_SESSION_USERNAME"
     config-set "$call_path" from_admin_name "$(user_display_name "$BLOG_SESSION_USERNAME")"
     config-set "$call_path" to_user "$target"
+    config-set "$call_path" to_user_name "$(user_display_name "$target")"
     config-set "$call_path" status ringing
+    config-set "$call_path" owner_call false
+    config-set "$call_path" self_test "$self_test"
     config-set "$call_path" created_at "$now"
     config-set "$call_path" expires_at "$((now + call_ttl_seconds))"
     config-set "$call_path" answered_at 0
@@ -318,7 +356,8 @@ case "$action" in
     config-set "$call_path" status accepted
     config-set "$call_path" answered_at "$now"
     room_id=$(config-get "$call_path" room_id 2>/dev/null || printf '')
-    printf '{"success":true,"room_id":"%s","call":' "$(blog_json_escape "$room_id")"
+    room_password=$(config-get "$call_path" room_password 2>/dev/null || printf '')
+    printf '{"success":true,"room_id":"%s","room_password":"%s","call":' "$(blog_json_escape "$room_id")" "$(blog_json_escape "$room_password")"
     json_call_object "$call_path"
     printf '}\n'
     ;;

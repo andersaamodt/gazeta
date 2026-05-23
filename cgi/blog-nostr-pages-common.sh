@@ -3,13 +3,14 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260521-vote-cooldown1'
-blog_nostr_blog_page_js_version='20260521-inline-meta-filters1'
+blog_nostr_list_page_js_version='20260522-row-menu-overlay1'
+blog_nostr_blog_page_js_version='20260522-post-tags1'
 blog_nostr_contact_page_js_version='20260521-video-initial1'
 blog_nostr_simplex_web_default_chat_js_version='20260517-defaultchatv8'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
 blog_nostr_public_ranking_page_js_version='20260404-rankingv1'
+blog_nostr_overworld_game_js_version='20260522-overworld-textures'
 
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"
@@ -88,6 +89,7 @@ blog_nostr_page_kind_for_type() {
   case "$page_type" in
     contact) printf '0\n' ;;
     public-ranking) printf '30040\n' ;;
+    overworld) printf '30023\n' ;;
     nip23|blog) printf '30023\n' ;;
     *) printf '30004\n' ;;
   esac
@@ -128,6 +130,7 @@ blog_nostr_pages_normalize_json() {
       (($v // "") | tostring | ascii_downcase) as $t
       | if $t == "contact" then "contact"
         elif ($t == "public-ranking" or $t == "public_ranking" or $t == "ranking") then "public-ranking"
+        elif ($t == "overworld" or $t == "overworld-game" or $t == "overworld_game") then "overworld"
         elif ($t == "icon-gallery" or $t == "icon_gallery" or $t == "gallery") then "icon-gallery"
         elif ($t == "blog" or $t == "blog-index" or $t == "blog_index") then "blog"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
@@ -177,6 +180,7 @@ blog_nostr_pages_normalize_json() {
                .kind = (
                  if .type == "contact" then 0
                  elif .type == "public-ranking" then 30040
+                 elif .type == "overworld" then 30023
                  elif (.type == "nip23" or .type == "blog") then 30023
                  else 30004
                end
@@ -292,6 +296,7 @@ blog_nostr_navbar_pages_json() {
       (($value // "") | tostring | ascii_downcase) as $type
       | if $type == "contact" then "contact"
         elif ($type == "public-ranking" or $type == "public_ranking" or $type == "ranking") then "public-ranking"
+        elif ($type == "overworld" or $type == "overworld-game" or $type == "overworld_game") then "overworld"
         elif ($type == "icon-gallery" or $type == "icon_gallery" or $type == "gallery") then "icon-gallery"
         elif ($type == "blog" or $type == "blog-index" or $type == "blog_index") then "blog"
         elif ($type == "nip23" or $type == "article" or $type == "document") then "nip23"
@@ -301,6 +306,7 @@ blog_nostr_navbar_pages_json() {
       if ($value | type) == "number" then $value
       elif $page_type == "contact" then 0
       elif $page_type == "public-ranking" then 30040
+      elif $page_type == "overworld" then 30023
       elif ($page_type == "nip23" or $page_type == "blog") then 30023
       else 30004
       end;
@@ -1285,6 +1291,10 @@ blog_nostr_page_source_template_type() {
     printf 'public-ranking\n'
     return 0
   fi
+  if grep -q 'id="overworld-page-root"' "$file" 2>/dev/null; then
+    printf 'overworld\n'
+    return 0
+  fi
   if grep -q 'id="list-page-root"' "$file" 2>/dev/null; then
     printf 'list\n'
     return 0
@@ -1341,6 +1351,13 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="public-ranking-admin"' "$file" 2>/dev/null &&
       grep -q 'id="public-ranking-content"' "$file" 2>/dev/null &&
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
+      ;;
+    overworld)
+      grep -q 'id="overworld-page-root"' "$file" 2>/dev/null &&
+      grep -q 'data-overworld-game' "$file" 2>/dev/null &&
+      grep -q '<div class="overworld-game-mount" data-overworld-game></div>' "$file" 2>/dev/null &&
+      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+      grep -q "/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version" "$file" 2>/dev/null
       ;;
     contact)
       grep -q 'id="contact-page-title"' "$file" 2>/dev/null &&
@@ -1637,6 +1654,29 @@ license: "CC BY 4.0"
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/public-ranking-page.js?v=$blog_nostr_public_ranking_page_js_version"></script>
 EORANKING
+      ;;
+    overworld)
+      cat > "$page_file" <<EOOVERWORLD
+---
+title: "$page_title"
+published_at: "$(blog_now_iso)"
+content_hash: ""
+tags: ["nostr", "overworld"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<section id="overworld-page-root" class="overworld-page-shell" data-page-slug="$slug" data-page-type="overworld" data-page-title="$page_title">
+<div class="list-page-head overworld-page-head">
+<h1 id="overworld-page-title">$page_title</h1>
+</div>
+<div class="overworld-game-mount" data-overworld-game></div>
+</section>
+
+<script src="/static/nostr-page-bootstrap/$slug.js"></script>
+<script src="/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version"></script>
+EOOVERWORLD
       ;;
     icon-gallery)
       cat > "$page_file" <<EOICONGALLERY

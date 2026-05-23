@@ -1,11 +1,5 @@
 ---
-title: "Blog"
-published_at: "2026-05-21T20:28:43Z"
-content_hash: ""
-tags: ["nostr", "blog"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
+title: Blog
 ---
 
 <section id="blog-page-root" class="blog-page" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
@@ -24,7 +18,7 @@ license: "CC BY 4.0"
 </div>
 <div class="blog-main-column">
 <div class="list-page-head">
-<h1 id="blog-page-title">Blog</h1>
+<h1 id="blog-page-title" hidden></h1>
 <p id="blog-page-description" class="muted" hidden></p>
 </div>
 <div id="blog-page-admin" class="list-admin" hidden></div>
@@ -57,4 +51,5 @@ license: "CC BY 4.0"
 </section>
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
-<script src="/static/blog-page.js?v=20260521-inline-meta-filters1"></script>
+<script src="/static/compose-shared.js?v=20260403-compose1"></script>
+<script src="/static/blog-page.js?v=20260522-post-tags1"></script>

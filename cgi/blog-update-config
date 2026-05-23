@@ -6,8 +6,10 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
 
 blog_init
+blog_overworld_setup
 blog_read_request_body
 blog_send_json_headers
 config_before=$(cat "$blog_site_conf" 2>/dev/null || printf '')
@@ -43,12 +45,19 @@ plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
 plugin_btcpay=$(blog_param plugin_btcpay)
 plugin_video_chat=$(blog_param plugin_video_chat)
+plugin_overworld=$(blog_param plugin_overworld)
 video_chat_participant_limit=$(blog_param video_chat_participant_limit)
 video_chat_token_ttl_seconds=$(blog_param video_chat_token_ttl_seconds)
 video_chat_janus_wss=$(blog_param video_chat_janus_wss)
 video_chat_signaling_wss=$(blog_param video_chat_signaling_wss)
 video_chat_public_rooms=$(blog_param video_chat_public_rooms)
 video_chat_rooms=$(blog_param video_chat_rooms)
+overworld_anonymous_enabled=$(blog_param overworld_anonymous_enabled)
+overworld_anonymous_time_limit_seconds=$(blog_param overworld_anonymous_time_limit_seconds)
+overworld_show_hidden=$(blog_param overworld_show_hidden)
+overworld_start_path=$(blog_param overworld_start_path)
+overworld_access_mode=$(blog_param overworld_access_mode)
+overworld_max_entries=$(blog_param overworld_max_entries)
 origin_enabled_platforms=$(blog_param origin_enabled_platforms)
 origin_default_platforms=$(blog_param origin_default_platforms)
 
@@ -196,6 +205,7 @@ set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
 set_plugin_flag "btcpay" "$plugin_btcpay"
 set_plugin_flag "video_chat" "$plugin_video_chat"
+set_plugin_flag "overworld" "$plugin_overworld"
 
 case "$BLOG_REQUEST_BODY" in
   *video_chat_participant_limit=*)
@@ -261,6 +271,80 @@ case "$BLOG_REQUEST_BODY" in
     printf '%s' "$video_chat_rooms" | tr ',\r' '\n\n' | sed -e 's/[[:space:]]\+$//' -e 's/^[[:space:]]*//' | awk 'NF { if (!seen[$0]++) print $0; }' | head -n 12 > "$tmp_rooms"
     config-set "$blog_site_conf" video_chat_rooms "$(paste -sd, "$tmp_rooms")"
     rm -f "$tmp_rooms"
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_anonymous_enabled=*)
+    case "$overworld_anonymous_enabled" in
+      true|false) config-set "$blog_site_conf" overworld_anonymous_enabled "$overworld_anonymous_enabled" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_anonymous_time_limit_seconds=*)
+    case "$overworld_anonymous_time_limit_seconds" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$overworld_anonymous_time_limit_seconds" -lt 60 ]; then
+          overworld_anonymous_time_limit_seconds=60
+        fi
+        if [ "$overworld_anonymous_time_limit_seconds" -gt 86400 ]; then
+          overworld_anonymous_time_limit_seconds=86400
+        fi
+        config-set "$blog_site_conf" overworld_anonymous_time_limit_seconds "$overworld_anonymous_time_limit_seconds"
+        ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_show_hidden=*)
+    case "$overworld_show_hidden" in
+      true|false) config-set "$blog_site_conf" overworld_show_hidden "$overworld_show_hidden" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_access_mode=*)
+    case "$overworld_access_mode" in
+      player|web) config-set "$blog_site_conf" overworld_access_mode "$overworld_access_mode" ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_max_entries=*)
+    case "$overworld_max_entries" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$overworld_max_entries" -lt 8 ]; then
+          overworld_max_entries=8
+        fi
+        if [ "$overworld_max_entries" -gt 300 ]; then
+          overworld_max_entries=300
+        fi
+        config-set "$blog_site_conf" overworld_max_entries "$overworld_max_entries"
+        ;;
+    esac
+    ;;
+esac
+
+case "$BLOG_REQUEST_BODY" in
+  *overworld_start_path=*)
+    clean_overworld_start_path=$(printf '%s' "$overworld_start_path" | tr -d '\r\n')
+    if [ "$clean_overworld_start_path" != "$overworld_start_path" ]; then
+      :
+    elif [ -z "$clean_overworld_start_path" ]; then
+      config-set "$blog_site_conf" overworld_start_path ''
+    else
+      canonical_overworld_start=$(blog_overworld_canonical_path "$clean_overworld_start_path" 2>/dev/null || printf '')
+      if [ -n "$canonical_overworld_start" ] && [ -d "$canonical_overworld_start" ]; then
+        config-set "$blog_site_conf" overworld_start_path "$canonical_overworld_start"
+      fi
+    fi
     ;;
 esac
 

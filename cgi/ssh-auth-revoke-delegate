@@ -20,6 +20,10 @@ if [ -z "$delegate_id" ]; then
   blog_json_error "delegate_id is required" "invalid_request"
   exit 0
 fi
+if ! ssh_auth_validate_delegate_id "$delegate_id"; then
+  blog_json_error "Invalid delegate id" "invalid_request"
+  exit 0
+fi
 
 username=$BLOG_SESSION_USERNAME
 if [ -n "$requested" ] && [ "$requested" != "$BLOG_SESSION_USERNAME" ]; then

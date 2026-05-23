@@ -5,8 +5,10 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
 
 blog_init
+blog_overworld_setup
 blog_send_json_headers
 
 registration_enabled='true'
@@ -31,12 +33,19 @@ plugin_nostr_posts_raw=''
 plugin_zaps_raw=''
 plugin_btcpay_raw=''
 plugin_video_chat_raw=''
+plugin_overworld_raw=''
 video_chat_participant_limit_raw='6'
 video_chat_token_ttl_seconds_raw='3600'
 video_chat_janus_wss=''
 video_chat_signaling_wss=''
 video_chat_public_rooms='false'
 video_chat_rooms='Lobby'
+overworld_anonymous_enabled_raw='true'
+overworld_anonymous_time_limit_seconds_raw='900'
+overworld_show_hidden_raw='false'
+overworld_start_path=''
+overworld_access_mode_raw='player'
+overworld_max_entries_raw='96'
 
 load_site_conf_values() {
   conf_file=$1
@@ -72,12 +81,19 @@ load_site_conf_values() {
           plugin_zaps) plugin_zaps_raw=$conf_value ;;
           plugin_btcpay) plugin_btcpay_raw=$conf_value ;;
           plugin_video_chat) plugin_video_chat_raw=$conf_value ;;
+          plugin_overworld) plugin_overworld_raw=$conf_value ;;
           video_chat_participant_limit) video_chat_participant_limit_raw=$conf_value ;;
           video_chat_token_ttl_seconds) video_chat_token_ttl_seconds_raw=$conf_value ;;
           video_chat_janus_wss) video_chat_janus_wss=$conf_value ;;
           video_chat_signaling_wss) video_chat_signaling_wss=$conf_value ;;
           video_chat_public_rooms) video_chat_public_rooms=$conf_value ;;
           video_chat_rooms) video_chat_rooms=$conf_value ;;
+          overworld_anonymous_enabled) overworld_anonymous_enabled_raw=$conf_value ;;
+          overworld_anonymous_time_limit_seconds) overworld_anonymous_time_limit_seconds_raw=$conf_value ;;
+          overworld_show_hidden) overworld_show_hidden_raw=$conf_value ;;
+          overworld_start_path) overworld_start_path=$conf_value ;;
+          overworld_access_mode) overworld_access_mode_raw=$conf_value ;;
+          overworld_max_entries) overworld_max_entries_raw=$conf_value ;;
         esac
         ;;
     esac
@@ -151,8 +167,9 @@ plugin_nostr_posts=$(plugin_enabled_json "nostr_posts" "$plugin_nostr_posts_raw"
 plugin_zaps=$(plugin_enabled_json "zaps" "$plugin_zaps_raw" 'true' "$plugin_nostr_support")
 plugin_btcpay=$(plugin_enabled_json "btcpay" "$plugin_btcpay_raw" 'true' "$plugin_nostr_support")
 plugin_video_chat=$(plugin_enabled_json "video_chat" "$plugin_video_chat_raw" 'false' "$plugin_nostr_support")
-plugins_json=$(printf '{"nostr_support":%s,"nostr_login":%s,"nostr_bridge":%s,"nostr_posts":%s,"zaps":%s,"btcpay":%s,"video_chat":%s}\n' \
-  "$plugin_nostr_support" "$plugin_nostr_login" "$plugin_nostr_bridge" "$plugin_nostr_posts" "$plugin_zaps" "$plugin_btcpay" "$plugin_video_chat")
+plugin_overworld=$(plugin_enabled_json "overworld" "$plugin_overworld_raw" 'false' "$plugin_nostr_support")
+plugins_json=$(printf '{"nostr_support":%s,"nostr_login":%s,"nostr_bridge":%s,"nostr_posts":%s,"zaps":%s,"btcpay":%s,"video_chat":%s,"overworld":%s}\n' \
+  "$plugin_nostr_support" "$plugin_nostr_login" "$plugin_nostr_bridge" "$plugin_nostr_posts" "$plugin_zaps" "$plugin_btcpay" "$plugin_video_chat" "$plugin_overworld")
 if [ "$plugin_zaps" = 'true' ]; then
   zaps_enabled=$(normalize_bool_with_default "$zaps_enabled_raw" 'false')
 else
@@ -211,6 +228,24 @@ video_chat_rooms_json=$(printf '%s\n' "$video_chat_rooms" | tr ',' '\n' | awk '
     }
   }
 ' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
+overworld_anonymous_enabled=$(normalize_bool_with_default "$overworld_anonymous_enabled_raw" 'true')
+overworld_show_hidden=$(normalize_bool_with_default "$overworld_show_hidden_raw" 'false')
+case "$overworld_anonymous_time_limit_seconds_raw" in ''|*[!0-9]*) overworld_anonymous_time_limit_seconds_raw=900 ;; esac
+if [ "$overworld_anonymous_time_limit_seconds_raw" -lt 60 ]; then
+  overworld_anonymous_time_limit_seconds_raw=60
+fi
+if [ "$overworld_anonymous_time_limit_seconds_raw" -gt 86400 ]; then
+  overworld_anonymous_time_limit_seconds_raw=86400
+fi
+case "$overworld_max_entries_raw" in ''|*[!0-9]*) overworld_max_entries_raw=96 ;; esac
+if [ "$overworld_max_entries_raw" -lt 8 ]; then
+  overworld_max_entries_raw=8
+fi
+if [ "$overworld_max_entries_raw" -gt 300 ]; then
+  overworld_max_entries_raw=300
+fi
+case "$overworld_access_mode_raw" in web) overworld_access_mode=web ;; *) overworld_access_mode=player ;; esac
+overworld_effective_start_path=$(blog_overworld_start_path 2>/dev/null || printf '')
 
 printf '{"success":true,'
 printf '"registration_enabled":%s,' "$registration_enabled"
@@ -241,6 +276,14 @@ printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":
   "$(blog_json_escape "$video_chat_signaling_wss")" \
   "$video_chat_public_rooms" \
   "$video_chat_rooms_json"
+printf '"overworld":{"anonymous_enabled":%s,"anonymous_time_limit_seconds":%s,"show_hidden":%s,"start_path":"%s","effective_start_path":"%s","access_mode":"%s","max_entries":%s,"include_syntax":"{{overworld-game}}"},' \
+  "$overworld_anonymous_enabled" \
+  "$overworld_anonymous_time_limit_seconds_raw" \
+  "$overworld_show_hidden" \
+  "$(blog_json_escape "$overworld_start_path")" \
+  "$(blog_json_escape "$overworld_effective_start_path")" \
+  "$(blog_json_escape "$overworld_access_mode")" \
+  "$overworld_max_entries_raw"
 printf '"origin":%s,' "$origin_crossposting_json"
 printf '"nostr_authors":%s,' "$nostr_authors"
 printf '"nostr_relays":%s,' "$nostr_relays"

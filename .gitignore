@@ -1,1 +1,10 @@
+.DS_Store
+*.swp
+.sitedata/
+.web-libs/
+build/
 nginx/
+site.conf
+site.conf.bak.*
+site/site/
+cgi/secure-chat-native-driver/.log

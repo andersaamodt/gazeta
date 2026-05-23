@@ -16,6 +16,8 @@ if [ -z "$token" ]; then
   exit 0
 fi
 
-path=$(blog_session_path "$token")
-rm -f "$path"
+path=$(blog_session_path "$token" 2>/dev/null || printf '')
+if [ -n "$path" ]; then
+  rm -f "$path"
+fi
 printf '{"success":true,"logged_out":true}\n'

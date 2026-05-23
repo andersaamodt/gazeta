@@ -263,7 +263,7 @@
     }
     var parts = [];
     if (messages > 0) {
-      parts.push(pluralizeCount(messages, 'saved message'));
+      parts.push(pluralizeCount(messages, 'message'));
     }
     if (attachments > 0) {
       parts.push(pluralizeCount(attachments, 'attachment'));
@@ -441,6 +441,7 @@
       simplexWebIntroDismissed: next.simplexWebIntroDismissed === true,
       chatStarted: next.chatStarted !== false,
       chatOpening: next.chatOpening === true,
+      chatClosing: next.chatClosing === true,
       savedSummary: normalizeSavedSummary(next.savedSummary),
       admin: !!next.admin,
       adminMappings: adminMappings
@@ -589,7 +590,7 @@
     // renderPanel is pure: model in, HTML string out. Event handling lives in
     // mount(), which keeps UI rendering testable without a browser framework.
     var state = normalizeModel(model);
-    var html = '<section class="secure-chat-panel' + (state.chatStarted ? ' is-chat-started' : '') + (state.chatOpening ? ' is-chat-opening' : '') + '" aria-labelledby="secure-chat-title">';
+    var html = '<section class="secure-chat-panel' + (state.chatStarted ? ' is-chat-started' : '') + (state.chatOpening ? ' is-chat-opening' : '') + (state.chatClosing ? ' is-chat-closing' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
     html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     if (!state.loggedIn && state.loading) {
@@ -598,6 +599,8 @@
       html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
     } else if (!state.chatStarted) {
       html += renderStartGate(state);
+    } else {
+      html += '<button type="button" class="secure-chat-close-btn" data-secure-chat-action="close" aria-label="Close Secure Chat" title="Close Secure Chat"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
     }
     html += '</div>';
     if (!state.loggedIn) {
@@ -608,7 +611,7 @@
       html += '</section>';
       return html;
     }
-    html += '<div class="secure-chat-body' + (state.chatOpening ? ' is-opening' : '') + '"><div class="secure-chat-body-inner">';
+    html += '<div class="secure-chat-body' + (state.chatOpening ? ' is-opening' : '') + (state.chatClosing ? ' is-closing' : '') + '"><div class="secure-chat-body-inner">';
     if (!state.hasSigner) {
       html += '<p class="secure-chat-empty">Secure Chat requires a browser signer extension so each request can be signed.</p>';
       html += '</div>';

@@ -5,6 +5,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/ssh-auth-lib.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
 
 blog_init
 blog_read_request_body
@@ -29,6 +30,10 @@ fi
 
 ssh_fingerprint=$(ssh_auth_compute_fingerprint "$ssh_public_key")
 blog_set_user_ssh_key "$BLOG_SESSION_USERNAME" "$ssh_public_key" "$ssh_fingerprint"
+overworld_account=$(blog_overworld_get_profile_value "$BLOG_SESSION_USERNAME" overworld_ssh_username)
+if [ -n "$overworld_account" ] && blog_overworld_validate_account_name "$overworld_account" && blog_overworld_account_exists "$overworld_account"; then
+  blog_overworld_sync_authorized_key "$BLOG_SESSION_USERNAME" "$overworld_account" >/dev/null 2>&1 || true
+fi
 
 printf '{"success":true,'
 printf '"username":"%s",' "$(blog_json_escape "$BLOG_SESSION_USERNAME")"

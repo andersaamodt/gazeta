@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/ssh-auth-lib.sh"
 . "$SCRIPT_DIR/blog-secure-chat-common.sh"
+. "$SCRIPT_DIR/blog-overworld-common.sh"
 
 blog_init
 blog_read_request_body
@@ -33,8 +34,14 @@ session_auth_method=${BLOG_SESSION_AUTH_METHOD-nostr}
 session_force_interactive=${BLOG_SESSION_FORCE_INTERACTIVE-false}
 profile=$(blog_user_profile "$BLOG_SESSION_USERNAME")
 ssh_fingerprint=''
+overworld_ssh_username=''
+overworld_ssh_account_status=''
+overworld_ssh_key_status=''
 if [ -f "$profile" ]; then
   ssh_fingerprint=$(config-get "$profile" ssh_fingerprint 2>/dev/null || printf '')
+  overworld_ssh_username=$(config-get "$profile" overworld_ssh_username 2>/dev/null || printf '')
+  overworld_ssh_account_status=$(config-get "$profile" overworld_ssh_account_status 2>/dev/null || printf '')
+  overworld_ssh_key_status=$(config-get "$profile" overworld_ssh_key_status 2>/dev/null || printf '')
 fi
 
 simplex_pubkey="$session_user_pubkey"
@@ -109,6 +116,9 @@ printf '"session_delegation_id":"%s",' "$(blog_json_escape "$session_delegation_
 printf '"session_auth_method":"%s",' "$(blog_json_escape "$session_auth_method")"
 printf '"session_force_interactive":"%s",' "$(blog_json_escape "$session_force_interactive")"
 printf '"ssh_fingerprint":"%s",' "$(blog_json_escape "$ssh_fingerprint")"
+printf '"overworld_ssh_username":"%s",' "$(blog_json_escape "$overworld_ssh_username")"
+printf '"overworld_ssh_account_status":"%s",' "$(blog_json_escape "$overworld_ssh_account_status")"
+printf '"overworld_ssh_key_status":"%s",' "$(blog_json_escape "$overworld_ssh_key_status")"
 printf '"simplex_contact_info":"%s",' "$(blog_json_escape "$simplex_contact_info")"
 printf '"simplex_status":"%s",' "$(blog_json_escape "$simplex_status")"
 printf '"fingerprint":"%s",' "$(blog_json_escape "$BLOG_SESSION_FINGERPRINT")"
