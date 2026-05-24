@@ -444,9 +444,9 @@ strong {
 #list-page-title:has(.list-page-title-actions),
 #blog-page-title:has(.list-page-title-actions),
 #contact-page-title:has(.list-page-title-actions) {
-  border-bottom: 2px solid transparent;
-  border-image-slice: 1;
-  border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);
+  border-bottom: 0;
+  border-image: none;
+  border-image-source: none;
 }
 
 .icon-danger,
