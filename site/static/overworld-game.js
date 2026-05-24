@@ -1,6 +1,17 @@
 (function () {
-  const GODOT_URL = '/static/overworld-godot/v20260523-page-help/index.html';
+  const GODOT_BUILD_PATH = '/static/overworld-godot/v20260523-page-help/';
+  const GODOT_URL = GODOT_BUILD_PATH + 'index.html';
+  const GODOT_SERVICE_WORKER_URL = GODOT_BUILD_PATH + 'index.service.worker.js';
+  const GODOT_SERVICE_WORKER_SCOPE = GODOT_BUILD_PATH;
+  const GODOT_CACHE_NAME = 'Overworld-sw-cache-1779582932|1469358';
+  const GODOT_CACHE_FILES = [
+    'index.html',
+    'index.js',
+    'index.wasm',
+    'index.pck'
+  ];
   const DOWNLOAD_LABEL = 'Download (6.8 MB)';
+  const CACHED_LABEL = 'Play cached game';
 
   function injectStyles() {
     if (document.getElementById('overworld-game-styles')) {
@@ -247,6 +258,52 @@
     }
   }
 
+  function hasCacheStorage() {
+    return 'caches' in window && window.isSecureContext;
+  }
+
+  function waitForServiceWorker(registration) {
+    const worker = registration.active || registration.waiting || registration.installing;
+    if (!worker || worker.state === 'activated') {
+      return Promise.resolve(registration);
+    }
+    return new Promise(function (resolve) {
+      worker.addEventListener('statechange', function onStateChange() {
+        if (worker.state === 'activated') {
+          worker.removeEventListener('statechange', onStateChange);
+          resolve(registration);
+        }
+      });
+    });
+  }
+
+  function registerGodotServiceWorker() {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+      return Promise.resolve(null);
+    }
+    return navigator.serviceWorker.register(GODOT_SERVICE_WORKER_URL, {
+      scope: GODOT_SERVICE_WORKER_SCOPE
+    }).then(waitForServiceWorker).catch(function (error) {
+      console.warn('Overworld cache worker registration failed:', error);
+      return null;
+    });
+  }
+
+  function hasCurrentGodotCache() {
+    if (!hasCacheStorage()) {
+      return Promise.resolve(false);
+    }
+    return caches.open(GODOT_CACHE_NAME).then(function (cache) {
+      return Promise.all(GODOT_CACHE_FILES.map(function (file) {
+        return cache.match(new URL(file, new URL(GODOT_BUILD_PATH, window.location.href)).toString());
+      }));
+    }).then(function (matches) {
+      return matches.every(Boolean);
+    }).catch(function () {
+      return false;
+    });
+  }
+
   function mount(host) {
     if (!host || host.dataset.overworldMounted === '1') {
       return;
@@ -308,10 +365,17 @@
     loginNote.className = 'overworld-godot-login-note';
     loginNote.textContent = 'Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.';
 
-    function startDownload() {
+    let started = false;
+
+    function startDownload(options) {
+      if (started) {
+        return;
+      }
+      started = true;
+      const startOptions = options || {};
       downloadButton.disabled = true;
-      downloadButton.textContent = 'Downloading';
-      status.textContent = 'Downloading Godot Overworld';
+      downloadButton.textContent = startOptions.fromCache ? 'Starting' : 'Downloading';
+      status.textContent = startOptions.fromCache ? 'Starting cached Godot Overworld' : 'Downloading Godot Overworld';
 
       const frame = document.createElement('iframe');
       frame.className = 'overworld-godot-frame';
@@ -327,7 +391,11 @@
     }
 
     downloadButton.addEventListener('click', function () {
-      startDownload();
+      registerGodotServiceWorker().then(function () {
+        return hasCurrentGodotCache();
+      }).then(function (isCached) {
+        startDownload({ fromCache: isCached });
+      });
     });
 
     splashPanel.appendChild(kicker);
@@ -343,6 +411,18 @@
     shell.appendChild(help);
     host.replaceChildren(shell);
     markReady();
+
+    registerGodotServiceWorker().then(function () {
+      return hasCurrentGodotCache();
+    }).then(function (isCached) {
+      if (!isCached || started) {
+        return;
+      }
+      downloadButton.textContent = CACHED_LABEL;
+      status.classList.add('is-ready');
+      status.textContent = 'Cached Godot Overworld is ready';
+      startDownload({ fromCache: true });
+    });
   }
 
   function init() {
