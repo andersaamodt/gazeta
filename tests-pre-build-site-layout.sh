@@ -192,7 +192,7 @@ grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.m
   printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '/static/contact-page.js?v=20260523-contact-headings2' "$canonical_root/pages/contact.md" || {
+grep -Fq '/static/contact-page.js?v=20260523-contact-headings3' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
   exit 1
 }

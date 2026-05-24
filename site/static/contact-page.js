@@ -2667,7 +2667,7 @@
     if (sharedRenderer) {
       var combinedUploads = secureChatPersistableUploads();
       var loggedIn = hasUsableSecureChatSession();
-      return sharedRenderer.renderPanel({
+      return renderContactSectionHeading('Secure Chat', 'secure-chat-title') + sharedRenderer.renderPanel({
         loggedIn: loggedIn,
         loading: secureChatLoadingBeforeVerification(loggedIn),
         hasSigner: true,
