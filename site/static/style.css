@@ -12560,10 +12560,7 @@ nav.site-nav {
 }
 
 nav.site-nav .nav-overflow-menu {
-  grid-column: 3;
-  grid-row: 2;
-  justify-self: end;
-  order: 0;
+  order: 99;
   flex: 0 0 auto !important;
   margin-left: 0;
   margin-right: 0;
@@ -12631,6 +12628,7 @@ nav.site-nav > .nav-right {
 }
 
 nav.site-nav .nav-overflow-menu,
+nav.site-nav > .nav-center .nav-overflow-menu,
 nav.site-nav > .nav-right .nav-login-split,
 nav.site-nav > .nav-right .nav-user-menu {
   position: relative;

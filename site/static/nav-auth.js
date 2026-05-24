@@ -3414,7 +3414,7 @@
     }
   }
 
-  function placeNavOverflowMenuBeforeSearch() {
+  function placeNavOverflowMenuWithPageLinks() {
     if (!els.navOverflowMenu) {
       return;
     }
@@ -3422,22 +3422,18 @@
     if (!nav) {
       return;
     }
-    var navRight = nav.querySelector('.nav-right');
-    if (!navRight) {
+    var navCenter = nav.querySelector('.nav-center');
+    if (!navCenter) {
       if (nav.lastElementChild === els.navOverflowMenu) {
         return;
       }
       nav.appendChild(els.navOverflowMenu);
       return;
     }
-    var search = navRight.querySelector('.nav-search');
-    if (search && els.navOverflowMenu.parentNode === navRight && els.navOverflowMenu.nextElementSibling === search) {
+    if (els.navOverflowMenu.parentNode === navCenter && els.navOverflowMenu.nextElementSibling === null) {
       return;
     }
-    if (!search && els.navOverflowMenu.parentNode === navRight) {
-      return;
-    }
-    navRight.insertBefore(els.navOverflowMenu, search || navRight.firstElementChild);
+    navCenter.appendChild(els.navOverflowMenu);
   }
 
   function scheduleNavOverflowMenuSync() {
@@ -3493,9 +3489,10 @@
       var isActive = normalizeNavPath(path) === normalizedCurrent;
       html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
     });
-    if (html && navCenter.innerHTML !== html) {
+    if (html) {
       navCenter.innerHTML = html;
     }
+    placeNavOverflowMenuWithPageLinks();
     highlightCurrentPage();
     scheduleNavOverflowMenuSync();
   }
@@ -3783,7 +3780,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-menu-items3';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-overflow-row1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();
@@ -4191,7 +4188,7 @@
     }
     state.isAuthenticated = optimisticIsLoggedIn;
     applyLoggedInUi(optimisticIsLoggedIn, optimisticIsAdmin, optimisticName);
-    placeNavOverflowMenuBeforeSearch();
+    placeNavOverflowMenuWithPageLinks();
 
     renderComposeIcon(readComposeIconIndex());
     prefetchStaticPageHtmlForSlug('archive');
