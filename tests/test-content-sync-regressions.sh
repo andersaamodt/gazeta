@@ -1275,8 +1275,8 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-purchase"
 assert_success sh -n "$ROOT_DIR/cgi/blog-download"
 assert_success sh -n "$ROOT_DIR/cgi/blog-delivery"
 assert_success sh -n "$ROOT_DIR/cgi/blog-create-product-page"
-assert_success sh -n "$ROOT_DIR/tests-content-sync-regressions.sh"
-assert_success sh -n "$ROOT_DIR/tests-payments-runtime.sh"
+assert_success sh -n "$ROOT_DIR/tests/test-content-sync-regressions.sh"
+assert_success sh -n "$ROOT_DIR/tests/test-payments-runtime.sh"
 
 # 12) Managed source-page sync invariants (unit layer).
 sync_cfg=$(jq -cn '{pages:[
