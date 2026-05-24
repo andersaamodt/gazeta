@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 SIMPLEX_WEB_ROOT=${SIMPLEX_WEB_ROOT:-"$ROOT_DIR/../simplex-web"}
 
 PASS_COUNT=0

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 
 PASS_COUNT=0
 FAIL_COUNT=0

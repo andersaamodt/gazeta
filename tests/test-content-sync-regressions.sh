@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 SITE_SOURCE_ROOT="$ROOT_DIR/site"
 
 PASS_COUNT=0

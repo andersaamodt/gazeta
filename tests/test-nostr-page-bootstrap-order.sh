@@ -2,7 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-ROOT_DIR=$SCRIPT_DIR
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 SITE_SOURCE_ROOT="$ROOT_DIR/site"
 
 check_script_then_marked() {

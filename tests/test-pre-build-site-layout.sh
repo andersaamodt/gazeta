@@ -2,7 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-ROOT_DIR=$SCRIPT_DIR
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 
 tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/pre-build-site-layout.XXXXXX")
 cleanup() {
