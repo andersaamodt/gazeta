@@ -1,5 +1,5 @@
 (function () {
-  const GODOT_URL = '/static/overworld-godot/v20260523-zoom-default/index.html';
+  const GODOT_URL = '/static/overworld-godot/v20260523-locked-doors/index.html';
   const DOWNLOAD_LABEL = 'Download (6.8 MB)';
 
   function injectStyles() {
@@ -43,7 +43,7 @@
   color: #f7f1df;
   background:
     linear-gradient(180deg, rgba(16,19,16,.38), rgba(16,19,16,.86)),
-    url("/static/overworld-godot/v20260523-zoom-default/index.png") center / min(48%, 320px) no-repeat,
+    url("/static/overworld-godot/v20260523-locked-doors/index.png") center / min(48%, 320px) no-repeat,
     #101310;
 }
 .overworld-godot-splash-panel {
@@ -151,7 +151,7 @@
     padding: 12px;
     background:
       linear-gradient(180deg, rgba(16,19,16,.34), rgba(16,19,16,.88)),
-      url("/static/overworld-godot/v20260523-zoom-default/index.png") center / min(62%, 240px) no-repeat,
+      url("/static/overworld-godot/v20260523-locked-doors/index.png") center / min(62%, 240px) no-repeat,
       #101310;
   }
   .overworld-godot-splash-panel {
