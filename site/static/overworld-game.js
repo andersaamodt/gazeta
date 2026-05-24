@@ -52,15 +52,12 @@
   place-items: center;
   padding: 18px;
   color: #f7f1df;
-  background:
-    linear-gradient(180deg, rgba(16,19,16,.38), rgba(16,19,16,.86)),
-    url("/static/overworld-godot/v20260523-page-help/index.png") center / min(48%, 320px) no-repeat,
-    #101310;
+  background: linear-gradient(180deg, #101310, #080a08);
 }
 .overworld-godot-splash-panel {
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 12px;
   max-width: 34rem;
   text-align: center;
 }
@@ -77,14 +74,21 @@
 }
 .overworld-godot-title {
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   font-size: clamp(1.35rem, 2vw, 2.2rem);
   line-height: 1.08;
-  color: #fff8e8;
+  color: #fff8e8 !important;
+  -webkit-text-fill-color: #fff8e8;
+  text-decoration: none;
+  text-shadow: 0 2px 12px rgba(0,0,0,.48);
 }
 .overworld-godot-copy {
   margin: 0;
   max-width: 28rem;
-  color: rgba(247,241,223,.82);
+  color: rgba(247,241,223,.88);
+  -webkit-text-fill-color: rgba(247,241,223,.88);
   line-height: 1.35;
 }
 .overworld-godot-download {
@@ -94,8 +98,10 @@
   border-radius: 7px;
   padding: 9px 13px;
   font: inherit;
+  line-height: 1.2;
   font-weight: 700;
   color: #17221b;
+  -webkit-text-fill-color: #17221b;
   background: #fff1b8;
   box-shadow: 0 10px 24px rgba(0,0,0,.24);
   cursor: pointer;
@@ -187,10 +193,7 @@
   }
   .overworld-godot-splash {
     padding: 12px;
-    background:
-      linear-gradient(180deg, rgba(16,19,16,.34), rgba(16,19,16,.88)),
-      url("/static/overworld-godot/v20260523-page-help/index.png") center / min(62%, 240px) no-repeat,
-      #101310;
+    background: linear-gradient(180deg, #101310, #080a08);
   }
   .overworld-godot-splash-panel {
     gap: 8px;
