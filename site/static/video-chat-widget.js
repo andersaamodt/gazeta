@@ -131,6 +131,19 @@
     return /^wss?:\/\//i.test(text);
   }
 
+  function defaultJanusEndpoint() {
+    var host = '';
+    try {
+      host = window.location && window.location.host ? String(window.location.host) : '';
+    } catch (_err) {
+      host = '';
+    }
+    if (!host) {
+      return '';
+    }
+    return (window.location && window.location.protocol === 'http:' ? 'ws://' : 'wss://') + host + '/janus-ws';
+  }
+
   function isHttpUrl(value) {
     var text = compact(value);
     return /^https?:\/\//i.test(text);
@@ -509,7 +522,7 @@
     var defaults = {
       featureEnabled: true,
       tokenEndpoint: '/cgi/blog-video-chat-token',
-      janusEndpoint: '',
+      janusEndpoint: defaultJanusEndpoint(),
       signalingEndpoint: '',
       roomId: '',
       inviteToken: '',
@@ -570,7 +583,7 @@
     merged.roomThemeImages = normalizeRoomThemeImages(merged.roomThemeImages);
     merged.displayName = compact(merged.displayName || 'Guest') || 'Guest';
     merged.tokenEndpoint = compact(merged.tokenEndpoint || '/cgi/blog-video-chat-token');
-    merged.janusEndpoint = compact(merged.janusEndpoint || '');
+    merged.janusEndpoint = compact(merged.janusEndpoint || defaultJanusEndpoint());
     merged.signalingEndpoint = compact(merged.signalingEndpoint || '');
     merged.inviteToken = compact(merged.inviteToken || '');
     merged.callId = compact(merged.callId || '');

@@ -350,7 +350,7 @@ title: ""
 <textarea id="video-chat-scheduled-rooms" rows="4" placeholder="Office hours | daily | 18:00 | 90 | optional-password | 8 | /images/office-hours.jpg&#10;Weekly salon | weekly:thu | 19:30 | 120 | secret | 12 | https://example.com/salon.jpg&#10;Monthly Q&amp;A | monthly:1 | 12:00 | 60 | | 8 |"></textarea>
 <p class="muted">Use <code>Name | recurrence | HH:MM | minutes | password | participant limit | image URL</code>. Recurrence can be daily, weekdays, weekends, weekly:mon,wed, monthly:1,15, yearly:05-24, or once:2026-05-24.</p>
 </div>
-<p class="muted">Blank WSS fields let the widget use its default bootstrap. Camera and microphone access still require an explicit click inside the widget.</p>
+<p class="muted">Blank WSS fields let the widget use the same-origin <code>/janus-ws</code> endpoint. Camera and microphone access still require an explicit click inside the widget.</p>
 </section>
 
 <section class="sub-card">

@@ -693,6 +693,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'self.optio
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'vcw-call-owner-btn' 'video chat widget exposes a one-click call button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'vcw-room-list' 'video chat widget can render public room choices'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'bootstrap' 'video chat widget refreshes active scheduled rooms from the token endpoint'
+assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" "host + '/janus-ws'" 'video chat widget defaults blank Janus config to the same-origin Janus endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'vcw-shell-themed' 'video chat widget gives themed rooms a frosted glass call surface'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'data-video-chat-room-theme-images' 'contact page passes room theme images into the video widget'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'vcw-voice-call-owner-btn' 'video chat widget exposes a voice call button'
