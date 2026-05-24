@@ -13216,3 +13216,95 @@ nav.site-nav > .nav-right .nav-search button {
     max-width: calc(100vw - 1rem);
   }
 }
+
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]):hover,
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]):focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+.nav-menu-panel .nav-menu-item,
+.nav-menu-panel button,
+.nav-login-menu .nav-menu-item,
+.nav-login-menu button,
+.nav-overflow-panel .nav-menu-item,
+.nav-overflow-panel button,
+.post-page-menu-panel button,
+.list-inline-row-menu button {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+.nav-menu-panel .nav-menu-item:hover,
+.nav-menu-panel .nav-menu-item:focus-visible,
+.nav-menu-panel button:hover,
+.nav-menu-panel button:focus-visible,
+.nav-login-menu .nav-menu-item:hover,
+.nav-login-menu .nav-menu-item:focus-visible,
+.nav-login-menu button:hover,
+.nav-login-menu button:focus-visible,
+.nav-overflow-panel .nav-menu-item:hover,
+.nav-overflow-panel .nav-menu-item:focus-visible,
+.nav-overflow-panel button:hover,
+.nav-overflow-panel button:focus-visible,
+.post-page-menu-panel button:hover,
+.post-page-menu-panel button:focus-visible,
+.list-inline-row-menu button:hover,
+.list-inline-row-menu button:focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+#nav-menu-panel .nav-menu-item,
+#nav-menu-panel button,
+#nav-login-menu .nav-menu-item,
+#nav-login-menu button,
+#nav-overflow-panel .nav-menu-item,
+#nav-overflow-panel button,
+#main-content .post-page-menu-panel button,
+#main-content .list-inline-row-menu button,
+#main-content .list-inline-row-menu button[role="menuitem"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  transform: none !important;
+}
+
+#nav-menu-panel .nav-menu-item:hover,
+#nav-menu-panel .nav-menu-item:focus-visible,
+#nav-menu-panel button:hover,
+#nav-menu-panel button:focus-visible,
+#nav-login-menu .nav-menu-item:hover,
+#nav-login-menu .nav-menu-item:focus-visible,
+#nav-login-menu button:hover,
+#nav-login-menu button:focus-visible,
+#nav-overflow-panel .nav-menu-item:hover,
+#nav-overflow-panel .nav-menu-item:focus-visible,
+#nav-overflow-panel button:hover,
+#nav-overflow-panel button:focus-visible,
+#main-content .post-page-menu-panel button:hover,
+#main-content .post-page-menu-panel button:focus-visible,
+#main-content .list-inline-row-menu button:hover,
+#main-content .list-inline-row-menu button:focus-visible,
+#main-content .list-inline-row-menu button[role="menuitem"]:hover,
+#main-content .list-inline-row-menu button[role="menuitem"]:focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  transform: none !important;
+}
