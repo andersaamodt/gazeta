@@ -378,6 +378,14 @@
     if (includeToken) {
       out.includeTokenInInvite = toBool(includeToken, false);
     }
+    var showHeading = read('data-video-chat-show-heading');
+    if (showHeading) {
+      out.showHeading = toBool(showHeading, true);
+    }
+    var centerPrecall = read('data-video-chat-center-precall');
+    if (centerPrecall) {
+      out.centerPrecall = toBool(centerPrecall, false);
+    }
     var featureEnabled = read('data-video-chat-feature-enabled');
     if (featureEnabled) {
       out.featureEnabled = toBool(featureEnabled, true);
@@ -422,6 +430,8 @@
       publicRooms: false,
       rooms: ['Lobby'],
       includeTokenInInvite: false,
+      showHeading: true,
+      centerPrecall: false,
       reconnectBaseDelayMs: 1200,
       reconnectMaxAttempts: 8,
       autoMount: true,
@@ -445,6 +455,8 @@
     merged.allowJoinViaLink = toBool(merged.allowJoinViaLink, true);
     merged.publicRooms = toBool(merged.publicRooms, false);
     merged.includeTokenInInvite = toBool(merged.includeTokenInInvite, false);
+    merged.showHeading = toBool(merged.showHeading, true);
+    merged.centerPrecall = toBool(merged.centerPrecall, false);
     merged.readQueryParams = toBool(merged.readQueryParams, true);
     merged.autoMount = toBool(merged.autoMount, true);
     merged.autoStart = toBool(merged.autoStart, false);
@@ -953,6 +965,9 @@
     var ownerLabel = compact(this.options.callLabel || 'Call');
     var voiceLabel = ownerLabel === 'Call' ? 'Voice' : 'Voice ' + ownerLabel;
     var videoLabel = ownerLabel === 'Call' ? 'Video' : 'Video ' + ownerLabel;
+    var shellClasses = 'vcw-shell'
+      + (this.options.showHeading === false ? ' vcw-shell-no-heading' : '')
+      + (this.options.centerPrecall === true ? ' vcw-shell-center-precall' : '');
     var roomButtonsHtml = '';
     if (publicRoomsEnabled) {
       roomButtonsHtml = this.options.rooms.map(function (roomName) {
@@ -962,12 +977,17 @@
     var style = ''
       + '.vcw-shell{font-family:Georgia,\'Times New Roman\',serif;color:var(--text,#241b12);background-color:var(--post-card-bg-single,#fdfdfb);background-image:var(--secure-chat-paper-surface,linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.4)));background-size:auto,auto,var(--lapidarist-parchment-size,640px 640px);background-position:center,center,center;border:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 78%,white 22%);border-radius:18px;padding:1rem;max-width:100%;box-sizing:border-box;box-shadow:0 14px 32px rgba(15,23,42,.08);}'
       + '.vcw-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.9rem;margin-bottom:.95rem;}'
+      + '.vcw-shell-no-heading .vcw-head{display:none;}'
       + '.vcw-heading{margin:0;font-size:1.18rem;line-height:1.2;color:var(--text,#241b12);font-weight:700;}'
       + '.vcw-status{font-size:.9rem;line-height:1.35;min-height:1.2em;margin:0 0 .85rem;color:var(--muted,#6f625d);}'
+      + '.vcw-shell-center-precall .vcw-status{text-align:center;margin-left:auto;margin-right:auto;}'
       + '.vcw-status[data-tone="error"]{color:var(--danger,#8b1f1f);}'
       + '.vcw-status[data-tone="ok"]{color:var(--success,#256041);}'
       + '.vcw-status[data-tone="warn"]{color:var(--warning,#7a5c14);}'
       + '.vcw-precall,.vcw-call{display:flex;flex-direction:column;gap:10px;}'
+      + '.vcw-shell-center-precall .vcw-precall{align-items:center;text-align:center;}'
+      + '.vcw-shell-center-precall .vcw-precall-actions{justify-content:center;}'
+      + '.vcw-shell-center-precall .vcw-join-row{display:flex;flex-direction:column;align-items:center;}'
       + '.vcw-precall[hidden],.vcw-call[hidden],.vcw-fullroom[hidden]{display:none;}'
       + '.vcw-fullroom{padding:.72rem .82rem;border-radius:12px;background:color-mix(in srgb,var(--danger,#b42318) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger,#b42318) 28%,transparent);color:var(--danger,#7f2323);font-size:.95rem;}'
       + '.vcw-label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted,#5d4a2f);}'
@@ -1018,7 +1038,7 @@
 
     this.shadowRoot.innerHTML = ''
       + '<style>' + style + '</style>'
-      + '<section class="vcw-shell" part="container">'
+      + '<section class="' + shellClasses + '" part="container">'
       + '  <div class="vcw-head"><h2 class="vcw-heading">Call</h2></div>'
       + '  <div class="vcw-status" data-tone="info" role="status" aria-live="polite"></div>'
       + '  <section class="vcw-precall" part="precall">'

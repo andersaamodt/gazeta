@@ -5,7 +5,7 @@ set -eu
 
 blog_nostr_list_page_js_version='20260523-optimistic-votes1'
 blog_nostr_blog_page_js_version='20260523-byline-bottom1'
-blog_nostr_contact_page_js_version='20260523-invite-panel1'
+blog_nostr_contact_page_js_version='20260523-contact-headings1'
 blog_nostr_simplex_web_default_chat_js_version='20260517-defaultchatv8'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
@@ -1532,7 +1532,7 @@ license: "CC BY 4.0"
 <script src="/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version"></script>
 <script src="/static/simplex-web-session-store.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/video-chat-widget.js?v=20260523-invite-panel1" data-video-chat-widget="1"></script>
+<script src="/static/video-chat-widget.js?v=20260523-contact-headings1" data-video-chat-widget="1"></script>
 <script src="/static/contact-page.js?v=$blog_nostr_contact_page_js_version"></script>
 EOCONTACT
       ;;

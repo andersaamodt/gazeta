@@ -175,7 +175,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260523-invite-panel1';
+      script.src = '/static/video-chat-widget.js?v=20260523-contact-headings1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
@@ -273,10 +273,13 @@
       var publicRooms = videoConfig && videoConfig.public_rooms === true;
       var rooms = Array.isArray(videoConfig && videoConfig.rooms) ? videoConfig.rooms.join(',') : 'Lobby';
       return '<section class="contact-widget contact-widget-video-chat" aria-label="Video calling">' +
+        renderContactSectionHeading('Call', 'contact-call-title') +
         '<div data-video-chat ' +
         'data-video-chat-token-endpoint="/cgi/blog-video-chat-token" ' +
         'data-video-chat-call-room-id="call-me" ' +
         'data-video-chat-call-label="Call Anders Now" ' +
+        'data-video-chat-show-heading="false" ' +
+        'data-video-chat-center-precall="true" ' +
         'data-video-chat-owner-call-private="true" ' +
         'data-video-chat-public-rooms="' + (publicRooms ? 'true' : 'false') + '" ' +
         'data-video-chat-room-list="' + escapeHtml(rooms) + '" ' +
@@ -2697,9 +2700,9 @@
       });
     }
 
-    var html = '<section class="secure-chat-panel' + (state.chat.chatStarted === true ? ' is-chat-started' : '') + (state.chat.chatOpening === true ? ' is-chat-opening' : '') + (state.chat.chatClosing === true ? ' is-chat-closing' : '') + '" aria-labelledby="secure-chat-title">';
+    var html = renderContactSectionHeading('Secure Chat', 'secure-chat-title');
+    html += '<section class="secure-chat-panel' + (state.chat.chatStarted === true ? ' is-chat-started' : '') + (state.chat.chatOpening === true ? ' is-chat-opening' : '') + (state.chat.chatClosing === true ? ' is-chat-closing' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
-    html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
     var fallbackLoggedIn = hasUsableSecureChatSession();
     var fallbackLoading = secureChatLoadingBeforeVerification(fallbackLoggedIn);
     if (!fallbackLoggedIn && fallbackLoading) {
@@ -3879,8 +3882,13 @@
     return html;
   }
 
+  function renderContactSectionHeading(label, id) {
+    var idAttr = id ? ' id="' + escapeAttr(id) + '"' : '';
+    return '<h2' + idAttr + ' class="contact-section-heading"><span>' + escapeHtml(label) + '</span></h2>';
+  }
+
   function renderContactInformationHeading() {
-    return '<h2 class="contact-section-heading">Contact Information</h2>';
+    return renderContactSectionHeading('Contact Information', '');
   }
 
   function renderReadOnly(rows, editable) {

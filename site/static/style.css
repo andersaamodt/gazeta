@@ -4381,14 +4381,32 @@ body.nav-cart-open {
 }
 
 .contact-section-heading {
-  margin: 0.1rem 0 0.42rem;
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  margin: 1.2rem 0 0.42rem;
   color: var(--text, #243046);
   font-size: 1.05rem;
   line-height: 1.24;
 }
 
+.contact-section-heading:first-child {
+  margin-top: 0.1rem;
+}
+
+.contact-section-heading::after {
+  content: "";
+  flex: 1 1 auto;
+  min-width: 2rem;
+  border-top: 1px solid color-mix(in srgb, var(--border, #c7d2fe) 78%, transparent);
+}
+
+.contact-section-heading span {
+  flex: 0 0 auto;
+}
+
 .contact-archived-group {
-  margin: 0.34rem 0 0.2rem;
+  margin: 0.56rem 0 0.2rem;
 }
 
 .contact-archived-group > summary {
@@ -4736,7 +4754,7 @@ body.nav-cart-open {
 }
 
 .secure-chat-panel {
-  margin-top: 1.35rem;
+  margin-top: 0;
   margin-bottom: 1rem;
   padding: 1rem;
   border: 1px solid color-mix(in srgb, var(--admin-border, #c7d2fe) 78%, white 22%);
@@ -4746,6 +4764,13 @@ body.nav-cart-open {
   background-size: auto, auto, var(--lapidarist-parchment-size, 640px 640px);
   background-position: center, center, center;
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.secure-chat-panel:not(.is-chat-started) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8.4rem;
 }
 
 .secure-chat-panel.is-file-drop-over {
@@ -4824,9 +4849,11 @@ body.nav-cart-open {
   overflow: visible;
 }
 
-.secure-chat-heading h2 {
-  margin: 0;
-  font-size: 1.18rem;
+.secure-chat-panel:not(.is-chat-started) .secure-chat-head {
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .secure-chat-close-btn {
@@ -4867,9 +4894,9 @@ body.nav-cart-open {
 .secure-chat-start-gate {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.58rem;
-  align-self: flex-start;
+  align-self: center;
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -4888,7 +4915,7 @@ body.nav-cart-open {
 }
 
 .secure-chat-login-btn {
-  align-self: flex-start;
+  align-self: center;
   padding: 0.36rem 0.74rem !important;
   border-radius: 8px !important;
   border: 1px solid var(--action-soft-border, #c58f6f) !important;
@@ -5739,9 +5766,17 @@ body.nav-cart-open {
     flex-wrap: wrap;
   }
 
+  .secure-chat-panel:not(.is-chat-started) .secure-chat-start-gate {
+    justify-content: center;
+  }
+
   .secure-chat-saved-hint {
     text-align: left;
     white-space: normal;
+  }
+
+  .secure-chat-panel:not(.is-chat-started) .secure-chat-saved-hint {
+    text-align: center;
   }
 
   .secure-chat-bubble {
