@@ -36,22 +36,11 @@ if [ -z "$file" ] || [ ! -f "$file" ]; then
   exit 0
 fi
 
-case "$file" in
-  "$blog_posts_dir"/*) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
-
-post_path=${file#"$blog_site_root/site/pages/"}
-case "$post_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
+post_path=$(blog_managed_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+if [ -z "$post_path" ]; then
+  blog_json_error "Invalid post path" "invalid_post_path"
+  exit 0
+fi
 
 case "$action" in
   delete)
@@ -63,7 +52,7 @@ case "$action" in
         ;;
     esac
 
-    rel_post=${file#"$blog_posts_dir/"}
+    rel_post=${post_path#posts/}
     html_file="$blog_site_root/build/pages/posts/${rel_post%.md}.html"
     rm -f "$file"
     rm -f "$html_file"

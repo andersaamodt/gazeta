@@ -622,6 +622,29 @@ blog_post_rel_path_for_file() {
   esac
 }
 
+blog_managed_post_rel_path_for_file() {
+  file=${1-}
+  [ -n "$file" ] || return 1
+  file=$(blog_canonical_post_file_path "$file" 2>/dev/null || printf '%s' "$file")
+  posts_dir_real=$(CDPATH= cd -- "$blog_posts_dir" 2>/dev/null && pwd -P || printf '%s' "$blog_posts_dir")
+  posts_store_dir_real=$(CDPATH= cd -- "$blog_posts_store_dir" 2>/dev/null && pwd -P || printf '%s' "$blog_posts_store_dir")
+  case "$file" in
+    "$posts_dir_real"/*|"$posts_store_dir_real"/*) ;;
+    *) return 1 ;;
+  esac
+
+  rel_path=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+  rel_path=$(blog_normalize_post_source_path "$rel_path" 2>/dev/null || printf '')
+  case "$rel_path" in
+    posts/*.md)
+      printf '%s\n' "$rel_path"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 blog_canonical_post_file_path() {
   file=${1-}
   [ -n "$file" ] || return 1

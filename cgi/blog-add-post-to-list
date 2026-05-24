@@ -43,22 +43,11 @@ if [ -z "$file" ] || [ ! -f "$file" ]; then
   blog_json_error "Post not found" "not_found"
   exit 0
 fi
-case "$file" in
-  "$blog_posts_dir"/*) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
-
-post_path=${file#"$blog_site_root/site/pages/"}
-case "$post_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
+post_path=$(blog_managed_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+if [ -z "$post_path" ]; then
+  blog_json_error "Invalid post path" "invalid_post_path"
+  exit 0
+fi
 
 post_url=$(blog_rel_post_html_url "$file")
 if [ -z "$entry_markdown" ]; then
