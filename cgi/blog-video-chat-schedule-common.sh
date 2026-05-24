@@ -18,8 +18,9 @@ blog_video_chat_schedule_python() {
   if ! command -v python3 >/dev/null 2>&1; then
     case "$mode" in
       rooms_json|manual_rooms_json) printf '[]\n' ;;
+      room_theme_images_json) printf '{}\n' ;;
       lookup_json) printf '{"active":false}\n' ;;
-      sanitize) printf '\n' ;;
+      sanitize|sanitize_manual) printf '\n' ;;
     esac
     return 0
   fi
@@ -73,23 +74,40 @@ def split_records(raw):
             out.append(item)
     return out
 
+def clean_image_url(value):
+    text = str(value or "").strip()
+    if not text or re.search(r"[\x00-\x20]", text):
+        return ""
+    lowered = text.lower()
+    if lowered.startswith("http://") or lowered.startswith("https://"):
+        return text[:500]
+    if text.startswith("/") and not text.startswith("//"):
+        return text[:500]
+    return ""
+
 def parse_manual_rooms(raw):
     out = []
     seen = set()
-    for item in re.split(r"[\n,;]+", str(raw or "")):
-        name = compact(item)
-        room_id = slugify(name)
-        if not name or not room_id or room_id in seen:
-            continue
-        seen.add(room_id)
-        out.append({
-            "name": name,
-            "room_id": room_id,
-            "password": "",
-            "private_room": False,
-            "participant_limit": 0,
-            "source": "manual",
-        })
+    for record in split_records(raw):
+        records = [record] if "|" in record else [part for part in record.split(",")]
+        for item in records:
+            parts = [compact(part) for part in item.split("|")]
+            name = parts[0] if parts else ""
+            room_id = slugify(name)
+            if not name or not room_id or room_id in seen:
+                continue
+            seen.add(room_id)
+            out.append({
+                "name": name,
+                "room_id": room_id,
+                "password": "",
+                "private_room": False,
+                "participant_limit": 0,
+                "image_url": clean_image_url(parts[1] if len(parts) > 1 else ""),
+                "source": "manual",
+            })
+            if len(out) >= 12:
+                break
         if len(out) >= 12:
             break
     return out
@@ -170,9 +188,9 @@ def parse_schedules(raw, active_only=False):
     seen = set()
     for record in split_records(raw):
         parts = [compact(part) for part in record.split("|")]
-        while len(parts) < 6:
+        while len(parts) < 7:
             parts.append("")
-        name, recurrence, start_text, duration_text, password, limit_text = parts[:6]
+        name, recurrence, start_text, duration_text, password, limit_text, image_text = parts[:7]
         room_id = slugify(name)
         start_minute = parse_time_minutes(start_text)
         if not name or not room_id or start_minute is None:
@@ -191,6 +209,7 @@ def parse_schedules(raw, active_only=False):
             "password": str(password or "").strip(),
             "private_room": bool(str(password or "").strip()),
             "participant_limit": limit,
+            "image_url": clean_image_url(image_text),
             "source": "scheduled",
         }
         if active_only and not is_active_schedule(entry, NOW):
@@ -212,6 +231,7 @@ def public_entries():
                 "password": entry["password"],
                 "private_room": entry["private_room"],
                 "participant_limit": entry["participant_limit"],
+                "image_url": entry["image_url"] or by_id[entry["room_id"]].get("image_url", ""),
                 "source": "scheduled",
             })
         else:
@@ -223,6 +243,9 @@ if MODE == "manual_rooms_json":
     print(json.dumps([entry["name"] for entry in parse_manual_rooms(MANUAL_RAW)], separators=(",", ":")))
 elif MODE == "rooms_json":
     print(json.dumps([entry["name"] for entry in public_entries()], separators=(",", ":")))
+elif MODE == "room_theme_images_json":
+    themes = {entry["room_id"]: entry["image_url"] for entry in public_entries() if entry.get("image_url")}
+    print(json.dumps(themes, separators=(",", ":")))
 elif MODE == "lookup_json":
     wanted = slugify(WANTED)
     found = next((entry for entry in public_entries() if entry["room_id"] == wanted), None)
@@ -234,6 +257,7 @@ elif MODE == "lookup_json":
             "password": found["password"],
             "private_room": found["private_room"],
             "participant_limit": found["participant_limit"],
+            "image_url": found["image_url"],
             "source": found["source"],
         }, separators=(",", ":")))
     else:
@@ -252,8 +276,21 @@ elif MODE == "sanitize":
             str(entry["duration_minutes"]),
             entry["password"],
             str(entry["participant_limit"] or ""),
+            entry["image_url"],
         ]))
     print(";".join(cleaned[:24]))
+elif MODE == "sanitize_manual":
+    cleaned = []
+    seen = set()
+    for entry in parse_manual_rooms(MANUAL_RAW):
+        if entry["room_id"] in seen:
+            continue
+        seen.add(entry["room_id"])
+        record = entry["name"]
+        if entry["image_url"]:
+            record = record + "|" + entry["image_url"]
+        cleaned.append(record)
+    print(";".join(cleaned[:12]))
 else:
     print("[]")
 PY
@@ -267,8 +304,16 @@ blog_video_chat_public_rooms_json() {
   blog_video_chat_schedule_python rooms_json "${1-}" "${2-}" "${3-}" ''
 }
 
+blog_video_chat_room_theme_images_json() {
+  blog_video_chat_schedule_python room_theme_images_json "${1-}" "${2-}" "${3-}" ''
+}
+
 blog_video_chat_public_room_lookup_json() {
   blog_video_chat_schedule_python lookup_json "${1-}" "${2-}" "${3-}" "${4-}"
+}
+
+blog_video_chat_sanitize_manual_rooms() {
+  blog_video_chat_schedule_python sanitize_manual "${1-}" '' "$(blog_video_chat_schedule_now_epoch)" ''
 }
 
 blog_video_chat_sanitize_scheduled_rooms() {

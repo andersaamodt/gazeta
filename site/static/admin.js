@@ -1984,7 +1984,7 @@
         return;
       }
       const script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260521-video-operator2';
+      script.src = '/static/video-chat-widget.js?v=20260524-room-themes1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
@@ -3841,6 +3841,7 @@
     const src = raw && typeof raw === 'object' ? raw : {};
     const rooms = Array.isArray(src.rooms) ? src.rooms : String(src.rooms || '').split(/[,\n]/);
     const activeRooms = Array.isArray(src.active_rooms) ? src.active_rooms : rooms;
+    const roomSettings = String(src.room_settings || '').replace(/\s*[;,]\s*/g, '\n').trim();
     return {
       participant_limit: clampInt(src.participant_limit, 6, 2, 24),
       token_ttl_seconds: clampInt(src.token_ttl_seconds, 3600, 60, 86400),
@@ -3849,6 +3850,7 @@
       public_rooms: src.public_rooms === true,
       rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12),
       active_rooms: activeRooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 24),
+      room_settings: roomSettings,
       scheduled_rooms: String(src.scheduled_rooms || '').replace(/\s*;\s*/g, '\n').trim()
     };
   }
@@ -3891,7 +3893,7 @@
       els.videoChatPublicRooms.disabled = !(state.plugins && state.plugins.video_chat);
     }
     if (els.videoChatRooms) {
-      els.videoChatRooms.value = (cfg.rooms && cfg.rooms.length ? cfg.rooms : []).join('\n');
+      els.videoChatRooms.value = cfg.room_settings || (cfg.rooms && cfg.rooms.length ? cfg.rooms : []).join('\n');
       els.videoChatRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
     }
     if (els.videoChatScheduledRooms) {
@@ -4050,6 +4052,7 @@
       signaling_wss: els.videoChatSignalingWss ? els.videoChatSignalingWss.value : '',
       public_rooms: !!(els.videoChatPublicRooms && els.videoChatPublicRooms.checked),
       rooms: els.videoChatRooms ? els.videoChatRooms.value : '',
+      room_settings: els.videoChatRooms ? els.videoChatRooms.value : '',
       scheduled_rooms: els.videoChatScheduledRooms ? els.videoChatScheduledRooms.value : ''
     });
   }
@@ -4065,7 +4068,7 @@
         video_chat_janus_wss: cfg.janus_wss,
         video_chat_signaling_wss: cfg.signaling_wss,
         video_chat_public_rooms: cfg.public_rooms ? 'true' : 'false',
-        video_chat_rooms: cfg.rooms.join('\n'),
+        video_chat_rooms: cfg.room_settings,
         video_chat_scheduled_rooms: cfg.scheduled_rooms
       }, true);
       if (!data.success) {

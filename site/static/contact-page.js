@@ -175,7 +175,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260524-scheduled-rooms1';
+      script.src = '/static/video-chat-widget.js?v=20260524-room-themes1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
@@ -273,6 +273,9 @@
       var publicRooms = videoConfig && videoConfig.public_rooms === true;
       var activeRooms = Array.isArray(videoConfig && videoConfig.active_rooms) ? videoConfig.active_rooms : videoConfig && videoConfig.rooms;
       var rooms = Array.isArray(activeRooms) ? activeRooms.join(',') : '';
+      var roomThemeImages = videoConfig && videoConfig.room_theme_images && typeof videoConfig.room_theme_images === 'object'
+        ? JSON.stringify(videoConfig.room_theme_images)
+        : '{}';
       return '<section class="contact-widget contact-widget-video-chat" aria-label="Video calling">' +
         renderContactSectionHeading('Call', 'contact-call-title') +
         '<div data-video-chat ' +
@@ -284,6 +287,7 @@
         'data-video-chat-owner-call-private="true" ' +
         'data-video-chat-public-rooms="' + (publicRooms ? 'true' : 'false') + '" ' +
         'data-video-chat-room-list="' + escapeHtml(rooms) + '" ' +
+        'data-video-chat-room-theme-images="' + escapeAttr(roomThemeImages) + '" ' +
         'data-video-chat-room-policy="open" ' +
         'data-video-chat-max-participants="6" ' +
         'data-video-chat-allow-join-link="true"></div>' +

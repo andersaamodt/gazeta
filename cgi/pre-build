@@ -40,6 +40,7 @@ video_chat_scheduled_rooms=$(config-get "$blog_site_conf" video_chat_scheduled_r
 video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch)
 video_chat_rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
 video_chat_manual_rooms_json=$(blog_video_chat_manual_rooms_json "$video_chat_rooms" "$video_chat_schedule_now")
+video_chat_room_theme_images_json=$(blog_video_chat_room_theme_images_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
 video_chat_janus_wss=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
 video_chat_signaling_wss=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
 video_chat_json=$(jq -cn \
@@ -50,8 +51,10 @@ video_chat_json=$(jq -cn \
   --argjson public_rooms "$video_chat_public_rooms" \
   --argjson rooms "$video_chat_rooms_json" \
   --argjson manual_rooms "$video_chat_manual_rooms_json" \
+  --arg room_settings "$(printf '%s\n' "$video_chat_rooms" | tr ';,' '\n\n')" \
   --arg scheduled_rooms "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')" \
-  '{participant_limit:$participant_limit,token_ttl_seconds:$token_ttl_seconds,janus_wss:$janus_wss,signaling_wss:$signaling_wss,public_rooms:$public_rooms,rooms:$rooms,manual_rooms:$manual_rooms,active_rooms:$rooms,scheduled_rooms:$scheduled_rooms,include_syntax:"{{video-chat}}"}')
+  --argjson room_theme_images "$video_chat_room_theme_images_json" \
+  '{participant_limit:$participant_limit,token_ttl_seconds:$token_ttl_seconds,janus_wss:$janus_wss,signaling_wss:$signaling_wss,public_rooms:$public_rooms,rooms:$rooms,manual_rooms:$manual_rooms,active_rooms:$rooms,room_settings:$room_settings,scheduled_rooms:$scheduled_rooms,room_theme_images:$room_theme_images,include_syntax:"{{video-chat}}"}')
 navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
 footer_json=$(blog_nostr_footer_pages_json "$pages_json")
 navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')

@@ -200,6 +200,7 @@ signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/de
 public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
 case "$public_rooms" in true|false) ;; *) public_rooms=false ;; esac
 rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms_raw" "$video_chat_scheduled_rooms_raw" "$video_chat_schedule_now")
+room_theme_images_json=$(blog_video_chat_room_theme_images_json "$video_chat_rooms_raw" "$video_chat_scheduled_rooms_raw" "$video_chat_schedule_now")
 
 if [ "$bootstrap_request" = "true" ]; then
   printf '{'
@@ -208,7 +209,8 @@ if [ "$bootstrap_request" = "true" ]; then
   printf '"janus_wss":"%s",' "$(blog_json_escape "$janus_ws")"
   printf '"signaling_wss":"%s",' "$(blog_json_escape "$signaling_endpoint")"
   printf '"public_rooms":%s,' "$public_rooms"
-  printf '"rooms":%s' "$rooms_json"
+  printf '"rooms":%s,' "$rooms_json"
+  printf '"room_theme_images":%s' "$room_theme_images_json"
   printf '}\n'
   exit 0
 fi
@@ -252,5 +254,6 @@ printf '"participant_limit":%s,' "$participant_limit"
 printf '"janus_wss":"%s",' "$(blog_json_escape "$janus_ws")"
 printf '"signaling_wss":"%s",' "$(blog_json_escape "$signaling_endpoint")"
 printf '"public_rooms":%s,' "$public_rooms"
-printf '"rooms":%s' "$rooms_json"
+printf '"rooms":%s,' "$rooms_json"
+printf '"room_theme_images":%s' "$room_theme_images_json"
 printf '}\n'

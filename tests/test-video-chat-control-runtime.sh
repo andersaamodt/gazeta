@@ -120,10 +120,10 @@ inactive_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
 assert_jq "$inactive_public_room_json" '.success == false and .code == "public_room_not_active"' 'scheduled room joins require an active configured room'
 
 config-set "$SITE_ROOT/site.conf" video_chat_public_rooms true
-config-set "$SITE_ROOT/site.conf" video_chat_rooms 'Office hours,Launch Q&A'
+config-set "$SITE_ROOT/site.conf" video_chat_rooms 'Office hours|/images/office-hours.jpg;Launch Q&A|https://example.com/launch.jpg'
 
 active_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
-assert_jq "$active_public_room_json" '.success == true and .room_id == "office-hours" and .public_rooms == true and (.rooms | index("Office hours")) and (.rooms | index("Launch Q&A"))' 'active configured shared rooms can issue video tokens'
+assert_jq "$active_public_room_json" '.success == true and .room_id == "office-hours" and .public_rooms == true and (.rooms | index("Office hours")) and (.rooms | index("Launch Q&A")) and .room_theme_images["office-hours"] == "/images/office-hours.jpg" and .room_theme_images["launch-q-a"] == "https://example.com/launch.jpg"' 'active configured shared rooms can issue themed video tokens'
 
 unlisted_public_room_json=$(call_token 'room_id=random-hangout&public_room=true')
 assert_jq "$unlisted_public_room_json" '.success == false and .code == "public_room_not_active"' 'unlisted scheduled rooms cannot issue public room tokens'
@@ -131,13 +131,13 @@ assert_jq "$unlisted_public_room_json" '.success == false and .code == "public_r
 weekday=$(date +%a | tr '[:upper:]' '[:lower:]' | cut -c1-3)
 monthday=$(date +%d | sed 's/^0//')
 config-set "$SITE_ROOT/site.conf" video_chat_rooms ''
-config-set "$SITE_ROOT/site.conf" video_chat_scheduled_rooms "Daily Room|daily|00:00|1440|daily-secret|7;Weekly Room|weekly:$weekday|00:00|1440|weekly-secret|8;Monthly Room|monthly:$monthday|00:00|1440|monthly-secret|9"
+config-set "$SITE_ROOT/site.conf" video_chat_scheduled_rooms "Daily Room|daily|00:00|1440|daily-secret|7|/images/daily.jpg;Weekly Room|weekly:$weekday|00:00|1440|weekly-secret|8|https://example.com/weekly.jpg;Monthly Room|monthly:$monthday|00:00|1440|monthly-secret|9|javascript:alert(1)"
 
 scheduled_bootstrap_json=$(call_token 'bootstrap=true')
-assert_jq "$scheduled_bootstrap_json" '.success == true and .public_rooms == true and (.rooms | index("Daily Room")) and (.rooms | index("Weekly Room")) and (.rooms | index("Monthly Room")) and (.room_password? | not)' 'scheduled room bootstrap exposes active room names without passwords'
+assert_jq "$scheduled_bootstrap_json" '.success == true and .public_rooms == true and (.rooms | index("Daily Room")) and (.rooms | index("Weekly Room")) and (.rooms | index("Monthly Room")) and (.room_password? | not) and .room_theme_images["daily-room"] == "/images/daily.jpg" and .room_theme_images["weekly-room"] == "https://example.com/weekly.jpg" and (.room_theme_images["monthly-room"]? | not)' 'scheduled room bootstrap exposes active room themes without passwords or unsafe image URLs'
 
 scheduled_join_json=$(call_token 'room_id=weekly-room&public_room=true')
-assert_jq "$scheduled_join_json" '.success == true and .room_id == "weekly-room" and .private_room == true and .room_password == "weekly-secret" and .participant_limit == 8' 'active scheduled room joins inherit password and participant limit'
+assert_jq "$scheduled_join_json" '.success == true and .room_id == "weekly-room" and .private_room == true and .room_password == "weekly-secret" and .participant_limit == 8 and .room_theme_images["weekly-room"] == "https://example.com/weekly.jpg"' 'active scheduled room joins inherit password, participant limit, and theme image'
 
 owner_call_json=$(call_token 'owner_call=true&display_name=Browser%20Caller')
 assert_jq "$owner_call_json" '.success == true and .private_room == true and (.room_id | startswith("anders-")) and (.room_password | length > 20)' 'public owner calls get a fresh private passworded room'

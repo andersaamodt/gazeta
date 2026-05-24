@@ -5,6 +5,8 @@
   var WIDGET_MOUNTED_ATTR = 'data-video-chat-mounted';
   var INSTANCE_COUNTER = { value: 0 };
   var INSTANCE_BY_ELEMENT = new WeakMap();
+  var ACTIVE_PAGE_THEME_OWNER = '';
+  var PAGE_THEME_PREVIOUS = null;
 
   function compact(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -132,6 +134,91 @@
   function isHttpUrl(value) {
     var text = compact(value);
     return /^https?:\/\//i.test(text);
+  }
+
+  function normalizeImageUrl(value) {
+    var text = String(value || '').trim();
+    if (!text || /[\u0000-\u0020]/.test(text)) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(text)) {
+      return text;
+    }
+    if (text.charAt(0) === '/' && text.slice(0, 2) !== '//') {
+      return text;
+    }
+    return '';
+  }
+
+  function cssUrl(value) {
+    return 'url(' + JSON.stringify(String(value || '')) + ')';
+  }
+
+  function normalizeRoomThemeImages(rawValue) {
+    var value = rawValue;
+    if (typeof value === 'string') {
+      value = safeJsonParse(value, {});
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+    var out = {};
+    Object.keys(value).forEach(function (key) {
+      var roomId = slugifyRoom(key);
+      var imageUrl = normalizeImageUrl(value[key]);
+      if (roomId && imageUrl) {
+        out[roomId] = imageUrl;
+      }
+    });
+    return out;
+  }
+
+  function sameThemeImages(left, right) {
+    return JSON.stringify(normalizeRoomThemeImages(left)) === JSON.stringify(normalizeRoomThemeImages(right));
+  }
+
+  function setPageRoomTheme(ownerId, imageUrl) {
+    var body = document.body;
+    if (!body) {
+      return;
+    }
+    var normalized = normalizeImageUrl(imageUrl);
+    if (!normalized) {
+      if (ACTIVE_PAGE_THEME_OWNER === ownerId && PAGE_THEME_PREVIOUS) {
+        body.style.background = PAGE_THEME_PREVIOUS.background;
+        body.style.backgroundImage = PAGE_THEME_PREVIOUS.backgroundImage;
+        body.style.backgroundSize = PAGE_THEME_PREVIOUS.backgroundSize;
+        body.style.backgroundPosition = PAGE_THEME_PREVIOUS.backgroundPosition;
+        body.style.backgroundAttachment = PAGE_THEME_PREVIOUS.backgroundAttachment;
+        body.style.backgroundRepeat = PAGE_THEME_PREVIOUS.backgroundRepeat;
+        body.style.backgroundColor = PAGE_THEME_PREVIOUS.backgroundColor;
+        body.classList.remove('vcw-room-theme-active');
+        document.documentElement.classList.remove('vcw-room-theme-active');
+        PAGE_THEME_PREVIOUS = null;
+        ACTIVE_PAGE_THEME_OWNER = '';
+      }
+      return;
+    }
+    if (!PAGE_THEME_PREVIOUS || ACTIVE_PAGE_THEME_OWNER !== ownerId) {
+      PAGE_THEME_PREVIOUS = {
+        background: body.style.background,
+        backgroundImage: body.style.backgroundImage,
+        backgroundSize: body.style.backgroundSize,
+        backgroundPosition: body.style.backgroundPosition,
+        backgroundAttachment: body.style.backgroundAttachment,
+        backgroundRepeat: body.style.backgroundRepeat,
+        backgroundColor: body.style.backgroundColor
+      };
+    }
+    ACTIVE_PAGE_THEME_OWNER = ownerId;
+    body.style.backgroundColor = '#111827';
+    body.style.backgroundImage = 'linear-gradient(125deg, rgba(10, 15, 23, 0.64), rgba(255, 255, 255, 0.1)), ' + cssUrl(normalized);
+    body.style.backgroundSize = 'cover';
+    body.style.backgroundPosition = 'center center';
+    body.style.backgroundAttachment = 'fixed';
+    body.style.backgroundRepeat = 'no-repeat';
+    body.classList.add('vcw-room-theme-active');
+    document.documentElement.classList.add('vcw-room-theme-active');
   }
 
   function resolveMaybeFunction(value) {
@@ -285,6 +372,10 @@
     if (rooms) {
       out.rooms = parseRoomList(rooms);
     }
+    var roomThemeImages = first(['room_theme_images', 'roomThemeImages']);
+    if (roomThemeImages) {
+      out.roomThemeImages = normalizeRoomThemeImages(roomThemeImages);
+    }
     var autoStart = first(['auto_start', 'autostart', 'join_call']);
     if (autoStart) {
       out.autoStart = toBool(autoStart, false);
@@ -374,6 +465,10 @@
     if (rooms) {
       out.rooms = parseRoomList(rooms);
     }
+    var roomThemeImages = read('data-video-chat-room-theme-images');
+    if (roomThemeImages) {
+      out.roomThemeImages = normalizeRoomThemeImages(roomThemeImages);
+    }
     var includeToken = read('data-video-chat-include-token-in-invite');
     if (includeToken) {
       out.includeTokenInInvite = toBool(includeToken, false);
@@ -429,6 +524,7 @@
       ownerCallPrivate: false,
       publicRooms: false,
       rooms: [],
+      roomThemeImages: {},
       includeTokenInInvite: false,
       showHeading: true,
       centerPrecall: false,
@@ -471,6 +567,7 @@
     merged.callLabel = compact(merged.callLabel || 'Call me') || 'Call me';
     merged.ownerCallPrivate = toBool(merged.ownerCallPrivate, false);
     merged.rooms = parseRoomList(merged.rooms);
+    merged.roomThemeImages = normalizeRoomThemeImages(merged.roomThemeImages);
     merged.displayName = compact(merged.displayName || 'Guest') || 'Guest';
     merged.tokenEndpoint = compact(merged.tokenEndpoint || '/cgi/blog-video-chat-token');
     merged.janusEndpoint = compact(merged.janusEndpoint || '');
@@ -923,6 +1020,7 @@
       callMode: 'video',
       micEnabled: true,
       cameraEnabled: true,
+      activeRoomThemeImage: '',
       prefilledInviteLink: merged.initialInviteLink || '',
       inviteLinkOpen: !!merged.initialInviteLink
     };
@@ -933,6 +1031,7 @@
     this._render();
     this._bindUi();
     this._syncFeatureFlag();
+    this._applyDefaultRoomTheme();
     this._refreshPublicRooms();
 
     if (!this.state.featureDisabled && this.state.prefilledInviteLink && this.nodes.inviteInput) {
@@ -966,18 +1065,24 @@
     var videoLabel = ownerLabel === 'Call' ? 'Video' : 'Video ' + ownerLabel;
     var shellClasses = 'vcw-shell'
       + (this.options.showHeading === false ? ' vcw-shell-no-heading' : '')
-      + (this.options.centerPrecall === true ? ' vcw-shell-center-precall' : '');
+      + (this.options.centerPrecall === true ? ' vcw-shell-center-precall' : '')
+      + (this.state && this.state.activeRoomThemeImage ? ' vcw-shell-themed' : '');
     var singleRoomButtonHtml = '';
     var roomButtonsHtml = '';
     if (publicRoomsEnabled && publicRoomNames.length === 1) {
       singleRoomButtonHtml = '<button type="button" class="vcw-btn vcw-btn-primary vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(publicRoomNames[0])) + '" data-vcw-public-room="true" title="' + escapeAttr(publicRoomNames[0]) + '">Join Scheduled Room</button>';
     } else if (publicRoomsEnabled) {
       roomButtonsHtml = publicRoomNames.map(function (roomName) {
-        return '<div class="vcw-room-list-row"><span class="vcw-room-name">' + escapeHtml(roomName) + '</span><button type="button" class="vcw-btn vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(roomName)) + '" data-vcw-public-room="true">Join</button></div>';
-      }).join('');
+        var roomId = slugifyRoom(roomName);
+        var themeImage = normalizeImageUrl((this.options.roomThemeImages || {})[roomId]);
+        var themeAttr = themeImage ? ' data-vcw-room-themed="true"' : '';
+        var thumb = themeImage ? '<span class="vcw-room-thumb" style="background-image:' + escapeAttr(cssUrl(themeImage)) + '"></span>' : '';
+        return '<div class="vcw-room-list-row"' + themeAttr + '><span class="vcw-room-name">' + thumb + '<span>' + escapeHtml(roomName) + '</span></span><button type="button" class="vcw-btn vcw-room-btn" data-vcw-room="' + escapeAttr(roomId) + '" data-vcw-public-room="true">Join</button></div>';
+      }, this).join('');
     }
     var style = ''
       + '.vcw-shell{font-family:Georgia,\'Times New Roman\',serif;color:var(--text,#241b12);background-color:var(--post-card-bg-single,#fdfdfb);background-image:var(--secure-chat-paper-surface,linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.4)));background-size:auto,auto,var(--lapidarist-parchment-size,640px 640px);background-position:center,center,center;border:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 78%,white 22%);border-radius:18px;padding:1rem;max-width:100%;box-sizing:border-box;box-shadow:0 14px 32px rgba(15,23,42,.08);}'
+      + '.vcw-shell.vcw-shell-themed{background:rgba(248,250,252,.58);background-image:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.34));border-color:rgba(255,255,255,.58);box-shadow:0 22px 54px rgba(10,15,23,.28);backdrop-filter:blur(20px) saturate(1.22);-webkit-backdrop-filter:blur(20px) saturate(1.22);}'
       + '.vcw-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.9rem;margin-bottom:.95rem;}'
       + '.vcw-shell-no-heading .vcw-head{display:none;}'
       + '.vcw-heading{margin:0;font-size:1.18rem;line-height:1.2;color:var(--text,#241b12);font-weight:700;}'
@@ -999,9 +1104,11 @@
       + '.vcw-public-rooms{display:flex;flex-direction:column;gap:8px;padding-top:4px;width:min(28rem,100%);}'
       + '.vcw-public-rooms[hidden]{display:none;}'
       + '.vcw-room-list{display:flex;flex-direction:column;gap:7px;align-items:stretch;}'
-      + '.vcw-room-list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 48%,transparent);}'
+      + '.vcw-room-list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px;border-top:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 48%,transparent);border-radius:10px;}'
       + '.vcw-room-list-row:first-child{border-top:0;}'
-      + '.vcw-room-name{font-size:.94rem;color:var(--text,#241b12);overflow-wrap:anywhere;text-align:left;}'
+      + '.vcw-room-list-row[data-vcw-room-themed="true"]{background:rgba(255,255,255,.46);border-color:rgba(255,255,255,.48);backdrop-filter:blur(12px) saturate(1.16);-webkit-backdrop-filter:blur(12px) saturate(1.16);}'
+      + '.vcw-room-name{font-size:.94rem;color:var(--text,#241b12);overflow-wrap:anywhere;text-align:left;display:flex;align-items:center;gap:9px;min-width:0;}'
+      + '.vcw-room-thumb{width:42px;height:32px;border-radius:7px;background-size:cover;background-position:center;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 5px 12px rgba(15,23,42,.14);}'
       + '.vcw-btn{appearance:none;border:1px solid var(--action-soft-border,#c58f6f);background:var(--action-soft-bg,#f5e4d7);color:var(--action-soft-text,#6d3a20);border-radius:8px;padding:.42rem .76rem;cursor:pointer;font:inherit;font-size:.92rem;font-weight:400;line-height:1.22;display:inline-flex;align-items:center;gap:6px;width:fit-content;min-width:0;box-shadow:none;}'
       + '.vcw-btn:hover,.vcw-btn:focus-visible{background:var(--action-soft-hover-bg,#f0d7c5);border-color:var(--action-soft-hover-border,#b77753);color:var(--action-soft-hover-text,#5b2f18);}'
       + '.vcw-btn:disabled{opacity:0.55;cursor:default;}'
@@ -1088,6 +1195,7 @@
       + '</section>';
 
     this.nodes = {
+      shell: this.shadowRoot.querySelector('.vcw-shell'),
       status: this.shadowRoot.querySelector('.vcw-status'),
       preCall: this.shadowRoot.querySelector('.vcw-precall'),
       fullRoom: this.shadowRoot.querySelector('.vcw-fullroom'),
@@ -1229,6 +1337,44 @@
     }
   };
 
+  VideoChatWidget.prototype._roomThemeImage = function (roomId) {
+    var normalizedRoomId = slugifyRoom(roomId || '');
+    if (!normalizedRoomId) {
+      return '';
+    }
+    return normalizeImageUrl((this.options.roomThemeImages || {})[normalizedRoomId]);
+  };
+
+  VideoChatWidget.prototype._applyRoomTheme = function (roomId) {
+    var imageUrl = this._roomThemeImage(roomId);
+    this.state.activeRoomThemeImage = imageUrl;
+    setPageRoomTheme(this.instanceId, imageUrl);
+    if (this.nodes && this.nodes.shell) {
+      this.nodes.shell.classList.toggle('vcw-shell-themed', !!imageUrl);
+    }
+    return imageUrl;
+  };
+
+  VideoChatWidget.prototype._applyDefaultRoomTheme = function () {
+    if (this.state && this.state.roomId && this._roomThemeImage(this.state.roomId)) {
+      this._applyRoomTheme(this.state.roomId);
+      return;
+    }
+    var rooms = parseRoomList(this.options.rooms || []);
+    if (this.options.publicRooms === true && rooms.length === 1) {
+      this._applyRoomTheme(rooms[0]);
+      return;
+    }
+    setPageRoomTheme(this.instanceId, '');
+    if (this.state) {
+      this.state.activeRoomThemeImage = '';
+    }
+    if (this.nodes && this.nodes.shell) {
+      this.nodes.shell.classList.remove('vcw-shell-themed');
+    }
+  };
+
+
   VideoChatWidget.prototype._syncFeatureFlag = function () {
     var enabled = this.options.featureEnabled !== false && isGlobalFeatureEnabled();
     this.state.featureDisabled = !enabled;
@@ -1340,8 +1486,10 @@
         }
         var nextRooms = parseRoomList(data.rooms || []);
         var currentRooms = parseRoomList(self.options.rooms || []);
+        var nextRoomThemeImages = normalizeRoomThemeImages(data.room_theme_images || {});
+        var themeChanged = !sameThemeImages(nextRoomThemeImages, self.options.roomThemeImages || {});
         var nextPublicRooms = data.public_rooms === true && nextRooms.length > 0;
-        var changed = nextPublicRooms !== self.options.publicRooms || nextRooms.join('\n') !== currentRooms.join('\n');
+        var changed = nextPublicRooms !== self.options.publicRooms || nextRooms.join('\n') !== currentRooms.join('\n') || themeChanged;
         if (isWsUrl(data.janus_wss || '')) {
           self.options.janusEndpoint = String(data.janus_wss);
         }
@@ -1352,7 +1500,9 @@
           self.options.participantLimit = toInt(data.participant_limit, self.options.participantLimit, 2, 24);
           self.options.maxParticipants = Math.max(self.options.maxParticipants, Math.min(self.options.participantLimit, 16));
         }
+        self.options.roomThemeImages = nextRoomThemeImages;
         if (!changed || self.state.joined || self.state.joining) {
+          self._applyDefaultRoomTheme();
           return changed;
         }
         self.options.publicRooms = nextPublicRooms;
@@ -1360,6 +1510,7 @@
         self._render();
         self._bindUi();
         self._syncFeatureFlag();
+        self._applyDefaultRoomTheme();
         return true;
       });
     }).catch(function () {
@@ -1493,6 +1644,10 @@
       }
       if (isWsUrl(data.signaling_wss || '')) {
         self.options.signalingEndpoint = String(data.signaling_wss);
+      }
+      if (data.room_theme_images && typeof data.room_theme_images === 'object') {
+        self.options.roomThemeImages = normalizeRoomThemeImages(data.room_theme_images);
+        self._applyRoomTheme(self.state.roomId);
       }
       self.state.ownerCallPending = false;
       self.state.publicRoomPending = false;
@@ -2472,6 +2627,7 @@
     self._setCallMode(mode || 'video');
     self.state.roomFull = false;
     var roomId = self._ensureRoomId();
+    self._applyRoomTheme(roomId);
     return self._startJoinFlow(roomId, self.state.inviteToken || '');
   };
 
@@ -2493,6 +2649,7 @@
     }
     this.state.roomId = normalized;
     this.state.roomNumeric = roomHashToNumber(normalized);
+    this._applyRoomTheme(normalized);
     if (this.nodes && this.nodes.roomInput) {
       this.nodes.roomInput.value = normalized;
     }
@@ -2531,6 +2688,7 @@
     self.state.roomNumeric = roomHashToNumber(parsed.roomId);
     self.state.callId = parsed.callId || '';
     self.state.roomPassword = parsed.roomPassword || '';
+    self._applyRoomTheme(parsed.roomId);
     if (self.nodes && self.nodes.roomInput) {
       self.nodes.roomInput.value = parsed.roomId;
     }
@@ -2547,6 +2705,7 @@
     self.state.roomId = normalizedRoomId;
     self.state.roomNumeric = roomHashToNumber(normalizedRoomId);
     self.state.inviteToken = compact(inviteToken || '');
+    self._applyRoomTheme(normalizedRoomId);
 
     self.state.joining = true;
     self.state.leaving = false;
@@ -2860,6 +3019,7 @@
     var self = this;
     window.removeEventListener('online', self.boundOnOnline);
     window.removeEventListener('offline', self.boundOnOffline);
+    setPageRoomTheme(self.instanceId, '');
     return self._teardownCall(true, false).finally(function () {
       if (self.target) {
         self.target.removeAttribute(WIDGET_MOUNTED_ATTR);

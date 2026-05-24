@@ -226,6 +226,7 @@ case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=fal
 video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch)
 video_chat_rooms_json=$(blog_video_chat_manual_rooms_json "$video_chat_rooms" "$video_chat_schedule_now")
 video_chat_active_rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
+video_chat_room_theme_images_json=$(blog_video_chat_room_theme_images_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
 overworld_anonymous_enabled=$(normalize_bool_with_default "$overworld_anonymous_enabled_raw" 'true')
 overworld_show_hidden=$(normalize_bool_with_default "$overworld_show_hidden_raw" 'false')
 case "$overworld_anonymous_time_limit_seconds_raw" in ''|*[!0-9]*) overworld_anonymous_time_limit_seconds_raw=900 ;; esac
@@ -267,7 +268,7 @@ printf '"zap_demo_wallet_active":%s,' "$zap_demo_wallet_active"
 printf '"zap_demo_wallet_npub":"%s",' "$(blog_json_escape "$zap_demo_wallet_npub")"
 printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"plugins":%s,' "$plugins_json"
-printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":"%s","signaling_wss":"%s","public_rooms":%s,"rooms":%s,"active_rooms":%s,"scheduled_rooms":"%s","include_syntax":"{{video-chat}}"},' \
+printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":"%s","signaling_wss":"%s","public_rooms":%s,"rooms":%s,"active_rooms":%s,"room_settings":"%s","scheduled_rooms":"%s","room_theme_images":%s,"include_syntax":"{{video-chat}}"},' \
   "$video_chat_participant_limit_raw" \
   "$video_chat_token_ttl_seconds_raw" \
   "$(blog_json_escape "$video_chat_janus_wss")" \
@@ -275,7 +276,9 @@ printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":
   "$video_chat_public_rooms" \
   "$video_chat_rooms_json" \
   "$video_chat_active_rooms_json" \
-  "$(blog_json_escape "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')")"
+  "$(blog_json_escape "$(printf '%s\n' "$video_chat_rooms" | tr ';,' '\n\n')")" \
+  "$(blog_json_escape "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')")" \
+  "$video_chat_room_theme_images_json"
 printf '"overworld":{"anonymous_enabled":%s,"anonymous_time_limit_seconds":%s,"show_hidden":%s,"start_path":"%s","effective_start_path":"%s","access_mode":"%s","max_entries":%s,"include_syntax":"{{overworld-game}}"},' \
   "$overworld_anonymous_enabled" \
   "$overworld_anonymous_time_limit_seconds_raw" \

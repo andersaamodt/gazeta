@@ -269,10 +269,8 @@ esac
 
 case "$BLOG_REQUEST_BODY" in
   *video_chat_rooms=*)
-    tmp_rooms=$(mktemp "${TMPDIR:-/tmp}/blog-video-chat-rooms.XXXXXX")
-    printf '%s' "$video_chat_rooms" | tr ',\r' '\n\n' | sed -e 's/[[:space:]]\+$//' -e 's/^[[:space:]]*//' | awk 'NF { if (!seen[$0]++) print $0; }' | head -n 12 > "$tmp_rooms"
-    config-set "$blog_site_conf" video_chat_rooms "$(paste -sd, "$tmp_rooms")"
-    rm -f "$tmp_rooms"
+    manual_rooms=$(blog_video_chat_sanitize_manual_rooms "$video_chat_rooms")
+    config-set "$blog_site_conf" video_chat_rooms "$manual_rooms"
     ;;
 esac
 

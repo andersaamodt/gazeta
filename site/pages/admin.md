@@ -342,12 +342,13 @@ title: ""
 </div>
 <div class="field-row">
 <label for="video-chat-rooms"><strong>Always-on Rooms</strong></label>
-<textarea id="video-chat-rooms" rows="3" placeholder="Office hours&#10;Reading room&#10;Launch Q&A"></textarea>
+<textarea id="video-chat-rooms" rows="3" placeholder="Office hours | /images/office-hours.jpg&#10;Reading room&#10;Launch Q&A | https://example.com/launch.jpg"></textarea>
+<p class="muted">Use <code>Name</code> or <code>Name | image URL</code>. The image becomes the room background when that room is selected.</p>
 </div>
 <div class="field-row">
 <label for="video-chat-scheduled-rooms"><strong>Scheduled Rooms</strong></label>
-<textarea id="video-chat-scheduled-rooms" rows="4" placeholder="Office hours | daily | 18:00 | 90 | optional-password | 8&#10;Weekly salon | weekly:thu | 19:30 | 120 | secret | 12&#10;Monthly Q&amp;A | monthly:1 | 12:00 | 60 | | 8"></textarea>
-<p class="muted">Use <code>Name | recurrence | HH:MM | minutes | password | participant limit</code>. Recurrence can be daily, weekdays, weekends, weekly:mon,wed, monthly:1,15, yearly:05-24, or once:2026-05-24.</p>
+<textarea id="video-chat-scheduled-rooms" rows="4" placeholder="Office hours | daily | 18:00 | 90 | optional-password | 8 | /images/office-hours.jpg&#10;Weekly salon | weekly:thu | 19:30 | 120 | secret | 12 | https://example.com/salon.jpg&#10;Monthly Q&amp;A | monthly:1 | 12:00 | 60 | | 8 |"></textarea>
+<p class="muted">Use <code>Name | recurrence | HH:MM | minutes | password | participant limit | image URL</code>. Recurrence can be daily, weekdays, weekends, weekly:mon,wed, monthly:1,15, yearly:05-24, or once:2026-05-24.</p>
 </div>
 <p class="muted">Blank WSS fields let the widget use its default bootstrap. Camera and microphone access still require an explicit click inside the widget.</p>
 </section>
@@ -1074,7 +1075,7 @@ title: ""
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js?v=20260524-scheduled-rooms1"></script>
+<script src="/static/admin.js?v=20260524-room-themes1"></script>
 
 <style>
 header#title-block-header {
