@@ -13319,3 +13319,54 @@ nav.site-nav > .nav-right .nav-search button {
   background-image: none !important;
   transform: none !important;
 }
+
+nav.site-nav > .nav-right .nav-search {
+  height: 40px !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+}
+
+nav.site-nav > .nav-right .nav-search button {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--theme_green, var(--green, #2c8b6e)) 38%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--theme_green, var(--green, #2c8b6e)) 13%, var(--surface-raised-strong, #fff) 87%) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--theme_green_fg, var(--theme_green, var(--green, #2c8b6e))) !important;
+  -webkit-text-fill-color: currentColor !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+  clip-path: none !important;
+}
+
+nav.site-nav > .nav-right .nav-search button:hover,
+nav.site-nav > .nav-right .nav-search button:focus-visible {
+  border-color: color-mix(in srgb, var(--theme_green, var(--green, #2c8b6e)) 58%, transparent) !important;
+  background: color-mix(in srgb, var(--theme_green, var(--green, #2c8b6e)) 20%, var(--surface-raised-strong, #fff) 80%) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--theme_green_fg, var(--theme_green, var(--green, #2c8b6e))) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+nav.site-nav > .nav-right .nav-search button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+html body nav.site-nav > .nav-right form.nav-search button[type="submit"] {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:hover,
+html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-visible {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
