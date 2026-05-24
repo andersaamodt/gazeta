@@ -3780,7 +3780,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-search-green3';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-nav-content-width1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

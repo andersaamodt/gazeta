@@ -13370,3 +13370,12 @@ html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
 }
+
+/* Keep the navbar aligned to the same content column as the page below it. */
+nav.site-nav {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  justify-self: stretch !important;
+}
