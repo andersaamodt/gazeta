@@ -2709,7 +2709,7 @@
     if (!fallbackLoggedIn && fallbackLoading) {
       html += '<div class="secure-chat-loading" role="status" aria-live="polite"><span>Loading...</span>' + secureChatSpinnerHtml('secure-chat-loading-spinner') + '</div>';
     } else if (!fallbackLoggedIn) {
-      html += '<button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button>';
+      html += '<div class="secure-chat-login-gate"><p class="secure-chat-login-note">Login with Nostr to chat.</p><button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button></div>';
     } else if (state.chat.chatStarted !== true) {
       html += renderSecureChatStartGate(secureChatStoredHistorySummary());
     } else {

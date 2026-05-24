@@ -4902,6 +4902,22 @@ body.nav-cart-open {
   white-space: nowrap;
 }
 
+.secure-chat-login-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.58rem;
+  text-align: center;
+}
+
+.secure-chat-login-note {
+  margin: 0;
+  color: var(--muted, #6f625d);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
 .secure-chat-login-btn,
 .secure-chat-attach-button {
   width: fit-content;
