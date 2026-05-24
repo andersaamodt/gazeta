@@ -4394,13 +4394,6 @@ body.nav-cart-open {
   margin-top: 0.1rem;
 }
 
-.contact-section-heading::after {
-  content: "";
-  flex: 1 1 auto;
-  min-width: 2rem;
-  border-top: 1px solid color-mix(in srgb, var(--border, #c7d2fe) 78%, transparent);
-}
-
 .contact-section-heading span {
   flex: 0 0 auto;
 }

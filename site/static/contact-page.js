@@ -2694,6 +2694,7 @@
         chatStarted: state.chat.chatStarted === true,
         chatOpening: state.chat.chatOpening === true,
         chatClosing: state.chat.chatClosing === true,
+        hideHeading: true,
         savedSummary: secureChatStoredHistorySummary(),
         admin: isAdmin(),
         adminMappings: state.chat.adminMappings || []

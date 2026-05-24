@@ -442,6 +442,7 @@
       chatStarted: next.chatStarted !== false,
       chatOpening: next.chatOpening === true,
       chatClosing: next.chatClosing === true,
+      hideHeading: next.hideHeading === true,
       savedSummary: normalizeSavedSummary(next.savedSummary),
       admin: !!next.admin,
       adminMappings: adminMappings
@@ -592,7 +593,9 @@
     var state = normalizeModel(model);
     var html = '<section class="secure-chat-panel' + (state.chatStarted ? ' is-chat-started' : '') + (state.chatOpening ? ' is-chat-opening' : '') + (state.chatClosing ? ' is-chat-closing' : '') + '" aria-labelledby="secure-chat-title">';
     html += '<div class="secure-chat-head">';
-    html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
+    if (!state.hideHeading) {
+      html += '<div class="secure-chat-heading"><h2 id="secure-chat-title">Secure Chat</h2></div>';
+    }
     if (!state.loggedIn && state.loading) {
       html += '<div class="secure-chat-loading" role="status" aria-live="polite"><span>Loading...</span>' + spinnerHtml('secure-chat-loading-spinner') + '</div>';
     } else if (!state.loggedIn) {
