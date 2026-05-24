@@ -1,4 +1,7 @@
 .DS_Store
+.codex/
+.log
+*.log
 *.swp
 .sitedata/
 .web-libs/

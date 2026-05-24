@@ -496,4 +496,4 @@ See `.github/MUD_BLOG_INTEGRATION.md` for complete documentation.
 
 ## License
 
-Part of the wizardry project.
+gazeta is part of the Wizardry project and is licensed under the Open Wizardry License 3.1. See `LICENSE`.
