@@ -8538,17 +8538,22 @@ footer {
 
 .blog-draft-notice-close {
   appearance: none;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   width: 2.25rem;
+  min-width: 2.25rem;
   height: 2.25rem;
+  min-height: 2.25rem;
   margin: -0.46rem -0.5rem -0.46rem 0;
+  padding: 0 !important;
   border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
   color: #050505;
+  -webkit-text-fill-color: currentColor;
   cursor: pointer;
   line-height: 1;
 }
@@ -8568,6 +8573,8 @@ footer {
   display: block;
   width: 1.68rem;
   height: 1.68rem;
+  color: currentColor;
+  stroke: currentColor;
 }
 
 .blog-draft-notice-link {
