@@ -437,6 +437,13 @@ strong {
 #blog-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
 #contact-page-title:has(.list-page-title-actions) .list-page-title-text,
 #contact-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+  border-bottom: 0;
+  border-image: none;
+}
+
+#list-page-title:has(.list-page-title-actions),
+#blog-page-title:has(.list-page-title-actions),
+#contact-page-title:has(.list-page-title-actions) {
   border-bottom: 2px solid transparent;
   border-image-slice: 1;
   border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);
