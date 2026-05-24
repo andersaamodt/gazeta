@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-STONR_REPO_URL=${STONR_REPO_URL:-https://github.com/andersaamodt/stonr.git}
+STONR_REPO_URL=${STONR_REPO_URL:-}
 STONR_COMMIT=${STONR_COMMIT:-b020dc1e1b1799910f329f531b60a5d2b714ea41}
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 INSTALL_MARKER=/usr/local/share/stonr/headquarters-commit
@@ -40,6 +40,13 @@ ensure_rust() {
   export PATH="$HOME/.cargo/bin:$PATH"
   command -v cargo >/dev/null 2>&1
   command -v rustc >/dev/null 2>&1
+}
+
+require_stonr_repo_url() {
+  if [ -z "$STONR_REPO_URL" ]; then
+    status_bad "STONR_REPO_URL must be set before installing Stonr."
+    exit 1
+  fi
 }
 
 installed_version() {
@@ -99,6 +106,7 @@ run_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 ensure_rust
 export PATH="$HOME/.cargo/bin:$PATH"
+require_stonr_repo_url
 
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/stonr-install.XXXXXX")
 cleanup() {
