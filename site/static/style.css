@@ -2003,9 +2003,9 @@ body.nav-cart-open {
 #list-page-title:has(.list-page-title-actions),
 #blog-page-title:has(.list-page-title-actions),
 #contact-page-title:has(.list-page-title-actions) {
-  border-bottom: 0;
+  border-bottom: 2px solid var(--border);
   border-image: none;
-  padding-bottom: 0;
+  padding-bottom: 0.08rem;
 }
 
 #list-page-title:has(.list-page-title-actions) .list-page-title-text,
@@ -2017,8 +2017,6 @@ body.nav-cart-open {
   display: block;
   flex: 1 1 auto;
   min-width: 0;
-  border-bottom: 2px solid var(--border);
-  padding-bottom: 0.08rem;
 }
 
 #list-page-title .list-inline-edit-link,
