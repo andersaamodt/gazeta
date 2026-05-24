@@ -603,7 +603,12 @@ nav.site-nav > .nav-center {
 }
 
 .post-item,
-.list-tile,
+.list-tile {
+  transition:
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
 .nav-cart-item {
   transition:
     transform 180ms ease,
@@ -612,7 +617,11 @@ nav.site-nav > .nav-center {
 }
 
 .post-item:hover,
-.list-tile:hover,
+.list-tile:hover {
+  transform: none;
+  box-shadow: var(--lapidarist-float-shadow-hover) !important;
+}
+
 .nav-cart-item:hover {
   transform: translateY(-2px);
   box-shadow: var(--lapidarist-float-shadow-hover) !important;
