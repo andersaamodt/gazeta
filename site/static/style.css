@@ -13206,3 +13206,13 @@ nav.site-nav > .nav-right .nav-search button {
   contain: none;
   overflow: visible;
 }
+
+@media (max-width: 640px) {
+  nav.site-nav {
+    overflow: visible !important;
+  }
+
+  nav.site-nav .nav-login-menu {
+    max-width: calc(100vw - 1rem);
+  }
+}
