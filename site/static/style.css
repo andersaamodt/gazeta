@@ -4385,7 +4385,8 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.72rem;
   margin: 1.2rem 0 0.42rem;
-  border-bottom: 0;
+  border-bottom: 0 !important;
+  border-image: none !important;
   padding-bottom: 0;
   color: var(--text, #243046);
   font-size: 1.05rem;
@@ -4398,7 +4399,9 @@ body.nav-cart-open {
 
 .contact-section-heading span {
   flex: 0 0 auto;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--accent, var(--border));
+  border-image-slice: 1;
+  border-image-source: linear-gradient(90deg, var(--accent, var(--border)) 0%, var(--primary, var(--accent, var(--border))) 100%);
   padding-bottom: 0.08rem;
 }
 

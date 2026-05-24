@@ -1140,9 +1140,6 @@
 
   function composeBackingPostType(type) {
     var picked = normalizeComposePostType(type);
-    if (picked === 'attachment') {
-      return 'longform';
-    }
     return picked;
   }
 
@@ -1182,6 +1179,9 @@
     if (type === 'longform') {
       return { kind: '30023', tags: 'd, title, summary, published_at' };
     }
+    if (type === 'attachment') {
+      return { kind: '15', tags: 'url, m, size, ox, alt' };
+    }
     if (type === 'capture-media') {
       return { kind: '20 or 21', tags: 'url, m=image/*|video/*, alt, dim|duration' };
     }
@@ -1216,6 +1216,7 @@
     if (type === 'shortform') return 'Shortform Post (kind ' + target.kind + ')';
     if (type === 'capture-media') return 'Media Capture (kind ' + target.kind + ')';
     if (type === 'upload-media') return 'Media Upload (kind ' + target.kind + ')';
+    if (type === 'attachment') return 'Attachment (kind ' + target.kind + ')';
     if (type === 'audio-note') return 'Audio Note (kind ' + target.kind + ')';
     if (type === 'link-share') return 'Link (kind ' + target.kind + ')';
     return 'Go Live (kind ' + target.kind + ')';
@@ -2928,13 +2929,30 @@
         '</div>';
     }
     if (type === 'upload-media') {
-      return '';
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="list-admin-primary-btn compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="upload-media">Upload Photo/Video</button>' +
+          '</div>' +
+        '</div>';
     }
     if (type === 'attachment') {
-      return '';
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="list-admin-primary-btn compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="attachment">Upload Attachment/File</button>' +
+          '</div>' +
+        '</div>';
     }
     if (type === 'audio-note') {
-      return '';
+      return '' +
+        '<div class="compose-media-tools compose-mode-panel">' +
+          '<div class="compose-media-actions">' +
+            '<button type="button" class="list-admin-primary-btn compose-media-btn" data-compose-action="audio-record-toggle">' + (state.compose.audioRecording ? 'Stop Recording' : 'Start Recording') + '</button>' +
+            '<button type="button" class="unobtrusive-icon-button compose-media-btn" data-compose-action="open-mode-picker" data-compose-mode-target="audio-note">Upload Audio</button>' +
+          '</div>' +
+          '<div class="compose-audio-status">' + escapeHtml(state.compose.audioError || (state.compose.audioRecording ? 'Recording audio...' : 'Press Start Recording to request microphone access.')) + '</div>' +
+        '</div>';
     }
     if (type === 'link-share') {
       return '' +
@@ -3023,7 +3041,7 @@
       tags: fields.tags.trim(),
       summary: '',
       content: payloadContent,
-      post_type: composeBackingPostType(fields.postType),
+      post_type: fields.postType,
       scheduled_at: composeLocalToIso(fields.scheduledAt),
       publish_mode: composePublishMode(),
       publish_destination: composePublishDestination()
@@ -3892,7 +3910,8 @@
       titlePlaceholder = 'Media title (optional)';
     }
     var mediaToolsHtml = composeModePanelHtml(postType, fields);
-    var showPreview = !!state.compose.preview;
+    var forcePreview = postType === 'capture-media' || postType === 'upload-media';
+    var showPreview = !!state.compose.preview || forcePreview;
     var previewIslandLayout = showPreview;
     var headRowClass = 'field-row blog-compose-head-row' + (state.compose.postTypeToolbarCollapsed ? ' is-type-collapsed' : '');
     var typeControlClass = state.compose.postTypeToolbarCollapsed ? 'compose-post-type-control is-collapsed' : 'compose-post-type-control';
@@ -3944,6 +3963,7 @@
               '<button type="button" class="unobtrusive-icon-button blog-compose-close" data-compose-action="close-compose" aria-label="Close compose" title="Close compose">' + composeCloseIconSvg() + '<span class="sr-only">Close compose</span></button>' +
             '</div>' +
           '</div>' +
+          '<div class="compose-nostr-target-row">' + postKindFooterHtml + '</div>' +
           '<div class="field-row blog-compose-title-row"' + (showTitleField ? '' : ' hidden aria-hidden="true"') + '>' +
             '<label><strong>Title</strong></label>' +
             '<input type="text" data-compose-field="title" placeholder="' + escapeHtml(titlePlaceholder) + '" value="' + escapeHtml(fields.title) + '">' +

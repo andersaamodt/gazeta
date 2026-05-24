@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-overworld-common.sh"
+. "$SCRIPT_DIR/blog-video-chat-schedule-common.sh"
 
 blog_init
 blog_overworld_setup
@@ -40,6 +41,7 @@ video_chat_janus_wss=''
 video_chat_signaling_wss=''
 video_chat_public_rooms='false'
 video_chat_rooms=''
+video_chat_scheduled_rooms=''
 overworld_anonymous_enabled_raw='true'
 overworld_anonymous_time_limit_seconds_raw='900'
 overworld_show_hidden_raw='false'
@@ -88,6 +90,7 @@ load_site_conf_values() {
           video_chat_signaling_wss) video_chat_signaling_wss=$conf_value ;;
           video_chat_public_rooms) video_chat_public_rooms=$conf_value ;;
           video_chat_rooms) video_chat_rooms=$conf_value ;;
+          video_chat_scheduled_rooms) video_chat_scheduled_rooms=$conf_value ;;
           overworld_anonymous_enabled) overworld_anonymous_enabled_raw=$conf_value ;;
           overworld_anonymous_time_limit_seconds) overworld_anonymous_time_limit_seconds_raw=$conf_value ;;
           overworld_show_hidden) overworld_show_hidden_raw=$conf_value ;;
@@ -220,14 +223,9 @@ if [ "$video_chat_token_ttl_seconds_raw" -gt 86400 ]; then
   video_chat_token_ttl_seconds_raw=86400
 fi
 case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=false ;; esac
-video_chat_rooms_json=$(printf '%s\n' "$video_chat_rooms" | tr ',' '\n' | awk '
-  {
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-    if ($0 != "" && !seen[$0]++) {
-      print $0
-    }
-  }
-' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
+video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch)
+video_chat_rooms_json=$(blog_video_chat_manual_rooms_json "$video_chat_rooms" "$video_chat_schedule_now")
+video_chat_active_rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
 overworld_anonymous_enabled=$(normalize_bool_with_default "$overworld_anonymous_enabled_raw" 'true')
 overworld_show_hidden=$(normalize_bool_with_default "$overworld_show_hidden_raw" 'false')
 case "$overworld_anonymous_time_limit_seconds_raw" in ''|*[!0-9]*) overworld_anonymous_time_limit_seconds_raw=900 ;; esac
@@ -269,13 +267,15 @@ printf '"zap_demo_wallet_active":%s,' "$zap_demo_wallet_active"
 printf '"zap_demo_wallet_npub":"%s",' "$(blog_json_escape "$zap_demo_wallet_npub")"
 printf '"zap_default_amount_sats":%s,' "$zap_default_amount_sats"
 printf '"plugins":%s,' "$plugins_json"
-printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":"%s","signaling_wss":"%s","public_rooms":%s,"rooms":%s,"include_syntax":"{{video-chat}}"},' \
+printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":"%s","signaling_wss":"%s","public_rooms":%s,"rooms":%s,"active_rooms":%s,"scheduled_rooms":"%s","include_syntax":"{{video-chat}}"},' \
   "$video_chat_participant_limit_raw" \
   "$video_chat_token_ttl_seconds_raw" \
   "$(blog_json_escape "$video_chat_janus_wss")" \
   "$(blog_json_escape "$video_chat_signaling_wss")" \
   "$video_chat_public_rooms" \
-  "$video_chat_rooms_json"
+  "$video_chat_rooms_json" \
+  "$video_chat_active_rooms_json" \
+  "$(blog_json_escape "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')")"
 printf '"overworld":{"anonymous_enabled":%s,"anonymous_time_limit_seconds":%s,"show_hidden":%s,"start_path":"%s","effective_start_path":"%s","access_mode":"%s","max_entries":%s,"include_syntax":"{{overworld-game}}"},' \
   "$overworld_anonymous_enabled" \
   "$overworld_anonymous_time_limit_seconds_raw" \

@@ -35,9 +35,12 @@ if [ -z "$file" ] || [ ! -f "$file" ]; then
   blog_json_error "Post not found" "not_found"
   exit 0
 fi
+file=$(blog_canonical_post_file_path "$file" 2>/dev/null || printf '%s' "$file")
+posts_dir_real=$(CDPATH= cd -- "$blog_posts_dir" 2>/dev/null && pwd -P || printf '%s' "$blog_posts_dir")
+posts_store_dir_real=$(CDPATH= cd -- "$blog_posts_store_dir" 2>/dev/null && pwd -P || printf '%s' "$blog_posts_store_dir")
 
 case "$file" in
-  "$blog_posts_dir"/*) ;;
+  "$posts_dir_real"/*|"$posts_store_dir_real"/*) ;;
   *)
     blog_json_error "Invalid post path" "invalid_post_path"
     exit 0
@@ -45,13 +48,11 @@ case "$file" in
 esac
 
 rel_path=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
-case "$rel_path" in
-  posts/*.md) ;;
-  *)
-    blog_json_error "Invalid post path" "invalid_post_path"
-    exit 0
-    ;;
-esac
+rel_path=$(blog_normalize_post_source_path "$rel_path" 2>/dev/null || printf '')
+if [ -z "$rel_path" ]; then
+  blog_json_error "Invalid post path" "invalid_post_path"
+  exit 0
+fi
 
 if ! blog_origin_available; then
   blog_json_error "Origin is not available on this server" "origin_unavailable"

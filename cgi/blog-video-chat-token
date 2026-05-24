@@ -5,6 +5,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-video-chat-schedule-common.sh"
 
 blog_init
 blog_read_request_body
@@ -40,31 +41,14 @@ video_state_dir="$blog_site_data/video-chat"
 rooms_dir="$video_state_dir/rooms"
 calls_dir="$video_state_dir/calls"
 mkdir -p "$rooms_dir" "$calls_dir"
+video_chat_rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
+video_chat_scheduled_rooms_raw=$(config-get "$blog_site_conf" video_chat_scheduled_rooms 2>/dev/null || printf '')
+video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch)
 
 room_path_for() {
   key=$(safe_key "${1-}")
   [ -n "$key" ] || key=unknown
   printf '%s/%s.conf\n' "$rooms_dir" "$key"
-}
-
-configured_public_room_slugs() {
-  rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
-  printf '%s\n' "$rooms_raw" | tr ',' '\n' | while IFS= read -r public_room_name || [ -n "$public_room_name" ]; do
-    room_slug=$(room_key "$public_room_name")
-    [ -n "$room_slug" ] || continue
-    printf '%s\n' "$room_slug"
-  done | awk '!seen[$0]++'
-}
-
-public_room_is_configured() {
-  wanted=$(room_key "${1-}")
-  [ -n "$wanted" ] || return 1
-  configured_public_room_slugs | while IFS= read -r configured_room || [ -n "$configured_room" ]; do
-    if [ "$configured_room" = "$wanted" ]; then
-      printf 'yes\n'
-      break
-    fi
-  done | grep -q '^yes$'
 }
 
 call_path_for() {
@@ -104,6 +88,8 @@ owner_call=$(blog_param owner_call)
 case "$owner_call" in true|1|yes|on) owner_call=true ;; *) owner_call=false ;; esac
 public_room=$(blog_param public_room)
 case "$public_room" in true|1|yes|on) public_room=true ;; *) public_room=false ;; esac
+bootstrap_request=$(blog_param bootstrap)
+case "$bootstrap_request" in true|1|yes|on) bootstrap_request=true ;; *) bootstrap_request=false ;; esac
 
 requested_private=$(blog_param private_room)
 case "$requested_private" in true|1|yes|on) requested_private=true ;; *) requested_private=false ;; esac
@@ -116,11 +102,14 @@ if [ -z "$room_id" ]; then
   room_id=$(room_key "$(blog_random_token 6)")
 fi
 
+public_room_info_json='{"active":false}'
 if [ "$public_room" = "true" ] && [ "$owner_call" != "true" ] && [ "$requested_private" != "true" ]; then
   active_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
   case "$active_public_rooms" in true|1|yes|on) active_public_rooms=true ;; *) active_public_rooms=false ;; esac
-  if [ "$active_public_rooms" != "true" ] || ! public_room_is_configured "$room_id"; then
-    blog_json_error "Public event room is not active" "public_room_not_active"
+  public_room_info_json=$(blog_video_chat_public_room_lookup_json "$video_chat_rooms_raw" "$video_chat_scheduled_rooms_raw" "$video_chat_schedule_now" "$room_id")
+  public_room_active=$(printf '%s\n' "$public_room_info_json" | jq -r '.active == true' 2>/dev/null || printf 'false')
+  if [ "$active_public_rooms" != "true" ] || [ "$public_room_active" != "true" ]; then
+    blog_json_error "Scheduled room is not active" "public_room_not_active"
     exit 0
   fi
 fi
@@ -149,6 +138,18 @@ if [ -f "$room_path" ]; then
   stored_private=$(config-get "$room_path" private_room 2>/dev/null || printf 'false')
   case "$stored_private" in true|1|yes|on) stored_private=true ;; *) stored_private=false ;; esac
 fi
+if [ "$public_room" = "true" ]; then
+  public_room_password=$(printf '%s\n' "$public_room_info_json" | jq -r '.password // ""' 2>/dev/null || printf '')
+  public_room_private=$(printf '%s\n' "$public_room_info_json" | jq -r '.private_room == true' 2>/dev/null || printf 'false')
+  if [ "$public_room_private" = "true" ] && [ -n "$public_room_password" ]; then
+    stored_room_password=$public_room_password
+    stored_private=true
+    config-set "$room_path" room_id "$room_id"
+    config-set "$room_path" private_room true
+    config-set "$room_path" room_password "$stored_room_password"
+    config-set "$room_path" created_at "$(blog_now_epoch)"
+  fi
+fi
 
 if [ "$requested_private" = "true" ] && [ -z "$stored_room_password" ]; then
   stored_room_password=$provided_room_password
@@ -159,7 +160,7 @@ if [ "$requested_private" = "true" ] && [ -z "$stored_room_password" ]; then
   config-set "$room_path" room_password "$stored_room_password"
   config-set "$room_path" created_at "$(blog_now_epoch)"
 fi
-if [ "$stored_private" = "true" ] && [ -n "$stored_room_password" ] && [ "$owner_call" != "true" ] && [ "$provided_room_password" != "$stored_room_password" ]; then
+if [ "$stored_private" = "true" ] && [ -n "$stored_room_password" ] && [ "$owner_call" != "true" ] && [ "$public_room" != "true" ] && [ "$provided_room_password" != "$stored_room_password" ]; then
   blog_json_error "Room password is required" "room_password_required"
   exit 0
 fi
@@ -177,6 +178,11 @@ fi
 if [ "$participant_limit" -gt 24 ]; then
   participant_limit=24
 fi
+public_room_participant_limit=$(printf '%s\n' "$public_room_info_json" | jq -r '.participant_limit // 0' 2>/dev/null || printf '0')
+case "$public_room_participant_limit" in ''|*[!0-9]*) public_room_participant_limit=0 ;; esac
+if [ "$public_room_participant_limit" -ge 2 ] && [ "$public_room_participant_limit" -le 24 ]; then
+  participant_limit=$public_room_participant_limit
+fi
 
 ttl_seconds=$(config-get "$blog_site_conf" video_chat_token_ttl_seconds 2>/dev/null || printf '3600')
 case "$ttl_seconds" in
@@ -187,6 +193,24 @@ if [ "$ttl_seconds" -lt 60 ]; then
 fi
 if [ "$ttl_seconds" -gt 86400 ]; then
   ttl_seconds=86400
+fi
+
+janus_ws=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
+signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
+public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
+case "$public_rooms" in true|false) ;; *) public_rooms=false ;; esac
+rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms_raw" "$video_chat_scheduled_rooms_raw" "$video_chat_schedule_now")
+
+if [ "$bootstrap_request" = "true" ]; then
+  printf '{'
+  printf '"success":true,'
+  printf '"participant_limit":%s,' "$participant_limit"
+  printf '"janus_wss":"%s",' "$(blog_json_escape "$janus_ws")"
+  printf '"signaling_wss":"%s",' "$(blog_json_escape "$signaling_endpoint")"
+  printf '"public_rooms":%s,' "$public_rooms"
+  printf '"rooms":%s' "$rooms_json"
+  printf '}\n'
+  exit 0
 fi
 
 issued_at=$(blog_now_epoch)
@@ -215,20 +239,6 @@ if [ "$owner_call" = "true" ]; then
   config-set "$call_path" expires_at "$((issued_at + 300))"
   config-set "$call_path" answered_at 0
 fi
-
-janus_ws=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
-signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
-public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
-case "$public_rooms" in true|false) ;; *) public_rooms=false ;; esac
-rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
-rooms_json=$(printf '%s\n' "$rooms_raw" | tr ',' '\n' | awk '
-  {
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-    if ($0 != "" && !seen[$0]++) {
-      print $0
-    }
-  }
-' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
 
 printf '{'
 printf '"success":true,'

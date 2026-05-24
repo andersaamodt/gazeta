@@ -21,7 +21,7 @@ assert_file_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     pass
   else
     fail "$label (missing: $needle in $file)"
@@ -32,7 +32,7 @@ assert_file_not_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     fail "$label (unexpected: $needle in $file)"
   else
     pass
@@ -69,7 +69,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'shortform|link-share)' 'nostr 
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'attachment)' 'nostr kind resolver maps attachment post type'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" "printf '15\\n'" 'nostr kind resolver emits kind 15 for attachment'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" "printf '30311\\n'" 'nostr kind resolver emits kind 30311 for go-live'
-assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type=$post_type' 'nostr signer tags event with normalized post_type'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '--tag post_type "$post_type"' 'nostr signer tags event with normalized post_type'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '.kind==1 or .kind==15 or .kind==20 or .kind==21 or .kind==30023 or .kind==30311' 'derived rebuild includes non-longform nostr kinds'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type_tag:' 'derived rebuild reads post_type tag from nostr events'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'post_type: (' 'derived rebuild writes post_type in posts index'
@@ -232,10 +232,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (!state.compose
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'setComposeOpen(true);' 'blog paste handler opens compose card'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "setComposePostType('upload-media', { skipAutosave: true, skipRender: true });" 'blog paste handler switches to upload-media type'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "handleComposeUploads(images, 'upload-media');" 'blog paste handler uploads pasted images'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return apiPost('/cgi/blog-upload-media', {" 'blog upload flow posts to upload endpoint'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "filename: String((file && file.name) || 'upload.bin')," 'blog upload flow sends filename'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "mime_type: String((file && file.type) || '')," 'blog upload flow sends mime type'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data_base64: String(dataUrl || '')" 'blog upload flow sends base64 payload'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "xhr.open('POST', '/cgi/blog-upload-media', true);" 'blog upload flow posts to upload endpoint'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "var safeFilename = String((file && file.name) || 'upload.bin').trim() || 'upload.bin';" 'blog upload flow sends filename'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "var safeMimeType = String((file && file.type) || '');" 'blog upload flow sends mime type'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data_base64: useBareData ? bareDataBase64 : rawDataUrl" 'blog upload flow sends base64 payload'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composeCameraOverlayHtml() {' 'blog compose defines fullscreen camera overlay renderer'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-camera-fullscreen-preview' 'blog compose camera overlay renders fullscreen video preview'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function openComposeCameraCapture(options) {' 'blog compose has camera fullscreen entrypoint'

@@ -221,6 +221,7 @@
     videoChatSignalingWss: document.getElementById('video-chat-signaling-wss'),
     videoChatPublicRooms: document.getElementById('video-chat-public-rooms'),
     videoChatRooms: document.getElementById('video-chat-rooms'),
+    videoChatScheduledRooms: document.getElementById('video-chat-scheduled-rooms'),
     videoChatOperatorStatus: document.getElementById('video-chat-operator-status'),
     videoChatOperatorRefresh: document.getElementById('btn-video-chat-operator-refresh'),
     videoChatOperatorCallPanel: document.getElementById('video-chat-operator-call-panel'),
@@ -2499,9 +2500,6 @@
 
   function composeBackingPostType(postType) {
     const type = normalizeComposePostType(postType);
-    if (type === 'attachment') {
-      return 'longform';
-    }
     return type;
   }
 
@@ -2562,6 +2560,9 @@
     if (type === 'longform') {
       return { kind: '30023', tags: 'd, title, summary, published_at' };
     }
+    if (type === 'attachment') {
+      return { kind: '15', tags: 'url, m, size, ox, alt' };
+    }
     if (type === 'capture-media') {
       return { kind: '20 or 21', tags: 'url, m=image/*|video/*, alt, dim|duration' };
     }
@@ -2584,6 +2585,7 @@
     if (type === 'shortform') { return 'Shortform Post (kind ' + target.kind + ')'; }
     if (type === 'capture-media') { return 'Media Capture (kind ' + target.kind + ')'; }
     if (type === 'upload-media') { return 'Media Upload (kind ' + target.kind + ')'; }
+    if (type === 'attachment') { return 'Attachment (kind ' + target.kind + ')'; }
     if (type === 'audio-note') { return 'Audio Note (kind ' + target.kind + ')'; }
     if (type === 'link-share') { return 'Link (kind ' + target.kind + ')'; }
     return 'Go Live (kind ' + target.kind + ')';
@@ -2797,7 +2799,7 @@
       } else if (type === 'audio-note') {
         els.postContent.placeholder = 'Optional note for uploaded audio...';
       } else {
-        els.postContent.placeholder = 'Post body';
+        els.postContent.placeholder = '# Write in Markdown\n\nDrop images anywhere on this page to upload + insert.';
       }
       if (type === 'shortform') {
         els.postContent.rows = 11;
@@ -3838,13 +3840,16 @@
   function normalizeVideoChatConfig(raw) {
     const src = raw && typeof raw === 'object' ? raw : {};
     const rooms = Array.isArray(src.rooms) ? src.rooms : String(src.rooms || '').split(/[,\n]/);
+    const activeRooms = Array.isArray(src.active_rooms) ? src.active_rooms : rooms;
     return {
       participant_limit: clampInt(src.participant_limit, 6, 2, 24),
       token_ttl_seconds: clampInt(src.token_ttl_seconds, 3600, 60, 86400),
       janus_wss: String(src.janus_wss || '').trim(),
       signaling_wss: String(src.signaling_wss || '').trim(),
       public_rooms: src.public_rooms === true,
-      rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12)
+      rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12),
+      active_rooms: activeRooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 24),
+      scheduled_rooms: String(src.scheduled_rooms || '').replace(/\s*;\s*/g, '\n').trim()
     };
   }
 
@@ -3888,6 +3893,10 @@
     if (els.videoChatRooms) {
       els.videoChatRooms.value = (cfg.rooms && cfg.rooms.length ? cfg.rooms : []).join('\n');
       els.videoChatRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
+    }
+    if (els.videoChatScheduledRooms) {
+      els.videoChatScheduledRooms.value = cfg.scheduled_rooms || '';
+      els.videoChatScheduledRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
     }
   }
 
@@ -4040,7 +4049,8 @@
       janus_wss: els.videoChatJanusWss ? els.videoChatJanusWss.value : '',
       signaling_wss: els.videoChatSignalingWss ? els.videoChatSignalingWss.value : '',
       public_rooms: !!(els.videoChatPublicRooms && els.videoChatPublicRooms.checked),
-      rooms: els.videoChatRooms ? els.videoChatRooms.value : ''
+      rooms: els.videoChatRooms ? els.videoChatRooms.value : '',
+      scheduled_rooms: els.videoChatScheduledRooms ? els.videoChatScheduledRooms.value : ''
     });
   }
 
@@ -4055,7 +4065,8 @@
         video_chat_janus_wss: cfg.janus_wss,
         video_chat_signaling_wss: cfg.signaling_wss,
         video_chat_public_rooms: cfg.public_rooms ? 'true' : 'false',
-        video_chat_rooms: cfg.rooms.join('\n')
+        video_chat_rooms: cfg.rooms.join('\n'),
+        video_chat_scheduled_rooms: cfg.scheduled_rooms
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save video calling settings');
@@ -4249,8 +4260,8 @@
     const users = Array.isArray(info.users) ? info.users : [];
     const rooms = Array.isArray(info.rooms) ? info.rooms : [];
     const calls = Array.isArray(info.calls) ? info.calls : [];
-    const configuredRooms = state.videoChatConfig && state.videoChatConfig.public_rooms && Array.isArray(state.videoChatConfig.rooms)
-      ? state.videoChatConfig.rooms
+    const configuredRooms = state.videoChatConfig && state.videoChatConfig.public_rooms && Array.isArray(state.videoChatConfig.active_rooms)
+      ? state.videoChatConfig.active_rooms
       : [];
     let html = '';
     html += '<div class="runtime-setting-item">';
@@ -4291,9 +4302,9 @@
         }).join(', ') + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '" data-video-chat-room-password="' + escapeAttr(roomPassword) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
       });
     }
-    html += '<div class="runtime-setting-item"><div><strong>Event rooms</strong><span class="runtime-setting-help">Admin-named public rooms shown on the contact page.</span></div></div>';
+    html += '<div class="runtime-setting-item"><div><strong>Scheduled Rooms</strong><span class="runtime-setting-help">Currently active always-on and scheduled rooms shown on the contact page.</span></div></div>';
     if (!configuredRooms.length) {
-      html += '<div class="placeholder">No event rooms are active.</div>';
+      html += '<div class="placeholder">No rooms are active.</div>';
     } else {
       configuredRooms.forEach(function (roomName) {
         const roomId = slugifyRoom(roomName);
@@ -8683,7 +8694,8 @@
       els.videoChatJanusWss,
       els.videoChatSignalingWss,
       els.videoChatPublicRooms,
-      els.videoChatRooms
+      els.videoChatRooms,
+      els.videoChatScheduledRooms
     ].filter(Boolean).forEach(function (input) {
       input.addEventListener('input', function () {
         if (input === els.videoChatPublicRooms) {

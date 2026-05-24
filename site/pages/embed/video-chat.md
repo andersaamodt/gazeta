@@ -42,4 +42,4 @@ body:has(#video-chat-embed-root) main {
 }
 </style>
 
-<script src="/static/video-chat-widget.js?v=20260523-event-rooms1"></script>
+<script src="/static/video-chat-widget.js?v=20260524-scheduled-rooms1"></script>

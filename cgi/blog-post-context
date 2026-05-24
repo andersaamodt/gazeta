@@ -140,16 +140,17 @@ older=""
 prev=""
 while IFS= read -r post_file; do
   [ -n "$post_file" ] || continue
-  if [ "$post_file" = "$current_file" ]; then
+  canonical_post_file=$(blog_canonical_post_file_path "$post_file" 2>/dev/null || printf '%s' "$post_file")
+  if [ "$canonical_post_file" = "$current_file" ]; then
     found=1
     newer=$prev
     continue
   fi
   if [ "$found" -eq 1 ]; then
-    older=$post_file
+    older=$canonical_post_file
     break
   fi
-  prev=$post_file
+  prev=$canonical_post_file
 done < "$posts_tmp"
 
 if [ "$found" -ne 1 ]; then

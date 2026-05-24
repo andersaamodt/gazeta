@@ -933,6 +933,7 @@
     this._render();
     this._bindUi();
     this._syncFeatureFlag();
+    this._refreshPublicRooms();
 
     if (!this.state.featureDisabled && this.state.prefilledInviteLink && this.nodes.inviteInput) {
       this.nodes.inviteInput.value = this.state.prefilledInviteLink;
@@ -969,7 +970,7 @@
     var singleRoomButtonHtml = '';
     var roomButtonsHtml = '';
     if (publicRoomsEnabled && publicRoomNames.length === 1) {
-      singleRoomButtonHtml = '<button type="button" class="vcw-btn vcw-btn-primary vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(publicRoomNames[0])) + '" data-vcw-public-room="true" title="' + escapeAttr(publicRoomNames[0]) + '">Join Event Room</button>';
+      singleRoomButtonHtml = '<button type="button" class="vcw-btn vcw-btn-primary vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(publicRoomNames[0])) + '" data-vcw-public-room="true" title="' + escapeAttr(publicRoomNames[0]) + '">Join Scheduled Room</button>';
     } else if (publicRoomsEnabled) {
       roomButtonsHtml = publicRoomNames.map(function (roomName) {
         return '<div class="vcw-room-list-row"><span class="vcw-room-name">' + escapeHtml(roomName) + '</span><button type="button" class="vcw-btn vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(roomName)) + '" data-vcw-public-room="true">Join</button></div>';
@@ -1256,7 +1257,7 @@
       }
       return;
     }
-    this._setStatus(this.options.publicRooms === true && parseRoomList(this.options.rooms).length ? 'Ready. Choose voice, video, or join an event room.' : 'Ready. Choose voice or video.', 'info');
+    this._setStatus(this.options.publicRooms === true && parseRoomList(this.options.rooms).length ? 'Ready. Choose voice, video, or join a scheduled room.' : 'Ready. Choose voice or video.', 'info');
   };
 
   VideoChatWidget.prototype._setJoinUiBusy = function (busy) {
@@ -1315,6 +1316,55 @@
     } catch (_err2) {
       // Ignore dispatch issues in restrictive environments.
     }
+  };
+
+  VideoChatWidget.prototype._refreshPublicRooms = function () {
+    var self = this;
+    if (!self.options.tokenEndpoint || self.state.featureDisabled || self.state.joined || self.state.joining) {
+      return Promise.resolve(false);
+    }
+    var body = new URLSearchParams();
+    body.set('bootstrap', 'true');
+    return fetch(self.options.tokenEndpoint, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: body.toString()
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var data = safeJsonParse(text, null);
+        if (!res.ok || !data || data.success !== true) {
+          return false;
+        }
+        var nextRooms = parseRoomList(data.rooms || []);
+        var currentRooms = parseRoomList(self.options.rooms || []);
+        var nextPublicRooms = data.public_rooms === true && nextRooms.length > 0;
+        var changed = nextPublicRooms !== self.options.publicRooms || nextRooms.join('\n') !== currentRooms.join('\n');
+        if (isWsUrl(data.janus_wss || '')) {
+          self.options.janusEndpoint = String(data.janus_wss);
+        }
+        if (isWsUrl(data.signaling_wss || '')) {
+          self.options.signalingEndpoint = String(data.signaling_wss);
+        }
+        if (isFinite(Number(data.participant_limit))) {
+          self.options.participantLimit = toInt(data.participant_limit, self.options.participantLimit, 2, 24);
+          self.options.maxParticipants = Math.max(self.options.maxParticipants, Math.min(self.options.participantLimit, 16));
+        }
+        if (!changed || self.state.joined || self.state.joining) {
+          return changed;
+        }
+        self.options.publicRooms = nextPublicRooms;
+        self.options.rooms = nextRooms;
+        self._render();
+        self._bindUi();
+        self._syncFeatureFlag();
+        return true;
+      });
+    }).catch(function () {
+      return false;
+    });
   };
 
   VideoChatWidget.prototype._emitMetric = function (name, payload) {

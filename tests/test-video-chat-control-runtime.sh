@@ -57,6 +57,7 @@ call_token() {
   query=$1
   REQUEST_METHOD=GET \
     QUERY_STRING="$query" \
+    VIDEO_CHAT_SCHEDULE_NOW="${VIDEO_CHAT_SCHEDULE_NOW-}" \
     WIZARDRY_SITES_DIR="$SITES_DIR" \
     WIZARDRY_SITE_NAME="$SITE_NAME" \
     "$ROOT_DIR/cgi/blog-video-chat-token" | strip_cgi_headers
@@ -116,16 +117,27 @@ guest_call_json=$(call_control 'action=admin_call_user&username=guest')
 assert_jq "$guest_call_json" '.success == false and .code == "not_allowed"' 'admin cannot call another user without their opt-in'
 
 inactive_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
-assert_jq "$inactive_public_room_json" '.success == false and .code == "public_room_not_active"' 'public event room joins require an active configured room'
+assert_jq "$inactive_public_room_json" '.success == false and .code == "public_room_not_active"' 'scheduled room joins require an active configured room'
 
 config-set "$SITE_ROOT/site.conf" video_chat_public_rooms true
 config-set "$SITE_ROOT/site.conf" video_chat_rooms 'Office hours,Launch Q&A'
 
 active_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
-assert_jq "$active_public_room_json" '.success == true and .room_id == "office-hours" and .public_rooms == true and (.rooms | index("Office hours")) and (.rooms | index("Launch Q&A"))' 'active configured event rooms can issue video tokens'
+assert_jq "$active_public_room_json" '.success == true and .room_id == "office-hours" and .public_rooms == true and (.rooms | index("Office hours")) and (.rooms | index("Launch Q&A"))' 'active configured shared rooms can issue video tokens'
 
 unlisted_public_room_json=$(call_token 'room_id=random-hangout&public_room=true')
-assert_jq "$unlisted_public_room_json" '.success == false and .code == "public_room_not_active"' 'unlisted public event rooms cannot issue public room tokens'
+assert_jq "$unlisted_public_room_json" '.success == false and .code == "public_room_not_active"' 'unlisted scheduled rooms cannot issue public room tokens'
+
+weekday=$(date +%a | tr '[:upper:]' '[:lower:]' | cut -c1-3)
+monthday=$(date +%d | sed 's/^0//')
+config-set "$SITE_ROOT/site.conf" video_chat_rooms ''
+config-set "$SITE_ROOT/site.conf" video_chat_scheduled_rooms "Daily Room|daily|00:00|1440|daily-secret|7;Weekly Room|weekly:$weekday|00:00|1440|weekly-secret|8;Monthly Room|monthly:$monthday|00:00|1440|monthly-secret|9"
+
+scheduled_bootstrap_json=$(call_token 'bootstrap=true')
+assert_jq "$scheduled_bootstrap_json" '.success == true and .public_rooms == true and (.rooms | index("Daily Room")) and (.rooms | index("Weekly Room")) and (.rooms | index("Monthly Room")) and (.room_password? | not)' 'scheduled room bootstrap exposes active room names without passwords'
+
+scheduled_join_json=$(call_token 'room_id=weekly-room&public_room=true')
+assert_jq "$scheduled_join_json" '.success == true and .room_id == "weekly-room" and .private_room == true and .room_password == "weekly-secret" and .participant_limit == 8' 'active scheduled room joins inherit password and participant limit'
 
 owner_call_json=$(call_token 'owner_call=true&display_name=Browser%20Caller')
 assert_jq "$owner_call_json" '.success == true and .private_room == true and (.room_id | startswith("anders-")) and (.room_password | length > 20)' 'public owner calls get a fresh private passworded room'

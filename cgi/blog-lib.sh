@@ -3593,8 +3593,7 @@ blog_normalize_post_type() {
       printf 'upload-media\n'
       ;;
     attachment|attachments|file|file-upload|file_upload)
-      # "Attachment" is a compose mode, not a distinct persisted post kind.
-      printf 'longform\n'
+      printf 'attachment\n'
       ;;
     audio|audio-note|audio_note|voice|voice-note|voice_note)
       printf 'audio-note\n'
@@ -4165,6 +4164,9 @@ blog_nostr_kind_for_post_type() {
       ;;
     longform)
       printf '30023\n'
+      ;;
+    attachment)
+      printf '15\n'
       ;;
     audio-note)
       printf '21\n'
