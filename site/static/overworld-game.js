@@ -1,5 +1,5 @@
 (function () {
-  const GODOT_URL = '/static/overworld-godot/v20260523-locked-doors/index.html';
+  const GODOT_URL = '/static/overworld-godot/v20260523-page-help/index.html';
   const DOWNLOAD_LABEL = 'Download (6.8 MB)';
 
   function injectStyles() {
@@ -43,7 +43,7 @@
   color: #f7f1df;
   background:
     linear-gradient(180deg, rgba(16,19,16,.38), rgba(16,19,16,.86)),
-    url("/static/overworld-godot/v20260523-locked-doors/index.png") center / min(48%, 320px) no-repeat,
+    url("/static/overworld-godot/v20260523-page-help/index.png") center / min(48%, 320px) no-repeat,
     #101310;
 }
 .overworld-godot-splash-panel {
@@ -133,6 +133,33 @@
   background: #2f7b55;
   box-shadow: 0 0 0 3px color-mix(in srgb, #2f7b55 18%, transparent);
 }
+.overworld-godot-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  color: color-mix(in srgb, currentColor 76%, transparent);
+  font-size: .9rem;
+  line-height: 1.35;
+}
+.overworld-godot-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.overworld-godot-key {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: color-mix(in srgb, canvas 88%, currentColor 5%);
+  color: color-mix(in srgb, currentColor 84%, transparent);
+}
+.overworld-godot-login-note {
+  max-width: 42rem;
+}
 @media (max-width: 720px) {
   .overworld-page-shell {
     max-width: 100%;
@@ -151,7 +178,7 @@
     padding: 12px;
     background:
       linear-gradient(180deg, rgba(16,19,16,.34), rgba(16,19,16,.88)),
-      url("/static/overworld-godot/v20260523-locked-doors/index.png") center / min(62%, 240px) no-repeat,
+      url("/static/overworld-godot/v20260523-page-help/index.png") center / min(62%, 240px) no-repeat,
       #101310;
   }
   .overworld-godot-splash-panel {
@@ -173,6 +200,14 @@
   .overworld-godot-status {
     justify-self: center;
     max-width: calc(100vw - 20px);
+  }
+  .overworld-godot-help {
+    justify-content: center;
+    padding-inline: 10px;
+    text-align: center;
+  }
+  .overworld-godot-keys {
+    justify-content: center;
   }
 }
 @media (max-width: 480px) {
@@ -252,6 +287,27 @@
     status.className = 'overworld-godot-status';
     status.textContent = 'Waiting for download';
 
+    const help = document.createElement('div');
+    help.className = 'overworld-godot-help';
+
+    const keys = document.createElement('div');
+    keys.className = 'overworld-godot-keys';
+    [
+      'Enter: note',
+      'I: inventory',
+      'B: spells',
+      'C: character'
+    ].forEach(function (label) {
+      const key = document.createElement('span');
+      key.className = 'overworld-godot-key';
+      key.textContent = label;
+      keys.appendChild(key);
+    });
+
+    const loginNote = document.createElement('div');
+    loginNote.className = 'overworld-godot-login-note';
+    loginNote.textContent = 'Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.';
+
     function startDownload() {
       downloadButton.disabled = true;
       downloadButton.textContent = 'Downloading';
@@ -282,6 +338,9 @@
     frameWrap.appendChild(splash);
     shell.appendChild(frameWrap);
     shell.appendChild(status);
+    help.appendChild(keys);
+    help.appendChild(loginNote);
+    shell.appendChild(help);
     host.replaceChildren(shell);
     markReady();
   }
