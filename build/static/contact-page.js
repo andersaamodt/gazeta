@@ -984,7 +984,7 @@
     try {
       var ownerContactLink = secureChatOwnerContactLink();
       var transportConfig = {
-        namespace: 'nostr-blog-secure-chat',
+        namespace: 'gazeta-secure-chat',
         defaultContactId: secureChatOwnerContactId(ownerContactLink) || 'secure-chat-owner',
         ownerContactLink: ownerContactLink,
         profile: secureChatBrowserProfile()

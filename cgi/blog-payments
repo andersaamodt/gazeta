@@ -334,7 +334,7 @@ case "$action" in
     btcpay_invoice_id=''
     btcpay_checkout_link=''
     if [ "$provider" = "btcpay" ]; then
-      order_title=$(printf '%s\n' "$quoted" | jq -r '[.items[]?.title] | join(", ")' 2>/dev/null || printf 'nostr-blog order')
+      order_title=$(printf '%s\n' "$quoted" | jq -r '[.items[]?.title] | join(", ")' 2>/dev/null || printf 'gazeta order')
       crypto_total=$(printf '%s\n' "$quoted" | jq -r '.crypto_total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
       invoice_json=$(blog_btcpay_create_invoice_json "$order_id" "$crypto_total" "USD" "$order_title" 2>/dev/null || printf '')
       if [ -n "$invoice_json" ]; then

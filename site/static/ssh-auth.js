@@ -170,7 +170,7 @@
       publicKey: {
         challenge: challengeBuffer,
         rp: {
-          name: 'Nostr Blog',
+          name: 'gazeta',
           id: window.location.hostname
         },
         user: {

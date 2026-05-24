@@ -212,8 +212,8 @@ blog_btcpay_authorize_url() {
   redirect_url="$callback/cgi/blog-manage-btcpay?action=authorize_callback"
   printf '%s/api-keys/authorize?applicationName=%s&applicationIdentifier=%s&permissions=%s&permissions=%s&permissions=%s&permissions=%s&permissions=%s&selectiveStores=true&strict=true&redirect=%s\n' \
     "$btcpay_url" \
-    "$(blog_url_encode 'nostr-blog checkout')" \
-    "$(blog_url_encode 'nostr-blog-checkout')" \
+    "$(blog_url_encode 'gazeta checkout')" \
+    "$(blog_url_encode 'gazeta-checkout')" \
     "$(blog_url_encode 'btcpay.store.canviewstoresettings')" \
     "$(blog_url_encode 'btcpay.store.cancreateinvoice')" \
     "$(blog_url_encode 'btcpay.store.canviewinvoices')" \

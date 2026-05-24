@@ -2267,7 +2267,7 @@
   function buildNostrConnectUri(appPubkey, pairSecret, relays) {
     var params = new URLSearchParams();
     var metadata = {
-      name: 'Nostr Blog',
+      name: 'gazeta',
       url: window.location.origin,
       description: 'Sign in and sign zaps for this blog.'
     };
@@ -2275,7 +2275,7 @@
       params.append('relay', relay);
     });
     params.set('secret', pairSecret);
-    params.set('name', 'Nostr Blog');
+    params.set('name', 'gazeta');
     params.set('metadata', JSON.stringify(metadata));
     params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734');
     return 'nostrconnect://' + appPubkey + '?' + params.toString();

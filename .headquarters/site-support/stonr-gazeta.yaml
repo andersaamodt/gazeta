@@ -1,5 +1,5 @@
-name: nostr-blog
-description: Lock Stonr relay features required by nostr-blog for site mirroring, relay discovery, read/query support, Nostr comments, and NIP-46 phone signer pairing.
+name: gazeta
+description: Lock Stonr relay features required by gazeta for site mirroring, relay discovery, read/query support, Nostr comments, and NIP-46 phone signer pairing.
 settings:
   VERIFY_SIG: true
   ENABLE_NIP11: true

@@ -3,7 +3,7 @@ set -eu
 
 site_user=${HQ_SITE_USER-}
 site_domain=${HQ_SITE_DOMAIN-}
-support_site_name=nostr-blog
+support_site_name=gazeta
 support_relay_domain=''
 support_relay_url=''
 support_public_write=false
@@ -77,9 +77,9 @@ support_file() {
 
 app_support_source_file() {
   for candidate in \
-    "${HQ_UPLOADED_TREE_PATH-}/.headquarters/site-support/stonr-nostr-blog.yaml" \
-    "${HQ_SITE_LOCAL_PATH-}/.headquarters/site-support/stonr-nostr-blog.yaml" \
-    ".headquarters/site-support/stonr-nostr-blog.yaml"
+    "${HQ_UPLOADED_TREE_PATH-}/.headquarters/site-support/stonr-gazeta.yaml" \
+    "${HQ_SITE_LOCAL_PATH-}/.headquarters/site-support/stonr-gazeta.yaml" \
+    ".headquarters/site-support/stonr-gazeta.yaml"
   do
     [ -n "$candidate" ] || continue
     [ -f "$candidate" ] || continue
@@ -175,7 +175,7 @@ relay_env_file() {
 }
 
 relay_app_support_file() {
-  printf '%s/nostr-blog.app-support.yaml\n' "$(relay_root)"
+  printf '%s/gazeta.app-support.yaml\n' "$(relay_root)"
 }
 
 relay_app_support_list_file() {
@@ -526,7 +526,7 @@ EOF_ENV
 write_app_support_files() {
   source_file=$(app_support_source_file 2>/dev/null || printf '')
   [ -n "$source_file" ] || {
-    status_bad "Stonr nostr-blog app support profile is missing."
+    status_bad "Stonr gazeta app support profile is missing."
     exit 1
   }
   app_file=$(relay_app_support_file)
@@ -584,15 +584,15 @@ check_status() {
     return 0
   fi
   if ! run_root test -f "$(relay_app_support_file)"; then
-    status_bad "Stonr nostr-blog app support profile is missing from the relay root."
+    status_bad "Stonr gazeta app support profile is missing from the relay root."
     return 0
   fi
   if ! run_root test -f "$(relay_app_support_list_file)"; then
     status_bad "Stonr app support list is missing next to relay.env."
     return 0
   fi
-  if ! run_site stonr --env "$(relay_env_file)" print-app-support 2>/dev/null | grep -q '"name"[[:space:]]*:[[:space:]]*"nostr-blog"'; then
-    status_bad "Stonr is not reading the nostr-blog app support profile."
+  if ! run_site stonr --env "$(relay_env_file)" print-app-support 2>/dev/null | grep -q '"name"[[:space:]]*:[[:space:]]*"gazeta"'; then
+    status_bad "Stonr is not reading the gazeta app support profile."
     return 0
   fi
   if ! run_site stonr --env "$(relay_env_file)" print-app-support 2>/dev/null | grep -q '"env_key"[[:space:]]*:[[:space:]]*"ALLOW_KINDS"'; then

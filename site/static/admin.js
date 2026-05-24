@@ -5852,7 +5852,7 @@
       publicKey: {
         challenge: base64ToArrayBuffer(challengeB64),
         rp: {
-          name: 'Nostr Blog',
+          name: 'gazeta',
           id: window.location.hostname
         },
         user: {

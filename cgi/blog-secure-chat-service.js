@@ -789,7 +789,7 @@ function mapOwlExportRow(mapping, row) {
   const attachment = message.attachment || null;
   const body = text || (attachment ? `Attachment: ${attachment.name}` : '');
   return Object.assign({}, message, {
-    id: `nostr-blog-secure-chat:${row.npub}:${row.seq}`,
+    id: `gazeta-secure-chat:${row.npub}:${row.seq}`,
     npub: String(row.npub || ''),
     thread_id: String(row.npub || ''),
     contact_name: String(mapping && mapping.bridge_display_name || '').trim() || `Nostr ${String(row.npub || '').slice(0, 12)}`,
@@ -798,7 +798,7 @@ function mapOwlExportRow(mapping, row) {
     subject: 'Website Secure Chat',
     from_self: String(row.direction || '') === 'incoming',
     in_inbox: String(row.direction || '') === 'outgoing',
-    source: 'nostr-blog-secure-chat'
+    source: 'gazeta-secure-chat'
   });
 }
 

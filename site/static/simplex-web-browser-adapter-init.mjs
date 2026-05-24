@@ -72,7 +72,7 @@ function configuredOptions(overrides = {}) {
   const xftpKeyHash = String(overrides.xftpKeyHash || overrides.xftp_key_hash || (overrides.xftp && overrides.xftp.keyHash) || storageText(STORAGE_KEYS.xftpKeyHash)).trim();
   const smpWebSocketUrlForServer = (server) => sameOriginSmpRelayUrl(server);
   return {
-    namespace: String(overrides.namespace || storageText(STORAGE_KEYS.namespace) || 'nostr-blog-secure-chat').trim(),
+    namespace: String(overrides.namespace || storageText(STORAGE_KEYS.namespace) || 'gazeta-secure-chat').trim(),
     defaultContactId: String(overrides.defaultContactId || overrides.default_contact_id || storageText(STORAGE_KEYS.defaultContactId) || 'secure-chat-owner').trim(),
     smp: smpUrl && smpKeyHash ? { url: smpUrl, keyHash: smpKeyHash, server: contactProfile && contactProfile.server || null, nativeHost: contactProfile && contactProfile.host || '', nativePort: contactProfile && contactProfile.port || '' } : null,
     smpServer: contactProfile && contactProfile.server || null,

@@ -1,6 +1,6 @@
-# Nostr Blog
+# gazeta
 
-A single-author Nostr-focused blog for wizardry web with optional bridge support for post authorship, version selection, and local-first mirrored comments.
+gazeta is a single-author Nostr blog and self-hosted publishing desk for wizardry web, with optional bridge support for post authorship, version selection, and local-first mirrored comments.
 
 ## Features
 
@@ -208,7 +208,7 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/blog/content/`.
 - That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
 - Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
-- `simplex-web` stays in its own repo; `nostr-blog` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
+- `simplex-web` stays in its own repo; `gazeta` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
 - Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.
 - Secure Chat host overrides can be set in `site.conf` with `secure_chat_node_binary=/absolute/path/to/node` and `secure_chat_simplex_binary=/absolute/path/to/simplex-chat` when the site user PATH does not expose those binaries.
 
