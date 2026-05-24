@@ -86,7 +86,7 @@ else
     if [ -n "$summary" ]; then
       printf '  <div class="post-summary">%s' "$(blog_html_escape "$summary")"
       if [ "$summary_truncated" = "true" ]; then
-        printf ' <a class="post-summary-read-more" href="%s">Read more</a>' "$(blog_html_escape "$url")"
+        printf ' <a class="post-summary-read-more" href="%s">Read more...</a>' "$(blog_html_escape "$url")"
       fi
       printf '</div>\n'
     fi

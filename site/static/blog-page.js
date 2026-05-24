@@ -458,7 +458,7 @@
     }
     var readMore = '';
     if (truncated && String(url || '').trim()) {
-      readMore = '<a class="post-summary-read-more" href="' + escapeHtml(url) + '">Read more</a>';
+      readMore = '<a class="post-summary-read-more" href="' + escapeHtml(url) + '">Read more...</a>';
     }
     return '<div class="post-summary">' + markdownBlock(text) + readMore + '</div>';
   }
