@@ -175,7 +175,7 @@
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260523-contact-headings1';
+      script.src = '/static/video-chat-widget.js?v=20260523-event-rooms1';
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
@@ -271,7 +271,7 @@
         videoConfig = {};
       }
       var publicRooms = videoConfig && videoConfig.public_rooms === true;
-      var rooms = Array.isArray(videoConfig && videoConfig.rooms) ? videoConfig.rooms.join(',') : 'Lobby';
+      var rooms = Array.isArray(videoConfig && videoConfig.rooms) ? videoConfig.rooms.join(',') : '';
       return '<section class="contact-widget contact-widget-video-chat" aria-label="Video calling">' +
         renderContactSectionHeading('Call', 'contact-call-title') +
         '<div data-video-chat ' +

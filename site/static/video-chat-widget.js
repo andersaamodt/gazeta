@@ -428,7 +428,7 @@
       callLabel: 'Call me',
       ownerCallPrivate: false,
       publicRooms: false,
-      rooms: ['Lobby'],
+      rooms: [],
       includeTokenInInvite: false,
       showHeading: true,
       centerPrecall: false,
@@ -471,9 +471,6 @@
     merged.callLabel = compact(merged.callLabel || 'Call me') || 'Call me';
     merged.ownerCallPrivate = toBool(merged.ownerCallPrivate, false);
     merged.rooms = parseRoomList(merged.rooms);
-    if (!merged.rooms.length) {
-      merged.rooms = ['Lobby'];
-    }
     merged.displayName = compact(merged.displayName || 'Guest') || 'Guest';
     merged.tokenEndpoint = compact(merged.tokenEndpoint || '/cgi/blog-video-chat-token');
     merged.janusEndpoint = compact(merged.janusEndpoint || '');
@@ -961,17 +958,21 @@
 
   VideoChatWidget.prototype._render = function () {
     var showJoinByLink = this.options.allowJoinViaLink !== false;
-    var publicRoomsEnabled = this.options.publicRooms === true;
+    var publicRoomNames = parseRoomList(this.options.rooms);
+    var publicRoomsEnabled = this.options.publicRooms === true && publicRoomNames.length > 0;
     var ownerLabel = compact(this.options.callLabel || 'Call');
     var voiceLabel = ownerLabel === 'Call' ? 'Voice' : 'Voice ' + ownerLabel;
     var videoLabel = ownerLabel === 'Call' ? 'Video' : 'Video ' + ownerLabel;
     var shellClasses = 'vcw-shell'
       + (this.options.showHeading === false ? ' vcw-shell-no-heading' : '')
       + (this.options.centerPrecall === true ? ' vcw-shell-center-precall' : '');
+    var singleRoomButtonHtml = '';
     var roomButtonsHtml = '';
-    if (publicRoomsEnabled) {
-      roomButtonsHtml = this.options.rooms.map(function (roomName) {
-        return '<button type="button" class="vcw-btn vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(roomName)) + '">' + escapeHtml(roomName) + '</button>';
+    if (publicRoomsEnabled && publicRoomNames.length === 1) {
+      singleRoomButtonHtml = '<button type="button" class="vcw-btn vcw-btn-primary vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(publicRoomNames[0])) + '" data-vcw-public-room="true" title="' + escapeAttr(publicRoomNames[0]) + '">Join Event Room</button>';
+    } else if (publicRoomsEnabled) {
+      roomButtonsHtml = publicRoomNames.map(function (roomName) {
+        return '<div class="vcw-room-list-row"><span class="vcw-room-name">' + escapeHtml(roomName) + '</span><button type="button" class="vcw-btn vcw-room-btn" data-vcw-room="' + escapeAttr(slugifyRoom(roomName)) + '" data-vcw-public-room="true">Join</button></div>';
       }).join('');
     }
     var style = ''
@@ -994,10 +995,12 @@
       + '.vcw-input{appearance:none;border:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 72%,transparent);border-radius:12px;padding:.58rem .68rem;font:inherit;font-size:.95rem;background:color-mix(in srgb,var(--post-card-bg-single,#fff) 88%,white 12%);color:var(--text,#1f1a14);max-width:100%;box-sizing:border-box;}'
       + '.vcw-input:focus{outline:2px solid color-mix(in srgb,var(--accent,#2f4aa6) 30%,transparent);outline-offset:1px;border-color:color-mix(in srgb,var(--accent,#2f4aa6) 65%,white 35%);}'
       + '.vcw-precall-actions,.vcw-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}'
-      + '.vcw-public-rooms{display:flex;flex-direction:column;gap:8px;padding-top:4px;}'
+      + '.vcw-public-rooms{display:flex;flex-direction:column;gap:8px;padding-top:4px;width:min(28rem,100%);}'
       + '.vcw-public-rooms[hidden]{display:none;}'
-      + '.vcw-room-list{display:flex;flex-wrap:wrap;gap:7px;align-items:center;}'
-      + '.vcw-room-create-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;}'
+      + '.vcw-room-list{display:flex;flex-direction:column;gap:7px;align-items:stretch;}'
+      + '.vcw-room-list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--admin-border,#c7d2fe) 48%,transparent);}'
+      + '.vcw-room-list-row:first-child{border-top:0;}'
+      + '.vcw-room-name{font-size:.94rem;color:var(--text,#241b12);overflow-wrap:anywhere;text-align:left;}'
       + '.vcw-btn{appearance:none;border:1px solid var(--action-soft-border,#c58f6f);background:var(--action-soft-bg,#f5e4d7);color:var(--action-soft-text,#6d3a20);border-radius:8px;padding:.42rem .76rem;cursor:pointer;font:inherit;font-size:.92rem;font-weight:400;line-height:1.22;display:inline-flex;align-items:center;gap:6px;width:fit-content;min-width:0;box-shadow:none;}'
       + '.vcw-btn:hover,.vcw-btn:focus-visible{background:var(--action-soft-hover-bg,#f0d7c5);border-color:var(--action-soft-hover-border,#b77753);color:var(--action-soft-hover-text,#5b2f18);}'
       + '.vcw-btn:disabled{opacity:0.55;cursor:default;}'
@@ -1045,14 +1048,10 @@
       + '    <div class="vcw-precall-actions">'
       + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-voice-call-owner-btn">' + escapeHtml(voiceLabel) + '</button>'
       + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-video-call-owner-btn">' + escapeHtml(videoLabel) + '</button>'
+      + singleRoomButtonHtml
       + '    </div>'
-      + '    <section class="vcw-public-rooms"' + (publicRoomsEnabled ? '' : ' hidden') + '>'
+      + '    <section class="vcw-public-rooms"' + (publicRoomsEnabled && publicRoomNames.length > 1 ? '' : ' hidden') + '>'
       + '      <div class="vcw-room-list">' + roomButtonsHtml + '</div>'
-      + '      <div class="vcw-room-create-row">'
-      + '        <label class="vcw-label">Room name<input class="vcw-input vcw-room-input" type="text" autocomplete="off" placeholder="room-name"></label>'
-      + '        <label class="vcw-label">Password (optional)<input class="vcw-input vcw-room-password-input" type="password" autocomplete="off" placeholder="private room password"></label>'
-      + '        <button type="button" class="vcw-btn vcw-start-btn">Join or start room</button>'
-      + '      </div>'
       + '    </section>'
       + '    <div class="vcw-join-row"' + joinRowHidden + '>'
       + '      <button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="' + (invitePanelOpen ? 'true' : 'false') + '" aria-controls="vcw-invite-panel-' + escapeAttr(this.instanceId) + '">Invite Link...</button>'
@@ -1130,7 +1129,7 @@
     if (self.nodes.roomBtns && self.nodes.roomBtns.length) {
       self.nodes.roomBtns.forEach(function (button) {
         button.addEventListener('click', function () {
-          self.startCallInRoom(button.getAttribute('data-vcw-room') || '').catch(function () {
+          self.startCallInPublicRoom(button.getAttribute('data-vcw-room') || '').catch(function () {
             // Errors are already surfaced in UI.
           });
         });
@@ -1257,7 +1256,7 @@
       }
       return;
     }
-    this._setStatus(this.options.publicRooms ? 'Ready. Choose voice, video, or join a room.' : 'Ready. Choose voice or video.', 'info');
+    this._setStatus(this.options.publicRooms === true && parseRoomList(this.options.rooms).length ? 'Ready. Choose voice, video, or join an event room.' : 'Ready. Choose voice or video.', 'info');
   };
 
   VideoChatWidget.prototype._setJoinUiBusy = function (busy) {
@@ -1404,6 +1403,9 @@
       body.set('owner_call', 'true');
       body.set('display_name', self.options.displayName || 'Website visitor');
     }
+    if (self.state.publicRoomPending) {
+      body.set('public_room', 'true');
+    }
     if (inviteToken) {
       body.set('provided_token', inviteToken);
     }
@@ -1443,6 +1445,7 @@
         self.options.signalingEndpoint = String(data.signaling_wss);
       }
       self.state.ownerCallPending = false;
+      self.state.publicRoomPending = false;
       return data;
     });
   };
@@ -2423,6 +2426,7 @@
   };
 
   VideoChatWidget.prototype.startOwnerCall = function (mode) {
+    this.state.publicRoomPending = false;
     if (!this.options.ownerCallPrivate) {
       return this.startCallInRoom(this.options.callRoomId, mode || 'video');
     }
@@ -2443,6 +2447,11 @@
       this.nodes.roomInput.value = normalized;
     }
     return this.startCall(mode || 'video');
+  };
+
+  VideoChatWidget.prototype.startCallInPublicRoom = function (roomId, mode) {
+    this.state.publicRoomPending = true;
+    return this.startCallInRoom(roomId, mode || 'video');
   };
 
   VideoChatWidget.prototype.joinViaInvite = function () {

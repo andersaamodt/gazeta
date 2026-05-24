@@ -337,12 +337,12 @@ title: ""
 <input type="url" id="video-chat-signaling-wss" placeholder="wss://signal.example.com/ws" autocomplete="off">
 </div>
 <div class="field-row">
-<label class="checkbox-control" for="video-chat-public-rooms"><input type="checkbox" id="video-chat-public-rooms"><span><strong>Allow public rooms</strong></span></label>
-<p class="muted">When enabled, visitors can create or join named rooms from the widget. The direct call button remains available.</p>
+<label class="checkbox-control" for="video-chat-public-rooms"><input type="checkbox" id="video-chat-public-rooms"><span><strong>Show event rooms</strong></span></label>
+<p class="muted">When enabled, visitors see admin-named event room join buttons next to the regular call buttons. The regular call buttons remain available.</p>
 </div>
 <div class="field-row">
-<label for="video-chat-rooms"><strong>Public Rooms</strong></label>
-<textarea id="video-chat-rooms" rows="3" placeholder="Lobby&#10;Office hours&#10;Reading room"></textarea>
+<label for="video-chat-rooms"><strong>Event Rooms</strong></label>
+<textarea id="video-chat-rooms" rows="3" placeholder="Office hours&#10;Reading room&#10;Launch Q&A"></textarea>
 </div>
 <p class="muted">Blank WSS fields let the widget use its default bootstrap. Camera and microphone access still require an explicit click inside the widget.</p>
 </section>
@@ -1069,7 +1069,7 @@ title: ""
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js?v=20260521-admin-loading1"></script>
+<script src="/static/admin.js?v=20260523-event-rooms1"></script>
 
 <style>
 header#title-block-header {

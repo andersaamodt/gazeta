@@ -1731,7 +1731,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260523-nav-content-width1';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260523-nav-gem-search1';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
@@ -3826,9 +3826,18 @@
     return Math.max(minValue, Math.min(maxValue, parsed));
   }
 
+  function slugifyRoom(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   function normalizeVideoChatConfig(raw) {
     const src = raw && typeof raw === 'object' ? raw : {};
-    const rooms = Array.isArray(src.rooms) ? src.rooms : String(src.rooms || 'Lobby').split(/[,\n]/);
+    const rooms = Array.isArray(src.rooms) ? src.rooms : String(src.rooms || '').split(/[,\n]/);
     return {
       participant_limit: clampInt(src.participant_limit, 6, 2, 24),
       token_ttl_seconds: clampInt(src.token_ttl_seconds, 3600, 60, 86400),
@@ -3877,7 +3886,7 @@
       els.videoChatPublicRooms.disabled = !(state.plugins && state.plugins.video_chat);
     }
     if (els.videoChatRooms) {
-      els.videoChatRooms.value = (cfg.rooms && cfg.rooms.length ? cfg.rooms : ['Lobby']).join('\n');
+      els.videoChatRooms.value = (cfg.rooms && cfg.rooms.length ? cfg.rooms : []).join('\n');
       els.videoChatRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
     }
   }
@@ -4031,7 +4040,7 @@
       janus_wss: els.videoChatJanusWss ? els.videoChatJanusWss.value : '',
       signaling_wss: els.videoChatSignalingWss ? els.videoChatSignalingWss.value : '',
       public_rooms: !!(els.videoChatPublicRooms && els.videoChatPublicRooms.checked),
-      rooms: els.videoChatRooms ? els.videoChatRooms.value : 'Lobby'
+      rooms: els.videoChatRooms ? els.videoChatRooms.value : ''
     });
   }
 
@@ -4240,6 +4249,9 @@
     const users = Array.isArray(info.users) ? info.users : [];
     const rooms = Array.isArray(info.rooms) ? info.rooms : [];
     const calls = Array.isArray(info.calls) ? info.calls : [];
+    const configuredRooms = state.videoChatConfig && state.videoChatConfig.public_rooms && Array.isArray(state.videoChatConfig.rooms)
+      ? state.videoChatConfig.rooms
+      : [];
     let html = '';
     html += '<div class="runtime-setting-item">';
     html += '<div><strong>Online users</strong><span class="runtime-setting-help">' + String(users.length) + ' browser session' + (users.length === 1 ? '' : 's') + ' reporting presence</span></div>';
@@ -4277,6 +4289,15 @@
         html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(roomId || 'Room') + '</strong><span class="runtime-setting-help">' + members.map(function (member) {
           return escapeHtml(member && member.player_name || member && member.username || 'User');
         }).join(', ') + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '" data-video-chat-room-password="' + escapeAttr(roomPassword) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
+      });
+    }
+    html += '<div class="runtime-setting-item"><div><strong>Event rooms</strong><span class="runtime-setting-help">Admin-named public rooms shown on the contact page.</span></div></div>';
+    if (!configuredRooms.length) {
+      html += '<div class="placeholder">No event rooms are active.</div>';
+    } else {
+      configuredRooms.forEach(function (roomName) {
+        const roomId = slugifyRoom(roomName);
+        html += '<div class="runtime-setting-item"><div><strong>' + escapeHtml(roomName) + '</strong><span class="runtime-setting-help">' + escapeHtml(roomId) + '</span></div><div class="runtime-setting-actions"><button type="button" data-video-chat-join-room="' + escapeAttr(roomId) + '"' + (roomId ? '' : ' disabled') + '>Join</button></div></div>';
       });
     }
     html += '<div class="runtime-setting-item"><div><strong>Call requests</strong><span class="runtime-setting-help">' + String(calls.length) + ' active or recent request' + (calls.length === 1 ? '' : 's') + '</span></div></div>';

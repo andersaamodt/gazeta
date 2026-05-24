@@ -1236,23 +1236,32 @@ textarea:focus {
 }
 
 nav.site-nav > .nav-right .nav-search {
-  height: 40px !important;
+  --nav-search-gem-size: 26px;
+  height: var(--nav-search-gem-size) !important;
   overflow: visible !important;
   box-shadow: none !important;
 }
 
 nav.site-nav > .nav-right .nav-search button {
-  width: 40px !important;
-  min-width: 40px !important;
-  height: 40px !important;
-  min-height: 40px !important;
+  width: var(--nav-search-gem-size) !important;
+  min-width: var(--nav-search-gem-size) !important;
+  height: var(--nav-search-gem-size) !important;
+  min-height: var(--nav-search-gem-size) !important;
   padding: 0 !important;
-  border: 1px solid color-mix(in srgb, var(--malachite, #2c8b6e) 42%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--gold-leaf, #b68b35) 42%, var(--malachite, #2c8b6e) 18%) !important;
   border-radius: 999px !important;
-  background: color-mix(in srgb, var(--malachite, #2c8b6e) 13%, #fffaf1 87%) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+  background:
+    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 0.98) 0 15%, rgba(255, 255, 255, 0) 16%),
+    conic-gradient(from 145deg at 50% 52%, rgba(189, 226, 255, 0.98), rgba(242, 226, 255, 0.98), rgba(255, 240, 199, 0.98), rgba(169, 209, 255, 0.96), rgba(255, 255, 255, 0.99), rgba(189, 226, 255, 0.98)) !important;
+  background-image:
+    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 0.98) 0 15%, rgba(255, 255, 255, 0) 16%),
+    conic-gradient(from 145deg at 50% 52%, rgba(189, 226, 255, 0.98), rgba(242, 226, 255, 0.98), rgba(255, 240, 199, 0.98), rgba(169, 209, 255, 0.96), rgba(255, 255, 255, 0.99), rgba(189, 226, 255, 0.98)) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
   color: var(--malachite, #2c8b6e) !important;
   -webkit-text-fill-color: currentColor !important;
   line-height: 1 !important;
@@ -1263,11 +1272,19 @@ nav.site-nav > .nav-right .nav-search button {
 
 nav.site-nav > .nav-right .nav-search button:hover,
 nav.site-nav > .nav-right .nav-search button:focus-visible {
-  border-color: color-mix(in srgb, var(--malachite, #2c8b6e) 62%, transparent) !important;
-  background: color-mix(in srgb, var(--malachite, #2c8b6e) 20%, #fffaf1 80%) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+  border-color: color-mix(in srgb, var(--gold-leaf, #b68b35) 58%, var(--malachite, #2c8b6e) 22%) !important;
+  background:
+    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 1) 0 18%, rgba(255, 255, 255, 0) 19%),
+    conic-gradient(from 145deg at 50% 52%, rgba(172, 216, 255, 0.99), rgba(238, 218, 255, 0.99), rgba(255, 236, 186, 0.99), rgba(150, 198, 255, 0.98), rgba(255, 255, 255, 1), rgba(172, 216, 255, 0.99)) !important;
+  background-image:
+    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 1) 0 18%, rgba(255, 255, 255, 0) 19%),
+    conic-gradient(from 145deg at 50% 52%, rgba(172, 216, 255, 0.99), rgba(238, 218, 255, 0.99), rgba(255, 236, 186, 0.99), rgba(150, 198, 255, 0.98), rgba(255, 255, 255, 1), rgba(172, 216, 255, 0.99)) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
   color: var(--malachite, #2c8b6e) !important;
   -webkit-text-fill-color: currentColor !important;
   transform: none !important;
@@ -1275,8 +1292,8 @@ nav.site-nav > .nav-right .nav-search button:focus-visible {
 
 nav.site-nav > .nav-right .nav-search button svg {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 html body nav.site-nav > .nav-right form.nav-search button[type="submit"] {
@@ -1295,4 +1312,42 @@ nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive
 nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible {
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"] {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:hover,
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-visible {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn) {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
+    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover,
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+  -webkit-box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
+    0 1px 5px rgba(48, 34, 16, 0.18) !important;
 }

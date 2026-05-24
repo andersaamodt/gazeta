@@ -34,7 +34,7 @@ if [ "$video_chat_token_ttl_seconds" -lt 60 ]; then video_chat_token_ttl_seconds
 if [ "$video_chat_token_ttl_seconds" -gt 86400 ]; then video_chat_token_ttl_seconds=86400; fi
 video_chat_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
 case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=false ;; esac
-video_chat_rooms=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf 'Lobby')
+video_chat_rooms=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
 video_chat_rooms_json=$(printf '%s\n' "$video_chat_rooms" | tr ',' '\n' | awk '{ gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0); if ($0 != "" && !seen[$0]++) print $0; }' | jq -R . | jq -s -c '.[0:12]' 2>/dev/null || printf '[]')
 video_chat_janus_wss=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || printf '')
 video_chat_signaling_wss=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')

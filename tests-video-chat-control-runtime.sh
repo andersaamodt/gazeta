@@ -114,6 +114,18 @@ assert_jq "$self_call_json" '.success == true and .call.to_user == "admin" and .
 guest_call_json=$(call_control 'action=admin_call_user&username=guest')
 assert_jq "$guest_call_json" '.success == false and .code == "not_allowed"' 'admin cannot call another user without their opt-in'
 
+inactive_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
+assert_jq "$inactive_public_room_json" '.success == false and .code == "public_room_not_active"' 'public event room joins require an active configured room'
+
+config-set "$SITE_ROOT/site.conf" video_chat_public_rooms true
+config-set "$SITE_ROOT/site.conf" video_chat_rooms 'Office hours,Launch Q&A'
+
+active_public_room_json=$(call_token 'room_id=office-hours&public_room=true')
+assert_jq "$active_public_room_json" '.success == true and .room_id == "office-hours" and .public_rooms == true and (.rooms | index("Office hours")) and (.rooms | index("Launch Q&A"))' 'active configured event rooms can issue video tokens'
+
+unlisted_public_room_json=$(call_token 'room_id=random-hangout&public_room=true')
+assert_jq "$unlisted_public_room_json" '.success == false and .code == "public_room_not_active"' 'unlisted public event rooms cannot issue public room tokens'
+
 owner_call_json=$(call_token 'owner_call=true&display_name=Browser%20Caller')
 assert_jq "$owner_call_json" '.success == true and .private_room == true and (.room_id | startswith("anders-")) and (.room_password | length > 20)' 'public owner calls get a fresh private passworded room'
 owner_room=$(printf '%s\n' "$owner_call_json" | jq -r '.room_id')

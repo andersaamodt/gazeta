@@ -47,6 +47,26 @@ room_path_for() {
   printf '%s/%s.conf\n' "$rooms_dir" "$key"
 }
 
+configured_public_room_slugs() {
+  rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
+  printf '%s\n' "$rooms_raw" | tr ',' '\n' | while IFS= read -r public_room_name || [ -n "$public_room_name" ]; do
+    room_slug=$(room_key "$public_room_name")
+    [ -n "$room_slug" ] || continue
+    printf '%s\n' "$room_slug"
+  done | awk '!seen[$0]++'
+}
+
+public_room_is_configured() {
+  wanted=$(room_key "${1-}")
+  [ -n "$wanted" ] || return 1
+  configured_public_room_slugs | while IFS= read -r configured_room || [ -n "$configured_room" ]; do
+    if [ "$configured_room" = "$wanted" ]; then
+      printf 'yes\n'
+      break
+    fi
+  done | grep -q '^yes$'
+}
+
 call_path_for() {
   key=$(safe_key "${1-}")
   [ -n "$key" ] || key=unknown
@@ -82,6 +102,8 @@ room_id=$(room_key "$room_id")
 
 owner_call=$(blog_param owner_call)
 case "$owner_call" in true|1|yes|on) owner_call=true ;; *) owner_call=false ;; esac
+public_room=$(blog_param public_room)
+case "$public_room" in true|1|yes|on) public_room=true ;; *) public_room=false ;; esac
 
 requested_private=$(blog_param private_room)
 case "$requested_private" in true|1|yes|on) requested_private=true ;; *) requested_private=false ;; esac
@@ -92,6 +114,15 @@ if [ "$owner_call" = "true" ]; then
 fi
 if [ -z "$room_id" ]; then
   room_id=$(room_key "$(blog_random_token 6)")
+fi
+
+if [ "$public_room" = "true" ] && [ "$owner_call" != "true" ] && [ "$requested_private" != "true" ]; then
+  active_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
+  case "$active_public_rooms" in true|1|yes|on) active_public_rooms=true ;; *) active_public_rooms=false ;; esac
+  if [ "$active_public_rooms" != "true" ] || ! public_room_is_configured "$room_id"; then
+    blog_json_error "Public event room is not active" "public_room_not_active"
+    exit 0
+  fi
 fi
 
 provided_room_password=$(printf '%s' "$(blog_param room_password)" | tr -d '\r\n' | cut -c1-160)
@@ -189,7 +220,7 @@ janus_ws=$(config-get "$blog_site_conf" video_chat_janus_wss 2>/dev/null || prin
 signaling_endpoint=$(config-get "$blog_site_conf" video_chat_signaling_wss 2>/dev/null || printf '')
 public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
 case "$public_rooms" in true|false) ;; *) public_rooms=false ;; esac
-rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf 'Lobby')
+rooms_raw=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
 rooms_json=$(printf '%s\n' "$rooms_raw" | tr ',' '\n' | awk '
   {
     gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
