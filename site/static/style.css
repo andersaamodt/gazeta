@@ -13218,8 +13218,8 @@ nav.site-nav > .nav-right .nav-search button {
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid var(--action-soft-border, #c58f6f) !important;
   border-image: none !important;
-  box-shadow: 0 7px 16px rgba(48, 34, 16, 0.09) !important;
-  -webkit-box-shadow: 0 7px 16px rgba(48, 34, 16, 0.09) !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   background-clip: border-box !important;
   -webkit-background-clip: border-box !important;
   clip-path: none;

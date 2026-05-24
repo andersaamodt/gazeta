@@ -589,12 +589,8 @@ nav.site-nav > .nav-center {
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid transparent !important;
   border-image: none !important;
-  box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
-  -webkit-box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   background-clip: border-box !important;
   -webkit-background-clip: border-box !important;
   clip-path: none;
@@ -702,12 +698,8 @@ input[type="reset"],
   border-right: 0 !important;
   border-image: none !important;
   outline: 0 !important;
-  box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
-  -webkit-box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
 }
@@ -1144,12 +1136,8 @@ textarea:focus {
 #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid transparent !important;
   border-image: none !important;
-  box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
-  -webkit-box-shadow:
-    0 7px 16px rgba(48, 34, 16, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.62) inset !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   background-clip: border-box !important;
   -webkit-background-clip: border-box !important;
   clip-path: none !important;
