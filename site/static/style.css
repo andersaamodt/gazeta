@@ -4385,6 +4385,8 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.72rem;
   margin: 1.2rem 0 0.42rem;
+  border-bottom: 0;
+  padding-bottom: 0;
   color: var(--text, #243046);
   font-size: 1.05rem;
   line-height: 1.24;
@@ -4396,6 +4398,8 @@ body.nav-cart-open {
 
 .contact-section-heading span {
   flex: 0 0 auto;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.08rem;
 }
 
 .contact-archived-group {

@@ -704,6 +704,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'data-video-chat
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'hideHeading: true' 'contact page tells the shared Secure Chat renderer to omit its internal heading'
 assert_file_contains "$SITE_SOURCE_ROOT/static/simplex-web-default-chat.js" 'if (!state.hideHeading)' 'shared Secure Chat renderer can omit the internal panel heading'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.contact-section-heading::after' 'contact page section headings do not add a second midline rule'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.contact-section-heading span' 'contact page section headings scope the underline to heading text'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.secure-chat-panel:not(.is-chat-started)' 'secure chat login/start island centers its initial content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'data-video-chat-owner-call-private' 'video chat widget supports private owner calls'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'room_password' 'video chat widget carries private room passwords in invite/join flows'
