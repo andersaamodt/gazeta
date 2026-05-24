@@ -163,7 +163,7 @@ assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'tags.append(["amount", str(amount_msat)])' 'zap receipts include amount tags for Bellheim-compatible threshold handling'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'paid invoice {label} could not be processed' 'zap receipt worker keeps running after unexpected invoice payloads'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'lightning_public_host)' 'zap endpoint can use a dedicated Lightning host without a stale local lightningd dependency'
-assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'parsed.path == "/.well-known/lnurlp/anders"' 'zap endpoint keeps the legacy anders localpart available for monitors'
+assert_not_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" '/.well-known/lnurlp/anders' 'zap endpoint does not hard-code a personal legacy localpart'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'if name and name not in supported_names:' 'nostr well-known returns the site names when queried without a name'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'write_server_hook' 'zap endpoint always installs the site-domain well-known hook'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-secondary-grid' 'zap modal groups custom amount and comment as secondary controls'

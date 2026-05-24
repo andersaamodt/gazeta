@@ -3,7 +3,7 @@ set -eu
 
 site_user=${HQ_SITE_USER-}
 site_domain=${HQ_SITE_DOMAIN-}
-btcpay_host=${HQ_BTCPAY_HOST:-pay.andersaamodt.com}
+btcpay_host=${HQ_BTCPAY_HOST:-}
 btcpay_rootpath=${HQ_BTCPAY_ROOTPATH:-/}
 
 run_root() {
@@ -39,6 +39,10 @@ require_site_context() {
   }
   [ -n "$site_domain" ] || {
     status_bad "HQ_SITE_DOMAIN is required for BTCPay checkout wiring."
+    exit 1
+  }
+  [ -n "$btcpay_host" ] || {
+    status_bad "HQ_BTCPAY_HOST is required for BTCPay checkout wiring."
     exit 1
   }
 }

@@ -1041,7 +1041,7 @@ class Handler(BaseHTTPRequestHandler):
 
         pay_path = f"/.well-known/lnurlp/{ALIAS_NAME}"
         callback_path = pay_path + "/callback"
-        if parsed.path == pay_path or parsed.path == "/.well-known/lnurlp/anders":
+        if parsed.path == pay_path:
             try:
                 self.send_json(load_pay_info())
             except ServiceError as exc:
@@ -1089,7 +1089,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/.well-known/nostr.json":
             name = (urllib.parse.parse_qs(parsed.query).get("name") or [""])[0].strip().lower()
-            supported_names = [ALIAS_NAME, "anders"]
+            supported_names = [ALIAS_NAME]
             if name and name not in supported_names:
                 self.send_json({"names": {}, "relays": {}}, status=404)
                 return

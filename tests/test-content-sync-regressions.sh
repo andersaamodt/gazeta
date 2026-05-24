@@ -1442,7 +1442,7 @@ assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'watchtower_r
 assert_file_contains "$ROOT_DIR/.headquarters/requirements/zap_endpoint.conf" 'install_script=.headquarters/scripts/ensure-site-zap-endpoint.sh' 'site headquarters config wires direct Lightning Address install script'
 assert_file_contains "$ROOT_DIR/.headquarters/requirements/watchtower_remote.conf" 'install_script=.headquarters/scripts/ensure-site-watchtower-remote.sh' 'site headquarters config wires remote watchtower scaffolding'
 assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'site=gazeta' 'Stonr support file locks the relay to gazeta'
-assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'relay_domain=andersaamodt.com' 'Stonr support file pins the canonical relay domain'
+assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'relay_domain=' 'Stonr support file derives the relay domain from Headquarters context'
 assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'mode=site_mirror' 'Stonr support file declares conservative site mirror mode'
 assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'public_write=false' 'Stonr support file keeps public relay writes disabled'
 assert_file_contains "$ROOT_DIR/.headquarters/site-support/stonr-relay.conf" 'write_kinds=24133' 'Stonr support file allows only NIP-46 pairing writes for phone signers'
