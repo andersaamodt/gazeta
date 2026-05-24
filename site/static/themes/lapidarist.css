@@ -658,7 +658,7 @@ pre,
   box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn),
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
@@ -696,8 +696,8 @@ input[type="reset"],
   -webkit-background-clip: padding-box !important;
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover:not(:disabled),
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible:not(:disabled),
 input[type="button"]:hover:not(:disabled),
 input[type="button"]:focus-visible:not(:disabled),
 input[type="submit"]:hover:not(:disabled),
@@ -780,17 +780,25 @@ input[type="reset"]:disabled,
   transform: none !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger) {
   border-color: transparent !important;
   box-shadow: var(--lapidarist-control-shadow) !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):hover:not(:disabled),
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):focus-visible:not(:disabled) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):focus-visible:not(:disabled) {
   border-color: transparent !important;
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
     0 3px 8px rgba(48, 34, 16, 0.09) !important;
+  transform: none !important;
+}
+
+#main-content .blog-post-item button.tag,
+#main-content .blog-post-item button.tag:hover:not(:disabled),
+#main-content .blog-post-item button.tag:focus-visible:not(:disabled) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   transform: none !important;
 }
 
@@ -1350,4 +1358,13 @@ nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive
   -webkit-box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.76) inset,
     0 1px 5px rgba(48, 34, 16, 0.18) !important;
+}
+
+#main-content .blog-post-item button.tag,
+#main-content .blog-post-item button.tag:hover:not(:disabled),
+#main-content .blog-post-item button.tag:focus-visible:not(:disabled) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
 }

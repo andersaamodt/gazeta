@@ -12042,21 +12042,27 @@ nav.site-nav {
 
 #main-content .blog-post-item button.tag,
 #main-content .blog-post-item button.tag:hover:not(:disabled),
+#main-content .blog-post-item button.tag:focus-visible:not(:disabled),
 #main-content .blog-post-item button.blog-type-pill,
 #main-content .blog-post-item button.blog-type-pill:hover:not(:disabled),
+#main-content .blog-post-item button.blog-type-pill:focus-visible:not(:disabled),
 #main-content .blog-post-item button.blog-year-pill,
-#main-content .blog-post-item button.blog-year-pill:hover:not(:disabled) {
+#main-content .blog-post-item button.blog-year-pill:hover:not(:disabled),
+#main-content .blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
   border-color: var(--post-tag-standard-border) !important;
   background: var(--post-tag-standard-bg) !important;
   background-color: var(--post-tag-standard-bg) !important;
   color: var(--post-tag-standard-text) !important;
   -webkit-text-fill-color: var(--post-tag-standard-text) !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   filter: none !important;
   transform: none !important;
 }
 
 #main-content .blog-post-item button.blog-type-pill,
-#main-content .blog-post-item button.blog-type-pill:hover:not(:disabled) {
+#main-content .blog-post-item button.blog-type-pill:hover:not(:disabled),
+#main-content .blog-post-item button.blog-type-pill:focus-visible:not(:disabled) {
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-type-border) !important;
@@ -12067,7 +12073,8 @@ nav.site-nav {
 }
 
 #main-content .blog-post-item button.blog-year-pill,
-#main-content .blog-post-item button.blog-year-pill:hover:not(:disabled) {
+#main-content .blog-post-item button.blog-year-pill:hover:not(:disabled),
+#main-content .blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-year-border) !important;
