@@ -29,6 +29,7 @@
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
   var secureChatRecentEmojiLimit = 32;
+  var videoChatWidgetBuildVersion = '20260524-janus-default1';
   var secureChatEmojiSectionDefs = [
     { id: 'recent', label: 'Recently Used', group: null },
     { id: 'smileys-emotion', label: 'Smileys & Emotion', pickerLabel: 'Smileys and emoticons', group: 0 },
@@ -159,27 +160,32 @@
   }
 
   function ensureVideoChatWidgetScript() {
-    if (window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function') {
+    var scriptSrc = '/static/video-chat-widget.js?v=' + videoChatWidgetBuildVersion;
+    if (
+      window.initVideoChatWidget
+      && typeof window.initVideoChatWidget === 'function'
+      && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion
+    ) {
       return Promise.resolve(true);
     }
     if (videoChatScriptLoading) {
       return videoChatScriptLoading;
     }
     videoChatScriptLoading = new Promise(function (resolve) {
-      var existing = document.querySelector('script[data-video-chat-widget="1"]');
+      var existing = document.querySelector('script[data-video-chat-widget="1"][src*="' + videoChatWidgetBuildVersion + '"]');
       if (existing) {
         existing.addEventListener('load', function () {
-          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion));
         }, { once: true });
         existing.addEventListener('error', function () { resolve(false); }, { once: true });
         return;
       }
       var script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260524-room-themes1';
+      script.src = scriptSrc;
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
-        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion));
       };
       script.onerror = function () { resolve(false); };
       document.head.appendChild(script);

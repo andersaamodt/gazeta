@@ -1971,24 +1971,30 @@
   }
 
   function ensureVideoChatWidgetScript() {
-    if (window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function') {
+    const widgetBuildVersion = '20260524-janus-default1';
+    const widgetScriptSrc = `/static/video-chat-widget.js?v=${widgetBuildVersion}`;
+    if (
+      window.initVideoChatWidget
+      && typeof window.initVideoChatWidget === 'function'
+      && window.__wizardryVideoChatWidgetVersion === widgetBuildVersion
+    ) {
       return Promise.resolve(true);
     }
     return new Promise(function (resolve) {
-      const existing = document.querySelector('script[data-video-chat-widget="1"]');
+      const existing = document.querySelector(`script[data-video-chat-widget="1"][src*="${widgetBuildVersion}"]`);
       if (existing) {
         existing.addEventListener('load', function () {
-          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === widgetBuildVersion));
         }, { once: true });
         existing.addEventListener('error', function () { resolve(false); }, { once: true });
         return;
       }
       const script = document.createElement('script');
-      script.src = '/static/video-chat-widget.js?v=20260524-room-themes1';
+      script.src = widgetScriptSrc;
       script.async = true;
       script.setAttribute('data-video-chat-widget', '1');
       script.onload = function () {
-        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function'));
+        resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === widgetBuildVersion));
       };
       script.onerror = function () { resolve(false); };
       document.head.appendChild(script);

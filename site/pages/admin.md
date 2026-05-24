@@ -1075,7 +1075,7 @@ title: ""
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js?v=20260524-room-themes1"></script>
+<script src="/static/admin.js?v=20260524-janus-default1"></script>
 
 <style>
 header#title-block-header {
