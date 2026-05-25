@@ -12257,6 +12257,18 @@ nav.site-nav {
   transform: none !important;
 }
 
+#main-content .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary {
+  border-color: color-mix(in srgb, #7c3aed 72%, #d946ef 28%) !important;
+  background: #7c3aed !important;
+  background-image: linear-gradient(135deg, #7c3aed 0%, #d946ef 100%) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+#main-content .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .zap-icon svg path {
+  fill: currentColor !important;
+}
+
 #main-content .list-public-submit .list-public-submit-toggle {
   transform: rotate(0deg) !important;
 }
