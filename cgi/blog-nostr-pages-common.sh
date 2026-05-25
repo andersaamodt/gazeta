@@ -5,7 +5,7 @@ set -eu
 
 blog_nostr_list_page_js_version='20260524-vote-tie-sort1'
 blog_nostr_blog_page_js_version='20260524-inline-chip-active1'
-blog_nostr_contact_page_js_version='20260524-contact-zap-data1'
+blog_nostr_contact_page_js_version='20260524-contact-pill-prerender1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
@@ -612,6 +612,19 @@ blog_nostr_prerender_contact_html() {
       (($v // "") | tostring) as $raw
       | (($raw | ascii_downcase | gsub("[^a-z0-9]+"; "")) as $key
         | if ($key == "lightning" or $key == "lightningaddress" or $key == "ln" or $key == "lud16") then "Zap" else $raw end);
+    def qualifier_key($v):
+      (($v // "") | tostring | gsub("^\\s+|\\s+$"; "") | ascii_downcase);
+    def qualifier_label($v):
+      (qualifier_key($v)) as $q
+      | if $q == "" then ""
+        elif $q == "preferred" then "Preferred"
+        elif $q == "unpreferred" then "Not preferred"
+        elif $q == "public" then "Public"
+        elif $q == "primary" then "Primary"
+        elif $q == "secondary" then "Secondary"
+        elif $q == "emergency" then "Emergencies only"
+        elif $q == "archive" then "Archived"
+        else $q end;
     def value_html($row):
       (($row.value // "") | tostring) as $raw
       | (($row.transport // "") | tostring | ascii_downcase | gsub("[^a-z0-9]+"; "")) as $key
@@ -629,7 +642,7 @@ blog_nostr_prerender_contact_html() {
       (($v // "") | tostring | test("\\{\\{[[:space:]]*secure-chat[[:space:]]*\\}\\}"; "i"));
     def profile_table($rows):
       "<div class=\"contact-profile-table-wrap\"><table class=\"contact-profile-table\"><tbody>" +
-      ($rows | map("<tr class=\"contact-profile-row\"><th class=\"contact-platform-cell\" scope=\"row\">" + (transport(.transport) | h) + "</th><td class=\"contact-value-cell\"><div class=\"contact-value-main\">" + value_html(.) + "</div>" + (if ((.qualifier // "") | tostring | length) > 0 then "<span class=\"contact-qualifier-pill contact-qualifier-open\">" + ((.qualifier // "") | tostring | h) + "</span>" else "" end) + "</td></tr>") | join("")) +
+      ($rows | map((qualifier_key(.qualifier)) as $q | (qualifier_label(.qualifier)) as $ql | "<tr class=\"contact-profile-row\"><th class=\"contact-platform-cell\" scope=\"row\">" + (transport(.transport) | h) + "</th><td class=\"contact-value-cell\"><div class=\"contact-value-main\">" + value_html(.) + "</div>" + (if ($q | length) > 0 then "<span class=\"contact-qualifier-pill contact-qualifier-open\" data-qualifier=\"" + ($q | h) + "\">" + ($ql | h) + "</span>" else "" end) + "</td></tr>") | join("")) +
       "</tbody></table></div>";
     (.state // {}) as $s
     | (($s.rows // []) | map(select(((.transport // "") | tostring | length) > 0 and ((.value // "") | tostring | length) > 0))) as $rows

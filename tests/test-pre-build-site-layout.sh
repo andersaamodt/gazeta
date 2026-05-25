@@ -208,12 +208,20 @@ grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.m
   printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '/static/contact-page.js?v=20260524-contact-zap-data1' "$canonical_root/pages/contact.md" || {
+grep -Fq '/static/contact-page.js?v=20260524-contact-pill-prerender1' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
   exit 1
 }
 grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'class="contact-qualifier-pill contact-qualifier-open" data-qualifier="preferred">Preferred</span>' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing styled prerendered preferred qualifier pill" >&2
+  exit 1
+}
+grep -Fq 'class="contact-qualifier-pill contact-qualifier-open" data-qualifier="archive">Archived</span>' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing styled prerendered archived qualifier pill" >&2
   exit 1
 }
 grep -Fq 'secure-chat-panel' "$canonical_root/pages/contact.md" || {
