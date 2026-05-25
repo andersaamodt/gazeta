@@ -440,8 +440,17 @@ blog_nostr_page_source_path() {
 
 blog_nostr_prerender_signature() {
   payload_json=${1-}
-  signature_payload=$(printf '%s\n' "$payload_json" | jq -c 'del(.prerender_signature)' 2>/dev/null || printf '%s' "$payload_json")
+  signature_payload=$(blog_nostr_prerender_payload_input "$payload_json" | jq -c 'del(.prerender_signature)' 2>/dev/null || blog_nostr_prerender_payload_input "$payload_json")
   printf '%s' "$signature_payload" | cksum | awk '{ printf "%s-%s\n", $1, $2 }'
+}
+
+blog_nostr_prerender_payload_input() {
+  payload_json=${1-}
+  if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    cat "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE"
+  else
+    printf '%s\n' "$payload_json"
+  fi
 }
 
 blog_nostr_prerender_attrs() {
@@ -453,7 +462,7 @@ blog_nostr_prerender_attrs() {
 blog_nostr_prerender_title() {
   payload_json=${1-}
   fallback=${2-Untitled}
-  title=$(printf '%s\n' "$payload_json" | jq -r '(.state.title // .nav_title // "") | tostring' 2>/dev/null || printf '')
+  title=$(blog_nostr_prerender_payload_input "$payload_json" | jq -r '(.state.title // .nav_title // "") | tostring' 2>/dev/null || printf '')
   if [ -n "$title" ]; then
     printf '%s\n' "$title"
   else
@@ -463,12 +472,202 @@ blog_nostr_prerender_title() {
 
 blog_nostr_prerender_description() {
   payload_json=${1-}
-  printf '%s\n' "$payload_json" | jq -r '(.state.description // .state.content // "") | tostring' 2>/dev/null || printf ''
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '(.state.description // .state.content // "") | tostring' 2>/dev/null || printf ''
 }
 
 blog_nostr_prerender_list_html() {
   payload_json=${1-}
-  printf '%s\n' "$payload_json" | jq -r '
+  if command -v python3 >/dev/null 2>&1; then
+    payload_file=${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE-}
+    cleanup_payload_file=false
+    if [ -z "$payload_file" ] || [ ! -f "$payload_file" ]; then
+      payload_file=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-list-payload.XXXXXX")
+      printf '%s\n' "$payload_json" > "$payload_file"
+      cleanup_payload_file=true
+    fi
+    if python3 - "$payload_file" <<'PY'
+import html
+import json
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+except Exception:
+    sys.exit(1)
+
+state = payload.get("state") if isinstance(payload, dict) else {}
+if not isinstance(state, dict):
+    state = {}
+
+def text(value):
+    return "" if value is None else str(value)
+
+def md_inline(value):
+    escaped = html.escape(text(value), quote=True)
+    escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', escaped)
+    escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
+    return escaped
+
+def entry_key(entry):
+    for key in ("_list_entry_id", "_public_entry_id", "_uid"):
+        value = text(entry.get(key))
+        if value:
+            return value
+    return ""
+
+def entry_href_attr(entry):
+    url = text(entry.get("post_url"))
+    if not url:
+        return ""
+    return ' data-list-entry-href="%s"' % html.escape(url, quote=True)
+
+def linked_text(label, url, class_name):
+    url = text(url)
+    if url:
+        return '<a class="%s is-post-url-linked" href="%s">%s</a>' % (
+            class_name,
+            html.escape(url, quote=True),
+            md_inline(label),
+        )
+    return '<span class="%s">%s</span>' % (class_name, md_inline(label))
+
+def marker_pills(entry, show):
+    if not show:
+        return ""
+    markers = []
+    for marker in text(entry.get("marker")).split(","):
+        marker = re.sub(r"\s+", " ", marker).strip()
+        if marker:
+            markers.append(marker)
+    if not markers:
+        return ""
+    return '<span class="list-entry-marker-pills">%s</span>' % "".join(
+        '<span class="list-entry-marker-pill">%s</span>' % html.escape(marker, quote=True)
+        for marker in markers
+    )
+
+def date_pill(entry, group_by, section_label):
+    date = text(entry.get("date"))
+    if not date or (group_by == "year" and date == section_label):
+        return ""
+    return '<span class="list-entry-date-pill">%s</span>' % html.escape(date, quote=True)
+
+def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False):
+    line = text(entry.get("markdown"))
+    description = text(entry.get("description"))
+    image = text(entry.get("image_url"))
+    post_url = text(entry.get("post_url"))
+    try:
+        depth = int(entry.get("depth") or 0)
+    except Exception:
+        depth = 0
+    if depth < 0:
+        depth = 0
+    markers = marker_pills(entry, show_markers)
+    date = date_pill(entry, group_by, section_label)
+    meta = ""
+    if markers or date:
+        meta = '<span class="list-entry-meta-right"><span class="list-entry-meta-pills">%s%s</span></span>' % (markers, date)
+    icon = ""
+    if gallery and image:
+        icon = '<img class="list-entry-list-icon" src="%s" alt="" loading="eager" decoding="async" fetchpriority="high">' % html.escape(image, quote=True)
+    desc = ""
+    if gallery and description:
+        desc = '<span class="list-entry-description-inline">%s</span>' % md_inline(description)
+    key = html.escape(entry_key(entry), quote=True)
+    return (
+        '<li class="list-entry-line list-depth-%d" data-list-entry-id="%s" style="--list-depth:%d;"%s>'
+        '<div class="list-entry-first-line"><span class="list-entry-main-inline">%s%s%s</span>%s</div></li>'
+    ) % (depth, key, depth, entry_href_attr(entry), icon, linked_text(line, post_url, "list-entry-markdown"), desc, meta)
+
+def tile_html(entry):
+    line = text(entry.get("markdown"))
+    description = text(entry.get("description"))
+    image = text(entry.get("image_url"))
+    post_url = text(entry.get("post_url"))
+    date = text(entry.get("date"))
+    image_html = ""
+    if image:
+        image_html = '<div class="list-tile-image-wrap"><img class="list-tile-image" src="%s" alt="" loading="eager" decoding="async" fetchpriority="high"></div>' % html.escape(image, quote=True)
+    date_html = ""
+    if date:
+        date_html = '<div class="list-tile-date">%s</div>' % html.escape(date, quote=True)
+    desc = ""
+    if description:
+        desc = '<span class="list-tile-description">%s</span>' % md_inline(description)
+    return '<li class="list-tile"%s><div class="list-tile-content">%s%s</div><div class="list-tile-main"><div class="list-tile-label">%s%s</div></div></li>' % (
+        entry_href_attr(entry), image_html, date_html, linked_text(line, post_url, "list-tile-text"), desc
+    )
+
+def group_label(entry, group_by):
+    if group_by == "year":
+        return text(entry.get("date")) or "Unknown"
+    if group_by == "first_letter":
+        return (text(entry.get("markdown"))[:1].upper() or "#")
+    if group_by == "month":
+        return (text(entry.get("date"))[:7] or "Unknown")
+    if group_by == "marker":
+        marker = text(entry.get("marker")).split(",")[0]
+        return re.sub(r"\s+", " ", marker).strip() or "Unmarked"
+    return ""
+
+gallery = text(payload.get("page_type") if isinstance(payload, dict) else "") == "icon-gallery"
+raw_view = text(state.get("view_mode"))
+view = "tile" if (gallery and not raw_view) or raw_view == "tile" else "list"
+group_by = text(state.get("group_by"))
+show_markers = state.get("show_markers") is True
+source_entries = state.get("elements") if isinstance(state.get("elements"), list) else state.get("entries")
+if not isinstance(source_entries, list):
+    source_entries = []
+entries = [
+    entry for entry in source_entries
+    if isinstance(entry, dict)
+    and text(entry.get("type") or "entry") == "entry"
+    and text(entry.get("markdown"))
+]
+
+parts = []
+if state.get("allow_signed_in_submissions") is True:
+    parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></section>')
+
+after = ""
+if text(state.get("extras_after")):
+    after = '<section class="nostr-page-extra nostr-page-extra-after"><p>%s</p></section>' % md_inline(state.get("extras_after"))
+
+if not entries:
+    parts.append('<p class="list-page-empty-state">No content yet.</p>')
+elif view == "tile":
+    parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in entries))
+elif group_by in ("year", "first_letter", "month", "marker"):
+    current = None
+    opened = False
+    for entry in entries:
+        label = group_label(entry, group_by)
+        if not opened or label != current:
+            if opened:
+                parts.append("</ul></section>")
+            parts.append('<section class="list-year-group"><div class="list-year-head"><h3 class="list-year-heading">%s</h3></div><ul class="list-entries">' % html.escape(label, quote=True))
+            current = label
+            opened = True
+        parts.append(row_html(entry, group_by, label, show_markers, gallery))
+    parts.append("</ul></section>")
+else:
+    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery) for entry in entries))
+
+if after:
+    parts.append(after)
+print("".join(parts))
+PY
+    then
+      [ "$cleanup_payload_file" = "true" ] && rm -f "$payload_file"
+      return 0
+    fi
+    [ "$cleanup_payload_file" = "true" ] && rm -f "$payload_file"
+  fi
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring
       | gsub("&"; "&amp;")
@@ -583,7 +782,7 @@ blog_nostr_prerender_list_html() {
 
 blog_nostr_prerender_nip23_html() {
   payload_json=${1-}
-  printf '%s\n' "$payload_json" | jq -r '
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     def md_block:
@@ -605,7 +804,7 @@ blog_nostr_prerender_nip23_html() {
 blog_nostr_prerender_contact_html() {
   payload_json=${1-}
   contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
-  printf '%s\n' "$payload_json" | jq -r --arg video_chat_html "$contact_video_chat_html" '
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r --arg video_chat_html "$contact_video_chat_html" '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     def transport($v):
@@ -681,7 +880,7 @@ EOF
 
 blog_nostr_prerender_blog_posts_html() {
   payload_json=${1-}
-  printf '%s\n' "$payload_json" | jq -r '
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     def clean:
@@ -705,7 +904,7 @@ blog_nostr_prerender_blog_posts_html() {
 
 blog_nostr_prerender_public_ranking_html() {
   payload_json=${1-}
-  printf '%s\n' "$payload_json" | jq -r '
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     (.state // {}) as $s
@@ -786,6 +985,11 @@ blog_nostr_page_write_prerendered_source() {
   [ -n "$payload_json" ] || payload_json=$(jq -cn --arg slug "$slug" --arg page_type "$page_type" '{slug:$slug,page_type:$page_type,state:{title:$slug}}')
 	  page_file=$(blog_nostr_page_source_path "$slug" "$page_type")
 	  mkdir -p "$(dirname "$page_file")" "$blog_pages_store_dir"
+  payload_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-payload.XXXXXX")
+  printf '%s\n' "$payload_json" > "$payload_tmp"
+  prev_prerender_payload_file=${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE-}
+  BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$payload_tmp
+  export BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
 	  page_title=$(blog_nostr_prerender_title "$payload_json" "$(blog_nostr_page_default_title "$slug" "$page_type")")
   page_description=$(blog_nostr_prerender_description "$payload_json")
   attrs=$(blog_nostr_prerender_attrs "$payload_json")
@@ -893,6 +1097,13 @@ blog_nostr_page_write_prerendered_source() {
   esac
 
   mv "$tmp" "$page_file"
+  rm -f "$payload_tmp"
+  if [ -n "$prev_prerender_payload_file" ]; then
+    BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$prev_prerender_payload_file
+    export BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+  else
+    unset BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+  fi
   chmod 644 "$page_file" 2>/dev/null || true
   blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
 }

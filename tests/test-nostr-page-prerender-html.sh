@@ -122,6 +122,7 @@ printf '%s\n' "$KEY_A" > "$blog_nostr_authors_file"
 blog_nostr_pages_save_json '{
   "pages": [
     {"slug":"oeuvre","type":"list","show_in_nav":true,"placeholder_title":"Oeuvre"},
+    {"slug":"reading-list","type":"list","show_in_nav":true,"placeholder_title":"Reading List"},
     {"slug":"software","type":"icon-gallery","show_in_nav":true,"placeholder_title":"Software"},
     {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog"},
     {"slug":"values","type":"nip23","show_in_nav":true,"placeholder_title":"Values"},
@@ -141,6 +142,32 @@ blog_nostr_page_save_draft_state_json oeuvre list '{
     {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
   ]
 }'
+
+blog_nostr_page_save_draft_state_json reading-list list '{
+  "title":"Reading List",
+  "description":"Public submissions",
+  "group_by":"year",
+  "allow_signed_in_submissions":true,
+  "allow_signed_in_votes":true,
+  "elements":[]
+}'
+public_entries_path=$(blog_list_public_entries_path reading-list)
+mkdir -p "$(dirname "$public_entries_path")"
+jq -cn '{
+  id: "public-fixture-entry",
+  markdown: "*Public Reading Fixture* by Example Author",
+  description: "Submitted by a reader",
+  marker: "book",
+  date: "2026",
+  submitter: "nostr-fixture",
+  created_at: 1779344399
+}' > "$public_entries_path"
+jq -cn '{
+  entry_id: "public-fixture-entry",
+  voter: "nostr-voter",
+  value: 1,
+  created_at: 1779344400
+}' > "$(blog_list_public_votes_path reading-list)"
 
 blog_nostr_page_save_draft_state_json software icon-gallery '{
   "title":"Software",
@@ -191,7 +218,7 @@ EOFPOST
 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=10 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
 
-for page in oeuvre software blog values contact projects overworld; do
+for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading page content' "$page page does not ship page-loading copy"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading posts' "$page page does not ship post-loading copy"
@@ -203,6 +230,9 @@ done
 
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'Oeuvre Entry' 'list prerender includes grouped list entry'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-year-group' 'list prerender includes grouped section markup'
+assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'Public Reading Fixture' 'list prerender includes public submitted list entries'
+assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-entry-id="public-fixture-entry"' 'list prerender keeps public entry identity for hydration'
+assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.js" 'public-fixture-entry' 'list bootstrap includes public submitted list entries'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-gallery prerender includes tile label'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
