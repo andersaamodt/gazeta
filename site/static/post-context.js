@@ -1793,7 +1793,7 @@
     var created = comment.created_at_iso ? escapeHtml(comment.created_at_iso.replace('T', ' ').replace('Z', ' UTC')) : '';
     var pubkey = escapeHtml(String(comment.pubkey || '').slice(0, 16));
     var body = escapeHtml(comment.content || '').replace(/\n/g, '<br>');
-    return '<article class="post-comment">' +
+    return '<article class="post-comment post-comment-island">' +
       '<header><span class="post-comment-author">' + pubkey + '</span>' + (created ? ' <span class="post-comment-time">' + created + '</span>' : '') + '</header>' +
       '<p>' + body + '</p>' +
       '</article>';
@@ -1806,7 +1806,7 @@
       return;
     }
     if (!list.length) {
-      container.innerHTML = '<p class="placeholder">No comments mirrored yet.</p>';
+      container.innerHTML = '<p class="placeholder post-comments-empty post-comment-island">No comments mirrored yet.</p>';
       return;
     }
     container.innerHTML = list.map(renderCommentRow).join('');
@@ -2007,19 +2007,19 @@
       return;
     }
     var anchor = layout && layout.card ? layout.card : document.body;
-    anchor.insertAdjacentHTML('beforeend',
+    anchor.insertAdjacentHTML(anchor === document.body ? 'beforeend' : 'afterend',
       '<section class="post-comments-shell">' +
-      '<div class="post-comments-head">' +
+      '<div class="post-comments-head post-comment-island">' +
       '<h3>Comments (<span id="post-comments-count">0</span>)</h3>' +
       '<button type="button" id="post-comments-refresh">Refresh comments</button>' +
       '</div>' +
-      '<div class="post-comments-compose">' +
+      '<div class="post-comments-compose post-comment-island">' +
       '<textarea id="post-comment-input" rows="3" placeholder="Write a Nostr-signed reply..."></textarea>' +
       '<button type="button" id="post-comment-submit">Post comment</button>' +
-      '</div>' +
       '<p class="post-comments-shortcut">Press Ctrl/Cmd + Enter to post quickly.</p>' +
       '<p id="post-comments-status" class="post-comments-status"></p>' +
-      '<div id="post-comments-list" class="post-comments-list"><p class="placeholder">No comments mirrored yet.</p></div>' +
+      '</div>' +
+      '<div id="post-comments-list" class="post-comments-list"><p class="placeholder post-comments-empty post-comment-island">No comments mirrored yet.</p></div>' +
       '</section>'
     );
     var refreshButton = document.getElementById('post-comments-refresh');
