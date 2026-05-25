@@ -675,7 +675,7 @@ blog_nostr_prerender_contact_video_chat_html() {
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
 
   cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call Anders Now" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"></div></section>
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call Anders" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"></div></section>
 EOF
 }
 

@@ -1074,9 +1074,9 @@
     var showJoinByLink = this.options.allowJoinViaLink !== false;
     var publicRoomNames = parseRoomList(this.options.rooms);
     var publicRoomsEnabled = this.options.publicRooms === true && publicRoomNames.length > 0;
-    var ownerLabel = compact(this.options.callLabel || 'Call');
-    var voiceLabel = ownerLabel === 'Call' ? 'Voice' : 'Voice ' + ownerLabel;
-    var videoLabel = ownerLabel === 'Call' ? 'Video' : 'Video ' + ownerLabel;
+    var ownerLabel = compact(this.options.callLabel || 'Call').replace(/\s+Now$/i, '');
+    var voiceIconHtml = '<svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg>';
+    var videoIconHtml = '<svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path><path d="m16 10 6-3v10l-6-3"></path></svg>';
     var shellClasses = 'vcw-shell'
       + (this.options.showHeading === false ? ' vcw-shell-no-heading' : '')
       + (this.options.centerPrecall === true ? ' vcw-shell-center-precall' : '')
@@ -1168,8 +1168,8 @@
       + '  <div class="vcw-status" data-tone="info" role="status" aria-live="polite"></div>'
       + '  <section class="vcw-precall" part="precall">'
       + '    <div class="vcw-precall-actions">'
-      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-voice-call-owner-btn">' + escapeHtml(voiceLabel) + '</button>'
-      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-video-call-owner-btn">' + escapeHtml(videoLabel) + '</button>'
+      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-voice-call-owner-btn" aria-label="Voice ' + escapeAttr(ownerLabel) + '">' + voiceIconHtml + escapeHtml(ownerLabel) + '</button>'
+      + '      <button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn vcw-video-call-owner-btn" aria-label="Video ' + escapeAttr(ownerLabel) + '">' + videoIconHtml + escapeHtml(ownerLabel) + '</button>'
       + singleRoomButtonHtml
       + '    </div>'
       + '    <section class="vcw-public-rooms"' + (publicRoomsEnabled && publicRoomNames.length > 1 ? '' : ' hidden') + '>'
