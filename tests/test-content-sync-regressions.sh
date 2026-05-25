@@ -1031,6 +1031,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'Signed challenge</
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function isMobileLikeRuntime()' 'login flow detects mobile-like browsers before choosing a signer path'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'return preferredAuthInitialSelection();' 'primary login uses OS autodetection when no browser signer is available'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function startPrimaryLogin()' 'nav login button uses a capability-aware primary login flow'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function waitForDesktopSigner' 'primary login tolerates delayed NIP-07 signer injection'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'return waitForDesktopSigner(1200).then(function (available)' 'primary login waits briefly before falling back to the sign-in modal'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'emitAuthChanged({' 'verified login event carries session details after auth check'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'applyOptimisticAdminFromAuthEvent(event);' 'list pages reveal admin controls from the verified auth event'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'applyOptimisticAdminFromAuthEvent(event);' 'post pages reveal admin controls from the verified auth event'

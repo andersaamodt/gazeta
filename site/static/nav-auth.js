@@ -2121,6 +2121,31 @@
     return !!(window.nostr && typeof window.nostr.signEvent === 'function');
   }
 
+  function waitForDesktopSigner(timeoutMs) {
+    if (hasDesktopSigner()) {
+      return Promise.resolve(true);
+    }
+    var startedAt = Date.now();
+    var timeout = Number(timeoutMs || 1200);
+    if (!isFinite(timeout) || timeout < 0) {
+      timeout = 1200;
+    }
+    return new Promise(function (resolve) {
+      function check() {
+        if (hasDesktopSigner()) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startedAt >= timeout) {
+          resolve(false);
+          return;
+        }
+        window.setTimeout(check, 50);
+      }
+      check();
+    });
+  }
+
   function isMobileLikeRuntime() {
     var nav = typeof navigator === 'object' ? navigator : null;
     var ua = String((nav && nav.userAgent) || '');
@@ -2202,11 +2227,13 @@
 
   function startPrimaryLogin() {
     closeLoginMenu();
-    if (!hasDesktopSigner()) {
-      showAuthModal(preferredUnsignedLoginTab());
-      return Promise.resolve(false);
-    }
-    return startDesktopSignerLogin(false, '');
+    return waitForDesktopSigner(1200).then(function (available) {
+      if (!available) {
+        showAuthModal(preferredUnsignedLoginTab());
+        return false;
+      }
+      return startDesktopSignerLogin(false, '');
+    });
   }
 
   function pageRequiresAuthorization() {
