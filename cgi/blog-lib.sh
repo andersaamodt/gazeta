@@ -602,6 +602,21 @@ blog_post_rel_path_for_file() {
       printf 'posts/%s\n' "${file#"$blog_posts_store_dir/"}"
       ;;
     *)
+      if [ -f "$file" ]; then
+        posts_real_dir=$(CDPATH= cd -- "$blog_posts_dir" 2>/dev/null && pwd -P || printf '')
+        case "$posts_real_dir" in
+          '')
+            ;;
+          *)
+            case "$file" in
+              "$posts_real_dir/"*)
+                printf 'posts/%s\n' "${file#"$posts_real_dir/"}"
+                return 0
+                ;;
+            esac
+            ;;
+        esac
+      fi
       if [ -f "$file" ] && [ -d "$blog_posts_store_dir" ]; then
         store_real_dir=$(CDPATH= cd -- "$blog_posts_store_dir" 2>/dev/null && pwd -P || printf '')
         case "$store_real_dir" in
