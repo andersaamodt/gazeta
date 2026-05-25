@@ -19,10 +19,15 @@ fi
 posts_per_page=10
 catalog_file=$(blog_public_posts_catalog_static_path)
 cache_file=$(blog_public_posts_catalog_cache_path)
-if [ ! -f "$catalog_file" ] && [ -f "$cache_file" ]; then
+blog_public_posts_catalog_has_posts() {
+  blog_public_posts_catalog_has_posts_file=${1-}
+  [ -f "$blog_public_posts_catalog_has_posts_file" ] || return 1
+  jq -e '(.posts // []) | length > 0' "$blog_public_posts_catalog_has_posts_file" >/dev/null 2>&1
+}
+if ! blog_public_posts_catalog_has_posts "$catalog_file" && blog_public_posts_catalog_has_posts "$cache_file"; then
   catalog_file=$cache_file
 fi
-if [ ! -f "$catalog_file" ]; then
+if ! blog_public_posts_catalog_has_posts "$catalog_file"; then
   blog_public_posts_catalog_write_artifacts
   catalog_file=$(blog_public_posts_catalog_static_path)
 fi

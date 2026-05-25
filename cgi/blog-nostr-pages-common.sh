@@ -885,6 +885,27 @@ blog_nostr_prerender_blog_posts_html() {
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     def clean:
       tostring | gsub("#+"; "") | gsub("\\*"; "") | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "\(.label)");
+    def fmt_type:
+      tostring
+      | gsub("[_-]+"; " ")
+      | split(" ")
+      | map(select(length > 0) | (.[0:1] | ascii_upcase) + .[1:])
+      | join(" ");
+    def norm_tags:
+      if type == "array" then map(tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0))
+      elif type == "string" then split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))
+      else []
+      end;
+    def tag_chip($tag):
+      "<button type=\"button\" class=\"tag blog-inline-tag\" data-inline-tag=\"" + ($tag | h) + "\" aria-pressed=\"false\">" + ($tag | h) + "</button>";
+    def meta_chips($p):
+      (($p.type // "post") | tostring) as $type
+      | (($p.year // (($p.published_at // "") | tostring | .[0:4]) // "Unknown") | tostring) as $year
+      | "<button type=\"button\" class=\"tag blog-type-pill\" data-inline-filter-group=\"types\" data-inline-filter-value=\"" + ($type | h) + "\" aria-pressed=\"false\" aria-label=\"Filter by " + (($type | fmt_type) | h) + "\">" + (($type | fmt_type) | h) + "</button>" +
+        "<button type=\"button\" class=\"tag blog-year-pill\" data-inline-filter-group=\"years\" data-inline-filter-value=\"" + ($year | h) + "\" aria-pressed=\"false\" aria-label=\"Filter by " + ($year | h) + "\">" + ($year | h) + "</button>";
+    def tag_strip($p):
+      ($p.tags | norm_tags) as $tags
+      | "<div class=\"post-card-footer\"><div class=\"tags post-card-meta-tags\">" + meta_chips($p) + ($tags | map(tag_chip(.)) | join("")) + "</div><span class=\"post-card-comments-count\">" + (((($p.comment_count // 0) | tonumber? // 0) | tostring) + " comments" | h) + "</span></div>";
     def post_html($p):
       (($p.title // "") | tostring) as $title
       | (($p.summary // "") | clean) as $summary
@@ -894,7 +915,7 @@ blog_nostr_prerender_blog_posts_html() {
       | (($p.reading_minutes // 1) | tonumber? // 1) as $mins
       | "<article class=\"post-item blog-post-item\"><div class=\"post-head\"><div class=\"post-head-main\"><h2 class=\"post-title\"><a href=\"" + ($url | h) + "\">" + ((if ($title | length) > 0 then $title else "Untitled" end) | h) + "</a></h2><div class=\"post-head-divider\" aria-hidden=\"true\"></div><div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">" + ($author | h) + "</span><span class=\"post-reading-inline\">" + ($mins | tostring | h) + " min read</span><span class=\"post-date\">" + ($date | h) + "</span></div></div></div>" +
         (if ($summary | length) > 0 then "<div class=\"post-summary\"><p>" + ($summary | h) + "</p></div>" else "" end) +
-        "</article>";
+        tag_strip($p) + "</article>";
     (.bootstrap_posts // []) as $posts
     | if ($posts | length) == 0 then "<p class=\"placeholder\">No posts to show yet.</p>"
       else ($posts | map(post_html(.)) | join(""))

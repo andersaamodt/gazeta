@@ -4106,13 +4106,27 @@
     if (!state.filters.tags.size) {
       return true;
     }
-    var tags = Array.isArray(postTags) ? postTags : [];
+    var tags = normalizePostTags(postTags);
     for (var i = 0; i < tags.length; i += 1) {
       if (state.filters.tags.has(String(tags[i]))) {
         return true;
       }
     }
     return false;
+  }
+
+  function normalizePostTags(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map(function (tag) {
+        return String(tag || '').trim();
+      }).filter(Boolean);
+    }
+    if (typeof raw === 'string') {
+      return raw.split(',').map(function (tag) {
+        return String(tag || '').trim();
+      }).filter(Boolean);
+    }
+    return [];
   }
 
   function filteredPosts() {
@@ -4158,7 +4172,7 @@
     }
 
     var tags = uniqueSorted(state.posts.reduce(function (acc, post) {
-      return acc.concat(Array.isArray(post.tags) ? post.tags : []);
+      return acc.concat(normalizePostTags(post.tags));
     }, []), function (a, b) {
       return a.localeCompare(b);
     });
@@ -4230,7 +4244,7 @@
         postTitle = postSummary.trim() || 'Untitled';
       }
       var postPath = String(post.path || '').trim();
-      var tagsHtml = (post.tags || []).map(function (tag) {
+      var tagsHtml = normalizePostTags(post.tags).map(function (tag) {
         var normalizedTag = String(tag || '');
         var isActive = state.filters.tags.has(normalizedTag);
         return '<button type="button" class="tag blog-inline-tag' + (isActive ? ' is-active' : '') + '" data-inline-tag="' + escapeHtml(normalizedTag) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(normalizedTag) + '</button>';

@@ -12,12 +12,18 @@ blog_send_json_headers
 static_catalog=$(blog_public_posts_catalog_static_path)
 cache_file=$(blog_public_posts_catalog_cache_path)
 
-if [ -f "$static_catalog" ]; then
+blog_public_posts_catalog_has_posts() {
+  blog_public_posts_catalog_has_posts_file=${1-}
+  [ -f "$blog_public_posts_catalog_has_posts_file" ] || return 1
+  jq -e '(.posts // []) | length > 0' "$blog_public_posts_catalog_has_posts_file" >/dev/null 2>&1
+}
+
+if blog_public_posts_catalog_has_posts "$static_catalog"; then
   cat "$static_catalog"
   exit 0
 fi
 
-if [ -f "$cache_file" ]; then
+if blog_public_posts_catalog_has_posts "$cache_file"; then
   cat "$cache_file"
   exit 0
 fi

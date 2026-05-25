@@ -236,6 +236,8 @@ assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.j
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-gallery prerender includes tile label'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'essay' 'blog prerender includes post tag text'
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
