@@ -840,7 +840,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'blog_list_vote_cooldow
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" "printf '64800" 'list votes use an 18-hour cooldown'
 assert_file_contains "$ROOT_DIR/cgi/blog-submit-list-vote" 'code: "vote_cooldown"' 'list vote endpoint rejects repeat votes during cooldown'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function voteTooltipText(entry, signedIn)' 'list vote controls render a native tooltip string'
-assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "You've " 'list vote tooltip includes total viewer vote count copy'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'Your opinion on this: ' 'list vote tooltip summarizes the viewer opinion as a signed score'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'formatSignedVoteOpinion(opinion)' 'list vote tooltip formats positive viewer opinion with a plus sign'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" "You've " 'list vote tooltip does not use repeated upvoted/downvoted count copy'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'aria-label="Upvote" title="' 'upvote button does not duplicate the wrapper tooltip'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'aria-label="Downvote" title="' 'downvote button does not duplicate the wrapper tooltip'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'class="list-entry-score" title="' 'score text does not duplicate the wrapper tooltip'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'title="' 'list vote controls use native delayed browser tooltips'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-controls:hover .list-entry-vote-tooltip' 'list vote tooltip is not an instant CSS hover panel'
 assert_list_vote_cooldown_merge

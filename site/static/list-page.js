@@ -2711,8 +2711,9 @@
     return compact ? '1m' : '1 minute';
   }
 
-  function voteVerb(value) {
-    return Number(value || 0) < 0 ? 'downvoted' : 'upvoted';
+  function formatSignedVoteOpinion(value) {
+    var opinion = Number(value || 0) || 0;
+    return (opinion > 0 ? '+' : '') + String(opinion);
   }
 
   function voteTooltipText(entry, signedIn) {
@@ -2730,10 +2731,10 @@
       lines.push('You can vote now. Everyone can vote every ' + formatVoteDuration(cooldownSeconds, false) + '.');
     }
     if (lastVoteAt > 0) {
-      var verb = voteVerb(entry && entry.viewer_vote);
       var total = Math.max(1, Number(entry && entry.viewer_vote_total || 0) || 0);
-      lines.push('You ' + verb + ' this ' + formatVoteDuration(nowSeconds - lastVoteAt, true) + ' ago.');
-      lines.push("You've " + verb + ' this ' + String(total) + ' ' + (total === 1 ? 'time' : 'times') + ' total.');
+      var opinion = (Number(entry && entry.viewer_vote || 0) || 0) * total;
+      lines.push('You last voted on this ' + formatVoteDuration(nowSeconds - lastVoteAt, true) + ' ago.');
+      lines.push('Your opinion on this: ' + formatSignedVoteOpinion(opinion) + '.');
     } else {
       lines.push('You have not voted on this yet.');
     }
@@ -2782,9 +2783,9 @@
       var downvoteClass = 'list-entry-vote-btn is-downvote' + (signedIn && viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
       var voteTitle = voteTooltipText(entry, signedIn);
       voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score" title="' + escapeHtml(voteTitle) + '">' +
-        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote" title="' + escapeHtml(voteTitle) + '"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
-        '<span class="list-entry-score" title="' + escapeHtml(voteTitle) + '">' + escapeHtml(String(score)) + '</span>' +
-        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote" title="' + escapeHtml(voteTitle) + '"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>' +
+        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
+        '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
+        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>' +
       '</span>';
     }
     var canEditReadRow = !!(isAdmin() && !state.editMode && rowUid);
