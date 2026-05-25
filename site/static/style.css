@@ -5932,6 +5932,8 @@ button.contact-value-link {
 .nav-menu-btn.nav-overflow-btn svg {
   width: 0.95rem;
   height: 0.95rem;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-overflow-count {
@@ -5944,6 +5946,7 @@ button.contact-value-link {
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--tag-muted-bg, #f2f2ef);
+  box-shadow: 0 0 0 2px var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));
   color: var(--text);
   font-size: 0.63rem;
   font-weight: 700;
@@ -5951,6 +5954,8 @@ button.contact-value-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .nav-overflow-count[hidden] {
