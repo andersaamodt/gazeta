@@ -5969,6 +5969,14 @@ button.contact-value-link {
   background: var(--light-bg);
 }
 
+.nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count,
+.nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count {
+  border-color: currentColor;
+  color: currentColor;
+  background: var(--light-bg);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.10);
+}
+
 .nav-overflow-panel {
   left: auto;
   right: 0;

@@ -903,6 +903,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'z-index: 3;' 'navbar overflow badge renders above the menu icon'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'pointer-events: none;' 'navbar overflow badge does not intercept menu clicks'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-right: 1px solid color-mix(in srgb, var(--amethyst' 'compose post type buttons use a 1px theme-color separator'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count' 'navbar overflow badge joins the button hover highlight'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.10);' 'navbar overflow badge halo matches the hover surface'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background: transparent !important;' 'Lapidarist navbar search button has no resting fill'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'conic-gradient(from 145deg at 50% 52%' 'Lapidarist navbar search button is not a multicolor gem'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'nav-username-color: var(--lapis, #2f5fb8);' 'Lapidarist logged-in username uses lapis instead of red plum green or muted gold'
