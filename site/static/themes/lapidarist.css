@@ -1325,7 +1325,7 @@ textarea:focus {
   overflow: visible !important;
 }
 
-/* Final title-action button reset: no border layer around compact admin buttons. */
+/* Firefox shows antialiased rounded-fill edges here; keep title actions text-only. */
 #list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn,
 #list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
@@ -1351,6 +1351,7 @@ textarea:focus {
 #public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
 #public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   appearance: none !important;
+  -moz-appearance: none !important;
   -webkit-appearance: none !important;
   border: 0 !important;
   border-top: 0 !important;
@@ -1363,17 +1364,26 @@ textarea:focus {
   outline: 0;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
-  background: var(--action-soft-bg, #f5e4d7) !important;
-  background-color: var(--action-soft-bg, #f5e4d7) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
+  color: var(--action-soft-text, #6d3a20) !important;
+  -webkit-text-fill-color: var(--action-soft-text, #6d3a20) !important;
   filter: none !important;
   text-shadow: none !important;
   clip-path: none !important;
   contain: none !important;
   overflow: visible !important;
+}
+
+.list-page-title-actions .list-admin-primary-btn::-moz-focus-inner,
+.list-page-title-actions .blog-filter-toggle::-moz-focus-inner {
+  border: 0 !important;
+  padding: 0 !important;
 }
 
 :where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]) {

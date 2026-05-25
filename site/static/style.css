@@ -13600,7 +13600,7 @@ nav.site-nav > .nav-right .nav-search button {
   overflow: visible;
 }
 
-/* Final title-action button reset: no border layer around compact admin buttons. */
+/* Firefox shows antialiased rounded-fill edges here; keep title actions text-only. */
 #list-page-title .list-page-title-actions .list-admin-primary-btn,
 #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
@@ -13626,6 +13626,7 @@ nav.site-nav > .nav-right .nav-search button {
 #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
 #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   appearance: none !important;
+  -moz-appearance: none !important;
   -webkit-appearance: none !important;
   border: 0 !important;
   border-top: 0 !important;
@@ -13638,12 +13639,24 @@ nav.site-nav > .nav-right .nav-search button {
   outline: 0;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
+  color: var(--action-soft-text, #6d3a20) !important;
+  -webkit-text-fill-color: var(--action-soft-text, #6d3a20) !important;
   clip-path: none !important;
   contain: none !important;
   overflow: visible !important;
+}
+
+.list-page-title-actions .list-admin-primary-btn::-moz-focus-inner,
+.list-page-title-actions .blog-filter-toggle::-moz-focus-inner {
+  border: 0 !important;
+  padding: 0 !important;
 }
 
 @media (max-width: 640px) {
