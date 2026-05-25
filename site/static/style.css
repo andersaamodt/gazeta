@@ -11073,16 +11073,22 @@ textarea:focus {
 }
 
 .zap-action-btn-primary {
-  border-color: rgba(116, 57, 204, 0.45);
-  background: linear-gradient(135deg, #7c3aed, #a855f7 58%, #d946ef);
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(43, 19, 92, 0.3);
+  border-color: var(--button-primary-border, color-mix(in srgb, var(--accent) 68%, var(--border) 32%));
+  background-image:
+    var(--button-primary-overlay, none),
+    linear-gradient(135deg, var(--button-primary-start, var(--accent)) 0%, var(--button-primary-end, var(--accent-dark, var(--accent))) 100%);
+  color: var(--button-primary-text, #fff);
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.24);
 }
 
 .zap-dialog-shell {
   position: fixed;
   inset: 0;
   z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
 }
 
 .zap-dialog-backdrop {
@@ -11097,14 +11103,14 @@ textarea:focus {
   z-index: 1;
   width: min(42rem, calc(100vw - 1.5rem));
   max-height: calc(100vh - 1.5rem);
-  margin: 0.75rem auto;
+  margin: 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(124, 58, 237, 0.16);
-  border-radius: 1.35rem;
-  background:
-    radial-gradient(circle at top left, rgba(216, 180, 254, 0.28), transparent 42%),
-    linear-gradient(150deg, #fffaf0 0%, #fff7ed 46%, #f8f3ff 100%);
-  box-shadow: 0 26px 70px rgba(43, 19, 92, 0.24);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, var(--text) 18%);
+  border-radius: 1.05rem;
+  background: var(--modal-bg, var(--surface-raised-strong, #fff));
+  color: var(--text);
+  font-family: var(--ui-font-family, var(--font-family));
+  box-shadow: var(--modal-shadow, 0 22px 50px rgba(15, 23, 42, 0.3));
 }
 
 .zap-dialog-scroll {
@@ -11124,7 +11130,7 @@ textarea:focus {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
   color: inherit;
   font-size: 1.35rem;
   font-family: inherit;
@@ -11134,7 +11140,7 @@ textarea:focus {
 
 .zap-dialog-close:hover,
 .zap-dialog-close:focus-visible {
-  background: rgba(15, 23, 42, 0.16);
+  background: color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .zap-dialog-head,
@@ -11146,25 +11152,18 @@ textarea:focus {
 }
 
 .zap-dialog-head {
-  padding: 1.35rem 2.8rem 0.45rem 0;
-}
-
-.zap-dialog-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.36rem;
-  margin: 0 0 0.28rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  color: #6d28d9;
+  padding: 1.35rem 2.8rem 0.55rem 0;
 }
 
 .zap-dialog-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
-  font-size: clamp(1.2rem, 2vw, 1.7rem);
-  line-height: 1.15;
+  font-family: var(--ui-font-family, var(--font-family));
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .zap-dialog-subtitle {
@@ -11194,7 +11193,7 @@ textarea:focus {
 }
 
 .zap-dialog-label {
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .zap-dialog-label small {
@@ -11204,8 +11203,8 @@ textarea:focus {
 
 .zap-dialog-current-amount {
   font-size: 0.84rem;
-  font-weight: 720;
-  color: #6d28d9;
+  font-weight: 500;
+  color: var(--accent);
 }
 
 .zap-usd-note {
@@ -11226,45 +11225,37 @@ textarea:focus {
   justify-items: start;
   min-height: 4rem;
   padding: 0.62rem 0.72rem;
-  border: 1px solid rgba(124, 58, 237, 0.14);
-  border-radius: 0.95rem;
-  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--surface-raised-strong, #fff) 86%, var(--bg) 14%);
   color: rgba(17, 24, 39, 0.88);
   font: inherit;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(43, 19, 92, 0.06);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
 .zap-amount-chip:hover,
 .zap-amount-chip:focus-visible {
-  border-color: rgba(124, 58, 237, 0.34);
-  background: #fff;
-  box-shadow: 0 12px 26px rgba(43, 19, 92, 0.11);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border) 62%);
+  background: var(--surface-raised-strong, #fff);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
 }
 
 .zap-amount-chip.is-selected {
-  border-color: rgba(124, 58, 237, 0.62);
-  background: linear-gradient(145deg, rgba(124, 58, 237, 0.14), rgba(217, 70, 239, 0.12));
-  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.16);
-}
-
-.zap-amount-chip-name {
-  font-size: 0.72rem;
-  font-weight: 760;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  color: #6d28d9;
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border) 42%);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised-strong, #fff) 90%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) inset;
 }
 
 .zap-amount-chip-sats {
   font-size: 1rem;
-  font-weight: 820;
+  font-weight: 500;
 }
 
 .zap-amount-chip-usd {
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 500;
   color: rgba(17, 24, 39, 0.58);
 }
 
@@ -11285,8 +11276,8 @@ textarea:focus {
   width: 9.5rem;
   min-height: 2.75rem;
   padding: 0.58rem 0.72rem;
-  font-size: 1.08rem;
-  font-weight: 720;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .zap-dialog-actions {

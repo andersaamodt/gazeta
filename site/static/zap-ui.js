@@ -22,6 +22,7 @@
     options: null,
     state: null
   };
+  var zapIconId = 0;
 
   function escapeHtml(text) {
     return String(text || '')
@@ -136,14 +137,6 @@
     return values.slice(0, 4);
   }
 
-  function zapAmountName(sats) {
-    var amount = clampSats(sats, 1);
-    if (amount <= 100) return 'Spark';
-    if (amount <= 1000) return 'Boost';
-    if (amount <= 5000) return 'Signal';
-    return 'Patron';
-  }
-
   function zapAmountChipHtml(amount, activeSats, customActive) {
     var cls = 'zap-amount-chip';
     if (amount === activeSats && !customActive) {
@@ -152,7 +145,6 @@
     var usd = formatUsdForSats(amount);
     return '' +
       '<button type="button" class="' + cls + '" data-zap-action="select_amount" data-zap-amount="' + String(amount) + '">' +
-        '<span class="zap-amount-chip-name">' + escapeHtml(zapAmountName(amount)) + '</span>' +
         '<span class="zap-amount-chip-sats">' + escapeHtml(String(amount)) + ' sats</span>' +
         (usd ? '<span class="zap-amount-chip-usd">(' + escapeHtml(usd) + ')</span>' : '') +
       '</button>';
@@ -494,7 +486,6 @@
     }
     var options = modalState.options;
     var state = modalState.state;
-    var targetTitle = options.title || options.target.title || options.target.label || 'this page';
     var presets = resolvePresetAmounts(options.zapConfig.defaultAmountSats);
     var activeSats = currentSats();
     var customValue = String(state.customSats || '').trim();
@@ -508,8 +499,7 @@
 
     body.innerHTML = '' +
       '<div class="zap-dialog-head">' +
-        '<p class="zap-dialog-kicker">' + zapIconHtml() + '<span>Lightning Zap</span></p>' +
-        '<h3 id="zap-dialog-title">Zap ' + escapeHtml(targetTitle) + '</h3>' +
+        '<h3 id="zap-dialog-title">' + zapIconHtml() + '<span>Send sats</span></h3>' +
         '<p class="zap-dialog-subtitle">Send sats to support this post. Recipient: <code>' + escapeHtml(options.zapConfig.lud16) + '</code></p>' +
       '</div>' +
       '<div class="zap-dialog-grid">' +
@@ -935,10 +925,13 @@
   }
 
   function zapIconHtml() {
+    zapIconId += 1;
+    var gradientId = 'zap-bolt-gradient-' + String(zapIconId);
     return '' +
       '<span class="zap-icon" aria-hidden="true">' +
         '<svg viewBox="0 0 24 24" focusable="false" role="img">' +
-          '<path d="M13.8 2.4 4.6 13.1h6.1l-1.1 8.5 9.8-12h-6.3l.7-7.2Z"></path>' +
+          '<defs><linearGradient id="' + gradientId + '" x1="5" y1="3" x2="19" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#7c3aed"></stop><stop offset="1" stop-color="#d946ef"></stop></linearGradient></defs>' +
+          '<path fill="url(#' + gradientId + ')" d="M13.8 2.4 4.6 13.1h6.1l-1.1 8.5 9.8-12h-6.3l.7-7.2Z"></path>' +
         '</svg>' +
       '</span>';
   }
