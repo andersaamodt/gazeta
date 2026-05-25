@@ -394,11 +394,15 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'BOOTSTRAP_CACHE
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'BOOTSTRAP_CACHE_MAX_AGE_MS = 15000' 'nip23 bootstrap cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'POSTS_CACHE_MAX_AGE_MS = 15000' 'blog posts cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-inline-filter-group' 'blog post year and type pills can open and select filters'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_blog_page_js_version='20260524-navbar-toolbar1'" 'blog page script cache buster tracks title action positioning'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_blog_page_js_version='20260524-inline-chip-active1'" 'blog page script cache buster tracks inline active filter chips'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-type-pill,' 'blog listing type pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-year-pill,' 'blog listing year pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-inline-tag {' 'blog list inline tags have a dedicated style hook'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'flex: 0 0 auto;' 'blog list inline tags keep intrinsic width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "blog-inline-tag' + (isActive ? ' is-active' : '')" 'blog list inline tags expose active filter state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "aria-pressed=\"' + (isActive ? 'true' : 'false')" 'blog list inline filters expose pressed state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-card-meta-tags > button.tag.is-active' 'blog list inline active filter chips get a visible active style'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.post-card-meta-tags > button.tag.is-active' 'Lapidarist inline active filter chips preserve a visible active style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-blog-action=\"toggle-compose\"" 'blog page exposes inline compose toggle action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-action=\"publish\"" 'blog page inline composer exposes publish action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "'/cgi/blog-save-post'" 'blog inline composer uses canonical blog-save-post endpoint'
@@ -1486,11 +1490,10 @@ assert_file_contains "$public_posts_file" '"success":true' 'pre-build public pos
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '[data-admin-nav="nostr-bridge"] .admin-nav-icon-slot' 'nostr nav icon uses dedicated gutter alignment rule'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '#admin-panel.sidebar-collapsed .admin-content {' 'collapsed admin keeps a left gutter for reveal icon'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'section.hidden = !active;' 'admin section toggling remains direct visibility toggle'
-if rg -q 'is-switch-animating|admin-fade-in' "$SITE_SOURCE_ROOT/pages/admin.md" "$SITE_SOURCE_ROOT/static/admin.js"; then
-  fail 'admin section switch animation hooks should not exist'
-else
-  pass
-fi
+assert_file_not_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'is-switch-animating' 'admin section switch animation class should not exist in admin page'
+assert_file_not_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'admin-fade-in' 'admin section fade animation class should not exist in admin page'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/admin.js" 'is-switch-animating' 'admin section switch animation class should not exist in admin script'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/admin.js" 'admin-fade-in' 'admin section fade animation class should not exist in admin script'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '#admin-panel #posts-list > .placeholder.table-empty {' 'posts empty-state placeholder remains centered'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '[data-admin-section="zaps"] .runtime-settings-list .field-row > button {' 'zaps runtime shared button layout rule remains fit-to-content aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "zapsRuntimeReady: false" 'zaps runtime tracks first successful load before showing resolved statuses'

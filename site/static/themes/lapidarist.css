@@ -684,6 +684,18 @@ pre,
   box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
 }
 
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active,
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active:hover:not(:disabled),
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lapis, #2f5fb8) 70%, var(--ink, #2f261a) 12%) !important;
+  background: color-mix(in srgb, var(--lapis, #2f5fb8) 18%, var(--parchment, #f7ecd3) 82%) !important;
+  background-color: color-mix(in srgb, var(--lapis, #2f5fb8) 18%, var(--parchment, #f7ecd3) 82%) !important;
+  outline-color: color-mix(in srgb, var(--lapis, #2f5fb8) 46%, transparent) !important;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--lapis, #2f5fb8) 26%, transparent),
+    0 5px 12px rgba(48, 34, 16, 0.12) !important;
+}
+
 button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.blog-filter-toggle):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):not(.contact-value-link):not(.blog-draft-notice-close):not([role="menuitem"]),
 input[type="button"],
 input[type="submit"],

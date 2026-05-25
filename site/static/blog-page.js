@@ -4133,7 +4133,9 @@
     if (!normalized) {
       normalized = display;
     }
-    return '<button type="button" class="' + escapeHtml(className) + '" data-inline-filter-group="' + escapeHtml(group) + '" data-inline-filter-value="' + escapeHtml(normalized) + '" aria-label="Filter by ' + escapeHtml(display) + '">' + escapeHtml(display) + '</button>';
+    var filterSet = state.filters[group];
+    var isActive = !!(filterSet && filterSet.has(normalized));
+    return '<button type="button" class="' + escapeHtml(className + (isActive ? ' is-active' : '')) + '" data-inline-filter-group="' + escapeHtml(group) + '" data-inline-filter-value="' + escapeHtml(normalized) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" aria-label="Filter by ' + escapeHtml(display) + '">' + escapeHtml(display) + '</button>';
   }
 
   function uniqueSorted(items, compareFn) {
@@ -4229,7 +4231,9 @@
       }
       var postPath = String(post.path || '').trim();
       var tagsHtml = (post.tags || []).map(function (tag) {
-        return '<button type="button" class="tag blog-inline-tag" data-inline-tag="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</button>';
+        var normalizedTag = String(tag || '');
+        var isActive = state.filters.tags.has(normalizedTag);
+        return '<button type="button" class="tag blog-inline-tag' + (isActive ? ' is-active' : '') + '" data-inline-tag="' + escapeHtml(normalizedTag) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(normalizedTag) + '</button>';
       }).join('');
       var postType = String(post.type || 'post');
       var postYear = String(post.year || 'Unknown');

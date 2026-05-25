@@ -12225,6 +12225,19 @@ button.blog-year-pill:focus-visible:not(:disabled) {
   -webkit-text-fill-color: var(--post-tag-year-text) !important;
 }
 
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active,
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active:hover:not(:disabled),
+#main-content .blog-post-item .post-card-meta-tags > button.tag.is-active:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent, #3158a4) 78%, black 8%) !important;
+  background: color-mix(in srgb, var(--accent, #3158a4) 20%, var(--post-card-bg-single, white) 80%) !important;
+  background-color: color-mix(in srgb, var(--accent, #3158a4) 20%, var(--post-card-bg-single, white) 80%) !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+  outline: 2px solid color-mix(in srgb, var(--accent, #3158a4) 50%, transparent) !important;
+  outline-offset: 1px;
+  font-weight: 700;
+}
+
 #main-content .list-entry-vote-btn,
 #main-content .list-entry-vote-btn:hover:not(:disabled),
 #main-content .list-entry-vote-btn:focus-visible:not(:disabled),
