@@ -754,6 +754,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'hideHeading: tr
 assert_file_contains "$SITE_SOURCE_ROOT/static/simplex-web-default-chat.js" 'if (!state.hideHeading)' 'shared Secure Chat renderer can omit the internal panel heading'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.contact-section-heading::after' 'contact page section headings do not add a second midline rule'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.contact-section-heading span' 'contact page section headings scope the underline to heading text'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 1px solid var(--accent, var(--border));' 'contact page section heading underlines stay optically light after hydration'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-image: none !important;' 'contact page section headings suppress theme-level h2 underline images'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-image-source: linear-gradient(90deg, var(--accent' 'contact page section heading text underline uses the blue accent gradient'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.secure-chat-panel:not(.is-chat-started)' 'secure chat login/start island centers its initial content'

@@ -4486,7 +4486,7 @@ body.nav-cart-open {
 .contact-section-heading span {
   display: inline-block;
   flex: 0 0 auto;
-  border-bottom: 2px solid var(--accent, var(--border));
+  border-bottom: 1px solid var(--accent, var(--border));
   border-image-slice: 1;
   border-image-source: linear-gradient(90deg, var(--accent, var(--border)) 0%, var(--primary, var(--accent, var(--border))) 100%);
   padding-bottom: 0.08rem;
