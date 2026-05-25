@@ -136,12 +136,97 @@ render_blog_posts_json() {
   printf '%s\n' "$payload"
 }
 
+public_ranking_prerender_nodes_json() {
+  state_json=${1-}
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-ranking-prerender-nodes.XXXXXX")
+  printf '%s\n' "$state_json" | jq -r '.root_refs[]? // empty' 2>/dev/null | while IFS= read -r coord || [ -n "$coord" ]; do
+    [ -n "$coord" ] || continue
+    event_json=$(blog_public_ranking_latest_node_event_json "$coord" 2>/dev/null || printf '')
+    [ -n "$event_json" ] || continue
+    printf '%s\n' "$event_json" | jq -c --arg coord "$coord" '
+      def tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
+      {
+        coordinate: $coord,
+        kind: (.kind // 0),
+        pubkey: (.pubkey // ""),
+        created_at: (.created_at // 0),
+        title: (tag("title") | if length > 0 then . else $coord end),
+        summary: tag("summary"),
+        content: (.content // ""),
+        status: (tag("status") | if length > 0 then . else "approved" end),
+        url: tag("url"),
+        post_ref: tag("r"),
+        author: tag("author"),
+        parent: tag("parent"),
+        ranking: tag("ranking"),
+        metrics: { enthusiasm: 0, support: 0, momentum: 0, intensity: 0 },
+        node_kind: (if (.kind // 0) == 30040 then "group" else "entry" end)
+      }
+    ' 2>/dev/null || true
+  done > "$tmp"
+  if [ -s "$tmp" ]; then
+    jq -s '.' "$tmp" 2>/dev/null || printf '[]\n'
+  else
+    printf '[]\n'
+  fi
+  rm -f "$tmp"
+}
+
+fallback_payload_json() {
+  slug_in=${1-}
+  page_type=${2-}
+  slug=$(blog_nostr_page_slug "$slug_in")
+  [ -n "$slug" ] || return 1
+  state_json=''
+  case "$page_type" in
+    public-ranking)
+      canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        state_json=$(blog_public_ranking_state_from_event_json "$slug" "$canonical_event" 2>/dev/null || printf '')
+      fi
+      if [ -z "$state_json" ]; then
+        state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
+      fi
+      [ -n "$state_json" ] || state_json=$(blog_public_ranking_default_state_json "$slug")
+      nodes_json=$(public_ranking_prerender_nodes_json "$state_json")
+      state_json=$(printf '%s\n' "$state_json" | jq -c --argjson nodes "$nodes_json" '. + {nodes: $nodes}' 2>/dev/null || printf '%s\n' "$state_json")
+      ;;
+    contact)
+      state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_contact_default_state_json "$slug")
+      ;;
+    nip23|blog)
+      state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type")
+      ;;
+    list|icon-gallery)
+      state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_list_default_state_json "$slug")
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  jq -cn --arg slug "$slug" --arg page_type "$page_type" --argjson state "$state_json" '{
+    success: true,
+    slug: $slug,
+    page_type: $page_type,
+    is_admin: false,
+    view_mode: "static-fallback",
+    canonical_exists: false,
+    draft_exists: true,
+    draft_differs: false,
+    state: $state,
+    canonical_state: $state,
+    validation: { errors: [], warnings: [], can_publish: true }
+  }'
+}
+
 write_bootstrap_js() {
   slug_in=${1-}
   slug=$(blog_nostr_page_slug "$slug_in")
   [ -n "$slug" ] || return 1
   payload_json=${2-}
   [ -n "$payload_json" ] || return 1
+  signature=$(blog_nostr_prerender_signature "$payload_json")
+  payload_json=$(printf '%s\n' "$payload_json" | jq -c --arg signature "$signature" '. + {prerender_signature: $signature}' 2>/dev/null || printf '%s\n' "$payload_json")
 
   js_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-js.XXXXXX")
   {
@@ -153,321 +238,6 @@ write_bootstrap_js() {
     printf '%s' "$payload_json"
     printf '%s\n' ';'
     printf '%s\n' '  window.__wizardryNostrPageBootstrap[slug] = payload;'
-    cat <<'EOBOOT'
-
-  function escapeHtml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function markdownInline(value) {
-    var text = escapeHtml(value || '');
-    return text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-  }
-
-  function markdownBlock(value) {
-    var text = escapeHtml(value || '').trim();
-    if (!text) {
-      return '';
-    }
-    return text.split(/\n{2,}/).map(function (part) {
-      return '<p>' + part.replace(/\n/g, '<br>') + '</p>';
-    }).join('');
-  }
-
-  function voteArrow(direction) {
-    var path = String(direction || '') === 'down'
-      ? 'M12 20 4.5 10.8h4.25V4h6.5v6.8h4.25L12 20Z'
-      : 'M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z';
-    return '<svg class="list-entry-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="' + path + '" fill="currentColor"/></svg>';
-  }
-
-  function overflowMenuIcon() {
-    return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
-  }
-
-  function hasLikelyAuthenticatedSession() {
-    try {
-      return !!(localStorage.getItem('session_token') && localStorage.getItem('csrf_token'));
-    } catch (_err) {
-      return false;
-    }
-  }
-
-  function hasOnlyInitialPlaceholder(node) {
-    if (!node) {
-      return false;
-    }
-    if (!node.children || node.children.length !== 1) {
-      return false;
-    }
-    return node.children[0].getAttribute && node.children[0].getAttribute('data-page-initial-placeholder') === 'true';
-  }
-
-  function renderContactSectionHeading(label) {
-    return '<h2 class="contact-section-heading"><span>' + escapeHtml(label) + '</span></h2>';
-  }
-
-  function renderContactQualifier(value) {
-    var raw = String(value || '').trim().toLowerCase();
-    if (!raw) {
-      return '';
-    }
-    return raw.charAt(0).toUpperCase() + raw.slice(1);
-  }
-
-  function renderContactValue(value, transport) {
-    var raw = String(value || '').trim();
-    if (isLightningTransport(transport)) {
-      return '<button type="button" class="contact-value-link contact-zap-link" data-contact-zap-open="true" data-contact-zap-address="' + escapeHtml(raw.toLowerCase()) + '">' + escapeHtml(raw) + '</button>';
-    }
-    var transportKey = String(transport || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-    var href = '';
-    var email = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-    if (transportKey === 'email' && email && email[0]) {
-      href = 'mailto:' + email[0];
-    } else if (/^https?:\/\//i.test(raw)) {
-      href = raw;
-    } else if ((transportKey === 'phone' || transportKey === 'tel' || transportKey === 'telephone') && /^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(raw)) {
-      href = 'tel:' + raw.replace(/[^\d+]/g, '');
-    }
-    if (href) {
-      return '<a class="contact-value-link" href="' + escapeHtml(href) + '">' + escapeHtml(raw) + '</a>';
-    }
-    return escapeHtml(raw).replace(/\n/g, '<br>');
-  }
-
-  function isLightningTransport(value) {
-    var key = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-    return key === 'lightning' || key === 'lightningaddress' || key === 'ln' || key === 'lud16' || key === 'lnurlp';
-  }
-
-  function displayContactTransport(value) {
-    return isLightningTransport(value) ? 'Zap' : String(value || '').trim();
-  }
-
-  function paintContactFirstFrame() {
-    if (!payload || !payload.state || payload.page_type !== 'contact') {
-      return false;
-    }
-    var root = document.getElementById('contact-page-root');
-    var content = document.getElementById('contact-page-content');
-    if (!root || !content || content.getAttribute('data-prerender-painted') === 'true') {
-      return false;
-    }
-    if (content.children.length && !hasOnlyInitialPlaceholder(content)) {
-      return false;
-    }
-    var rows = Array.isArray(payload.state.rows) ? payload.state.rows : [];
-    rows = rows.filter(function (row) {
-      return row &&
-        String(row.transport || '').trim() &&
-        String(row.value || '').trim() &&
-        String(row.qualifier || '').trim().toLowerCase() !== 'archive';
-    });
-    var html = '';
-    if (rows.length) {
-      html += renderContactSectionHeading('Contact Information');
-      html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
-      rows.forEach(function (row) {
-        var qualifier = renderContactQualifier(row.qualifier);
-        html += '<tr class="contact-profile-row">';
-        html += '<th class="contact-platform-cell" scope="row">' + escapeHtml(displayContactTransport(row.transport)) + '</th>';
-        html += '<td class="contact-value-cell">';
-        html += '<div class="contact-value-main">' + renderContactValue(row.value, row.transport) + '</div>';
-        if (qualifier) {
-          html += '<span class="contact-qualifier-pill contact-qualifier-open">' + escapeHtml(qualifier) + '</span>';
-        }
-        html += '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-    } else {
-      html += '<p class="list-page-empty-state">No content yet.</p>';
-    }
-    content.innerHTML = html;
-    content.setAttribute('data-prerender-painted', 'true');
-    root.setAttribute('data-prerender-painted', 'true');
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
-    } catch (_err) {}
-    try {
-      var gate = window.__wizardryHydration;
-      if (gate && typeof gate.markPageReady === 'function') {
-        gate.markPageReady();
-      }
-    } catch (_gateErr) {}
-    return true;
-  }
-
-  function paintBlogFirstFrame() {
-    if (!payload || !payload.state || payload.page_type !== 'blog') {
-      return false;
-    }
-    var root = document.getElementById('blog-page-root');
-    var list = document.getElementById('blog-post-list');
-    if (!root || !list || list.getAttribute('data-prerender-painted') === 'true') {
-      return false;
-    }
-    if (list.children.length && !hasOnlyInitialPlaceholder(list)) {
-      return false;
-    }
-    var posts = Array.isArray(payload.bootstrap_posts) ? payload.bootstrap_posts : [];
-    var html = '';
-    if (posts.length) {
-      posts.forEach(function (post) {
-        var title = String(post && post.title || '').trim() || 'Untitled';
-        var url = String(post && post.url || post && post.path || '#').trim() || '#';
-        var author = String(post && post.author || '').trim();
-        var date = String(post && (post.published_date || post.pub_date || post.date) || '').trim();
-        var summary = markdownBlock(post && post.summary || '');
-        html += '<article class="post-item blog-post-item">' +
-          '<div class="post-head"><div class="post-head-main">' +
-          '<h2 class="post-title"><a href="' + escapeHtml(url) + '">' + escapeHtml(title) + '</a></h2>' +
-          ((author || date) ? '<div class="post-meta">' + escapeHtml([author, date].filter(Boolean).join(' - ')) + '</div>' : '') +
-          '</div></div>' +
-          (summary ? '<div class="post-summary">' + summary + '</div>' : '') +
-          '</article>';
-      });
-    } else {
-      html = '<p class="placeholder">No posts to show yet.</p>';
-    }
-    list.innerHTML = html;
-    list.setAttribute('data-prerender-painted', 'true');
-    root.setAttribute('data-prerender-painted', 'true');
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
-    } catch (_err) {}
-    try {
-      var gate = window.__wizardryHydration;
-      if (gate && typeof gate.markPageReady === 'function') {
-        gate.markPageReady();
-      }
-    } catch (_gateErr) {}
-    return true;
-  }
-
-  function paintSimpleContentFirstFrame() {
-    if (!payload || !payload.state || payload.page_type !== 'nip23') {
-      return false;
-    }
-    var root = document.getElementById('nip23-page-root');
-    var content = document.getElementById('nip23-page-content');
-    if (!root || !content || content.getAttribute('data-prerender-painted') === 'true') {
-      return false;
-    }
-    if (content.children.length && !hasOnlyInitialPlaceholder(content)) {
-      return false;
-    }
-    var body = markdownBlock(payload.state.content || '');
-    if (!body) {
-      return false;
-    }
-    content.innerHTML = '<article class="nip23-body">' + body + '</article>';
-    content.setAttribute('data-prerender-painted', 'true');
-    root.setAttribute('data-prerender-painted', 'true');
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
-    } catch (_err) {}
-    try {
-      var gate = window.__wizardryHydration;
-      if (gate && typeof gate.markPageReady === 'function') {
-        gate.markPageReady();
-      }
-    } catch (_gateErr) {}
-    return true;
-  }
-
-  function paintListFirstFrame() {
-    if (!payload || !payload.state || (payload.page_type !== 'list' && payload.page_type !== 'icon-gallery')) {
-      return false;
-    }
-    var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root');
-    if (!root) {
-      return false;
-    }
-    var content = document.getElementById('list-page-content');
-    if (!content || (content.children.length && !hasOnlyInitialPlaceholder(content))) {
-      return false;
-    }
-    var state = payload.state || {};
-    var elements = Array.isArray(state.elements) ? state.elements : (Array.isArray(state.entries) ? state.entries : []);
-    var allowSubmissions = !!state.allow_signed_in_submissions;
-    var allowVotes = !!state.allow_signed_in_votes;
-    var signedIn = hasLikelyAuthenticatedSession();
-    var html = '';
-    if (allowSubmissions) {
-      html += '<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></section>';
-    }
-    if (elements.length) {
-      html += '<ul class="list-entries">';
-      elements.forEach(function (entry) {
-        var line = String(entry && entry.markdown || '').trim();
-        if (!line) {
-          return;
-        }
-        var entryId = String(entry && entry._list_entry_id || '');
-        var voteControls = '';
-        if (allowVotes && entryId) {
-          var viewerVote = Number(entry && entry.viewer_vote || 0) || 0;
-          var viewerCanVoteNow = !entry || entry.viewer_can_vote_now !== false;
-          var upvoteClass = 'list-entry-vote-btn is-upvote' + (viewerVote > 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
-          var downvoteClass = 'list-entry-vote-btn is-downvote' + (viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
-          voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score">' +
-            '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote" title="Upvote">' + voteArrow('up') + '</button>' +
-            '<span class="list-entry-score" title="Score">' + escapeHtml(String(Number(entry && entry.list_score || 0) || 0)) + '</span>' +
-            '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote" title="Downvote">' + voteArrow('down') + '</button>' +
-          '</span>';
-        }
-        var rightMeta = '';
-        if (signedIn) {
-          var menuUid = String(entry && (entry._public_entry_id || entry._list_entry_id) || '');
-          if (menuUid) {
-            rightMeta = '<span class="list-entry-meta-right"><span class="list-entry-read-menu list-inline-row-menu-wrap"><button type="button" class="list-inline-row-menu-trigger" data-list-read-action="toggle-menu" data-element-uid="' + escapeHtml(menuUid) + '" aria-label="Row actions" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIcon() + '</button></span></span>';
-          }
-        }
-        html += '<li class="list-entry-line"><div class="list-entry-first-line' + (voteControls ? ' has-votes' : '') + '">' + voteControls + '<span class="list-entry-main-inline"><span class="list-entry-markdown">' + markdownInline(line) + '</span></span>' + rightMeta + '</div></li>';
-      });
-      html += '</ul>';
-    } else {
-      html += '<p class="list-page-empty-state">No content yet.</p>';
-    }
-    content.innerHTML = html;
-    root.classList.remove('is-loading');
-    root.setAttribute('data-prerender-painted', 'true');
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
-    } catch (_err) {}
-    try {
-      var gate = window.__wizardryHydration;
-      if (gate && typeof gate.markPageReady === 'function') {
-        gate.markPageReady();
-      }
-    } catch (_gateErr) {}
-    return true;
-  }
-
-  function paintFirstFrame() {
-    if (!paintContactFirstFrame() && !paintBlogFirstFrame() && !paintSimpleContentFirstFrame()) {
-      paintListFirstFrame();
-    }
-  }
-
-  if (document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('contact-page-root') || document.getElementById('blog-page-root') || document.getElementById('nip23-page-root')) {
-    paintFirstFrame();
-  } else if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', paintFirstFrame, { once: true });
-  } else {
-    paintFirstFrame();
-  }
-EOBOOT
     printf '%s\n' '})();'
   } > "$js_tmp"
 
@@ -482,12 +252,21 @@ write_local_embed_bootstrap_js() {
   page_type=${2-local}
   slug=$(blog_nostr_page_slug "$slug_in")
   [ -n "$slug" ] || return 1
+  title=$(blog_nostr_page_default_title "$slug" "$page_type")
+  payload_json=$(jq -cn --arg slug "$slug" --arg page_type "$page_type" --arg title "$title" '{
+    success: true,
+    slug: $slug,
+    page_type: $page_type,
+    local_embed: true,
+    state: { title: $title, content: "" }
+  }' 2>/dev/null || printf '')
+  signature=$(blog_nostr_prerender_signature "$payload_json")
   js_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-local-js.XXXXXX")
   {
     printf '%s\n' '(function () {'
     printf '%s\n' '  window.__wizardryNostrPageBootstrap = window.__wizardryNostrPageBootstrap || {};'
     printf '  window.__wizardryNostrPageBootstrap[%s] = {' "$(printf '%s\n' "$slug" | jq -R .)"
-    printf 'success:true,slug:%s,page_type:%s,local_embed:true' "$(printf '%s\n' "$slug" | jq -R .)" "$(printf '%s\n' "$page_type" | jq -R .)"
+    printf 'success:true,slug:%s,page_type:%s,local_embed:true,prerender_signature:%s,state:{title:%s,content:""}' "$(printf '%s\n' "$slug" | jq -R .)" "$(printf '%s\n' "$page_type" | jq -R .)" "$(printf '%s\n' "$signature" | jq -R .)" "$(printf '%s\n' "$title" | jq -R .)"
     printf '%s\n' '};'
     printf '%s\n' '})();'
   } > "$js_tmp"
@@ -503,11 +282,24 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
   page_type=$(printf '%s' "${raw_type-}" | tr '[:upper:]' '[:lower:]')
   [ -n "$slug" ] || continue
   if is_local_embed_type "$page_type"; then
+    local_payload=$(jq -cn --arg slug "$slug" --arg page_type "$page_type" --arg title "$(blog_nostr_page_default_title "$slug" "$page_type")" '{
+      success: true,
+      slug: $slug,
+      page_type: $page_type,
+      local_embed: true,
+      state: { title: $title, content: "" }
+    }' 2>/dev/null || printf '')
+    if [ -n "$local_payload" ]; then
+      blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$local_payload" >/dev/null 2>&1 || true
+    fi
     write_local_embed_bootstrap_js "$slug" "$page_type" || true
     continue
   fi
   is_prerender_type "$page_type" || continue
   payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
+  if [ -z "$payload_json" ]; then
+    payload_json=$(fallback_payload_json "$slug" "$page_type" 2>/dev/null || printf '')
+  fi
   [ -n "$payload_json" ] || continue
   if [ "$page_type" = "blog" ]; then
     posts_json=$(render_blog_posts_json 2>/dev/null || printf '')
@@ -515,6 +307,7 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
       payload_json=$(printf '%s\n' "$payload_json" | jq -c --argjson posts "$posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$payload_json")
     fi
   fi
+  blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json" >/dev/null 2>&1 || true
   write_bootstrap_js "$slug" "$payload_json" || true
 done
 

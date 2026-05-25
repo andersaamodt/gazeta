@@ -270,9 +270,9 @@
     }
   }
 
-  function readPrerenderBootstrap() {
-    try {
-      var allPayloads = window.__wizardryNostrPageBootstrap;
+	  function readPrerenderBootstrap() {
+	    try {
+	      var allPayloads = window.__wizardryNostrPageBootstrap;
       if (!allPayloads || typeof allPayloads !== 'object') {
         return null;
       }
@@ -283,10 +283,22 @@
       return payload;
     } catch (_err) {
       return null;
-    }
-  }
+	    }
+	  }
 
-  function renderFromBootstrapPayload(payload) {
+	  function hasMatchingStaticPrerender(payload, node) {
+	    var signature = String(payload && payload.prerender_signature || '').trim();
+	    if (!signature || !root || !node) {
+	      return false;
+	    }
+	    if (root.getAttribute('data-prerender-painted') !== 'true' || node.getAttribute('data-prerender-painted') !== 'true') {
+	      return false;
+	    }
+	    return root.getAttribute('data-prerender-signature') === signature ||
+	      node.getAttribute('data-prerender-signature') === signature;
+	  }
+
+	  function renderFromBootstrapPayload(payload) {
     if (!payload || typeof payload !== 'object' || !isExpectedPayload(payload)) {
       return false;
     }
@@ -323,18 +335,25 @@
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
-    state.renderSignature = JSON.stringify({
-      slug: String(cachedPayload && cachedPayload.slug || ''),
-      page_type: String(cachedPayload && cachedPayload.page_type || ''),
+	    state.renderSignature = JSON.stringify({
+	      slug: String(cachedPayload && cachedPayload.slug || ''),
+	      page_type: String(cachedPayload && cachedPayload.page_type || ''),
       nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
       is_admin: !!(cachedPayload && cachedPayload.is_admin),
       canonical_exists: !!(cachedPayload && cachedPayload.canonical_exists),
-      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
-      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
-    });
-    renderList();
-    renderAdmin();
-    renderValidation();
+	      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
+	      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
+	    });
+	    if (hasMatchingStaticPrerender(cachedPayload, els.content)) {
+	      renderAdmin();
+	      renderValidation();
+	      markInitialContentPainted();
+	      markHydrationPageReady();
+	      return true;
+	    }
+	    renderList();
+	    renderAdmin();
+	    renderValidation();
     markInitialContentPainted();
     markHydrationPageReady();
     return true;
@@ -459,6 +478,30 @@
       return '<span class="' + escapeHtml(cssClass) + '">' + label + '</span>';
     }
     return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '" title="' + escapeHtml(title || 'Open linked post') + '">' + label + '</a>';
+  }
+
+  function listEntryHrefAttr(postUrl) {
+    var url = String(postUrl || '').trim();
+    return url ? ' data-list-entry-href="' + escapeHtml(url) + '"' : '';
+  }
+
+  function shouldIgnoreListEntryNavigation(target) {
+    if (!(target instanceof Element)) {
+      return true;
+    }
+    return !!target.closest('a, button, input, textarea, select, label, [role="button"], [role="menuitem"], [contenteditable=""], [contenteditable="true"]');
+  }
+
+  function openListEntryHref(url, event) {
+    var href = String(url || '').trim();
+    if (!href) {
+      return;
+    }
+    if (event && (event.metaKey || event.ctrlKey)) {
+      window.open(href, '_blank', 'noopener');
+      return;
+    }
+    window.location.href = href;
   }
 
   function markdownBlock(md) {
@@ -893,6 +936,8 @@
       public_submitter: String(raw && raw.public_submitter || ''),
       public_created_at: Number(raw && raw.public_created_at || 0) || 0,
       list_score: Number(raw && raw.list_score || 0) || 0,
+      list_latest_vote: Number(raw && raw.list_latest_vote || 0) || 0,
+      list_latest_vote_created_at: Number(raw && raw.list_latest_vote_created_at || 0) || 0,
       viewer_vote: Number(raw && raw.viewer_vote || 0) || 0,
       viewer_vote_created_at: Number(raw && raw.viewer_vote_created_at || 0) || 0,
       viewer_vote_total: Number(raw && raw.viewer_vote_total || 0) || 0,
@@ -1913,6 +1958,8 @@
       }
       var cooldownSeconds = Number(entry.vote_cooldown_seconds || 64800) || 64800;
       entry.list_score = (Number(entry.list_score || 0) || 0) + voteValue;
+      entry.list_latest_vote = voteValue;
+      entry.list_latest_vote_created_at = nowSeconds;
       entry.viewer_vote = voteValue;
       entry.viewer_vote_created_at = nowSeconds;
       entry.viewer_vote_total = (Number(entry.viewer_vote_total || 0) || 0) + 1;
@@ -2828,14 +2875,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2844,7 +2891,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -2853,7 +2900,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '">' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
     });
 
     if (started) {
@@ -2874,7 +2921,7 @@
       var entry = node && node.entry ? node.entry : {};
       var line = String(entry.markdown || '').trim();
       var postUrl = String(entry.post_url || '');
-      html += '<li>' + renderLinkedInlineText(line, postUrl, 'list-tile-child-text', 'Open linked post');
+      html += '<li' + listEntryHrefAttr(postUrl) + '>' + renderLinkedInlineText(line, postUrl, 'list-tile-child-text', 'Open linked post');
       if (node && Array.isArray(node.children) && node.children.length) {
         html += renderTileTreeChildren(node.children);
       }
@@ -2916,7 +2963,7 @@
       var postUrl = String(entry.post_url || '');
       var productSlug = entryProductSlug(entry);
       var cartButton = renderProductCartButton(productSlug, 'list-entry-cart-btn-tile');
-      html += '<li class="list-tile">';
+      html += '<li class="list-tile"' + listEntryHrefAttr(postUrl) + '>';
       html += '<div class="list-tile-content">';
       if (imageUrl) {
         html += '<div class="list-tile-image-wrap"><img class="list-tile-image" src="' + escapeHtml(imageUrl) + '" alt=""' + galleryImageAttrs() + '></div>';
@@ -2970,7 +3017,7 @@
         if (!bucket.length) {
           return;
         }
-        html += renderReadOnlyByView(bucket, viewMode, groupBy, currentLabel, showMarkers, alphabetizeMarkers);
+        html += renderReadOnlyByView(sortEntriesForReadOnlyVotes(bucket), viewMode, groupBy, currentLabel, showMarkers, alphabetizeMarkers);
         html += '</section>';
         bucket = [];
       }
@@ -3012,10 +3059,44 @@
       if (scoreDelta !== 0) {
         return scoreDelta;
       }
+      var aLatestVote = normalizeVoteValue(a.entry && a.entry.list_latest_vote);
+      var bLatestVote = normalizeVoteValue(b.entry && b.entry.list_latest_vote);
+      var aLatestAt = Number(a.entry && a.entry.list_latest_vote_created_at || 0) || 0;
+      var bLatestAt = Number(b.entry && b.entry.list_latest_vote_created_at || 0) || 0;
+      if (aLatestVote !== bLatestVote) {
+        return voteActionRank(bLatestVote) - voteActionRank(aLatestVote);
+      }
+      if (aLatestVote > 0 && aLatestAt !== bLatestAt) {
+        return bLatestAt - aLatestAt;
+      }
+      if (aLatestVote < 0 && aLatestAt !== bLatestAt) {
+        return aLatestAt - bLatestAt;
+      }
       return a.index - b.index;
     }).map(function (item) {
       return item.entry;
     });
+  }
+
+  function normalizeVoteValue(value) {
+    var numeric = Number(value || 0) || 0;
+    if (numeric > 0) {
+      return 1;
+    }
+    if (numeric < 0) {
+      return -1;
+    }
+    return 0;
+  }
+
+  function voteActionRank(value) {
+    if (value > 0) {
+      return 1;
+    }
+    if (value < 0) {
+      return -1;
+    }
+    return 0;
   }
 
   function renderExtraContent(text, format, role) {
@@ -4432,6 +4513,12 @@
           );
           return;
         }
+      }
+      var linkedEntry = target.closest('[data-list-entry-href]');
+      if (linkedEntry instanceof HTMLElement && !shouldIgnoreListEntryNavigation(target)) {
+        event.preventDefault();
+        openListEntryHref(linkedEntry.getAttribute('data-list-entry-href') || '', event);
+        return;
       }
     });
 

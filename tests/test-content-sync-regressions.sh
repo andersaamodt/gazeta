@@ -42,7 +42,7 @@ assert_contains() {
   haystack=$1
   needle=$2
   label=$3
-  if printf '%s' "$haystack" | grep -Fq "$needle"; then
+  if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
     pass
   else
     fail "$label (missing: $needle)"
@@ -53,7 +53,7 @@ assert_not_contains() {
   haystack=$1
   needle=$2
   label=$3
-  if printf '%s' "$haystack" | grep -Fq "$needle"; then
+  if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
     fail "$label (unexpected: $needle)"
   else
     pass
@@ -64,7 +64,7 @@ assert_file_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     pass
   else
     fail "$label (missing: $needle in $file)"
@@ -75,7 +75,7 @@ assert_file_not_contains() {
   file=$1
   needle=$2
   label=$3
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     fail "$label (unexpected: $needle in $file)"
   else
     pass
@@ -138,18 +138,19 @@ assert_list_vote_cooldown_merge() {
   now_epoch=$(blog_now_epoch)
   old_vote_at=$((now_epoch - 72000))
   recent_vote_at=$((now_epoch - 43200))
+  latest_vote_at=$((recent_vote_at + 1))
   cat > "$vote_path" <<EOF_VOTES
 {"entry_id":"entry-0","voter":"alice","value":1,"created_at":$old_vote_at}
 {"entry_id":"entry-0","voter":"alice","value":1,"created_at":$recent_vote_at}
-{"entry_id":"entry-0","voter":"bob","value":-1,"created_at":$recent_vote_at}
+{"entry_id":"entry-0","voter":"bob","value":-1,"created_at":$latest_vote_at}
 EOF_VOTES
   state='{"slug":"probe-votes","elements":[{"type":"entry","markdown":"One"}]}'
   validation='{"elements":[{"type":"entry","markdown":"One"}],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
   expected_next_vote_at=$((recent_vote_at + 64800))
-  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" '.elements[0].list_score == 1 and .elements[0].viewer_vote == 1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
+  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" --argjson expected_latest "$latest_vote_at" '.elements[0].list_score == 1 and .elements[0].list_latest_vote == -1 and .elements[0].list_latest_vote_created_at == $expected_latest and .elements[0].viewer_vote == 1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
     pass
   else
-    fail "list vote merge counts every vote and exposes viewer cooldown metadata"
+    fail "list vote merge counts every vote and exposes latest action plus viewer cooldown metadata"
   fi
 }
 
@@ -371,6 +372,21 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_list_validate
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-list-common.sh"' 'navbar endpoint avoids unrelated list library parse cost'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-public-ranking-common.sh"' 'navbar endpoint avoids unrelated ranking library parse cost'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_write_prerendered_source() {' 'managed Nostr pages have a shared static HTML prerender writer'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-prerender-painted="true"' 'managed Nostr prerendered HTML marks stable static content'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_prune_clean_url_build_dirs() {' 'managed Nostr pages prune stale clean-url build copies before rebuild'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_prune_clean_url_build_dirs "$pages_json"' 'pre-build removes stale clean-url build copies for managed pages'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_contact_video_chat_html() {' 'contact prerender reserves the public video chat shell when enabled'
+assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json"' 'bootstrap prerender writes static source pages from the hydration payload'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Loading page content...' 'managed templates do not ship generic page loading copy'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Loading posts...' 'managed templates do not ship generic post loading copy'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-initial-placeholder' 'managed templates do not ship legacy placeholder markers'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'paintContactFirstFrame' 'bootstrap JS no longer paints the first contact frame on the client'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'paintListFirstFrame' 'bootstrap JS no longer paints the first list frame on the client'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'hasOnlyInitialPlaceholder' 'bootstrap JS no longer searches for legacy loading placeholders'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'hasMatchingStaticPrerender' 'list hydration preserves matching static prerendered DOM'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'hasMatchingStaticPrerender' 'blog hydration preserves matching static prerendered DOM'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'
@@ -662,7 +678,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" "document.docume
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html.app-hydrating nav.site-nav,' 'hydration gate hides navbar until page is ready'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-type="list"' 'list mount template marks list page type explicitly'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260524-list-add-toggle1'" 'list page script cache buster tracks native vote tooltip and add toggle UI'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260524-vote-tie-sort1'" 'list page script cache buster tracks vote tie sorting UI'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'show_marker_filters' 'list state supports show_marker_filters toggle'
@@ -789,8 +805,12 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'cursor: default;' 'reading list score text keeps a default cursor'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'user-select: none;' 'reading list score text avoids text-selection affordance'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(filteredEntries)' 'vote-enabled read lists sort by live score'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(bucket)' 'vote-enabled grouped read lists sort each section by vote state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '.list-entry-line[data-list-entry-id]' 'read-mode list rows are keyed for score-change animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function applyOptimisticListVote(entryId, value)' 'list votes update the interface optimistically'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'entry.list_latest_vote = voteValue;' 'optimistic list votes update latest action tie-break metadata'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'voteActionRank(bLatestVote) - voteActionRank(aLatestVote)' 'same-score list vote sorting uses latest up/down action'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'list_latest_vote: latest_vote_value_for($id)' 'server list vote merge returns latest vote action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'restoreListVoteSnapshot(rollbackPayload, beforeRects);' 'list vote failures roll back optimistic state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'showVoteErrorToast(err && err.message ? err.message : '\''Could not vote'\'');' 'list vote failures surface a red toast'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'className = '\''nav-top-toast is-error list-vote-error-toast'\''' 'list vote failure toast uses error styling'
@@ -832,6 +852,9 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-submit-list-vote"
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'state_json: {' 'list editor saves large drafts through a single state_json object'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-view-mode="tile"' 'product gallery read mode renders tile/list selector pill'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-entry-href' 'product gallery/list read items expose whole-item click targets'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'openListEntryHref(linkedEntry.getAttribute' 'product gallery/list read items navigate from the whole item'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.list-tile:hover' 'Lapidarist product tiles do not add hover surface effects'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-inline-action="create-product"' 'product gallery edit rows expose create-product action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "'/cgi/blog-create-product-page'" 'product gallery create-product action calls dedicated CGI endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-add-product-slug' 'product gallery read mode exposes add-to-cart controls'
@@ -862,16 +885,30 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Public surface depth 
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav {' 'surface override targets navbar'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(900px, calc(100vw - 1rem));' 'legacy desktop navbar cap remains before the final content-width override'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Keep the navbar aligned to the same content column as the page below it.' 'final navbar rule documents content-column alignment'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(100%, 46rem) !important;' 'final navbar rule stays centered on thinner content pages'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(100%, var(--site-content-width)) !important;' 'final navbar rule stays centered on the shared content width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--site-content-width: 46rem;' 'site defines one shared default public content width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: var(--site-content-width);' 'base body uses the shared public content width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body:not(.blog-post-resize-enabled):not(.list-page-wide):not(:has(.post-single-item)) #main-content' 'ordinary public pages keep main content on the shared width lane'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(100%, var(--site-content-width));' 'blog layout uses the shared public content width'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(100%, var(--site-content-width)) !important;' 'navbar uses the shared public content width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: min(100%, 760px, calc(100vw - 3rem));' 'navbar link row stays inside the navbar content box'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-site-signature' 'site title has a navbar-specific font rule'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '"Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif' 'site title keeps the original serif font stack'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'position: static !important;' 'navbar stays in page flow instead of pinning to the viewport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'top: auto !important;' 'navbar has no viewport top offset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 0 !important;' 'navbar removes the thin bottom border'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Final title-action button reset: no border layer around compact admin buttons.' 'title action admin buttons have a final border reset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-clip: padding-box !important;' 'title action buttons do not expose a hidden border-box layer'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '-webkit-appearance: none !important;' 'title action buttons suppress WebKit native button chrome'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-image: none !important;' 'title action buttons suppress textured button background artifacts'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-search:focus-within' 'floating search box keeps focus visible without a thin outline border'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'top: 0.08rem;' 'navbar overflow badge sits below the top edge of the sub-toolbar'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'right: -0.32rem;' 'navbar overflow badge is offset to the right of the menu icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'right: -0.18rem;' 'navbar overflow badge stays inset from the link rail edge'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));' 'navbar overflow badge masks the icon underneath with an opaque halo'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'z-index: 3;' 'navbar overflow badge renders above the menu icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'pointer-events: none;' 'navbar overflow badge does not intercept menu clicks'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count' 'navbar overflow badge joins the button hover highlight'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.10);' 'navbar overflow badge halo matches the hover surface'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav > .nav-right .nav-search button {' 'navbar search button has explicit final button styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav-search-button-size: 26px;' 'navbar search button is slightly larger'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'stroke-width="1.9"' 'navbar search icon uses a slightly thicker single-color stroke'
@@ -899,12 +936,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'translate: none !impo
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'padding: 0.18rem 0.9rem 0.18rem 0.36rem;' 'navbar link rail reserves right padding for the overflow badge'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-width: 1.12rem;' 'navbar overflow badge fits two digits'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-compose-card .compose-post-type-pill' 'compose post type bar has explicit separator styling'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));' 'navbar overflow badge masks the icon underneath with an opaque halo'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'z-index: 3;' 'navbar overflow badge renders above the menu icon'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'pointer-events: none;' 'navbar overflow badge does not intercept menu clicks'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-right: 1px solid color-mix(in srgb, var(--amethyst' 'compose post type buttons use a 1px theme-color separator'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count' 'navbar overflow badge joins the button hover highlight'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.10);' 'navbar overflow badge halo matches the hover surface'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background: transparent !important;' 'Lapidarist navbar search button has no resting fill'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'conic-gradient(from 145deg at 50% 52%' 'Lapidarist navbar search button is not a multicolor gem'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'nav-username-color: var(--lapis, #3b70d0);' 'Lapidarist logged-in username uses the lighter lapis token instead of red plum green or muted gold'
@@ -913,7 +945,11 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#5b8fe8 0%' 'active n
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#244d99 100%' 'active navbar lapis gradient keeps a saturated deep edge'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'color: var(--nav-username-hover);' 'Lapidarist logged-in username hover uses the username theme color'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'Final title-action button reset: no border layer around compact admin buttons.' 'Lapidarist title action admin buttons have a final border reset'
-assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'clip-path: inset(0 round 8px) !important;' 'Lapidarist title action buttons clip any hidden border layer'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '-webkit-appearance: none !important;' 'Lapidarist title action buttons suppress WebKit native button chrome'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'clip-path: none !important;' 'Lapidarist title action buttons do not create clipped-corner artifacts'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background-image: none !important;' 'Lapidarist title action buttons suppress textured button background artifacts'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.btn-login {' 'Lapidarist login buttons own the decorative primary overlay'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.list-page-admin-bar .list-admin-primary-btn:active {' 'Lapidarist admin primary buttons use a separate flat style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body nav.site-nav > .nav-right form.nav-search button[type="submit"]' 'Lapidarist navbar search button beats generic button shadows'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn)' 'Lapidarist navbar search button matches generic button specificity'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Button hover stability: hover/focus may change color, border, or shadow, but not position.' 'site CSS documents stable button hover behavior'
@@ -1226,7 +1262,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#nip23-page-title .li
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#public-ranking-title .list-page-title-actions .list-admin-primary-btn' 'public ranking title action buttons use the same no-border reset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn' 'lapidarist nip23 title buttons do not inherit button depth shadows'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn' 'lapidarist public ranking title buttons do not inherit button depth shadows'
-assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" '20260524-navbar-toolbar1' 'auth theme switcher uses current login menu theme cache buster'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'clip-path: none !important;' 'title action buttons avoid WebKit clipped-corner antialias artifacts'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'clip-path: none !important;' 'lapidarist title action buttons avoid clipped-corner antialias artifacts'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" '20260524-admin-button-edge1' 'auth theme switcher uses current login menu theme cache buster'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'popup-menu-shadow:' 'site defines one shared popup menu shadow token'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-image: none !important;' 'popup menus suppress theme texture backgrounds'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: var(--popup-menu-shadow, var(--menu-shadow));' 'popup menus use the shared floating style'

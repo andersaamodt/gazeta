@@ -292,7 +292,7 @@
     });
   }
 
-  function hasCurrentGodotCache() {
+	  function hasCurrentGodotCache() {
     if (!hasCacheStorage()) {
       return Promise.resolve(false);
     }
@@ -304,69 +304,86 @@
       return matches.every(Boolean);
     }).catch(function () {
       return false;
-    });
-  }
+	    });
+	  }
 
-  function mount(host) {
+	  function ensureChild(parent, child, before) {
+	    if (!parent || !child || child.parentNode === parent) {
+	      return;
+	    }
+	    if (before && before.parentNode === parent) {
+	      parent.insertBefore(child, before);
+	    } else {
+	      parent.appendChild(child);
+	    }
+	  }
+
+	  function mount(host) {
     if (!host || host.dataset.overworldMounted === '1') {
       return;
     }
     host.dataset.overworldMounted = '1';
     injectStyles();
 
-    const shell = document.createElement('div');
-    shell.className = 'overworld-godot-shell';
+	    const existingShell = host.querySelector('.overworld-godot-shell');
+	    const shell = existingShell || document.createElement('div');
+	    shell.className = 'overworld-godot-shell';
 
-    const frameWrap = document.createElement('div');
-    frameWrap.className = 'overworld-godot-frame-wrap';
+	    const frameWrap = shell.querySelector('.overworld-godot-frame-wrap') || document.createElement('div');
+	    frameWrap.className = 'overworld-godot-frame-wrap';
 
-    const splash = document.createElement('div');
-    splash.className = 'overworld-godot-splash';
+	    const splash = frameWrap.querySelector('.overworld-godot-splash') || document.createElement('div');
+	    splash.className = 'overworld-godot-splash';
 
-    const splashPanel = document.createElement('div');
-    splashPanel.className = 'overworld-godot-splash-panel';
+	    const splashPanel = splash.querySelector('.overworld-godot-splash-panel') || document.createElement('div');
+	    splashPanel.className = 'overworld-godot-splash-panel';
 
-    const kicker = document.createElement('div');
-    kicker.className = 'overworld-godot-kicker';
-    kicker.textContent = 'Godot Web';
+	    const kicker = splashPanel.querySelector('.overworld-godot-kicker') || document.createElement('div');
+	    kicker.className = 'overworld-godot-kicker';
+	    kicker.textContent = 'Godot Web';
 
-    const title = document.createElement('h2');
-    title.className = 'overworld-godot-title';
-    title.textContent = 'Overworld';
+	    const title = splashPanel.querySelector('.overworld-godot-title') || document.createElement('h2');
+	    title.className = 'overworld-godot-title';
+	    title.textContent = 'Overworld';
 
-    const copy = document.createElement('p');
-    copy.className = 'overworld-godot-copy';
-    copy.textContent = 'The game loads a compressed Godot Web build before play starts.';
+	    const copy = splashPanel.querySelector('.overworld-godot-copy') || document.createElement('p');
+	    copy.className = 'overworld-godot-copy';
+	    copy.textContent = 'The game loads a compressed Godot Web build before play starts.';
 
-    const downloadButton = document.createElement('button');
-    downloadButton.type = 'button';
-    downloadButton.className = 'overworld-godot-download';
-    downloadButton.textContent = DOWNLOAD_LABEL;
+	    let downloadButton = splashPanel.querySelector('.overworld-godot-download');
+	    if (!(downloadButton instanceof HTMLButtonElement)) {
+	      downloadButton = document.createElement('button');
+	    }
+	    downloadButton.type = 'button';
+	    downloadButton.className = 'overworld-godot-download';
+	    downloadButton.textContent = DOWNLOAD_LABEL;
 
-    const status = document.createElement('div');
-    status.className = 'overworld-godot-status';
-    status.textContent = 'Waiting for download';
+	    const status = shell.querySelector('.overworld-godot-status') || document.createElement('div');
+	    status.className = 'overworld-godot-status';
+	    status.textContent = 'Waiting for download';
 
-    const help = document.createElement('div');
-    help.className = 'overworld-godot-help';
+	    const help = shell.querySelector('.overworld-godot-help') || document.createElement('div');
+	    help.className = 'overworld-godot-help';
 
-    const keys = document.createElement('div');
-    keys.className = 'overworld-godot-keys';
-    [
-      'Enter: note',
-      'I: inventory',
-      'B: spells',
-      'C: character'
-    ].forEach(function (label) {
-      const key = document.createElement('span');
-      key.className = 'overworld-godot-key';
-      key.textContent = label;
-      keys.appendChild(key);
-    });
+	    const keys = help.querySelector('.overworld-godot-keys') || document.createElement('div');
+	    keys.className = 'overworld-godot-keys';
+	    if (!keys.querySelector('.overworld-godot-key')) {
+	      [
+	        'Enter: note',
+	        'I: inventory',
+	        'B: spells',
+	        'C: character'
+	      ].forEach(function (label) {
+	        const key = document.createElement('span');
+	        key.className = 'overworld-godot-key';
+	        key.textContent = label;
+	        keys.appendChild(key);
+	      });
+	    }
 
-    const loginNote = document.createElement('div');
-    loginNote.className = 'overworld-godot-login-note';
-    loginNote.textContent = 'Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.';
+	    const loginNote = help.querySelector('.overworld-godot-login-note') || document.createElement('div');
+	    loginNote.className = 'overworld-godot-login-note';
+	    loginNote.textContent = 'Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.';
 
     let started = false;
 
@@ -401,19 +418,23 @@
       });
     });
 
-    splashPanel.appendChild(kicker);
-    splashPanel.appendChild(title);
-    splashPanel.appendChild(copy);
-    splashPanel.appendChild(downloadButton);
-    splash.appendChild(splashPanel);
-    frameWrap.appendChild(splash);
-    shell.appendChild(frameWrap);
-    shell.appendChild(status);
-    help.appendChild(keys);
-    help.appendChild(loginNote);
-    shell.appendChild(help);
-    host.replaceChildren(shell);
-    markReady();
+	    ensureChild(splashPanel, kicker);
+	    ensureChild(splashPanel, title);
+	    ensureChild(splashPanel, copy);
+	    ensureChild(splashPanel, downloadButton);
+	    ensureChild(splash, splashPanel);
+	    if (!frameWrap.querySelector('.overworld-godot-frame')) {
+	      ensureChild(frameWrap, splash);
+	    }
+	    ensureChild(shell, frameWrap, shell.firstChild);
+	    ensureChild(shell, status);
+	    ensureChild(help, keys);
+	    ensureChild(help, loginNote);
+	    ensureChild(shell, help);
+	    if (!existingShell || shell.parentNode !== host) {
+	      host.replaceChildren(shell);
+	    }
+	    markReady();
 
     registerGodotServiceWorker().then(function () {
       return hasCurrentGodotCache();

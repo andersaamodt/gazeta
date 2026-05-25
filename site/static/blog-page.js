@@ -4526,17 +4526,29 @@
     }
   }
 
-  function readPrerenderPostsBootstrap(payload) {
-    if (!payload || typeof payload !== 'object') {
-      return null;
+	  function readPrerenderPostsBootstrap(payload) {
+	    if (!payload || typeof payload !== 'object') {
+	      return null;
     }
     if (!Array.isArray(payload.bootstrap_posts)) {
       return null;
     }
-    return payload.bootstrap_posts.slice();
-  }
+	    return payload.bootstrap_posts.slice();
+	  }
 
-  function renderSignature() {
+	  function hasMatchingStaticPrerender(payload, node) {
+	    var signature = String(payload && payload.prerender_signature || '').trim();
+	    if (!signature || !root || !node) {
+	      return false;
+	    }
+	    if (root.getAttribute('data-prerender-painted') !== 'true' || node.getAttribute('data-prerender-painted') !== 'true') {
+	      return false;
+	    }
+	    return root.getAttribute('data-prerender-signature') === signature ||
+	      node.getAttribute('data-prerender-signature') === signature;
+	  }
+
+	  function renderSignature() {
     function sortedSet(setObj) {
       return Array.from(setObj || []).sort();
     }
@@ -5262,9 +5274,19 @@
         hasWarmPosts = true;
       }
     }
-    state.postsLoading = !hasWarmPosts;
-    renderAll();
-    state.renderSignature = renderSignature();
+	    state.postsLoading = !hasWarmPosts;
+	    if (hasMatchingStaticPrerender(prerenderedPayload, els.list)) {
+	      renderHead();
+	      renderAdmin();
+	      renderDraftNotice();
+	      renderValidation();
+	      renderExtrasAfter();
+	      renderFilters();
+	      renderComposeUi();
+	    } else {
+	      renderAll();
+	    }
+	    state.renderSignature = renderSignature();
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
     waitForInitialDraftNotice().finally(function () {

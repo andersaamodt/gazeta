@@ -167,9 +167,9 @@
     }
   }
 
-  function renderFromBootstrapPayload(payload) {
-    if (!payload || !isExpectedPayload(payload)) {
-      return false;
+	  function renderFromBootstrapPayload(payload) {
+	    if (!payload || !isExpectedPayload(payload)) {
+	      return false;
     }
     var optimisticPayload = payload;
     if (!optimisticPayload.is_admin && hasLikelyAuthenticatedSession()) {
@@ -184,11 +184,19 @@
     state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
     state.activeHeadField = '';
     state.submitComposerOpen = false;
-    state.submitAdvancedOpen = false;
-    state.saveIndicatorVisible = false;
-    setSaveStatus('saved');
-    renderAll();
-    markInitialContentPainted();
+	    state.submitAdvancedOpen = false;
+	    state.saveIndicatorVisible = false;
+	    setSaveStatus('saved');
+	    if (hasMatchingStaticPrerender(optimisticPayload)) {
+	      renderHead();
+	      renderAdmin();
+	      renderValidation();
+	      markInitialContentPainted();
+	      markHydrationPageReady();
+	      return true;
+	    }
+	    renderAll();
+	    markInitialContentPainted();
     markHydrationPageReady();
     return true;
   }
@@ -201,7 +209,7 @@
     return renderFromBootstrapPayload(cachedPayload);
   }
 
-  function renderFromPrerenderBootstrap() {
+	  function renderFromPrerenderBootstrap() {
     var prerenderedPayload = readPrerenderBootstrap();
     if (!prerenderedPayload) {
       return false;
@@ -209,9 +217,21 @@
     if (!renderFromBootstrapPayload(prerenderedPayload)) {
       return false;
     }
-    writeBootstrapCache(prerenderedPayload);
-    return true;
-  }
+	    writeBootstrapCache(prerenderedPayload);
+	    return true;
+	  }
+
+	  function hasMatchingStaticPrerender(payload) {
+	    var signature = String(payload && payload.prerender_signature || '').trim();
+	    if (!signature || !root || !els.content) {
+	      return false;
+	    }
+	    if (root.getAttribute('data-prerender-painted') !== 'true' || els.content.getAttribute('data-prerender-painted') !== 'true') {
+	      return false;
+	    }
+	    return root.getAttribute('data-prerender-signature') === signature ||
+	      els.content.getAttribute('data-prerender-signature') === signature;
+	  }
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);

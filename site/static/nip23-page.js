@@ -315,9 +315,9 @@
     }
   }
 
-  function readPrerenderBootstrap() {
-    try {
-      var allPayloads = window.__wizardryNostrPageBootstrap;
+	  function readPrerenderBootstrap() {
+	    try {
+	      var allPayloads = window.__wizardryNostrPageBootstrap;
       if (!allPayloads || typeof allPayloads !== 'object') {
         return null;
       }
@@ -328,10 +328,22 @@
       return payload;
     } catch (_err) {
       return null;
-    }
-  }
+	    }
+	  }
 
-  function renderFromBootstrapPayload(payload) {
+	  function hasMatchingStaticPrerender(payload) {
+	    var signature = String(payload && payload.prerender_signature || '').trim();
+	    if (!signature || !root || !els.content) {
+	      return false;
+	    }
+	    if (root.getAttribute('data-prerender-painted') !== 'true' || els.content.getAttribute('data-prerender-painted') !== 'true') {
+	      return false;
+	    }
+	    return root.getAttribute('data-prerender-signature') === signature ||
+	      els.content.getAttribute('data-prerender-signature') === signature;
+	  }
+
+	  function renderFromBootstrapPayload(payload) {
     if (!payload || !isExpectedPayload(payload)) {
       return false;
     }
@@ -343,12 +355,20 @@
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
     state.navTitle = String((payload && payload.nav_title) || '').trim();
     state.navTitleEditing = false;
-    state.navTitleInput = '';
-    state.navTitleBusy = false;
-    state.saveIndicatorVisible = false;
-    setSaveStatus('saved');
-    renderAll();
-    markInitialContentPainted();
+	    state.navTitleInput = '';
+	    state.navTitleBusy = false;
+	    state.saveIndicatorVisible = false;
+	    setSaveStatus('saved');
+	    if (hasMatchingStaticPrerender(optimisticPayload)) {
+	      renderHead();
+	      renderAdmin();
+	      renderValidation();
+	      markInitialContentPainted();
+	      markHydrationPageReady();
+	      return true;
+	    }
+	    renderAll();
+	    markInitialContentPainted();
     markHydrationPageReady();
     return true;
   }

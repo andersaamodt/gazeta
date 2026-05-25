@@ -348,6 +348,12 @@ blog_list_merge_public_activity_json() {
       ) as $latest_votes
       | def score_for($id):
           ([$votes[]? | select((.entry_id // "") == $id) | (.value // 0)] | add // 0);
+        def latest_vote_for($id):
+          ([$votes[]? | select((.entry_id // "") == $id)] | max_by(.created_at // 0) // {});
+        def latest_vote_value_for($id):
+          ((latest_vote_for($id).value // 0) | tonumber? // 0);
+        def latest_vote_created_at_for($id):
+          ((latest_vote_for($id).created_at // 0) | tonumber? // 0);
         def viewer_vote_for($id):
           ([$latest_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer) | (.value // 0)] | last // 0);
         def viewer_votes_for($id):
@@ -371,6 +377,8 @@ blog_list_merge_public_activity_json() {
           | ($next_vote_at == 0 or $now_epoch >= $next_vote_at);
         def vote_fields($id): {
           list_score: score_for($id),
+          list_latest_vote: latest_vote_value_for($id),
+          list_latest_vote_created_at: latest_vote_created_at_for($id),
           viewer_vote: viewer_vote_for($id),
           viewer_vote_created_at: viewer_vote_created_at_for($id),
           viewer_vote_total: viewer_vote_total_for($id),

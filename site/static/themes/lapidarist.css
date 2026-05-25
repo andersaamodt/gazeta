@@ -394,16 +394,30 @@ strong {
   box-shadow: var(--lapidarist-float-shadow);
 }
 
-.btn-login,
-.list-page-admin-bar .list-admin-primary-btn {
+.btn-login {
   background-image: var(--button-primary-overlay), linear-gradient(140deg, #5b8fe8 0%, #244d99 100%);
   border-color: var(--button-primary-border);
   color: var(--button-primary-text);
 }
 
-.btn-login:hover,
-.list-page-admin-bar .list-admin-primary-btn:hover {
+.btn-login:hover {
   background-image: linear-gradient(140deg, #6498ee 0%, #2854a4 100%);
+}
+
+.list-page-admin-bar .list-admin-primary-btn,
+.list-page-admin-bar .list-admin-primary-btn:hover,
+.list-page-admin-bar .list-admin-primary-btn:focus-visible,
+.list-page-admin-bar .list-admin-primary-btn:active {
+  background: var(--action-soft-bg, #f5e4d7) !important;
+  background-color: var(--action-soft-bg, #f5e4d7) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: var(--action-soft-text, #6d3a20) !important;
+  -webkit-text-fill-color: var(--action-soft-text, #6d3a20) !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
 }
 
 .btn-login:not(.btn-login-main):not(.btn-login-caret),
@@ -612,8 +626,7 @@ nav.site-nav > .nav-center {
   overflow: visible;
 }
 
-.post-item,
-.list-tile {
+.post-item {
   transition:
     box-shadow 180ms ease,
     background-color 180ms ease;
@@ -626,8 +639,7 @@ nav.site-nav > .nav-center {
     background-color 180ms ease;
 }
 
-.post-item:hover,
-.list-tile:hover {
+.post-item:hover {
   transform: none;
   box-shadow: var(--lapidarist-float-shadow-hover) !important;
 }
@@ -1030,7 +1042,6 @@ textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .post-item,
-  .list-tile,
   .auth-platform-card,
   .nav-cart-item,
   button,
@@ -1040,7 +1051,6 @@ textarea:focus {
   }
 
   .post-item:hover,
-  .list-tile:hover,
   .auth-platform-card:hover,
   .auth-platform-card:focus-visible,
   .nav-cart-item:hover,
@@ -1309,6 +1319,8 @@ textarea:focus {
 #public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
 #public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
   border: 0 !important;
   border-top: 0 !important;
   border-right: 0 !important;
@@ -1320,12 +1332,17 @@ textarea:focus {
   outline: 0;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  background: var(--action-soft-bg, #f5e4d7) !important;
+  background-color: var(--action-soft-bg, #f5e4d7) !important;
+  background-image: none !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
   background-origin: padding-box !important;
-  clip-path: inset(0 round 8px) !important;
-  contain: paint !important;
-  overflow: clip !important;
+  filter: none !important;
+  text-shadow: none !important;
+  clip-path: none !important;
+  contain: none !important;
+  overflow: visible !important;
 }
 
 :where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]) {

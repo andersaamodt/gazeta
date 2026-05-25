@@ -145,7 +145,11 @@ header_reset_json=$(REQUEST_METHOD=GET QUERY_STRING='action=reset' HTTP_X_OVERWO
 assert_jq "$header_reset_json" '.success == true and .authenticated == true and .username == "mobileuser"' 'Overworld API accepts header auth for Godot web GET requests'
 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=2 WIZARDRY_SITES_DIR="$SITES_DIR" WIZARDRY_SITE_NAME="$SITE_NAME" "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
-assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '<div class="overworld-game-mount" data-overworld-game></div>' 'pre-build creates Overworld page with an empty game mount'
+assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '<div class="overworld-game-mount" data-overworld-game data-prerender-painted="true"' 'pre-build creates Overworld page with a prerendered game mount'
+assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'pre-build creates Overworld page with a stable play-surface shell'
+assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-status' 'pre-build creates Overworld status row before runtime JS'
+assert_file_not_contains "$SITE_ROOT/site/pages/overworld.md" 'Loading page content' 'pre-build Overworld page does not ship loading copy'
+assert_file_not_contains "$SITE_ROOT/site/pages/overworld.md" 'data-page-initial-placeholder' 'pre-build Overworld page does not ship the legacy loading placeholder marker'
 assert_file_not_contains "$SITE_ROOT/site/pages/overworld.md" '{{overworld-game}}' 'pre-build does not leave the Overworld shortcode visible in the managed page shell'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '/static/overworld-game.js' 'pre-build creates Overworld page script mount'
 assert_file_contains "$SITE_ROOT/site/static/navbar-pages.json" '"/overworld"' 'pre-build includes Overworld in navbar data'

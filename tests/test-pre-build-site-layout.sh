@@ -25,6 +25,8 @@ template=blog
 theme=lapidarist
 site_title=Example Site
 append_site_title_to_page_title=false
+plugin_video_chat=true
+video_chat_rooms=Lobby
 EOFCONF
 
 cat > "$canonical_root/includes/head.html" <<'EOFHEAD'
@@ -116,10 +118,20 @@ PATH="$tmp_root/bin:$PATH"
 export PATH
 
 . "$site_root/cgi/blog-lib.sh"
+. "$site_root/cgi/blog-list-common.sh"
+. "$site_root/cgi/blog-public-ranking-common.sh"
 . "$site_root/cgi/blog-nostr-pages-common.sh"
 
 blog_init
 blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"},{"slug":"reading-list","type":"list","show_in_nav":true,"placeholder_title":"Reading list"}]}'
+blog_nostr_page_save_draft_state_json contact contact '{"title":"Contact","description":"Ways to reach me","rows":[{"transport":"email","qualifier":"preferred","value":"hello@example.com"},{"transport":"email","qualifier":"archive","value":"old@example.com"}]}'
+blog_nostr_page_save_draft_state_json reading-list list '{"title":"Reading list","description":"Static list fixture","group_by":"year","elements":[{"type":"entry","markdown":"Seeded reading entry","date":"2026","marker":"book"}]}'
+mkdir -p "$site_root/build/contact"
+cat > "$site_root/build/contact/index.html" <<'EOFSTALE'
+<section id="contact-page-root" class="list-page-shell" data-page-slug="contact" data-page-type="contact" data-page-title="Contact">
+<div id="contact-page-content" class="list-page-content">Loading page content...</div>
+</section>
+EOFSTALE
 
 "$site_root/cgi/pre-build"
 
@@ -141,6 +153,10 @@ blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_i
 }
 [ -f "$canonical_root/pages/contact.md" ] || {
   printf '%s\n' "missing generated contact page" >&2
+  exit 1
+}
+[ ! -e "$site_root/build/contact/index.html" ] || {
+  printf '%s\n' "stale clean-url contact build copy was not pruned" >&2
   exit 1
 }
 [ -f "$canonical_root/static/style.css" ] || {
@@ -196,30 +212,54 @@ grep -Fq '/static/contact-page.js?v=20260524-contact-zap-data1' "$canonical_root
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq 'data-page-initial-placeholder="true">Loading page content...' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing generic initial loading fallback after pre-build rewrite" >&2
+grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq 'paintContactFirstFrame' "$canonical_root/static/nostr-page-bootstrap/contact.js" || {
-  printf '%s\n' "contact bootstrap does not paint a first contact frame" >&2
+grep -Fq 'secure-chat-panel' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing prerendered secure chat panel after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/contact.js" || {
-  printf '%s\n' "contact bootstrap cannot replace the generic initial placeholder" >&2
+grep -Fq 'contact-widget-video-chat' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing prerendered video chat shell after pre-build rewrite" >&2
   exit 1
 }
+grep -Fq 'contact-archived-group' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing prerendered archived contact group after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'data-prerender-painted="true"' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing prerender marker after pre-build rewrite" >&2
+  exit 1
+}
+if grep -Fq 'Loading page content' "$canonical_root/pages/contact.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/contact.md"; then
+  printf '%s\n' "contact page still ships a generic loading placeholder" >&2
+  exit 1
+fi
+grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-page-bootstrap/contact.js" || {
+  printf '%s\n' "contact bootstrap missing hydration payload" >&2
+  exit 1
+}
+if grep -Fq 'paintContactFirstFrame' "$canonical_root/static/nostr-page-bootstrap/contact.js" || grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/contact.js"; then
+  printf '%s\n' "contact bootstrap still contains first-frame DOM replacement code" >&2
+  exit 1
+fi
 [ -f "$canonical_root/pages/reading-list.md" ] || {
   printf '%s\n' "missing generated reading list page" >&2
   exit 1
 }
-grep -Fq 'data-page-initial-placeholder="true">Loading page content...' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing generic initial loading fallback after pre-build rewrite" >&2
+grep -Fq 'Seeded reading entry' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing prerendered list entry after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/reading-list.js" || {
-  printf '%s\n' "list bootstrap cannot replace the generic initial placeholder" >&2
+if grep -Fq 'Loading page content' "$canonical_root/pages/reading-list.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/reading-list.md"; then
+  printf '%s\n' "list page still ships a generic loading placeholder" >&2
   exit 1
-}
+fi
+if grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/reading-list.js" || grep -Fq 'paintListFirstFrame' "$canonical_root/static/nostr-page-bootstrap/reading-list.js"; then
+  printf '%s\n' "list bootstrap still contains first-frame DOM replacement code" >&2
+  exit 1
+fi
 [ ! -e "$canonical_root/.repo-pages-manifest" ] || {
   printf '%s\n' "legacy staging manifest should not be written" >&2
   exit 1

@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260524-list-add-toggle1'
+blog_nostr_list_page_js_version='20260524-vote-tie-sort1'
 blog_nostr_blog_page_js_version='20260524-inline-chip-active1'
 blog_nostr_contact_page_js_version='20260524-contact-zap-data1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
@@ -436,6 +436,452 @@ blog_nostr_page_source_path() {
   slug=$(blog_nostr_page_slug "${1-}")
   [ -n "$slug" ] || return 1
   printf '%s/%s.md\n' "$blog_pages_store_dir" "$slug"
+}
+
+blog_nostr_prerender_signature() {
+  payload_json=${1-}
+  signature_payload=$(printf '%s\n' "$payload_json" | jq -c 'del(.prerender_signature)' 2>/dev/null || printf '%s' "$payload_json")
+  printf '%s' "$signature_payload" | cksum | awk '{ printf "%s-%s\n", $1, $2 }'
+}
+
+blog_nostr_prerender_attrs() {
+  payload_json=${1-}
+  signature=$(blog_nostr_prerender_signature "$payload_json")
+  printf ' data-prerender-painted="true" data-prerender-signature="%s"' "$signature"
+}
+
+blog_nostr_prerender_title() {
+  payload_json=${1-}
+  fallback=${2-Untitled}
+  title=$(printf '%s\n' "$payload_json" | jq -r '(.state.title // .nav_title // "") | tostring' 2>/dev/null || printf '')
+  if [ -n "$title" ]; then
+    printf '%s\n' "$title"
+  else
+    printf '%s\n' "$fallback"
+  fi
+}
+
+blog_nostr_prerender_description() {
+  payload_json=${1-}
+  printf '%s\n' "$payload_json" | jq -r '(.state.description // .state.content // "") | tostring' 2>/dev/null || printf ''
+}
+
+blog_nostr_prerender_list_html() {
+  payload_json=${1-}
+  printf '%s\n' "$payload_json" | jq -r '
+    def h:
+      tostring
+      | gsub("&"; "&amp;")
+      | gsub("<"; "&lt;")
+      | gsub(">"; "&gt;")
+      | gsub("\""; "&quot;")
+      | gsub("'"'"'"; "&#39;");
+    def md_inline:
+      h
+      | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>")
+      | gsub("\\*(?<em>[^*\\n]+)\\*"; "<em>\(.em)</em>");
+    def entry_key($e):
+      (($e._list_entry_id // $e._public_entry_id // $e._uid // "") | tostring);
+    def entry_href_attr($e):
+      (($e.post_url // "") | tostring) as $u
+      | if ($u | length) > 0 then " data-list-entry-href=\"" + ($u | h) + "\"" else "" end;
+    def linked_text($text; $url; $class):
+      ($url // "" | tostring) as $u
+      | if ($u | length) > 0 then
+          "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\">" + ($text | md_inline) + "</a>"
+        else
+          "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>"
+        end;
+    def marker_pills($e; $show):
+      if $show then
+        (($e.marker // "") | tostring | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))) as $markers
+        | if ($markers | length) > 0 then
+            "<span class=\"list-entry-marker-pills\">" +
+            ($markers | map("<span class=\"list-entry-marker-pill\">" + (. | h) + "</span>") | join("")) +
+            "</span>"
+          else "" end
+      else "" end;
+    def date_pill($e; $group_by; $section_label):
+      (($e.date // "") | tostring) as $date
+      | if ($date | length) == 0 or ($group_by == "year" and $date == $section_label) then ""
+        else "<span class=\"list-entry-date-pill\">" + ($date | h) + "</span>"
+        end;
+    def row_html($e; $group_by; $section_label; $show_markers; $gallery):
+      (($e.markdown // "") | tostring) as $line
+      | (($e.description // "") | tostring) as $description
+      | (($e.image_url // "") | tostring) as $image
+      | (($e.post_url // "") | tostring) as $post_url
+      | (($e.depth // 0) | tonumber? // 0) as $depth
+      | entry_key($e) as $key
+      | marker_pills($e; $show_markers) as $markers
+      | date_pill($e; $group_by; $section_label) as $date
+      | (if ($markers + $date | length) > 0 then
+          "<span class=\"list-entry-meta-right\"><span class=\"list-entry-meta-pills\">" + $markers + $date + "</span></span>"
+        else "" end) as $meta
+      | (if $gallery and ($image | length) > 0 then
+          "<img class=\"list-entry-list-icon\" src=\"" + ($image | h) + "\" alt=\"\" loading=\"eager\" decoding=\"async\" fetchpriority=\"high\">"
+        else "" end) as $icon
+      | (if $gallery and ($description | length) > 0 then
+          "<span class=\"list-entry-description-inline\">" + ($description | md_inline) + "</span>"
+        else "" end) as $desc
+      | "<li class=\"list-entry-line list-depth-" + ($depth | tostring) + "\" data-list-entry-id=\"" + ($key | h) + "\" style=\"--list-depth:" + ($depth | tostring) + ";\"" + entry_href_attr($e) + ">" +
+        "<div class=\"list-entry-first-line\"><span class=\"list-entry-main-inline\">" + $icon + linked_text($line; $post_url; "list-entry-markdown") + $desc + "</span>" + $meta + "</div></li>";
+    def tile_html($e):
+      (($e.markdown // "") | tostring) as $line
+      | (($e.description // "") | tostring) as $description
+      | (($e.image_url // "") | tostring) as $image
+      | (($e.post_url // "") | tostring) as $post_url
+      | (($e.date // "") | tostring) as $date
+      | "<li class=\"list-tile\"" + entry_href_attr($e) + "><div class=\"list-tile-content\">" +
+        (if ($image | length) > 0 then "<div class=\"list-tile-image-wrap\"><img class=\"list-tile-image\" src=\"" + ($image | h) + "\" alt=\"\" loading=\"eager\" decoding=\"async\" fetchpriority=\"high\"></div>" else "" end) +
+        (if ($date | length) > 0 then "<div class=\"list-tile-date\">" + ($date | h) + "</div>" else "" end) +
+        "</div><div class=\"list-tile-main\"><div class=\"list-tile-label\">" +
+        linked_text($line; $post_url; "list-tile-text") +
+        (if ($description | length) > 0 then "<span class=\"list-tile-description\">" + ($description | md_inline) + "</span>" else "" end) +
+        "</div></div></li>";
+    def group_label($e; $group_by):
+      if $group_by == "year" then (($e.date // "Unknown") | tostring | if length > 0 then . else "Unknown" end)
+      elif $group_by == "first_letter" then (($e.markdown // "#") | tostring | .[0:1] | ascii_upcase | if length > 0 then . else "#" end)
+      elif $group_by == "month" then (($e.date // "Unknown") | tostring | .[0:7] | if length > 0 then . else "Unknown" end)
+      elif $group_by == "marker" then (($e.marker // "Unmarked") | tostring | split(",")[0] | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unmarked" end)
+      else "" end;
+    (.state // {}) as $s
+    | ((.page_type // "") == "icon-gallery") as $gallery
+    | (($s.view_mode // "") | tostring) as $raw_view
+    | (if $gallery and ($raw_view | length) == 0 then "tile" elif $raw_view == "tile" then "tile" else "list" end) as $view
+    | (($s.group_by // "") | tostring) as $group_by
+    | (($s.show_markers // false) == true) as $show_markers
+    | (($s.elements // $s.entries // []) | map(select(((.type // "entry") | tostring) == "entry" and (((.markdown // "") | tostring | length) > 0)))) as $entries
+    | (if (($s.allow_signed_in_submissions // false) == true) then
+        "<section class=\"list-public-submit\" aria-label=\"Add list entry\"><div class=\"list-public-submit-inline\"><input type=\"text\" id=\"list-public-submit-title\" placeholder=\"New entry\"><button type=\"button\" class=\"list-admin-primary-btn list-public-submit-add\" data-list-public-action=\"submit\">Add</button></div></section>"
+      else "" end) as $submit
+    | (if (($s.extras_after // "") | tostring | length) > 0 then
+        "<section class=\"nostr-page-extra nostr-page-extra-after\"><p>" + (($s.extras_after // "") | md_inline) + "</p></section>"
+      else "" end) as $after
+    | if ($entries | length) == 0 then
+        $submit + "<p class=\"list-page-empty-state\">No content yet.</p>" + $after
+      elif $view == "tile" then
+        $submit + "<ul class=\"list-tiles\">" + ($entries | map(tile_html(.)) | join("")) + "</ul>" + $after
+      elif (["year", "first_letter", "month", "marker"] | index($group_by)) then
+        $submit + (
+          reduce $entries[] as $e ({html:"", label:"__initial__", open:false};
+            (group_label($e; $group_by)) as $label
+            | if .label != $label then
+                .html = (.html + (if .open then "</ul></section>" else "" end) + "<section class=\"list-year-group\"><div class=\"list-year-head\"><h3 class=\"list-year-heading\">" + ($label | h) + "</h3></div><ul class=\"list-entries\">")
+                | .label = $label
+                | .open = true
+              else . end
+	            | .html = (.html + row_html($e; $group_by; $label; $show_markers; $gallery))
+	          )
+	          | .html + "</ul></section>"
+	        ) + $after
+      else
+        $submit + "<ul class=\"list-entries\">" + ($entries | map(row_html(.; ""; ""; $show_markers; $gallery)) | join("")) + "</ul>" + $after
+      end
+  ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
+}
+
+blog_nostr_prerender_nip23_html() {
+  payload_json=${1-}
+  printf '%s\n' "$payload_json" | jq -r '
+    def h:
+      tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
+    def md_block:
+      tostring as $raw
+      | if ($raw | gsub("\\s"; "") | length) == 0 then ""
+        else ($raw | h | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>") | split("\n\n") | map("<p>" + (gsub("\n"; "<br>")) + "</p>") | join(""))
+        end;
+    (.state // {}) as $s
+    | (($s.content // "") | md_block) as $main
+    | (($s.extras_after // "") | md_block) as $after
+    | (if (($s.product_enabled // false) == true or (($s.price // "") | tostring | length) > 0) then
+        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div></section>"
+      else "" end) as $product
+    | $product + (if ($main | length) > 0 then "<article class=\"list-entry-markdown\">" + $main + "</article>" else "<p class=\"list-page-empty-state\">No content yet.</p>" end) +
+      (if ($after | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\">" + $after + "</section>" else "" end)
+  ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
+}
+
+blog_nostr_prerender_contact_html() {
+  payload_json=${1-}
+  contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
+  printf '%s\n' "$payload_json" | jq -r --arg video_chat_html "$contact_video_chat_html" '
+    def h:
+      tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
+    def transport($v):
+      (($v // "") | tostring) as $raw
+      | (($raw | ascii_downcase | gsub("[^a-z0-9]+"; "")) as $key
+        | if ($key == "lightning" or $key == "lightningaddress" or $key == "ln" or $key == "lud16") then "Zap" else $raw end);
+    def value_html($row):
+      (($row.value // "") | tostring) as $raw
+      | (($row.transport // "") | tostring | ascii_downcase | gsub("[^a-z0-9]+"; "")) as $key
+      | if (($key == "email") and ($raw | test("@"))) then "<a class=\"contact-value-link\" href=\"mailto:" + ($raw | h) + "\">" + ($raw | h) + "</a>"
+        elif ($raw | test("^https?://")) then "<a class=\"contact-value-link\" href=\"" + ($raw | h) + "\">" + ($raw | h) + "</a>"
+        elif ($key == "lightning" or $key == "lightningaddress" or $key == "ln" or $key == "lud16") then "<button type=\"button\" class=\"contact-value-link contact-zap-link\" data-contact-zap-open=\"true\" data-contact-zap-address=\"" + ($raw | ascii_downcase | h) + "\">" + ($raw | h) + "</button>"
+        else ($raw | h | gsub("\n"; "<br>"))
+        end;
+    def secure_chat_panel:
+      "<h2 id=\"secure-chat-title\" class=\"contact-section-heading\"><span>Secure Chat</span></h2>" +
+      "<section class=\"secure-chat-panel\" aria-labelledby=\"secure-chat-title\">" +
+      "<div class=\"secure-chat-head\"><div class=\"secure-chat-login-gate\"><p class=\"secure-chat-login-note\">Login with Nostr to chat.</p><button type=\"button\" class=\"list-admin-primary-btn secure-chat-login-btn\" data-secure-chat-action=\"login\">Login...</button></div></div>" +
+      "</section>";
+    def has_secure_chat_include($v):
+      (($v // "") | tostring | test("\\{\\{[[:space:]]*secure-chat[[:space:]]*\\}\\}"; "i"));
+    def profile_table($rows):
+      "<div class=\"contact-profile-table-wrap\"><table class=\"contact-profile-table\"><tbody>" +
+      ($rows | map("<tr class=\"contact-profile-row\"><th class=\"contact-platform-cell\" scope=\"row\">" + (transport(.transport) | h) + "</th><td class=\"contact-value-cell\"><div class=\"contact-value-main\">" + value_html(.) + "</div>" + (if ((.qualifier // "") | tostring | length) > 0 then "<span class=\"contact-qualifier-pill contact-qualifier-open\">" + ((.qualifier // "") | tostring | h) + "</span>" else "" end) + "</td></tr>") | join("")) +
+      "</tbody></table></div>";
+    (.state // {}) as $s
+    | (($s.rows // []) | map(select(((.transport // "") | tostring | length) > 0 and ((.value // "") | tostring | length) > 0))) as $rows
+    | ($rows | map(select(((.qualifier // "") | tostring | ascii_downcase) != "archive"))) as $visible_rows
+    | ($rows | map(select(((.qualifier // "") | tostring | ascii_downcase) == "archive"))) as $archived_rows
+    | (if has_secure_chat_include($s.extras_after) then "" else secure_chat_panel end) as $chat
+    | $chat + $video_chat_html + (if ($rows | length) == 0 then "<p class=\"list-page-empty-state\">No content yet.</p>"
+      else
+        (if ($visible_rows | length) > 0 then "<h2 class=\"contact-section-heading\"><span>Contact Information</span></h2>" + profile_table($visible_rows) else "" end) +
+        (if ($archived_rows | length) > 0 then "<details class=\"contact-archived-group\"><summary class=\"contact-archived-toggle\"><span class=\"contact-archived-toggle-label\">Archived</span></summary>" + profile_table($archived_rows) + "</details>" else "" end)
+      end)
+  ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
+}
+
+blog_nostr_prerender_contact_video_chat_html() {
+  if ! blog_plugin_enabled "video_chat"; then
+    return 0
+  fi
+
+  contact_video_chat_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
+  case "$contact_video_chat_public_rooms" in
+    true) ;;
+    *) contact_video_chat_public_rooms=false ;;
+  esac
+  contact_video_chat_rooms=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
+  contact_video_chat_rooms_attr=$(printf '%s' "$contact_video_chat_rooms" | tr ';' ',' | jq -Rr '@html' 2>/dev/null || printf '')
+  contact_video_chat_max=$(config-get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
+  case "$contact_video_chat_max" in ''|*[!0-9]*) contact_video_chat_max=6 ;; esac
+  if [ "$contact_video_chat_max" -lt 2 ]; then contact_video_chat_max=2; fi
+  if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
+
+  cat <<EOF
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call Anders Now" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"></div></section>
+EOF
+}
+
+blog_nostr_prerender_blog_posts_html() {
+  payload_json=${1-}
+  printf '%s\n' "$payload_json" | jq -r '
+    def h:
+      tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
+    def clean:
+      tostring | gsub("#+"; "") | gsub("\\*"; "") | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "\(.label)");
+    def post_html($p):
+      (($p.title // "") | tostring) as $title
+      | (($p.summary // "") | clean) as $summary
+      | (($p.url // $p.path // "#") | tostring) as $url
+      | (($p.author // "Blog Author") | tostring) as $author
+      | (($p.published_date // $p.pub_date // $p.date // "Unknown date") | tostring) as $date
+      | (($p.reading_minutes // 1) | tonumber? // 1) as $mins
+      | "<article class=\"post-item blog-post-item\"><div class=\"post-head\"><div class=\"post-head-main\"><h2 class=\"post-title\"><a href=\"" + ($url | h) + "\">" + ((if ($title | length) > 0 then $title else "Untitled" end) | h) + "</a></h2><div class=\"post-head-divider\" aria-hidden=\"true\"></div><div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">" + ($author | h) + "</span><span class=\"post-reading-inline\">" + ($mins | tostring | h) + " min read</span><span class=\"post-date\">" + ($date | h) + "</span></div></div></div>" +
+        (if ($summary | length) > 0 then "<div class=\"post-summary\"><p>" + ($summary | h) + "</p></div>" else "" end) +
+        "</article>";
+    (.bootstrap_posts // []) as $posts
+    | if ($posts | length) == 0 then "<p class=\"placeholder\">No posts to show yet.</p>"
+      else ($posts | map(post_html(.)) | join(""))
+      end
+  ' 2>/dev/null || printf '<p class="placeholder">No posts to show yet.</p>\n'
+}
+
+blog_nostr_prerender_public_ranking_html() {
+  payload_json=${1-}
+  printf '%s\n' "$payload_json" | jq -r '
+    def h:
+      tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
+    (.state // {}) as $s
+    | (($s.content // "") | tostring) as $intro
+    | (($s.nodes // []) | map(select(((.status // "") | tostring | ascii_downcase) != "pending"))) as $nodes
+    | (if ($intro | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-before\"><p>" + ($intro | h) + "</p></section>" else "" end) +
+      (if ($nodes | length) == 0 then "<p class=\"list-page-empty-state\">No rankings yet.</p>"
+       else "<ol class=\"public-ranking-tree\">" + ($nodes | map("<li class=\"public-ranking-node\"><article><h3>" + (((.title // .coordinate // "Untitled") | tostring) | h) + "</h3>" + (if (((.summary // .content // "") | tostring | length) > 0) then "<p>" + (((.summary // .content // "") | tostring) | h) + "</p>" else "" end) + "</article></li>") | join("")) + "</ol>"
+       end) +
+      (if (($s.extras_after // "") | tostring | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\"><p>" + (($s.extras_after // "") | tostring | h) + "</p></section>" else "" end)
+  ' 2>/dev/null || printf '<p class="list-page-empty-state">No rankings yet.</p>\n'
+}
+
+blog_nostr_prerender_overworld_html() {
+  cat <<'EOOVERWORLDHTML'
+<div class="overworld-godot-shell" data-overworld-static-shell="true">
+<div class="overworld-godot-frame-wrap">
+<div class="overworld-godot-splash">
+<div class="overworld-godot-splash-panel">
+<div class="overworld-godot-kicker">Godot Web</div>
+<h2 class="overworld-godot-title">Overworld</h2>
+<p class="overworld-godot-copy">The game loads a compressed Godot Web build before play starts.</p>
+<button type="button" class="overworld-godot-download">Download (6.8 MB)</button>
+</div>
+</div>
+</div>
+<div class="overworld-godot-status">Waiting for download</div>
+<div class="overworld-godot-help">
+<div class="overworld-godot-keys"><span class="overworld-godot-key">Enter: note</span><span class="overworld-godot-key">I: inventory</span><span class="overworld-godot-key">B: spells</span><span class="overworld-godot-key">C: character</span></div>
+<div class="overworld-godot-login-note">Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.</div>
+</div>
+</div>
+EOOVERWORLDHTML
+}
+
+blog_nostr_page_front_matter_to_tmp() {
+  page_file=${1-}
+  page_title=${2-Untitled}
+  tags=${3-nostr}
+  tmp=${4-}
+  [ -n "$tmp" ] || return 1
+  if [ -f "$page_file" ] && [ "$(sed -n '1p' "$page_file" 2>/dev/null || printf '')" = "---" ]; then
+    awk '
+      BEGIN { fence = 0 }
+      {
+        print
+        if ($0 == "---") {
+          fence += 1
+          if (fence == 2) {
+            print ""
+            exit
+          }
+        }
+      }
+    ' "$page_file" > "$tmp"
+    if [ -s "$tmp" ]; then
+      return 0
+    fi
+  fi
+  {
+    printf '%s\n' '---'
+    printf 'title: "%s"\n' "$(blog_json_escape "$page_title")"
+    printf 'published_at: "%s"\n' "$(blog_now_iso)"
+    printf '%s\n' 'content_hash: ""'
+    printf 'tags: [%s]\n' "$tags"
+    printf '%s\n' 'author: "author"'
+    printf '%s\n' 'visibility: "public"'
+    printf '%s\n' 'license: "CC BY 4.0"'
+    printf '%s\n\n' '---'
+  } > "$tmp"
+}
+
+blog_nostr_page_write_prerendered_source() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  payload_json=${3-}
+  [ -n "$slug" ] || return 1
+  [ -n "$payload_json" ] || payload_json=$(jq -cn --arg slug "$slug" --arg page_type "$page_type" '{slug:$slug,page_type:$page_type,state:{title:$slug}}')
+	  page_file=$(blog_nostr_page_source_path "$slug" "$page_type")
+	  mkdir -p "$(dirname "$page_file")" "$blog_pages_store_dir"
+	  page_title=$(blog_nostr_prerender_title "$payload_json" "$(blog_nostr_page_default_title "$slug" "$page_type")")
+  page_description=$(blog_nostr_prerender_description "$payload_json")
+  attrs=$(blog_nostr_prerender_attrs "$payload_json")
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-page.XXXXXX")
+  tags='"nostr", "list"'
+  case "$page_type" in
+    contact) tags='"nostr", "contact"' ;;
+    nip23) tags='"nostr", "nip23"' ;;
+    blog) tags='"nostr", "blog"' ;;
+    public-ranking) tags='"nostr", "public-ranking"' ;;
+    overworld) tags='"nostr", "overworld"' ;;
+    icon-gallery) tags='"nostr", "list", "icon-gallery"' ;;
+  esac
+  blog_nostr_page_front_matter_to_tmp "$page_file" "$page_title" "$tags" "$tmp"
+
+  case "$page_type" in
+    contact)
+      content_html=$(blog_nostr_prerender_contact_html "$payload_json")
+      {
+        printf '<section id="contact-page-root" class="list-page-shell" data-page-slug="%s" data-page-type="contact" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
+        printf '%s\n' '<div class="list-page-head">'
+        printf '<h1 id="contact-page-title">%s</h1>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
+        printf '<p id="contact-page-description" class="muted">%s</p>\n' "$(printf '%s' "$page_description" | jq -Rr '@html')"
+        printf '%s\n' '</div><div id="contact-page-admin" class="list-admin" hidden></div><div id="contact-page-validation" class="list-validation" hidden></div>'
+        printf '<div id="contact-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
+        printf '%s\n' '<script src="/static/simplex-web-transport.js"></script>'
+        printf '%s\n' '<script type="importmap">'
+        printf '%s\n' '{"imports":{"@noble/ciphers/":"https://cdn.jsdelivr.net/npm/@noble/ciphers@2.2.0/","@noble/curves/":"https://cdn.jsdelivr.net/npm/@noble/curves@2.2.0/","@noble/hashes/":"https://cdn.jsdelivr.net/npm/@noble/hashes@2.2.0/"}}'
+        printf '%s\n' '</script>'
+        printf '<script type="module" src="/static/simplex-web-browser-adapter-init.mjs?v=%s"></script>\n' "$blog_nostr_simplex_web_adapter_init_js_version"
+        printf '<script src="/static/simplex-web-default-chat.js?v=%s"></script>\n' "$blog_nostr_simplex_web_default_chat_js_version"
+        printf '%s\n' '<script src="/static/simplex-web-session-store.js"></script>'
+        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
+        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260524-janus-default1" data-video-chat-widget="1"></script>'
+        printf '<script src="/static/contact-page.js?v=%s"></script>\n' "$blog_nostr_contact_page_js_version"
+      } >> "$tmp"
+      ;;
+    nip23)
+      content_html=$(blog_nostr_prerender_nip23_html "$payload_json")
+      {
+        printf '<section id="nip23-page-root" class="list-page-shell" data-page-slug="%s" data-page-type="nip23" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
+        printf '<div class="list-page-head"><h1 id="nip23-page-title">%s</h1></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
+        printf '%s\n' '<div id="nip23-page-admin" class="list-admin" hidden></div><div id="nip23-page-validation" class="list-validation" hidden></div>'
+        printf '<div id="nip23-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
+        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
+        printf '<script src="/static/nip23-page.js?v=%s"></script>\n' "$blog_nostr_nip23_page_js_version"
+      } >> "$tmp"
+      ;;
+    blog)
+      posts_html=$(blog_nostr_prerender_blog_posts_html "$payload_json")
+      {
+        printf '<section id="blog-page-root" class="blog-page" data-blog-slug="%s" data-page-type="blog" aria-live="polite"%s>\n' "$slug" "$attrs"
+        printf '%s\n' '<div class="blog-layout"><div class="blog-filter-column"><button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts"><svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3"></line><circle cx="6" cy="3" r="1.25"></circle><line x1="2" y1="8" x2="14" y2="8"></line><circle cx="10.5" cy="8" r="1.25"></circle><line x1="2" y1="13" x2="14" y2="13"></line><circle cx="4.5" cy="13" r="1.25"></circle></svg></button></div><div class="blog-main-column">'
+        printf '<div class="list-page-head"><h1 id="blog-page-title">%s</h1><p id="blog-page-description" class="muted" hidden></p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
+        printf '%s\n' '<div id="blog-page-admin" class="list-admin" hidden></div><div id="blog-page-validation" class="list-validation" hidden></div><div id="blog-page-content" class="list-page-content" hidden></div>'
+        printf '%s\n' '<div id="blog-filter-panel" class="blog-filter-panel" hidden><div class="blog-filter-grid"><div class="blog-filter-group"><h3>Tags</h3><div id="blog-filter-tags" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Year</h3><div id="blog-filter-years" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Type</h3><div id="blog-filter-types" class="blog-filter-options"></div></div></div><div class="blog-filter-footer"><button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button></div></div>'
+        printf '<div id="blog-post-list" class="post-list"%s>\n%s\n</div><p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>\n' "$attrs" "$posts_html"
+        printf '%s\n' '</div></div></section>'
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_nostr_blog_page_js_version"
+      } >> "$tmp"
+      ;;
+    public-ranking)
+      content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json")
+      {
+        printf '<section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="%s" data-page-type="public-ranking" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
+        printf '<div class="list-page-head"><h1 id="public-ranking-title">%s</h1><p id="public-ranking-description" class="muted">%s</p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')" "$(printf '%s' "$page_description" | jq -Rr '@html')"
+        printf '%s\n' '<div id="public-ranking-admin" class="list-admin" hidden></div><div id="public-ranking-validation" class="list-validation" hidden></div>'
+        printf '<div id="public-ranking-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
+        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
+        printf '<script src="/static/public-ranking-page.js?v=%s"></script>\n' "$blog_nostr_public_ranking_page_js_version"
+      } >> "$tmp"
+      ;;
+    overworld)
+      content_html=$(blog_nostr_prerender_overworld_html)
+      {
+        printf '<section id="overworld-page-root" class="overworld-page-shell" data-page-slug="%s" data-page-type="overworld" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
+        printf '<div class="list-page-head overworld-page-head"><h1 id="overworld-page-title">%s</h1></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
+        printf '<div class="overworld-game-mount" data-overworld-game%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '<script src="/static/overworld-game.js?v=%s"></script>\n' "$blog_nostr_overworld_game_js_version"
+      } >> "$tmp"
+      ;;
+    icon-gallery|*)
+      content_html=$(blog_nostr_prerender_list_html "$payload_json")
+      root_id=list-page-root
+      [ "$page_type" = "icon-gallery" ] && root_id=icon-gallery-root
+      {
+        printf '<section id="%s" class="list-page-shell%s" data-list-slug="%s" data-list-title="%s" data-page-type="%s"%s>\n' "$root_id" "$( [ "$page_type" = "icon-gallery" ] && printf ' icon-gallery-shell' || printf '' )" "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$page_type" "$attrs"
+        printf '<div class="list-page-head"><h1 id="list-page-title">%s</h1><p id="list-page-description" class="muted">%s</p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')" "$(printf '%s' "$page_description" | jq -Rr '@html')"
+        printf '%s\n' '<div id="list-page-admin" class="list-admin" hidden></div><div id="list-page-validation" class="list-validation" hidden></div>'
+        printf '<div id="list-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
+        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
+        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
+        printf '<script src="/static/list-page.js?v=%s"></script>\n' "$blog_nostr_list_page_js_version"
+      } >> "$tmp"
+      ;;
+  esac
+
+  mv "$tmp" "$page_file"
+  chmod 644 "$page_file" 2>/dev/null || true
+  blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
 }
 
 blog_nostr_page_load_draft_state_json() {
@@ -1317,12 +1763,12 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="public-ranking-content"' "$file" 2>/dev/null &&
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null
       ;;
-    overworld)
-      grep -q 'id="overworld-page-root"' "$file" 2>/dev/null &&
-      grep -q 'data-overworld-game' "$file" 2>/dev/null &&
-      grep -q '<div class="overworld-game-mount" data-overworld-game></div>' "$file" 2>/dev/null &&
-      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
-      grep -q "/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version" "$file" 2>/dev/null
+	    overworld)
+	      grep -q 'id="overworld-page-root"' "$file" 2>/dev/null &&
+	      grep -q 'data-overworld-game' "$file" 2>/dev/null &&
+	      grep -q 'overworld-godot-frame-wrap' "$file" 2>/dev/null &&
+	      grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
+	      grep -q "/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version" "$file" 2>/dev/null
       ;;
     contact)
       grep -q 'id="contact-page-title"' "$file" 2>/dev/null &&
@@ -1387,6 +1833,28 @@ blog_nostr_pages_prune_stale_source_pages() {
     if [ -z "$mount_path" ] || [ "$current_type" != "$existing_type" ] || [ "$page_file" != "$mount_path" ]; then
       rm -f "$page_file"
     fi
+  done
+}
+
+blog_nostr_pages_prune_clean_url_build_dirs() {
+  prune_clean_url_cfg_json=${1-}
+  prune_clean_url_build_dir=$blog_site_root/build
+  [ -d "$prune_clean_url_build_dir" ] || return 0
+
+  printf '%s\n' "$prune_clean_url_cfg_json" | jq -r '.pages[]? | .slug // ""' 2>/dev/null | while IFS= read -r prune_clean_url_slug || [ -n "$prune_clean_url_slug" ]; do
+    prune_clean_url_slug=$(blog_nostr_page_slug "$prune_clean_url_slug")
+    [ -n "$prune_clean_url_slug" ] || continue
+    case "$prune_clean_url_slug" in
+      .*|*/*|pages|static|cgi)
+        continue
+        ;;
+    esac
+
+    prune_clean_url_source_page=$blog_site_root/site/pages/$prune_clean_url_slug.md
+    prune_clean_url_build_path=$prune_clean_url_build_dir/$prune_clean_url_slug
+    [ -f "$prune_clean_url_source_page" ] || continue
+    [ -d "$prune_clean_url_build_path" ] || continue
+    rm -rf "$prune_clean_url_build_path"
   done
 }
 
@@ -1478,7 +1946,7 @@ license: "CC BY 4.0"
 </div>
 <div id="contact-page-admin" class="list-admin" hidden></div>
 <div id="contact-page-validation" class="list-validation" hidden></div>
-<div id="contact-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="contact-page-content" class="list-page-content"></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1519,7 +1987,7 @@ license: "CC BY 4.0"
 </div>
 <div id="nip23-page-admin" class="list-admin" hidden></div>
 <div id="nip23-page-validation" class="list-validation" hidden></div>
-<div id="nip23-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="nip23-page-content" class="list-page-content"></div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
@@ -1561,7 +2029,7 @@ license: "CC BY 4.0"
 </div>
 <div id="blog-page-admin" class="list-admin" hidden></div>
 <div id="blog-page-validation" class="list-validation" hidden></div>
-<div id="blog-page-content" class="list-page-content" hidden><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="blog-page-content" class="list-page-content" hidden></div>
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>
 <div class="blog-filter-grid">
 <div class="blog-filter-group">
@@ -1582,7 +2050,7 @@ license: "CC BY 4.0"
 </div>
 </div>
 
-<div id="blog-post-list" class="post-list"><p class="placeholder" data-page-initial-placeholder="true">Loading posts...</p></div>
+	<div id="blog-post-list" class="post-list"><p class="placeholder">No posts to show yet.</p></div>
 <p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
 </div>
 </div>
@@ -1611,7 +2079,7 @@ license: "CC BY 4.0"
 </div>
 <div id="public-ranking-admin" class="list-admin" hidden></div>
 <div id="public-ranking-validation" class="list-validation" hidden></div>
-<div id="public-ranking-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="public-ranking-content" class="list-page-content"></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1636,7 +2104,9 @@ license: "CC BY 4.0"
 <div class="list-page-head overworld-page-head">
 <h1 id="overworld-page-title">$page_title</h1>
 </div>
-<div class="overworld-game-mount" data-overworld-game><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div class="overworld-game-mount" data-overworld-game>
+	$(blog_nostr_prerender_overworld_html)
+	</div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1662,7 +2132,7 @@ license: "CC BY 4.0"
 </div>
 <div id="list-page-admin" class="list-admin" hidden></div>
 <div id="list-page-validation" class="list-validation" hidden></div>
-<div id="list-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="list-page-content" class="list-page-content"></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1690,7 +2160,7 @@ license: "CC BY 4.0"
 </div>
 <div id="list-page-admin" class="list-admin" hidden></div>
 <div id="list-page-validation" class="list-validation" hidden></div>
-<div id="list-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
+	<div id="list-page-content" class="list-page-content"></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
