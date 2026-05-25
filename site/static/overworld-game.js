@@ -445,7 +445,6 @@
       downloadButton.textContent = CACHED_LABEL;
       status.classList.add('is-ready');
       status.textContent = 'Cached Godot Overworld is ready';
-      startDownload({ fromCache: true });
     });
   }
 
