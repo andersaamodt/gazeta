@@ -1,7 +1,9 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root');
+  var root = document.querySelector('[data-page-type="list"], [data-page-type="icon-gallery"]') ||
+    document.getElementById('list-page-root') ||
+    document.getElementById('icon-gallery-root');
   if (!root) {
     return;
   }
@@ -552,12 +554,20 @@
     return next === 'tile' ? 'tile' : 'list';
   }
 
-  function isProductGalleryPage() {
-    if (root && root.id === 'icon-gallery-root') {
-      return true;
+  function currentPageType() {
+    var payloadType = String(state.payload && state.payload.page_type || '').trim().toLowerCase();
+    if (payloadType) {
+      return payloadType;
     }
-    var rootType = String(root.getAttribute('data-page-type') || '').trim().toLowerCase();
-    return rootType === 'icon-gallery';
+    return String(root.getAttribute('data-page-type') || '').trim().toLowerCase() || 'list';
+  }
+
+  function isProductGalleryPage() {
+    return currentPageType() === 'icon-gallery';
+  }
+
+  function isPlainListPage() {
+    return currentPageType() === 'list';
   }
 
   function normalizeViewModeForPage(value) {
@@ -2352,7 +2362,7 @@
       return '';
     }
     var opts = options || {};
-    var defaultMarker = slug === 'list' ? 'list' : '';
+    var defaultMarker = isPlainListPage() ? 'list' : '';
     var defaultDate = prefillYear ? String(prefillYear) : '';
     var entry = {
       _uid: nextUid(),

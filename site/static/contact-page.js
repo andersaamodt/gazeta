@@ -289,7 +289,7 @@
         '<div data-video-chat ' +
         'data-video-chat-token-endpoint="/cgi/blog-video-chat-token" ' +
         'data-video-chat-call-room-id="call-me" ' +
-        'data-video-chat-call-label="Call Anders" ' +
+        'data-video-chat-call-label="Call" ' +
         'data-video-chat-show-heading="false" ' +
         'data-video-chat-center-precall="true" ' +
         'data-video-chat-owner-call-private="true" ' +
