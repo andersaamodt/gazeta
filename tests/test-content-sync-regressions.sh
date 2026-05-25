@@ -831,6 +831,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForRead
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '.list-entry-line[data-list-entry-id]' 'read-mode list rows are keyed for score-change animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function applyOptimisticListVote(entryId, value)' 'list votes update the interface optimistically'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'entry.list_latest_vote = voteValue;' 'optimistic list votes update latest action tie-break metadata'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'refreshListPayloadFromResponse(data);' 'confirmed list votes do not replay the optimistic reorder animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'voteActionRank(bLatestVote) - voteActionRank(aLatestVote)' 'same-score list vote sorting uses latest up/down action'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'list_latest_vote: latest_vote_value_for($id)' 'server list vote merge returns latest vote action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'restoreListVoteSnapshot(rollbackPayload, beforeRects);' 'list vote failures roll back optimistic state'

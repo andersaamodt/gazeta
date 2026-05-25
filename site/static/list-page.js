@@ -2153,7 +2153,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshListPayloadFromResponse(data, beforeRects);
+      refreshListPayloadFromResponse(data);
     } catch (err) {
       restoreListVoteSnapshot(rollbackPayload, beforeRects);
       showVoteErrorToast(err && err.message ? err.message : 'Could not vote');
