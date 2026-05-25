@@ -701,6 +701,10 @@ nav.site-nav .nav-site-signature {
   cursor: pointer;
 }
 
+.nav-cart-toggle[hidden] {
+  display: none !important;
+}
+
 .nav-cart-toggle:hover,
 .nav-cart-toggle:focus-visible {
   border-color: var(--accent);
