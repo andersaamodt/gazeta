@@ -5937,10 +5937,10 @@ button.contact-value-link {
 .nav-overflow-count {
   position: absolute;
   top: 0.08rem;
-  right: -0.32rem;
-  min-width: 1rem;
+  right: -0.18rem;
+  min-width: 1.12rem;
   height: 1rem;
-  padding: 0 0.18rem;
+  padding: 0 0.22rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--tag-muted-bg, #f2f2ef);
@@ -12763,7 +12763,7 @@ nav.site-nav > .nav-center {
   justify-self: center;
   max-width: min(100%, 760px, calc(100vw - 3rem));
   margin-inline: auto;
-  padding: 0.18rem 0.36rem;
+  padding: 0.18rem 0.9rem 0.18rem 0.36rem;
   border-radius: 999px;
 }
 

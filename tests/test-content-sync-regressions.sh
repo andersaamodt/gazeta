@@ -896,6 +896,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'color: va
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'nav-search-button-size: 26px;' 'Lapidarist navbar search button is slightly larger'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-menu-btn:hover' 'navbar overflow/user menu button has stable hover styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'translate: none !important;' 'navbar overflow/user menu button does not move on hover'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'padding: 0.18rem 0.9rem 0.18rem 0.36rem;' 'navbar link rail reserves right padding for the overflow badge'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-width: 1.12rem;' 'navbar overflow badge fits two digits'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-compose-card .compose-post-type-pill' 'compose post type bar has explicit separator styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-right: 1px solid color-mix(in srgb, var(--amethyst' 'compose post type buttons use a 1px theme-color separator'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background: transparent !important;' 'Lapidarist navbar search button has no resting fill'
