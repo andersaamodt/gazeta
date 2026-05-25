@@ -64,6 +64,7 @@
     dragOverPlacement: 'before',
     dragMoved: false,
     dragDropped: false,
+    dragLastTargetKey: '',
     dragStartRows: null,
     pendingFlipPositions: null,
     rowUidSeq: 0,
@@ -3242,7 +3243,7 @@
       if (!uid) {
         return;
       }
-      map[uid] = node.getBoundingClientRect().top;
+      map[uid] = node.getBoundingClientRect();
     });
     return map;
   }
@@ -3260,23 +3261,26 @@
       if (!uid || !Object.prototype.hasOwnProperty.call(previous, uid)) {
         return;
       }
-      var nextTop = node.getBoundingClientRect().top;
-      var delta = Number(previous[uid]) - nextTop;
-      if (!isFinite(delta) || Math.abs(delta) < 0.5) {
+      var first = previous[uid];
+      var last = node.getBoundingClientRect();
+      var dx = Number(first.left) - last.left;
+      var dy = Number(first.top) - last.top;
+      if ((!isFinite(dx) || Math.abs(dx) < 0.5) && (!isFinite(dy) || Math.abs(dy) < 0.5)) {
         return;
       }
-      node.style.transition = 'none';
-      node.style.transform = 'translateY(' + String(delta) + 'px)';
-      node.getBoundingClientRect();
-      node.style.transition = 'transform 240ms cubic-bezier(0.2, 0, 0, 1)';
-      node.style.transform = '';
-      var clear = function () {
-        node.style.transition = '';
-        node.style.transform = '';
-      };
-      node.addEventListener('transitionend', clear, { once: true });
-      window.setTimeout(clear, 280);
+      node.animate([
+        { transform: 'translate(' + String(dx) + 'px,' + String(dy) + 'px)' },
+        { transform: 'translate(0,0)' }
+      ], {
+        duration: 230,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+      });
     });
+  }
+
+  function renderContentWithRowFlip(previous) {
+    state.pendingFlipPositions = previous || null;
+    renderContent();
   }
 
   function dragGripIconSvg() {
@@ -3896,10 +3900,6 @@
       var uid = String(row._uid || '').trim();
 
       var rowClasses = 'contact-profile-row';
-      if (editable && state.dragOverRowUid && state.dragOverRowUid === uid) {
-        rowClasses += ' is-drag-over';
-        rowClasses += state.dragOverPlacement === 'after' ? ' is-drag-over-after' : ' is-drag-over-before';
-      }
       if (editable && state.draggingRowUid && state.draggingRowUid === uid) {
         rowClasses += ' is-dragging';
       }
@@ -4644,6 +4644,7 @@
       state.dragOverPlacement = 'before';
       state.dragMoved = false;
       state.dragDropped = false;
+      state.dragLastTargetKey = uid + ':before';
       state.dragStartRows = normalizeRows((state.draft && state.draft.rows) || []);
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
@@ -4691,10 +4692,22 @@
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
-      if (state.dragOverRowUid !== uid || state.dragOverPlacement !== placement) {
-        state.dragOverRowUid = uid;
-        state.dragOverPlacement = placement;
-        renderContent();
+      if (uid === state.draggingRowUid) {
+        return;
+      }
+      var targetKey = uid + ':' + placement;
+      if (targetKey === state.dragLastTargetKey) {
+        return;
+      }
+      var beforeLiveMove = captureRowFlipPositions();
+      var moved = reorderDraftRowsByUid(state.draggingRowUid, uid, placement);
+      state.dragLastTargetKey = targetKey;
+      state.dragOverRowUid = '';
+      state.dragOverPlacement = 'before';
+      if (moved) {
+        state.dragMoved = true;
+        clearActiveRowField();
+        renderContentWithRowFlip(beforeLiveMove);
       }
     });
 
@@ -4724,10 +4737,11 @@
       var targetUid = String(row.getAttribute('data-row-uid') || '').trim();
       var sourceUid = String(state.draggingRowUid || '').trim();
       state.dragDropped = true;
-      if (!sourceUid || !targetUid || sourceUid === targetUid) {
+      if (!sourceUid || !targetUid) {
         state.draggingRowUid = '';
         state.dragOverRowUid = '';
         state.dragOverPlacement = 'before';
+        state.dragLastTargetKey = '';
         state.dragMoved = false;
         state.dragDropped = false;
         state.dragStartRows = null;
@@ -4735,22 +4749,32 @@
         return;
       }
       var moved = false;
-      state.pendingFlipPositions = captureRowFlipPositions();
-      moved = reorderDraftRowsByUid(sourceUid, targetUid, state.dragOverPlacement);
+      var rect = row.getBoundingClientRect();
+      var placement = event.clientY > (rect.top + (rect.height / 2)) ? 'after' : 'before';
+      var targetKey = targetUid + ':' + placement;
+      if (targetKey !== state.dragLastTargetKey) {
+        var beforeDrop = captureRowFlipPositions();
+        moved = reorderDraftRowsByUid(sourceUid, targetUid, placement);
+      }
+      var hadMove = state.dragMoved || moved;
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
       state.dragOverPlacement = 'before';
+      state.dragLastTargetKey = '';
       state.dragMoved = false;
       state.dragDropped = false;
       state.dragStartRows = null;
-      if (moved) {
+      if (hadMove) {
         clearActiveRowField();
-        renderContent();
+        if (moved) {
+          renderContentWithRowFlip(beforeDrop);
+        } else {
+          renderContent();
+        }
         state.saveIndicatorVisible = true;
         renderAdmin();
         persistDraft({ alertOnError: false });
       } else {
-        state.pendingFlipPositions = null;
         renderContent();
       }
     });
@@ -4774,18 +4798,24 @@
       if (!isAdmin() || !state.editMode) {
         return;
       }
-      if (!state.dragDropped && state.dragMoved) {
-        state.saveIndicatorVisible = true;
-        renderAdmin();
-        persistDraft({ alertOnError: false });
+      var shouldRestoreRows = !state.dragDropped && state.dragMoved && Array.isArray(state.dragStartRows);
+      var beforeCancel = shouldRestoreRows ? captureRowFlipPositions() : null;
+      if (shouldRestoreRows) {
+        state.draft.rows = normalizeRows(state.dragStartRows);
+        state.payload.state = normalizeDraftState(state.draft);
       }
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
       state.dragOverPlacement = 'before';
+      state.dragLastTargetKey = '';
       state.dragMoved = false;
       state.dragDropped = false;
       state.dragStartRows = null;
-      renderContent();
+      if (shouldRestoreRows) {
+        renderContentWithRowFlip(beforeCancel);
+      } else {
+        renderContent();
+      }
     });
 
     root.addEventListener('input', function (event) {
