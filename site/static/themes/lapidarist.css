@@ -189,10 +189,8 @@ html {
 
 body {
   color: var(--text);
-  background: var(--page-canvas-bg);
-  background-size: var(--page-canvas-bg-size, auto);
-  background-position: var(--page-canvas-bg-position, center);
-  background-attachment: fixed;
+  background: transparent;
+  background-image: none;
 }
 
 body:has(#blog-page-root) {
