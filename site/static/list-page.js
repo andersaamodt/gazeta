@@ -3025,29 +3025,28 @@
     }
     var grouped = ['year', 'first_letter', 'month', 'marker'].indexOf(String(groupBy || '')) >= 0;
     if (grouped) {
-      var currentLabel = '__none__';
-      var bucket = [];
-      function flushGroup() {
-        if (!bucket.length) {
-          return;
-        }
-        html += renderReadOnlyByView(sortEntriesForReadOnlyVotes(bucket), viewMode, groupBy, currentLabel, showMarkers, alphabetizeMarkers);
-        html += '</section>';
-        bucket = [];
-      }
+      var groupMap = {};
+      var groups = [];
       filteredEntries.forEach(function (entry) {
         var label = groupLabelForEntry(entry, groupBy);
-        if (label !== currentLabel) {
-          flushGroup();
-          currentLabel = label;
-          html += '<section class="list-year-group">';
-          html += '<div class="list-year-head">';
-          html += '<h3 class="list-year-heading">' + escapeHtml(label || 'Unknown') + '</h3>';
-          html += '</div>';
+        var key = String(label || 'Unknown');
+        if (!groupMap[key]) {
+          groupMap[key] = {
+            label: key,
+            entries: []
+          };
+          groups.push(groupMap[key]);
         }
-        bucket.push(entry);
+        groupMap[key].entries.push(entry);
       });
-      flushGroup();
+      groups.forEach(function (group) {
+        html += '<section class="list-year-group">';
+        html += '<div class="list-year-head">';
+        html += '<h3 class="list-year-heading">' + escapeHtml(group.label || 'Unknown') + '</h3>';
+        html += '</div>';
+        html += renderReadOnlyByView(sortEntriesForReadOnlyVotes(group.entries), viewMode, groupBy, group.label, showMarkers, alphabetizeMarkers);
+        html += '</section>';
+      });
       return html;
     }
 
