@@ -3818,7 +3818,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260524-navbar-toolbar1';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260524-admin-button-edge1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

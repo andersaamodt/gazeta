@@ -1727,33 +1727,43 @@ body.nav-cart-open {
   width: fit-content;
   padding: 0.36rem 0.74rem;
   border-radius: 8px;
+  border: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  border-inline-start: 0 !important;
+  border-inline-end: 0 !important;
+  border-block-start: 0 !important;
+  border-block-end: 0 !important;
+  border-color: transparent !important;
+  border-image: none !important;
   font-size: 0.92rem;
   line-height: 1.22;
   appearance: none;
   -webkit-appearance: none;
-  background-clip: border-box;
-  -webkit-background-clip: border-box;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  background-origin: padding-box !important;
   outline: none;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  clip-path: inset(0 round 8px);
+  contain: paint;
+  overflow: hidden;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn) {
-  border: 1px solid var(--action-soft-border, #c58f6f);
-  border-left-color: var(--action-soft-border, #c58f6f);
-  border-right-color: var(--action-soft-border, #c58f6f);
   background: var(--action-soft-bg, #f5e4d7) !important;
   background-image: none !important;
   color: var(--action-soft-text, #6d3a20) !important;
   -webkit-text-fill-color: var(--action-soft-text, #6d3a20);
-  box-shadow: none;
 }
 
 .list-page-admin-bar button:not(.list-admin-primary-btn):hover:not(:disabled),
 .list-page-admin-bar button:not(.list-admin-primary-btn):focus-visible:not(:disabled) {
   background: var(--action-soft-hover-bg, #f0d7c5) !important;
   background-image: none !important;
-  border-color: var(--action-soft-hover-border, #b77753);
-  border-left-color: var(--action-soft-hover-border, #b77753);
-  border-right-color: var(--action-soft-hover-border, #b77753);
   color: var(--action-soft-hover-text, #5b2f18) !important;
   -webkit-text-fill-color: var(--action-soft-hover-text, #5b2f18);
 }
@@ -1761,12 +1771,10 @@ body.nav-cart-open {
 .list-page-admin-bar .list-admin-primary-btn {
   padding: 0.36rem 0.74rem;
   border-radius: 8px;
-  border: 1px solid var(--action-soft-border, #c58f6f);
   background: var(--action-soft-bg, #f5e4d7) !important;
   background-image: none !important;
   color: var(--action-soft-text, #6d3a20) !important;
   -webkit-text-fill-color: var(--action-soft-text, #6d3a20);
-  box-shadow: none;
   font-size: 0.92rem;
   font-weight: 400;
   line-height: 1.22;
@@ -8786,11 +8794,31 @@ footer {
   min-width: 1.9rem;
   height: 1.9rem;
   padding: 0;
-  border: 0;
+  border: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  border-inline-start: 0 !important;
+  border-inline-end: 0 !important;
+  border-block-start: 0 !important;
+  border-block-end: 0 !important;
+  border-color: transparent !important;
+  border-image: none !important;
   border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent !important;
   background-image: none !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  background-origin: padding-box !important;
   color: var(--admin-text, var(--text));
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  clip-path: inset(0 round 8px);
+  contain: paint;
+  overflow: hidden;
   transition: background-color 0.16s ease, color 0.16s ease;
 }
 
@@ -13369,6 +13397,10 @@ nav.site-nav > .nav-right .nav-search button {
 #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
 #blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#blog-page-title .list-page-title-actions .blog-filter-toggle,
+#blog-page-title .list-page-title-actions .blog-filter-toggle:hover,
+#blog-page-title .list-page-title-actions .blog-filter-toggle:focus-visible,
+#blog-page-title .list-page-title-actions .blog-filter-toggle[aria-expanded="true"],
 #contact-page-title .list-page-title-actions .list-admin-primary-btn,
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
