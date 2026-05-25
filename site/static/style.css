@@ -13634,6 +13634,8 @@ nav.site-nav > .nav-right .nav-search:focus-within {
 }
 
 nav.site-nav > .nav-right .nav-search button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
   width: var(--nav-search-button-size) !important;
   min-width: var(--nav-search-button-size) !important;
   height: var(--nav-search-button-size) !important;
@@ -13644,8 +13646,12 @@ nav.site-nav > .nav-right .nav-search button {
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   color: var(--amethyst, var(--theme_accent, #6a4fa3)) !important;
   -webkit-text-fill-color: currentColor !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  text-shadow: none !important;
   line-height: 1 !important;
   overflow: visible !important;
   clip-path: none !important;
@@ -13657,8 +13663,12 @@ nav.site-nav > .nav-right .nav-search button:focus-visible {
   background: color-mix(in srgb, var(--amethyst, var(--theme_accent, #6a4fa3)) 15%, transparent) !important;
   background-image: none !important;
   box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   color: var(--amethyst-dark, var(--amethyst, var(--theme_accent, #6a4fa3))) !important;
   -webkit-text-fill-color: currentColor !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  text-shadow: none !important;
 }
 
 nav.site-nav > .nav-right .nav-search button svg {
