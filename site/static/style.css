@@ -8171,6 +8171,10 @@ body.blog-post-resizing {
   min-width: 0;
 }
 
+.blog-post-item .post-card-footer .post-card-meta-tags > .tag {
+  margin: 0;
+}
+
 .blog-post-item .post-card-comments-count {
   grid-column: 1;
   justify-self: center;
