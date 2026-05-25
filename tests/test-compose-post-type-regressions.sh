@@ -232,6 +232,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field="file-upload"' 'blog compose includes file input'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field="audio-upload"' 'blog compose includes audio input'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (!isAdmin()) {' 'blog paste guard requires admin auth'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "+ '|' + (cachedAdminFlag() ? 'admin' : 'visitor')" 'blog auth signature tracks cached admin changes'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'isAdmin: isAdmin(),' 'blog prerender render signature includes admin mode'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (isEditableTarget(event.target)) {' 'blog paste guard skips editable controls'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (!state.compose.open) {' 'blog paste handler opens compose when closed'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'setComposeOpen(true);' 'blog paste handler opens compose card'

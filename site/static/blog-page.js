@@ -159,7 +159,7 @@
 
   function authSignature() {
     var auth = authPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (cachedAdminFlag() ? 'admin' : 'visitor');
   }
 
   function maybeReloadForAuthChange() {
@@ -4554,6 +4554,7 @@
     }
     return JSON.stringify({
       payload: (state.payload && state.payload.state) ? state.payload.state : null,
+      isAdmin: isAdmin(),
       posts: Array.isArray(state.posts) ? state.posts : [],
       filters: {
         tags: sortedSet(state.filters.tags),
@@ -4572,7 +4573,7 @@
       return Promise.resolve();
     }
     var auth = authPayload();
-    state.authSignature = String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+    state.authSignature = authSignature();
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: requestedSlug,
       session_token: auth.session_token,

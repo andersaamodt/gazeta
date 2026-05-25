@@ -52,4 +52,4 @@ title: Blog
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
 <script src="/static/compose-shared.js?v=20260403-compose1"></script>
-<script src="/static/blog-page.js?v=20260523-byline-bottom1"></script>
+<script src="/static/blog-page.js?v=20260524-admin-menu-auth1"></script>
