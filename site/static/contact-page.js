@@ -29,7 +29,7 @@
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
   var secureChatRecentEmojiLimit = 32;
-  var videoChatWidgetBuildVersion = '20260524-janus-default1';
+  var videoChatWidgetBuildVersion = '20260525-soft-actions1';
   var secureChatEmojiSectionDefs = [
     { id: 'recent', label: 'Recently Used', group: null },
     { id: 'smileys-emotion', label: 'Smileys & Emotion', pickerLabel: 'Smileys and emoticons', group: 0 },

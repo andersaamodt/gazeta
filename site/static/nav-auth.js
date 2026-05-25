@@ -3818,7 +3818,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260525-firefox-title-actions';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260525-soft-actions1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();
