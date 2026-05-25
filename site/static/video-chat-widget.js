@@ -1061,12 +1061,8 @@
     target.setAttribute(WIDGET_MOUNTED_ATTR, this.instanceId);
 
     if (!this.state.featureDisabled && this.options.autoStart && this.state.roomId) {
-      var self = this;
-      window.setTimeout(function () {
-        self.startCall(self.options.callMode || 'video').catch(function () {
-          // Errors are already surfaced in UI.
-        });
-      }, 0);
+      this._setCallMode(this.options.callMode || 'video');
+      this._setStatus(this.state.callMode === 'voice' ? 'Ready. Microphone access starts from the voice button.' : 'Ready. Camera access starts from the video button.', 'info');
     }
   }
 
