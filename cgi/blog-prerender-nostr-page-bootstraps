@@ -169,6 +169,16 @@ write_bootstrap_js() {
     return text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
   }
 
+  function markdownBlock(value) {
+    var text = escapeHtml(value || '').trim();
+    if (!text) {
+      return '';
+    }
+    return text.split(/\n{2,}/).map(function (part) {
+      return '<p>' + part.replace(/\n/g, '<br>') + '</p>';
+    }).join('');
+  }
+
   function voteArrow(direction) {
     var path = String(direction || '') === 'down'
       ? 'M12 20 4.5 10.8h4.25V4h6.5v6.8h4.25L12 20Z'
@@ -188,6 +198,192 @@ write_bootstrap_js() {
     }
   }
 
+  function hasOnlyInitialPlaceholder(node) {
+    if (!node) {
+      return false;
+    }
+    if (!node.children || node.children.length !== 1) {
+      return false;
+    }
+    return node.children[0].getAttribute && node.children[0].getAttribute('data-page-initial-placeholder') === 'true';
+  }
+
+  function renderContactSectionHeading(label) {
+    return '<h2 class="contact-section-heading"><span>' + escapeHtml(label) + '</span></h2>';
+  }
+
+  function renderContactQualifier(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    if (!raw) {
+      return '';
+    }
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+
+  function renderContactValue(value, transport) {
+    var raw = String(value || '').trim();
+    if (isLightningTransport(transport)) {
+      return '<button type="button" class="contact-value-link contact-zap-link" data-contact-zap-open="true" data-contact-zap-address="' + escapeHtml(raw.toLowerCase()) + '">' + escapeHtml(raw) + '</button>';
+    }
+    var transportKey = String(transport || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    var href = '';
+    var email = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if (transportKey === 'email' && email && email[0]) {
+      href = 'mailto:' + email[0];
+    } else if (/^https?:\/\//i.test(raw)) {
+      href = raw;
+    } else if ((transportKey === 'phone' || transportKey === 'tel' || transportKey === 'telephone') && /^(\+?[0-9][0-9\s().-]{6,}[0-9])$/.test(raw)) {
+      href = 'tel:' + raw.replace(/[^\d+]/g, '');
+    }
+    if (href) {
+      return '<a class="contact-value-link" href="' + escapeHtml(href) + '">' + escapeHtml(raw) + '</a>';
+    }
+    return escapeHtml(raw).replace(/\n/g, '<br>');
+  }
+
+  function isLightningTransport(value) {
+    var key = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    return key === 'lightning' || key === 'lightningaddress' || key === 'ln' || key === 'lud16' || key === 'lnurlp';
+  }
+
+  function displayContactTransport(value) {
+    return isLightningTransport(value) ? 'Zap' : String(value || '').trim();
+  }
+
+  function paintContactFirstFrame() {
+    if (!payload || !payload.state || payload.page_type !== 'contact') {
+      return false;
+    }
+    var root = document.getElementById('contact-page-root');
+    var content = document.getElementById('contact-page-content');
+    if (!root || !content || content.getAttribute('data-prerender-painted') === 'true') {
+      return false;
+    }
+    if (content.children.length && !hasOnlyInitialPlaceholder(content)) {
+      return false;
+    }
+    var rows = Array.isArray(payload.state.rows) ? payload.state.rows : [];
+    rows = rows.filter(function (row) {
+      return row &&
+        String(row.transport || '').trim() &&
+        String(row.value || '').trim() &&
+        String(row.qualifier || '').trim().toLowerCase() !== 'archive';
+    });
+    var html = '';
+    if (rows.length) {
+      html += renderContactSectionHeading('Contact Information');
+      html += '<div class="contact-profile-table-wrap"><table class="contact-profile-table"><tbody>';
+      rows.forEach(function (row) {
+        var qualifier = renderContactQualifier(row.qualifier);
+        html += '<tr class="contact-profile-row">';
+        html += '<th class="contact-platform-cell" scope="row">' + escapeHtml(displayContactTransport(row.transport)) + '</th>';
+        html += '<td class="contact-value-cell">';
+        html += '<div class="contact-value-main">' + renderContactValue(row.value, row.transport) + '</div>';
+        if (qualifier) {
+          html += '<span class="contact-qualifier-pill contact-qualifier-open">' + escapeHtml(qualifier) + '</span>';
+        }
+        html += '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<p class="list-page-empty-state">No content yet.</p>';
+    }
+    content.innerHTML = html;
+    content.setAttribute('data-prerender-painted', 'true');
+    root.setAttribute('data-prerender-painted', 'true');
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
+    } catch (_err) {}
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.markPageReady === 'function') {
+        gate.markPageReady();
+      }
+    } catch (_gateErr) {}
+    return true;
+  }
+
+  function paintBlogFirstFrame() {
+    if (!payload || !payload.state || payload.page_type !== 'blog') {
+      return false;
+    }
+    var root = document.getElementById('blog-page-root');
+    var list = document.getElementById('blog-post-list');
+    if (!root || !list || list.getAttribute('data-prerender-painted') === 'true') {
+      return false;
+    }
+    if (list.children.length && !hasOnlyInitialPlaceholder(list)) {
+      return false;
+    }
+    var posts = Array.isArray(payload.bootstrap_posts) ? payload.bootstrap_posts : [];
+    var html = '';
+    if (posts.length) {
+      posts.forEach(function (post) {
+        var title = String(post && post.title || '').trim() || 'Untitled';
+        var url = String(post && post.url || post && post.path || '#').trim() || '#';
+        var author = String(post && post.author || '').trim();
+        var date = String(post && (post.published_date || post.pub_date || post.date) || '').trim();
+        var summary = markdownBlock(post && post.summary || '');
+        html += '<article class="post-item blog-post-item">' +
+          '<div class="post-head"><div class="post-head-main">' +
+          '<h2 class="post-title"><a href="' + escapeHtml(url) + '">' + escapeHtml(title) + '</a></h2>' +
+          ((author || date) ? '<div class="post-meta">' + escapeHtml([author, date].filter(Boolean).join(' - ')) + '</div>' : '') +
+          '</div></div>' +
+          (summary ? '<div class="post-summary">' + summary + '</div>' : '') +
+          '</article>';
+      });
+    } else {
+      html = '<p class="placeholder">No posts to show yet.</p>';
+    }
+    list.innerHTML = html;
+    list.setAttribute('data-prerender-painted', 'true');
+    root.setAttribute('data-prerender-painted', 'true');
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
+    } catch (_err) {}
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.markPageReady === 'function') {
+        gate.markPageReady();
+      }
+    } catch (_gateErr) {}
+    return true;
+  }
+
+  function paintSimpleContentFirstFrame() {
+    if (!payload || !payload.state || payload.page_type !== 'nip23') {
+      return false;
+    }
+    var root = document.getElementById('nip23-page-root');
+    var content = document.getElementById('nip23-page-content');
+    if (!root || !content || content.getAttribute('data-prerender-painted') === 'true') {
+      return false;
+    }
+    if (content.children.length && !hasOnlyInitialPlaceholder(content)) {
+      return false;
+    }
+    var body = markdownBlock(payload.state.content || '');
+    if (!body) {
+      return false;
+    }
+    content.innerHTML = '<article class="nip23-body">' + body + '</article>';
+    content.setAttribute('data-prerender-painted', 'true');
+    root.setAttribute('data-prerender-painted', 'true');
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', { detail: { slug: slug, prerendered: true } }));
+    } catch (_err) {}
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.markPageReady === 'function') {
+        gate.markPageReady();
+      }
+    } catch (_gateErr) {}
+    return true;
+  }
+
   function paintListFirstFrame() {
     if (!payload || !payload.state || (payload.page_type !== 'list' && payload.page_type !== 'icon-gallery')) {
       return false;
@@ -197,7 +393,7 @@ write_bootstrap_js() {
       return false;
     }
     var content = document.getElementById('list-page-content');
-    if (!content || content.children.length) {
+    if (!content || (content.children.length && !hasOnlyInitialPlaceholder(content))) {
       return false;
     }
     var state = payload.state || {};
@@ -258,12 +454,18 @@ write_bootstrap_js() {
     return true;
   }
 
-  if (document.getElementById('list-page-root') || document.getElementById('icon-gallery-root')) {
-    paintListFirstFrame();
+  function paintFirstFrame() {
+    if (!paintContactFirstFrame() && !paintBlogFirstFrame() && !paintSimpleContentFirstFrame()) {
+      paintListFirstFrame();
+    }
+  }
+
+  if (document.getElementById('list-page-root') || document.getElementById('icon-gallery-root') || document.getElementById('contact-page-root') || document.getElementById('blog-page-root') || document.getElementById('nip23-page-root')) {
+    paintFirstFrame();
   } else if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', paintListFirstFrame, { once: true });
+    document.addEventListener('DOMContentLoaded', paintFirstFrame, { once: true });
   } else {
-    paintListFirstFrame();
+    paintFirstFrame();
   }
 EOBOOT
     printf '%s\n' '})();'

@@ -92,6 +92,7 @@ config-set "$blog_site_conf" plugin_nostr_support true
 config-set "$blog_site_conf" plugin_zaps true
 config-set "$blog_site_conf" zaps_enabled true
 printf '%s\n' 'npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' > "$blog_nostr_state_dir/site_npub"
+printf '%s\n' '1111111111111111111111111111111111111111111111111111111111111111' > "$blog_nostr_state_dir/site_pubkey"
 
 normalized=$(blog_contact_normalize_state_json "contact" '{
   "slug":"contact",
@@ -101,11 +102,11 @@ normalized=$(blog_contact_normalize_state_json "contact" '{
   ]
 }')
 assert_contains "$normalized" '"transport":"lightning"' 'contact normalize keeps a lightning row when zaps are enabled'
-assert_contains "$normalized" '"value":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact normalize replaces lightning row with the demo lud16 when no manual address is configured'
+assert_contains "$normalized" '"value":"old@example.com"' 'contact normalize preserves the lightning row from page data'
 assert_contains "$normalized" '"transport":"email"' 'contact normalize keeps non-lightning rows'
 
 enriched=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
-assert_contains "$enriched" '"lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact validation publishes managed demo lud16'
+assert_contains "$enriched" '"lud16":"old@example.com"' 'contact validation publishes the lightning row from page data'
 assert_contains "$enriched" '"email_public":"hello@example.com"' 'contact validation preserves normal contact rows'
 if printf '%s' "$enriched" | grep -Fq 'lightning_preferred'; then
   fail 'contact validation should not serialize lightning rows as generic contact keys'
@@ -114,7 +115,7 @@ else
 fi
 
 page_payload=$(printf '%s\n' "$normalized" | jq -c '.')
-assert_contains "$page_payload" '"content_json":{"title":"Contact","lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'normalized contact state includes managed demo lud16 in content_json'
+assert_contains "$page_payload" '"content_json":{"title":"Contact","lud16":"old@example.com"' 'normalized contact state includes page-data lud16 in content_json'
 assert_contains "$(blog_zap_effective_lud16)" 'npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash' 'effective zap lud16 falls back to the demo wallet'
 
 config-set "$blog_site_conf" zap_lud16 "demo@wallet.example"
@@ -140,6 +141,17 @@ assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "cache: 'no-store'" '
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "satsWithUsdLabel" 'zap UI renders USD equivalents beside sats'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'function zapIconHtml()' 'zap UI renders a standard lightning-bolt icon'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'aria-label="Zap this post"' 'compact zap icon keeps an accessible label'
+assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'data-contact-zap-open' 'contact page renders the zap address as a clickable table value'
+assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'data-contact-zap-address' 'contact page passes only the clicked zap address into the zap modal'
+assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'window.blogZapUi.open' 'contact page opens the shared zap modal from the table link'
+assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" "return isLightningTransport(value) ? 'Zap'" 'contact page labels lightning profile rows as Zap'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'Zaps use <code>' 'contact page does not render a managed zap notice'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'managedLightningNoteHtml' 'contact page does not inject Admin zap config into contact content'
+assert_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'dragOverPlacement' 'contact row dragging tracks before and after drop placement without live row churn'
+assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.contact-profile-row.is-drag-over-before' 'contact row drag target shows a stable before indicator'
+assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'touch-action: none;' 'contact drag handle avoids browser gesture interference'
+assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'open: function (rawOptions)' 'shared zap UI exposes direct modal opening for profile links'
+assert_contains "$(blog_zaps_config_json)" '"recipient_pubkey":"1111111111111111111111111111111111111111111111111111111111111111"' 'zap config exposes the site pubkey for profile zaps'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'width: calc(2rem - 1px);' 'compact zap button is optically sized for the post header'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" 'transform: translate(-0.5px, 0);' 'compact zap icon is optically centered in the round button'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "'100'" 'zap UI includes 100 sats as a small test/default amount'
@@ -154,6 +166,8 @@ assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.machine-string-copy
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'revealInvoiceControls' 'zap UI scrolls and focuses the invoice after creation'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'signerIsAvailable' 'zap UI checks shared signer availability before attempting a signed zap'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'return requestInvoice(modalState.options, null' 'zap UI does not block invoice creation on missing signer'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'contact-zap-host' 'contact page keeps zap inside the contact table'
+assert_not_contains "$(cat "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps")" 'contact-zap-host' 'contact first frame keeps zap inside the contact table'
 assert_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "['p', recipientPubkey]" 'zap request p tag uses the LNURL provider recipient pubkey'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" "['p', target.recipientPubkey]" 'zap request p tag does not use the post author pubkey as the zap recipient'
 assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint.sh")" 'mode": "nostr_zap" if zap_request_json else "lightning_invoice"' 'zap endpoint records unsigned invoice fallback separately from signed zaps'
@@ -171,7 +185,7 @@ assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-kicker' 
 assert_not_contains "$(sed -n '/\\.zap-dialog-kicker {/,/}/p' "$ROOT_DIR/site/static/style.css")" 'text-transform: uppercase' 'zap modal kicker does not force all caps'
 assert_contains "$(cat "$ROOT_DIR/cgi/blog-btc-usd-rate")" 'api.exchange.coinbase.com/products/BTC-USD/ticker' 'BTC/USD endpoint uses Coinbase ticker data'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages do not render zap UI'
-assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'contact-zap-host' 'contact pages do not render zap UI'
+assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'Lightning zaps use' 'contact page copy calls this Zap, not Lightning contact info'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

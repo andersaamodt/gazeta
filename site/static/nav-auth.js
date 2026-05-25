@@ -283,6 +283,16 @@
     node.setAttribute('title', next);
   }
 
+  function syncNavSiteSignatureDestination() {
+    var node = document.getElementById('nav-site-signature');
+    if (!node || !node.setAttribute) {
+      return;
+    }
+    var firstNavLink = document.querySelector('.nav-center a[data-page][href]');
+    var href = firstNavLink ? compact(firstNavLink.getAttribute('href') || '') : '';
+    node.setAttribute('href', href || '/');
+  }
+
   function cacheSiteTitle(title) {
     try {
       localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizeSiteTitle(title));
@@ -3520,6 +3530,7 @@
       navCenter.innerHTML = html;
     }
     placeNavOverflowMenuWithPageLinks();
+    syncNavSiteSignatureDestination();
     highlightCurrentPage();
     scheduleNavOverflowMenuSync();
   }
@@ -3807,7 +3818,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260523-nav-gem-search2';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260524-navbar-toolbar1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

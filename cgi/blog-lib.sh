@@ -2073,6 +2073,7 @@ blog_zaps_config_json() {
   amount_sats=$(blog_zap_default_amount_sats)
   relays_json=$(blog_nostr_list_file_to_json_array "$blog_nostr_relays_file")
   site_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+  site_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
   if [ -n "$site_npub" ]; then
     demo_wallet_available=true
   else
@@ -2091,6 +2092,9 @@ blog_zaps_config_json() {
   printf '"demo_wallet_available":%s,' "$demo_wallet_available"
   if [ -n "$site_npub" ]; then
     printf '"demo_wallet_npub":"%s",' "$(blog_json_escape "$site_npub")"
+  fi
+  if [ -n "$site_pubkey" ]; then
+    printf '"recipient_pubkey":"%s",' "$(blog_json_escape "$site_pubkey")"
   fi
   printf '"relays":%s' "$relays_json"
   printf '}\n'
@@ -3785,6 +3789,37 @@ PY
   return 1
 }
 
+blog_nostr_site_pubkey() {
+  if [ -f "$blog_nostr_state_dir/site_pubkey" ]; then
+    cached=$(sed -n '1p' "$blog_nostr_state_dir/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
+    cached=$(blog_validate_nostr_pubkey "$cached" 2>/dev/null || printf '')
+    if [ -n "$cached" ]; then
+      printf '%s\n' "$cached"
+      return 0
+    fi
+  fi
+
+  pubkey=''
+  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+  if [ -n "$secret" ] && command -v nostril >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-pubkey.XXXXXX")
+    set +e
+    nostril --sec "$secret" --kind 1 --created-at "$(blog_now_epoch)" --content "" > "$tmp" 2>/dev/null
+    sign_status=$?
+    set -e
+    if [ "$sign_status" -eq 0 ]; then
+      pubkey=$(jq -r '.pubkey // ""' "$tmp" 2>/dev/null || printf '')
+      pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
+    fi
+    rm -f "$tmp"
+  fi
+  [ -n "$pubkey" ] || return 1
+  mkdir -p "$blog_nostr_state_dir" >/dev/null 2>&1 || true
+  printf '%s\n' "$pubkey" > "$blog_nostr_state_dir/site_pubkey"
+  chmod 600 "$blog_nostr_state_dir/site_pubkey" 2>/dev/null || true
+  printf '%s\n' "$pubkey"
+}
+
 blog_nostr_site_npub() {
   cache_file="$blog_nostr_state_dir/site_npub"
   if [ -f "$cache_file" ]; then
@@ -3796,26 +3831,7 @@ blog_nostr_site_npub() {
     fi
   fi
 
-  pubkey=''
-  if [ -f "$blog_nostr_state_dir/site_pubkey" ]; then
-    pubkey=$(sed -n '1p' "$blog_nostr_state_dir/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
-    pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
-  fi
-  if [ -z "$pubkey" ]; then
-    secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
-    if [ -n "$secret" ] && command -v nostril >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-      tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-npub.XXXXXX")
-      set +e
-      nostril --sec "$secret" --kind 1 --created-at "$(blog_now_epoch)" --content "" > "$tmp" 2>/dev/null
-      sign_status=$?
-      set -e
-      if [ "$sign_status" -eq 0 ]; then
-        pubkey=$(jq -r '.pubkey // ""' "$tmp" 2>/dev/null || printf '')
-        pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
-      fi
-      rm -f "$tmp"
-    fi
-  fi
+  pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
   [ -n "$pubkey" ] || return 1
 
   encoded=$(blog_nostr_pubkey_to_npub "$pubkey" 2>/dev/null || printf '')

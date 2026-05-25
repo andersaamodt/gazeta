@@ -37,8 +37,8 @@
   --nav-icon-hover: #1e6f56;
   --nav-search-icon: #23775e;
   --nav-search-icon-hover: #1b614d;
-  --nav-username-color: #6a4fa3;
-  --nav-username-hover: #23775e;
+  --nav-username-color: var(--lapis, #2f5fb8);
+  --nav-username-hover: color-mix(in srgb, var(--lapis, #2f5fb8) 84%, var(--text, #2f2517) 16%);
   --nav-button-bg: #eadcc4;
   --nav-button-bg-dark: #ddc89f;
   --nav-button-hover-bg: #efe4f5;
@@ -366,12 +366,12 @@ strong {
 }
 
 .nav-username:not(.active) {
-  color: var(--amethyst);
+  color: var(--nav-username-color);
 }
 
 .nav-username:not(.active):hover,
 .nav-username:not(.active):focus-visible {
-  color: var(--malachite);
+  color: var(--nav-username-hover);
   background: transparent;
 }
 
@@ -436,14 +436,20 @@ strong {
 #blog-page-title:has(.list-page-title-actions) .list-page-title-text,
 #blog-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
 #contact-page-title:has(.list-page-title-actions) .list-page-title-text,
-#contact-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+#contact-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#nip23-page-title:has(.list-page-title-actions) .list-page-title-text,
+#nip23-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#public-ranking-title:has(.list-page-title-actions) .list-page-title-text,
+#public-ranking-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
   border-bottom: 0;
   border-image: none;
 }
 
 #list-page-title:has(.list-page-title-actions),
 #blog-page-title:has(.list-page-title-actions),
-#contact-page-title:has(.list-page-title-actions) {
+#contact-page-title:has(.list-page-title-actions),
+#nip23-page-title:has(.list-page-title-actions),
+#public-ranking-title:has(.list-page-title-actions) {
   border-bottom: 2px solid transparent;
   border-image-slice: 1;
   border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);
@@ -586,7 +592,15 @@ nav.site-nav > .nav-center {
 #contact-page-title .list-page-title-actions .list-admin-primary-btn,
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn,
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid transparent !important;
   border-image: none !important;
   box-shadow: none !important;
@@ -670,7 +684,7 @@ pre,
   box-shadow: 0 5px 12px rgba(48, 34, 16, 0.10);
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):not(.blog-draft-notice-close):not(.contact-value-link):not([role="menuitem"]),
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
@@ -704,8 +718,8 @@ input[type="reset"],
   -webkit-background-clip: padding-box !important;
 }
 
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover:not(:disabled),
-button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):not(.blog-draft-notice-close):not(.contact-value-link):not([role="menuitem"]):hover:not(:disabled),
+button:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.tag):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):not(.blog-draft-notice-close):not(.contact-value-link):not([role="menuitem"]):focus-visible:not(:disabled),
 input[type="button"]:hover:not(:disabled),
 input[type="button"]:focus-visible:not(:disabled),
 input[type="submit"]:hover:not(:disabled),
@@ -743,9 +757,21 @@ input[type="reset"]:focus-visible:not(:disabled),
 .nav-menu-panel button,
 .list-inline-row-menu button,
 .public-ranking-submit-cancel,
+.contact-value-link,
 .contact-row-delete {
   box-shadow: none !important;
   transform: none !important;
+}
+
+#blog-page-title .blog-title-action-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  flex-wrap: nowrap;
+}
+
+#blog-page-title .blog-filter-toggle {
+  flex: 0 0 auto;
 }
 
 .nav-compose-cycle:hover,
@@ -772,10 +798,25 @@ input[type="reset"]:focus-visible:not(:disabled),
 .list-inline-row-menu button:focus-visible,
 .public-ranking-submit-cancel:hover,
 .public-ranking-submit-cancel:focus-visible,
+.contact-value-link:hover,
+.contact-value-link:focus-visible,
 .contact-row-delete:hover,
 .contact-row-delete:focus-visible {
   box-shadow: none !important;
   transform: none !important;
+}
+
+button.contact-value-link,
+button.contact-value-link:hover,
+button.contact-value-link:focus-visible {
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  color: var(--lapis, var(--accent, #2f5fb8)) !important;
+  -webkit-text-fill-color: currentColor !important;
 }
 
 button:disabled,
@@ -788,13 +829,13 @@ input[type="reset"]:disabled,
   transform: none !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]) {
   border-color: transparent !important;
   box-shadow: var(--lapidarist-control-shadow) !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):hover:not(:disabled),
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):focus-visible:not(:disabled) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):focus-visible:not(:disabled) {
   border-color: transparent !important;
   box-shadow:
     0 12px 24px rgba(48, 34, 16, 0.16),
@@ -1008,7 +1049,15 @@ textarea:focus {
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn,
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn,
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
   border: 0 !important;
   border-top: 0 !important;
   border-right: 0 !important;
@@ -1060,7 +1109,15 @@ textarea:focus {
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn,
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
 #contact-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
+#contact-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn,
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn,
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-root .list-page-admin-bar button.list-admin-primary-btn:active:not(:disabled) {
   border: 0 !important;
   border-top: 0 !important;
   border-right: 0 !important;
@@ -1106,7 +1163,15 @@ textarea:focus {
 #contact-page-title .list-page-title-actions .list-admin-primary-btn,
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn,
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid transparent !important;
   border-image: none !important;
   box-shadow:
@@ -1133,7 +1198,15 @@ textarea:focus {
 #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn,
 #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
   border: 1px solid transparent !important;
   border-image: none !important;
   box-shadow: none !important;
@@ -1143,6 +1216,46 @@ textarea:focus {
   clip-path: none !important;
   contain: none !important;
   overflow: visible !important;
+}
+
+/* Final title-action button reset: no border layer around compact admin buttons. */
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn,
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
+#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
+  border: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  border-inline: 0 !important;
+  border-block: 0 !important;
+  border-image: none !important;
+  outline: 0;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  background-origin: padding-box !important;
+  clip-path: inset(0 round 8px) !important;
+  contain: paint !important;
+  overflow: clip !important;
 }
 
 :where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]) {
@@ -1243,38 +1356,85 @@ textarea:focus {
   border-radius: 0 !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  background: var(--menu-hover-bg, rgba(106, 79, 163, 0.16)) !important;
   background-image: none !important;
   transform: none !important;
 }
 
+/* Final menu-item flattening: popup rows are not individual button cards. */
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) {
+  padding: 0.25rem 0 !important;
+}
+
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]),
+#main-content .post-page-menu-panel button,
+#main-content .list-inline-row-menu button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  text-align: left !important;
+  padding: 0.5rem 0.85rem !important;
+}
+
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]):hover,
+:where(.nav-menu-panel, .nav-login-menu, .nav-overflow-panel, .post-page-menu-panel, .list-inline-row-menu) :where(a, button, .nav-menu-item, [role="menuitem"]):focus-visible,
+#main-content .post-page-menu-panel button:hover,
+#main-content .post-page-menu-panel button:focus-visible,
+#main-content .list-inline-row-menu button:hover,
+#main-content .list-inline-row-menu button:focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--menu-hover-bg, rgba(106, 79, 163, 0.16)) !important;
+  background-color: var(--menu-hover-bg, rgba(106, 79, 163, 0.16)) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
 nav.site-nav > .nav-right .nav-search {
-  --nav-search-gem-size: 26px;
-  height: var(--nav-search-gem-size) !important;
+  --nav-search-button-size: 26px;
+  width: var(--nav-search-button-size) !important;
+  min-width: var(--nav-search-button-size) !important;
+  max-width: var(--nav-search-button-size) !important;
+  height: var(--nav-search-button-size) !important;
   overflow: visible !important;
   box-shadow: none !important;
 }
 
+nav.site-nav > .nav-right .nav-search.is-search-expanded,
+nav.site-nav > .nav-right .nav-search.has-search-value,
+nav.site-nav > .nav-right .nav-search:focus-within {
+  width: var(--nav-search-button-size) !important;
+  min-width: var(--nav-search-button-size) !important;
+  max-width: var(--nav-search-button-size) !important;
+}
+
 nav.site-nav > .nav-right .nav-search button {
-  width: var(--nav-search-gem-size) !important;
-  min-width: var(--nav-search-gem-size) !important;
-  height: var(--nav-search-gem-size) !important;
-  min-height: var(--nav-search-gem-size) !important;
+  width: var(--nav-search-button-size) !important;
+  min-width: var(--nav-search-button-size) !important;
+  height: var(--nav-search-button-size) !important;
+  min-height: var(--nav-search-button-size) !important;
   padding: 0 !important;
-  border: 1px solid color-mix(in srgb, var(--gold-leaf, #b68b35) 42%, var(--malachite, #2c8b6e) 18%) !important;
+  border: 1px solid color-mix(in srgb, var(--amethyst, #6a4fa3) 44%, transparent) !important;
   border-radius: 999px !important;
-  background:
-    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 0.98) 0 15%, rgba(255, 255, 255, 0) 16%),
-    conic-gradient(from 145deg at 50% 52%, rgba(189, 226, 255, 0.98), rgba(242, 226, 255, 0.98), rgba(255, 240, 199, 0.98), rgba(169, 209, 255, 0.96), rgba(255, 255, 255, 0.99), rgba(189, 226, 255, 0.98)) !important;
-  background-image:
-    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 0.98) 0 15%, rgba(255, 255, 255, 0) 16%),
-    conic-gradient(from 145deg at 50% 52%, rgba(189, 226, 255, 0.98), rgba(242, 226, 255, 0.98), rgba(255, 240, 199, 0.98), rgba(169, 209, 255, 0.96), rgba(255, 255, 255, 0.99), rgba(189, 226, 255, 0.98)) !important;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
-  color: var(--malachite, #2c8b6e) !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  color: var(--amethyst, #6a4fa3) !important;
   -webkit-text-fill-color: currentColor !important;
   line-height: 1 !important;
   overflow: visible !important;
@@ -1284,20 +1444,12 @@ nav.site-nav > .nav-right .nav-search button {
 
 nav.site-nav > .nav-right .nav-search button:hover,
 nav.site-nav > .nav-right .nav-search button:focus-visible {
-  border-color: color-mix(in srgb, var(--gold-leaf, #b68b35) 58%, var(--malachite, #2c8b6e) 22%) !important;
-  background:
-    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 1) 0 18%, rgba(255, 255, 255, 0) 19%),
-    conic-gradient(from 145deg at 50% 52%, rgba(172, 216, 255, 0.99), rgba(238, 218, 255, 0.99), rgba(255, 236, 186, 0.99), rgba(150, 198, 255, 0.98), rgba(255, 255, 255, 1), rgba(172, 216, 255, 0.99)) !important;
-  background-image:
-    radial-gradient(circle at 31% 23%, rgba(255, 255, 255, 1) 0 18%, rgba(255, 255, 255, 0) 19%),
-    conic-gradient(from 145deg at 50% 52%, rgba(172, 216, 255, 0.99), rgba(238, 218, 255, 0.99), rgba(255, 236, 186, 0.99), rgba(150, 198, 255, 0.98), rgba(255, 255, 255, 1), rgba(172, 216, 255, 0.99)) !important;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
-  color: var(--malachite, #2c8b6e) !important;
+  border-color: color-mix(in srgb, var(--amethyst, #6a4fa3) 64%, transparent) !important;
+  background: color-mix(in srgb, var(--amethyst, #6a4fa3) 16%, transparent) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  color: var(--amethyst-dark, #553f83) !important;
   -webkit-text-fill-color: currentColor !important;
   transform: none !important;
 }
@@ -1308,15 +1460,32 @@ nav.site-nav > .nav-right .nav-search button svg {
   height: 14px;
 }
 
+nav.site-nav > .nav-right .nav-search input[type="text"] {
+  right: var(--nav-search-button-size) !important;
+  top: 0 !important;
+  bottom: auto !important;
+  width: 196px !important;
+  max-width: 196px !important;
+  height: var(--nav-search-button-size) !important;
+  min-height: var(--nav-search-button-size) !important;
+  padding-block: 0 !important;
+  line-height: 1 !important;
+  border-radius: 999px 0 0 999px !important;
+}
+
 html body nav.site-nav > .nav-right form.nav-search button[type="submit"] {
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
 }
 
 html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:hover,
 html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-visible {
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  background: color-mix(in srgb, var(--amethyst, #6a4fa3) 16%, transparent) !important;
+  background-image: none !important;
 }
 
 nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn),
@@ -1326,42 +1495,65 @@ nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive
   -webkit-box-shadow: none !important;
 }
 
-nav.site-nav > .nav-right form.nav-search button[type="submit"] {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+nav.site-nav .nav-menu-btn,
+nav.site-nav .nav-menu-btn:hover,
+nav.site-nav .nav-menu-btn:focus-visible,
+nav.site-nav .nav-user-menu .nav-menu-btn,
+nav.site-nav .nav-user-menu .nav-menu-btn:hover,
+nav.site-nav .nav-user-menu .nav-menu-btn:focus-visible {
+  transform: none !important;
+  translate: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
 }
 
-nav.site-nav > .nav-right form.nav-search button[type="submit"]:hover,
-nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-visible {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+nav.site-nav .nav-menu-btn:hover,
+nav.site-nav .nav-menu-btn:focus-visible,
+nav.site-nav .nav-user-menu .nav-menu-btn:hover,
+nav.site-nav .nav-user-menu .nav-menu-btn:focus-visible {
+  border-radius: 7px !important;
+  background: rgba(15, 23, 42, 0.10) !important;
+  background-image: none !important;
 }
 
-nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn) {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.66) inset,
-    0 1px 4px rgba(48, 34, 16, 0.14) !important;
+.blog-compose-card .compose-post-type-toolbar {
+  box-shadow: none !important;
 }
 
-nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover,
-nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
-  -webkit-box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.76) inset,
-    0 1px 5px rgba(48, 34, 16, 0.18) !important;
+.blog-compose-card .compose-post-type-pill {
+  border-right: 1px solid color-mix(in srgb, var(--amethyst, #6a4fa3) 42%, transparent) !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background-image: none !important;
+  filter: none !important;
+}
+
+.blog-compose-card .compose-post-type-pill:last-child {
+  border-right: 0 !important;
+}
+
+.blog-draft-notice .blog-draft-notice-close,
+.blog-draft-notice .blog-draft-notice-close:hover,
+.blog-draft-notice .blog-draft-notice-close:focus-visible,
+#main-content .blog-draft-notice .blog-draft-notice-close,
+#main-content .blog-draft-notice .blog-draft-notice-close:hover,
+#main-content .blog-draft-notice .blog-draft-notice-close:focus-visible {
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background-image: none !important;
+}
+
+.blog-draft-notice .blog-draft-notice-close,
+#main-content .blog-draft-notice .blog-draft-notice-close {
+  background: transparent !important;
+}
+
+.blog-draft-notice .blog-draft-notice-close:hover,
+.blog-draft-notice .blog-draft-notice-close:focus-visible,
+#main-content .blog-draft-notice .blog-draft-notice-close:hover,
+#main-content .blog-draft-notice .blog-draft-notice-close:focus-visible {
+  background: rgba(15, 23, 42, 0.10) !important;
 }
 
 #main-content .blog-post-item button.tag,
@@ -1371,4 +1563,26 @@ nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive
   -webkit-box-shadow: none !important;
   filter: none !important;
   transform: none !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"] {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:hover,
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-visible {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):hover,
+nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.unobtrusive-icon-button):not(.nav-menu-btn):not(.post-page-menu-trigger):not(.admin-nav-item):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.list-inline-edit-link):not(.list-page-nav-title-edit-link):not(.secure-chat-emoji-button):not(.secure-chat-voice-btn):focus-visible {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
 }

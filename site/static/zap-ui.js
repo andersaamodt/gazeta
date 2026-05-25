@@ -117,7 +117,8 @@
       target: target,
       contextLabel: String(src.contextLabel || target.label || '').trim(),
       title: String(src.title || target.title || '').trim(),
-      display: String(src.display || '').trim()
+      display: String(src.display || '').trim(),
+      hideRecipient: src.hideRecipient === true
     };
   }
 
@@ -970,7 +971,7 @@
         '<div class="zap-inline-copy">' +
           '<span class="zap-inline-kicker">Zap</span>' +
           '<strong class="zap-inline-title">' + escapeHtml(options.title || options.contextLabel || 'Support this post') + '</strong>' +
-          '<span class="zap-inline-meta">' + escapeHtml(options.zapConfig.lud16) + '</span>' +
+          (options.hideRecipient ? '' : '<span class="zap-inline-meta">' + escapeHtml(options.zapConfig.lud16) + '</span>') +
         '</div>' +
         '<div class="zap-inline-actions">' +
           '<button type="button" class="zap-action-btn zap-action-btn-primary" data-zap-open="true">' + zapIconHtml() + 'Zap ' + escapeHtml(String(state.selectedSats || options.zapConfig.defaultAmountSats)) + ' sats</button>' +
@@ -987,6 +988,18 @@
   window.blogZapUi = {
     render: function (host, options) {
       renderHost(host, options);
+    },
+    open: function (rawOptions) {
+      var options = normalizeOptions(rawOptions);
+      if (!options) {
+        return false;
+      }
+      var host = document.createElement('div');
+      host.hidden = true;
+      document.body.appendChild(host);
+      var state = ensureHostState(host, options);
+      openDialog(host, options, state);
+      return true;
     }
   };
 })();

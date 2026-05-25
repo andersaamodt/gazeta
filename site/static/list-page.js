@@ -92,6 +92,7 @@
     uidCounter: 1,
     initialContentPainted: false,
     publicSubmitBusy: false,
+    publicSubmitExpanded: false,
     renderSignature: ''
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
@@ -2001,6 +2002,12 @@
     if (state.publicSubmitBusy) {
       return;
     }
+    if (!state.publicSubmitExpanded) {
+      state.publicSubmitExpanded = true;
+      renderList();
+      focusPublicSubmitInput();
+      return;
+    }
     var input = document.getElementById('list-public-submit-title');
     if (!(input instanceof HTMLInputElement)) {
       return;
@@ -2026,10 +2033,20 @@
       state.publicSubmitBusy = false;
       input.value = '';
       refreshListPayloadFromResponse(data);
+      focusPublicSubmitInput();
     } catch (err) {
       setPublicSubmitBusy(false);
       window.alert(err && err.message ? err.message : 'Could not add entry');
     }
+  }
+
+  function focusPublicSubmitInput() {
+    window.setTimeout(function () {
+      var input = document.getElementById('list-public-submit-title');
+      if (input instanceof HTMLInputElement && !input.disabled) {
+        input.focus();
+      }
+    }, 80);
   }
 
   function setPublicSubmitBusy(isBusy) {
@@ -2651,7 +2668,10 @@
     return Number(value || 0) < 0 ? 'downvoted' : 'upvoted';
   }
 
-  function renderVoteTooltip(entry) {
+  function voteTooltipText(entry, signedIn) {
+    if (!signedIn) {
+      return 'Sign in to vote.';
+    }
     var nowSeconds = Math.floor(Date.now() / 1000);
     var lastVoteAt = Number(entry && entry.viewer_vote_created_at || 0) || 0;
     var nextVoteAt = Number(entry && entry.viewer_next_vote_at || 0) || 0;
@@ -2670,9 +2690,7 @@
     } else {
       lines.push('You have not voted on this yet.');
     }
-    return '<span class="list-entry-vote-tooltip" role="tooltip">' + lines.map(function (line) {
-      return '<span>' + escapeHtml(line) + '</span>';
-    }).join('') + '</span>';
+    return lines.join(' ');
   }
 
   function renderEntryReadOnly(entry, groupBy, sectionLabel, showMarkers, alphabetizeMarkers) {
@@ -2708,16 +2726,18 @@
     var canShowVotes = !!(getRenderState().allow_signed_in_votes && entryId);
     var voteControls = '';
     if (canShowVotes) {
+      var signedIn = hasLikelyAuthenticatedSession();
       var score = Number(entry && entry.list_score || 0) || 0;
       var viewerVote = Number(entry && entry.viewer_vote || 0) || 0;
       var viewerCanVoteNow = !entry || entry.viewer_can_vote_now !== false;
-      var upvoteClass = 'list-entry-vote-btn is-upvote' + (viewerVote > 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
-      var downvoteClass = 'list-entry-vote-btn is-downvote' + (viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
-      voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score">' +
-        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote">' + listVoteArrowSvg('up') + '</button>' +
-        '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
-        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote">' + listVoteArrowSvg('down') + '</button>' +
-        renderVoteTooltip(entry) +
+      var disabledAttrs = signedIn ? '' : ' disabled aria-disabled="true"';
+      var upvoteClass = 'list-entry-vote-btn is-upvote' + (signedIn && viewerVote > 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
+      var downvoteClass = 'list-entry-vote-btn is-downvote' + (signedIn && viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
+      var voteTitle = voteTooltipText(entry, signedIn);
+      voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score" title="' + escapeHtml(voteTitle) + '">' +
+        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote" title="' + escapeHtml(voteTitle) + '"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
+        '<span class="list-entry-score" title="' + escapeHtml(voteTitle) + '">' + escapeHtml(String(score)) + '</span>' +
+        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote" title="' + escapeHtml(voteTitle) + '"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>' +
       '</span>';
     }
     var canEditReadRow = !!(isAdmin() && !state.editMode && rowUid);
@@ -2755,16 +2775,18 @@
     }
     var signedIn = hasLikelyAuthenticatedSession();
     var isSubmitting = !!state.publicSubmitBusy;
+    var isExpanded = !!state.publicSubmitExpanded;
     var disabled = signedIn && !isSubmitting ? '' : ' disabled aria-disabled="true"';
     var placeholder = signedIn ? 'New entry' : 'Sign in to add entries';
     var buttonAttrs = disabled + (isSubmitting ? ' aria-busy="true"' : '');
     var buttonClass = 'list-admin-primary-btn list-public-submit-add' + (isSubmitting ? ' is-loading' : '');
     var buttonLabel = isSubmitting ? '<span class="save-spinner" aria-hidden="true"></span><span>Adding</span>' : 'Add';
-    var html = '<section class="list-public-submit" aria-label="Add list entry">';
-    html += '<div class="list-public-submit-inline">';
+    var html = '<section class="list-public-submit' + (isExpanded ? ' is-expanded' : '') + '" aria-label="Add list entry">';
+    html += '<div class="list-public-submit-top"><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="Add entry" title="' + escapeHtml(signedIn ? 'Add entry' : 'Sign in to add entries') + '" aria-expanded="' + (isExpanded ? 'true' : 'false') + '"' + (signedIn ? '' : ' disabled aria-disabled="true"') + '>+</button></div>';
+    html += '<div class="list-public-submit-reveal" ' + (isExpanded ? '' : 'aria-hidden="true"') + '><div class="list-public-submit-inline">';
     html += '<input type="text" id="list-public-submit-title" placeholder="' + escapeHtml(placeholder) + '"' + disabled + '>';
     html += '<button type="button" class="' + buttonClass + '" data-list-public-action="submit"' + buttonAttrs + '>' + buttonLabel + '</button>';
-    html += '</div>';
+    html += '</div></div>';
     html += '</section>';
     return html;
   }
@@ -4393,6 +4415,12 @@
       if (publicAction instanceof HTMLElement) {
         event.preventDefault();
         var publicActionName = String(publicAction.getAttribute('data-list-public-action') || '');
+        if (publicActionName === 'expand-submit') {
+          state.publicSubmitExpanded = true;
+          renderList();
+          focusPublicSubmitInput();
+          return;
+        }
         if (publicActionName === 'submit') {
           submitPublicListEntry();
           return;

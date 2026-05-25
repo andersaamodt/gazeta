@@ -27,6 +27,17 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  haystack=$1
+  needle=$2
+  label=$3
+  if printf '%s\n' "$haystack" | awk -v needle="$needle" 'index($0, needle) { found=1 } END { exit found ? 0 : 1 }'; then
+    fail "$label (unexpected: $needle)"
+  else
+    pass
+  fi
+}
+
 assert_equals() {
   actual=$1
   expected=$2
@@ -312,7 +323,7 @@ assert_equals "$example_projection" '' 'authored sync does not overwrite local p
 contact_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
 contact_content=$(printf '%s\n' "$contact_event" | jq -c 'try (.content | fromjson) catch {}' 2>/dev/null || printf '{}')
 assert_contains "$contact_event" '"kind":0' 'contact sync stores a kind 0 event locally'
-assert_contains "$contact_content" '"lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact sync includes the effective lud16'
+assert_not_contains "$contact_content" '"lud16":"npub1siteexamplewalletxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@npub.cash"' 'contact sync does not inject Admin zap config into contact metadata'
 
 post_record=$(blog_nostr_post_record_for_slug "example-post" 2>/dev/null || printf '')
 assert_contains "$post_record" '"slug":"example-post"' 'authored sync rebuilds the derived posts index'

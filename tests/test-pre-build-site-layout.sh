@@ -119,7 +119,7 @@ export PATH
 . "$site_root/cgi/blog-nostr-pages-common.sh"
 
 blog_init
-blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"}]}'
+blog_nostr_pages_save_json '{"pages":[{"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"},{"slug":"reading-list","type":"list","show_in_nav":true,"placeholder_title":"Reading list"}]}'
 
 "$site_root/cgi/pre-build"
 
@@ -192,8 +192,32 @@ grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.m
   printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '/static/contact-page.js?v=20260523-login-note1' "$canonical_root/pages/contact.md" || {
+grep -Fq '/static/contact-page.js?v=20260524-contact-zap-data1' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'data-page-initial-placeholder="true">Loading page content...' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing generic initial loading fallback after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'paintContactFirstFrame' "$canonical_root/static/nostr-page-bootstrap/contact.js" || {
+  printf '%s\n' "contact bootstrap does not paint a first contact frame" >&2
+  exit 1
+}
+grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/contact.js" || {
+  printf '%s\n' "contact bootstrap cannot replace the generic initial placeholder" >&2
+  exit 1
+}
+[ -f "$canonical_root/pages/reading-list.md" ] || {
+  printf '%s\n' "missing generated reading list page" >&2
+  exit 1
+}
+grep -Fq 'data-page-initial-placeholder="true">Loading page content...' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing generic initial loading fallback after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/reading-list.js" || {
+  printf '%s\n' "list bootstrap cannot replace the generic initial placeholder" >&2
   exit 1
 }
 [ ! -e "$canonical_root/.repo-pages-manifest" ] || {

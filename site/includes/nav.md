@@ -53,9 +53,16 @@
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <nav class="site-nav">
-<span id="nav-site-signature" class="nav-site-signature" aria-hidden="true">Site</span>
+<a id="nav-site-signature" class="nav-site-signature" href="/">Site</a>
 <div class="nav-center">
-<a href="/" data-page="blog">Blog</a>
+<a href="/" data-page="index">Writing</a>
+<a href="/blog" data-page="blog">Blog</a>
+<a href="/oeuvre" data-page="oeuvre">Oeuvre</a>
+<a href="/projects" data-page="projects">Projects</a>
+<a href="/reading-list" data-page="reading-list">Reading list</a>
+<a href="/software" data-page="software">Software</a>
+<a href="/contact" data-page="contact">Contact</a>
+<a href="/overworld" data-page="overworld">Overworld</a>
 <div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
   <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -73,8 +80,8 @@
 <input type="text" name="q" placeholder="Search..." />
 <button type="submit" aria-label="Search">
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/>
-<path d="M11 11L14.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.9"/>
+<path d="M11 11L14.5 14.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
 </svg>
 </button>
 </form>
@@ -136,8 +143,13 @@
         }
 
         function setExpanded(expanded) {
+          var nav = form.closest ? form.closest('nav.site-nav') : null;
+          var nextExpanded = !!expanded || hasValue();
           form.classList.toggle('is-search-expanded', !!expanded);
           form.classList.toggle('has-search-value', hasValue());
+          if (nav) {
+            nav.classList.toggle('has-expanded-search', nextExpanded);
+          }
           button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         }
 
@@ -238,11 +250,20 @@
       siteSignature.textContent = title;
       siteSignature.setAttribute('title', title);
     }
+    function syncSiteTitleDestination() {
+      if (!siteSignature || !siteSignature.setAttribute) {
+        return;
+      }
+      var firstNavLink = document.querySelector('.nav-center a[data-page][href]');
+      var href = firstNavLink ? String(firstNavLink.getAttribute('href') || '').trim() : '';
+      siteSignature.setAttribute('href', href || '/');
+    }
     try {
       applySiteTitleSignature(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
     } catch (_siteTitleErr) {
       applySiteTitleSignature('Site');
     }
+    syncSiteTitleDestination();
 
     var token = String(localStorage.getItem('session_token') || '').trim();
     var hasToken = !!token && token !== 'null' && token !== 'undefined';
@@ -399,7 +420,7 @@
         cachedPages = [];
       }
       var basePages = [
-        { slug: 'blog', title: 'Blog', path: '/' }
+        { slug: 'index', title: 'Writing', path: '/' }
       ];
       var seen = {};
       var html = '';
@@ -431,6 +452,7 @@
         if (overflowMenu) {
           navCenter.appendChild(overflowMenu);
         }
+        syncSiteTitleDestination();
       }
     }
     highlightCurrentNavNow();
@@ -621,7 +643,7 @@
   </div>
 </div>
 
-<script src="/static/nav-auth.js?v=20260522-amber-reuse1"></script>
+<script src="/static/nav-auth.js?v=20260524-navbar-toolbar1"></script>
 <script src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

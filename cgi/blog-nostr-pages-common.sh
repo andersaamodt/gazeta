@@ -3,9 +3,9 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260523-optimistic-votes1'
-blog_nostr_blog_page_js_version='20260523-byline-bottom1'
-blog_nostr_contact_page_js_version='20260523-login-note1'
+blog_nostr_list_page_js_version='20260524-list-add-toggle1'
+blog_nostr_blog_page_js_version='20260524-navbar-toolbar1'
+blog_nostr_contact_page_js_version='20260524-contact-zap-data1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
@@ -853,22 +853,6 @@ blog_nostr_sign_nip23_event() {
   printf '%s\n' "$event_json"
 }
 
-blog_contact_managed_lud16() {
-  if [ "$(blog_zaps_enabled 2>/dev/null || printf 'false')" != "true" ]; then
-    printf '\n'
-    return 0
-  fi
-  lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
-  case "$lud16" in
-    *@*)
-      printf '%s\n' "$(printf '%s' "$lud16" | tr '[:upper:]' '[:lower:]')"
-      ;;
-    *)
-      printf '\n'
-      ;;
-  esac
-}
-
 blog_contact_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   title=$(blog_nostr_page_titleize_slug "$slug")
@@ -894,14 +878,12 @@ blog_contact_normalize_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   raw_json=${2-}
   fallback_title=$(blog_nostr_page_titleize_slug "$slug")
-  site_lud16=$(blog_contact_managed_lud16)
-
   if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
     blog_contact_default_state_json "$slug"
     return 0
   fi
 
-  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" --arg site_lud16 "$site_lud16" '
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
     def qualifiers: ["preferred","unpreferred","public","primary","secondary","emergency","archive"];
     def lightning_aliases: ["lightning","lightningaddress","ln","lud16","lnurlp"];
     def norm_extra_format($v):
@@ -953,7 +935,6 @@ blog_contact_normalize_state_json() {
       else {}
      end) as $content_obj
     | (if (.rows | type) == "array" and ((.rows | length) > 0) then .rows else parse_content_rows($content_obj) end) as $rows_raw
-    | (if is_lud16($site_lud16) then norm_lud16($site_lud16) else "" end) as $configured_lud16
     | ($rows_raw
       | if type=="array" then . else [] end
       | map({
@@ -962,18 +943,11 @@ blog_contact_normalize_state_json() {
           qualifier: norm_qual(.qualifier // "")
         })
       | map(select((.transport | length) > 0 or (.value | length) > 0))
-      | if ($configured_lud16 | length) > 0 then
-          ([ .[] | select((is_lightning_transport(.transport) | not)) ]
-            + [{ transport: "lightning", value: $configured_lud16, qualifier: "preferred" }])
-        else
-          .
-        end
       ) as $rows
     | (($rows
         | map(select((is_lightning_transport(.transport)) and is_lud16(.value)))
         | map(norm_lud16(.value))
         | first) // "") as $row_lud16
-    | (if ($configured_lud16 | length) > 0 then $configured_lud16 else $row_lud16 end) as $effective_lud16
     | {
         slug: $slug,
         type: "contact",
@@ -997,7 +971,7 @@ blog_contact_normalize_state_json() {
           title: .title
         }
         + (if .publish_intro_to_nostr then {description: .description} else {} end)
-        + (if ($effective_lud16 | length) > 0 then {lud16: $effective_lud16} else {} end))
+        + (if ($row_lud16 | length) > 0 then {lud16: $row_lud16} else {} end))
         + (reduce .rows[] as $r ({};
             if (($r.transport | length) > 0 and ($r.value | length) > 0 and (is_lightning_transport($r.transport) | not)) then
               . + { (($r.transport + (if ($r.qualifier | length) > 0 then ("_" + $r.qualifier) else "" end))): $r.value }
@@ -1038,13 +1012,12 @@ blog_contact_state_signature_json() {
 blog_contact_validate_and_enrich_state_json() {
   state_json=${1-}
   strict_publish=${2-false}
-  site_lud16=$(blog_contact_managed_lud16)
   if [ -z "$state_json" ]; then
     printf '{"rows":[],"errors":["Missing contact state"],"warnings":[],"can_publish":false,"content_json":{}}\n'
     return 0
   fi
 
-  printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" --arg site_lud16 "$site_lud16" '
+  printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" '
     def qualifiers: ["preferred","unpreferred","public","primary","secondary","emergency","archive"];
     def lightning_aliases: ["lightning","lightningaddress","ln","lud16","lnurlp"];
     def norm_transport($v):
@@ -1064,25 +1037,17 @@ blog_contact_validate_and_enrich_state_json() {
       (($r.transport // "") + (if (($r.qualifier // "") | length) > 0 then ("_" + ($r.qualifier // "")) else "" end));
 
     (.rows // []) as $rows0
-    | (if is_lud16($site_lud16) then norm_lud16($site_lud16) else "" end) as $configured_lud16
     | ($rows0 | if type=="array" then . else [] end
       | map({
           transport: norm_transport(.transport // ""),
           value: ((.value // "") | tostring),
           qualifier: ((.qualifier // "") | tostring | ascii_downcase)
         })
-      | if ($configured_lud16 | length) > 0 then
-          ([ .[] | select((is_lightning_transport(.transport) | not)) ]
-            + [{ transport: "lightning", value: $configured_lud16, qualifier: "preferred" }])
-        else
-          .
-        end
       ) as $rows
     | (($rows
         | map(select((is_lightning_transport(.transport)) and is_lud16(.value)))
         | map(norm_lud16(.value))
         | first) // "") as $row_lud16
-    | (if ($configured_lud16 | length) > 0 then $configured_lud16 else $row_lud16 end) as $effective_lud16
     | ([ range(0; ($rows|length)) as $i
           | ($rows[$i]) as $r
           | if (($r.qualifier|length) > 0 and ((qualifiers | index($r.qualifier)) == null)) then
@@ -1115,7 +1080,7 @@ blog_contact_validate_and_enrich_state_json() {
             title: ((.title // "") | tostring)
           }
           + (if (.publish_intro_to_nostr // false) then { description: ((.description // "") | tostring) } else {} end)
-          + (if ($effective_lud16 | length) > 0 then { lud16: $effective_lud16 } else {} end))
+          + (if ($row_lud16 | length) > 0 then { lud16: $row_lud16 } else {} end))
           + (reduce $rows[] as $r ({};
               if (($r.transport|length) > 0 and ($r.value|length) > 0 and (is_lightning_transport($r.transport) | not)) then
                 . + { (key_for($r)): $r.value }
@@ -1513,7 +1478,7 @@ license: "CC BY 4.0"
 </div>
 <div id="contact-page-admin" class="list-admin" hidden></div>
 <div id="contact-page-validation" class="list-validation" hidden></div>
-<div id="contact-page-content" class="list-page-content"></div>
+<div id="contact-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1554,7 +1519,7 @@ license: "CC BY 4.0"
 </div>
 <div id="nip23-page-admin" class="list-admin" hidden></div>
 <div id="nip23-page-validation" class="list-validation" hidden></div>
-<div id="nip23-page-content" class="list-page-content"></div>
+<div id="nip23-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
@@ -1596,7 +1561,7 @@ license: "CC BY 4.0"
 </div>
 <div id="blog-page-admin" class="list-admin" hidden></div>
 <div id="blog-page-validation" class="list-validation" hidden></div>
-<div id="blog-page-content" class="list-page-content" hidden></div>
+<div id="blog-page-content" class="list-page-content" hidden><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>
 <div class="blog-filter-grid">
 <div class="blog-filter-group">
@@ -1617,7 +1582,7 @@ license: "CC BY 4.0"
 </div>
 </div>
 
-<div id="blog-post-list" class="post-list"></div>
+<div id="blog-post-list" class="post-list"><p class="placeholder" data-page-initial-placeholder="true">Loading posts...</p></div>
 <p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
 </div>
 </div>
@@ -1646,7 +1611,7 @@ license: "CC BY 4.0"
 </div>
 <div id="public-ranking-admin" class="list-admin" hidden></div>
 <div id="public-ranking-validation" class="list-validation" hidden></div>
-<div id="public-ranking-content" class="list-page-content"></div>
+<div id="public-ranking-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1671,7 +1636,7 @@ license: "CC BY 4.0"
 <div class="list-page-head overworld-page-head">
 <h1 id="overworld-page-title">$page_title</h1>
 </div>
-<div class="overworld-game-mount" data-overworld-game></div>
+<div class="overworld-game-mount" data-overworld-game><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1697,7 +1662,7 @@ license: "CC BY 4.0"
 </div>
 <div id="list-page-admin" class="list-admin" hidden></div>
 <div id="list-page-validation" class="list-validation" hidden></div>
-<div id="list-page-content" class="list-page-content"></div>
+<div id="list-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
@@ -1725,7 +1690,7 @@ license: "CC BY 4.0"
 </div>
 <div id="list-page-admin" class="list-admin" hidden></div>
 <div id="list-page-validation" class="list-validation" hidden></div>
-<div id="list-page-content" class="list-page-content"></div>
+<div id="list-page-content" class="list-page-content"><p class="placeholder" data-page-initial-placeholder="true">Loading page content...</p></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>

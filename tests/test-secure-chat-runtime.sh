@@ -788,7 +788,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#main-content .secure
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'not(.secure-chat-emoji-button):not(.secure-chat-voice-btn)' 'Lapidarist theme excludes Secure Chat icon buttons from generic raised button shadows'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'prefers-reduced-motion: reduce' 'Secure Chat open animation respects reduced motion'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'handleSecureChatStartClick' 'contact page start chat action opens and refreshes the chat'
-assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'secureChatHtml + videoChatHtml + managedLightningNoteHtml()' 'contact page renders widgets above contact methods'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'secureChatHtml + videoChatHtml + renderReadOnly(rows, inlineMode)' 'contact page renders widgets above contact methods'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'Contact Information' 'contact page labels the contact method section after widgets'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin-bottom: 1rem;' 'Secure Chat panel uses normal spacing before contact information'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'sendWithModifier: false' 'secure chat Enter-to-send is the default shortcut mode'

@@ -1017,10 +1017,17 @@
       state.pageSettingsOpen = false;
       els.admin.hidden = true;
       els.admin.innerHTML = '';
+      ensureFilterGutterLayout();
       return;
     }
     if (actionsHost) {
-      actionsHost.innerHTML = '<span class="list-page-admin-bar"><button type="button" class="list-admin-primary-btn" data-blog-action="toggle-page-settings" aria-expanded="' + (state.pageSettingsOpen ? 'true' : 'false') + '" aria-controls="blog-page-settings-panel">Edit</button></span>';
+      var controls = document.createElement('span');
+      controls.className = 'list-page-admin-bar blog-title-action-bar';
+      if (els.toggle) {
+        controls.appendChild(els.toggle);
+      }
+      controls.insertAdjacentHTML('beforeend', '<button type="button" class="list-admin-primary-btn" data-blog-action="toggle-page-settings" aria-expanded="' + (state.pageSettingsOpen ? 'true' : 'false') + '" aria-controls="blog-page-settings-panel">Edit</button>');
+      actionsHost.appendChild(controls);
     }
     var page = getRenderState();
     var selectedTag = String(page.default_tag || '').trim();

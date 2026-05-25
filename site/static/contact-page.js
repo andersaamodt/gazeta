@@ -61,6 +61,7 @@
     activeRowField: '',
     draggingRowUid: '',
     dragOverRowUid: '',
+    dragOverPlacement: 'before',
     dragMoved: false,
     dragDropped: false,
     dragStartRows: null,
@@ -3275,12 +3276,13 @@
       '</svg>';
   }
 
-  function reorderDraftRowsByUid(fromUid, toUid) {
+  function reorderDraftRowsByUid(fromUid, toUid, placement) {
     var sourceUid = String(fromUid || '').trim();
     var targetUid = String(toUid || '').trim();
     if (!sourceUid || !targetUid || sourceUid === targetUid) {
       return false;
     }
+    var insertAfter = String(placement || '').trim().toLowerCase() === 'after';
     state.draft = normalizeDraftState(state.draft);
     var rows = normalizeRows(state.draft.rows || []);
     var fromIdx = -1;
@@ -3300,6 +3302,15 @@
     var moving = rows.splice(fromIdx, 1)[0];
     if (fromIdx < toIdx) {
       toIdx -= 1;
+    }
+    if (insertAfter) {
+      toIdx += 1;
+    }
+    if (toIdx < 0) {
+      toIdx = 0;
+    }
+    if (toIdx > rows.length) {
+      toIdx = rows.length;
     }
     rows.splice(toIdx, 0, moving);
     state.draft.rows = rows;
@@ -3329,6 +3340,15 @@
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '');
+  }
+
+  function isLightningTransport(value) {
+    var key = normalizeTransportKey(value);
+    return key === 'lightning' || key === 'lightningaddress' || key === 'ln' || key === 'lud16' || key === 'lnurlp';
+  }
+
+  function displayTransportLabel(value) {
+    return isLightningTransport(value) ? 'Zap' : String(value || '').trim();
   }
 
   function transportTokens(value) {
@@ -3627,6 +3647,10 @@
     if (!raw) {
       return '';
     }
+    if (isLightningTransport(transport)) {
+      var zapAddress = normalizeLightningAddress(raw);
+      return '<button type="button" class="contact-value-link contact-zap-link" data-contact-zap-open="true" data-contact-zap-address="' + escapeAttr(zapAddress || raw.trim()) + '">' + escapeHtml(raw.trim()) + '</button>';
+    }
     var html = '';
     var pattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
     var lastIndex = 0;
@@ -3852,6 +3876,7 @@
       var rowClasses = 'contact-profile-row';
       if (editable && state.dragOverRowUid && state.dragOverRowUid === uid) {
         rowClasses += ' is-drag-over';
+        rowClasses += state.dragOverPlacement === 'after' ? ' is-drag-over-after' : ' is-drag-over-before';
       }
       if (editable && state.draggingRowUid && state.draggingRowUid === uid) {
         rowClasses += ' is-dragging';
@@ -3866,7 +3891,7 @@
       } else if (editable) {
         html += '<button type="button" class="contact-inline-open contact-platform-open" data-contact-inline-action="edit-cell" data-contact-inline-field="transport" data-row-index="' + String(idx) + '"><span class="contact-inline-open-value">' + (transport ? escapeHtml(transport) : '<span class="list-inline-placeholder">Add transport...</span>') + '</span></button>';
       } else {
-        html += escapeHtml(transport);
+        html += escapeHtml(displayTransportLabel(transport));
       }
       html += '</th>';
 
@@ -3937,14 +3962,76 @@
     return html;
   }
 
-  function managedLightningNoteHtml() {
+  function contactZapConfig() {
     var zapConfig = state.payload && state.payload.zap_config && typeof state.payload.zap_config === 'object'
       ? state.payload.zap_config
       : null;
-    if (!isAdmin() || !state.editMode || !zapConfig || !zapConfig.enabled || !zapConfig.lud16) {
-      return '';
+    if (!zapConfig || zapConfig.enabled !== true || !String(zapConfig.lud16 || '').trim()) {
+      return null;
     }
-    return '<p class="contact-managed-lightning-note">Lightning zaps use <code>' + escapeHtml(String(zapConfig.lud16 || '')) + '</code> from Admin &gt; Zaps. Wallet changes sync your public Nostr profile automatically; publish this page after editing the contact content itself.</p>';
+    return zapConfig;
+  }
+
+  function normalizeLightningAddress(value) {
+    var text = String(value || '').trim().toLowerCase();
+    return /^[^@\s]+@[^@\s]+$/.test(text) ? text : '';
+  }
+
+  function contactZapRecipientPubkey() {
+    var event = state.payload && state.payload.canonical_event && typeof state.payload.canonical_event === 'object'
+      ? state.payload.canonical_event
+      : null;
+    var eventPubkey = event ? String(event.pubkey || '').trim().toLowerCase() : '';
+    if (/^[0-9a-f]{64}$/i.test(eventPubkey)) {
+      return eventPubkey;
+    }
+    var zapConfig = contactZapConfig();
+    var configPubkey = zapConfig ? String(zapConfig.recipient_pubkey || '').trim().toLowerCase() : '';
+    if (/^[0-9a-f]{64}$/i.test(configPubkey)) {
+      return configPubkey;
+    }
+    return '';
+  }
+
+  function contactZapOptions(lud16) {
+    var zapAddress = normalizeLightningAddress(lud16);
+    if (!zapAddress) {
+      return null;
+    }
+    var pubkey = contactZapRecipientPubkey();
+    if (!pubkey) {
+      return null;
+    }
+    var baseConfig = contactZapConfig() || {};
+    return {
+      zapConfig: {
+        enabled: true,
+        lud16: zapAddress,
+        default_amount_sats: baseConfig.default_amount_sats || 1000,
+        relays: Array.isArray(baseConfig.relays) ? baseConfig.relays : []
+      },
+      title: 'Zap',
+      contextLabel: 'Contact',
+      target: {
+        label: 'profile',
+        title: 'Zap',
+        recipientPubkey: pubkey,
+        eventId: '',
+        address: '',
+        kind: '0'
+      }
+    };
+  }
+
+  function openContactZapModal(lud16) {
+    if (!window.blogZapUi || typeof window.blogZapUi.open !== 'function') {
+      return false;
+    }
+    var options = contactZapOptions(lud16);
+    if (!options) {
+      return false;
+    }
+    return window.blogZapUi.open(options);
   }
 
   function renderContentHtml() {
@@ -3962,7 +4049,7 @@
     root.classList.toggle('contact-edit-mode', inlineMode);
     var secureChatHtml = textHasWidgetInclude(extrasAfter, 'secure-chat') ? '' : renderSecureChatPanel();
     var videoChatHtml = videoChatPluginEnabled() || textHasWidgetInclude(extrasAfter, 'video-chat') ? renderWidgetInclude('video-chat') : '';
-    return secureChatHtml + videoChatHtml + managedLightningNoteHtml() + renderReadOnly(rows, inlineMode) + afterContent;
+    return secureChatHtml + videoChatHtml + renderReadOnly(rows, inlineMode) + afterContent;
   }
 
   function syncSecureChatLastContentHtml() {
@@ -4197,6 +4284,7 @@
     clearActiveRowField();
     state.draggingRowUid = '';
     state.dragOverRowUid = '';
+    state.dragOverPlacement = 'before';
     renderAll();
   }
 
@@ -4319,6 +4407,12 @@
       }
       if (target instanceof HTMLInputElement && target.id === 'secure-chat-file-input') {
         markSecureChatFilePickerOpen();
+        return;
+      }
+      var contactZapNode = target.closest('[data-contact-zap-open]');
+      if (contactZapNode instanceof Element) {
+        event.preventDefault();
+        openContactZapModal(contactZapNode.getAttribute('data-contact-zap-address') || contactZapNode.textContent || '');
         return;
       }
       var secureChatActionNode = target.closest('[data-secure-chat-action]');
@@ -4525,6 +4619,7 @@
       }
       state.draggingRowUid = uid;
       state.dragOverRowUid = uid;
+      state.dragOverPlacement = 'before';
       state.dragMoved = false;
       state.dragDropped = false;
       state.dragStartRows = normalizeRows((state.draft && state.draft.rows) || []);
@@ -4568,21 +4663,15 @@
       if (!uid) {
         return;
       }
+      var rect = row.getBoundingClientRect();
+      var placement = event.clientY > (rect.top + (rect.height / 2)) ? 'after' : 'before';
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
-      if (state.dragOverRowUid !== uid) {
+      if (state.dragOverRowUid !== uid || state.dragOverPlacement !== placement) {
         state.dragOverRowUid = uid;
-        var sourceUid = String(state.draggingRowUid || '').trim();
-        if (sourceUid && uid !== sourceUid) {
-          var before = captureRowFlipPositions();
-          var changed = reorderDraftRowsByUid(sourceUid, uid);
-          if (changed) {
-            state.pendingFlipPositions = before;
-            state.dragMoved = true;
-          }
-        }
+        state.dragOverPlacement = placement;
         renderContent();
       }
     });
@@ -4616,6 +4705,7 @@
       if (!sourceUid || !targetUid || sourceUid === targetUid) {
         state.draggingRowUid = '';
         state.dragOverRowUid = '';
+        state.dragOverPlacement = 'before';
         state.dragMoved = false;
         state.dragDropped = false;
         state.dragStartRows = null;
@@ -4623,14 +4713,11 @@
         return;
       }
       var moved = false;
-      if (state.dragMoved) {
-        moved = true;
-      } else {
-        state.pendingFlipPositions = captureRowFlipPositions();
-        moved = reorderDraftRowsByUid(sourceUid, targetUid);
-      }
+      state.pendingFlipPositions = captureRowFlipPositions();
+      moved = reorderDraftRowsByUid(sourceUid, targetUid, state.dragOverPlacement);
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
+      state.dragOverPlacement = 'before';
       state.dragMoved = false;
       state.dragDropped = false;
       state.dragStartRows = null;
@@ -4672,6 +4759,7 @@
       }
       state.draggingRowUid = '';
       state.dragOverRowUid = '';
+      state.dragOverPlacement = 'before';
       state.dragMoved = false;
       state.dragDropped = false;
       state.dragStartRows = null;
