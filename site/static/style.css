@@ -12,9 +12,9 @@
   --amethyst: #6a4fa3;
   --amethyst-dark: #553f83;
   --list-vote-up-color: #2c8b6e;
-  --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 56%, var(--muted-text, #64748b) 44%);
+  --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 34%, var(--list-vote-idle-color, #c9ced8) 66%);
   --list-vote-down-color: var(--accent);
-  --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 56%, var(--muted-text, #64748b) 44%);
+  --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 34%, var(--list-vote-idle-color, #c9ced8) 66%);
   --list-vote-idle-color: #c9ced8;
   --text: #0b132b;
   --light-text: #475569;
@@ -12298,8 +12298,8 @@ button.blog-year-pill:focus-visible:not(:disabled) {
 }
 
 #main-content .list-entry-vote-btn.is-upvote.is-stale {
-  color: #b77a7a !important;
-  -webkit-text-fill-color: #b77a7a !important;
+  color: #d8bcbc !important;
+  -webkit-text-fill-color: #d8bcbc !important;
 }
 
 #main-content .list-entry-vote-btn.is-downvote.is-active,
@@ -12310,8 +12310,8 @@ button.blog-year-pill:focus-visible:not(:disabled) {
 }
 
 #main-content .list-entry-vote-btn.is-downvote.is-stale {
-  color: #718bad !important;
-  -webkit-text-fill-color: #718bad !important;
+  color: #aebdd3 !important;
+  -webkit-text-fill-color: #aebdd3 !important;
 }
 
 /* Keep nav/login hovers in primary color space (never tan fallback). */

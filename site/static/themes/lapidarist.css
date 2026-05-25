@@ -12,9 +12,9 @@
   --violet: #bda7de;
   --danger: #a73b2f;
   --list-vote-up-color: var(--malachite, #2c8b6e);
-  --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 58%, var(--muted-text, #78644b) 42%);
+  --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
   --list-vote-down-color: var(--lapis, #3b70d0);
-  --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 58%, var(--muted-text, #78644b) 42%);
+  --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
   --list-vote-idle-color: color-mix(in srgb, var(--muted-text, #78644b) 38%, var(--bg, #f1e2c8) 62%);
 
   --text: #2f2517;
