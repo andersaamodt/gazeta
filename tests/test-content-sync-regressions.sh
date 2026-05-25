@@ -859,6 +859,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav {' 'surf
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(900px, calc(100vw - 1rem));' 'legacy desktop navbar cap remains before the final content-width override'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'Keep the navbar aligned to the same content column as the page below it.' 'final navbar rule documents content-column alignment'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: min(100%, 46rem) !important;' 'final navbar rule stays centered on thinner content pages'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: min(100%, 760px, calc(100vw - 3rem));' 'navbar link row stays inside the navbar content box'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'position: static !important;' 'navbar stays in page flow instead of pinning to the viewport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'top: auto !important;' 'navbar has no viewport top offset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 0 !important;' 'navbar removes the thin bottom border'

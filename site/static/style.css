@@ -12748,7 +12748,7 @@ nav.site-nav > .nav-center {
   scrollbar-width: none !important;
   box-sizing: border-box;
   justify-self: center;
-  max-width: min(760px, calc(100vw - 3rem));
+  max-width: min(100%, 760px, calc(100vw - 3rem));
   margin-inline: auto;
   padding: 0.18rem 0.36rem;
   border-radius: 999px;
