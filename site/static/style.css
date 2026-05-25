@@ -3806,7 +3806,7 @@ body.nav-cart-open {
 }
 
 .public-ranking-submit {
-  margin: 0 0 0.95rem;
+  margin: 0 0 0.58rem;
 }
 
 .public-ranking-submit-toolbar {
@@ -3838,34 +3838,94 @@ body.nav-cart-open {
 }
 
 .public-ranking-submit-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 2rem;
+  height: 2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
+  transform: rotate(0deg) !important;
+}
+
+.public-ranking-submit.is-expanded .public-ranking-submit-toggle {
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  transform: rotate(45deg) !important;
+}
+
+.public-ranking-submit-toggle-icon {
+  display: block;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 180ms ease;
+}
+
+.public-ranking-submit.is-expanded .public-ranking-submit-toggle-icon {
+  transform: rotate(45deg);
 }
 
 .public-ranking-submit-inline {
-  display: grid;
-  grid-template-columns: minmax(14rem, 1fr) auto auto auto;
+  display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
-  margin-top: 0.48rem;
+  flex-wrap: nowrap;
+  overflow: visible;
+  padding-bottom: 0.08rem;
 }
 
-.public-ranking-submit-inline input[type="text"],
-.public-ranking-submit-inline select {
+.public-ranking-submit-reveal {
+  display: grid;
+  grid-template-columns: 0fr;
+  flex: 0 1 auto;
   min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(0.28rem);
+  transition: grid-template-columns 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.public-ranking-submit.is-expanded .public-ranking-submit-reveal {
+  grid-template-columns: 1fr;
+  flex: 1 1 auto;
+  overflow: visible;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.public-ranking-submit-fields {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.public-ranking-submit-fields input[type="text"],
+.public-ranking-submit-fields select {
   width: auto;
   height: 2rem;
   padding: 0.35rem 0.55rem;
 }
 
-.public-ranking-submit-inline .list-admin-primary-btn {
+.public-ranking-submit-fields input[type="text"] {
+  flex: 1 1 18rem;
+  min-width: min(100%, 14rem);
+}
+
+.public-ranking-submit-fields .list-admin-primary-btn {
   width: auto;
   min-width: 0;
 }
 
-.public-ranking-submit-inline .public-ranking-submit-add {
+.public-ranking-submit-fields .public-ranking-submit-add {
   height: 2rem;
   padding: 0.3rem 0.58rem;
   line-height: 1.05;
@@ -12119,6 +12179,16 @@ nav.site-nav {
 }
 
 #main-content .list-public-submit.is-expanded .list-public-submit-toggle {
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  transform: rotate(45deg) !important;
+}
+
+#main-content .public-ranking-submit .public-ranking-submit-toggle {
+  transform: rotate(0deg) !important;
+}
+
+#main-content .public-ranking-submit.is-expanded .public-ranking-submit-toggle {
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
   transform: rotate(45deg) !important;

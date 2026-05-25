@@ -963,15 +963,13 @@
     var canShowAdvanced = true;
     var advancedOpen = canShowAdvanced && !!state.submitAdvancedOpen;
     var canConfigureHierarchy = !!(isAdmin() && state.editMode);
+    var toggleLabel = open ? 'Close add entry form' : 'Add entry';
     var html = '';
-    html += '<section class="public-ranking-submit">';
-    html += '<div class="public-ranking-submit-toolbar">';
-    html += '<div class="public-ranking-submit-toolbar-right">';
-    html += '<button type="button" class="list-admin-primary-btn public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-expanded="' + (open ? 'true' : 'false') + '" title="' + escapeHtml(open ? 'Close add entry' : 'New entry') + '">' + escapeHtml(open ? 'Close' : 'New entry') + '</button>';
-    html += '</div>';
-    html += '</div>';
+    html += '<section class="public-ranking-submit' + (open ? ' is-expanded' : '') + '">';
+    html += '<div class="public-ranking-submit-inline">';
+    html += '<div class="public-ranking-submit-reveal" ' + (open ? '' : 'aria-hidden="true"') + '>';
+    html += '<div class="public-ranking-submit-fields">';
     if (open) {
-      html += '<div class="public-ranking-submit-inline">';
       html += '<input type="hidden" id="public-ranking-submit-parent" value="' + escapeHtml(graph.rootCoord || '') + '">';
       html += '<input type="text" id="public-ranking-submit-title" placeholder="New entry">';
       html += '<button type="button" data-ranking-action="submit-node" class="list-admin-primary-btn public-ranking-submit-add">Add</button>';
@@ -1015,6 +1013,10 @@
         html += '</div>';
       }
     }
+    html += '</div>';
+    html += '</div>';
+    html += '<button type="button" class="public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-label="' + escapeHtml(toggleLabel) + '" title="' + escapeHtml(toggleLabel) + '" aria-expanded="' + (open ? 'true' : 'false') + '"><span class="public-ranking-submit-toggle-icon" aria-hidden="true">+</span></button>';
+    html += '</div>';
     html += '</section>';
     return html;
   }
