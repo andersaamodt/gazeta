@@ -111,7 +111,7 @@ if [ "$is_admin" = "true" ]; then
   include_pending=true
 fi
 ranking_for_parent=$(blog_public_ranking_view_json "$page_slug" "$state_json" "$canonical_event" "$include_pending" "" "$submitter_pubkey")
-parent_ok=$(printf '%s\n' "$ranking_for_parent" | jq -r --arg parent "$parent_coord" 'if ($parent == (.root_coord // "")) or ((.nodes // []) | map(.coordinate) | index($parent) != null) then "true" else "false" end' 2>/dev/null || printf 'false')
+parent_ok=$(printf '%s\n' "$ranking_for_parent" | jq -r --arg parent "$parent_coord" --arg root "$root_coord" 'if ($parent == $root) or ($parent == (.root_coord // "")) or ((.nodes // []) | map(.coordinate) | index($parent) != null) then "true" else "false" end' 2>/dev/null || printf 'false')
 if [ "$parent_ok" != "true" ]; then
   blog_json_error "parent_coord must reference an existing node in this ranking" "parent_not_found"
   exit 0
