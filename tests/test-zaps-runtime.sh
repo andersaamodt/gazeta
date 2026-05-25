@@ -108,11 +108,17 @@ assert_contains "$normalized" '"transport":"email"' 'contact normalize keeps non
 enriched=$(blog_contact_validate_and_enrich_state_json "$normalized" false)
 assert_contains "$enriched" '"lud16":"old@example.com"' 'contact validation publishes the lightning row from page data'
 assert_contains "$enriched" '"email_public":"hello@example.com"' 'contact validation preserves normal contact rows'
+assert_contains "$enriched" '"contact_row_order":["email_public","lud16"]' 'contact validation serializes explicit row order for hydration'
 if printf '%s' "$enriched" | grep -Fq 'lightning_preferred'; then
   fail 'contact validation should not serialize lightning rows as generic contact keys'
 else
   pass
 fi
+
+event_content=$(printf '%s\n' "$enriched" | jq -c '.content_json')
+event_json=$(jq -cn --arg content "$event_content" '{content:$content}')
+restored_order=$(blog_contact_state_from_event_json contact "$event_json" | jq -r '.rows | map(.transport + ":" + .qualifier + ":" + .value) | join("|")')
+assert_contains "$restored_order" 'email:public:hello@example.com|lightning:preferred:old@example.com' 'contact canonical hydration preserves authored row order from kind-0 metadata'
 
 page_payload=$(printf '%s\n' "$normalized" | jq -c '.')
 assert_contains "$page_payload" '"content_json":{"title":"Contact","lud16":"old@example.com"' 'normalized contact state includes page-data lud16 in content_json'

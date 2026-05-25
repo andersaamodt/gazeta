@@ -1575,10 +1575,24 @@ blog_contact_normalize_state_json() {
       (($v // "") | tostring | gsub("^\\s+|\\s+$";"") | ascii_downcase);
     def is_lud16($v):
       ((norm_lud16($v) | test("^[^@[:space:]]+@[^@[:space:]]+$")));
+    def row_content_key($r):
+      if is_lightning_transport($r.transport) then "lud16"
+      else ($r.transport + (if ($r.qualifier | length) > 0 then ("_" + $r.qualifier) else "" end))
+      end;
+    def order_rows($rows; $order):
+      [ range(0; ($rows | length)) as $i
+        | ($rows[$i]) as $row
+        | $row + {
+            __row_index: $i,
+            __row_order: (($order | index(row_content_key($row))) // 999999)
+          }
+      ]
+      | sort_by(.__row_order, .__row_index)
+      | map(del(.__row_index, .__row_order));
     def parse_content_rows($obj):
       [ ($obj | to_entries[]) as $pair
         | ($pair.key | tostring) as $k
-        | select($k != "title" and $k != "description")
+        | select($k != "title" and $k != "description" and $k != "contact_row_order" and $k != "_contact_row_order")
         | ($pair.value | tostring) as $v
         | if ($k == "lud16") then
             { transport: "lightning", qualifier: "preferred", value: (norm_lud16($v)) }
@@ -1598,7 +1612,9 @@ blog_contact_normalize_state_json() {
           else
             { transport: $k, qualifier: "", value: $v }
           end
-      ];
+      ] as $rows
+      | (($obj.contact_row_order // $obj._contact_row_order // []) | if type == "array" then map(tostring) else [] end) as $order
+      | order_rows($rows; $order);
 
     (if ((.content_json // null) | type) == "object" then .content_json
       elif ((.content // "") | type) == "string" and ((.content // "") | length) > 0 then (try (.content | fromjson) catch {})
@@ -1642,6 +1658,7 @@ blog_contact_normalize_state_json() {
         }
         + (if .publish_intro_to_nostr then {description: .description} else {} end)
         + (if ($row_lud16 | length) > 0 then {lud16: $row_lud16} else {} end))
+        + (if ((.rows | length) > 0) then {contact_row_order: (.rows | map(row_content_key(.)))} else {} end)
         + (reduce .rows[] as $r ({};
             if (($r.transport | length) > 0 and ($r.value | length) > 0 and (is_lightning_transport($r.transport) | not)) then
               . + { (($r.transport + (if ($r.qualifier | length) > 0 then ("_" + $r.qualifier) else "" end))): $r.value }
@@ -1705,6 +1722,8 @@ blog_contact_validate_and_enrich_state_json() {
       ((norm_lud16($v) | test("^[^@[:space:]]+@[^@[:space:]]+$")));
     def key_for($r):
       (($r.transport // "") + (if (($r.qualifier // "") | length) > 0 then ("_" + ($r.qualifier // "")) else "" end));
+    def content_key_for($r):
+      if is_lightning_transport($r.transport) then "lud16" else key_for($r) end;
 
     (.rows // []) as $rows0
     | ($rows0 | if type=="array" then . else [] end
@@ -1751,6 +1770,7 @@ blog_contact_validate_and_enrich_state_json() {
           }
           + (if (.publish_intro_to_nostr // false) then { description: ((.description // "") | tostring) } else {} end)
           + (if ($row_lud16 | length) > 0 then { lud16: $row_lud16 } else {} end))
+          + (if (($rows | length) > 0) then { contact_row_order: ($rows | map(content_key_for(.))) } else {} end)
           + (reduce $rows[] as $r ({};
               if (($r.transport|length) > 0 and ($r.value|length) > 0 and (is_lightning_transport($r.transport) | not)) then
                 . + { (key_for($r)): $r.value }
