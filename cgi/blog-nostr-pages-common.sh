@@ -1046,7 +1046,7 @@ blog_nostr_page_write_prerendered_source() {
         printf '<script src="/static/simplex-web-default-chat.js?v=%s"></script>\n' "$blog_nostr_simplex_web_default_chat_js_version"
         printf '%s\n' '<script src="/static/simplex-web-session-store.js"></script>'
         printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
-        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260525-soft-actions1" data-video-chat-widget="1"></script>'
+        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260525-permission-gate1" data-video-chat-widget="1"></script>'
         printf '<script src="/static/contact-page.js?v=%s"></script>\n' "$blog_nostr_contact_page_js_version"
       } >> "$tmp"
       ;;
@@ -2230,7 +2230,7 @@ license: "CC BY 4.0"
 <script src="/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version"></script>
 <script src="/static/simplex-web-session-store.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/video-chat-widget.js?v=20260525-soft-actions1" data-video-chat-widget="1"></script>
+<script src="/static/video-chat-widget.js?v=20260525-permission-gate1" data-video-chat-widget="1"></script>
 <script src="/static/contact-page.js?v=$blog_nostr_contact_page_js_version"></script>
 EOCONTACT
       ;;

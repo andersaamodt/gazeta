@@ -3,7 +3,7 @@
 
   var WIDGET_SELECTOR = '[data-video-chat]';
   var WIDGET_MOUNTED_ATTR = 'data-video-chat-mounted';
-  var WIDGET_BUILD_VERSION = '20260525-soft-actions1';
+  var WIDGET_BUILD_VERSION = '20260525-permission-gate1';
   var INSTANCE_COUNTER = { value: 0 };
   var INSTANCE_BY_ELEMENT = new WeakMap();
   var ACTIVE_PAGE_THEME_OWNER = '';

@@ -29,7 +29,7 @@
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
   var secureChatRecentEmojiLimit = 32;
-  var videoChatWidgetBuildVersion = '20260525-soft-actions1';
+  var videoChatWidgetBuildVersion = '20260525-permission-gate1';
   var videoChatUnavailableText = 'Calling unavailable';
   var secureChatEmojiSectionDefs = [
     { id: 'recent', label: 'Recently Used', group: null },
