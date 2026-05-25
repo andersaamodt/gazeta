@@ -874,7 +874,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "'/cgi/blog-submit-
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-public-action="expand-submit"' 'list page public add form starts behind a compact add button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'focusPublicSubmitInput();' 'list page public add form focuses the textbox after expanding or adding'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-public-submit-reveal' 'list page public add form uses an animated reveal shell'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-rows 220ms ease' 'list page public add form expands vertically with animation'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-columns 220ms ease' 'list page public add form expands inline with animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "'/cgi/blog-submit-list-vote'" 'list page vote buttons use list-specific endpoint'
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-list-entry"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-list-vote"

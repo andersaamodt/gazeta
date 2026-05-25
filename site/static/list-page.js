@@ -2839,12 +2839,15 @@
     var buttonAttrs = disabled + (isSubmitting ? ' aria-busy="true"' : '');
     var buttonClass = 'list-admin-primary-btn list-public-submit-add' + (isSubmitting ? ' is-loading' : '');
     var buttonLabel = isSubmitting ? '<span class="save-spinner" aria-hidden="true"></span><span>Adding</span>' : 'Add';
+    var toggleLabel = signedIn && isExpanded ? 'Close add entry form' : (signedIn ? 'Add entry' : 'Sign in to add entries');
     var html = '<section class="list-public-submit' + (isExpanded ? ' is-expanded' : '') + '" aria-label="Add list entry">';
-    html += '<div class="list-public-submit-top"><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="Add entry" title="' + escapeHtml(signedIn ? 'Add entry' : 'Sign in to add entries') + '" aria-expanded="' + (isExpanded ? 'true' : 'false') + '"' + (signedIn ? '' : ' disabled aria-disabled="true"') + '>+</button></div>';
-    html += '<div class="list-public-submit-reveal" ' + (isExpanded ? '' : 'aria-hidden="true"') + '><div class="list-public-submit-inline">';
+    html += '<div class="list-public-submit-inline">';
+    html += '<div class="list-public-submit-reveal" ' + (isExpanded ? '' : 'aria-hidden="true"') + '><div class="list-public-submit-fields">';
     html += '<input type="text" id="list-public-submit-title" placeholder="' + escapeHtml(placeholder) + '"' + disabled + '>';
     html += '<button type="button" class="' + buttonClass + '" data-list-public-action="submit"' + buttonAttrs + '>' + buttonLabel + '</button>';
     html += '</div></div>';
+    html += '<button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="' + escapeHtml(toggleLabel) + '" title="' + escapeHtml(toggleLabel) + '" aria-expanded="' + (isExpanded ? 'true' : 'false') + '"' + (signedIn ? '' : ' disabled aria-disabled="true"') + '><span class="list-public-submit-toggle-icon" aria-hidden="true">+</span></button>';
+    html += '</div>';
     html += '</section>';
     return html;
   }
@@ -4508,9 +4511,11 @@
         event.preventDefault();
         var publicActionName = String(publicAction.getAttribute('data-list-public-action') || '');
         if (publicActionName === 'expand-submit') {
-          state.publicSubmitExpanded = true;
+          state.publicSubmitExpanded = !state.publicSubmitExpanded;
           renderList();
-          focusPublicSubmitInput();
+          if (state.publicSubmitExpanded) {
+            focusPublicSubmitInput();
+          }
           return;
         }
         if (publicActionName === 'submit') {

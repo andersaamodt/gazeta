@@ -1706,6 +1706,10 @@ body.nav-cart-open {
   box-shadow: none;
 }
 
+.list-page-head:has(#list-page-description:not([hidden])) + .list-page-content:has(.list-public-submit:first-child) {
+  margin-top: 0.22rem;
+}
+
 #contact-page-root.contact-edit-mode #contact-page-description {
   margin-bottom: 0.25rem;
 }
@@ -3870,13 +3874,7 @@ body.nav-cart-open {
 }
 
 .list-public-submit {
-  margin: 0 0 1rem;
-}
-
-.list-public-submit-top {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  margin: 0 0 0.58rem;
 }
 
 .list-public-submit-toggle {
@@ -3896,6 +3894,24 @@ body.nav-cart-open {
   line-height: 1;
   font-weight: 700;
   cursor: pointer;
+  transform: rotate(0deg) !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 180ms ease;
+}
+
+.list-public-submit.is-expanded .list-public-submit-toggle {
+  color: #111;
+  transform: rotate(45deg) !important;
+}
+
+.list-public-submit-toggle-icon {
+  display: block;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 180ms ease;
+}
+
+.list-public-submit.is-expanded .list-public-submit-toggle-icon {
+  transform: rotate(45deg);
 }
 
 .list-public-submit-toggle:hover:not(:disabled),
@@ -3912,35 +3928,43 @@ body.nav-cart-open {
 
 .list-public-submit-reveal {
   display: grid;
-  grid-template-rows: 0fr;
+  grid-template-columns: 0fr;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-0.28rem);
-  transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease;
+  transform: translateX(0.28rem);
+  transition: grid-template-columns 220ms ease, opacity 180ms ease, transform 220ms ease;
 }
 
 .list-public-submit.is-expanded .list-public-submit-reveal {
-  grid-template-rows: 1fr;
+  grid-template-columns: 1fr;
+  flex: 1 1 auto;
   overflow: visible;
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(0);
 }
 
 .list-public-submit-inline {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  overflow: hidden;
-  padding-top: 0.48rem;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow: visible;
+  padding-top: 0;
   padding-bottom: 0.08rem;
 }
 
-.list-public-submit.is-expanded .list-public-submit-inline {
-  overflow: visible;
+.list-public-submit-fields {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.list-public-submit-inline input[type="text"] {
+.list-public-submit-fields input[type="text"] {
   flex: 1 1 18rem;
   min-width: min(100%, 14rem);
   height: 2.1rem;
@@ -12088,6 +12112,16 @@ nav.site-nav {
   -webkit-text-fill-color: var(--admin-text, var(--text)) !important;
   box-shadow: none !important;
   transform: none !important;
+}
+
+#main-content .list-public-submit .list-public-submit-toggle {
+  transform: rotate(0deg) !important;
+}
+
+#main-content .list-public-submit.is-expanded .list-public-submit-toggle {
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  transform: rotate(45deg) !important;
 }
 
 #main-content .secure-chat-close-btn {

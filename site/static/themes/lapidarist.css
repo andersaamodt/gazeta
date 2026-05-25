@@ -913,6 +913,16 @@ input[type="reset"]:disabled,
   transform: none !important;
 }
 
+#main-content .list-public-submit .list-public-submit-toggle {
+  transform: rotate(0deg) !important;
+}
+
+#main-content .list-public-submit.is-expanded .list-public-submit-toggle {
+  color: #111 !important;
+  -webkit-text-fill-color: #111 !important;
+  transform: rotate(45deg) !important;
+}
+
 #main-content .blog-post-item button.tag,
 #main-content .blog-post-item button.tag:hover:not(:disabled),
 #main-content .blog-post-item button.tag:focus-visible:not(:disabled) {

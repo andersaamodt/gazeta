@@ -631,7 +631,7 @@ entries = [
 
 parts = []
 if state.get("allow_signed_in_submissions") is True:
-    parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></section>')
+    parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><div class="list-public-submit-reveal" aria-hidden="true"><div class="list-public-submit-fields"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></div><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="Add entry" title="Add entry" aria-expanded="false"><span class="list-public-submit-toggle-icon" aria-hidden="true">+</span></button></div></section>')
 
 after = ""
 if text(state.get("extras_after")):
@@ -752,7 +752,7 @@ PY
     | (($s.show_markers // false) == true) as $show_markers
     | (($s.elements // $s.entries // []) | map(select(((.type // "entry") | tostring) == "entry" and (((.markdown // "") | tostring | length) > 0)))) as $entries
     | (if (($s.allow_signed_in_submissions // false) == true) then
-        "<section class=\"list-public-submit\" aria-label=\"Add list entry\"><div class=\"list-public-submit-inline\"><input type=\"text\" id=\"list-public-submit-title\" placeholder=\"New entry\"><button type=\"button\" class=\"list-admin-primary-btn list-public-submit-add\" data-list-public-action=\"submit\">Add</button></div></section>"
+        "<section class=\"list-public-submit\" aria-label=\"Add list entry\"><div class=\"list-public-submit-inline\"><div class=\"list-public-submit-reveal\" aria-hidden=\"true\"><div class=\"list-public-submit-fields\"><input type=\"text\" id=\"list-public-submit-title\" placeholder=\"New entry\"><button type=\"button\" class=\"list-admin-primary-btn list-public-submit-add\" data-list-public-action=\"submit\">Add</button></div></div><button type=\"button\" class=\"list-public-submit-toggle\" data-list-public-action=\"expand-submit\" aria-label=\"Add entry\" title=\"Add entry\" aria-expanded=\"false\"><span class=\"list-public-submit-toggle-icon\" aria-hidden=\"true\">+</span></button></div></section>"
       else "" end) as $submit
     | (if (($s.extras_after // "") | tostring | length) > 0 then
         "<section class=\"nostr-page-extra nostr-page-extra-after\"><p>" + (($s.extras_after // "") | md_inline) + "</p></section>"
