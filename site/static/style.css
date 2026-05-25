@@ -6117,8 +6117,9 @@ button.contact-value-link {
   padding: 0 0.22rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--tag-muted-bg, #f2f2ef);
-  box-shadow: 0 0 0 2px var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));
+  background: var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
+  background-clip: padding-box;
+  box-shadow: 0 0 0 2px var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
   color: var(--text);
   font-size: 0.63rem;
   font-weight: 700;
@@ -6145,8 +6146,8 @@ button.contact-value-link {
 .nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count {
   border-color: currentColor;
   color: currentColor;
-  background: var(--light-bg);
-  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.10);
+  background: var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
+  box-shadow: 0 0 0 2px var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
 }
 
 .nav-overflow-panel {
