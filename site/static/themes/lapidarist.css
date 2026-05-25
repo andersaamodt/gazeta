@@ -162,6 +162,13 @@
   --lapidarist-control-shadow:
     0 8px 18px rgba(48, 34, 16, 0.12),
     0 2px 5px rgba(48, 34, 16, 0.08);
+  --action-soft-radius: 8px;
+  --action-soft-padding-y: 0.36rem;
+  --action-soft-padding-x: 0.74rem;
+  --action-soft-font-family: var(--ui-font-family, "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
+  --action-soft-font-size: 0.92rem;
+  --action-soft-font-weight: 400;
+  --action-soft-line-height: 1.22;
   --action-soft-shadow: var(--lapidarist-control-shadow);
   --action-soft-hover-shadow: var(--lapidarist-control-shadow);
   --page-canvas-bg:
@@ -608,36 +615,6 @@ nav.site-nav > .nav-center {
     0 3px 10px rgba(48, 34, 16, 0.07) !important;
 }
 
-#list-page-title .list-page-title-actions .list-admin-primary-btn,
-#list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#blog-page-title .list-page-title-actions .list-admin-primary-btn,
-#blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#contact-page-title .list-page-title-actions .list-admin-primary-btn,
-#contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#nip23-page-title .list-page-title-actions .list-admin-primary-btn,
-#nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#public-ranking-title .list-page-title-actions .list-admin-primary-btn,
-#public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
-  border: 0 !important;
-  border-image: none !important;
-  box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-  -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-  background-clip: border-box !important;
-  -webkit-background-clip: border-box !important;
-  clip-path: none;
-  contain: none;
-  overflow: visible;
-}
 
 .post-item {
   transition:
@@ -1296,114 +1273,13 @@ textarea:focus {
   overflow: visible !important;
 }
 
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn,
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn,
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn,
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
-  border: 1px solid transparent !important;
-  border-image: none !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
-  background-clip: border-box !important;
-  -webkit-background-clip: border-box !important;
-  clip-path: none !important;
-  contain: none !important;
-  overflow: visible !important;
-}
-
-/* Shared soft action buttons: borderless tan controls with the Open Chat shadow. */
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn,
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn,
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle,
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle:hover,
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle:focus-visible,
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle[aria-expanded="true"],
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn,
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:active:not(:disabled) {
-  appearance: none !important;
-  -moz-appearance: none !important;
-  -webkit-appearance: none !important;
-  border: 0 !important;
-  border-top: 0 !important;
-  border-right: 0 !important;
-  border-bottom: 0 !important;
-  border-left: 0 !important;
-  border-inline: 0 !important;
-  border-block: 0 !important;
-  border-image: none !important;
-  outline: 0;
-  box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-  -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-  border-radius: 8px !important;
-  background: var(--action-soft-bg, #f5e4d7) !important;
-  background-color: var(--action-soft-bg, #f5e4d7) !important;
-  background-image: none !important;
-  background-clip: padding-box !important;
-  -webkit-background-clip: padding-box !important;
-  background-origin: padding-box !important;
-  color: var(--action-soft-text, #6d3a20) !important;
-  -webkit-text-fill-color: var(--action-soft-text, #6d3a20) !important;
-  filter: none !important;
-  text-shadow: none !important;
-  clip-path: none !important;
-  contain: none !important;
-  overflow: visible !important;
-}
-
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#list-page-root #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle:hover,
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle:focus-visible,
-#blog-page-root #blog-page-title .list-page-title-actions .blog-filter-toggle[aria-expanded="true"],
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#nip23-page-root #nip23-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
-#public-ranking-root #public-ranking-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled) {
-  background: var(--action-soft-hover-bg, #f0d7c5) !important;
-  background-color: var(--action-soft-hover-bg, #f0d7c5) !important;
-  color: var(--action-soft-hover-text, #5b2f18) !important;
-  -webkit-text-fill-color: var(--action-soft-hover-text, #5b2f18) !important;
-  box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
-  -webkit-box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
-}
-
-body :where(
+/* Shared soft action buttons: borderless tan controls with the Open Chat radius, type, and shadow. */
+html body :is(
+  #list-page-title .list-page-title-actions .list-admin-primary-btn,
+  #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+  #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+  #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+  #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
   .list-page-admin-bar .list-admin-primary-btn,
   .nostr-publish-modal-actions .list-admin-primary-btn,
   .list-public-submit-fields .list-admin-primary-btn,
@@ -1411,7 +1287,8 @@ body :where(
   .blog-compose-btn,
   .blog-compose-camera-capture,
   .compose-media-btn,
-  .secure-chat-login-btn
+  .secure-chat-login-btn,
+  #blog-page-title .list-page-title-actions .blog-filter-toggle
 ):not(.blog-compose-fab) {
   appearance: none !important;
   -moz-appearance: none !important;
@@ -1420,14 +1297,21 @@ body :where(
   min-width: 0;
   border: 0 !important;
   border-image: none !important;
-  border-radius: 8px !important;
+  outline: 0;
+  border-radius: var(--action-soft-radius, 8px) !important;
+  padding: var(--action-soft-padding-y, 0.36rem) var(--action-soft-padding-x, 0.74rem) !important;
   background: var(--action-soft-bg, #f5e4d7) !important;
   background-color: var(--action-soft-bg, #f5e4d7) !important;
   background-image: none !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
+  background-origin: padding-box !important;
   color: var(--action-soft-text, #6d3a20) !important;
   -webkit-text-fill-color: var(--action-soft-text, #6d3a20) !important;
+  font-family: var(--action-soft-font-family, inherit) !important;
+  font-size: var(--action-soft-font-size, 0.92rem) !important;
+  font-weight: var(--action-soft-font-weight, 400) !important;
+  line-height: var(--action-soft-line-height, 1.22) !important;
   box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
   -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
   filter: none !important;
@@ -1437,7 +1321,12 @@ body :where(
   overflow: visible !important;
 }
 
-body :where(
+html body :is(
+  #list-page-title .list-page-title-actions .list-admin-primary-btn,
+  #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+  #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+  #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+  #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
   .list-page-admin-bar .list-admin-primary-btn,
   .nostr-publish-modal-actions .list-admin-primary-btn,
   .list-public-submit-fields .list-admin-primary-btn,
@@ -1445,9 +1334,15 @@ body :where(
   .blog-compose-btn,
   .blog-compose-camera-capture,
   .compose-media-btn,
-  .secure-chat-login-btn
+  .secure-chat-login-btn,
+  #blog-page-title .list-page-title-actions .blog-filter-toggle
 ):not(.blog-compose-fab):hover:not(:disabled),
-body :where(
+html body :is(
+  #list-page-title .list-page-title-actions .list-admin-primary-btn,
+  #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+  #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+  #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+  #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
   .list-page-admin-bar .list-admin-primary-btn,
   .nostr-publish-modal-actions .list-admin-primary-btn,
   .list-public-submit-fields .list-admin-primary-btn,
@@ -1455,17 +1350,25 @@ body :where(
   .blog-compose-btn,
   .blog-compose-camera-capture,
   .compose-media-btn,
-  .secure-chat-login-btn
-):not(.blog-compose-fab):focus-visible:not(:disabled) {
+  .secure-chat-login-btn,
+  #blog-page-title .list-page-title-actions .blog-filter-toggle
+):not(.blog-compose-fab):focus-visible:not(:disabled),
+html body #blog-page-title .list-page-title-actions .blog-filter-toggle[aria-expanded="true"] {
   background: var(--action-soft-hover-bg, #f0d7c5) !important;
   background-color: var(--action-soft-hover-bg, #f0d7c5) !important;
+  background-image: none !important;
   color: var(--action-soft-hover-text, #5b2f18) !important;
   -webkit-text-fill-color: var(--action-soft-hover-text, #5b2f18) !important;
   box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
   -webkit-box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
 }
 
-body :where(
+html body :is(
+  #list-page-title .list-page-title-actions .list-admin-primary-btn,
+  #blog-page-title .list-page-title-actions .list-admin-primary-btn,
+  #contact-page-title .list-page-title-actions .list-admin-primary-btn,
+  #nip23-page-title .list-page-title-actions .list-admin-primary-btn,
+  #public-ranking-title .list-page-title-actions .list-admin-primary-btn,
   .list-page-admin-bar .list-admin-primary-btn,
   .nostr-publish-modal-actions .list-admin-primary-btn,
   .list-public-submit-fields .list-admin-primary-btn,
@@ -1473,71 +1376,17 @@ body :where(
   .blog-compose-btn,
   .blog-compose-camera-capture,
   .compose-media-btn,
-  .secure-chat-login-btn
+  .secure-chat-login-btn,
+  #blog-page-title .list-page-title-actions .blog-filter-toggle
 ):not(.blog-compose-fab):active:not(:disabled) {
   background: var(--action-soft-active-bg, #e8c9b3) !important;
   background-color: var(--action-soft-active-bg, #e8c9b3) !important;
+  background-image: none !important;
   color: var(--action-soft-active-text, #4d2614) !important;
   -webkit-text-fill-color: var(--action-soft-active-text, #4d2614) !important;
   box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
   -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
 }
-
-html body #list-page-title .list-page-title-actions button.list-admin-primary-btn,
-html body #blog-page-title .list-page-title-actions button.list-admin-primary-btn,
-html body #contact-page-title .list-page-title-actions button.list-admin-primary-btn,
-html body #nip23-page-title .list-page-title-actions button.list-admin-primary-btn,
-html body #public-ranking-title .list-page-title-actions button.list-admin-primary-btn,
-html body .list-page-admin-bar button.list-admin-primary-btn:not(.blog-compose-fab),
-html body .nostr-publish-modal-actions button.list-admin-primary-btn,
-html body .list-public-submit-fields button.list-admin-primary-btn,
-html body .public-ranking-submit-fields button.list-admin-primary-btn,
-html body button.blog-compose-btn,
-html body button.blog-compose-camera-capture,
-html body button.compose-media-btn,
-html body button.secure-chat-login-btn {
-  border: 0 !important;
-  border-image: none !important;
-  background: var(--action-soft-bg, #f5e4d7) !important;
-  background-color: var(--action-soft-bg, #f5e4d7) !important;
-  background-image: none !important;
-  box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-  -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
-}
-
-html body #list-page-title .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body #list-page-title .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body #blog-page-title .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body #blog-page-title .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body #contact-page-title .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body #contact-page-title .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body #nip23-page-title .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body #nip23-page-title .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body #public-ranking-title .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body #public-ranking-title .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body .list-page-admin-bar button.list-admin-primary-btn:not(.blog-compose-fab):hover:not(:disabled),
-html body .list-page-admin-bar button.list-admin-primary-btn:not(.blog-compose-fab):focus-visible:not(:disabled),
-html body .nostr-publish-modal-actions button.list-admin-primary-btn:hover:not(:disabled),
-html body .nostr-publish-modal-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body .list-public-submit-fields button.list-admin-primary-btn:hover:not(:disabled),
-html body .list-public-submit-fields button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body .public-ranking-submit-fields button.list-admin-primary-btn:hover:not(:disabled),
-html body .public-ranking-submit-fields button.list-admin-primary-btn:focus-visible:not(:disabled),
-html body button.blog-compose-btn:hover:not(:disabled),
-html body button.blog-compose-btn:focus-visible:not(:disabled),
-html body button.blog-compose-camera-capture:hover:not(:disabled),
-html body button.blog-compose-camera-capture:focus-visible:not(:disabled),
-html body button.compose-media-btn:hover:not(:disabled),
-html body button.compose-media-btn:focus-visible:not(:disabled),
-html body button.secure-chat-login-btn:hover:not(:disabled),
-html body button.secure-chat-login-btn:focus-visible:not(:disabled) {
-  background: var(--action-soft-hover-bg, #f0d7c5) !important;
-  background-color: var(--action-soft-hover-bg, #f0d7c5) !important;
-  background-image: none !important;
-  box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
-  -webkit-box-shadow: var(--action-soft-hover-shadow, 0 0.42rem 0.95rem rgba(48, 34, 16, 0.18)) !important;
-}
-
 .list-page-title-actions .list-admin-primary-btn::-moz-focus-inner,
 .list-page-title-actions .blog-filter-toggle::-moz-focus-inner {
   border: 0 !important;
