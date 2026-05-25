@@ -240,6 +240,7 @@ assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 pre
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-widget-video-chat' 'contact prerender includes video chat shell when the plugin is enabled'
+assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'Calling unavailable' 'contact prerender includes a visible fallback while the video call widget loads'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-archived-group' 'contact prerender includes archived contact rows'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'Project Alpha' 'public ranking prerender includes ranking node row'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'

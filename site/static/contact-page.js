@@ -30,6 +30,7 @@
   var secureChatEmojiGroupsLoadPromise = null;
   var secureChatRecentEmojiLimit = 32;
   var videoChatWidgetBuildVersion = '20260525-soft-actions1';
+  var videoChatUnavailableText = 'Calling unavailable';
   var secureChatEmojiSectionDefs = [
     { id: 'recent', label: 'Recently Used', group: null },
     { id: 'smileys-emotion', label: 'Smileys & Emotion', pickerLabel: 'Smileys and emoticons', group: 0 },
@@ -176,6 +177,17 @@
     videoChatScriptLoading = new Promise(function (resolve) {
       var existing = document.querySelector('script[data-video-chat-widget="1"][src*="' + videoChatWidgetBuildVersion + '"]');
       if (existing) {
+        if (
+          window.initVideoChatWidget
+          && typeof window.initVideoChatWidget === 'function'
+          && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion
+        ) {
+          resolve(true);
+          return;
+        }
+        window.setTimeout(function () {
+          resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion));
+        }, 1200);
         existing.addEventListener('load', function () {
           resolve(!!(window.initVideoChatWidget && typeof window.initVideoChatWidget === 'function' && window.__wizardryVideoChatWidgetVersion === videoChatWidgetBuildVersion));
         }, { once: true });
@@ -195,19 +207,41 @@
     return videoChatScriptLoading;
   }
 
+  function videoChatUnavailableHtml() {
+    return '<p class="video-chat-unavailable" role="status">' + escapeHtml(videoChatUnavailableText) + '</p>';
+  }
+
+  function markVideoChatUnavailable(rootNode) {
+    var scope = rootNode && rootNode.querySelectorAll ? rootNode : document;
+    var hosts = scope.querySelectorAll('[data-video-chat]');
+    Array.prototype.forEach.call(hosts, function (host) {
+      if (!host || host.shadowRoot || host.getAttribute('data-video-chat-mounted')) {
+        return;
+      }
+      if (!host.querySelector || !host.querySelector('.video-chat-unavailable')) {
+        host.innerHTML = videoChatUnavailableHtml();
+      }
+    });
+  }
+
   function maybeLoadVideoChatWidget() {
     if (!videoChatPluginEnabled()) {
       return;
     }
     ensureVideoChatWidgetScript().then(function (ok) {
       if (!ok) {
+        markVideoChatUnavailable(els.content || document);
         return;
       }
       if (window.VideoChatWidgetAutoMount && typeof window.VideoChatWidgetAutoMount.scan === 'function') {
-        window.VideoChatWidgetAutoMount.scan(document);
+        var mounted = window.VideoChatWidgetAutoMount.scan(document);
+        if (!mounted && !document.querySelector('[data-video-chat][data-video-chat-mounted]')) {
+          markVideoChatUnavailable(els.content || document);
+        }
       }
     }).catch(function () {
       // Keep contact page resilient even if widget bundle fails.
+      markVideoChatUnavailable(els.content || document);
     });
   }
 
@@ -298,7 +332,7 @@
         'data-video-chat-room-theme-images="' + escapeAttr(roomThemeImages) + '" ' +
         'data-video-chat-room-policy="open" ' +
         'data-video-chat-max-participants="6" ' +
-        'data-video-chat-allow-join-link="true"></div>' +
+        'data-video-chat-allow-join-link="true">' + videoChatUnavailableHtml() + '</div>' +
         '</section>';
     }
     return '';

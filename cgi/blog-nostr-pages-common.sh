@@ -5,7 +5,7 @@ set -eu
 
 blog_nostr_list_page_js_version='20260524-vote-tie-sort1'
 blog_nostr_blog_page_js_version='20260524-inline-chip-active1'
-blog_nostr_contact_page_js_version='20260524-contact-pill-prerender1'
+blog_nostr_contact_page_js_version='20260525-call-widget-fallback1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
@@ -874,7 +874,7 @@ blog_nostr_prerender_contact_video_chat_html() {
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
 
   cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"></div></section>
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><p class="video-chat-unavailable" role="status">Calling unavailable</p></div></section>
 EOF
 }
 

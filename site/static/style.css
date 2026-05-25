@@ -4655,6 +4655,14 @@ body.nav-cart-open {
   text-decoration: none !important;
 }
 
+.video-chat-unavailable {
+  margin: 0.1rem 0 0;
+  color: var(--muted, #6f625d);
+  font-size: 0.94rem;
+  font-style: italic;
+  line-height: 1.35;
+}
+
 .contact-archived-group {
   margin: 0.56rem 0 0.2rem;
 }
