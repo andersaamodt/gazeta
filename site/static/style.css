@@ -266,9 +266,16 @@ body {
 
 /* Blog index and single-post routes get a wider reading canvas. */
 body:has(#blog-page-root),
-body:has(.post-single-item),
 body:has(.post-list > .post-item) {
   max-width: 800px;
+}
+
+body:has(.post-single-item) {
+  max-width: var(--blog-post-resizable-width, 60rem);
+}
+
+body:has(.post-single-item.post-single-has-wide-content) {
+  max-width: var(--blog-post-resizable-width, 72rem);
 }
 
 body.blog-post-resize-enabled {
