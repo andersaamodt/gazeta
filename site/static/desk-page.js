@@ -453,6 +453,11 @@
     var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
     var done = data.done_tasks || [];
     return '<section class="desk-mode-panel desk-todo-panel" aria-label="Checklist">' +
+      '<form class="desk-room-name-form" data-desk-form="room-title">' +
+      '<input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '">' +
+      '<label><span class="desk-visually-hidden">Room name</span><input class="desk-input desk-room-name-input" name="room_title" value="' + escapeHtml(room.title || 'Room') + '" maxlength="96" aria-label="Room name" required></label>' +
+      '<button type="submit" class="desk-btn subtle">Save</button>' +
+      '</form>' +
       '<div class="desk-panel-tools">' +
       '<form class="desk-color-form" data-desk-form="room-color"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span class="desk-visually-hidden">Room Color</span><input class="desk-color-input" type="color" name="room_color" value="' + escapeHtml(roomColor(room)) + '" aria-label="Room color"></label><button type="submit" class="desk-btn subtle">Set</button></form></div>' +
       '<div class="desk-room-actions">' +
@@ -930,6 +935,18 @@
         room: formValue(form, 'room'),
         room_color: formValue(form, 'room_color')
       }).then(refreshFrom);
+      return;
+    }
+    if (type === 'room-title') {
+      api('set-room-title', {
+        room: formValue(form, 'room'),
+        room_title: formValue(form, 'room_title')
+      }).then(function (data) {
+        refreshFrom(data);
+        if (data && data.success !== false) {
+          showMessage('Room name saved.', false);
+        }
+      });
       return;
     }
     if (type === 'move-task') {

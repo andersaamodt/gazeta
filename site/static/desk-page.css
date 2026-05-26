@@ -885,6 +885,29 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   margin: 0 0 0.55rem 2.9rem;
 }
 
+.desk-room-name-form {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  width: fit-content;
+  max-width: calc(100% - 2.75rem);
+  margin: 0 0 0.45rem 2.9rem;
+}
+
+.desk-room-name-form label {
+  min-width: 0;
+}
+
+.desk-room-name-input {
+  width: min(14rem, 46vw);
+  min-width: 7rem;
+  padding-block: 0.34rem;
+  color: #18233b;
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(69, 110, 185, 0.34);
+  font-weight: 800;
+}
+
 .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-form label span {
   color: #405174;
 }

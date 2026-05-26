@@ -571,6 +571,21 @@ class DeskStore:
         payload["updated_room"] = self.room_summary(room, threshold)
         return payload
 
+    def set_room_title(self, room_rel: str, title: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if room and not self.room_dir(room).is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        clean = str(title or "").strip()
+        if not clean:
+            raise DeskError("missing_title", "Room title is required.")
+        if len(clean) > 96:
+            raise DeskError("title_too_long", "Room title must be 96 characters or fewer.")
+        self.update_room_metadata(room, {"title": clean})
+        self.append_log("set-room-title", {"room": room, "title": clean})
+        payload = self.state(room, threshold)
+        payload["updated_room"] = self.room_summary(room, threshold)
+        return payload
+
     def unique_task_path(self, room_rel: str, text: str) -> Path:
         tasks = self.tasks_dir(room_rel)
         tasks.mkdir(parents=True, exist_ok=True)
@@ -877,6 +892,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "set-soonness",
         "set-status",
         "set-room-color",
+        "set-room-title",
         "rebuild-indexes",
         "migrate-metadata",
     }
@@ -904,6 +920,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_status(env("BLOG_DESK_ONLINE_STATUS"), threshold)
         if action == "set-room-color":
             return store.set_room_color(room, env("BLOG_DESK_ROOM_COLOR"), threshold)
+        if action == "set-room-title":
+            return store.set_room_title(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
         if action == "search":
             return store.search(env("BLOG_DESK_QUERY"), threshold)
         if action == "audit":
