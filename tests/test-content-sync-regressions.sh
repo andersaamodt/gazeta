@@ -852,6 +852,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'state.activeEn
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '<div class="list-inline-row-menu" role="menu"' 'read-mode row menu stays anchored in the positioned trigger wrapper'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'list-entry-row-menu-panel' 'read-mode row menu no longer pushes adjacent content down'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-row-menu-panel .list-inline-row-menu' 'read-mode row menu does not override the absolute menu layout'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-inline-row-menu-trigger .overflow-menu-icon-svg' 'row menu trigger centers the overflow SVG icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'transition: none !important;' 'row menu trigger hover highlight is instant'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#main-content .list-entry-vote-btn' 'reading list vote arrows override global button chrome'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-upvote.is-stale' 'reading list vote arrows show stale upvotes in a dull theme color'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-btn.is-downvote.is-stale' 'reading list vote arrows show stale downvotes in a dull theme color'

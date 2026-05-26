@@ -1045,6 +1045,8 @@ input[type="reset"]:disabled,
   background-image: none !important;
   box-shadow: none !important;
   transform: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 #main-content .list-entry-read-menu .list-inline-row-menu-trigger:hover:not(:disabled),
@@ -1053,6 +1055,16 @@ input[type="reset"]:disabled,
   background-color: var(--light-bg, #eef3ff) !important;
   background-image: none !important;
   box-shadow: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+.list-inline-row-menu-trigger,
+.list-inline-row-menu-trigger:hover,
+.list-inline-row-menu-trigger:focus-visible,
+.list-inline-row-menu-trigger:active {
+  transition: none !important;
+  animation: none !important;
 }
 
 #main-content .list-inline-row-menu button[role="menuitem"],
