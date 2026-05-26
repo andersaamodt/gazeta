@@ -29,7 +29,7 @@ trap 'rm -f "$manifest_tmp"' EXIT HUP INT TERM
 
 is_prerender_type() {
   case "$1" in
-    list|icon-gallery|nip23|blog|contact|public-ranking)
+    list|icon-gallery|software-gallery|nip23|blog|contact|public-ranking)
       return 0
       ;;
   esac
@@ -86,7 +86,7 @@ render_payload_json() {
   if ! printf '%s\n' "$payload" | jq -e --arg slug "$slug" '
     (.success == true) and
     ((.slug // "") | tostring == $slug) and
-    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery", "nip23", "blog", "contact", "public-ranking"))
+    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery", "software-gallery", "nip23", "blog", "contact", "public-ranking"))
   ' >/dev/null 2>&1; then
     return 1
   fi
@@ -197,7 +197,7 @@ fallback_payload_json() {
     nip23|blog)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type")
       ;;
-    list|icon-gallery)
+    list|icon-gallery|software-gallery)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_list_default_state_json "$slug")
       ;;
     *)

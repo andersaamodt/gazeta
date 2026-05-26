@@ -1230,14 +1230,14 @@
 
   function inlinePostTypeLabel(postType) {
     var value = normalizeInlinePostType(postType);
-    if (value === 'shortform') return 'Shortform';
-    if (value === 'capture-media') return 'Capture Media';
-    if (value === 'upload-media') return 'Upload Media';
-    if (value === 'attachment') return 'Attachment';
-    if (value === 'audio-note') return 'Audio Note';
-    if (value === 'link-share') return 'Link';
-    if (value === 'go-live') return 'Go Live';
-    return 'Longform';
+    if (value === 'shortform') return 'shortform';
+    if (value === 'capture-media') return 'capture';
+    if (value === 'upload-media') return 'media';
+    if (value === 'attachment') return 'attachment';
+    if (value === 'audio-note') return 'audio';
+    if (value === 'link-share') return 'link';
+    if (value === 'go-live') return 'go live';
+    return 'post';
   }
 
   function inlinePostKindPillClass(postType) {
@@ -2045,7 +2045,7 @@
     if (!payload || !payload.current) {
       return;
     }
-    var canonicalPath = normalizePostMdPath(payload.current.path || payload.current.url || '');
+    var canonicalPath = normalizePostMdPath(payload.current.source_path || payload.current.post_path || payload.current.path || payload.current.url || '');
     if (canonicalPath) {
       currentRelPath = canonicalPath;
     }

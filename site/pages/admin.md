@@ -550,37 +550,37 @@ title: ""
 <div class="compose-editor">
 <div class="field-row compose-post-type-row">
 <div id="compose-post-type-toolbar" class="compose-post-type-toolbar" role="tablist" aria-label="Post type">
-<button type="button" class="compose-post-type-pill" data-post-type="shortform" aria-pressed="false" aria-label="Shortform Post" title="Shortform Post">
+<button type="button" class="compose-post-type-pill" data-post-type="shortform" aria-pressed="false" aria-label="shortform" title="shortform">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8H15M5 12H13M5 16H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-<span class="sr-only">Shortform Post</span>
+<span class="sr-only">shortform</span>
 </button>
-<button type="button" class="compose-post-type-pill is-active" data-post-type="longform" aria-pressed="true" aria-label="Longform Post" title="Longform Post">
+<button type="button" class="compose-post-type-pill is-active" data-post-type="longform" aria-pressed="true" aria-label="post" title="post">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7H19M5 11H19M5 15H17M5 19H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-<span class="sr-only">Longform Post</span>
+<span class="sr-only">post</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="capture-media" aria-pressed="false" aria-label="Take Photo/Video" title="Take Photo/Video">
+<button type="button" class="compose-post-type-pill" data-post-type="capture-media" aria-pressed="false" aria-label="capture" title="capture">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="7" width="16" height="11" rx="2.2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12.5" r="2.6" stroke="currentColor" stroke-width="1.8"/><path d="M9.2 7L10.4 5.2H13.6L14.8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-<span class="sr-only">Take Photo/Video</span>
+<span class="sr-only">capture</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false" aria-label="Upload Photo/Video" title="Upload Photo/Video">
+<button type="button" class="compose-post-type-pill" data-post-type="upload-media" aria-pressed="false" aria-label="media" title="media">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.6" y="5.1" width="16.8" height="13.8" rx="2.2" stroke="currentColor" stroke-width="1.8"/><circle cx="8.4" cy="9.7" r="1.4" fill="currentColor"/><path d="M5.8 16.4L10.2 12.1L13.1 15L15.8 12.5L18.2 16.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<span class="sr-only">Upload Photo/Video</span>
+<span class="sr-only">media</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false" aria-label="Upload Attachment/File" title="Upload Attachment/File">
+<button type="button" class="compose-post-type-pill" data-post-type="attachment" aria-pressed="false" aria-label="attachment" title="attachment">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.4 11.1L12.9 19.6C10.6 21.9 6.8 21.9 4.5 19.6C2.2 17.3 2.2 13.5 4.5 11.2L13 2.8C14.6 1.2 17.1 1.2 18.7 2.8C20.2 4.4 20.2 6.9 18.7 8.5L10.2 16.9C9.3 17.8 7.8 17.8 6.9 16.9C6 16 6 14.5 6.9 13.6L14.8 5.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<span class="sr-only">Upload Attachment/File</span>
+<span class="sr-only">attachment</span>
 </button>
-<button type="button" class="compose-post-type-pill" data-post-type="audio-note" aria-pressed="false" aria-label="Audio Note" title="Audio Note">
+<button type="button" class="compose-post-type-pill" data-post-type="audio-note" aria-pressed="false" aria-label="audio" title="audio">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="4.2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M6.6 11.2C6.6 14.4 9.1 16.9 12 16.9C14.9 16.9 17.4 14.4 17.4 11.2M12 16.9V20.2M9.3 20.2H14.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-<span class="sr-only">Audio Note</span>
+<span class="sr-only">audio</span>
 </button>
 <button type="button" class="compose-post-type-pill" data-post-type="link-share" aria-pressed="false" aria-label="Link" title="Link">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.7" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><rect x="12.5" y="8.5" width="8.8" height="7" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M9.8 12H14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
 <span class="sr-only">Link</span>
 </button>
-<button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="Go Live" title="Coming soon: Go Live">
+<button type="button" class="compose-post-type-pill is-disabled" data-post-type="go-live" aria-pressed="false" disabled aria-disabled="true" aria-label="go live" title="Coming soon: go live">
 <svg class="compose-post-type-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
-<span class="sr-only">Go Live</span>
+<span class="sr-only">go live</span>
 </button>
 </div>
 </div>
@@ -1013,7 +1013,8 @@ title: ""
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="blog">Blog Index (NIP-23 posts)</option>
 <option value="list">List Page (kind 30004)</option>
-<option value="icon-gallery">Product Gallery (kind 30004)</option>
+<option value="software-gallery">Software Gallery (kind 30267)</option>
+<option value="icon-gallery">Generic Tile Gallery (kind 30004)</option>
 <option value="public-ranking">Public Ranking (kind 30040)</option>
 <option value="overworld">Overworld Game (kind 30023)</option>
 <option value="contact">User Metadata (kind 0)</option>

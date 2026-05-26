@@ -94,7 +94,7 @@ video_chat_rooms=Lobby
 EOFCONF
 
 cat > "$SITE_ROOT/site/includes/head.html" <<'EOFHEAD'
-<script src="/static/site-bootstrap.js"></script>
+<script defer src="/static/site-bootstrap.js"></script>
 EOFHEAD
 cat > "$SITE_ROOT/site/includes/nav.md" <<'EOFNAV'
 <nav class="site-nav">Fixture Nav</nav>
@@ -134,12 +134,14 @@ blog_nostr_pages_save_json '{
 
 blog_nostr_page_save_draft_state_json oeuvre list '{
   "title":"Oeuvre",
-  "description":"Grouped work",
-  "group_by":"year",
-  "show_markers":true,
-  "elements":[
-    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"published"},
-    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
+	  "description":"Grouped work",
+	  "group_by":"year",
+	  "show_marker_filters":true,
+	  "show_markers":true,
+	  "default_markers":"published",
+	  "elements":[
+	    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"published"},
+	    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
   ]
 }'
 
@@ -216,7 +218,7 @@ license: "CC BY 4.0"
 This post should be present in prerendered blog HTML.
 EOFPOST
 
-BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=10 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
+BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=30 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
 
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
@@ -230,8 +232,16 @@ done
 
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'Oeuvre Entry' 'list prerender includes grouped list entry'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-year-group' 'list prerender includes grouped section markup'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-marker-filter-pill is-include' 'list prerender includes selected default marker filter pill'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'data-marker-filter-action="toggle"' 'list prerender includes marker filter controls'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '--marker-pill-h:' 'list prerender includes first-paint marker pill colors'
+assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'Another Work' 'list prerender applies default marker filters before hydration'
 assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'Public Reading Fixture' 'list prerender includes public submitted list entries'
 assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-entry-id="public-fixture-entry"' 'list prerender keeps public entry identity for hydration'
+assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'list-entry-vote-controls' 'list prerender includes reading-list vote controls'
+assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-vote-value="1"' 'list prerender includes upvote buttons'
+assert_file_not_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-vote-value="-1"' 'list prerender omits reading-list downvote buttons'
+assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'disabled aria-disabled="true"' 'list prerender renders anonymous vote buttons disabled'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.js" 'public-fixture-entry' 'list bootstrap includes public submitted list entries'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-gallery prerender includes tile label'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'

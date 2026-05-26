@@ -96,7 +96,13 @@ post_json() {
   word_count=$(blog_word_count "$body")
   reading_minutes=$(blog_estimated_read_minutes "$word_count")
   url=$(blog_rel_post_html_url "$file")
-  rel=${file#"$blog_posts_dir/"}
+  source_path=$(blog_managed_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+  if [ -n "$source_path" ]; then
+    rel=${source_path#posts/}
+  else
+    rel=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+    rel=${rel#posts/}
+  fi
   rel_slug_raw=${rel%.md}
   rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
   rel_path="posts/${rel_slug}"
@@ -106,6 +112,7 @@ post_json() {
   printf '"author":"%s",' "$(blog_json_escape "$author")"
   printf '"url":"%s",' "$(blog_json_escape "$url")"
   printf '"path":"%s",' "$(blog_json_escape "$rel_path")"
+  printf '"source_path":"%s",' "$(blog_json_escape "$source_path")"
   printf '"type":"%s",' "$(blog_json_escape "$post_type")"
   printf '"published_at":"%s",' "$(blog_json_escape "$published_at")"
   printf '"published_date":"%s",' "$(blog_json_escape "$published_date")"

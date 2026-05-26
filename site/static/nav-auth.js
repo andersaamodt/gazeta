@@ -2306,7 +2306,7 @@
     var metadata = {
       name: 'gazeta',
       url: window.location.origin,
-      description: 'Sign in and sign zaps for this blog.'
+      description: 'Sign in, vote on lists, and sign zaps for this blog.'
     };
     relays.forEach(function (relay) {
       params.append('relay', relay);
@@ -2314,7 +2314,7 @@
     params.set('secret', pairSecret);
     params.set('name', 'gazeta');
     params.set('metadata', JSON.stringify(metadata));
-    params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734');
+    params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5');
     return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
 
@@ -3818,7 +3818,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260525-soft-actions1';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260525-heading-nav-fix1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

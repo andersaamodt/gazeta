@@ -3965,6 +3965,62 @@ blog_nostr_event_signature_json() {
   }' 2>/dev/null || return 1
 }
 
+blog_nostr_sign_event_with_tags() {
+  kind=${1-}
+  content=${2-}
+  tags_json=${3-[]}
+  [ -n "$kind" ] || return 1
+  case "$kind" in
+    *[!0-9]*|'') return 1 ;;
+  esac
+  command -v jq >/dev/null 2>&1 || return 1
+  command -v nostril >/dev/null 2>&1 || return 1
+  printf '%s\n' "$tags_json" | jq -e 'type=="array"' >/dev/null 2>&1 || return 1
+
+  secret=$(blog_nostr_secret_key 2>/dev/null || printf '')
+  [ -n "$secret" ] || return 1
+  created_at=$(blog_now_epoch)
+  set -- nostril --sec "$secret" --kind "$kind" --created-at "$created_at" --content "$content"
+
+  tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-tags.XXXXXX")
+  printf '%s\n' "$tags_json" | jq -c '.[] | select(type=="array" and length>=1)' > "$tags_tmp"
+  while IFS= read -r tag_line || [ -n "$tag_line" ]; do
+    [ -n "$tag_line" ] || continue
+    tag_len=$(printf '%s\n' "$tag_line" | jq -r 'length' 2>/dev/null || printf '0')
+    case "$tag_len" in
+      ''|0|1) continue ;;
+    esac
+    if [ "$tag_len" -eq 2 ]; then
+      key=$(printf '%s\n' "$tag_line" | jq -r '.[0] // ""' 2>/dev/null || printf '')
+      value=$(printf '%s\n' "$tag_line" | jq -r '.[1] // ""' 2>/dev/null || printf '')
+      [ -n "$key" ] || continue
+      set -- "$@" --tag "$key" "$value"
+      continue
+    fi
+    tag_args=$(printf '%s\n' "$tag_line" | jq -r '.[] | @sh' 2>/dev/null || printf '')
+    [ -n "$tag_args" ] || continue
+    # shellcheck disable=SC2086
+    eval "set -- \"\$@\" --tagn \"$tag_len\" $tag_args"
+  done < "$tags_tmp"
+  rm -f "$tags_tmp"
+
+  sign_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-sign.XXXXXX")
+  set +e
+  "$@" > "$sign_tmp" 2>/dev/null
+  sign_status=$?
+  set -e
+  if [ "$sign_status" -ne 0 ]; then
+    rm -f "$sign_tmp"
+    return 1
+  fi
+  event_json=$(cat "$sign_tmp" 2>/dev/null || printf '')
+  rm -f "$sign_tmp"
+  event_json=$(printf '%s\n' "$event_json" | jq -c '.' 2>/dev/null || printf '')
+  [ -n "$event_json" ] || return 1
+  blog_nostr_verify_event_json "$event_json" || return 1
+  printf '%s\n' "$event_json"
+}
+
 blog_nostr_event_file_path() {
   pubkey=${1-}
   kind=${2-}
@@ -3983,6 +4039,34 @@ blog_nostr_event_json_by_parts() {
   [ -n "$path" ] || return 1
   [ -f "$path" ] || return 1
   jq -c '.' "$path" 2>/dev/null || return 1
+}
+
+blog_nostr_latest_event_by_kind_d() {
+  kind=${1-}
+  dtag=${2-}
+  [ -n "$kind" ] || return 1
+  [ -n "$dtag" ] || return 1
+  [ -d "$blog_nostr_events_dir" ] || return 1
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-kind-d.XXXXXX")
+  find "$blog_nostr_events_dir" -type f -path "*/$kind/*.json" 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    return 1
+  fi
+  out=$(jq -cs --argjson kind "$kind" --arg d "$dtag" '
+    [ .[]
+      | select(type=="object" and (.kind // 0) == $kind and (.tags|type)=="array")
+      | select((([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") == $d)
+    ]
+    | sort_by((.created_at // 0), (.id // ""))
+    | last // empty
+  ' "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  [ -n "$out" ] && [ "$out" != "null" ] || return 1
+  printf '%s\n' "$out"
 }
 
 blog_nostr_verifier_available() {
@@ -4435,14 +4519,19 @@ blog_nostr_sign_post_event() {
 }
 
 blog_nostr_sign_list_event() {
-  # args: list_slug content tags_json
+  # args: list_slug content tags_json [kind]
   list_slug=$(blog_list_normalize_slug "${1-}")
   content=${2-}
   tags_json=${3-}
+  kind=${4-30004}
 
   if [ -z "$list_slug" ] || [ -z "$tags_json" ]; then
     return 1
   fi
+  case "$kind" in
+    30004|30267) ;;
+    *) kind=30004 ;;
+  esac
   if ! command -v jq >/dev/null 2>&1; then
     return 1
   fi
@@ -4459,7 +4548,7 @@ blog_nostr_sign_list_event() {
   fi
 
   created_at=$(blog_now_epoch)
-  set -- nostril --sec "$secret" --kind 30004 --created-at "$created_at" --content "$content" --tag d "$list_slug"
+  set -- nostril --sec "$secret" --kind "$kind" --created-at "$created_at" --content "$content" --tag d "$list_slug"
 
   tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-tags.XXXXXX")
   refs_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-a-refs.XXXXXX")
@@ -4479,7 +4568,10 @@ blog_nostr_sign_list_event() {
       e4=$(printf '%s\n' "$tag_line" | jq -r '.[4] // ""' 2>/dev/null || printf '')
       e5=$(printf '%s\n' "$tag_line" | jq -r '.[5] // ""' 2>/dev/null || printf '')
       e6=$(printf '%s\n' "$tag_line" | jq -r '.[6] // ""' 2>/dev/null || printf '')
-      set -- "$@" --tagn 7 "entry" "$e1" "$e2" "$e3" "$e4" "$e5" "$e6"
+      e7=$(printf '%s\n' "$tag_line" | jq -r '.[7] // ""' 2>/dev/null || printf '')
+      e8=$(printf '%s\n' "$tag_line" | jq -r '.[8] // ""' 2>/dev/null || printf '')
+      e9=$(printf '%s\n' "$tag_line" | jq -r '.[9] // ""' 2>/dev/null || printf '')
+      set -- "$@" --tagn 10 "entry" "$e1" "$e2" "$e3" "$e4" "$e5" "$e6" "$e7" "$e8" "$e9"
       if [ -n "$e1" ]; then
         ref_record=$(blog_nostr_post_record_for_event_id "$e1" 2>/dev/null || printf '')
         if [ -n "$ref_record" ]; then
@@ -4488,6 +4580,16 @@ blog_nostr_sign_list_event() {
           ref_d=$(printf '%s\n' "$ref_record" | jq -r '.d // ""' 2>/dev/null || printf '')
           if [ -n "$ref_pubkey" ] && [ -n "$ref_d" ]; then
             printf '%s:%s:%s\n' "$ref_kind" "$ref_pubkey" "$ref_d" >> "$refs_tmp"
+          fi
+        fi
+      fi
+      if [ "$kind" = "30267" ] && [ -n "$e9" ] && command -v blog_nostr_software_app_id >/dev/null 2>&1; then
+        app_slug=$(printf '%s' "$e9" | sed -e 's/[?#].*$//' -e 's#^/##' -e 's#^pages/##' -e 's#\\.html\\?$##' -e 's#/.*$##' | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9-]/-/g' -e 's/-\\{2,\\}/-/g' -e 's/^-//' -e 's/-$//')
+        if [ -n "$app_slug" ]; then
+          app_pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+          app_d=$(blog_nostr_software_app_id "$app_slug" 2>/dev/null || printf '')
+          if [ -n "$app_pubkey" ] && [ -n "$app_d" ]; then
+            printf '32267:%s:%s\n' "$app_pubkey" "$app_d" >> "$refs_tmp"
           fi
         fi
       fi
@@ -4976,11 +5078,20 @@ blog_list_draft_path() {
 
 blog_nostr_list_latest_event_json() {
   slug=$(blog_list_normalize_slug "${1-}")
+  kind_filter=${2-auto}
   [ -n "$slug" ] || return 1
   [ -d "$blog_nostr_events_dir" ] || return 1
+  case "$kind_filter" in
+    30004|30267|auto) ;;
+    *) kind_filter=auto ;;
+  esac
 
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-events.XXXXXX")
-  find "$blog_nostr_events_dir" -type f -path '*/30004/*.json' 2>/dev/null | while IFS= read -r file; do
+  if [ "$kind_filter" = "auto" ]; then
+    find "$blog_nostr_events_dir" -type f \( -path '*/30004/*.json' -o -path '*/30267/*.json' \) 2>/dev/null
+  else
+    find "$blog_nostr_events_dir" -type f -path "*/$kind_filter/*.json" 2>/dev/null
+  fi | while IFS= read -r file; do
     [ -f "$file" ] || continue
     jq -c '.' "$file" 2>/dev/null || true
   done > "$tmp"
@@ -4989,9 +5100,14 @@ blog_nostr_list_latest_event_json() {
     return 1
   fi
 
+  if [ "$kind_filter" = "auto" ]; then
+    kind_jq='(.kind==30004 or .kind==30267)'
+  else
+    kind_jq=".kind==$kind_filter"
+  fi
   out=$(jq -cs --arg slug "$slug" '
     [ .[]
-      | select(type=="object" and (.kind|type)=="number" and .kind==30004 and (.tags|type)=="array")
+      | select(type=="object" and (.kind|type)=="number" and '"$kind_jq"' and (.tags|type)=="array")
       | . as $ev
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | select($d == $slug)
@@ -5866,6 +5982,7 @@ blog_public_posts_catalog_build_json() {
       rel_slug_raw=${rel_slug_raw%.md}
       rel_slug=$(blog_public_post_slug_from_rel "$rel_slug_raw" 2>/dev/null || printf '%s' "$rel_slug_raw")
       url=$(blog_rel_post_html_url "$file")
+      source_path=$(blog_managed_post_rel_path_for_file "$file" 2>/dev/null || printf '')
       public_path="posts/${rel_slug}"
       post_address=$(blog_post_nostr_address_for_file "$file")
       comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
@@ -5886,6 +6003,7 @@ blog_public_posts_catalog_build_json() {
 
       jq -cn \
         --arg path "$public_path" \
+        --arg source_path "$source_path" \
         --arg url "$url" \
         --arg title "$title" \
         --arg author "$author" \
@@ -5904,6 +6022,7 @@ blog_public_posts_catalog_build_json() {
         --argjson comment_count "${comment_count:-0}" \
         '{
           path: $path,
+          source_path: $source_path,
           url: $url,
           title: $title,
           author: $author,

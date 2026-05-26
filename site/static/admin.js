@@ -1732,7 +1732,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260525-soft-actions1';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260525-heading-nav-fix1';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
@@ -2501,7 +2501,7 @@
     if (COMPOSE_POST_TYPES.indexOf(picked) >= 0) {
       return picked;
     }
-    return 'longform';
+    return 'post';
   }
 
   function composeBackingPostType(postType) {
@@ -2587,14 +2587,14 @@
   function composePostKindPillText(postType) {
     const type = composeBackingPostType(postType);
     const target = composeNostrTarget(type);
-    if (type === 'longform') { return 'Long-form Content (kind ' + target.kind + ')'; }
-    if (type === 'shortform') { return 'Shortform Post (kind ' + target.kind + ')'; }
-    if (type === 'capture-media') { return 'Media Capture (kind ' + target.kind + ')'; }
-    if (type === 'upload-media') { return 'Media Upload (kind ' + target.kind + ')'; }
-    if (type === 'attachment') { return 'Attachment (kind ' + target.kind + ')'; }
-    if (type === 'audio-note') { return 'Audio Note (kind ' + target.kind + ')'; }
-    if (type === 'link-share') { return 'Link (kind ' + target.kind + ')'; }
-    return 'Go Live (kind ' + target.kind + ')';
+    if (type === 'longform') { return 'post (kind ' + target.kind + ')'; }
+    if (type === 'shortform') { return 'shortform (kind ' + target.kind + ')'; }
+    if (type === 'capture-media') { return 'capture (kind ' + target.kind + ')'; }
+    if (type === 'upload-media') { return 'media (kind ' + target.kind + ')'; }
+    if (type === 'attachment') { return 'attachment (kind ' + target.kind + ')'; }
+    if (type === 'audio-note') { return 'audio (kind ' + target.kind + ')'; }
+    if (type === 'link-share') { return 'link (kind ' + target.kind + ')'; }
+    return 'go live (kind ' + target.kind + ')';
   }
 
   function composePostKindPillClass(postType) {
@@ -6614,7 +6614,10 @@
       return 'Blog Index (kind 30023)';
     }
     if (type === 'icon-gallery') {
-      return 'Product Gallery (kind 30004)';
+      return 'Generic Tile Gallery (kind 30004)';
+    }
+    if (type === 'software-gallery') {
+      return 'Software Gallery (kind 30267)';
     }
     if (type === 'public-ranking') {
       return 'Public Ranking (kind 30040)';
@@ -6636,7 +6639,7 @@
     if (type === 'blog') {
       return 'is-type-blog';
     }
-    if (type === 'icon-gallery') {
+    if (type === 'icon-gallery' || type === 'software-gallery') {
       return 'is-type-icon-gallery';
     }
     if (type === 'public-ranking') {

@@ -1,0 +1,25 @@
+#!/bin/sh
+# Audit whether configured site pages have the expected canonical Nostr backing.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+if [ "${BLOG_AUDIT_NOSTR_BACKING_CLI-}" != "true" ]; then
+  blog_send_json_headers
+fi
+
+if [ "${BLOG_AUDIT_NOSTR_BACKING_CLI-}" != "true" ]; then
+  if ! blog_require_session true; then
+    exit 0
+  fi
+fi
+
+blog_nostr_backing_audit_json
+printf '\n'

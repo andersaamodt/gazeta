@@ -30,7 +30,7 @@ video_chat_rooms=Lobby
 EOFCONF
 
 cat > "$canonical_root/includes/head.html" <<'EOFHEAD'
-<script src="/static/site-bootstrap.js"></script>
+<script defer src="/static/site-bootstrap.js"></script>
 <script defer src="/static/post-context.js?v=20260521-login-sync1"></script>
 EOFHEAD
 
@@ -208,7 +208,7 @@ grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.m
   printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '/static/contact-page.js?v=20260524-contact-pill-prerender1' "$canonical_root/pages/contact.md" || {
+grep -Fq '/static/contact-page.js?v=20260525-call-widget-fallback1' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
   exit 1
 }

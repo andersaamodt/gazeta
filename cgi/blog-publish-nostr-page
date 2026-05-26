@@ -54,6 +54,7 @@ if [ -z "$page_type" ]; then
   blog_json_error "Unknown Nostr page slug" "unknown_page"
   exit 0
 fi
+backing_events_json='[]'
 
 existing_draft_state=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf '')
 draft_local_json='{}'
@@ -220,6 +221,17 @@ case "$page_type" in
         exit 0
       fi
     fi
+    if [ "$product_enabled" = "true" ] || [ -n "$price" ]; then
+      backing_events_json=$(blog_nostr_sign_product_backing_events_json "$page_slug" "$state_json" "$event_json" 2>/dev/null || printf '')
+      if [ -z "$backing_events_json" ]; then
+        reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+        if [ -z "$reason" ]; then
+          reason="Could not sign product backing events."
+        fi
+        blog_json_error "$reason" "nostr_publish_failed"
+        exit 0
+      fi
+    fi
     canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json" "$page_type")
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {
       extras_after: ($local.extras_after // .extras_after),
@@ -255,7 +267,8 @@ case "$page_type" in
     if [ -n "$provided_event_json" ]; then
       event_json=$provided_event_json
     else
-      event_json=$(blog_nostr_sign_list_event "$page_slug" "$content" "$tags_json" 2>/dev/null || printf '')
+      event_kind=$(blog_nostr_page_kind_for_type "$page_type")
+      event_json=$(blog_nostr_sign_list_event "$page_slug" "$content" "$tags_json" "$event_kind" 2>/dev/null || printf '')
       if [ -z "$event_json" ]; then
         reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
         if [ -z "$reason" ]; then
@@ -282,6 +295,7 @@ case "$page_type" in
   contact) expected_kind='0' ;;
   public-ranking) expected_kind='30040' ;;
   nip23|blog) expected_kind='30023' ;;
+  software-gallery) expected_kind='30267' ;;
 esac
 event_kind=$(printf '%s\n' "$event_json" | jq -r '.kind // ""' 2>/dev/null || printf '')
 if [ "$event_kind" != "$expected_kind" ]; then
@@ -315,6 +329,7 @@ if [ "$preview_only" = "true" ]; then
     --arg page_type "$page_type" \
     --arg event_id "$event_id" \
     --argjson event "$event_json" \
+    --argjson backing_events "$backing_events_json" \
     --argjson state "$canonical_enriched" \
     --argjson validation "$validation_after" \
     '{
@@ -324,6 +339,7 @@ if [ "$preview_only" = "true" ]; then
       page_type: $page_type,
       event_id: $event_id,
       event: $event,
+      backing_events: $backing_events,
       state: $state,
       validation: {
         errors: $validation.errors,
@@ -340,6 +356,13 @@ if ! blog_nostr_publish_and_store_event_json "$event_json" >/dev/null 2>&1; then
   blog_json_error "Could not publish page event to upstream relays" "nostr_publish_failed"
   exit 0
 fi
+if ! printf '%s\n' "$backing_events_json" | jq -c '.[]?' 2>/dev/null | while IFS= read -r backing_event || [ -n "$backing_event" ]; do
+  [ -n "$backing_event" ] || continue
+  blog_nostr_publish_and_store_event_json "$backing_event" >/dev/null 2>&1 || exit 1
+done; then
+  blog_json_error "Could not publish product backing events to upstream relays" "nostr_publish_failed"
+  exit 0
+fi
 
 blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$canonical_state_json"
 # Keep generated source mounts and build output in sync with the latest
@@ -351,6 +374,7 @@ jq -cn \
   --arg slug "$page_slug" \
   --arg page_type "$page_type" \
   --arg event_id "$event_id" \
+  --argjson backing_events "$backing_events_json" \
   --argjson state "$canonical_enriched" \
   --argjson validation "$validation_after" \
   '{
@@ -358,6 +382,7 @@ jq -cn \
     slug: $slug,
     page_type: $page_type,
     event_id: $event_id,
+    backing_event_ids: ($backing_events | map(.id // "")),
     state: $state,
     validation: {
       errors: $validation.errors,

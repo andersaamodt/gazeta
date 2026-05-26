@@ -1,0 +1,295 @@
+(function () {
+  var ROUTE_REFRESH_PARAM = '__route_refresh';
+  var ROUTE_REPAIR_PARAM = '__route_repair';
+  var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
+  var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
+  var routeFailureTimer = 0;
+  var cachedBasePageTitle = '';
+
+  function normalizeSiteTitle(value) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text || 'Site';
+  }
+
+  function normalizeAppendSiteTitleEnabled(value) {
+    if (value === true || value === 1 || value === '1') {
+      return true;
+    }
+    if (typeof value === 'string') {
+      var text = value.trim().toLowerCase();
+      return text === 'true' || text === 'yes' || text === 'on';
+    }
+    return false;
+  }
+
+  function readCachedSiteTitle() {
+    try {
+      return normalizeSiteTitle(localStorage.getItem(SITE_TITLE_CACHE_KEY) || '');
+    } catch (_err) {
+      return 'Site';
+    }
+  }
+
+  function readCachedAppendSiteTitleEnabled() {
+    try {
+      return normalizeAppendSiteTitleEnabled(localStorage.getItem(APPEND_SITE_TITLE_CACHE_KEY) || '');
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function titleConfig(overrides) {
+    var opts = overrides && typeof overrides === 'object' ? overrides : {};
+    var siteTitle = Object.prototype.hasOwnProperty.call(opts, 'siteTitle')
+      ? normalizeSiteTitle(opts.siteTitle)
+      : readCachedSiteTitle();
+    var appendSiteTitle = Object.prototype.hasOwnProperty.call(opts, 'appendSiteTitle')
+      ? normalizeAppendSiteTitleEnabled(opts.appendSiteTitle)
+      : readCachedAppendSiteTitleEnabled();
+    return { siteTitle: siteTitle, appendSiteTitle: appendSiteTitle };
+  }
+
+  function renderPageTitle(baseTitle, config) {
+    var base = String(baseTitle || '').trim();
+    var siteTitle = normalizeSiteTitle(config && config.siteTitle);
+    if (!base || !config || config.appendSiteTitle !== true || !siteTitle) {
+      return base;
+    }
+    if (base.toLowerCase() === siteTitle.toLowerCase()) {
+      return base;
+    }
+    var suffix = ' - ' + siteTitle;
+    return base.slice(-suffix.length) === suffix ? base : base + suffix;
+  }
+
+  function applyPageTitle(baseTitle, overrides) {
+    if (typeof baseTitle !== 'undefined' && baseTitle !== null) {
+      cachedBasePageTitle = String(baseTitle).trim();
+    } else if (!cachedBasePageTitle) {
+      cachedBasePageTitle = String(document.title || '').trim();
+    }
+    var nextTitle = renderPageTitle(cachedBasePageTitle, titleConfig(overrides));
+    if (document.title !== nextTitle) {
+      document.title = nextTitle;
+    }
+    return nextTitle;
+  }
+
+  function normalizeSlug(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  function slugFromPath(pathname) {
+    var path = String(pathname || '').trim();
+    if (!path) {
+      return 'index';
+    }
+    path = path.split('?')[0].split('#')[0].replace(/\/+$/, '');
+    if (!path || path === '/') {
+      return 'index';
+    }
+    if (path.indexOf('/pages/') === 0) {
+      path = path.slice('/pages/'.length);
+    } else if (path.charAt(0) === '/') {
+      path = path.slice(1);
+    }
+    path = path.replace(/\.html?$/i, '');
+    return path.indexOf('/') >= 0 ? '' : normalizeSlug(path);
+  }
+
+  function routeRootSlugFromDom() {
+    var blogRoot = document.getElementById('blog-page-root');
+    if (blogRoot) {
+      return normalizeSlug(blogRoot.getAttribute('data-page-slug') || blogRoot.getAttribute('data-blog-slug') || '');
+    }
+    var nip23Root = document.getElementById('nip23-page-root');
+    if (nip23Root) {
+      return normalizeSlug(nip23Root.getAttribute('data-page-slug') || '');
+    }
+    var listRoot = document.getElementById('list-page-root') || document.getElementById('icon-gallery-root');
+    if (listRoot) {
+      return normalizeSlug(listRoot.getAttribute('data-list-slug') || '');
+    }
+    var rankingRoot = document.getElementById('public-ranking-root');
+    if (rankingRoot) {
+      return normalizeSlug(rankingRoot.getAttribute('data-ranking-slug') || '');
+    }
+    var contactRoot = document.getElementById('contact-page-root');
+    if (contactRoot) {
+      return normalizeSlug(contactRoot.getAttribute('data-page-slug') || '');
+    }
+    return '';
+  }
+
+  function slugsEquivalent(expected, root) {
+    var a = normalizeSlug(expected);
+    var b = normalizeSlug(root);
+    return !!(a && b && (a === b || (a === 'index' && b === 'blog') || (a === 'blog' && b === 'index')));
+  }
+
+  function forceHydrationReveal() {
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.forceReveal === 'function') {
+        gate.forceReveal();
+        return;
+      }
+    } catch (_gateErr) {
+      // Ignore hydration gate issues.
+    }
+    if (document.documentElement) {
+      document.documentElement.classList.remove('app-hydrating');
+    }
+  }
+
+  function showRouteLoadFailure() {
+    var mainContainer = document.querySelector('main');
+    var nav = document.querySelector('nav.site-nav');
+    var body = document.body;
+    var parent = mainContainer || (nav && nav.parentNode) || body;
+    if (!parent) {
+      return;
+    }
+    var existing = document.getElementById('route-load-failure');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+    var panel = document.createElement('section');
+    panel.id = 'route-load-failure';
+    panel.className = 'route-load-failure';
+    panel.innerHTML = '<h1>Page is still loading.</h1><p>Try refreshing in a moment.</p>';
+    if (mainContainer) {
+      mainContainer.insertBefore(panel, mainContainer.firstChild || null);
+    } else if (nav && nav.parentNode) {
+      nav.insertAdjacentElement('afterend', panel);
+    } else {
+      body.insertBefore(panel, body.firstChild || null);
+    }
+    forceHydrationReveal();
+  }
+
+  function cancelRouteLoadFailure() {
+    if (routeFailureTimer) {
+      window.clearTimeout(routeFailureTimer);
+      routeFailureTimer = 0;
+    }
+    var existing = document.getElementById('route-load-failure');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+  }
+
+  function scheduleRouteLoadFailure() {
+    cancelRouteLoadFailure();
+    routeFailureTimer = window.setTimeout(function () {
+      routeFailureTimer = 0;
+      if (!window.__wizardryPageInitialContentReady) {
+        showRouteLoadFailure();
+      }
+    }, 2200);
+  }
+
+  function themeFromConfig() {
+    var theme = 'archmage';
+    try {
+      var bootstrap = window.__wizardrySiteBootstrap || {};
+      var config = bootstrap && bootstrap.config && typeof bootstrap.config === 'object' ? bootstrap.config : {};
+      var cachedTheme = localStorage.getItem('wizardry_blog_theme_v1') || '';
+      var nextTheme = String(config.theme || cachedTheme || '').trim();
+      if (nextTheme) {
+        theme = nextTheme;
+      }
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+    return theme;
+  }
+
+  function reconcileThemeLink() {
+    var theme = themeFromConfig();
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260525-heading-nav-fix1';
+    var link = document.getElementById('theme-stylesheet');
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'theme-stylesheet';
+      link.rel = 'stylesheet';
+      (document.head || document.documentElement).appendChild(link);
+    }
+    if (link.getAttribute('href') !== href) {
+      link.setAttribute('href', href);
+    }
+    link.setAttribute('data-theme-href', href);
+  }
+
+  window.__wizardryApplyPageTitle = function (baseTitle) {
+    return applyPageTitle(baseTitle);
+  };
+
+  window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
+    var normalizedSiteTitle = normalizeSiteTitle(siteTitle);
+    var enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
+    try {
+      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
+      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+    return applyPageTitle(undefined, { siteTitle: normalizedSiteTitle, appendSiteTitle: enabled });
+  };
+
+  reconcileThemeLink();
+  applyPageTitle(document.title);
+
+  var canonical = document.createElement('link');
+  canonical.rel = 'canonical';
+  canonical.href = window.location.origin + window.location.pathname;
+  document.head.appendChild(canonical);
+
+  var ogUrl = document.createElement('meta');
+  ogUrl.setAttribute('property', 'og:url');
+  ogUrl.setAttribute('content', canonical.href);
+  document.head.appendChild(ogUrl);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var firstHeading = document.querySelector('h1[id]') || document.querySelector('h1');
+    if (firstHeading && !firstHeading.id) {
+      firstHeading.id = 'main-content';
+    }
+
+    try {
+      var currentUrl = new URL(window.location.href);
+      var expectedSlug = slugFromPath(currentUrl.pathname || '/');
+      var rootSlug = routeRootSlugFromDom();
+      var hasRefreshParam = currentUrl.searchParams.get(ROUTE_REFRESH_PARAM) === '1';
+      var hasRepairParam = currentUrl.searchParams.get(ROUTE_REPAIR_PARAM) === '1';
+      if (expectedSlug && rootSlug && !slugsEquivalent(expectedSlug, rootSlug)) {
+        if (!hasRefreshParam) {
+          currentUrl.searchParams.set(ROUTE_REFRESH_PARAM, '1');
+          window.location.replace(currentUrl.toString());
+          return;
+        }
+        scheduleRouteLoadFailure();
+        return;
+      }
+      if ((hasRefreshParam || hasRepairParam) && window.history && typeof window.history.replaceState === 'function') {
+        currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
+        currentUrl.searchParams.delete(ROUTE_REPAIR_PARAM);
+        var next = currentUrl.pathname;
+        var query = currentUrl.searchParams.toString();
+        if (query) {
+          next += '?' + query;
+        }
+        if (currentUrl.hash) {
+          next += currentUrl.hash;
+        }
+        window.history.replaceState(null, '', next);
+      }
+    } catch (_routeErr) {
+      // Ignore URL parsing/runtime failures.
+    }
+  });
+
+  window.addEventListener('blog-page-initial-content-ready', function () {
+    cancelRouteLoadFailure();
+  });
+})();

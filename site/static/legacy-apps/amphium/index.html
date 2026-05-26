@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<!--<link href="style.css" rel="stylesheet" type="text/css" />-->
+		<link rel="icon" href="/favicon.ico" />
+		<title>Amphium - Anders J. Aamodt</title>
+		<style>
+			body, html {
+				height: 100%;
+			}
+
+			body {
+				background-image: -moz-radial-gradient(50% 20% 0deg, circle cover, #272727, #000000, #100033);
+				background-image: -webkit-radial-gradient(50% 20%, circle cover,  #272727, #000000, #100033);
+				background-image: radial-gradient(50% 20% 0deg, circle cover, #000000, #333333, #000000);
+				color: #ffffff;
+				overflow: hidden;
+			}
+			button {
+				font-family: "Georgia", Serif;
+				font-size: 2em;
+			}
+
+			.word { position: absolute;
+				text-align: center;
+				vertical-align: middle;
+			    left: 100px;
+			    top: 100px;
+			    width: 150px;
+			    height: 150px;
+			    line-height: 150px;
+			    border-radius: 50%;
+				background-image: -moz-radial-gradient(55px 55px 45deg, circle cover, rgba(100, 100, 100, 0.1) 15%, rgba(00, 00, 55, 0.5) 65%, rgba(00, 33, 00, 0.75) 90%);
+				background-image: -webkit-radial-gradient(45px 45px, circle cover, rgba(100, 100, 100, 0.1) 15%, rgba(00, 00, 55, 0.5) 65%, rgba(00, 33, 00, 0.75) 90%);
+				background-image: radial-gradient(45px 45px 45deg, circle cover, rgba(100, 100, 100, 0.1) 15%, rgba(00, 00, 55, 0.5) 65%, rgba(00, 33, 00, 0.75) 90%);
+			}
+
+		</style>
+		<script type="text/javascript">
+		<!--
+			var words = new Array();
+			var underworld = new Array();
+
+			function updateLog(text) {
+				text += "<br />";
+				document.getElementById("Log").innerHTML = text.concat(document.getElementById("Log").innerHTML);
+			}
+
+			function addWord() {
+				word = document.getElementById('wordBox').value;
+				var newDiv = document.createElement('div');
+				newDiv.setAttribute('id', word);
+				newDiv.innerHTML = word;
+				newDiv.setAttribute('class', "word");
+				newDiv.addEventListener('click', function(e) { removeWord(newDiv); }, false);
+				document.body.appendChild(newDiv);
+				newDiv.style.left = Math.random() * window.innerWidth + "px";
+				newDiv.style.top = Math.random() * window.innerHeight + "px";
+				newDiv.xVel = 0;
+				newDiv.yVel = 0;
+				words.push(newDiv);
+				// Clear textbox
+				document.getElementById('wordBox').value = "";
+  			}
+
+  			function recallWord() {
+  				if(underworld.length < 1) {
+  					updateLog("Nothing to recall.");
+  					return;
+  				}
+  				randomIndex = Math.floor(Math.random() * underworld.length);
+  				var recalled = underworld.splice(randomIndex, 1)[0];
+				words.push(recalled);
+				document.body.appendChild(recalled);
+				refreshUnderworld();
+  			}
+
+  			// Pre: word is a div
+  			function removeWord(word) {
+				wordIndex = words.indexOf(word);
+				removedWord = words.splice(wordIndex, 1)[0];
+				//updateLog(wordIndex);
+				underworld.push(removedWord);
+				document.body.removeChild(removedWord);
+				refreshUnderworld();
+  			}
+
+  			function refreshUnderworld() {
+  				var list = document.getElementById("underworldList");
+  				list.innerHTML = "";
+  				for(var i = 0; i < underworld.length; i++) {
+  					list.innerHTML = list.innerHTML.concat(underworld[i].innerHTML + "<br />");
+  				}
+  			}
+
+  			function moveAllWords() {
+  				for(var i = 0; i < words.length; i++) {
+  					moveWord(words[i]);
+  				}
+  			}
+
+  			// Pre: word is a div
+			function moveWord(wordDiv) {
+				var rect = wordDiv.getBoundingClientRect();
+				var gravMod = 0.004;
+
+				// perform gravity
+				var xFlatDistance = (rect.left + (rect.right - rect.left)/2) - (window.innerWidth / 2);
+				if(xFlatDistance < 0) var xAccel = gravMod * Math.sqrt(Math.abs(xFlatDistance));
+				else var xAccel = -gravMod * Math.sqrt(xFlatDistance);
+				wordDiv.xVel += xAccel;
+				var yFlatDistance = (rect.top + (rect.bottom - rect.top)/2) - (window.innerHeight / 2);
+				if(yFlatDistance < 0) var yAccel = gravMod * Math.sqrt(Math.abs(yFlatDistance));
+				else var yAccel = -gravMod * Math.sqrt(yFlatDistance);
+				
+				// apply acceleration
+				wordDiv.xVel += xAccel;
+				wordDiv.yVel += yAccel;
+
+				// apply velocity
+				wordDiv.style.left = parseInt(wordDiv.style.left) + wordDiv.xVel + "px";
+				wordDiv.style.top = parseInt(wordDiv.style.top) + wordDiv.yVel + "px";
+
+				// bounce it
+				if(rect.left < 0) {
+					wordDiv.style.left = "0px";
+					wordDiv.xVel = -wordDiv.xVel;
+				}
+				if(rect.top < 0) {
+					wordDiv.style.top = "0px";
+					wordDiv.yVel = -wordDiv.yVel;
+				}
+				if(rect.right >= window.innerWidth) {
+					wordDiv.style.right = (window.innerWidth - 1) + "px";
+					wordDiv.xVel = -wordDiv.xVel;
+				}
+				if(rect.bottom >= window.innerHeight) {
+					wordDiv.style.bottom = (window.innerHeight - 1) + "px";
+					wordDiv.yVel = -wordDiv.yVel;
+				}
+			}
+		//-->
+		</script>
+	</head>
+	<body>
+		<p><em>Words that float around the screen. Tap a word to send it to the underworld.</em>
+		<div style="float: left; width: 480px; margin-left: 20px; height: 2000px; margin-right: 2em;">
+			<h2 style="margin-top: 0; font-size: 1.5em;">Log</h2>
+			<div id="Log" ></div>
+		</div>
+		<form>
+			<input id="wordBox" type="text" value="amphium" style="z-index: 30; position: relative;" autofocus />
+			<button type="button" onclick="addWord();" style="width: 100px; height: 50px; margin-left: 2em; font-size: 1em; z-index: 30; position: relative;">Add word</button><br />
+			<button type="button" onclick="recallWord();" style="width: 100px; height: 50px; margin-left: 2em; font-size: 1em; z-index: 30; position: relative;">Recall</button>
+			<!--<input type="checkbox" id="subdecadenceCheckbox" style="margin-left: 1.5em;" /><label for="subdecadenceCheckbox" style="display: inline-block; width: 10em; vertical-align: -40%; line-height: 1em; margin-left: 0.25em;">Checkbox</label>-->
+		</form>
+		<div style="position: absolute; right: 0; bottom: 0; padding-right: 1em; text-align: right; height: 500px; font-size: 0.75em;">
+			<h2 style="margin-top: 0; font-size: 1em;">Underworld</h2>
+			<div id="underworldList" ></div>
+		</div>
+		<script type="text/javascript">
+		<!--
+			setInterval (function() { moveAllWords(); }, 50);
+			document.getElementById("wordBox").addEventListener("keypress", function(e) {
+			    if (!e) { var e = window.event; }
+			    if (e.keyCode == 13) { addWord(); e.preventDefault();}
+			}, false);
+			addWord();
+		-->
+		</script>
+	</body>
+</html>

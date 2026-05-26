@@ -206,7 +206,7 @@ case "$page_type" in
   *)
     viewer_username=''
     if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
-      viewer_username=${BLOG_SESSION_USERNAME-}
+      viewer_username=${BLOG_SESSION_USER_PUBKEY:-${BLOG_SESSION_USERNAME-}}
     fi
     validation_json=$(jq -cn --argjson state "$view_state_json" '{
       elements: ($state.elements // []),
@@ -216,7 +216,10 @@ case "$page_type" in
       can_publish: true
     }')
     validation_json=$(blog_list_merge_public_activity_json "$view_state_json" "$validation_json" "$viewer_username")
-    view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson validation "$validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-validation.XXXXXX")
+    printf '%s\n' "$validation_json" > "$validation_tmp"
+    view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --slurpfile validation "$validation_tmp" '. + {elements: ($validation[0].elements // []), entries: ($validation[0].entries // [])}')
+    rm -f "$validation_tmp"
     canonical_validation_json=$(jq -cn --argjson state "$canonical_state_json" '{
       elements: ($state.elements // []),
       entries: ($state.entries // []),
@@ -225,9 +228,27 @@ case "$page_type" in
       can_publish: true
     }')
     canonical_validation_json=$(blog_list_merge_public_activity_json "$canonical_state_json" "$canonical_validation_json" "")
-    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$canonical_validation_json" '. + {elements: $validation.elements, entries: $validation.entries}')
+    canonical_validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-validation.XXXXXX")
+    printf '%s\n' "$canonical_validation_json" > "$canonical_validation_tmp"
+    canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --slurpfile validation "$canonical_validation_tmp" '. + {elements: ($validation[0].elements // []), entries: ($validation[0].entries // [])}')
+    rm -f "$canonical_validation_tmp"
     ;;
 esac
+
+state_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-state.XXXXXX")
+canonical_state_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-state.XXXXXX")
+canonical_event_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-event.XXXXXX")
+zap_config_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-zap.XXXXXX")
+validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-validation.XXXXXX")
+printf '%s\n' "$view_state_json" > "$state_tmp"
+printf '%s\n' "$canonical_state_json" > "$canonical_state_tmp"
+if [ -n "$canonical_event_json" ]; then
+  printf '%s\n' "$canonical_event_json" > "$canonical_event_tmp"
+else
+  printf 'null\n' > "$canonical_event_tmp"
+fi
+blog_zaps_config_json > "$zap_config_tmp"
+printf '%s\n' "$validation_json" > "$validation_tmp"
 
 jq -cn \
   --arg slug "$page_slug" \
@@ -239,11 +260,11 @@ jq -cn \
   --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
   --argjson draft_exists "$( [ "$draft_exists" = "true" ] && printf true || printf false )" \
   --argjson draft_differs "$( [ "$draft_differs" = "true" ] && printf true || printf false )" \
-  --argjson state "$view_state_json" \
-  --argjson canonical_state "$canonical_state_json" \
-  --argjson canonical_event "$( [ -n "$canonical_event_json" ] && printf '%s' "$canonical_event_json" || printf 'null' )" \
-  --argjson zap_config "$(blog_zaps_config_json)" \
-  --argjson validation "$validation_json" \
+  --slurpfile state "$state_tmp" \
+  --slurpfile canonical_state "$canonical_state_tmp" \
+  --slurpfile canonical_event "$canonical_event_tmp" \
+  --slurpfile zap_config "$zap_config_tmp" \
+  --slurpfile validation "$validation_tmp" \
   '{
     success: true,
     slug: $slug,
@@ -255,14 +276,15 @@ jq -cn \
     canonical_exists: $canonical_exists,
     draft_exists: $draft_exists,
     draft_differs: $draft_differs,
-    state: $state,
-    canonical_state: $canonical_state,
-    canonical_event: $canonical_event,
-    zap_config: $zap_config,
+    state: $state[0],
+    canonical_state: $canonical_state[0],
+    canonical_event: $canonical_event[0],
+    zap_config: $zap_config[0],
     validation: {
-      errors: $validation.errors,
-      warnings: $validation.warnings,
-      can_publish: $validation.can_publish
+      errors: ($validation[0].errors // []),
+      warnings: ($validation[0].warnings // []),
+      can_publish: ($validation[0].can_publish // true)
     }
   }'
+rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$zap_config_tmp" "$validation_tmp"
 printf '\n'

@@ -92,14 +92,15 @@ post_nav_json() {
 }
 
 blog_post_type_label() {
-  printf '%s' "${1-post}" | sed 's/[_-]\{1,\}/ /g' | awk '
-    {
-      for (i = 1; i <= NF; i++) {
-        $i = toupper(substr($i, 1, 1)) substr($i, 2)
-      }
-      print
-    }
-  '
+  case "${1-post}" in
+    longform|post) printf 'post' ;;
+    link-share) printf 'link' ;;
+    capture-media) printf 'capture' ;;
+    upload-media) printf 'media' ;;
+    audio-note) printf 'audio' ;;
+    go-live) printf 'go live' ;;
+    *) printf '%s' "${1-post}" | sed 's/[_-]\{1,\}/ /g' ;;
+  esac
 }
 
 post_end_tags_html=''
@@ -259,7 +260,7 @@ if command -v pandoc >/dev/null 2>&1; then
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260408-stylev1">
+  <link rel="stylesheet" href="/static/style.css?v=20260525-single-post-width1">
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/idiomorph-ext.min.js"></script>
 HTML
@@ -326,7 +327,7 @@ cat <<HTML
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260408-stylev1">
+  <link rel="stylesheet" href="/static/style.css?v=20260525-single-post-width1">
 </head>
 <body>
   <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">

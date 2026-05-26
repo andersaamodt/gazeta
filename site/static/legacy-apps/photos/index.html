@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photos - Anders Aamodt</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f4ed;
+      --ink: #1f2523;
+      --muted: #5f6863;
+      --link: #244f74;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #191c1a;
+        --ink: #ece9df;
+        --muted: #b9b5aa;
+        --link: #9fc6e8;
+      }
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 18px/1.55 Georgia, "Times New Roman", serif;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 64px;
+    }
+
+    h1 {
+      margin: 0 0 20px;
+      font-size: clamp(2.1rem, 6vw, 4rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--link);
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.16em;
+    }
+
+    .back {
+      display: inline-flex;
+      margin-top: 24px;
+      font-family: system-ui, sans-serif;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Photos</h1>
+    <blockquote class="imgur-embed-pub" lang="en" data-id="a/AfUST">
+      <a href="https://imgur.com/a/AfUST">View post on imgur.com</a>
+    </blockquote>
+    <script async src="https://s.imgur.com/min/embed.js" charset="utf-8"></script>
+    <a class="back" href="/">Back to Anders' Blog</a>
+  </main>
+</body>
+</html>

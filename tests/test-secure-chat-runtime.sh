@@ -565,7 +565,7 @@ request_url_from_script=$(
 assert_eq "http://localhost:8093/cgi/blog-secure-chat-state" "$request_url_from_script" 'request url falls back to script filename when request uri is missing'
 
 request_url_from_origin=$(
-  SERVER_NAME='new.andersaamodt.com' \
+  SERVER_NAME='andersaamodt.com' \
   HTTP_ORIGIN='http://localhost:8093' \
   SCRIPT_FILENAME="$ROOT_DIR/cgi/blog-secure-chat-state" \
   blog_secure_chat_request_url
@@ -640,7 +640,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'transport.sendT
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'secureChatOwnerContactId(ownerContactLink)' 'contact page uses an isolated browser-local contact id for owner contact links'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'bridge_user_id' 'contact page passes the active SimpleX user id to the browser transport'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'contact_link: ownerContactLink' 'contact page passes the owner contact link to browser-local SimpleX'
-assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'https://new.andersaamodt.com:18443/' 'contact page configures the production browser-native XFTP endpoint'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'https://andersaamodt.com:18443/' 'contact page configures the production browser-native XFTP endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'R-xa4iaMWHaCAK8iMzmJKFtODWn-nSw1FSl3ycoqDXQ=' 'contact page pins the production XFTP server identity'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'secureChatAppendLocalOutgoing' 'contact page records browser-local outbound messages after send'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "delivery_status: 'sending'" 'contact page records browser-local outbound messages before send completion'

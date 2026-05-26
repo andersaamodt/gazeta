@@ -136,21 +136,27 @@ assert_list_vote_cooldown_merge() {
   vote_path=$(blog_list_public_votes_path "probe-votes")
   mkdir -p "$(dirname "$vote_path")"
   now_epoch=$(blog_now_epoch)
-  old_vote_at=$((now_epoch - 72000))
-  recent_vote_at=$((now_epoch - 43200))
-  latest_vote_at=$((recent_vote_at + 1))
+  current_epoch=$(( (now_epoch / 64800) * 64800 ))
+  old_epoch=$((current_epoch - 64800))
+  old_vote_at=$((old_epoch + 10))
+  recent_vote_at=$((current_epoch + 10))
+  clear_vote_at=$((current_epoch + 20))
+  remade_vote_at=$((current_epoch + 30))
+  latest_vote_at=$((current_epoch + 31))
   cat > "$vote_path" <<EOF_VOTES
-{"entry_id":"entry-0","voter":"alice","value":1,"created_at":$old_vote_at}
-{"entry_id":"entry-0","voter":"alice","value":1,"created_at":$recent_vote_at}
+{"entry_id":"entry-0","voter":"alice","value":1,"created_at":$old_vote_at,"vote_epoch":$old_epoch}
+{"entry_id":"entry-0","voter":"alice","value":1,"created_at":$recent_vote_at,"vote_epoch":$current_epoch}
+{"entry_id":"entry-0","voter":"alice","value":0,"created_at":$clear_vote_at,"vote_epoch":$current_epoch}
+{"entry_id":"entry-0","voter":"alice","value":-1,"created_at":$remade_vote_at,"vote_epoch":$current_epoch}
 {"entry_id":"entry-0","voter":"bob","value":-1,"created_at":$latest_vote_at}
 EOF_VOTES
   state='{"slug":"probe-votes","elements":[{"type":"entry","markdown":"One"}]}'
   validation='{"elements":[{"type":"entry","markdown":"One"}],"entries":[],"errors":[],"warnings":[],"can_publish":true}'
-  expected_next_vote_at=$((recent_vote_at + 64800))
-  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" --argjson expected_latest "$latest_vote_at" '.elements[0].list_score == 1 and .elements[0].list_latest_vote == -1 and .elements[0].list_latest_vote_created_at == $expected_latest and .elements[0].viewer_vote == 1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
+  expected_next_vote_at=$((current_epoch + 64800))
+  if blog_list_merge_public_activity_json "$state" "$validation" "alice" | jq -e --argjson expected_next "$expected_next_vote_at" --argjson expected_latest "$latest_vote_at" --argjson current_epoch "$current_epoch" '.elements[0].list_score == -1 and .elements[0].list_latest_vote == -1 and .elements[0].list_latest_vote_created_at == $expected_latest and .elements[0].viewer_vote == -1 and .elements[0].viewer_vote_total == 2 and .elements[0].viewer_can_vote_now == false and .elements[0].viewer_can_change_vote == true and .elements[0].viewer_vote_epoch == $current_epoch and .elements[0].viewer_next_vote_at == $expected_next and .elements[0].vote_cooldown_seconds == 64800' >/dev/null 2>&1; then
     pass
   else
-    fail "list vote merge counts every vote and exposes latest action plus viewer cooldown metadata"
+    fail "list vote merge counts latest state per voter epoch and exposes change/cooldown metadata"
   fi
 }
 
@@ -346,6 +352,13 @@ assert_contains "$headers_out" 'END-HEADERS' 'json headers terminator'
 # 2) Publish endpoints must trigger sync and rebuild.
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish nostr page sync hook present'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish nostr page build hook present'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_nostr_sign_product_backing_events_json' 'manual product page publish signs app and marketplace backing events'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" "software-gallery) expected_kind='30267'" 'manual software-gallery publish validates kind 30267'
+assert_file_contains "$ROOT_DIR/cgi/blog-audit-nostr-backing" 'blog_nostr_backing_audit_json' 'nostr backing audit endpoint is read-only'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_software_app_event()' 'software products can emit kind 32267 app metadata'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_marketplace_product_event()' 'software products can emit kind 30018 marketplace product records'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_software_stall_event()' 'software products can emit a NIP-15 stall record'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_backing_audit_json()' 'site can audit canonical Nostr page backing without publishing'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" '. "$SCRIPT_DIR/blog-nostr-pages-common.sh"' 'publish list imports nostr pages common'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync hook present'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
@@ -385,6 +398,8 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'p
 assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'paintListFirstFrame' 'bootstrap JS no longer paints the first list frame on the client'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'hasOnlyInitialPlaceholder' 'bootstrap JS no longer searches for legacy loading placeholders'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'hasMatchingStaticPrerender' 'list hydration preserves matching static prerendered DOM'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'canPreserveStaticPrerender' 'list hydration only preserves static prerender when user-specific controls cannot differ'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'initializePrerenderMarkerFiltersFromPayload' 'list hydration seeds marker filter state when preserving static prerendered DOM'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'hasMatchingStaticPrerender' 'blog hydration preserves matching static prerendered DOM'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
 
@@ -410,7 +425,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'BOOTSTRAP_CACHE
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'BOOTSTRAP_CACHE_MAX_AGE_MS = 15000' 'nip23 bootstrap cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'POSTS_CACHE_MAX_AGE_MS = 15000' 'blog posts cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-inline-filter-group' 'blog post year and type pills can open and select filters'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_blog_page_js_version='20260524-inline-chip-active1'" 'blog page script cache buster tracks inline active filter chips'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_blog_page_js_version='20260525-admin-source-path1'" 'blog page script cache buster tracks admin source path fixes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-type-pill,' 'blog listing type pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-year-pill,' 'blog listing year pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-inline-tag {' 'blog list inline tags have a dedicated style hook'
@@ -549,6 +564,9 @@ write_event "$KEY_A" 30004 "$ID_5" 2100 '[["d","list"],["title","Old List"]]' 'o
 write_event "$KEY_B" 30004 "$ID_6" 2200 '[["d","list"],["title","New List"]]' 'new list'
 list_latest=$(blog_nostr_list_latest_event_json 'list')
 assert_eq "$ID_6" "$(printf '%s' "$list_latest" | jq -r '.id')" 'list selector returns newest event for requested slug'
+write_event "$KEY_A" 30267 "$ID_7" 2300 '[["d","software"],["title","Software"]]' 'software'
+software_latest=$(blog_nostr_list_latest_event_json 'software' 30267)
+assert_eq "$ID_7" "$(printf '%s' "$software_latest" | jq -r '.id')" 'software-gallery selector returns kind 30267 collection events'
 
 write_event "$KEY_A" 30042 "$ID_7" 2300 '[["d","node-a"],["t","public-ranking-node"]]' '{}'
 write_event "$KEY_A" 30042 "$ID_8" 2400 '[["d","node-a"],["t","public-ranking-node"]]' '{}'
@@ -686,7 +704,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" "document.docume
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html.app-hydrating nav.site-nav,' 'hydration gate hides navbar until page is ready'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-type="list"' 'list mount template marks list page type explicitly'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260524-vote-tie-sort1'" 'list page script cache buster tracks vote tie sorting UI'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260525-auth-prerender1'" 'list page script cache buster tracks signed-in prerender hydration'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'description: (flex_description(.))' 'list state supports per-entry tile description fields'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'show_marker_filters' 'list state supports show_marker_filters toggle'
@@ -795,12 +813,16 @@ assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-token" 'public_room_not_acti
 assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-token" 'room_theme_images' 'video chat token endpoint exposes public room theme images'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Scheduled Rooms' 'admin video calling settings expose Scheduled Rooms'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Name | image URL' 'admin video calling settings document themed room images'
-assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" "WIDGET_BUILD_VERSION = '20260525-permission-gate1'" 'video chat widget publishes the permission-gated button build version'
-assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "videoChatWidgetBuildVersion = '20260525-permission-gate1'" 'contact page loads the permission-gated video widget build'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '<script src="/static/video-chat-widget.js?v=20260525-permission-gate1" data-video-chat-widget="1"></script>' 'contact page HTML loads the video widget before contact-page hydration'
+assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" "WIDGET_BUILD_VERSION = '20260525-soft-actions2'" 'video chat widget publishes the soft-action button build version'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "videoChatWidgetBuildVersion = '20260525-soft-actions2'" 'contact page loads the soft-action video widget build'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>' 'contact page HTML loads the video widget before contact-page hydration'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Calling unavailable' 'contact page prerender includes a no-JS call widget fallback'
-assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" '.vcw-btn{appearance:none;border:0;background:var(--action-soft-bg' 'video chat widget small buttons use the shared borderless soft action style'
+assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" '.vcw-btn{appearance:none;-webkit-appearance:none;border:0;background:var(--action-soft-bg' 'video chat widget small buttons use the shared borderless soft action style'
+assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'background-clip:padding-box;-webkit-background-clip:padding-box;background-origin:padding-box' 'video chat widget soft buttons keep backgrounds inside rounded corners'
+assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" '.vcw-btn.vcw-btn-primary{background:var(--action-soft-bg,#f5e4d7);background-image:none;background-clip:padding-box' 'video chat widget primary buttons keep soft backgrounds inside rounded corners'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'box-shadow:var(--action-soft-shadow' 'video chat widget small buttons use the shared soft action shadow'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:not(.blog-compose-fab)' 'contact title buttons do not override shared soft action clipping'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:not(.blog-compose-fab)' 'lapidarist contact title buttons do not override shared soft action clipping'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_contact_page_js_version='20260525-call-widget-fallback1'" 'contact page cache buster tracks call widget fallback recovery'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'" 'shared Secure Chat renderer cache buster tracks login prompt rendering'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="image_url"' 'list inline editor supports image_url cell editing'
@@ -811,9 +833,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'renderLinkedInline
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'has both POST_URL and EVENT_ID; use one link source' 'strict list validation rejects ambiguous link sources'
 assert_file_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'post_url: $post_url' 'add-post-to-list uses post_url rather than duplicating local post links as event_id links'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'blog_read_front_matter_value "$file" nostr_event_id' 'add-post-to-list does not create rows with both post_url and event_id'
-assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'document.querySelector('\''[data-page-type="list"], [data-page-type="icon-gallery"]'\'')' 'list page bootstrap finds Nostr list surfaces by page type before legacy root ids'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'document.querySelector('\''[data-page-type="list"], [data-page-type="icon-gallery"], [data-page-type="software-gallery"]'\'')' 'list page bootstrap finds Nostr list surfaces by page type before legacy root ids'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function currentPageType()' 'list page feature gates read the Nostr page type'
-assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'return currentPageType() === '\''icon-gallery'\'';' 'image URL editing gate keys off icon-gallery page type'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'currentPageType() === '\''software-gallery'\''' 'image URL editing gate includes software-gallery page type'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="marker"' 'list inline editor supports marker cell editing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-show-marker-filters="true"' 'list editor exposes show marker filters checkbox'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'class="list-marker-filter-setting"><span>Show marker filters</span><input type="checkbox" data-list-show-marker-filters="true"' 'list edit toolbar exposes show marker filters checkbox in settings row'
@@ -840,23 +862,33 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#aebdd3' 'high-specif
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'cursor: default;' 'reading list score text keeps a default cursor'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'user-select: none;' 'reading list score text avoids text-selection affordance'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(filteredEntries)' 'vote-enabled read lists sort by live score'
-assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(bucket)' 'vote-enabled grouped read lists sort each section by vote state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'sortEntriesForReadOnlyVotes(group.entries)' 'vote-enabled grouped read lists sort each section by vote state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '.list-entry-line[data-list-entry-id]' 'read-mode list rows are keyed for score-change animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function applyOptimisticListVote(entryId, value)' 'list votes update the interface optimistically'
-assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'rgba(126, 96, 47, 0.075)' 'Lapidarist read-mode list striping stays translucent over parchment'
-assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background-image: none;' 'Lapidarist read-mode list striping is a flat wash without a gradient'
-assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'linear-gradient(180deg, rgba(255, 252, 244, 0.18), rgba(108, 77, 34, 0.04))' 'Lapidarist read-mode list striping does not use a gradient'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'entry.list_latest_vote = voteValue;' 'optimistic list votes update latest action tie-break metadata'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'refreshListPayloadFromResponse(data);' 'confirmed list votes do not replay the optimistic reorder animation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'voteActionRank(bLatestVote) - voteActionRank(aLatestVote)' 'same-score list vote sorting uses latest up/down action'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'list_latest_vote: latest_vote_value_for($id)' 'server list vote merge returns latest vote action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'restoreListVoteSnapshot(rollbackPayload, beforeRects);' 'list vote failures roll back optimistic state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'showVoteErrorToast(err && err.message ? err.message : '\''Could not vote'\'');' 'list vote failures surface a red toast'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'startAuthRefreshPoll();' 'list pages re-check late navbar auth hydration so admin edit controls appear'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-page-shell .list-entry-line:not(.list-entry-inline).list-depth-1' 'read-mode list depth rows keep bullet affordance even from static prerender'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line:not(.list-entry-inline):nth-child(even)' 'read-mode lists preserve alternating row shading before hydration'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'rgba(126, 96, 47, 0.075)' 'Lapidarist read-mode list striping stays translucent over parchment'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background-image: none;' 'Lapidarist read-mode list striping is a flat wash without a gradient'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'linear-gradient(180deg, rgba(255, 252, 244, 0.18), rgba(108, 77, 34, 0.04))' 'Lapidarist read-mode list striping does not use a gradient'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'className = '\''nav-top-toast is-error list-vote-error-toast'\''' 'list vote failure toast uses error styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'copyTextToClipboard(text)' 'list vote failure toast has a copy action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "return 'Sign in to vote.';" 'signed-out vote tooltip does not describe viewer vote history'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'disabled aria-disabled="true"' 'signed-out vote buttons render disabled'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'list-entry-vote-controls' 'list prerender includes reading-list vote controls in static HTML'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-list-vote-value="-1"' 'list prerender includes downvote controls in static HTML'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'page_slug == "reading-list"' 'reading-list prerender omits downvote controls'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'title="Sign in to vote."' 'list prerender uses anonymous vote tooltip for static HTML'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'signedIn && viewerVote > 0' 'signed-out vote buttons ignore viewer-specific active state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "slug === 'reading-list'" 'reading-list client votes are upvote-only'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-controls.is-upvote-only' 'reading-list upvote-only controls reduce row height'
+assert_file_contains "$ROOT_DIR/cgi/blog-submit-list-vote" 'Reading List votes only support upvote or unvote' 'reading-list vote endpoint rejects downvotes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'list-vote-up-color:' 'list vote up color is themeable'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'color: var(--list-vote-up-color' 'list upvote arrows use the theme up color'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'color: var(--list-vote-down-color' 'list downvote arrows use the theme down color'
@@ -897,6 +929,8 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-submit-list-entry"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-list-vote"
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'state_json: {' 'list editor saves large drafts through a single state_json object'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-marker-filter-action="toggle"' 'list read mode renders marker filter pills'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'cls += " is-include"' 'list prerender emits selected default marker filter pills'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'apply_default_marker_filters' 'list prerender applies default marker filters before hydration'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-marker-filter-pill.is-include' 'selected marker filter pills have explicit selected styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border: 1px solid transparent !important;' 'unselected marker filter pills keep a compact transparent border'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-color: transparent !important;' 'marker filter hover highlights do not add a border'
@@ -964,6 +998,15 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-compose-btn' 'b
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-clip: padding-box !important;' 'title action buttons do not expose a hidden border-box layer'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '-webkit-appearance: none !important;' 'title action buttons suppress WebKit native button chrome'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-image: none !important;' 'title action buttons suppress textured button background artifacts'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#list-page-title:has(.list-page-title-actions),' 'title action pages have an explicit parent title rule'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 0;' 'title action parent does not draw an underline beneath buttons'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#list-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,' 'title action underline attaches to text and edit spans instead of the full title row'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-bottom: 2px solid var(--border);' 'title action underline is painted on the text span instead of behind buttons'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'border-image-source: none;' 'Lapidarist title action parent does not paint the gradient beneath buttons'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'background-clip: border-box !important;' 'Lapidarist title actions do not reintroduce hidden border-box button edges'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body #blog-page-title .list-page-title-actions button.blog-filter-toggle' 'blog title filter button has a high-specificity no-edge reset'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-width: 0 !important;' 'blog title filter button forces border width to zero'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body #blog-page-title .list-page-title-actions button.blog-filter-toggle' 'Lapidarist blog title filter button has a high-specificity no-edge reset'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-search:focus-within' 'floating search box keeps focus visible without a thin outline border'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'top: 0.08rem;' 'navbar overflow badge sits below the top edge of the sub-toolbar'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'right: -0.18rem;' 'navbar overflow badge stays inset from the link rail edge'
@@ -1016,6 +1059,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'backgroun
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.nostr-publish-modal-actions .list-admin-primary-btn' 'Lapidarist Nostr publish modal actions use the shared soft action style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.blog-compose-btn' 'Lapidarist blog compose action buttons use the shared soft action style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '--action-soft-radius: 8px;' 'Lapidarist uses the shared Open Chat button radius'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);' 'Lapidarist title underline is scoped to title text spans'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '20260525-soft-actions1' 'head theme stylesheet cache buster tracks soft action buttons'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" '20260525-soft-actions1' 'admin theme preview cache buster tracks soft action buttons'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.btn-login {' 'Lapidarist login buttons own the decorative primary overlay'
@@ -1072,6 +1116,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'dispatchFooterRefresh'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.zap-dialog-close {' 'zap modal close button has dedicated styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'place-items: center;' 'zap modal close glyph is centered in the circular button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.zap-dialog-field input[data-zap-custom-sats]' 'Zap custom sats input has dedicated compact sizing'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary' 'compact zap button keeps purple styling outside main-content fallback routes'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background-image: linear-gradient(135deg, #7c3aed 0%, #d946ef 100%) !important;' 'compact zap button uses the purple gradient instead of the lapis primary gradient'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .zap-icon svg path' 'compact zap icon fill follows the restored purple button foreground'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: 9.5rem;' 'Zap custom sats input is not forced full width on desktop'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'min-height: 3rem;' 'Zap custom sats input is taller on mobile'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.auth-modal-message.is-visible' 'Sign-in modal message appears through an animated visible state'
@@ -1229,7 +1276,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'decryptNip46Content
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'encryptNip46Content' 'Nostr Connect can encrypt signer requests through the shared helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'window.NostrTools.nip44.getConversationKey' 'Nostr Connect prefers current NIP-44 encryption'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'window.NostrTools.nip04.decrypt' 'Nostr Connect keeps NIP-04 fallback for older signers'
-assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734');" 'Nostr Connect link requests login and zap signing permissions'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5');" 'Nostr Connect link requests login, zap, vote, and cleanup signing permissions'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "params.set('metadata', JSON.stringify(metadata));" 'Nostr Connect link includes app metadata for signer pairing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'typeof msg.result ===' 'Nostr Connect accepts connect responses that return the secret as result'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'extractConnectSecret(msg) === state.nip46.pairSecret' 'Nostr Connect enables phone signer after current connect response format'
@@ -1366,6 +1413,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'blog_post_rel_path_for_file
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" "normalizePostPageMenu(document.querySelector('.post-page-menu'))" 'single post client normalizes legacy menus before interaction'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" "node.setAttribute('data-post-page-admin-action', '')" 'single post client marks legacy admin actions before auth resolves'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'if (actionNode.hidden)' 'single post client ignores hidden menu actions'
+assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'payload.current.source_path || payload.current.post_path || payload.current.path' 'single post admin actions prefer managed source paths from context'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'post.source_path || post.post_path || post.path' 'blog index post menus prefer managed source paths from catalog'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'clampNavOverflowPanelToViewport' 'nav overflow menu clamps inside the viewport on mobile'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-overflow-panel.is-viewport-positioned' 'nav overflow menu uses viewport positioning when open'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'touch-action: manipulation;' 'post overflow menu trigger remains tappable on mobile'
@@ -1386,6 +1435,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body:has(.post-single
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: var(--blog-post-resizable-width, 60rem);' 'single post body cap matches the post island width after direct-body rendering'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body:has(.post-single-item.post-single-has-wide-content) {' 'wide single post body route gets a separate desktop width cap'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: var(--blog-post-resizable-width, 72rem);' 'wide single post body cap matches the wide post island width'
+assert_file_contains "$ROOT_DIR/cgi/blog-open-post" '/static/style.css?v=20260525-single-post-width1' 'single post fallback route cache-busts the widened post body CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-single-item.blog-post-resizable' 'single post resizable cards keep the same default width as the reading island'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body:has(.post-single-item) nav.site-nav' 'single post navbar follows the post reading island width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: var(--blog-post-resizable-width, clamp(30rem, 92vw, 60rem)) !important;' 'single post navbar follows the saved post width when resizing is active'
@@ -1406,7 +1456,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow-x: auto;' 'm
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow-wrap: anywhere;' 'mobile post links and titles can wrap instead of widening the page'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'calc(100dvw - 0.75rem)' 'mobile modal widths use dynamic viewport units'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'calc(100dvh - 1rem)' 'mobile modals are height-capped to the dynamic viewport'
-assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="icon-gallery">Product Gallery (kind 30004)</option>' 'admin create-page dialog exposes product-gallery type label'
+assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" '<option value="software-gallery">Software Gallery (kind 30267)</option>' 'admin create-page dialog exposes software-gallery type label'
 
 # 9) blog-get-config runtime output stays correct with direct site.conf parsing.
 cat > "$blog_site_conf" <<'EOF_SITE_CONF'
@@ -1482,6 +1532,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-get-config"
 assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
+assert_success sh -n "$ROOT_DIR/cgi/blog-audit-nostr-backing"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments-common.sh"

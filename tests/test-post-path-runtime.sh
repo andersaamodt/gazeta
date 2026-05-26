@@ -38,12 +38,12 @@ export WIZARDRY_SITE_NAME="example.test"
 
 SITE_ROOT="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
 SITE_DATA="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
-EXTERNAL_POSTS="$TMP_ROOT/external-mounted-posts"
+POSTS_STORE="$SITE_DATA/content/posts"
 
-mkdir -p "$SITE_ROOT/site/pages" "$SITE_DATA/content/posts" "$EXTERNAL_POSTS"
-ln -s "$EXTERNAL_POSTS" "$SITE_ROOT/site/pages/posts"
+mkdir -p "$SITE_ROOT/site/pages" "$POSTS_STORE"
+ln -s "$POSTS_STORE" "$SITE_ROOT/site/pages/posts"
 
-cat > "$EXTERNAL_POSTS/example-post.md" <<'EOS'
+cat > "$POSTS_STORE/example-post.md" <<'EOS'
 ---
 title: "Example Post"
 visibility: "public"
@@ -56,12 +56,20 @@ EOS
 . "$ROOT_DIR/cgi/blog-lib.sh"
 
 symlink_post="$SITE_ROOT/site/pages/posts/example-post.md"
-real_post=$(CDPATH= cd -- "$EXTERNAL_POSTS" && pwd -P)/example-post.md
+real_post=$(CDPATH= cd -- "$POSTS_STORE" && pwd -P)/example-post.md
 
 assert_eq 'posts/example-post.md' "$(blog_post_rel_path_for_file "$symlink_post" 2>/dev/null || printf '')" 'post rel path accepts mounted symlink path'
 assert_eq 'posts/example-post.md' "$(blog_post_rel_path_for_file "$real_post" 2>/dev/null || printf '')" 'post rel path accepts canonical mounted path'
 assert_eq 'posts/example-post.md' "$(blog_managed_post_rel_path_for_file "$symlink_post" 2>/dev/null || printf '')" 'managed post path accepts mounted symlink path'
 assert_eq 'posts/example-post.md' "$(blog_managed_post_rel_path_for_file "$real_post" 2>/dev/null || printf '')" 'managed post path accepts canonical mounted path'
+
+post_context_output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
+post_context_json=$(printf '%s\n' "$post_context_output" | tail -n 1)
+assert_eq 'posts/example-post.md' "$(printf '%s\n' "$post_context_json" | jq -r '.current.source_path // ""')" 'post context exposes mounted source path for admin edits'
+assert_eq 'posts/example-post' "$(printf '%s\n' "$post_context_json" | jq -r '.current.path // ""')" 'post context keeps public path extensionless'
+
+catalog_source_path=$(blog_public_posts_catalog_build_json | jq -r '.posts[0].source_path // ""')
+assert_eq 'posts/example-post.md' "$catalog_source_path" 'public posts catalog exposes mounted source path for admin edits'
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
   printf 'post path runtime tests failed: %s failure(s), %s pass(es)\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

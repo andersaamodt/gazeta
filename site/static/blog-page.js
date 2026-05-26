@@ -115,6 +115,8 @@
   var pageSettingsHideTimer = null;
   var composeToggleGuardUntil = 0;
   var composeDropHoverTimer = null;
+  var authRefreshPollTimer = 0;
+  var authRefreshPollStartedAt = 0;
   var postsCatalogReady = false;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
@@ -170,6 +172,25 @@
     }
     state.authSignature = nextSig;
     loadPageState({ deferRender: false, deferInitialFlags: true });
+  }
+
+  function startAuthRefreshPoll() {
+    if (authRefreshPollTimer) {
+      return;
+    }
+    authRefreshPollStartedAt = Date.now();
+    authRefreshPollTimer = window.setInterval(function () {
+      if (Date.now() - authRefreshPollStartedAt > 15000) {
+        window.clearInterval(authRefreshPollTimer);
+        authRefreshPollTimer = 0;
+        return;
+      }
+      maybeReloadForAuthChange();
+      if (isAdmin()) {
+        window.clearInterval(authRefreshPollTimer);
+        authRefreshPollTimer = 0;
+      }
+    }, 500);
   }
 
   function ensureComposeStateShape() {
@@ -1206,27 +1227,27 @@
 
   function composePostTypeLabel(postType) {
     var type = normalizeComposePostType(postType);
-    if (type === 'shortform') return 'Shortform Post';
-    if (type === 'longform') return 'Longform Post';
-    if (type === 'capture-media') return 'Take Photo/Video';
-    if (type === 'upload-media') return 'Upload Photo/Video';
-    if (type === 'attachment') return 'Upload Attachment/File';
-    if (type === 'audio-note') return 'Audio Note';
-    if (type === 'link-share') return 'Link';
-    return 'Go Live';
+    if (type === 'shortform') return 'shortform';
+    if (type === 'longform') return 'post';
+    if (type === 'capture-media') return 'capture';
+    if (type === 'upload-media') return 'media';
+    if (type === 'attachment') return 'attachment';
+    if (type === 'audio-note') return 'audio';
+    if (type === 'link-share') return 'link';
+    return 'go live';
   }
 
   function composePostKindPillText(postType) {
     var type = composeBackingPostType(postType);
     var target = composeNostrTarget(type);
-    if (type === 'longform') return 'Long-form Content (kind ' + target.kind + ')';
-    if (type === 'shortform') return 'Shortform Post (kind ' + target.kind + ')';
-    if (type === 'capture-media') return 'Media Capture (kind ' + target.kind + ')';
-    if (type === 'upload-media') return 'Media Upload (kind ' + target.kind + ')';
-    if (type === 'attachment') return 'Attachment (kind ' + target.kind + ')';
-    if (type === 'audio-note') return 'Audio Note (kind ' + target.kind + ')';
-    if (type === 'link-share') return 'Link (kind ' + target.kind + ')';
-    return 'Go Live (kind ' + target.kind + ')';
+    if (type === 'longform') return 'post (kind ' + target.kind + ')';
+    if (type === 'shortform') return 'shortform (kind ' + target.kind + ')';
+    if (type === 'capture-media') return 'capture (kind ' + target.kind + ')';
+    if (type === 'upload-media') return 'media (kind ' + target.kind + ')';
+    if (type === 'attachment') return 'attachment (kind ' + target.kind + ')';
+    if (type === 'audio-note') return 'audio (kind ' + target.kind + ')';
+    if (type === 'link-share') return 'link (kind ' + target.kind + ')';
+    return 'go live (kind ' + target.kind + ')';
   }
 
   function composePostKindPillClass(postType) {
@@ -1389,14 +1410,14 @@
     }
     return '' +
       '<div class="compose-post-type-toolbar" role="tablist" aria-label="Post type">' +
-      btn('shortform', 'Shortform Post', false) +
-      btn('longform', 'Longform Post', false) +
-      btn('capture-media', 'Take Photo/Video', false) +
-      btn('upload-media', 'Upload Photo/Video', false) +
-      btn('attachment', 'Upload Attachment/File', false) +
-      btn('audio-note', 'Audio Note', false) +
-      btn('link-share', 'Link', false) +
-      btn('go-live', 'Go Live', true) +
+      btn('shortform', composePostTypeLabel('shortform'), false) +
+      btn('longform', composePostTypeLabel('longform'), false) +
+      btn('capture-media', composePostTypeLabel('capture-media'), false) +
+      btn('upload-media', composePostTypeLabel('upload-media'), false) +
+      btn('attachment', composePostTypeLabel('attachment'), false) +
+      btn('audio-note', composePostTypeLabel('audio-note'), false) +
+      btn('link-share', composePostTypeLabel('link-share'), false) +
+      btn('go-live', composePostTypeLabel('go-live'), true) +
       '</div>';
   }
 
@@ -3028,6 +3049,7 @@
 
   function composePayload(action) {
     commitComposeTagInput();
+    syncComposeTagsField();
     var fields = readComposeFields();
     if (!fields) {
       return null;
@@ -3828,10 +3850,11 @@
       title: '',
       content: '',
       scheduledAt: '',
-      tags: '',
+      tags: state.compose.tags.join(','),
       linkUrl: String(state.compose.linkUrl || ''),
       postType: composePostType()
     };
+    fields.tags = state.compose.tags.join(',');
     var mode = composePublishMode();
     var destination = composePublishDestination();
     var postType = normalizeComposePostType(fields.postType);
@@ -4090,9 +4113,9 @@
   function formatType(value) {
     var raw = String(value || '').trim();
     if (!raw) {
-      return 'Post';
+      return 'post';
     }
-    return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+    return composePostTypeLabel(raw);
   }
 
   function matchFacet(set, value) {
@@ -4243,7 +4266,7 @@
       if (!postTitle) {
         postTitle = postSummary.trim() || 'Untitled';
       }
-      var postPath = String(post.path || '').trim();
+      var postPath = String(post.source_path || post.post_path || post.path || '').trim();
       var tagsHtml = normalizePostTags(post.tags).map(function (tag) {
         var normalizedTag = String(tag || '');
         var isActive = state.filters.tags.has(normalizedTag);
@@ -4369,7 +4392,7 @@
         csrf_token: auth.csrf_token
       }).then(function () {
         state.posts = (Array.isArray(state.posts) ? state.posts : []).filter(function (post) {
-          return String(post && post.path || '').trim() !== path;
+          return String(post && (post.source_path || post.post_path || post.path) || '').trim() !== path;
         });
         renderFilters();
         renderList();
@@ -5228,7 +5251,7 @@
     if (!event || !event.key) {
       return;
     }
-    if (event.key === 'session_token' || event.key === 'csrf_token') {
+    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_is_admin') {
       maybeReloadForAuthChange();
     }
   });
@@ -5238,6 +5261,7 @@
       maybeReloadForAuthChange();
     }
   });
+  startAuthRefreshPoll();
 
   window.addEventListener('beforeunload', function () {
     clearComposePostTypeCollapseTimer();

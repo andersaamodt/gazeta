@@ -3,9 +3,9 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260524-vote-tie-sort1'
-blog_nostr_blog_page_js_version='20260524-inline-chip-active1'
-blog_nostr_contact_page_js_version='20260525-call-widget-fallback1'
+blog_nostr_list_page_js_version='20260525-list-stability1'
+blog_nostr_blog_page_js_version='20260525-post-type-labels1'
+blog_nostr_contact_page_js_version='20260525-call-loading-mockup1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260521-login-sync1'
@@ -132,6 +132,7 @@ blog_nostr_pages_normalize_json() {
       | if $t == "contact" then "contact"
         elif ($t == "public-ranking" or $t == "public_ranking" or $t == "ranking") then "public-ranking"
         elif ($t == "overworld" or $t == "overworld-game" or $t == "overworld_game") then "overworld"
+        elif ($t == "software-gallery" or $t == "software_gallery" or $t == "software") then "software-gallery"
         elif ($t == "icon-gallery" or $t == "icon_gallery" or $t == "gallery") then "icon-gallery"
         elif ($t == "blog" or $t == "blog-index" or $t == "blog_index") then "blog"
         elif ($t == "nip23" or $t == "article" or $t == "document") then "nip23"
@@ -164,6 +165,7 @@ blog_nostr_pages_normalize_json() {
           placeholder_title: ((.placeholder_title // .title // "") | tostring),
           path: ((.path // "") | tostring)
         })
+      | map(if .slug == "software" and .type == "icon-gallery" then .type = "software-gallery" else . end)
       | map(select((.slug | length) > 0))
     ) as $pages
     | (reduce $pages[] as $p ([];
@@ -183,6 +185,7 @@ blog_nostr_pages_normalize_json() {
                  elif .type == "public-ranking" then 30040
                  elif .type == "overworld" then 30023
                  elif (.type == "nip23" or .type == "blog") then 30023
+                 elif .type == "software-gallery" then 30267
                  else 30004
                end
              )
@@ -298,6 +301,7 @@ blog_nostr_navbar_pages_json() {
       | if $type == "contact" then "contact"
         elif ($type == "public-ranking" or $type == "public_ranking" or $type == "ranking") then "public-ranking"
         elif ($type == "overworld" or $type == "overworld-game" or $type == "overworld_game") then "overworld"
+        elif ($type == "software-gallery" or $type == "software_gallery" or $type == "software") then "software-gallery"
         elif ($type == "icon-gallery" or $type == "icon_gallery" or $type == "gallery") then "icon-gallery"
         elif ($type == "blog" or $type == "blog-index" or $type == "blog_index") then "blog"
         elif ($type == "nip23" or $type == "article" or $type == "document") then "nip23"
@@ -309,6 +313,7 @@ blog_nostr_navbar_pages_json() {
       elif $page_type == "public-ranking" then 30040
       elif $page_type == "overworld" then 30023
       elif ($page_type == "nip23" or $page_type == "blog") then 30023
+      elif $page_type == "software-gallery" then 30267
       else 30004
       end;
     def norm_path($slug; $value):
@@ -412,7 +417,12 @@ blog_nostr_page_type_for_slug() {
   [ -n "$slug" ] || return 1
   page=$(blog_nostr_page_entry_json "$slug" 2>/dev/null || printf '')
   if [ -n "$page" ]; then
-    printf '%s\n' "$page" | jq -r '.type // "list"' 2>/dev/null || printf 'list\n'
+    page_type=$(printf '%s\n' "$page" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+    if [ "$slug" = "software" ] && [ "$page_type" = "icon-gallery" ]; then
+      printf 'software-gallery\n'
+    else
+      printf '%s\n' "$page_type"
+    fi
     return 0
   fi
   return 1
@@ -506,11 +516,123 @@ if not isinstance(state, dict):
 def text(value):
     return "" if value is None else str(value)
 
+page_slug = text(payload.get("slug") if isinstance(payload, dict) else state.get("slug"))
+
 def md_inline(value):
     escaped = html.escape(text(value), quote=True)
     escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', escaped)
     escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
     return escaped
+
+def marker_hash32(value):
+    hash_value = 2166136261
+    for char in text(value):
+        hash_value ^= ord(char)
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    hash_value ^= hash_value >> 16
+    hash_value = (hash_value * 2246822507) & 0xFFFFFFFF
+    hash_value ^= hash_value >> 13
+    hash_value = (hash_value * 3266489909) & 0xFFFFFFFF
+    hash_value ^= hash_value >> 16
+    return hash_value & 0xFFFFFFFF
+
+def marker_palette_swatches():
+    return [
+        {"hue": 8, "saturation": 56, "lightness": 88},
+        {"hue": 28, "saturation": 58, "lightness": 87},
+        {"hue": 48, "saturation": 56, "lightness": 88},
+        {"hue": 68, "saturation": 52, "lightness": 88},
+        {"hue": 92, "saturation": 50, "lightness": 87},
+        {"hue": 116, "saturation": 52, "lightness": 86},
+        {"hue": 138, "saturation": 48, "lightness": 87},
+        {"hue": 160, "saturation": 46, "lightness": 88},
+        {"hue": 184, "saturation": 52, "lightness": 87},
+        {"hue": 206, "saturation": 56, "lightness": 87},
+        {"hue": 226, "saturation": 54, "lightness": 88},
+        {"hue": 246, "saturation": 50, "lightness": 88},
+        {"hue": 266, "saturation": 52, "lightness": 88},
+        {"hue": 286, "saturation": 52, "lightness": 88},
+        {"hue": 306, "saturation": 54, "lightness": 88},
+        {"hue": 326, "saturation": 52, "lightness": 88},
+        {"hue": 346, "saturation": 54, "lightness": 88},
+        {"hue": 18, "saturation": 50, "lightness": 89},
+        {"hue": 58, "saturation": 48, "lightness": 89},
+        {"hue": 108, "saturation": 46, "lightness": 88},
+        {"hue": 168, "saturation": 44, "lightness": 89},
+        {"hue": 198, "saturation": 48, "lightness": 89},
+        {"hue": 238, "saturation": 46, "lightness": 89},
+        {"hue": 278, "saturation": 46, "lightness": 89},
+    ]
+
+def circular_hue_distance(a, b):
+    distance = abs(float(a) - float(b)) % 360
+    return 360 - distance if distance > 180 else distance
+
+def marker_tokens(value):
+    tokens = []
+    seen = set()
+    for marker in text(value).split(","):
+        marker = re.sub(r"\s+", " ", marker).strip()
+        if marker and marker not in seen:
+            seen.add(marker)
+            tokens.append(marker)
+    return tokens
+
+def unique_marker_values(entries):
+    seen = set()
+    values = []
+    for entry in entries:
+        for marker in marker_tokens(entry.get("marker")):
+            if marker in seen:
+                continue
+            seen.add(marker)
+            values.append(marker)
+    return values
+
+def build_marker_color_map(entries):
+    markers = unique_marker_values(entries)
+    palette = marker_palette_swatches()
+    if not markers or not palette:
+        return {}
+    markers.sort(key=lambda marker: (marker_hash32(marker), marker.lower(), marker))
+    used = set()
+    color_map = {}
+    for marker in markers:
+        marker_hash = marker_hash32(marker)
+        desired_hue = marker_hash % 360
+        best_index = -1
+        best_score = -1000000000
+        for index, swatch in enumerate(palette):
+            if index in used:
+                continue
+            min_separation = 180
+            for color in color_map.values():
+                min_separation = min(min_separation, circular_hue_distance(swatch["hue"], color["hue"]))
+            desired_score = 180 - circular_hue_distance(swatch["hue"], desired_hue)
+            score = (min_separation * 4) + (desired_score * 0.55)
+            if score > best_score:
+                best_score = score
+                best_index = index
+        if best_index < 0:
+            best_index = marker_hash % len(palette)
+        used.add(best_index)
+        color_map[marker] = palette[best_index]
+    return color_map
+
+def marker_color_from_text(marker, color_map):
+    marker = text(marker)
+    if marker and marker in color_map:
+        return color_map[marker]
+    palette = marker_palette_swatches()
+    return palette[marker_hash32(marker) % len(palette)] if palette else {"hue": 220, "saturation": 56, "lightness": 90}
+
+def marker_style(marker, color_map):
+    color = marker_color_from_text(marker, color_map)
+    return "--marker-pill-h:%d;--marker-pill-s:%d%%;--marker-pill-l:%d%%;" % (
+        color["hue"],
+        color["saturation"],
+        color["lightness"],
+    )
 
 def entry_key(entry):
     for key in ("_list_entry_id", "_public_entry_id", "_uid"):
@@ -535,20 +657,79 @@ def linked_text(label, url, class_name):
         )
     return '<span class="%s">%s</span>' % (class_name, md_inline(label))
 
-def marker_pills(entry, show):
+def marker_pills(entry, show, color_map):
     if not show:
         return ""
-    markers = []
-    for marker in text(entry.get("marker")).split(","):
-        marker = re.sub(r"\s+", " ", marker).strip()
-        if marker:
-            markers.append(marker)
+    markers = marker_tokens(entry.get("marker"))
     if not markers:
         return ""
     return '<span class="list-entry-marker-pills">%s</span>' % "".join(
-        '<span class="list-entry-marker-pill">%s</span>' % html.escape(marker, quote=True)
+        '<span class="list-entry-marker-pill" style="%s">%s</span>' % (
+            marker_style(marker, color_map),
+            html.escape(marker, quote=True),
+        )
         for marker in markers
     )
+
+def marker_filter_html(entries, show, default_markers_raw, color_map):
+    if not show:
+        return ""
+    markers = unique_marker_values(entries)
+    if not markers:
+        return ""
+    markers = sorted(markers, key=lambda marker: marker.lower())
+    defaults = set(marker for marker in marker_tokens(default_markers_raw) if marker in markers)
+    tooltip = "Click to filter. Cmd-click to multi-select. Alt-click to filter out. Unselect all filters to show all."
+    parts = ['<section class="list-marker-filters" aria-label="Marker filters"><div class="list-marker-filters-row">']
+    for marker in markers:
+        cls = "list-marker-filter-pill"
+        if marker in defaults:
+            cls += " is-include"
+        parts.append(
+            '<button type="button" class="%s" data-marker-filter-action="toggle" data-marker-filter-value="%s" title="%s" aria-label="%s" style="%s">%s</button>' % (
+                cls,
+                html.escape(marker, quote=True),
+                html.escape(tooltip, quote=True),
+                html.escape(marker + ". " + tooltip, quote=True),
+                marker_style(marker, color_map),
+                html.escape(marker, quote=True),
+            )
+        )
+    parts.append("</div></section>")
+    return "".join(parts)
+
+def apply_default_marker_filters(entries, default_markers_raw):
+    available = set(unique_marker_values(entries))
+    include = set(marker for marker in marker_tokens(default_markers_raw) if marker in available)
+    if not include:
+        return list(entries)
+    keep = {}
+    depth_stack = []
+    parent_index_by_row = []
+    for index, entry in enumerate(entries):
+        try:
+            depth = int(entry.get("depth") or 0)
+        except Exception:
+            depth = 0
+        if depth < 0:
+            depth = 0
+        if depth > len(depth_stack):
+            depth = len(depth_stack)
+        if depth < len(depth_stack):
+            depth_stack = depth_stack[:depth]
+        parent_index_by_row.append(depth_stack[depth - 1] if depth > 0 else -1)
+        if depth == len(depth_stack):
+            depth_stack.append(index)
+        else:
+            depth_stack[depth] = index
+            depth_stack = depth_stack[:depth + 1]
+        if any(marker in include for marker in marker_tokens(entry.get("marker"))):
+            keep[index] = True
+            parent = parent_index_by_row[index]
+            while parent >= 0:
+                keep[parent] = True
+                parent = parent_index_by_row[parent]
+    return [entry for index, entry in enumerate(entries) if keep.get(index)]
 
 def date_pill(entry, group_by, section_label):
     date = text(entry.get("date"))
@@ -556,7 +737,85 @@ def date_pill(entry, group_by, section_label):
         return ""
     return '<span class="list-entry-date-pill">%s</span>' % html.escape(date, quote=True)
 
-def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False):
+def list_vote_arrow_svg(direction):
+    path = "M12 20 4.5 10.8h4.25V4h6.5v6.8h4.25L12 20Z" if direction == "down" else "M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z"
+    return '<svg class="list-entry-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="%s" fill="currentColor"/></svg>' % path
+
+def vote_controls(entry, allow_votes):
+    entry_id = entry_key(entry)
+    if not allow_votes or not entry_id:
+        return ""
+    try:
+        score = int(float(entry.get("list_score") or 0))
+    except Exception:
+        score = 0
+    escaped_id = html.escape(entry_id, quote=True)
+    upvote_only = page_slug == "reading-list"
+    control_class = "list-entry-vote-controls is-upvote-only" if upvote_only else "list-entry-vote-controls"
+    downvote = "" if upvote_only else (
+        '<button type="button" class="list-entry-vote-btn is-downvote" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="-1" aria-label="Downvote" disabled aria-disabled="true">%s</button>'
+        % (escaped_id, list_vote_arrow_svg("down"))
+    )
+    return (
+        '<span class="%s" data-list-entry-id="%s" aria-label="Entry score" title="Sign in to vote.">'
+        '<button type="button" class="list-entry-vote-btn is-upvote" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="1" aria-label="Upvote" disabled aria-disabled="true">%s</button>'
+        '<span class="list-entry-score">%s</span>'
+        '%s'
+        '</span>'
+    ) % (
+        control_class,
+        escaped_id,
+        escaped_id,
+        list_vote_arrow_svg("up"),
+        html.escape(str(score), quote=True),
+        downvote,
+    )
+
+def normalize_vote_value(value):
+    try:
+        numeric = float(value or 0)
+    except Exception:
+        numeric = 0
+    if numeric > 0:
+        return 1
+    if numeric < 0:
+        return -1
+    return 0
+
+def vote_action_rank(value):
+    normalized = normalize_vote_value(value)
+    if normalized > 0:
+        return 1
+    if normalized < 0:
+        return -1
+    return 0
+
+def sort_entries_for_votes(entries, allow_votes):
+    if not allow_votes:
+        return list(entries)
+    if len(entries) <= 1:
+        return list(entries)
+    try:
+        all_top_level = all(max(0, int(entry.get("depth") or 0)) == 0 for entry in entries)
+    except Exception:
+        all_top_level = False
+    if not all_top_level:
+        return list(entries)
+    def sort_key(item):
+        index, entry = item
+        try:
+            score = float(entry.get("list_score") or 0)
+        except Exception:
+            score = 0
+        try:
+            latest_at = float(entry.get("list_latest_vote_created_at") or 0)
+        except Exception:
+            latest_at = 0
+        latest_vote = normalize_vote_value(entry.get("list_latest_vote"))
+        return (-score, -vote_action_rank(latest_vote), -latest_at if latest_vote > 0 else latest_at if latest_vote < 0 else 0, index)
+    return [entry for _index, entry in sorted(enumerate(entries), key=sort_key)]
+
+def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False, color_map=None, allow_votes=False):
     line = text(entry.get("markdown"))
     description = text(entry.get("description"))
     image = text(entry.get("image_url"))
@@ -567,7 +826,7 @@ def row_html(entry, group_by="", section_label="", show_markers=False, gallery=F
         depth = 0
     if depth < 0:
         depth = 0
-    markers = marker_pills(entry, show_markers)
+    markers = marker_pills(entry, show_markers, color_map or {})
     date = date_pill(entry, group_by, section_label)
     meta = ""
     if markers or date:
@@ -579,10 +838,12 @@ def row_html(entry, group_by="", section_label="", show_markers=False, gallery=F
     if gallery and description:
         desc = '<span class="list-entry-description-inline">%s</span>' % md_inline(description)
     key = html.escape(entry_key(entry), quote=True)
+    votes = vote_controls(entry, allow_votes)
+    first_line_class = "list-entry-first-line" + (" has-votes" if votes else "")
     return (
         '<li class="list-entry-line list-depth-%d" data-list-entry-id="%s" style="--list-depth:%d;"%s>'
-        '<div class="list-entry-first-line"><span class="list-entry-main-inline">%s%s%s</span>%s</div></li>'
-    ) % (depth, key, depth, entry_href_attr(entry), icon, linked_text(line, post_url, "list-entry-markdown"), desc, meta)
+        '<div class="%s">%s<span class="list-entry-main-inline">%s%s%s</span>%s</div></li>'
+    ) % (depth, key, depth, entry_href_attr(entry), first_line_class, votes, icon, linked_text(line, post_url, "list-entry-markdown"), desc, meta)
 
 def tile_html(entry):
     line = text(entry.get("markdown"))
@@ -620,6 +881,9 @@ raw_view = text(state.get("view_mode"))
 view = "tile" if (gallery and not raw_view) or raw_view == "tile" else "list"
 group_by = text(state.get("group_by"))
 show_markers = state.get("show_markers") is True
+show_marker_filters = state.get("show_marker_filters") is True
+allow_votes = state.get("allow_signed_in_votes") is True
+default_markers = text(state.get("default_markers"))
 source_entries = state.get("elements") if isinstance(state.get("elements"), list) else state.get("entries")
 if not isinstance(source_entries, list):
     source_entries = []
@@ -629,10 +893,14 @@ entries = [
     and text(entry.get("type") or "entry") == "entry"
     and text(entry.get("markdown"))
 ]
+marker_color_by_token = build_marker_color_map(entries)
+display_entries = apply_default_marker_filters(entries, default_markers) if show_marker_filters else entries
 
 parts = []
 if state.get("allow_signed_in_submissions") is True:
     parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><div class="list-public-submit-reveal" aria-hidden="true"><div class="list-public-submit-fields"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></div><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="Add entry" title="Add entry" aria-expanded="false"><span class="list-public-submit-toggle-icon" aria-hidden="true">+</span></button></div></section>')
+
+parts.append(marker_filter_html(entries, show_marker_filters, default_markers, marker_color_by_token))
 
 after = ""
 if text(state.get("extras_after")):
@@ -640,23 +908,31 @@ if text(state.get("extras_after")):
 
 if not entries:
     parts.append('<p class="list-page-empty-state">No content yet.</p>')
-elif view == "tile":
-    parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in entries))
+elif not display_entries:
+    parts.append('<p class="list-page-empty-state">No entries match selected marker filters.</p>')
 elif group_by in ("year", "first_letter", "month", "marker"):
-    current = None
-    opened = False
-    for entry in entries:
+    grouped_entries = []
+    group_index = {}
+    for entry in display_entries:
         label = group_label(entry, group_by)
-        if not opened or label != current:
-            if opened:
-                parts.append("</ul></section>")
-            parts.append('<section class="list-year-group"><div class="list-year-head"><h3 class="list-year-heading">%s</h3></div><ul class="list-entries">' % html.escape(label, quote=True))
-            current = label
-            opened = True
-        parts.append(row_html(entry, group_by, label, show_markers, gallery))
-    parts.append("</ul></section>")
+        if label not in group_index:
+            group_index[label] = len(grouped_entries)
+            grouped_entries.append([label, []])
+        grouped_entries[group_index[label]][1].append(entry)
+    for label, bucket in grouped_entries:
+        parts.append('<section class="list-year-group"><div class="list-year-head"><h3 class="list-year-heading">%s</h3></div>' % html.escape(label, quote=True))
+        if view == "tile":
+            parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in bucket))
+        else:
+            parts.append('<ul class="list-entries">')
+            for entry in sort_entries_for_votes(bucket, allow_votes):
+                parts.append(row_html(entry, group_by, label, show_markers, gallery, marker_color_by_token, allow_votes))
+            parts.append("</ul>")
+        parts.append("</section>")
+elif view == "tile":
+    parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in display_entries))
 else:
-    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery) for entry in entries))
+    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery, marker_color_by_token, allow_votes) for entry in sort_entries_for_votes(display_entries, allow_votes)))
 
 if after:
     parts.append(after)
@@ -760,21 +1036,21 @@ PY
       else "" end) as $after
     | if ($entries | length) == 0 then
         $submit + "<p class=\"list-page-empty-state\">No content yet.</p>" + $after
-      elif $view == "tile" then
-        $submit + "<ul class=\"list-tiles\">" + ($entries | map(tile_html(.)) | join("")) + "</ul>" + $after
       elif (["year", "first_letter", "month", "marker"] | index($group_by)) then
         $submit + (
           reduce $entries[] as $e ({html:"", label:"__initial__", open:false};
             (group_label($e; $group_by)) as $label
             | if .label != $label then
-                .html = (.html + (if .open then "</ul></section>" else "" end) + "<section class=\"list-year-group\"><div class=\"list-year-head\"><h3 class=\"list-year-heading\">" + ($label | h) + "</h3></div><ul class=\"list-entries\">")
+                .html = (.html + (if .open then (if $view == "tile" then "</ul></section>" else "</ul></section>" end) else "" end) + "<section class=\"list-year-group\"><div class=\"list-year-head\"><h3 class=\"list-year-heading\">" + ($label | h) + "</h3></div>" + (if $view == "tile" then "<ul class=\"list-tiles\">" else "<ul class=\"list-entries\">" end))
                 | .label = $label
                 | .open = true
               else . end
-	            | .html = (.html + row_html($e; $group_by; $label; $show_markers; $gallery))
-	          )
-	          | .html + "</ul></section>"
-	        ) + $after
+            | .html = (.html + (if $view == "tile" then tile_html($e) else row_html($e; $group_by; $label; $show_markers; $gallery) end))
+          )
+          | .html + "</ul></section>"
+        ) + $after
+      elif $view == "tile" then
+        $submit + "<ul class=\"list-tiles\">" + ($entries | map(tile_html(.)) | join("")) + "</ul>" + $after
       else
         $submit + "<ul class=\"list-entries\">" + ($entries | map(row_html(.; ""; ""; $show_markers; $gallery)) | join("")) + "</ul>" + $after
       end
@@ -791,8 +1067,11 @@ blog_nostr_prerender_nip23_html() {
       | if ($raw | gsub("\\s"; "") | length) == 0 then ""
         else ($raw | h | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>") | split("\n\n") | map("<p>" + (gsub("\n"; "<br>")) + "</p>") | join(""))
         end;
+    def content_block:
+      tostring as $raw
+      | if ($raw | test("^\\s*<")) then $raw else ($raw | md_block) end;
     (.state // {}) as $s
-    | (($s.content // "") | md_block) as $main
+    | (($s.content // "") | content_block) as $main
     | (($s.extras_after // "") | md_block) as $after
     | (if (($s.product_enabled // false) == true or (($s.price // "") | tostring | length) > 0) then
         "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div></section>"
@@ -875,7 +1154,7 @@ blog_nostr_prerender_contact_video_chat_html() {
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
 
   cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><p class="video-chat-unavailable" role="status">Calling unavailable</p></div></section>
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><div class="video-chat-loading-mockup" role="status" aria-label="Loading call controls"><p class="video-chat-loading-copy">Ready. Choose voice or video.</p><div class="video-chat-loading-actions"><button type="button" disabled aria-disabled="true">Voice</button><button type="button" disabled aria-disabled="true">Video</button></div><button type="button" disabled aria-disabled="true">Invite Link...</button></div></div></section>
 EOF
 }
 
@@ -888,10 +1167,14 @@ blog_nostr_prerender_blog_posts_html() {
       tostring | gsub("#+"; "") | gsub("\\*"; "") | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "\(.label)");
     def fmt_type:
       tostring
-      | gsub("[_-]+"; " ")
-      | split(" ")
-      | map(select(length > 0) | (.[0:1] | ascii_upcase) + .[1:])
-      | join(" ");
+      | if . == "longform" or . == "post" then "post"
+        elif . == "link-share" then "link"
+        elif . == "capture-media" then "capture"
+        elif . == "upload-media" then "media"
+        elif . == "audio-note" then "audio"
+        elif . == "go-live" then "go live"
+        else gsub("[_-]+"; " ")
+        end;
     def norm_tags:
       if type == "array" then map(tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0))
       elif type == "string" then split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))
@@ -1022,6 +1305,7 @@ blog_nostr_page_write_prerendered_source() {
     public-ranking) tags='"nostr", "public-ranking"' ;;
     overworld) tags='"nostr", "overworld"' ;;
     icon-gallery) tags='"nostr", "list", "icon-gallery"' ;;
+    software-gallery) tags='"nostr", "list", "software-gallery"' ;;
   esac
   blog_nostr_page_front_matter_to_tmp "$page_file" "$page_title" "$tags" "$tmp"
 
@@ -1045,7 +1329,7 @@ blog_nostr_page_write_prerendered_source() {
         printf '<script src="/static/simplex-web-default-chat.js?v=%s"></script>\n' "$blog_nostr_simplex_web_default_chat_js_version"
         printf '%s\n' '<script src="/static/simplex-web-session-store.js"></script>'
         printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
-        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260525-permission-gate1" data-video-chat-widget="1"></script>'
+        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>'
         printf '<script src="/static/contact-page.js?v=%s"></script>\n' "$blog_nostr_contact_page_js_version"
       } >> "$tmp"
       ;;
@@ -1469,36 +1753,36 @@ blog_nip23_validate_and_enrich_state_json() {
   printf '%s\n' "$state_json" | jq -c --arg strict "$strict_publish" '
     def is_price($v):
       ($v | test("^[0-9]+([.][0-9]{1,2})?$"));
+    def nostr_portability_errors($content):
+      if $strict != "true" then []
+      else
+        []
+        + (if (($content | test("<\\s*(script|style|iframe|section|div|span|button|form|input|canvas|video|audio|img|svg)\\b"; "i"))) then ["NIP-23 content must be portable Markdown, not embedded HTML, CSS, or widgets"] else [] end)
+        + (if (($content | test("\\{\\{[^}]+\\}\\}"))) then ["NIP-23 content must not depend on site-only template placeholders"] else [] end)
+      end;
 
     (.title // "" | tostring) as $title
+    | (.content // "" | tostring) as $content
     | (.product_enabled // false) as $is_product
     | (.price // "" | tostring) as $price
     | (.currency // "USD" | tostring | ascii_upcase) as $currency
     | (.purchase_endpoint // "" | tostring) as $purchase_endpoint
-    {
-      errors: (
+    | (
         []
         + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
+        + nostr_portability_errors($content)
         + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
         + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
         + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
         + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
-      ),
+      ) as $errors
+    |
+    {
+      errors: $errors,
       warnings: [],
-      can_publish: (
-        (
-          []
-          + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
-          + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
-          + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
-          + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
-          + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
-          + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
-          + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
-        ) | length
-      ) == 0
+      can_publish: (($errors | length) == 0)
     }
   ' 2>/dev/null || printf '{"errors":[],"warnings":[],"can_publish":true}\n'
 }
@@ -1547,6 +1831,275 @@ blog_nostr_sign_nip23_event() {
     return 1
   fi
   printf '%s\n' "$event_json"
+}
+
+blog_nostr_reverse_domain_prefix() {
+  host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+  if ! blog_valid_public_host "$host"; then
+    host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
+  fi
+  if ! blog_valid_public_host "$host"; then
+    printf '\n'
+    return 0
+  fi
+  printf '%s\n' "$host" | awk -F. '{
+    out="";
+    for (i = NF; i >= 1; i--) {
+      gsub(/[^A-Za-z0-9-]/, "", $i);
+      if (length($i) > 0) out = out (length(out) ? "." : "") tolower($i);
+    }
+    print out;
+  }'
+}
+
+blog_nostr_software_app_id() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  prefix=$(blog_nostr_reverse_domain_prefix 2>/dev/null || printf '')
+  if [ -n "$prefix" ]; then
+    printf '%s.%s\n' "$prefix" "$slug"
+  else
+    printf '%s\n' "$slug"
+  fi
+}
+
+blog_nostr_page_public_url() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  base=$(blog_base_url 2>/dev/null | sed -e 's#/$##' || printf '')
+  if [ -n "$base" ]; then
+    printf '%s/%s\n' "$base" "$slug"
+  else
+    printf '/%s\n' "$slug"
+  fi
+}
+
+blog_nostr_event_address_from_json() {
+  event_json=${1-}
+  [ -n "$event_json" ] || return 1
+  printf '%s\n' "$event_json" | jq -r '
+    (.kind // empty) as $kind
+    | (.pubkey // "") as $pubkey
+    | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
+    | if (($kind|tostring|length)>0 and ($pubkey|length)>0 and ($d|length)>0) then "\($kind):\($pubkey):\($d)" else empty end
+  ' 2>/dev/null
+}
+
+blog_nostr_sign_software_stall_event() {
+  currency=$(printf '%s' "${1-USD}" | tr '[:lower:]' '[:upper:]')
+  [ -n "$currency" ] || currency='USD'
+  content=$(jq -cn --arg currency "$currency" '{
+    id: "software",
+    name: "Software",
+    description: "Usable and downloadable software",
+    currency: $currency,
+    shipping: [{id: "digital", name: "Digital delivery", cost: 0, regions: ["worldwide"]}]
+  }')
+  tags='[["d","software"],["t","software"]]'
+  blog_nostr_sign_event_with_tags 30017 "$content" "$tags"
+}
+
+blog_nostr_sign_software_app_event() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=${2-}
+  page_event_json=${3-}
+  [ -n "$slug" ] || return 1
+  [ -n "$state_json" ] || return 1
+  app_id=$(blog_nostr_software_app_id "$slug")
+  page_url=$(blog_nostr_page_public_url "$slug" 2>/dev/null || printf '')
+  page_ref=$(blog_nostr_event_address_from_json "$page_event_json" 2>/dev/null || printf '')
+  app_content=$(printf '%s\n' "$state_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+  tags_json=$(printf '%s\n' "$state_json" | jq -c \
+    --arg app_id "$app_id" \
+    --arg page_url "$page_url" \
+    --arg page_ref "$page_ref" \
+    '
+      (.title // "") as $title
+      | (.repo // "") as $repo
+      | [
+          ["d", $app_id],
+          (if (($title|tostring|length)>0) then ["name", ($title|tostring)] else empty end),
+          (if (($page_url|length)>0) then ["url", $page_url] else empty end),
+          (if (($repo|tostring|length)>0) then ["repository", ($repo|tostring)] else empty end),
+          (if (($page_ref|length)>0) then ["a", $page_ref] else empty end),
+          ["t", "software"],
+          ["t", "app"]
+        ]
+    ' 2>/dev/null || printf '[]')
+  blog_nostr_sign_event_with_tags 32267 "$app_content" "$tags_json"
+}
+
+blog_nostr_sign_marketplace_product_event() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=${2-}
+  page_event_json=${3-}
+  app_event_json=${4-}
+  [ -n "$slug" ] || return 1
+  [ -n "$state_json" ] || return 1
+  page_ref=$(blog_nostr_event_address_from_json "$page_event_json" 2>/dev/null || printf '')
+  app_ref=$(blog_nostr_event_address_from_json "$app_event_json" 2>/dev/null || printf '')
+  page_url=$(blog_nostr_page_public_url "$slug" 2>/dev/null || printf '')
+  content=$(printf '%s\n' "$state_json" | jq -c \
+    --arg slug "$slug" \
+    --arg page_ref "$page_ref" \
+    --arg app_ref "$app_ref" \
+    --arg page_url "$page_url" \
+    '
+      (.title // $slug) as $title
+      | (.content // "") as $description
+      | (.currency // "USD") as $currency
+      | ((.price // "0") | tonumber? // 0) as $price
+      | {
+          id: $slug,
+          stall_id: "software",
+          name: ($title|tostring),
+          description: ($description|tostring),
+          images: [],
+          currency: ($currency|tostring),
+          price: $price,
+          quantity: null,
+          specs: (
+            []
+            + [["type", ((.product_type // "software")|tostring)]]
+            + (if (($page_url|length)>0) then [["url", $page_url]] else [] end)
+            + (if (($page_ref|length)>0) then [["nostr_page", $page_ref]] else [] end)
+            + (if (($app_ref|length)>0) then [["nostr_app", $app_ref]] else [] end)
+          ),
+          shipping: [{id: "digital", cost: 0}]
+        }
+    ' 2>/dev/null || printf '')
+  [ -n "$content" ] || return 1
+  tags_json=$(jq -cn \
+    --arg slug "$slug" \
+    --arg page_ref "$page_ref" \
+    --arg app_ref "$app_ref" \
+    '[
+      ["d", $slug],
+      ["t", "software"],
+      ["t", "digital"],
+      (if ($page_ref|length)>0 then ["a", $page_ref] else empty end),
+      (if ($app_ref|length)>0 then ["a", $app_ref] else empty end)
+    ]')
+  blog_nostr_sign_event_with_tags 30018 "$content" "$tags_json"
+}
+
+blog_nostr_sign_product_backing_events_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=${2-}
+  page_event_json=${3-}
+  [ -n "$slug" ] || return 1
+  product_enabled=$(printf '%s\n' "$state_json" | jq -r '.product_enabled // false' 2>/dev/null || printf 'false')
+  price=$(printf '%s\n' "$state_json" | jq -r '.price // ""' 2>/dev/null || printf '')
+  product_type=$(printf '%s\n' "$state_json" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')
+  if [ "$product_enabled" != "true" ] && [ -z "$price" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  if [ "$product_type" != "software" ]; then
+    printf '[]\n'
+    return 0
+  fi
+  currency=$(printf '%s\n' "$state_json" | jq -r '.currency // "USD"' 2>/dev/null || printf 'USD')
+  stall_event=$(blog_nostr_sign_software_stall_event "$currency" 2>/dev/null || printf '')
+  [ -n "$stall_event" ] || return 1
+  app_event=$(blog_nostr_sign_software_app_event "$slug" "$state_json" "$page_event_json" 2>/dev/null || printf '')
+  [ -n "$app_event" ] || return 1
+  product_event=$(blog_nostr_sign_marketplace_product_event "$slug" "$state_json" "$page_event_json" "$app_event" 2>/dev/null || printf '')
+  [ -n "$product_event" ] || return 1
+  jq -cn --argjson stall "$stall_event" --argjson app "$app_event" --argjson product "$product_event" '[$stall, $app, $product]'
+}
+
+blog_nostr_backing_audit_json() {
+  cfg_json=$(blog_nostr_pages_load_json)
+  findings_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-audit-findings.XXXXXX")
+  pages_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-audit-pages.XXXXXX")
+  : > "$findings_tmp"
+  : > "$pages_tmp"
+
+  printf '%s\n' "$cfg_json" | jq -c '.pages[]?' 2>/dev/null | while IFS= read -r page || [ -n "$page" ]; do
+    [ -n "$page" ] || continue
+    slug=$(printf '%s\n' "$page" | jq -r '.slug // ""' 2>/dev/null || printf '')
+    page_type=$(printf '%s\n' "$page" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+    expected_kind=$(blog_nostr_page_kind_for_type "$page_type" 2>/dev/null || printf '30004')
+    canonical_event=''
+    case "$page_type" in
+      contact)
+        canonical_event=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+        ;;
+      public-ranking)
+        canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
+        ;;
+      nip23|blog|overworld)
+        canonical_event=$(blog_nostr_latest_event_by_kind_d 30023 "$slug" 2>/dev/null || printf '')
+        ;;
+      software-gallery)
+        canonical_event=$(blog_nostr_latest_event_by_kind_d 30267 "$slug" 2>/dev/null || printf '')
+        ;;
+      *)
+        canonical_event=$(blog_nostr_latest_event_by_kind_d 30004 "$slug" 2>/dev/null || printf '')
+        ;;
+    esac
+    canonical_exists=false
+    event_id=''
+    event_kind=''
+    if [ -n "$canonical_event" ]; then
+      canonical_exists=true
+      event_id=$(printf '%s\n' "$canonical_event" | jq -r '.id // ""' 2>/dev/null || printf '')
+      event_kind=$(printf '%s\n' "$canonical_event" | jq -r '.kind // ""' 2>/dev/null || printf '')
+    else
+      printf 'Page %s has no canonical kind %s backing event\n' "$slug" "$expected_kind" >> "$findings_tmp"
+    fi
+
+    product_backing='null'
+    if [ -n "$canonical_event" ] && { [ "$page_type" = "nip23" ] || [ "$page_type" = "blog" ]; }; then
+      state_json=$(blog_nip23_state_from_event_json "$slug" "$canonical_event" "$page_type" 2>/dev/null || printf '')
+      if [ -n "$state_json" ]; then
+        product_enabled=$(printf '%s\n' "$state_json" | jq -r '.product_enabled // false' 2>/dev/null || printf 'false')
+        product_type=$(printf '%s\n' "$state_json" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')
+        if [ "$product_enabled" = "true" ] && [ "$product_type" = "software" ]; then
+          app_id=$(blog_nostr_software_app_id "$slug" 2>/dev/null || printf '')
+          app_event=$(blog_nostr_latest_event_by_kind_d 32267 "$app_id" 2>/dev/null || printf '')
+          product_event=$(blog_nostr_latest_event_by_kind_d 30018 "$slug" 2>/dev/null || printf '')
+          stall_event=$(blog_nostr_latest_event_by_kind_d 30017 software 2>/dev/null || printf '')
+          [ -n "$app_event" ] || printf 'Product page %s is missing kind 32267 app metadata\n' "$slug" >> "$findings_tmp"
+          [ -n "$product_event" ] || printf 'Product page %s is missing kind 30018 marketplace product\n' "$slug" >> "$findings_tmp"
+          [ -n "$stall_event" ] || printf 'Product page %s is missing kind 30017 software stall\n' "$slug" >> "$findings_tmp"
+          product_backing=$(jq -cn \
+            --arg app_id "$app_id" \
+            --argjson has_app "$( [ -n "$app_event" ] && printf true || printf false )" \
+            --argjson has_product "$( [ -n "$product_event" ] && printf true || printf false )" \
+            --argjson has_stall "$( [ -n "$stall_event" ] && printf true || printf false )" \
+            '{app_id:$app_id, has_32267:$has_app, has_30018:$has_product, has_30017:$has_stall}')
+        fi
+      fi
+    fi
+
+    jq -cn \
+      --arg slug "$slug" \
+      --arg page_type "$page_type" \
+      --argjson expected_kind "$expected_kind" \
+      --arg event_kind "$event_kind" \
+      --arg event_id "$event_id" \
+      --argjson canonical_exists "$canonical_exists" \
+      --argjson product_backing "$product_backing" \
+      '{slug:$slug,type:$page_type,expected_kind:$expected_kind,canonical_exists:$canonical_exists,event_kind:($event_kind|tonumber? // null),event_id:$event_id,product_backing:$product_backing}' >> "$pages_tmp"
+  done
+
+  pages_json='[]'
+  if [ -s "$pages_tmp" ]; then
+    pages_json=$(jq -s '.' "$pages_tmp" 2>/dev/null || printf '[]')
+  fi
+  findings_json='[]'
+  if [ -s "$findings_tmp" ]; then
+    findings_json=$(awk 'NF' "$findings_tmp" | jq -R . | jq -s '.' 2>/dev/null || printf '[]')
+  fi
+  rm -f "$findings_tmp" "$pages_tmp"
+  jq -cn --argjson pages "$pages_json" --argjson findings "$findings_json" '{
+    success: true,
+    pages: $pages,
+    findings: $findings,
+    can_publish_cleanly: (($findings | length) == 0)
+  }'
 }
 
 blog_contact_default_state_json() {
@@ -2064,7 +2617,7 @@ blog_nostr_page_template_is_current() {
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
       grep -q "/static/list-page.js?v=$blog_nostr_list_page_js_version" "$file" 2>/dev/null
       ;;
-    icon-gallery)
+    icon-gallery|software-gallery)
       grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="list-page-content"' "$file" 2>/dev/null &&
@@ -2239,7 +2792,7 @@ license: "CC BY 4.0"
 <script src="/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version"></script>
 <script src="/static/simplex-web-session-store.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/video-chat-widget.js?v=20260525-permission-gate1" data-video-chat-widget="1"></script>
+<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>
 <script src="/static/contact-page.js?v=$blog_nostr_contact_page_js_version"></script>
 EOCONTACT
       ;;
@@ -2387,19 +2940,19 @@ license: "CC BY 4.0"
 <script src="/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version"></script>
 EOOVERWORLD
       ;;
-    icon-gallery)
+    icon-gallery|software-gallery)
       cat > "$page_file" <<EOICONGALLERY
 ---
 title: "$page_title"
 published_at: "$(blog_now_iso)"
 content_hash: ""
-tags: ["nostr", "list", "icon-gallery"]
+tags: ["nostr", "list", "$page_type"]
 author: "author"
 visibility: "public"
 license: "CC BY 4.0"
 ---
 
-<section id="icon-gallery-root" class="list-page-shell icon-gallery-shell" data-list-slug="$slug" data-list-title="$page_title" data-page-type="icon-gallery">
+<section id="icon-gallery-root" class="list-page-shell icon-gallery-shell" data-list-slug="$slug" data-list-title="$page_title" data-page-type="$page_type">
 <div class="list-page-head">
 <h1 id="list-page-title">$page_title</h1>
 <p id="list-page-description" class="muted"></p>

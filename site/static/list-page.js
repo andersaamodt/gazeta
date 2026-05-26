@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var root = document.querySelector('[data-page-type="list"], [data-page-type="icon-gallery"]') ||
+  var root = document.querySelector('[data-page-type="list"], [data-page-type="icon-gallery"], [data-page-type="software-gallery"]') ||
     document.getElementById('list-page-root') ||
     document.getElementById('icon-gallery-root');
   if (!root) {
@@ -101,6 +101,8 @@
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeTimer = 0;
   var markedUpgradeAttempts = 0;
+  var authRefreshPollTimer = 0;
+  var authRefreshPollStartedAt = 0;
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -115,7 +117,13 @@
 
   function authSignature() {
     var auth = getAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+    var adminHint = '';
+    try {
+      adminHint = String(localStorage.getItem('last_auth_is_admin') || '');
+    } catch (_err) {
+      adminHint = '';
+    }
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + adminHint;
   }
 
   function compact(text) {
@@ -223,7 +231,7 @@
     }
     var payloadSlug = String(payload.slug || '').trim();
     var payloadType = String(payload.page_type || '').trim().toLowerCase();
-    return payloadSlug === slug && (payloadType === 'list' || payloadType === 'icon-gallery');
+    return payloadSlug === slug && (payloadType === 'list' || payloadType === 'icon-gallery' || payloadType === 'software-gallery');
   }
 
   function readBootstrapCache() {
@@ -300,6 +308,13 @@
 	      node.getAttribute('data-prerender-signature') === signature;
 	  }
 
+	  function canPreserveStaticPrerender(payload) {
+	    if (!payload || typeof payload !== 'object') {
+	      return false;
+	    }
+	    return !payload.is_admin && !hasLikelyAuthenticatedSession();
+	  }
+
 	  function renderFromBootstrapPayload(payload) {
     if (!payload || typeof payload !== 'object' || !isExpectedPayload(payload)) {
       return false;
@@ -346,7 +361,9 @@
 	      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
 	      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
 	    });
-	    if (hasMatchingStaticPrerender(cachedPayload, els.content)) {
+	    if (canPreserveStaticPrerender(cachedPayload) && hasMatchingStaticPrerender(cachedPayload, els.content)) {
+	      initializePrerenderMarkerFiltersFromPayload();
+	      renderHead();
 	      renderAdmin();
 	      renderValidation();
 	      markInitialContentPainted();
@@ -409,6 +426,25 @@
     state.authSignature = nextSig;
     applyOptimisticAdminFromAuthEvent(event);
     load();
+  }
+
+  function startAuthRefreshPoll() {
+    if (authRefreshPollTimer) {
+      return;
+    }
+    authRefreshPollStartedAt = Date.now();
+    authRefreshPollTimer = window.setInterval(function () {
+      if (Date.now() - authRefreshPollStartedAt > 15000) {
+        window.clearInterval(authRefreshPollTimer);
+        authRefreshPollTimer = 0;
+        return;
+      }
+      maybeReloadForAuthChange();
+      if (isAdmin()) {
+        window.clearInterval(authRefreshPollTimer);
+        authRefreshPollTimer = 0;
+      }
+    }, 500);
   }
 
   function getAuthPayload() {
@@ -563,7 +599,7 @@
   }
 
   function isProductGalleryPage() {
-    return currentPageType() === 'icon-gallery';
+    return currentPageType() === 'icon-gallery' || currentPageType() === 'software-gallery';
   }
 
   function isPlainListPage() {
@@ -950,9 +986,14 @@
       list_latest_vote_created_at: Number(raw && raw.list_latest_vote_created_at || 0) || 0,
       viewer_vote: Number(raw && raw.viewer_vote || 0) || 0,
       viewer_vote_created_at: Number(raw && raw.viewer_vote_created_at || 0) || 0,
+      viewer_vote_event_id: String(raw && raw.viewer_vote_event_id || ''),
+      viewer_vote_epoch: Number(raw && raw.viewer_vote_epoch || 0) || 0,
       viewer_vote_total: Number(raw && raw.viewer_vote_total || 0) || 0,
       viewer_next_vote_at: Number(raw && raw.viewer_next_vote_at || 0) || 0,
       viewer_can_vote_now: raw && raw.viewer_can_vote_now === false ? false : true,
+      viewer_can_change_vote: raw && raw.viewer_can_change_vote === true,
+      vote_context: String(raw && raw.vote_context || ''),
+      vote_epoch: Number(raw && raw.vote_epoch || 0) || 0,
       vote_cooldown_seconds: Number(raw && raw.vote_cooldown_seconds || 64800) || 64800
     };
   }
@@ -1342,6 +1383,25 @@
     return source.filter(function (_entry, idx) {
       return !!keepRows[idx];
     });
+  }
+
+  function initializePrerenderMarkerFiltersFromPayload() {
+    var s = getRenderState();
+    if (!s || !s.show_marker_filters) {
+      state.markerFilterInclude = [];
+      state.markerFilterExclude = [];
+      state.markerFilterInitialized = false;
+      return;
+    }
+    var entries = (Array.isArray(s.elements) ? s.elements : []).filter(function (el) {
+      return isEntryType(String(el && el.type || 'entry'));
+    });
+    buildMarkerColorMap(entries);
+    var markers = uniqueMarkerValues(entries).slice().sort(function (a, b) {
+      return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    });
+    ensureDefaultMarkerFilters(markers, s.default_markers);
+    pruneMarkerFilters(markers);
   }
 
   function markerFilterTooltipText() {
@@ -1950,9 +2010,33 @@
     return null;
   }
 
-  function applyOptimisticListVote(entryId, value) {
-    var voteValue = Number(value || 0) < 0 ? -1 : 1;
+  function applyListVoteToElements(elements, entryId, value) {
+    var requestedValue = Number(value || 0) < 0 ? -1 : (Number(value || 0) > 0 ? 1 : 0);
     var nowSeconds = Math.floor(Date.now() / 1000);
+    var changed = false;
+    var entry = findListEntryByPublicId(elements, entryId);
+    if (entry) {
+      var cooldownSeconds = Number(entry.vote_cooldown_seconds || 64800) || 64800;
+      var currentEpoch = Math.floor(nowSeconds / cooldownSeconds) * cooldownSeconds;
+      var previousValue = Number(entry.viewer_vote_epoch || 0) === currentEpoch ? (Number(entry.viewer_vote || 0) || 0) : 0;
+      var voteValue = requestedValue;
+      entry.list_score = (Number(entry.list_score || 0) || 0) - previousValue + voteValue;
+      entry.list_latest_vote = voteValue;
+      entry.list_latest_vote_created_at = nowSeconds;
+      entry.viewer_vote = voteValue;
+      entry.viewer_vote_created_at = nowSeconds;
+      entry.viewer_vote_epoch = currentEpoch;
+      entry.viewer_vote_total = Math.max(0, (Number(entry.viewer_vote_total || 0) || 0) + (previousValue === 0 && voteValue !== 0 ? 1 : 0));
+      entry.viewer_next_vote_at = currentEpoch + cooldownSeconds;
+      entry.viewer_can_vote_now = false;
+      entry.viewer_can_change_vote = true;
+      entry.vote_epoch = currentEpoch;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function applyOptimisticListVote(entryId, value) {
     var changed = false;
     var sources = [];
     if (state.payload && state.payload.state && Array.isArray(state.payload.state.elements)) {
@@ -1962,25 +2046,43 @@
       sources.push(state.draft.elements);
     }
     sources.forEach(function (elements) {
-      var entry = findListEntryByPublicId(elements, entryId);
-      if (!entry) {
-        return;
+      if (applyListVoteToElements(elements, entryId, value)) {
+        changed = true;
       }
-      var cooldownSeconds = Number(entry.vote_cooldown_seconds || 64800) || 64800;
-      entry.list_score = (Number(entry.list_score || 0) || 0) + voteValue;
-      entry.list_latest_vote = voteValue;
-      entry.list_latest_vote_created_at = nowSeconds;
-      entry.viewer_vote = voteValue;
-      entry.viewer_vote_created_at = nowSeconds;
-      entry.viewer_vote_total = (Number(entry.viewer_vote_total || 0) || 0) + 1;
-      entry.viewer_next_vote_at = nowSeconds + cooldownSeconds;
-      entry.viewer_can_vote_now = false;
-      changed = true;
     });
     if (changed && state.payload) {
       writeBootstrapCache(state.payload);
     }
     return changed;
+  }
+
+  function mergeOptimisticListVoteIntoResponse(data, entryId, value) {
+    if (!data || !data.state) {
+      return data;
+    }
+    if (Array.isArray(data.state.elements)) {
+      applyListVoteToElements(data.state.elements, entryId, value);
+    }
+    if (Array.isArray(data.state.entries)) {
+      applyListVoteToElements(data.state.entries, entryId, value);
+    }
+    return data;
+  }
+
+  function mergePublicEntryEditIntoResponse(data, entryId, fields) {
+    if (!data || !data.state || !entryId || !fields) {
+      return data;
+    }
+    [data.state.elements, data.state.entries].forEach(function (items) {
+      var entry = findListEntryByPublicId(items, entryId);
+      if (!entry) {
+        return;
+      }
+      Object.keys(fields).forEach(function (key) {
+        entry[key] = fields[key];
+      });
+    });
+    return data;
   }
 
   function restoreListVoteSnapshot(snapshot, beforeRects) {
@@ -2055,6 +2157,110 @@
     }, 5200);
   }
 
+  function findListEntryForVote(entryId) {
+    var sources = [];
+    if (state.payload && state.payload.state && Array.isArray(state.payload.state.elements)) {
+      sources.push(state.payload.state.elements);
+    }
+    if (state.draft && Array.isArray(state.draft.elements)) {
+      sources.push(state.draft.elements);
+    }
+    for (var i = 0; i < sources.length; i += 1) {
+      var entry = findListEntryByPublicId(sources[i], entryId);
+      if (entry) return entry;
+    }
+    return null;
+  }
+
+  function normalizeVoteEventContent(value) {
+    var voteValue = Number(value || 0) || 0;
+    if (voteValue > 0) return '+';
+    if (voteValue < 0) return '-';
+    return '0';
+  }
+
+  function listVotesAreUpvoteOnly() {
+    return slug === 'reading-list';
+  }
+
+  async function sha256Hex(text) {
+    var value = String(text || '');
+    if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+      var encoded = new TextEncoder().encode(value);
+      var digest = await window.crypto.subtle.digest('SHA-256', encoded);
+      return Array.prototype.map.call(new Uint8Array(digest), function (byte) {
+        return byte.toString(16).padStart(2, '0');
+      }).join('');
+    }
+    var hash = 0;
+    for (var i = 0; i < value.length; i += 1) {
+      hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+    }
+    return 'legacy-' + Math.abs(hash).toString(16);
+  }
+
+  async function voteTargetTagsForEntry(entry, entryId) {
+    var tags = [];
+    var eventId = String(entry && entry.event_id || '').trim().toLowerCase();
+    var relayHint = String(entry && entry.relay_hint || '').trim();
+    var postUrl = String(entry && entry.post_url || '').trim();
+    if (/^[0-9a-f]{64}$/.test(eventId)) {
+      tags.push(relayHint ? ['e', eventId, relayHint] : ['e', eventId]);
+      return { kind: 7, tags: tags };
+    }
+    if (postUrl) {
+      tags.push(['k', 'web']);
+      tags.push(['i', postUrl]);
+      return { kind: 17, tags: tags };
+    }
+    tags.push(['k', 'text']);
+    tags.push(['i', 'sha256:' + await sha256Hex(String(entry && entry.markdown || entryId || ''))]);
+    return { kind: 17, tags: tags };
+  }
+
+  async function buildSignedListVoteEvent(entryId, value) {
+    var signer = window.blogNostrSigner;
+    if (!signer || typeof signer.signEvent !== 'function') {
+      throw new Error('Connect a Nostr signer to vote.');
+    }
+    var entry = findListEntryForVote(entryId);
+    if (!entry) {
+      throw new Error('Entry is not available for voting.');
+    }
+    var target = await voteTargetTagsForEntry(entry, entryId);
+    var nowSeconds = Math.floor(Date.now() / 1000);
+    var cooldownSeconds = Number(entry.vote_cooldown_seconds || 64800) || 64800;
+    var voteEpoch = Math.floor(nowSeconds / cooldownSeconds) * cooldownSeconds;
+    var context = String(entry.vote_context || '');
+    if (!context) {
+      throw new Error('This list is missing its Nostr vote context.');
+    }
+    var tags = target.tags.slice();
+    tags.push(['context', context]);
+    tags.push(['entry', String(entryId || '')]);
+    tags.push(['vote_epoch', String(voteEpoch)]);
+    tags.push(['client', 'gazeta']);
+    return signer.signEvent({
+      kind: target.kind,
+      created_at: nowSeconds,
+      content: normalizeVoteEventContent(value),
+      tags: tags
+    });
+  }
+
+  async function buildSignedVoteDeleteEvent(voteEventId) {
+    var eventId = String(voteEventId || '').trim();
+    if (!/^[0-9a-f]{64}$/i.test(eventId) || !window.blogNostrSigner || typeof window.blogNostrSigner.signEvent !== 'function') {
+      return null;
+    }
+    return window.blogNostrSigner.signEvent({
+      kind: 5,
+      created_at: Math.floor(Date.now() / 1000),
+      content: 'Cleared list vote',
+      tags: [['e', eventId]]
+    });
+  }
+
   async function submitPublicListEntry() {
     if (state.publicSubmitBusy) {
       return;
@@ -2089,7 +2295,7 @@
       });
       state.publicSubmitBusy = false;
       input.value = '';
-      refreshListPayloadFromResponse(data);
+      refreshListPayloadFromResponse(mergeOptimisticListVoteIntoResponse(data, entryId, nextValue), beforeRects);
       focusPublicSubmitInput();
     } catch (err) {
       setPublicSubmitBusy(false);
@@ -2139,9 +2345,24 @@
       showVoteErrorToast('Sign in first to vote.');
       return;
     }
+    var entry = findListEntryForVote(entryId);
+    var requestedValue = listVotesAreUpvoteOnly() ? 1 : (Number(value || 0) < 0 ? -1 : 1);
+    var previousValue = Number(entry && entry.viewer_vote || 0) || 0;
+    var nextValue = previousValue === requestedValue ? 0 : requestedValue;
     var beforeRects = captureEntryRects();
     var rollbackPayload = clonePayloadForRollback(state.payload);
-    var optimisticallyChanged = applyOptimisticListVote(entryId, value);
+    var voteEvent = null;
+    var deleteEvent = null;
+    try {
+      voteEvent = await buildSignedListVoteEvent(entryId, nextValue);
+      if (nextValue === 0) {
+        deleteEvent = await buildSignedVoteDeleteEvent(entry && entry.viewer_vote_event_id || '');
+      }
+    } catch (err) {
+      showVoteErrorToast(err && err.message ? err.message : 'Could not sign vote');
+      return;
+    }
+    var optimisticallyChanged = applyOptimisticListVote(entryId, nextValue);
     if (optimisticallyChanged) {
       renderListWithFlip(beforeRects);
     }
@@ -2149,7 +2370,9 @@
       var data = await apiPost('/cgi/blog-submit-list-vote', {
         page_slug: slug,
         entry_id: entryId,
-        value: value,
+        value: nextValue,
+        event_json: JSON.stringify(voteEvent),
+        delete_event_json: deleteEvent ? JSON.stringify(deleteEvent) : '',
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
@@ -2181,6 +2404,13 @@
     }
     var entryId = String(entry._public_entry_id || '');
     var markdown = String(entry.markdown || '').trim();
+    var editedFields = {
+      markdown: markdown,
+      marker: String(entry.marker || ''),
+      date: String(entry.date || ''),
+      post_url: String(entry.post_url || ''),
+      description: String(entry.description || '')
+    };
     if (!markdown) {
       window.alert('Entry text is required.');
       focusInlineField(uid, 'markdown');
@@ -2195,15 +2425,15 @@
       var data = await apiPost('/cgi/blog-update-list-entry', {
         page_slug: slug,
         entry_id: entryId,
-        markdown: markdown,
-        marker: String(entry.marker || ''),
-        date: String(entry.date || ''),
-        post_url: String(entry.post_url || ''),
-        description: String(entry.description || ''),
+        markdown: editedFields.markdown,
+        marker: editedFields.marker,
+        date: editedFields.date,
+        post_url: editedFields.post_url,
+        description: editedFields.description,
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshListPayloadFromResponse(data);
+      refreshListPayloadFromResponse(mergePublicEntryEditIntoResponse(data, entryId, editedFields));
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error', err && err.message ? err.message : 'Could not update entry');
@@ -2792,10 +3022,11 @@
       var upvoteClass = 'list-entry-vote-btn is-upvote' + (signedIn && viewerVote > 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
       var downvoteClass = 'list-entry-vote-btn is-downvote' + (signedIn && viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
       var voteTitle = voteTooltipText(entry, signedIn);
-      voteControls = '<span class="list-entry-vote-controls" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score" title="' + escapeHtml(voteTitle) + '">' +
+      var upvoteOnly = listVotesAreUpvoteOnly();
+      voteControls = '<span class="list-entry-vote-controls' + (upvoteOnly ? ' is-upvote-only' : '') + '" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score" title="' + escapeHtml(voteTitle) + '">' +
         '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
         '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
-        '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>' +
+        (upvoteOnly ? '' : '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>') +
       '</span>';
     }
     var canEditReadRow = !!(isAdmin() && !state.editMode && rowUid);
@@ -3250,7 +3481,7 @@
     var showMarkerFiltersTip = 'Show clickable marker pills for filtering.';
     var defaultMarkersTip = 'Comma-delimited markers preselected on page load for all users. Filter changes reset on refresh.';
     var allowSubmissionsTip = 'Allow signed-in users to add entries from the public list view.';
-    var allowVotesTip = 'Allow signed-in users to upvote and downvote list entries.';
+    var allowVotesTip = 'Allow signed-in users to vote on list entries.';
     html += '<section class="nostr-page-settings-panel' + (revealSettings ? ' is-entering' : '') + '" aria-label="Page settings">';
     html += '<h3 class="nostr-page-settings-title">Page Settings</h3>';
     html += '<div class="list-inline-toolbar">';
@@ -3278,6 +3509,7 @@
 
     if (!entryElements.length) {
       html += '<div class="list-inline-empty">No entries yet.</div>';
+      html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
       html += renderAfterContentEditor();
       return html;
     }
@@ -4930,16 +5162,17 @@
           setSaveStatus('saved');
           state.renderSignature = nextRenderSignature;
           writeBootstrapCache(state.payload);
-          if (shouldRepaint) {
-            renderList();
-            renderAdmin();
-            renderValidation();
-            markInitialContentPainted();
-          } else {
-            renderHead();
-            renderAdmin();
-            renderValidation();
-          }
+	          if (shouldRepaint) {
+	            renderList();
+	            renderAdmin();
+	            renderValidation();
+	            markInitialContentPainted();
+	          } else {
+	            initializePrerenderMarkerFiltersFromPayload();
+	            renderHead();
+	            renderAdmin();
+	            renderValidation();
+	          }
           return;
         } catch (err) {
           lastErr = err;
@@ -5029,5 +5262,6 @@
   if (!renderFromBootstrapCache()) {
     renderFromPrerenderBootstrap();
   }
+  startAuthRefreshPoll();
   load();
 })();

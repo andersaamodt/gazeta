@@ -21,7 +21,7 @@
 
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
-  var secureChatSimplexXftpUrl = 'https://new.andersaamodt.com:18443/';
+  var secureChatSimplexXftpUrl = 'https://andersaamodt.com:18443/';
   var secureChatSimplexXftpKeyHash = 'R-xa4iaMWHaCAK8iMzmJKFtODWn-nSw1FSl3ycoqDXQ=';
   var secureChatEmojiPickerModuleUrl = 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
   var secureChatEmojiPickerLoadPromise = null;
@@ -29,8 +29,7 @@
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
   var secureChatRecentEmojiLimit = 32;
-  var videoChatWidgetBuildVersion = '20260525-permission-gate1';
-  var videoChatUnavailableText = 'Calling unavailable';
+  var videoChatWidgetBuildVersion = '20260525-soft-actions2';
   var secureChatEmojiSectionDefs = [
     { id: 'recent', label: 'Recently Used', group: null },
     { id: 'smileys-emotion', label: 'Smileys & Emotion', pickerLabel: 'Smileys and emoticons', group: 0 },
@@ -208,7 +207,15 @@
   }
 
   function videoChatUnavailableHtml() {
-    return '<p class="video-chat-unavailable" role="status">' + escapeHtml(videoChatUnavailableText) + '</p>';
+    return '' +
+      '<div class="video-chat-loading-mockup" role="status" aria-label="Loading call controls">' +
+        '<p class="video-chat-loading-copy">Ready. Choose voice or video.</p>' +
+        '<div class="video-chat-loading-actions">' +
+          '<button type="button" disabled aria-disabled="true">Voice</button>' +
+          '<button type="button" disabled aria-disabled="true">Video</button>' +
+        '</div>' +
+        '<button type="button" disabled aria-disabled="true">Invite Link...</button>' +
+      '</div>';
   }
 
   function markVideoChatUnavailable(rootNode) {
@@ -218,7 +225,7 @@
       if (!host || host.shadowRoot || host.getAttribute('data-video-chat-mounted')) {
         return;
       }
-      if (!host.querySelector || !host.querySelector('.video-chat-unavailable')) {
+      if (!host.querySelector || !host.querySelector('.video-chat-loading-mockup')) {
         host.innerHTML = videoChatUnavailableHtml();
       }
     });
