@@ -462,6 +462,11 @@ strong {
 #nip23-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
 #public-ranking-title:has(.list-page-title-actions) .list-page-title-text,
 #public-ranking-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+  color: var(--heading-color);
+  background: var(--heading-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--heading-fill);
   border-bottom: 0;
   border-image: none;
   position: relative;

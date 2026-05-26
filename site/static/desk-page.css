@@ -14,24 +14,39 @@
   --desk-shadow: 0 18px 54px rgba(0, 0, 0, 0.34);
 }
 
+body.desk-page-body,
 body:has(#desk-page-root) {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   background:
     radial-gradient(circle at 20% 0%, rgba(20, 78, 183, 0.2), transparent 28rem),
     linear-gradient(135deg, #031433 0%, #061c49 42%, #092a65 100%);
   color: var(--desk-ink);
 }
 
+body.desk-page-body .skip-link,
 body:has(#desk-page-root) .skip-link,
+body.desk-page-body nav.site-nav .nav-site-signature,
 body:has(#desk-page-root) nav.site-nav .nav-site-signature,
+body.desk-page-body nav.site-nav .nav-center,
 body:has(#desk-page-root) nav.site-nav .nav-center,
+body.desk-page-body nav.site-nav .nav-search,
 body:has(#desk-page-root) nav.site-nav .nav-search,
+body.desk-page-body nav.site-nav .nav-compose-tools,
 body:has(#desk-page-root) nav.site-nav .nav-compose-tools,
+body.desk-page-body nav.site-nav .nav-cart-toggle,
 body:has(#desk-page-root) nav.site-nav .nav-cart-toggle,
+body.desk-page-body nav.site-nav .nav-username,
 body:has(#desk-page-root) nav.site-nav .nav-username,
+body.desk-page-body footer.site-footer,
 body:has(#desk-page-root) footer.site-footer {
   display: none !important;
 }
 
+body.desk-page-body nav.site-nav,
 body:has(#desk-page-root) nav.site-nav {
   position: fixed !important;
   top: max(0.75rem, env(safe-area-inset-top)) !important;
@@ -49,6 +64,7 @@ body:has(#desk-page-root) nav.site-nav {
   backdrop-filter: none !important;
 }
 
+body.desk-page-body nav.site-nav > .nav-right,
 body:has(#desk-page-root) nav.site-nav > .nav-right {
   display: flex !important;
   align-items: center !important;
@@ -66,13 +82,17 @@ body:has(#desk-page-root) nav.site-nav > .nav-right {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26) !important;
 }
 
+body.desk-page-body nav.site-nav .nav-login-split,
 body:has(#desk-page-root) nav.site-nav .nav-login-split,
+body.desk-page-body nav.site-nav .nav-user-menu,
 body:has(#desk-page-root) nav.site-nav .nav-user-menu {
   width: fit-content !important;
   margin: 0 !important;
 }
 
+body.desk-page-body nav.site-nav .btn-login,
 body:has(#desk-page-root) nav.site-nav .btn-login,
+body.desk-page-body nav.site-nav .nav-menu-btn,
 body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   border-color: rgba(240, 213, 138, 0.4) !important;
   background: rgba(240, 213, 138, 0.1) !important;
@@ -80,15 +100,21 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   box-shadow: none !important;
 }
 
+body.desk-page-body nav.site-nav .btn-login:hover,
 body:has(#desk-page-root) nav.site-nav .btn-login:hover,
+body.desk-page-body nav.site-nav .btn-login:focus-visible,
 body:has(#desk-page-root) nav.site-nav .btn-login:focus-visible,
+body.desk-page-body nav.site-nav .nav-menu-btn:hover,
 body:has(#desk-page-root) nav.site-nav .nav-menu-btn:hover,
+body.desk-page-body nav.site-nav .nav-menu-btn:focus-visible,
 body:has(#desk-page-root) nav.site-nav .nav-menu-btn:focus-visible {
   border-color: rgba(240, 213, 138, 0.72) !important;
   background: rgba(240, 213, 138, 0.18) !important;
 }
 
+body.desk-page-body nav.site-nav .nav-login-menu,
 body:has(#desk-page-root) nav.site-nav .nav-login-menu,
+body.desk-page-body nav.site-nav .nav-menu-panel,
 body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   right: 0 !important;
   left: auto !important;
@@ -99,9 +125,12 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-shell {
   position: relative;
-  max-width: 1160px;
-  margin: 0 auto;
-  padding: clamp(4.2rem, 7vw, 5.2rem) clamp(1rem, 2vw, 1.8rem) clamp(1rem, 2vw, 1.8rem);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(4.4rem, 6vw, 5.4rem) clamp(0.9rem, 2.2vw, 2.8rem) clamp(1rem, 2vw, 2.4rem);
   color: var(--desk-ink);
 }
 
@@ -290,8 +319,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-workbench {
   display: grid;
-  grid-template-columns: minmax(18rem, 0.82fr) minmax(0, 1.55fr);
-  gap: clamp(1rem, 2vw, 1.35rem);
+  grid-template-columns: minmax(20rem, 24vw) minmax(0, 1fr);
+  gap: clamp(1rem, 2vw, 2rem);
   align-items: start;
 }
 
@@ -618,7 +647,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 @media (max-width: 520px) {
   .desk-shell {
-    padding: 4.4rem 0.8rem 0.8rem;
+    padding: 4.4rem clamp(0.72rem, 3vw, 1rem) 0.9rem;
   }
 
   .desk-room-card-head,
