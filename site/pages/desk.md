@@ -2,7 +2,7 @@
 title: Desk
 ---
 
-<link rel="stylesheet" href="/static/desk-page.css?v=20260526-desk1">
+<link rel="stylesheet" href="/static/desk-page.css?v=20260526-desk-chrome1">
 
 <section id="desk-page-root" class="desk-shell" aria-live="polite">
   <div class="desk-loading">

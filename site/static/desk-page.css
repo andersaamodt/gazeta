@@ -21,11 +21,87 @@ body:has(#desk-page-root) {
   color: var(--desk-ink);
 }
 
+body:has(#desk-page-root) .skip-link,
+body:has(#desk-page-root) nav.site-nav .nav-site-signature,
+body:has(#desk-page-root) nav.site-nav .nav-center,
+body:has(#desk-page-root) nav.site-nav .nav-search,
+body:has(#desk-page-root) nav.site-nav .nav-compose-tools,
+body:has(#desk-page-root) nav.site-nav .nav-cart-toggle,
+body:has(#desk-page-root) nav.site-nav .nav-username,
+body:has(#desk-page-root) footer.site-footer {
+  display: none !important;
+}
+
+body:has(#desk-page-root) nav.site-nav {
+  position: fixed !important;
+  top: max(0.75rem, env(safe-area-inset-top)) !important;
+  right: max(0.75rem, env(safe-area-inset-right)) !important;
+  left: auto !important;
+  z-index: 80 !important;
+  width: fit-content !important;
+  max-width: calc(100vw - 1.5rem) !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+body:has(#desk-page-root) nav.site-nav > .nav-right {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0.28rem !important;
+  border: 1px solid rgba(240, 213, 138, 0.28) !important;
+  border-radius: 8px !important;
+  background:
+    linear-gradient(180deg, rgba(5, 25, 63, 0.92), rgba(3, 20, 51, 0.82)),
+    rgba(3, 20, 51, 0.86) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26) !important;
+}
+
+body:has(#desk-page-root) nav.site-nav .nav-login-split,
+body:has(#desk-page-root) nav.site-nav .nav-user-menu {
+  width: fit-content !important;
+  margin: 0 !important;
+}
+
+body:has(#desk-page-root) nav.site-nav .btn-login,
+body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
+  border-color: rgba(240, 213, 138, 0.4) !important;
+  background: rgba(240, 213, 138, 0.1) !important;
+  color: var(--desk-gold-soft) !important;
+  box-shadow: none !important;
+}
+
+body:has(#desk-page-root) nav.site-nav .btn-login:hover,
+body:has(#desk-page-root) nav.site-nav .btn-login:focus-visible,
+body:has(#desk-page-root) nav.site-nav .nav-menu-btn:hover,
+body:has(#desk-page-root) nav.site-nav .nav-menu-btn:focus-visible {
+  border-color: rgba(240, 213, 138, 0.72) !important;
+  background: rgba(240, 213, 138, 0.18) !important;
+}
+
+body:has(#desk-page-root) nav.site-nav .nav-login-menu,
+body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
+  right: 0 !important;
+  left: auto !important;
+  border-color: rgba(240, 213, 138, 0.32) !important;
+  background: rgba(3, 20, 51, 0.96) !important;
+  color: var(--desk-ink) !important;
+}
+
 .desk-shell {
   position: relative;
   max-width: 1160px;
   margin: 0 auto;
-  padding: clamp(1rem, 2vw, 1.8rem);
+  padding: clamp(4.2rem, 7vw, 5.2rem) clamp(1rem, 2vw, 1.8rem) clamp(1rem, 2vw, 1.8rem);
   color: var(--desk-ink);
 }
 
@@ -542,7 +618,7 @@ body:has(#desk-page-root) {
 
 @media (max-width: 520px) {
   .desk-shell {
-    padding: 0.8rem;
+    padding: 4.4rem 0.8rem 0.8rem;
   }
 
   .desk-room-card-head,

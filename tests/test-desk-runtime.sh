@@ -281,8 +281,12 @@ assert_jq "$migrate_json" '.success == true and .target == "sidecar" and .migrat
 assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.json" 'metadata sidecar mirrors xattr fields after migration'
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-chrome1' 'Desk page cache-busts private chrome stylesheet'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav .nav-center' 'Desk hides public navbar page links'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) footer.site-footer' 'Desk hides the public site footer'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav > .nav-right' 'Desk keeps shared auth controls as a top-right dock'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk frontend talks to private API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'restore-task' 'Desk frontend exposes task restore after completion'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk_visibility_threshold' 'Desk frontend exposes the surfacing threshold control'
