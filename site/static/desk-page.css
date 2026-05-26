@@ -36,29 +36,20 @@ body:has(#desk-page-root) {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     radial-gradient(circle at 78% 18%, rgba(215, 173, 77, 0.12), transparent 24rem),
     linear-gradient(145deg, rgba(3, 20, 51, 0.96), rgba(4, 33, 76, 0.92));
-  background-size: 7px 7px, 11px 11px, auto, auto;
 }
 
 .desk-shell[data-room-tone="1"]::before {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
     radial-gradient(circle at 72% 16%, rgba(35, 90, 73, 0.22), transparent 22rem),
     linear-gradient(145deg, #041838, #072b58 54%, #123f3a);
-  background-size: 7px 7px, 11px 11px, auto, auto;
 }
 
 .desk-shell[data-room-tone="2"]::before {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
     radial-gradient(circle at 76% 20%, rgba(215, 173, 77, 0.18), transparent 23rem),
     linear-gradient(145deg, #031433, #0b2d6d 58%, #2c315e);
-  background-size: 7px 7px, 11px 11px, auto, auto;
 }
 
 .desk-loading,
@@ -245,8 +236,6 @@ body:has(#desk-page-root) {
   top: 1rem;
   padding: 1rem;
   background:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.024) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 6px),
     linear-gradient(145deg, rgba(18, 70, 57, 0.96), rgba(12, 45, 67, 0.92));
 }
 
