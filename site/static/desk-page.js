@@ -11,6 +11,7 @@
     search: null,
     currentRoom: roomFromLocation(),
     mode: 'map',
+    createRoomOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
     inFlight: 0
@@ -416,9 +417,8 @@
         '</a>';
     }).join('');
     return '<section class="desk-mode-panel desk-map-panel" aria-label="Room map">' +
-      '<div class="desk-map-tools">' + renderCreateRoom(data) + '</div>' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
-      '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" role="img" aria-label="Top-down mansion map of Desk rooms">' +
+      '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
@@ -426,6 +426,8 @@
       connections + roomShapes +
       '</svg>' +
       '</div>' +
+      '<button type="button" class="desk-map-create-btn" data-desk-create-room-open aria-label="Create room">+</button>' +
+      (state.createRoomOpen ? renderCreateRoomModal(data) : '') +
       '</section>';
   }
 
@@ -556,6 +558,15 @@
       '<button type="submit" class="desk-btn subtle" aria-label="Create room">+</button>' +
       '</div>' +
       '</form>';
+  }
+
+  function renderCreateRoomModal(data) {
+    return '<div class="desk-modal-backdrop" data-desk-modal-backdrop>' +
+      '<div class="desk-modal" role="dialog" aria-modal="true" aria-label="Create room">' +
+      '<button type="button" class="desk-modal-close" data-desk-create-room-close aria-label="Close">×</button>' +
+      renderCreateRoom(data) +
+      '</div>' +
+      '</div>';
   }
 
   function renderOffice(data) {
@@ -753,6 +764,31 @@
     if (modeButton) {
       state.mode = modeButton.getAttribute('data-desk-mode') || 'map';
       state.search = null;
+      state.createRoomOpen = false;
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-create-room-open]')) {
+      state.createRoomOpen = true;
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-create-room-close]')) {
+      state.createRoomOpen = false;
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
+    if (event.target.matches('[data-desk-modal-backdrop]')) {
+      state.createRoomOpen = false;
       if (state.data) {
         render(state.data);
       }
@@ -857,6 +893,7 @@
         if (data && data.created_room) {
           state.currentRoom = data.created_room.path || '';
         }
+        state.createRoomOpen = false;
         refreshFrom(data);
       });
       return;
