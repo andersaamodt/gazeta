@@ -1374,6 +1374,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-single-item.blo
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'body:has(.post-single-item) nav.site-nav' 'single post navbar follows the post reading island width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: var(--blog-post-resizable-width, clamp(30rem, 92vw, 60rem)) !important;' 'single post navbar follows the saved post width when resizing is active'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'padding: 1.75rem 3.25rem 1.55rem;' 'single post island adds desktop padding without changing prose measure'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-item:hover,' 'post item islands reset hover surface effects'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.post-item:hover' 'Lapidarist theme does not define post item hover effects'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-single-item .post-single-body > hr::before' 'post markdown horizontal rules render as centered separator text'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-markdown > hr::before' 'NIP-23 markdown horizontal rules render as centered separator text'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'content: "***";' 'post markdown horizontal rules display centered asterisks'

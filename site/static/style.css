@@ -13240,6 +13240,22 @@ nav.site-nav {
     0 3px 10px rgba(15, 23, 42, 0.06) !important;
 }
 
+.post-item:hover,
+.post-item:focus,
+.post-item:focus-within {
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+
+.post-single-item:hover,
+.post-single-item:focus,
+.post-single-item:focus-within {
+  box-shadow:
+    0 22px 52px rgba(15, 23, 42, 0.13),
+    0 3px 10px rgba(15, 23, 42, 0.06) !important;
+}
+
 .post-list > .blog-post-item,
 .post-list > .blog-post-item:hover,
 .post-list > .blog-post-item:focus,
