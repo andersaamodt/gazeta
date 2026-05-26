@@ -346,9 +346,10 @@
 	    title.className = 'overworld-godot-title';
 	    title.textContent = 'Overworld';
 
-	    const copy = splashPanel.querySelector('.overworld-godot-copy') || document.createElement('p');
-	    copy.className = 'overworld-godot-copy';
-	    copy.textContent = 'The game loads a compressed Godot Web build before play starts.';
+	    const copy = splashPanel.querySelector('.overworld-godot-copy');
+	    if (copy) {
+	      copy.remove();
+	    }
 
 	    let downloadButton = splashPanel.querySelector('.overworld-godot-download');
 	    if (!(downloadButton instanceof HTMLButtonElement)) {
@@ -420,7 +421,6 @@
 
 	    ensureChild(splashPanel, kicker);
 	    ensureChild(splashPanel, title);
-	    ensureChild(splashPanel, copy);
 	    ensureChild(splashPanel, downloadButton);
 	    ensureChild(splash, splashPanel);
 	    if (!frameWrap.querySelector('.overworld-godot-frame')) {
