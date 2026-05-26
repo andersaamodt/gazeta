@@ -475,17 +475,22 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   right: clamp(0.85rem, 1.4vw, 1.2rem);
   bottom: clamp(0.85rem, 1.4vw, 1.2rem);
   z-index: 6;
+  display: grid;
+  place-items: center;
   width: 3.1rem;
   height: 3.1rem;
+  padding: 0;
   border: 1px solid rgba(255, 238, 169, 0.68);
   border-radius: 50%;
+  appearance: none;
   background: linear-gradient(180deg, var(--desk-gold-soft), var(--desk-gold));
   color: #10131f;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
   cursor: pointer;
-  font-size: 2rem;
+  font-size: 1.9rem;
   font-weight: 900;
   line-height: 1;
+  text-align: center;
 }
 
 .desk-map-create-btn:hover,

@@ -324,7 +324,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-move1' 'Desk page cache-busts room move and passage assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-create-circle1' 'Desk page cache-busts create-room circle assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -341,6 +341,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-mode-dock' 'De
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-scroll' 'Desk map has a viewport-filling map well'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'overflow: hidden;' 'Desk map fits without scrollbars'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-create-btn' 'Desk map create room control is a floating plus button'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'place-items: center;' 'Desk map create room plus is centered in its circle'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'appearance: none;' 'Desk map create room button avoids native offset styling'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-modal-backdrop' 'Desk create room form opens in a modal'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'grid-template-columns: minmax(0, 1fr) minmax(18rem, min(24rem, 32vw));' 'Desk checklist opens beside the map instead of covering it'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'desk-todo-slide-in' 'Desk checklist slides in from the right'
