@@ -3297,7 +3297,7 @@ body.nav-cart-open {
 .list-marker-filter-pill {
   width: fit-content;
   border-radius: 999px !important;
-  border: 1px solid hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) - 10%), calc(var(--marker-pill-l, 90%) - 20%)) !important;
+  border: 1px solid transparent !important;
   background: hsl(var(--marker-pill-h, 220), var(--marker-pill-s, 56%), var(--marker-pill-l, 90%)) !important;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
@@ -3313,12 +3313,17 @@ body.nav-cart-open {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), calc(var(--marker-pill-l, 90%) - 2%)) !important;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
-  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 2%), calc(var(--marker-pill-l, 90%) - 18%)) !important;
+  border-color: transparent !important;
 }
 
 .list-marker-filter-pill.is-include {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
-  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
   font-weight: 700 !important;
@@ -3327,14 +3332,23 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-include:hover:not(:disabled),
 .list-marker-filter-pill.is-include:focus-visible:not(:disabled) {
   background: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 10%), 79%) !important;
-  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 4%), 50%) !important;
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
 }
 
 .list-marker-filter-pill.is-exclude {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
-  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
+  border-width: 2px !important;
+  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) 72%, #d1362a 28%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
   font-weight: 700 !important;
@@ -3343,9 +3357,35 @@ body.nav-cart-open {
 .list-marker-filter-pill.is-exclude:hover:not(:disabled),
 .list-marker-filter-pill.is-exclude:focus-visible:not(:disabled) {
   background: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 14%), 80%) 42%, #ffb8b3 58%) !important;
-  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 6%), 52%) 36%, #a11b14 64%) !important;
+  border-width: 2px !important;
+  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) 72%, #d1362a 28%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
   color: #111 !important;
   -webkit-text-fill-color: #111 !important;
+}
+
+#main-content .list-marker-filter-pill.is-include,
+#main-content .list-marker-filter-pill.is-include:hover:not(:disabled),
+#main-content .list-marker-filter-pill.is-include:focus-visible:not(:disabled) {
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
+}
+
+#main-content .list-marker-filter-pill.is-exclude,
+#main-content .list-marker-filter-pill.is-exclude:hover:not(:disabled),
+#main-content .list-marker-filter-pill.is-exclude:focus-visible:not(:disabled) {
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: color-mix(in srgb, hsl(var(--marker-pill-h, 220), calc(var(--marker-pill-s, 56%) + 18%), 44%) 72%, #d1362a 28%) !important;
+  box-shadow: none !important;
+  transform: scale(1.035) !important;
+  transform-origin: center;
 }
 
 .list-tiles {
@@ -12285,7 +12325,7 @@ nav.site-nav {
 }
 
 /* Default to plain button style in content/admin areas (navbar controls stay Lapis). */
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.list-marker-filter-pill):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]) {
   border: 1px solid var(--admin-border, var(--border)) !important;
   background: var(--surface-raised, var(--admin-surface, var(--post-card-bg-single))) !important;
   background-image: none !important;
@@ -12295,8 +12335,8 @@ nav.site-nav {
   transform: none !important;
 }
 
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):hover:not(:disabled),
-#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):focus-visible:not(:disabled) {
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.list-marker-filter-pill):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):hover:not(:disabled),
+#main-content :where(button, input[type="button"], input[type="submit"], input[type="reset"]):not(.unobtrusive-icon-button):not(.tag):not(.list-marker-filter-pill):not(.btn-login):not(.btn-login-main):not(.btn-login-caret):not(.list-admin-primary-btn):not(.auth-primary-btn):not(.auth-secondary-btn):not(.list-entry-vote-btn):not(.list-inline-row-menu-trigger):not(.contact-value-link):not([role="menuitem"]):focus-visible:not(:disabled) {
   border-color: color-mix(in srgb, var(--admin-border, var(--border)) 68%, var(--admin-accent, var(--accent)) 32%) !important;
   background: var(--admin-hover, var(--nav-link-hover)) !important;
   background-image: none !important;
