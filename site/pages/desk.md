@@ -6,7 +6,7 @@ title: Desk
   document.documentElement.classList.add('desk-page-document');
   document.body.classList.add('desk-page-body');
 </script>
-<link rel="stylesheet" href="/static/desk-page.css?v=20260526-desk-map1">
+<link rel="stylesheet" href="/static/desk-page.css?v=20260526-desk-mahogany2">
 
 <section id="desk-page-root" class="desk-shell" aria-live="polite">
   <div class="desk-loading">

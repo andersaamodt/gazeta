@@ -22,11 +22,10 @@ body:has(#desk-page-root) {
   margin: 0;
   padding: 0;
   background:
-    radial-gradient(circle at 18% 12%, rgba(245, 208, 121, 0.16), transparent 26rem),
-    radial-gradient(circle at 82% 2%, rgba(5, 24, 63, 0.3), transparent 30rem),
-    linear-gradient(180deg, rgba(28, 10, 4, 0.18), rgba(15, 6, 2, 0.32)),
-    url("/static/textures/desk-cherrywood.jpg");
-  background-size: cover;
+    radial-gradient(circle at 18% 12%, rgba(20, 78, 183, 0.32), transparent 28rem),
+    radial-gradient(circle at 80% 16%, rgba(215, 173, 77, 0.12), transparent 24rem),
+    linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%);
+  background-size: auto;
   background-position: center;
   background-attachment: fixed;
   color: var(--desk-ink);
@@ -147,7 +146,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   pointer-events: none;
   background:
     radial-gradient(circle at 78% 18%, rgba(215, 173, 77, 0.1), transparent 24rem),
-    linear-gradient(145deg, rgba(3, 20, 51, 0.28), rgba(4, 33, 76, 0.14));
+    linear-gradient(145deg, rgba(3, 20, 51, 0.18), rgba(4, 33, 76, 0.08));
 }
 
 .desk-shell[data-room-tone="1"]::before {
@@ -259,10 +258,26 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-stage {
   position: relative;
-  min-height: clamp(34rem, calc(100vh - 13rem), 54rem);
+  box-sizing: border-box;
+  width: min(78rem, calc(100vw - clamp(1.8rem, 4.4vw, 5.6rem)));
+  min-height: min(46rem, calc(100vh - 12.5rem));
+  margin: clamp(0.4rem, 1vw, 0.8rem) auto 0;
+  padding: clamp(0.85rem, 1.4vw, 1.25rem);
   display: grid;
   align-items: stretch;
   perspective: 1400px;
+  border: 1px solid rgba(240, 213, 138, 0.3);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 232, 175, 0.08), rgba(28, 10, 4, 0.12)),
+    linear-gradient(90deg, rgba(43, 16, 8, 0.28), transparent 18%, transparent 82%, rgba(43, 16, 8, 0.28)),
+    url("/static/textures/desk-mahogany.jpg");
+  background-size: cover;
+  background-position: center;
+  box-shadow:
+    0 42px 88px rgba(0, 0, 0, 0.46),
+    0 0 0 1px rgba(255, 241, 190, 0.08) inset,
+    0 18px 36px rgba(3, 20, 51, 0.32);
 }
 
 .desk-mode-panel {
@@ -358,6 +373,12 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   border-radius: 50%;
   font-size: 2rem;
   transform: translateX(-50%);
+}
+
+.desk-mode-compose:hover,
+.desk-mode-compose:focus-visible,
+.desk-mode-compose.is-active {
+  transform: translateX(-50%) translateY(-0.22rem);
 }
 
 .desk-mode-todo {
@@ -873,7 +894,9 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   }
 
   .desk-stage {
+    width: min(100%, calc(100vw - 1.4rem));
     min-height: clamp(28rem, calc(100vh - 12rem), 44rem);
+    padding: 0.72rem;
   }
 
   .desk-mode-map {
@@ -928,9 +951,4 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   .desk-link-btn {
     width: fit-content;
   }
-}
-.desk-mode-compose:hover,
-.desk-mode-compose:focus-visible,
-.desk-mode-compose.is-active {
-  transform: translateX(-50%) translateY(-0.22rem);
 }
