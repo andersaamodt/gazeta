@@ -4143,9 +4143,10 @@ body.nav-cart-open {
   -webkit-appearance: none;
   width: 2rem;
   height: 2rem;
-  display: inline-flex;
+  display: inline-grid;
   align-items: center;
   justify-content: center;
+  place-items: center;
   padding: 0;
   border: 1px solid var(--admin-border, var(--border));
   border-radius: 999px;
@@ -4156,7 +4157,8 @@ body.nav-cart-open {
   font-weight: 700;
   cursor: pointer;
   transform: rotate(0deg) !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 180ms ease;
+  transition: none !important;
+  animation: none !important;
 }
 
 .list-public-submit.is-expanded .list-public-submit-toggle {
@@ -4165,10 +4167,15 @@ body.nav-cart-open {
 }
 
 .list-public-submit-toggle-icon {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
   line-height: 1;
   transform: rotate(0deg);
-  transition: transform 180ms ease;
+  transition: none !important;
+  animation: none !important;
 }
 
 .list-public-submit.is-expanded .list-public-submit-toggle-icon {
@@ -4179,6 +4186,9 @@ body.nav-cart-open {
 .list-public-submit-toggle:focus-visible:not(:disabled) {
   border-color: var(--accent, #2f4aa6);
   background: var(--nav-link-hover, rgba(47, 74, 166, 0.1));
+  transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .list-public-submit-toggle:disabled {
@@ -12500,7 +12510,34 @@ html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .z
 }
 
 #main-content .list-public-submit .list-public-submit-toggle {
+  display: inline-grid !important;
+  place-items: center !important;
   transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit .list-public-submit-toggle:hover:not(:disabled),
+#main-content .list-public-submit .list-public-submit-toggle:focus-visible:not(:disabled),
+#main-content .list-public-submit .list-public-submit-toggle:active:not(:disabled) {
+  transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit .list-public-submit-toggle-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit.is-expanded .list-public-submit-toggle-icon {
+  transform: rotate(45deg) !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 #main-content .list-public-submit.is-expanded .list-public-submit-toggle {

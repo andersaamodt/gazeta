@@ -946,7 +946,34 @@ input[type="reset"]:disabled,
 }
 
 #main-content .list-public-submit .list-public-submit-toggle {
+  display: inline-grid !important;
+  place-items: center !important;
   transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit .list-public-submit-toggle:hover:not(:disabled),
+#main-content .list-public-submit .list-public-submit-toggle:focus-visible:not(:disabled),
+#main-content .list-public-submit .list-public-submit-toggle:active:not(:disabled) {
+  transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit .list-public-submit-toggle-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(0deg) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#main-content .list-public-submit.is-expanded .list-public-submit-toggle-icon {
+  transform: rotate(45deg) !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 #main-content .list-public-submit.is-expanded .list-public-submit-toggle {
