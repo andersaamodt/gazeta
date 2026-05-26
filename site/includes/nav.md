@@ -12,6 +12,7 @@
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('overworld-page-root') ||
+      document.getElementById('desk-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
@@ -104,6 +105,7 @@
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
+    <a id="nav-menu-desk-link" class="nav-menu-item" href="/desk" role="menuitem">Desk</a>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
     <button id="nav-menu-logout" class="nav-menu-item nav-menu-item-danger" type="button" role="menuitem">Logout</button>
@@ -467,6 +469,7 @@
       document.getElementById('list-page-root') ||
       document.getElementById('public-ranking-root') ||
       document.getElementById('overworld-page-root') ||
+      document.getElementById('desk-page-root') ||
       document.getElementById('contact-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')

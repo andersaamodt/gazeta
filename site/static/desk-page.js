@@ -1,0 +1,488 @@
+(function () {
+  'use strict';
+
+  var root = document.getElementById('desk-page-root');
+  if (!root) {
+    return;
+  }
+
+  var state = {
+    data: null,
+    search: null,
+    currentRoom: roomFromLocation()
+  };
+
+  function markPageReady() {
+    var gate = window.__wizardryHydration;
+    if (gate && typeof gate.markPageReady === 'function') {
+      gate.markPageReady();
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function roomFromLocation() {
+    try {
+      return String(new URL(window.location.href).searchParams.get('room') || '').trim();
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function roomUrl(room) {
+    var clean = String(room || '').trim();
+    return clean ? '/desk?room=' + encodeURIComponent(clean) : '/desk';
+  }
+
+  function setRoom(room, replace) {
+    var clean = String(room || '').trim();
+    state.currentRoom = clean;
+    var next = roomUrl(clean);
+    if (replace) {
+      window.history.replaceState({ room: clean }, '', next);
+    } else {
+      window.history.pushState({ room: clean }, '', next);
+    }
+    loadState();
+  }
+
+  function authPayload() {
+    return {
+      session_token: String(localStorage.getItem('session_token') || '').trim(),
+      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
+    };
+  }
+
+  function api(action, payload) {
+    var body = new URLSearchParams();
+    var auth = authPayload();
+    body.set('session_token', auth.session_token);
+    body.set('csrf_token', auth.csrf_token);
+    body.set('action', action);
+    Object.keys(payload || {}).forEach(function (key) {
+      if (payload[key] != null) {
+        body.set(key, String(payload[key]));
+      }
+    });
+    return fetch('/cgi/blog-desk', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: body.toString()
+    }).then(function (response) {
+      return response.json();
+    });
+  }
+
+  function showMessage(message, isError) {
+    var slot = root.querySelector('[data-desk-message]');
+    if (!slot) {
+      return;
+    }
+    if (!message) {
+      slot.innerHTML = '';
+      return;
+    }
+    slot.innerHTML = '<p class="desk-message' + (isError ? ' is-error' : '') + '">' + escapeHtml(message) + '</p>';
+  }
+
+  function roomTone(room) {
+    var text = String(room || 'office');
+    var sum = 0;
+    for (var i = 0; i < text.length; i += 1) {
+      sum += text.charCodeAt(i);
+    }
+    return String(sum % 3);
+  }
+
+  function statusLabel(value) {
+    if (value === 'available') return 'Online';
+    if (value === 'offline') return 'Away';
+    return 'Quiet';
+  }
+
+  function statusButtons(data) {
+    var current = data && data.status && data.status.online_status ? data.status.online_status : 'quiet';
+    return '<div class="desk-status" aria-label="Desk status">' +
+      ['available', 'quiet', 'offline'].map(function (value) {
+        return '<button type="button" class="desk-status-btn' + (current === value ? ' is-active' : '') + '" data-desk-status="' + value + '">' + escapeHtml(statusLabel(value)) + '</button>';
+      }).join('') +
+      '</div>';
+  }
+
+  function roomOptionRows(data, selected) {
+    var rooms = [{ path: '', title: 'Office' }].concat((data && data.rooms) || []);
+    return rooms.map(function (room) {
+      var path = String(room.path || '');
+      return '<option value="' + escapeHtml(path) + '"' + (path === selected ? ' selected' : '') + '>' + escapeHtml(room.title || 'Room') + '</option>';
+    }).join('');
+  }
+
+  function heatWidth(heat) {
+    var value = Math.max(8, Math.min(100, Number(heat || 0) * 10 + 8));
+    return value + '%';
+  }
+
+  function renderHeader(data) {
+    var current = data.current_room || data.office || {};
+    var path = current.path || '';
+    var title = current.title || 'Office';
+    return '<header class="desk-topbar">' +
+      '<div class="desk-room-heading">' +
+      '<p class="desk-kicker">Desk</p>' +
+      '<h1>' + escapeHtml(title) + '</h1>' +
+      '<div class="desk-room-path">' +
+      '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
+      (path ? '<span>/</span><span>' + escapeHtml(path) + '</span>' : '<span>starting room</span>') +
+      '</div>' +
+      '</div>' +
+      statusButtons(data) +
+      '</header>';
+  }
+
+  function renderDeskSurface(data) {
+    var selected = data.current_room && data.current_room.path ? data.current_room.path : '';
+    return '<aside class="desk-surface" aria-labelledby="desk-capture-heading">' +
+      '<h2 id="desk-capture-heading">Desk Surface</h2>' +
+      '<form class="desk-form" data-desk-form="capture">' +
+      '<label><span>Capture</span><textarea class="desk-textarea" name="task_text" rows="7" required></textarea></label>' +
+      '<div class="desk-form-row">' +
+      '<label><span>Room</span><select class="desk-select" name="destination_room">' + roomOptionRows(data, selected) + '</select></label>' +
+      '<button type="submit" class="desk-btn primary">Capture</button>' +
+      '</div>' +
+      '</form>' +
+      '<form class="desk-form desk-search-form" data-desk-form="search">' +
+      '<div class="desk-form-row">' +
+      '<label><span>Search</span><input class="desk-input" type="search" name="q" minlength="2" required></label>' +
+      '<button type="submit" class="desk-btn subtle">Search</button>' +
+      '</div>' +
+      '</form>' +
+      '</aside>';
+  }
+
+  function surfacedTaskList(tasks) {
+    if (!tasks || !tasks.length) {
+      return '<p class="desk-empty">No surfaced tasks.</p>';
+    }
+    return '<ul class="desk-surfaced-list">' + tasks.map(function (task) {
+      return '<li class="desk-surfaced-task"><strong>' + escapeHtml(task.title || 'Task') + '</strong>' +
+        '<span class="desk-muted"> +' + escapeHtml(task.upvotes || 0) + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
+  function renderRoomCard(room) {
+    return '<article class="desk-room-card">' +
+      '<div class="desk-room-card-head">' +
+      '<h3>' + escapeHtml(room.title || 'Room') + '</h3>' +
+      '<div class="desk-heat" aria-label="Room heat">' +
+      '<span>' + escapeHtml(room.heat || 0) + ' heat</span>' +
+      '<div class="desk-heat-bar"><i style="--heat-width:' + heatWidth(room.heat) + '"></i></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="desk-count-row">' +
+      '<span class="desk-pill gold">' + escapeHtml(room.visible_task_count || 0) + ' surfaced</span>' +
+      '<span class="desk-pill">' + escapeHtml(room.sleeping_task_count || 0) + ' sleeping</span>' +
+      (room.has_public_file ? '<span class="desk-pill gold">public.md</span>' : '<span class="desk-pill">private</span>') +
+      '</div>' +
+      surfacedTaskList(room.surfaced_tasks || []) +
+      '<div class="desk-card-actions">' +
+      '<a class="desk-link-btn" href="' + escapeHtml(room.url || roomUrl(room.path)) + '" data-desk-room-link="' + escapeHtml(room.path || '') + '">Go to room</a>' +
+      '<a class="desk-link-btn" href="' + escapeHtml(room.overworld_url || '/overworld') + '">Open in Overworld</a>' +
+      '</div>' +
+      '</article>';
+  }
+
+  function renderCreateRoom(data) {
+    var current = data.current_room && data.current_room.path ? data.current_room.path : '';
+    return '<form class="desk-form" data-desk-form="create-room">' +
+      '<div class="desk-form-row">' +
+      '<label><span>New Room</span><input class="desk-input" name="room_title" required></label>' +
+      '<label><span>Inside</span><select class="desk-select" name="room">' + roomOptionRows(data, current) + '</select></label>' +
+      '<button type="submit" class="desk-btn subtle">Create Room</button>' +
+      '</div>' +
+      '</form>';
+  }
+
+  function renderOffice(data) {
+    var office = data.office || {};
+    var rooms = data.rooms || [];
+    return '<section class="desk-office-panel">' +
+      '<h2>Office Wall</h2>' +
+      '<div class="desk-room-actions">' +
+      '<span class="desk-pill gold">' + escapeHtml(office.visible_task_count || 0) + ' surfaced here</span>' +
+      '<span class="desk-pill">' + escapeHtml(office.sleeping_task_count || 0) + ' sleeping local</span>' +
+      (office.has_public_file ? '<span class="desk-pill gold">public.md present</span>' : '<span class="desk-pill">no public.md</span>') +
+      '<a class="desk-link-btn" href="' + escapeHtml(office.overworld_url || '/overworld') + '">Open in Overworld</a>' +
+      '</div>' +
+      surfacedTaskList(office.surfaced_tasks || []) +
+      '<div class="desk-room-actions">' + renderCreateRoom(data) + '</div>' +
+      '<h2>Rooms</h2>' +
+      (rooms.length ? '<div class="desk-room-grid">' + rooms.map(renderRoomCard).join('') + '</div>' : '<p class="desk-empty">No rooms yet.</p>') +
+      '</section>';
+  }
+
+  function taskMeta(task) {
+    var bits = ['+' + (task.upvotes || 0)];
+    if (task.soonness) {
+      bits.push('soon ' + task.soonness);
+    }
+    if (task.can_vote_now === false && task.next_vote_at) {
+      bits.push('revote later');
+    }
+    return '<div class="desk-task-meta">' + bits.map(function (bit) {
+      return '<span class="desk-pill">' + escapeHtml(bit) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function taskItem(task, data) {
+    var room = String(task.room || '');
+    var body = task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '';
+    return '<li class="desk-task" data-task-id="' + escapeHtml(task.id || '') + '">' +
+      '<h3>' + escapeHtml(task.title || 'Task') + '</h3>' +
+      body +
+      taskMeta(task) +
+      '<div class="desk-task-actions">' +
+      '<button type="button" class="desk-icon-btn" title="Upvote" aria-label="Upvote" data-desk-task-action="vote" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">▲</button>' +
+      '<button type="button" class="desk-btn subtle" data-desk-task-action="complete" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Done</button>' +
+      '<form class="desk-move-form" data-desk-form="move-task">' +
+      '<input type="hidden" name="room" value="' + escapeHtml(room) + '">' +
+      '<input type="hidden" name="task_id" value="' + escapeHtml(task.id || '') + '">' +
+      '<select class="desk-select" name="target_room">' + roomOptionRows(data, room) + '</select>' +
+      '<button type="submit" class="desk-btn subtle">Move</button>' +
+      '</form>' +
+      '<form class="desk-soonness-form" data-desk-form="soonness">' +
+      '<input type="hidden" name="room" value="' + escapeHtml(room) + '">' +
+      '<input type="hidden" name="task_id" value="' + escapeHtml(task.id || '') + '">' +
+      '<input class="desk-input" type="date" name="soonness" value="' + escapeHtml(dateValue(task.soonness || '')) + '">' +
+      '<button type="submit" class="desk-btn subtle">Soon</button>' +
+      '</form>' +
+      '</div>' +
+      '</li>';
+  }
+
+  function dateValue(value) {
+    var text = String(value || '');
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+  }
+
+  function renderRoom(data) {
+    var room = data.current_room || {};
+    var tasks = data.tasks || [];
+    var done = data.done_tasks || [];
+    return '<section class="desk-room-panel">' +
+      '<div class="desk-room-actions">' +
+      '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
+      '<a class="desk-link-btn" href="' + escapeHtml(room.overworld_url || '/overworld') + '">Open in Overworld</a>' +
+      (room.has_public_file ? '<span class="desk-pill gold">public.md present</span>' : '<span class="desk-pill">private interior</span>') +
+      '<span class="desk-pill">' + escapeHtml(room.sleeping_task_count || 0) + ' below threshold</span>' +
+      '</div>' +
+      '<form class="desk-form" data-desk-form="room-add">' +
+      '<input type="hidden" name="destination_room" value="' + escapeHtml(room.path || '') + '">' +
+      '<label><span>Add Task</span><textarea class="desk-textarea" name="task_text" rows="4" required></textarea></label>' +
+      '<button type="submit" class="desk-btn primary">Add to Room</button>' +
+      '</form>' +
+      '<h2>Room Tasks</h2>' +
+      (tasks.length ? '<ul class="desk-task-list">' + tasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No local tasks.</p>') +
+      '<h2>Done</h2>' +
+      (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
+        return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) + '</li>';
+      }).join('') + '</ul>' : '<p class="desk-empty">No archived tasks here.</p>') +
+      '</section>';
+  }
+
+  function renderSearch(data) {
+    if (!data) {
+      return '';
+    }
+    var results = data.results || [];
+    return '<section class="desk-search-panel">' +
+      '<h2>Search Results</h2>' +
+      '<p class="desk-room-note">' + escapeHtml(results.length) + ' result' + (results.length === 1 ? '' : 's') + ' for "' + escapeHtml(data.query || '') + '"</p>' +
+      (results.length ? '<ul class="desk-search-list">' + results.map(function (result) {
+        var title = result.kind === 'room' ? result.title : result.title + ' · ' + result.room_title;
+        return '<li class="desk-search-result">' +
+          '<div class="desk-count-row"><span class="desk-pill gold">' + escapeHtml(result.kind || 'result') + '</span></div>' +
+          '<h3>' + escapeHtml(title || 'Result') + '</h3>' +
+          '<a class="desk-link-btn" href="' + escapeHtml(result.url || roomUrl(result.room)) + '" data-desk-room-link="' + escapeHtml(result.room || '') + '">Go to room</a>' +
+          '</li>';
+      }).join('') + '</ul>' : '<p class="desk-empty">No matches.</p>') +
+      '</section>';
+  }
+
+  function render(data) {
+    state.data = data;
+    root.dataset.roomTone = roomTone(data.current_room && data.current_room.path);
+    root.innerHTML = renderHeader(data) +
+      '<div data-desk-message></div>' +
+      '<div class="desk-workbench">' +
+      renderDeskSurface(data) +
+      '<main class="desk-main-stack">' +
+      renderSearch(state.search) +
+      ((data.current_room && data.current_room.path) ? renderRoom(data) : renderOffice(data)) +
+      '</main>' +
+      '</div>';
+    markPageReady();
+  }
+
+  function showGate(message) {
+    root.innerHTML = '<div class="desk-access-gate">' +
+      '<p class="desk-kicker">Private Interior</p>' +
+      '<h1>Desk</h1>' +
+      '<p>' + escapeHtml(message || 'Sign in with the owner Nostr identity to enter.') + '</p>' +
+      '<button type="button" class="desk-btn primary" data-desk-login>Login</button>' +
+      '</div>';
+    markPageReady();
+  }
+
+  function loadState() {
+    root.innerHTML = '<div class="desk-loading"><h1>Desk</h1></div>';
+    api('state', { room: state.currentRoom }).then(function (data) {
+      if (!data || data.success === false) {
+        showGate(data && data.error ? data.error : 'Desk is not available.');
+        return;
+      }
+      render(data);
+    }).catch(function (err) {
+      showGate(err && err.message ? err.message : 'Desk is not available.');
+    });
+  }
+
+  function refreshFrom(data, fallbackRoom) {
+    if (!data || data.success === false) {
+      showMessage(data && data.error ? data.error : 'Desk action failed.', true);
+      return;
+    }
+    state.search = null;
+    if (data.current_room && typeof data.current_room.path === 'string') {
+      state.currentRoom = data.current_room.path;
+      window.history.replaceState({ room: state.currentRoom }, '', roomUrl(state.currentRoom));
+    } else if (fallbackRoom != null) {
+      state.currentRoom = fallbackRoom;
+    }
+    render(data);
+  }
+
+  function formValue(form, name) {
+    var field = form.elements[name];
+    return field ? field.value : '';
+  }
+
+  root.addEventListener('click', function (event) {
+    var login = event.target.closest('[data-desk-login]');
+    if (login) {
+      var loginButton = document.getElementById('login-btn');
+      if (loginButton) {
+        loginButton.click();
+      }
+      return;
+    }
+
+    var roomLink = event.target.closest('[data-desk-room-link]');
+    if (roomLink) {
+      event.preventDefault();
+      setRoom(roomLink.getAttribute('data-desk-room-link') || '', false);
+      return;
+    }
+
+    var status = event.target.closest('[data-desk-status]');
+    if (status) {
+      api('set-status', {
+        room: state.currentRoom,
+        online_status: status.getAttribute('data-desk-status') || 'quiet'
+      }).then(refreshFrom);
+      return;
+    }
+
+    var taskAction = event.target.closest('[data-desk-task-action]');
+    if (taskAction) {
+      var action = taskAction.getAttribute('data-desk-task-action');
+      api(action === 'vote' ? 'vote-task' : 'complete-task', {
+        room: taskAction.getAttribute('data-room') || state.currentRoom,
+        task_id: taskAction.getAttribute('data-task-id') || ''
+      }).then(refreshFrom);
+    }
+  });
+
+  root.addEventListener('submit', function (event) {
+    var form = event.target.closest('[data-desk-form]');
+    if (!form) {
+      return;
+    }
+    event.preventDefault();
+    var type = form.getAttribute('data-desk-form');
+    if (type === 'capture' || type === 'room-add') {
+      api('add-task', {
+        destination_room: formValue(form, 'destination_room'),
+        task_text: formValue(form, 'task_text')
+      }).then(function (data) {
+        if (data && data.success !== false) {
+          form.reset();
+        }
+        refreshFrom(data);
+      });
+      return;
+    }
+    if (type === 'create-room') {
+      api('create-room', {
+        room: formValue(form, 'room'),
+        room_title: formValue(form, 'room_title')
+      }).then(function (data) {
+        if (data && data.created_room) {
+          state.currentRoom = data.created_room.path || '';
+        }
+        refreshFrom(data);
+      });
+      return;
+    }
+    if (type === 'move-task') {
+      api('move-task', {
+        room: formValue(form, 'room'),
+        task_id: formValue(form, 'task_id'),
+        target_room: formValue(form, 'target_room')
+      }).then(refreshFrom);
+      return;
+    }
+    if (type === 'soonness') {
+      api('set-soonness', {
+        room: formValue(form, 'room'),
+        task_id: formValue(form, 'task_id'),
+        soonness: formValue(form, 'soonness')
+      }).then(refreshFrom);
+      return;
+    }
+    if (type === 'search') {
+      api('search', { q: formValue(form, 'q') }).then(function (data) {
+        if (!data || data.success === false) {
+          showMessage(data && data.error ? data.error : 'Search failed.', true);
+          return;
+        }
+        state.search = data;
+        if (state.data) {
+          render(state.data);
+        }
+      });
+    }
+  });
+
+  window.addEventListener('popstate', function () {
+    state.currentRoom = roomFromLocation();
+    loadState();
+  });
+
+  window.addEventListener('storage', function (event) {
+    if (event.key === 'session_token' || event.key === 'csrf_token') {
+      loadState();
+    }
+  });
+
+  window.addEventListener('blog-auth-changed', loadState);
+
+  loadState();
+})();
