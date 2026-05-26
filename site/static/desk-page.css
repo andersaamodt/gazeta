@@ -304,7 +304,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     0 18px 36px rgba(3, 20, 51, 0.32);
 }
 
+.desk-stage[data-desk-stage-mode="todo"] {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, min(24rem, 32vw));
+  align-items: center;
+  gap: clamp(0.7rem, 1.4vw, 1.1rem);
+}
+
 .desk-mode-panel {
+  box-sizing: border-box;
   min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(240, 213, 138, 0.34);
@@ -364,6 +371,18 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
+.desk-mode-launch svg {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
 .desk-mode-launch:hover,
 .desk-mode-launch:focus-visible,
 .desk-mode-launch.is-active {
@@ -376,18 +395,17 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-mode-map {
   left: 0;
-  width: min(19rem, 32vw);
-  min-height: 5.2rem;
+  width: 5.2rem;
+  height: 5.2rem;
   text-align: left;
   background:
     linear-gradient(145deg, rgba(236, 211, 154, 0.92), rgba(179, 126, 67, 0.92)) !important;
   color: #2b1b0c;
 }
 
-.desk-mode-map span {
-  display: inline-block;
-  margin: 0.8rem 1rem;
-  font-weight: 900;
+.desk-mode-map.is-active {
+  width: 6.2rem;
+  height: 6.2rem;
 }
 
 .desk-mode-compose {
@@ -407,9 +425,18 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-mode-todo {
   right: 0;
-  width: min(11rem, 25vw);
-  min-height: 5rem;
+  width: 5rem;
+  height: 5rem;
   font-size: 1.8rem;
+}
+
+.desk-mode-todo.is-active {
+  width: 6rem;
+  height: 6rem;
+}
+
+.desk-mode-todo svg {
+  color: var(--desk-gold-soft);
 }
 
 .desk-topbar {
@@ -717,6 +744,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     rgba(2, 13, 35, 0.72);
 }
 
+.desk-stage[data-desk-stage-mode="todo"] .desk-map-panel {
+  width: 100%;
+  height: 100%;
+}
+
 .desk-map-scroll {
   height: 100%;
   overflow: hidden;
@@ -803,6 +835,98 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-todo-panel,
 .desk-compose-panel {
   overflow: auto;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+  width: 100%;
+  max-height: min(38rem, 82%);
+  min-height: min(25rem, 82%);
+  align-self: center;
+  border-color: rgba(68, 104, 173, 0.46);
+  background:
+    linear-gradient(90deg, transparent 0 2.55rem, rgba(210, 88, 74, 0.45) 2.6rem, transparent 2.66rem),
+    repeating-linear-gradient(to bottom, #f8f2d8 0 1.78rem, rgba(69, 110, 185, 0.34) 1.82rem, #f8f2d8 1.9rem),
+    #f8f2d8;
+  color: #1c253c;
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.32);
+  transform-origin: right center;
+  animation: desk-todo-slide-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes desk-todo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(2rem) rotateY(-7deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateY(0);
+  }
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-room-actions,
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-filter-controls,
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-panel-tools {
+  display: none;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-form {
+  margin: 0 0 0.55rem 2.9rem;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-form label span {
+  color: #405174;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-textarea {
+  min-height: 3.6rem;
+  color: #18233b;
+  background: rgba(255, 255, 255, 0.34);
+  border-color: rgba(69, 110, 185, 0.34);
+}
+
+.desk-notebook-list {
+  gap: 0;
+  margin-left: 2.55rem;
+}
+
+.desk-notebook-task {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.42rem;
+  min-height: 1.9rem;
+  padding: 0 0.35rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1c253c;
+}
+
+.desk-notebook-check {
+  color: #2d426f;
+}
+
+.desk-notebook-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-notebook-votes {
+  color: #53648a;
+  font-size: 0.78rem;
+}
+
+.desk-notebook-btn {
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(69, 110, 185, 0.13);
+  color: #2d426f;
+  cursor: pointer;
+  font-size: 0.78rem;
 }
 
 .desk-color-form {
@@ -962,6 +1086,50 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   line-height: 1.42;
 }
 
+.desk-task-list.desk-notebook-list {
+  gap: 0;
+  margin-left: 2.55rem;
+}
+
+.desk-task.desk-notebook-task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.42rem;
+  min-height: 1.9rem;
+  padding: 0 0.35rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1c253c;
+}
+
+.desk-notebook-check {
+  color: #2d426f;
+}
+
+.desk-notebook-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-notebook-votes {
+  color: #53648a;
+  font-size: 0.78rem;
+}
+
+.desk-notebook-btn {
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(69, 110, 185, 0.13);
+  color: #2d426f;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
 .desk-soonness-form,
 .desk-move-form {
   display: inline-flex;
@@ -1031,8 +1199,38 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     padding: 0.44rem;
   }
 
-  .desk-mode-map {
-    width: min(12rem, 32vw);
+  .desk-stage[data-desk-stage-mode="todo"] {
+    display: block;
+  }
+
+  .desk-stage[data-desk-stage-mode="todo"] .desk-map-panel {
+    height: 100%;
+  }
+
+  .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+    position: absolute;
+    top: 50%;
+    right: 0.85rem;
+    width: min(20rem, 82%);
+    max-height: 70%;
+    min-height: min(22rem, 70%);
+    transform: translateY(-50%);
+  }
+
+  .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+    animation-name: desk-todo-slide-in-small;
+  }
+
+  @keyframes desk-todo-slide-in-small {
+    from {
+      opacity: 0;
+      transform: translate(2rem, -50%) rotateY(-7deg);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate(0, -50%) rotateY(0);
+    }
   }
 
   .desk-surface {
@@ -1072,9 +1270,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
   .desk-mode-map,
   .desk-mode-todo {
-    width: auto;
-    min-width: 4.6rem;
-    min-height: 3.8rem;
+    width: 4.6rem;
+    height: 4.1rem;
+  }
+
+  .desk-mode-map.is-active,
+  .desk-mode-todo.is-active {
+    width: 5.2rem;
+    height: 4.7rem;
   }
 
   .desk-mode-compose {

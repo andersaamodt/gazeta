@@ -451,7 +451,7 @@
       '<button type="submit" class="desk-btn primary">Add to Room</button>' +
       '</form>' +
       roomTaskFilterControls(tasks) +
-      (visibleTasks.length ? '<ul class="desk-task-list">' + visibleTasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
+      (visibleTasks.length ? '<ul class="desk-task-list desk-notebook-list">' + visibleTasks.map(notebookTaskItem).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
       (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
         return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
           '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
@@ -482,14 +482,14 @@
 
   function renderModeDock() {
     return '<div class="desk-mode-dock" aria-label="Desk modes">' +
-      '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="Open room map"><span>Map</span></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="Open room map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5l5-2 8 2 5-2v15l-5 2-8-2-5 2z"></path><path d="M8 3.5v15"></path><path d="M16 5.5v15"></path></svg></button>' +
       '<button type="button" class="desk-mode-launch desk-mode-compose' + (state.mode === 'compose' ? ' is-active' : '') + '" data-desk-mode="compose" aria-label="Compose on the desk"><span>✎</span></button>' +
-      '<button type="button" class="desk-mode-launch desk-mode-todo' + (state.mode === 'todo' ? ' is-active' : '') + '" data-desk-mode="todo" aria-label="Open checklist"><span>✓</span></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-todo' + (state.mode === 'todo' ? ' is-active' : '') + '" data-desk-mode="todo" aria-label="Open checklist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h13"></path><path d="M7 10h13"></path><path d="M7 15.5h13"></path><path d="M3.5 4.5l.8.8 1.6-1.8"></path><path d="M3.5 10l.8.8L5.9 9"></path><path d="M3.5 15.5l.8.8 1.6-1.8"></path></svg></button>' +
       '</div>';
   }
 
   function renderStage(data) {
-    var content = state.mode === 'todo' ? renderTodo(data) : (state.mode === 'compose' ? renderCompose(data) : renderMap(data));
+    var content = state.mode === 'todo' ? renderMap(data) + renderTodo(data) : (state.mode === 'compose' ? renderCompose(data) : renderMap(data));
     return '<div class="desk-stage" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
@@ -643,6 +643,17 @@
       '<button type="submit" class="desk-btn subtle">Soon</button>' +
       '</form>' +
       '</div>' +
+      '</li>';
+  }
+
+  function notebookTaskItem(task) {
+    var room = String(task.room || '');
+    return '<li class="desk-task desk-notebook-task" data-task-id="' + escapeHtml(task.id || '') + '">' +
+      '<span class="desk-notebook-check">□</span>' +
+      '<span class="desk-notebook-title">' + escapeHtml(task.title || 'Task') + '</span>' +
+      '<span class="desk-notebook-votes">+' + escapeHtml(task.upvotes || 0) + '</span>' +
+      '<button type="button" class="desk-notebook-btn" title="Upvote" aria-label="Upvote" data-desk-task-action="vote" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">▲</button>' +
+      '<button type="button" class="desk-notebook-btn" title="Done" aria-label="Done" data-desk-task-action="complete" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">✓</button>' +
       '</li>';
   }
 
