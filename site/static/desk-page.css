@@ -370,7 +370,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     rgba(3, 20, 51, 0.8);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
   cursor: pointer;
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 
 .desk-mode-launch svg {
@@ -388,11 +388,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-mode-launch:hover,
 .desk-mode-launch:focus-visible,
 .desk-mode-launch.is-active {
-  transform: translateY(-0.22rem);
   border-color: rgba(240, 213, 138, 0.82);
   background:
     linear-gradient(180deg, rgba(14, 56, 127, 0.95), rgba(5, 25, 63, 0.9)),
     rgba(5, 25, 63, 0.9);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36);
 }
 
 .desk-mode-map {
@@ -422,7 +422,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-mode-compose:hover,
 .desk-mode-compose:focus-visible,
 .desk-mode-compose.is-active {
-  transform: translateX(-50%) translateY(-0.22rem);
+  transform: translateX(-50%);
 }
 
 .desk-mode-todo {

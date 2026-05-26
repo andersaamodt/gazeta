@@ -532,7 +532,7 @@
   function renderModeDock() {
     return '<div class="desk-mode-dock" aria-label="Desk modes">' +
       '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' && state.closingMode !== 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="' + (state.mode === 'map' && state.closingMode !== 'map' ? 'Close room map' : 'Open room map') + '" aria-pressed="' + (state.mode === 'map' && state.closingMode !== 'map' ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5l5-2 8 2 5-2v15l-5 2-8-2-5 2z"></path><path d="M8 3.5v15"></path><path d="M16 5.5v15"></path></svg></button>' +
-      '<button type="button" class="desk-mode-launch desk-mode-compose' + (state.mode === 'compose' ? ' is-active' : '') + '" data-desk-mode="compose" aria-label="Compose on the desk"><span>✎</span></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-compose' + (state.mode === 'compose' ? ' is-active' : '') + '" data-desk-mode="compose" aria-label="Compose on the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4"></path></svg></button>' +
       '<button type="button" class="desk-mode-launch desk-mode-todo' + (state.mode === 'todo' ? ' is-active' : '') + '" data-desk-mode="todo" aria-label="Open checklist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h13"></path><path d="M7 10h13"></path><path d="M7 15.5h13"></path><path d="M3.5 4.5l.8.8 1.6-1.8"></path><path d="M3.5 10l.8.8L5.9 9"></path><path d="M3.5 15.5l.8.8 1.6-1.8"></path></svg></button>' +
       '</div>';
   }
