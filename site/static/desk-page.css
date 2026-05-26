@@ -33,6 +33,8 @@ body:has(#desk-page-root) {
 
 body.desk-page-body .skip-link,
 body:has(#desk-page-root) .skip-link,
+body.desk-page-body #title-block-header,
+body:has(#desk-page-root) #title-block-header,
 body.desk-page-body nav.site-nav .nav-site-signature,
 body:has(#desk-page-root) nav.site-nav .nav-site-signature,
 body.desk-page-body nav.site-nav .nav-center,
@@ -134,7 +136,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   max-width: none;
   min-height: 100vh;
   margin: 0;
-  padding: clamp(4rem, 5vw, 4.8rem) clamp(0.9rem, 2.2vw, 2.8rem) clamp(5.8rem, 8vw, 7rem);
+  padding: clamp(0.7rem, 1.2vw, 1.1rem) clamp(0.8rem, 1.6vw, 1.4rem) clamp(4.9rem, 6vw, 5.7rem);
   color: var(--desk-ink);
 }
 
@@ -256,13 +258,35 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   gap: clamp(1rem, 2vw, 1.4rem);
 }
 
+.desk-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+}
+
+.desk-chrome-controls {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(4.6rem, calc(env(safe-area-inset-right) + 4.6rem));
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.42rem;
+  flex-wrap: wrap;
+}
+
 .desk-stage {
   position: relative;
   box-sizing: border-box;
-  width: min(78rem, calc(100vw - clamp(1.8rem, 4.4vw, 5.6rem)));
-  min-height: min(46rem, calc(100vh - 12.5rem));
-  margin: clamp(0.4rem, 1vw, 0.8rem) auto 0;
-  padding: clamp(0.85rem, 1.4vw, 1.25rem);
+  width: min(88rem, calc(100vw - clamp(1.6rem, 3.2vw, 3.6rem)));
+  height: calc(100vh - clamp(5.8rem, 7.8vw, 7.2rem));
+  min-height: 30rem;
+  margin: 0 auto;
+  padding: clamp(0.38rem, 0.9vw, 0.72rem);
   display: grid;
   align-items: stretch;
   perspective: 1400px;
@@ -394,6 +418,27 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.desk-map-tools,
+.desk-panel-tools {
+  position: absolute;
+  top: clamp(0.55rem, 1vw, 0.9rem);
+  right: clamp(0.55rem, 1vw, 0.9rem);
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.desk-create-room-form {
+  width: fit-content;
+  max-width: min(100%, 34rem);
+  padding: 0.4rem;
+  border: 1px solid rgba(240, 213, 138, 0.22);
+  border-radius: 8px;
+  background: rgba(3, 20, 51, 0.72);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
 }
 
 .desk-room-heading {
@@ -581,7 +626,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-map-panel,
 .desk-todo-panel,
 .desk-compose-panel {
-  padding: clamp(0.9rem, 1.8vw, 1.4rem);
+  position: relative;
+  padding: clamp(0.42rem, 0.9vw, 0.72rem);
 }
 
 .desk-map-panel {
@@ -591,7 +637,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-map-scroll {
-  height: clamp(28rem, calc(100vh - 18rem), 46rem);
+  height: 100%;
   overflow: auto;
   border: 1px solid rgba(91, 49, 23, 0.38);
   border-radius: 8px;
@@ -885,18 +931,21 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 @media (max-width: 820px) {
-  .desk-topbar {
-    display: grid;
-  }
-
   .desk-workbench {
     grid-template-columns: 1fr;
   }
 
+  .desk-chrome-controls {
+    left: 0.75rem;
+    right: 4.4rem;
+    justify-content: flex-end;
+  }
+
   .desk-stage {
     width: min(100%, calc(100vw - 1.4rem));
-    min-height: clamp(28rem, calc(100vh - 12rem), 44rem);
-    padding: 0.72rem;
+    height: calc(100vh - 6.2rem);
+    min-height: 25rem;
+    padding: 0.44rem;
   }
 
   .desk-mode-map {
@@ -918,7 +967,20 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 @media (max-width: 520px) {
   .desk-shell {
-    padding: 4.4rem clamp(0.72rem, 3vw, 1rem) 5.8rem;
+    padding: 3.7rem clamp(0.55rem, 2.2vw, 0.8rem) 4.8rem;
+  }
+
+  .desk-chrome-controls {
+    top: 0.66rem;
+  }
+
+  .desk-status-btn {
+    padding: 0.32rem 0.42rem;
+    font-size: 0.78rem;
+  }
+
+  .desk-threshold-control .desk-select {
+    min-width: 3.8rem;
   }
 
   .desk-mode-dock {
@@ -937,8 +999,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     height: 4rem;
   }
 
-  .desk-map-scroll {
-    height: clamp(24rem, calc(100vh - 18rem), 34rem);
+  .desk-map-tools,
+  .desk-panel-tools {
+    position: static;
+    margin-bottom: 0.45rem;
+  }
+
+  .desk-create-room-form {
+    max-width: 100%;
   }
 
   .desk-room-card-head,

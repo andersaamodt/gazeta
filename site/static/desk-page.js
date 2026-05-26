@@ -172,7 +172,7 @@
       values.push(state.threshold);
       values.sort(function (left, right) { return left - right; });
     }
-    return '<label class="desk-threshold-control"><span>Surface at</span><select class="desk-select" data-desk-threshold>' +
+    return '<label class="desk-threshold-control"><span class="desk-visually-hidden">Surface at</span><select class="desk-select" data-desk-threshold aria-label="Surface threshold">' +
       values.map(function (value) {
         return '<option value="' + value + '"' + (value === state.threshold ? ' selected' : '') + '>+' + value + '</option>';
       }).join('') +
@@ -415,8 +415,8 @@
         '</g>' +
         '</a>';
     }).join('');
-    return '<section class="desk-mode-panel desk-map-panel" aria-labelledby="desk-map-heading">' +
-      '<div class="desk-panel-title-row"><div><h2 id="desk-map-heading">Room Map</h2><p class="desk-room-note">Central hall, wings, and nested rooms are laid out deterministically from the filesystem paths.</p></div>' + renderCreateRoom(data) + '</div>' +
+    return '<section class="desk-mode-panel desk-map-panel" aria-label="Room map">' +
+      '<div class="desk-map-tools">' + renderCreateRoom(data) + '</div>' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
@@ -434,9 +434,9 @@
     var tasks = data.tasks || [];
     var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
     var done = data.done_tasks || [];
-    return '<section class="desk-mode-panel desk-todo-panel" aria-labelledby="desk-todo-heading">' +
-      '<div class="desk-panel-title-row"><div><h2 id="desk-todo-heading">Checklist</h2><p class="desk-room-note">' + escapeHtml(room.title || 'Office') + '</p></div>' +
-      '<form class="desk-color-form" data-desk-form="room-color"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span>Room Color</span><input class="desk-color-input" type="color" name="room_color" value="' + escapeHtml(roomColor(room)) + '"></label><button type="submit" class="desk-btn subtle">Set</button></form></div>' +
+    return '<section class="desk-mode-panel desk-todo-panel" aria-label="Checklist">' +
+      '<div class="desk-panel-tools">' +
+      '<form class="desk-color-form" data-desk-form="room-color"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span class="desk-visually-hidden">Room Color</span><input class="desk-color-input" type="color" name="room_color" value="' + escapeHtml(roomColor(room)) + '" aria-label="Room color"></label><button type="submit" class="desk-btn subtle">Set</button></form></div>' +
       '<div class="desk-room-actions">' +
       '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
       '<a class="desk-link-btn" href="' + escapeHtml(room.overworld_url || '/overworld') + '">Open in Overworld</a>' +
@@ -448,9 +448,8 @@
       '<label><span>Add Task</span><textarea class="desk-textarea" name="task_text" rows="4" required></textarea></label>' +
       '<button type="submit" class="desk-btn primary">Add to Room</button>' +
       '</form>' +
-      '<div class="desk-panel-title-row"><h2>Room Tasks</h2>' + roomTaskFilterControls(tasks) + '</div>' +
+      roomTaskFilterControls(tasks) +
       (visibleTasks.length ? '<ul class="desk-task-list">' + visibleTasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
-      '<h2>Done</h2>' +
       (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
         return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
           '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
@@ -460,8 +459,8 @@
 
   function renderCompose(data) {
     var selected = data.current_room && data.current_room.path ? data.current_room.path : '';
-    return '<section class="desk-mode-panel desk-compose-panel" aria-labelledby="desk-compose-heading">' +
-      '<div class="desk-panel-title-row"><div><h2 id="desk-compose-heading">Compose</h2><p class="desk-room-note">Start from the desktop; publish deliberately later.</p></div><a class="desk-link-btn" href="/admin#compose">Full Composer</a></div>' +
+    return '<section class="desk-mode-panel desk-compose-panel" aria-label="Compose">' +
+      '<div class="desk-panel-tools"><a class="desk-link-btn" href="/admin#compose">Full Composer</a></div>' +
       '<form class="desk-form desk-compose-form" data-desk-form="capture">' +
       '<label><span>Post or Capture</span><textarea class="desk-textarea desk-compose-textarea" name="task_text" rows="12" required></textarea></label>' +
       '<div class="desk-form-row">' +
@@ -492,21 +491,8 @@
     return '<div class="desk-stage" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
-  function renderHeader(data) {
-    var current = data.current_room || data.office || {};
-    var path = current.path || '';
-    var title = current.title || 'Office';
-    return '<header class="desk-topbar">' +
-      '<div class="desk-room-heading">' +
-      '<p class="desk-kicker">Desk</p>' +
-      '<h1>' + escapeHtml(title) + '</h1>' +
-      '<div class="desk-room-path">' +
-      '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
-      (path ? '<span>/</span><span>' + escapeHtml(path) + '</span>' : '<span>starting room</span>') +
-      '</div>' +
-      '</div>' +
-      '<div class="desk-top-actions">' + statusButtons(data) + thresholdControl() + '</div>' +
-      '</header>';
+  function renderChromeControls(data) {
+    return '<div class="desk-chrome-controls">' + statusButtons(data) + thresholdControl() + '</div>';
   }
 
   function renderDeskSurface(data) {
@@ -563,11 +549,11 @@
 
   function renderCreateRoom(data) {
     var current = data.current_room && data.current_room.path ? data.current_room.path : '';
-    return '<form class="desk-form" data-desk-form="create-room">' +
+    return '<form class="desk-form desk-create-room-form" data-desk-form="create-room">' +
       '<div class="desk-form-row">' +
-      '<label><span>New Room</span><input class="desk-input" name="room_title" required></label>' +
-      '<label><span>Inside</span><select class="desk-select" name="room">' + roomOptionRows(data, current) + '</select></label>' +
-      '<button type="submit" class="desk-btn subtle">Create Room</button>' +
+      '<label><span class="desk-visually-hidden">New Room</span><input class="desk-input" name="room_title" placeholder="New room" aria-label="New room" required></label>' +
+      '<label><span class="desk-visually-hidden">Inside</span><select class="desk-select" name="room" aria-label="Inside">' + roomOptionRows(data, current) + '</select></label>' +
+      '<button type="submit" class="desk-btn subtle" aria-label="Create room">+</button>' +
       '</div>' +
       '</form>';
   }
@@ -704,7 +690,7 @@
   function render(data) {
     state.data = data;
     root.dataset.roomTone = roomTone(data.current_room && data.current_room.path);
-    root.innerHTML = renderHeader(data) +
+    root.innerHTML = renderChromeControls(data) +
       '<div data-desk-message></div>' +
       renderStage(data);
     markPageReady();

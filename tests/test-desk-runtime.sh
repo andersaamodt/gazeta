@@ -59,6 +59,17 @@ assert_file_contains() {
   fi
 }
 
+assert_file_not_contains() {
+  file=$1
+  needle=$2
+  label=$3
+  if grep -Fq -- "$needle" "$file"; then
+    fail "$label (unexpected: $needle in $file)"
+  else
+    pass
+  fi
+}
+
 strip_cgi_headers() {
   awk '
     BEGIN { body = 0 }
@@ -290,12 +301,13 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-mahogany2' 'Desk page cache-busts mahogany interface assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-one-screen1' 'Desk page cache-busts one-screen interface assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'url("/static/textures/desk-mahogany.jpg")' 'Desk uses a dark mahogany desktop rectangle texture'
-assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'width: min(78rem, calc(100vw - clamp(1.8rem, 4.4vw, 5.6rem)));' 'Desk desktop is a centered responsive rectangle'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body.desk-page-body #title-block-header' 'Desk hides the generated page title block'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'height: calc(100vh - clamp(5.8rem, 7.8vw, 7.2rem));' 'Desk desktop is sized as a one-screen rectangle'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body.desk-page-body' 'Desk has a class-based page layout fallback'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) {' 'Desk scopes page-level layout to the private root'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'max-width: none;' 'Desk removes the public content-column width cap'
@@ -315,6 +327,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="map"'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="todo"' 'Desk frontend exposes checklist mode launcher'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compose"' 'Desk frontend exposes compose mode launcher'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderChromeControls(data)' 'Desk renders compact chrome controls without the room title header'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" '<h2 id="desk-map-heading">Room Map</h2>' 'Desk map omits title text for one-screen use'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'Central hall, wings, and nested rooms' 'Desk map omits explanatory description text'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'restore-task' 'Desk frontend exposes task restore after completion'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk_visibility_threshold' 'Desk frontend exposes the surfacing threshold control'
 assert_file_contains "$ROOT_DIR/site/includes/nav.md" 'href="/desk"' 'logged-in user menu links to Desk'
