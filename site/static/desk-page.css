@@ -192,6 +192,25 @@ body:has(#desk-page-root) {
   background: rgba(3, 20, 51, 0.58);
 }
 
+.desk-top-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.desk-threshold-control {
+  display: grid;
+  gap: 0.22rem;
+  color: var(--desk-muted);
+  font-size: 0.78rem;
+}
+
+.desk-threshold-control .desk-select {
+  min-width: 4.8rem;
+}
+
 .desk-status-btn {
   padding: 0.38rem 0.58rem;
   font-size: 0.86rem;
@@ -302,6 +321,13 @@ body:has(#desk-page-root) {
   gap: 0.55rem;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.desk-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: -0.2rem 0 0.7rem;
 }
 
 .desk-office-panel,
@@ -472,6 +498,14 @@ body:has(#desk-page-root) {
   background: rgba(123, 35, 52, 0.22);
 }
 
+.desk-shell[data-busy="true"] .desk-btn,
+.desk-shell[data-busy="true"] .desk-icon-btn,
+.desk-shell[data-busy="true"] .desk-status-btn,
+.desk-shell[data-busy="true"] .desk-link-btn {
+  opacity: 0.68;
+  pointer-events: none;
+}
+
 .desk-search-panel {
   border-color: rgba(35, 90, 73, 0.62);
 }
@@ -498,6 +532,10 @@ body:has(#desk-page-root) {
 
   .desk-status {
     width: fit-content;
+  }
+
+  .desk-top-actions {
+    justify-content: flex-start;
   }
 }
 

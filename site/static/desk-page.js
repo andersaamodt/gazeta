@@ -9,7 +9,10 @@
   var state = {
     data: null,
     search: null,
-    currentRoom: roomFromLocation()
+    currentRoom: roomFromLocation(),
+    threshold: thresholdFromStorage(),
+    showSurfacedOnly: false,
+    inFlight: 0
   };
 
   function markPageReady() {
@@ -34,6 +37,14 @@
     } catch (_err) {
       return '';
     }
+  }
+
+  function thresholdFromStorage() {
+    var stored = Number(localStorage.getItem('desk_visibility_threshold') || 1);
+    if (!Number.isFinite(stored) || stored < 1) {
+      return 1;
+    }
+    return Math.min(100, Math.floor(stored));
   }
 
   function roomUrl(room) {
@@ -66,19 +77,35 @@
     body.set('session_token', auth.session_token);
     body.set('csrf_token', auth.csrf_token);
     body.set('action', action);
+    body.set('visibility_threshold', String(state.threshold || 1));
     Object.keys(payload || {}).forEach(function (key) {
       if (payload[key] != null) {
         body.set(key, String(payload[key]));
       }
     });
+    setBusy(true);
     return fetch('/cgi/blog-desk', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body: body.toString()
     }).then(function (response) {
-      return response.json();
+      return response.json().catch(function () {
+        return { success: false, error: 'Desk returned an unreadable response.' };
+      });
+    }).finally(function () {
+      setBusy(false);
     });
+  }
+
+  function setBusy(isBusy) {
+    state.inFlight = Math.max(0, state.inFlight + (isBusy ? 1 : -1));
+    if (!root) {
+      return;
+    }
+    var busy = state.inFlight > 0;
+    root.dataset.busy = busy ? 'true' : 'false';
+    root.setAttribute('aria-busy', busy ? 'true' : 'false');
   }
 
   function showMessage(message, isError) {
@@ -117,6 +144,19 @@
       '</div>';
   }
 
+  function thresholdControl() {
+    var values = [1, 2, 3, 5];
+    if (values.indexOf(state.threshold) === -1) {
+      values.push(state.threshold);
+      values.sort(function (left, right) { return left - right; });
+    }
+    return '<label class="desk-threshold-control"><span>Surface at</span><select class="desk-select" data-desk-threshold>' +
+      values.map(function (value) {
+        return '<option value="' + value + '"' + (value === state.threshold ? ' selected' : '') + '>+' + value + '</option>';
+      }).join('') +
+      '</select></label>';
+  }
+
   function roomOptionRows(data, selected) {
     var rooms = [{ path: '', title: 'Office' }].concat((data && data.rooms) || []);
     return rooms.map(function (room) {
@@ -143,7 +183,7 @@
       (path ? '<span>/</span><span>' + escapeHtml(path) + '</span>' : '<span>starting room</span>') +
       '</div>' +
       '</div>' +
-      statusButtons(data) +
+      '<div class="desk-top-actions">' + statusButtons(data) + thresholdControl() + '</div>' +
       '</header>';
   }
 
@@ -241,6 +281,26 @@
     }).join('') + '</div>';
   }
 
+  function taskIsSurfaced(task) {
+    var upvotes = Number(task && task.upvotes || 0);
+    if (upvotes >= state.threshold) {
+      return true;
+    }
+    var soon = Number(task && task.soonness_epoch || 0);
+    if (!soon) {
+      return false;
+    }
+    return soon <= Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  }
+
+  function roomTaskFilterControls(tasks) {
+    var surfaced = (tasks || []).filter(taskIsSurfaced).length;
+    return '<div class="desk-filter-controls" aria-label="Room task filter">' +
+      '<button type="button" class="desk-status-btn' + (!state.showSurfacedOnly ? ' is-active' : '') + '" data-desk-filter="all">All ' + escapeHtml((tasks || []).length) + '</button>' +
+      '<button type="button" class="desk-status-btn' + (state.showSurfacedOnly ? ' is-active' : '') + '" data-desk-filter="surfaced">Surfaced ' + escapeHtml(surfaced) + '</button>' +
+      '</div>';
+  }
+
   function taskItem(task, data) {
     var room = String(task.room || '');
     var body = task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '';
@@ -275,6 +335,7 @@
   function renderRoom(data) {
     var room = data.current_room || {};
     var tasks = data.tasks || [];
+    var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
     var done = data.done_tasks || [];
     return '<section class="desk-room-panel">' +
       '<div class="desk-room-actions">' +
@@ -289,10 +350,12 @@
       '<button type="submit" class="desk-btn primary">Add to Room</button>' +
       '</form>' +
       '<h2>Room Tasks</h2>' +
-      (tasks.length ? '<ul class="desk-task-list">' + tasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No local tasks.</p>') +
+      roomTaskFilterControls(tasks) +
+      (visibleTasks.length ? '<ul class="desk-task-list">' + visibleTasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
       '<h2>Done</h2>' +
       (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
-        return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) + '</li>';
+        return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
+          '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
       }).join('') + '</ul>' : '<p class="desk-empty">No archived tasks here.</p>') +
       '</section>';
   }
@@ -400,14 +463,38 @@
       return;
     }
 
+    var filter = event.target.closest('[data-desk-filter]');
+    if (filter) {
+      state.showSurfacedOnly = filter.getAttribute('data-desk-filter') === 'surfaced';
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
     var taskAction = event.target.closest('[data-desk-task-action]');
     if (taskAction) {
       var action = taskAction.getAttribute('data-desk-task-action');
-      api(action === 'vote' ? 'vote-task' : 'complete-task', {
+      var apiAction = action === 'vote' ? 'vote-task' : (action === 'restore' ? 'restore-task' : 'complete-task');
+      api(apiAction, {
         room: taskAction.getAttribute('data-room') || state.currentRoom,
         task_id: taskAction.getAttribute('data-task-id') || ''
       }).then(refreshFrom);
     }
+  });
+
+  root.addEventListener('change', function (event) {
+    var threshold = event.target.closest('[data-desk-threshold]');
+    if (!threshold) {
+      return;
+    }
+    var next = Number(threshold.value || 1);
+    if (!Number.isFinite(next) || next < 1) {
+      next = 1;
+    }
+    state.threshold = Math.min(100, Math.floor(next));
+    localStorage.setItem('desk_visibility_threshold', String(state.threshold));
+    loadState();
   });
 
   root.addEventListener('submit', function (event) {
@@ -418,12 +505,23 @@
     event.preventDefault();
     var type = form.getAttribute('data-desk-form');
     if (type === 'capture' || type === 'room-add') {
+      var originRoom = state.currentRoom;
+      var destinationRoom = formValue(form, 'destination_room');
       api('add-task', {
-        destination_room: formValue(form, 'destination_room'),
+        destination_room: destinationRoom,
         task_text: formValue(form, 'task_text')
       }).then(function (data) {
         if (data && data.success !== false) {
           form.reset();
+        }
+        if (type === 'capture' && data && data.success !== false && destinationRoom !== originRoom) {
+          var destinationTitle = data.current_room && data.current_room.title ? data.current_room.title : 'room';
+          state.currentRoom = originRoom;
+          api('state', { room: originRoom }).then(function (nextData) {
+            refreshFrom(nextData, originRoom);
+            showMessage('Captured to ' + destinationTitle + '.', false);
+          });
+          return;
         }
         refreshFrom(data);
       });

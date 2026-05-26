@@ -236,6 +236,10 @@ complete_json=$(run_desk "action=complete-task&$auth_query&room=writing-room&tas
 assert_jq "$complete_json" '.success == true and .completed_task.status == "done"' 'Desk marks completion by moving to done archive'
 assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/done/$task_id" 'completed task moved to .tasks/done'
 
+restore_json=$(run_desk "action=restore-task&$auth_query&room=writing-room&task_id=$(urlencode "$task_id")")
+assert_jq "$restore_json" '.success == true and .restored_task.status == "open" and .restored_task.completed_at == ""' 'Desk can restore completed tasks from the done archive'
+assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/$task_id" 'restored task moved back to room .tasks'
+
 audit_json=$(run_desk "action=audit&$auth_query")
 assert_jq "$audit_json" '.success == true and .issue_count == 0' 'Desk audit command reports clean state'
 
@@ -248,12 +252,14 @@ assert_jq "$orphans_json" '.success == true and .orphan_count == 0' 'Desk list-o
 
 migrate_json=$(run_desk "action=migrate-metadata&$auth_query&metadata_backend=sidecar")
 assert_jq "$migrate_json" '.success == true and .target == "sidecar" and .migrated >= 1' 'Desk migrates task metadata to portable sidecars'
-assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/done/.meta/$task_id.json" 'metadata sidecar mirrors xattr fields after migration'
+assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.json" 'metadata sidecar mirrors xattr fields after migration'
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk frontend talks to private API'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'restore-task' 'Desk frontend exposes task restore after completion'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk_visibility_threshold' 'Desk frontend exposes the surfacing threshold control'
 assert_file_contains "$ROOT_DIR/site/includes/nav.md" 'href="/desk"' 'logged-in user menu links to Desk'
 
 printf 'PASS: %s\n' "$PASS_COUNT"

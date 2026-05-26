@@ -607,6 +607,27 @@ class DeskStore:
         payload["completed_task"] = self.read_task(room, target, "done")
         return payload
 
+    def restore_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
+        old_path = self.task_path(room_rel, task_id, "done")
+        if not old_path.is_file():
+            raise DeskError("missing_task", "Archived task file was not found.")
+        room = self.normalize_room_rel(room_rel)
+        open_dir = self.tasks_dir(room)
+        open_dir.mkdir(parents=True, exist_ok=True)
+        target = open_dir / old_path.name
+        if target.exists():
+            target = open_dir / f"{old_path.stem}-{now_epoch()}{old_path.suffix}"
+        metadata = self.metadata(old_path)
+        os.rename(old_path, target)
+        self.move_sidecar(old_path, target)
+        metadata["completed_at"] = ""
+        metadata["updated_at"] = iso_now()
+        self.set_metadata(target, metadata)
+        self.append_log("restore-task", {"room": room, "task": target.name})
+        payload = self.state(room, threshold)
+        payload["restored_task"] = self.read_task(room, target)
+        return payload
+
     def set_soonness(self, room_rel: str, task_id: str, soonness: str, threshold: int) -> dict[str, object]:
         task_path = self.task_path(room_rel, task_id)
         if not task_path.is_file():
@@ -763,6 +784,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "add-task",
         "vote-task",
         "complete-task",
+        "restore-task",
         "move-task",
         "set-soonness",
         "set-status",
@@ -783,6 +805,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.vote_task(room, env("BLOG_DESK_TASK_ID"), threshold)
         if action == "complete-task":
             return store.complete_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "restore-task":
+            return store.restore_task(room, env("BLOG_DESK_TASK_ID"), threshold)
         if action == "move-task":
             return store.move_task(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_TARGET_ROOM"), threshold)
         if action == "set-soonness":
