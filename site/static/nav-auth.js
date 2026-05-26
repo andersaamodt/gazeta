@@ -3818,7 +3818,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260525-heading-nav-fix1';
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260526-title-action-edge1';
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();

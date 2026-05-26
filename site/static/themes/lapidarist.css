@@ -1469,6 +1469,90 @@ html body :is(
   -webkit-box-shadow: var(--action-soft-shadow, 0 0.36rem 0.82rem rgba(48, 34, 16, 0.16)) !important;
 }
 
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn,
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn:hover:not(:disabled),
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn:focus-visible:not(:disabled),
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn:active:not(:disabled) {
+  appearance: none !important;
+  -moz-appearance: none !important;
+  -webkit-appearance: none !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-top-width: 0 !important;
+  border-right-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-left-width: 0 !important;
+  border-inline-start-width: 0 !important;
+  border-inline-end-width: 0 !important;
+  border-block-start-width: 0 !important;
+  border-block-end-width: 0 !important;
+  border-style: none !important;
+  border-top-style: none !important;
+  border-right-style: none !important;
+  border-bottom-style: none !important;
+  border-left-style: none !important;
+  border-color: transparent !important;
+  border-top-color: transparent !important;
+  border-right-color: transparent !important;
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+  border-image: none !important;
+  border-image-source: none !important;
+  outline: 0 !important;
+  background-image: none !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  background-origin: padding-box !important;
+  clip-path: none !important;
+  contain: none !important;
+  isolation: isolate;
+  overflow: visible !important;
+  position: relative;
+  z-index: 1;
+}
+
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn::before,
+html body :is(
+  #list-page-title,
+  #blog-page-title,
+  #contact-page-title,
+  #nip23-page-title,
+  #public-ranking-title
+) .list-page-title-actions button.list-admin-primary-btn::after {
+  content: none !important;
+  display: none !important;
+}
+
 .list-page-title-actions .list-admin-primary-btn::-moz-focus-inner,
 .list-page-title-actions .blog-filter-toggle::-moz-focus-inner {
   border: 0 !important;

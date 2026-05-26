@@ -1732,7 +1732,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260525-heading-nav-fix1';
+      const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=20260526-title-action-edge1';
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
       const currentRequested = String(themeLink.getAttribute('data-theme-href') || '');
