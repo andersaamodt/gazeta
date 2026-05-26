@@ -2075,6 +2075,10 @@ body.nav-cart-open {
 #contact-page-title:has(.list-page-title-actions),
 #nip23-page-title:has(.list-page-title-actions),
 #public-ranking-title:has(.list-page-title-actions) {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: var(--heading-color);
   border-bottom: 0;
   border-image: none;
   padding-bottom: 0.08rem;
@@ -2110,6 +2114,11 @@ body.nav-cart-open {
   display: block;
   flex: 1 1 auto;
   min-width: 0;
+  color: var(--heading-color);
+  background: var(--heading-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--heading-fill);
   border-bottom: 0;
   border-image: none;
   padding-bottom: 0.08rem;
