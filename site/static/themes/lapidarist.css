@@ -478,6 +478,10 @@ strong {
 #contact-page-title:has(.list-page-title-actions),
 #nip23-page-title:has(.list-page-title-actions),
 #public-ranking-title:has(.list-page-title-actions) {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: var(--heading-color);
   border-bottom: 0;
   border-image: none;
   border-image-source: none;

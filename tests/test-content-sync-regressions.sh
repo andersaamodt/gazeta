@@ -1079,6 +1079,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.list-pag
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.nostr-publish-modal-actions .list-admin-primary-btn' 'Lapidarist Nostr publish modal actions use the shared soft action style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.blog-compose-btn' 'Lapidarist blog compose action buttons use the shared soft action style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '--action-soft-radius: 8px;' 'Lapidarist uses the shared Open Chat button radius'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '-webkit-background-clip: border-box;' 'Lapidarist title action parent clears heading gradient clipping away from buttons'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '-webkit-background-clip: text;' 'Lapidarist title action text span keeps the heading gradient'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'border-image-source: linear-gradient(90deg, var(--lapis) 0%, var(--amethyst) 100%);' 'Lapidarist title underline is scoped to title text spans'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '20260526-title-action-edge1' 'head theme stylesheet cache buster tracks title action edge fixes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" '20260526-title-action-edge1' 'admin theme preview cache buster tracks title action edge fixes'
