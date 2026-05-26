@@ -310,15 +310,112 @@ blog_list_public_entries_json() {
 blog_list_public_votes_json() {
   slug=$(blog_list_normalize_slug "${1-}")
   path=$(blog_list_public_votes_path "$slug")
+  nostr_votes_json=$(blog_list_nostr_vote_events_json "$slug" 2>/dev/null || printf '[]')
   if [ ! -s "$path" ]; then
-    printf '[]\n'
+    printf '%s\n' "$nostr_votes_json"
     return 0
   fi
-  jq -s '[.[] | select(type=="object" and ((.entry_id // "") | length > 0) and ((.voter // "") | length > 0) and ((.value // 0) == 1 or (.value // 0) == -1))]' "$path" 2>/dev/null || printf '[]\n'
+  local_votes_json=$(jq -s '[.[] | select(type=="object" and ((.entry_id // "") | length > 0) and ((.voter // "") | length > 0) and (((.value // 0) == 1) or ((.value // 0) == -1) or ((.value // 0) == 0)))]' "$path" 2>/dev/null || printf '[]')
+  jq -cn --argjson local_votes "$local_votes_json" --argjson nostr_votes "$nostr_votes_json" '
+    ($local_votes + $nostr_votes)
+    | map(. + {
+        _dedupe_key: (
+          if ((.event_id // "") | length) > 0 then (.event_id // "")
+          else ("local:" + ((.entry_id // "")|tostring) + ":" + ((.voter // "")|tostring) + ":" + ((.created_at // 0)|tostring) + ":" + ((.value // 0)|tostring))
+          end
+        )
+      })
+    | sort_by(._dedupe_key, (.created_at // 0))
+    | group_by(._dedupe_key)
+    | map(last | del(._dedupe_key))
+  ' 2>/dev/null || printf '[]\n'
 }
 
 blog_list_vote_cooldown_seconds() {
   printf '64800\n'
+}
+
+blog_list_vote_context_for_slug() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  page_type='list'
+  if command -v blog_nostr_page_type_for_slug >/dev/null 2>&1; then
+    page_type=$(blog_nostr_page_type_for_slug "$slug" 2>/dev/null || printf 'list')
+  fi
+  if command -v blog_nostr_page_kind_for_type >/dev/null 2>&1; then
+    kind=$(blog_nostr_page_kind_for_type "$page_type" 2>/dev/null || printf '30004')
+  else
+    case "$page_type" in
+      software-gallery) kind=30267 ;;
+      *) kind=30004 ;;
+    esac
+  fi
+  pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+  if [ -n "$pubkey" ]; then
+    printf '%s:%s:%s\n' "$kind" "$pubkey" "$slug"
+  else
+    printf '%s::%s\n' "$kind" "$slug"
+  fi
+}
+
+blog_list_vote_epoch_for_created_at() {
+  created_at=${1-}
+  cooldown=$(blog_list_vote_cooldown_seconds)
+  case "$created_at" in
+    ''|*[!0-9]*) created_at=0 ;;
+  esac
+  printf '%s\n' $(( (created_at / cooldown) * cooldown ))
+}
+
+blog_list_nostr_vote_events_json() {
+  slug=$(blog_list_normalize_slug "${1-}")
+  [ -d "$blog_nostr_events_dir" ] || {
+    printf '[]\n'
+    return 0
+  }
+  context=$(blog_list_vote_context_for_slug "$slug" 2>/dev/null || printf '')
+  [ -n "$context" ] || {
+    printf '[]\n'
+    return 0
+  }
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-vote-events.XXXXXX")
+  find "$blog_nostr_events_dir" -type f \( -path '*/7/*.json' -o -path '*/17/*.json' \) 2>/dev/null | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    jq -c '.' "$file" 2>/dev/null || true
+  done > "$tmp"
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    printf '[]\n'
+    return 0
+  fi
+  jq -cs --arg context "$context" --argjson cooldown "$(blog_list_vote_cooldown_seconds)" '
+    def tagv($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
+    def vote_value:
+      ((.content // "") | tostring | gsub("^\\s+|\\s+$"; "")) as $c
+      | if $c == "+" then 1 elif $c == "-" then -1 elif $c == "0" then 0 else null end;
+    [ .[]?
+      | select(type=="object" and ((.kind == 7) or (.kind == 17)) and ((.tags // []) | type) == "array")
+      | . as $ev
+      | select((tagv("context") == $context) or (tagv("list_context") == $context))
+      | (tagv("entry") // tagv("list_entry")) as $entry_id
+      | (vote_value) as $value
+      | select(($entry_id | length) > 0 and ($value != null))
+      | (.created_at // 0 | tonumber? // 0) as $created_at
+      | (tagv("vote_epoch") | tonumber? // (($created_at / $cooldown | floor) * $cooldown)) as $epoch
+      | {
+          entry_id: $entry_id,
+          voter: (.pubkey // ""),
+          value: $value,
+          created_at: $created_at,
+          vote_epoch: $epoch,
+          vote_context: $context,
+          event_id: (.id // ""),
+          event_kind: (.kind // 0),
+          source: "nostr"
+        }
+      | select((.voter | length) > 0)
+    ]
+  ' "$tmp" 2>/dev/null || printf '[]\n'
+  rm -f "$tmp"
 }
 
 blog_list_merge_public_activity_json() {
@@ -333,57 +430,77 @@ blog_list_merge_public_activity_json() {
   votes_json=$(blog_list_public_votes_json "$slug")
   now_epoch=$(blog_now_epoch)
   vote_cooldown_seconds=$(blog_list_vote_cooldown_seconds)
+  vote_context=$(blog_list_vote_context_for_slug "$slug" 2>/dev/null || printf '')
+  current_vote_epoch=$(( (now_epoch / vote_cooldown_seconds) * vote_cooldown_seconds ))
   jq -cn \
     --argjson validation "$validation_json" \
     --argjson submissions "$submissions_json" \
     --argjson votes "$votes_json" \
     --arg viewer "$viewer" \
+    --arg vote_context "$vote_context" \
     --argjson now_epoch "$now_epoch" \
     --argjson vote_cooldown_seconds "$vote_cooldown_seconds" \
+    --argjson current_vote_epoch "$current_vote_epoch" \
     '
+      def epoch_for($vote):
+        (($vote.vote_epoch // (((($vote.created_at // 0) | tonumber? // 0) / $vote_cooldown_seconds | floor) * $vote_cooldown_seconds)) | tonumber? // 0);
       ($votes
-        | sort_by((.entry_id // ""), (.voter // ""), (.created_at // 0))
-        | group_by([(.entry_id // ""), (.voter // "")])
-        | map(max_by(.created_at // 0))
-      ) as $latest_votes
+        | map(. + {vote_epoch: epoch_for(.)})
+        | sort_by((.entry_id // ""), (.voter // ""), (.vote_epoch // 0), (.created_at // 0), (.event_id // ""))
+      ) as $normalized_votes
+      | ($normalized_votes
+        | group_by([(.entry_id // ""), (.voter // ""), (.vote_epoch // 0)])
+        | map(max_by([(.created_at // 0), (.event_id // "")]))
+      ) as $epoch_votes
+      | ($normalized_votes
+        | map(select(((.value // 0) == 1) or ((.value // 0) == -1)))
+      ) as $scored_votes
       | def score_for($id):
-          ([$votes[]? | select((.entry_id // "") == $id) | (.value // 0)] | add // 0);
+          ([$scored_votes[]? | select((.entry_id // "") == $id) | ((.value // 0) | tonumber? // 0)] | add // 0);
         def latest_vote_for($id):
-          ([$votes[]? | select((.entry_id // "") == $id)] | max_by(.created_at // 0) // {});
+          ([$scored_votes[]? | select((.entry_id // "") == $id)] | max_by([(.created_at // 0), (.event_id // "")]) // {});
         def latest_vote_value_for($id):
           ((latest_vote_for($id).value // 0) | tonumber? // 0);
         def latest_vote_created_at_for($id):
           ((latest_vote_for($id).created_at // 0) | tonumber? // 0);
-        def viewer_vote_for($id):
-          ([$latest_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer) | (.value // 0)] | last // 0);
         def viewer_votes_for($id):
-          [$votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer)];
+          [$normalized_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer)];
+        def viewer_epoch_votes_for($id):
+          [$epoch_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer)];
         def viewer_latest_vote_for($id):
-          (viewer_votes_for($id) | max_by(.created_at // 0) // {});
+          (viewer_epoch_votes_for($id) | max_by([(.vote_epoch // 0), (.created_at // 0), (.event_id // "")]) // {});
+        def viewer_current_epoch_vote_for($id):
+          ([viewer_epoch_votes_for($id)[]? | select((.vote_epoch // 0) == $current_vote_epoch)] | max_by([(.created_at // 0), (.event_id // "")]) // {});
+        def viewer_vote_for($id):
+          ((viewer_current_epoch_vote_for($id).value // 0) | tonumber? // 0);
         def viewer_vote_created_at_for($id):
           ((viewer_latest_vote_for($id).created_at // 0) | tonumber? // 0);
+        def viewer_vote_epoch_for($id):
+          ((viewer_latest_vote_for($id).vote_epoch // 0) | tonumber? // 0);
         def viewer_vote_total_for($id):
-          (viewer_latest_vote_for($id).value // 0) as $latest_value
-          | if ($latest_value == 1 or $latest_value == -1) then
-              ([viewer_votes_for($id)[]? | select((.value // 0) == $latest_value)] | length)
-            else
-              0
-            end;
+          ([$scored_votes[]? | select((.entry_id // "") == $id and (.voter // "") == $viewer)] | length);
         def viewer_next_vote_at_for($id):
-          (viewer_vote_created_at_for($id)) as $last_vote_at
-          | if $last_vote_at > 0 then ($last_vote_at + $vote_cooldown_seconds) else 0 end;
+          (viewer_latest_vote_for($id).vote_epoch // 0) as $last_epoch
+          | if $last_epoch > 0 then ($last_epoch + $vote_cooldown_seconds) else 0 end;
         def viewer_can_vote_now_for($id):
           (viewer_next_vote_at_for($id)) as $next_vote_at
           | ($next_vote_at == 0 or $now_epoch >= $next_vote_at);
+        def viewer_can_change_vote_for($id):
+          ((viewer_current_epoch_vote_for($id).created_at // 0) | tonumber? // 0) > 0;
         def vote_fields($id): {
+          vote_context: $vote_context,
+          vote_epoch: $current_vote_epoch,
           list_score: score_for($id),
           list_latest_vote: latest_vote_value_for($id),
           list_latest_vote_created_at: latest_vote_created_at_for($id),
           viewer_vote: viewer_vote_for($id),
           viewer_vote_created_at: viewer_vote_created_at_for($id),
+          viewer_vote_event_id: (viewer_latest_vote_for($id).event_id // ""),
+          viewer_vote_epoch: viewer_vote_epoch_for($id),
           viewer_vote_total: viewer_vote_total_for($id),
           viewer_next_vote_at: viewer_next_vote_at_for($id),
           viewer_can_vote_now: viewer_can_vote_now_for($id),
+          viewer_can_change_vote: viewer_can_change_vote_for($id),
           vote_cooldown_seconds: $vote_cooldown_seconds
         };
         (($validation.elements // []) | to_entries | map(.value + {_list_entry_id: ("entry-" + (.key | tostring))})) as $base
@@ -539,6 +656,7 @@ blog_list_validate_and_enrich_state_json() {
     image_url=$(printf '%s\n' "$element" | jq -r '.image_url // .[7] // ""' 2>/dev/null || printf '')
     tile_description=$(printf '%s\n' "$element" | jq -r '.description // .[8] // ""' 2>/dev/null || printf '')
     explicit_post_url=$(printf '%s\n' "$element" | jq -r '.post_url // .[9] // ""' 2>/dev/null || printf '')
+    allow_votes=$(printf '%s\n' "$state_json" | jq -r '.allow_signed_in_votes // false | if . then "true" else "false" end' 2>/dev/null || printf 'false')
 
     resolved=false
     post_url=$explicit_post_url
@@ -555,6 +673,24 @@ blog_list_validate_and_enrich_state_json() {
       else
         printf 'Entry %s has both POST_URL and EVENT_ID; POST_URL is the visible link and EVENT_ID will not replace it\n' "$((idx + 1))" >> "$warnings_tmp"
       fi
+    fi
+
+    vote_target_kind=""
+    vote_target_ref=""
+    if [ -n "$event_id" ]; then
+      vote_target_kind="event"
+      vote_target_ref="$event_id"
+    elif [ -n "$explicit_post_url" ]; then
+      vote_target_kind="web"
+      vote_target_ref="$explicit_post_url"
+    elif [ -n "$markdown" ]; then
+      vote_target_kind="text"
+      vote_target_ref=$(printf '%s' "$markdown" | shasum -a 256 2>/dev/null | awk '{print "sha256:" $1}' || printf '')
+      if [ "$allow_votes" = "true" ]; then
+        printf 'Entry %s has no Nostr event or URL; votes will target a derived text identity\n' "$((idx + 1))" >> "$warnings_tmp"
+      fi
+    elif [ "$allow_votes" = "true" ] && [ "$strict_publish" = "true" ]; then
+      printf 'Entry %s needs a stable vote target before publishing votes\n' "$((idx + 1))" >> "$errors_tmp"
     fi
 
     if [ -n "$event_id" ]; then
@@ -631,6 +767,8 @@ blog_list_validate_and_enrich_state_json() {
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
       --arg post_list_date "$post_list_date" \
+      --arg vote_target_kind "$vote_target_kind" \
+      --arg vote_target_ref "$vote_target_ref" \
       --argjson resolved "$( [ "$resolved" = "true" ] && printf true || printf false )" \
       '{
         type: $type,
@@ -646,7 +784,9 @@ blog_list_validate_and_enrich_state_json() {
         resolved: $resolved,
         post_url: $post_url,
         post_created_at: $post_created_at,
-        post_list_date: $post_list_date
+        post_list_date: $post_list_date,
+        vote_target_kind: $vote_target_kind,
+        vote_target_ref: $vote_target_ref
       }' | tee -a "$elements_tmp" >> "$entries_tmp"
     idx=$((idx + 1))
   done

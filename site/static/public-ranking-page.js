@@ -171,8 +171,9 @@
 	    if (!payload || !isExpectedPayload(payload)) {
 	      return false;
     }
+    var authenticated = hasLikelyAuthenticatedSession();
     var optimisticPayload = payload;
-    if (!optimisticPayload.is_admin && hasLikelyAuthenticatedSession()) {
+    if (!optimisticPayload.is_admin && authenticated) {
       optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
     }
     state.payload = optimisticPayload;
@@ -187,7 +188,7 @@
 	    state.submitAdvancedOpen = false;
 	    state.saveIndicatorVisible = false;
 	    setSaveStatus('saved');
-	    if (hasMatchingStaticPrerender(optimisticPayload)) {
+	    if (!authenticated && hasMatchingStaticPrerender(optimisticPayload)) {
 	      renderHead();
 	      renderAdmin();
 	      renderValidation();
@@ -864,7 +865,7 @@
 
   function metricLabel(metric) {
     if (metric === 'support') {
-      return 'Upvotes (unique voters)';
+      return 'Upvotes';
     }
     if (metric === 'enthusiasm') {
       return 'Popularity (total votes)';
@@ -1146,7 +1147,7 @@
     html += '<label><span>Show marker-based filters</span><input type="checkbox" id="public-ranking-edit-show-marker-filters"' + (renderState.show_marker_filters ? ' checked' : '') + '></label>';
     html += '<label><span>Default metric</span><select id="public-ranking-edit-default-metric">';
     html += '<option value="momentum"' + (normalizeMetric(renderState.default_metric) === 'momentum' ? ' selected' : '') + '>Hotness (recent-weighted)</option>';
-    html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>Upvotes (unique voters)</option>';
+    html += '<option value="support"' + (normalizeMetric(renderState.default_metric) === 'support' ? ' selected' : '') + '>Upvotes</option>';
     html += '<option value="enthusiasm"' + (normalizeMetric(renderState.default_metric) === 'enthusiasm' ? ' selected' : '') + '>Popularity (total votes)</option>';
     html += '<option value="intensity"' + (normalizeMetric(renderState.default_metric) === 'intensity' ? ' selected' : '') + '>Engagement (votes/voter)</option>';
     html += '</select></label>';

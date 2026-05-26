@@ -582,10 +582,7 @@ blog_public_ranking_view_json() {
               target: ((all_tags(.tags; "a") | map(select(($score_coords | index(.)) != null)) | first) // "")
             })
           | map(select((.target | length) > 0))
-          | map(. + { bucket: ((.created_at / 86400) | floor) })
-          | sort_by(.target, .pubkey, .bucket, .created_at, .id)
-          | group_by(.target, .pubkey, .bucket)
-          | map(first)
+          | sort_by(.target, .created_at, .id)
         ) as $counted_votes
       | ($counted_votes
           | group_by(.target)
@@ -593,7 +590,7 @@ blog_public_ranking_view_json() {
               key: (.[0].target),
               value: {
                 enthusiasm: length,
-                support: (map(.pubkey) | unique | length),
+                support: length,
                 momentum: (map((($now_epoch - (.created_at // 0)) / 86400) | if . < 0 then 0 else . end | (1 / (1 + .))) | add // 0)
               }
             })
