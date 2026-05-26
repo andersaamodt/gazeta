@@ -281,6 +281,53 @@ blog_list_state_signature_json() {
   }' 2>/dev/null || printf '{}\n'
 }
 
+blog_list_oeuvre_protected_content_messages_json() {
+  state_json=${1-}
+  [ -n "$state_json" ] || state_json='{}'
+  printf '%s\n' "$state_json" | jq -c '
+    def field($e; $idx; $key):
+      if ($e | type) == "array" then (($e[$idx] // "") | tostring)
+      else (($e[$key] // "") | tostring)
+      end;
+    def entry_markdown($e):
+      if ($e | type) == "array" then (($e[6] // $e[5] // "") | tostring)
+      else (($e.markdown // "") | tostring)
+      end;
+    def entry_date($e): field($e; 4; "date");
+    def entry_event_id($e): field($e; 1; "event_id");
+    def entry_post_url($e): field($e; 9; "post_url");
+    def has_markdown_link($s): ($s | test("\\[[^]]+\\]\\([^)]+\\)"));
+    def protected_recent($e):
+      (entry_date($e) | test("^202[4-6]"))
+      and ((entry_markdown($e)) != "Doing Nothing on Purpose (Semanthesis essay)");
+    def has_public_link($e):
+      (has_markdown_link(entry_markdown($e)))
+      or ((entry_post_url($e) | length) > 0)
+      or ((entry_event_id($e) | length) > 0);
+    def display_label($s):
+      ($s | gsub("\\[[^]]+\\]\\(([^)]+)\\)"; "") | gsub("[*_`]"; "") | gsub("\\s+"; " ") | gsub("^\\s+|\\s+$"; "")) as $clean
+      | if ($clean | length) > 0 then $clean else "(blank)" end;
+    (.slug // "") as $slug
+    | if $slug != "oeuvre" then []
+      else
+        ((.elements // .entries // []) | to_entries | map(
+          .key as $i
+          | .value as $entry
+          | (entry_markdown($entry)) as $markdown
+          | (entry_post_url($entry)) as $post_url
+          | [
+              (if protected_recent($entry) and (has_public_link($entry) | not) then
+                "Oeuvre entry " + (($i + 1) | tostring) + " (" + (display_label($markdown)) + ") is protected 2024-2026 content and must keep a markdown link, POST_URL, or EVENT_ID."
+              else empty end),
+              (if (($markdown + " " + $post_url) | contains("new.andersaamodt.com")) then
+                "Oeuvre entry " + (($i + 1) | tostring) + " points to new.andersaamodt.com; use andersaamodt.com."
+              else empty end)
+            ]
+        ) | add // [])
+      end
+  ' 2>/dev/null || printf '[]\n'
+}
+
 blog_list_public_entries_path() {
   slug=$(blog_list_normalize_slug "${1-}")
   [ -n "$slug" ] || return 1
@@ -794,6 +841,10 @@ blog_list_validate_and_enrich_state_json() {
   elements_json='[]'
   if [ -s "$elements_tmp" ]; then
     elements_json=$(jq -s '.' "$elements_tmp" 2>/dev/null || printf '[]')
+  fi
+  protected_messages_json=$(blog_list_oeuvre_protected_content_messages_json "$state_json")
+  if printf '%s\n' "$protected_messages_json" | jq -e 'length > 0' >/dev/null 2>&1; then
+    printf '%s\n' "$protected_messages_json" | jq -r '.[]' >> "$errors_tmp"
   fi
   entries_json='[]'
   if [ -s "$entries_tmp" ]; then
