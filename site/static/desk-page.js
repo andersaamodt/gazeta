@@ -10,6 +10,7 @@
     data: null,
     search: null,
     currentRoom: roomFromLocation(),
+    mode: 'map',
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
     inFlight: 0
@@ -204,6 +205,291 @@
   function heatWidth(heat) {
     var value = Math.max(8, Math.min(100, Number(heat || 0) * 10 + 8));
     return value + '%';
+  }
+
+  function hashText(value) {
+    var text = String(value || 'office');
+    var hash = 0;
+    for (var i = 0; i < text.length; i += 1) {
+      hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function roomColor(room) {
+    var value = String(room && room.color || '').trim();
+    if (/^#[0-9a-f]{6}$/i.test(value)) {
+      return value;
+    }
+    var palette = ['#b85c6a', '#4f8fbd', '#d59a3a', '#6f77c8', '#3f9b73', '#b06ab3', '#c66f3d', '#5276ad'];
+    return palette[hashText(room && room.path) % palette.length];
+  }
+
+  function roomPathParent(path) {
+    var text = String(path || '');
+    if (!text || text.indexOf('/') === -1) {
+      return '';
+    }
+    return text.split('/').slice(0, -1).join('/');
+  }
+
+  function mapRooms(data) {
+    var office = Object.assign({}, data.office || {}, {
+      path: '',
+      title: (data.office && data.office.title) || 'Office',
+      depth: 0,
+      parent_path: ''
+    });
+    var rooms = [office].concat((data.rooms || []).map(function (room) {
+      var path = String(room.path || '');
+      return Object.assign({}, room, {
+        path: path,
+        parent_path: typeof room.parent_path === 'string' ? room.parent_path : roomPathParent(path)
+      });
+    }));
+    rooms.sort(function (left, right) {
+      var lp = String(left.path || '');
+      var rp = String(right.path || '');
+      if (lp === rp) return 0;
+      if (lp === '') return -1;
+      if (rp === '') return 1;
+      return lp.localeCompare(rp);
+    });
+    return rooms;
+  }
+
+  function occupy(layout, key, preferredX, preferredY) {
+    var occupied = {};
+    Object.keys(layout).forEach(function (path) {
+      occupied[layout[path].x + ',' + layout[path].y] = true;
+    });
+    var candidates = [[preferredX, preferredY]];
+    for (var radius = 1; radius < 12; radius += 1) {
+      for (var dx = -radius; dx <= radius; dx += 1) {
+        candidates.push([preferredX + dx, preferredY - radius], [preferredX + dx, preferredY + radius]);
+      }
+      for (var dy = -radius + 1; dy <= radius - 1; dy += 1) {
+        candidates.push([preferredX - radius, preferredY + dy], [preferredX + radius, preferredY + dy]);
+      }
+    }
+    for (var i = 0; i < candidates.length; i += 1) {
+      var candidate = candidates[i];
+      var occupiedKey = candidate[0] + ',' + candidate[1];
+      if (!occupied[occupiedKey]) {
+        layout[key] = { x: candidate[0], y: candidate[1] };
+        return layout[key];
+      }
+    }
+    layout[key] = { x: preferredX, y: preferredY };
+    return layout[key];
+  }
+
+  function mansionLayout(rooms) {
+    var layout = { '': { x: 0, y: 0 } };
+    var children = {};
+    rooms.forEach(function (room) {
+      var parent = String(room.parent_path || '');
+      if (!children[parent]) children[parent] = [];
+      if (String(room.path || '') !== '') children[parent].push(room);
+    });
+    Object.keys(children).forEach(function (parent) {
+      children[parent].sort(function (left, right) {
+        return String(left.path || '').localeCompare(String(right.path || ''));
+      });
+    });
+
+    function placeChildren(parentPath) {
+      var parent = layout[parentPath] || { x: 0, y: 0 };
+      var list = children[parentPath] || [];
+      var directions = parentPath === ''
+        ? [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]]
+        : (Math.abs(parent.x) >= Math.abs(parent.y)
+          ? [[parent.x >= 0 ? 1 : -1, 0], [0, 1], [0, -1], [parent.x >= 0 ? 1 : -1, 1], [parent.x >= 0 ? 1 : -1, -1]]
+          : [[0, parent.y >= 0 ? 1 : -1], [1, 0], [-1, 0], [1, parent.y >= 0 ? 1 : -1], [-1, parent.y >= 0 ? 1 : -1]]);
+      list.forEach(function (room, index) {
+        var direction = directions[index % directions.length];
+        var ring = Math.floor(index / directions.length) + 1;
+        occupy(layout, String(room.path || ''), parent.x + direction[0] * ring, parent.y + direction[1] * ring);
+        placeChildren(String(room.path || ''));
+      });
+    }
+
+    placeChildren('');
+    return layout;
+  }
+
+  function buildingBoundaryPath(cells, unitW, unitH, margin) {
+    var edgeMap = {};
+    function key(x1, y1, x2, y2) {
+      return x1 + ',' + y1 + ',' + x2 + ',' + y2;
+    }
+    function reverseKey(x1, y1, x2, y2) {
+      return x2 + ',' + y2 + ',' + x1 + ',' + y1;
+    }
+    function addEdge(x1, y1, x2, y2) {
+      var reversed = reverseKey(x1, y1, x2, y2);
+      if (edgeMap[reversed]) {
+        delete edgeMap[reversed];
+      } else {
+        edgeMap[key(x1, y1, x2, y2)] = [x1, y1, x2, y2];
+      }
+    }
+    cells.forEach(function (cell) {
+      var left = cell.x * unitW - margin;
+      var top = cell.y * unitH - margin;
+      var right = (cell.x + 1) * unitW + margin;
+      var bottom = (cell.y + 1) * unitH + margin;
+      addEdge(left, top, right, top);
+      addEdge(right, top, right, bottom);
+      addEdge(right, bottom, left, bottom);
+      addEdge(left, bottom, left, top);
+    });
+    var edges = Object.keys(edgeMap).map(function (edgeKey) { return edgeMap[edgeKey]; });
+    if (!edges.length) return '';
+    var start = edges[0];
+    var path = 'M ' + start[0] + ' ' + start[1] + ' L ' + start[2] + ' ' + start[3];
+    var endX = start[2];
+    var endY = start[3];
+    edges.splice(0, 1);
+    var guard = 0;
+    while (edges.length && guard < 10000) {
+      guard += 1;
+      var found = -1;
+      for (var i = 0; i < edges.length; i += 1) {
+        if (edges[i][0] === endX && edges[i][1] === endY) {
+          found = i;
+          break;
+        }
+      }
+      if (found === -1) break;
+      var edge = edges.splice(found, 1)[0];
+      endX = edge[2];
+      endY = edge[3];
+      path += ' L ' + endX + ' ' + endY;
+    }
+    return path + ' Z';
+  }
+
+  function renderMap(data) {
+    var rooms = mapRooms(data);
+    var layout = mansionLayout(rooms);
+    var unitW = 190;
+    var unitH = 138;
+    var roomW = 144;
+    var roomH = 92;
+    var cells = Object.keys(layout).map(function (path) { return layout[path]; });
+    var minX = Math.min.apply(null, cells.map(function (cell) { return cell.x; }));
+    var maxX = Math.max.apply(null, cells.map(function (cell) { return cell.x; }));
+    var minY = Math.min.apply(null, cells.map(function (cell) { return cell.y; }));
+    var maxY = Math.max.apply(null, cells.map(function (cell) { return cell.y; }));
+    var pad = 120;
+    var viewX = minX * unitW - pad;
+    var viewY = minY * unitH - pad;
+    var viewW = (maxX - minX + 1) * unitW + pad * 2;
+    var viewH = (maxY - minY + 1) * unitH + pad * 2;
+    var boundary = buildingBoundaryPath(cells, unitW, unitH, 24);
+    var connections = rooms.filter(function (room) { return String(room.path || '') !== ''; }).map(function (room) {
+      var roomPath = String(room.path || '');
+      var parentPath = String(room.parent_path || '');
+      var from = layout[parentPath] || layout[''];
+      var to = layout[roomPath];
+      if (!to) return '';
+      var x1 = from.x * unitW + unitW / 2;
+      var y1 = from.y * unitH + unitH / 2;
+      var x2 = to.x * unitW + unitW / 2;
+      var y2 = to.y * unitH + unitH / 2;
+      return '<path class="desk-map-corridor" d="M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + '"></path>';
+    }).join('');
+    var roomShapes = rooms.map(function (room) {
+      var path = String(room.path || '');
+      var point = layout[path];
+      var x = point.x * unitW + (unitW - roomW) / 2;
+      var y = point.y * unitH + (unitH - roomH) / 2;
+      var isCurrent = path === String(state.currentRoom || '');
+      var title = room.title || 'Room';
+      return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" class="desk-map-room-link">' +
+        '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
+        '<rect x="' + x + '" y="' + y + '" width="' + roomW + '" height="' + roomH + '" rx="4"></rect>' +
+        '<text x="' + (x + roomW / 2) + '" y="' + (y + 35) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
+        '<text class="desk-map-room-meta" x="' + (x + roomW / 2) + '" y="' + (y + 58) + '" text-anchor="middle">+' + escapeHtml(room.visible_task_count || 0) + ' / ' + escapeHtml(room.sleeping_task_count || 0) + '</text>' +
+        '</g>' +
+        '</a>';
+    }).join('');
+    return '<section class="desk-mode-panel desk-map-panel" aria-labelledby="desk-map-heading">' +
+      '<div class="desk-panel-title-row"><div><h2 id="desk-map-heading">Room Map</h2><p class="desk-room-note">Central hall, wings, and nested rooms are laid out deterministically from the filesystem paths.</p></div>' + renderCreateRoom(data) + '</div>' +
+      '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
+      '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" role="img" aria-label="Top-down mansion map of Desk rooms">' +
+      '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
+      '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
+      '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
+      '<path class="desk-map-building" d="' + boundary + '"></path>' +
+      connections + roomShapes +
+      '</svg>' +
+      '</div>' +
+      '</section>';
+  }
+
+  function renderTodo(data) {
+    var room = data.current_room || data.office || {};
+    var tasks = data.tasks || [];
+    var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
+    var done = data.done_tasks || [];
+    return '<section class="desk-mode-panel desk-todo-panel" aria-labelledby="desk-todo-heading">' +
+      '<div class="desk-panel-title-row"><div><h2 id="desk-todo-heading">Checklist</h2><p class="desk-room-note">' + escapeHtml(room.title || 'Office') + '</p></div>' +
+      '<form class="desk-color-form" data-desk-form="room-color"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span>Room Color</span><input class="desk-color-input" type="color" name="room_color" value="' + escapeHtml(roomColor(room)) + '"></label><button type="submit" class="desk-btn subtle">Set</button></form></div>' +
+      '<div class="desk-room-actions">' +
+      '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
+      '<a class="desk-link-btn" href="' + escapeHtml(room.overworld_url || '/overworld') + '">Open in Overworld</a>' +
+      (room.has_public_file ? '<span class="desk-pill gold">public.md present</span>' : '<span class="desk-pill">private interior</span>') +
+      '<span class="desk-pill">' + escapeHtml(room.sleeping_task_count || 0) + ' below threshold</span>' +
+      '</div>' +
+      '<form class="desk-form" data-desk-form="room-add">' +
+      '<input type="hidden" name="destination_room" value="' + escapeHtml(room.path || '') + '">' +
+      '<label><span>Add Task</span><textarea class="desk-textarea" name="task_text" rows="4" required></textarea></label>' +
+      '<button type="submit" class="desk-btn primary">Add to Room</button>' +
+      '</form>' +
+      '<div class="desk-panel-title-row"><h2>Room Tasks</h2>' + roomTaskFilterControls(tasks) + '</div>' +
+      (visibleTasks.length ? '<ul class="desk-task-list">' + visibleTasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
+      '<h2>Done</h2>' +
+      (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
+        return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
+          '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
+      }).join('') + '</ul>' : '<p class="desk-empty">No archived tasks here.</p>') +
+      '</section>';
+  }
+
+  function renderCompose(data) {
+    var selected = data.current_room && data.current_room.path ? data.current_room.path : '';
+    return '<section class="desk-mode-panel desk-compose-panel" aria-labelledby="desk-compose-heading">' +
+      '<div class="desk-panel-title-row"><div><h2 id="desk-compose-heading">Compose</h2><p class="desk-room-note">Start from the desktop; publish deliberately later.</p></div><a class="desk-link-btn" href="/admin#compose">Full Composer</a></div>' +
+      '<form class="desk-form desk-compose-form" data-desk-form="capture">' +
+      '<label><span>Post or Capture</span><textarea class="desk-textarea desk-compose-textarea" name="task_text" rows="12" required></textarea></label>' +
+      '<div class="desk-form-row">' +
+      '<label><span>Room</span><select class="desk-select" name="destination_room">' + roomOptionRows(data, selected) + '</select></label>' +
+      '<button type="submit" class="desk-btn primary">Pin as Task</button>' +
+      '</div>' +
+      '</form>' +
+      '<form class="desk-form desk-search-form" data-desk-form="search">' +
+      '<div class="desk-form-row">' +
+      '<label><span>Search Desk</span><input class="desk-input" type="search" name="q" minlength="2" required></label>' +
+      '<button type="submit" class="desk-btn subtle">Search</button>' +
+      '</div>' +
+      '</form>' +
+      renderSearch(state.search) +
+      '</section>';
+  }
+
+  function renderModeDock() {
+    return '<div class="desk-mode-dock" aria-label="Desk modes">' +
+      '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="Open room map"><span>Map</span></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-compose' + (state.mode === 'compose' ? ' is-active' : '') + '" data-desk-mode="compose" aria-label="Compose on the desk"><span>✎</span></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-todo' + (state.mode === 'todo' ? ' is-active' : '') + '" data-desk-mode="todo" aria-label="Open checklist"><span>✓</span></button>' +
+      '</div>';
+  }
+
+  function renderStage(data) {
+    var content = state.mode === 'todo' ? renderTodo(data) : (state.mode === 'compose' ? renderCompose(data) : renderMap(data));
+    return '<div class="desk-stage" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
   function renderHeader(data) {
@@ -420,13 +706,7 @@
     root.dataset.roomTone = roomTone(data.current_room && data.current_room.path);
     root.innerHTML = renderHeader(data) +
       '<div data-desk-message></div>' +
-      '<div class="desk-workbench">' +
-      renderDeskSurface(data) +
-      '<main class="desk-main-stack">' +
-      renderSearch(state.search) +
-      ((data.current_room && data.current_room.path) ? renderRoom(data) : renderOffice(data)) +
-      '</main>' +
-      '</div>';
+      renderStage(data);
     markPageReady();
   }
 
@@ -483,9 +763,20 @@
       return;
     }
 
+    var modeButton = event.target.closest('[data-desk-mode]');
+    if (modeButton) {
+      state.mode = modeButton.getAttribute('data-desk-mode') || 'map';
+      state.search = null;
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (roomLink) {
       event.preventDefault();
+      state.mode = 'map';
       setRoom(roomLink.getAttribute('data-desk-room-link') || '', false);
       return;
     }
@@ -582,6 +873,13 @@
         }
         refreshFrom(data);
       });
+      return;
+    }
+    if (type === 'room-color') {
+      api('set-room-color', {
+        room: formValue(form, 'room'),
+        room_color: formValue(form, 'room_color')
+      }).then(refreshFrom);
       return;
     }
     if (type === 'move-task') {

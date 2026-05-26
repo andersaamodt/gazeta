@@ -209,8 +209,16 @@ assert_dir_exists "$SITE_DATA/desk/office" 'Desk creates the real office folder'
 assert_file_exists "$SITE_DATA/desk/office/.room.json" 'Desk writes minimal office metadata'
 
 create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Writing Room")")
-assert_jq "$create_json" '.success == true and .created_room.path == "writing-room"' 'Desk creates a real room folder'
+assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$"))' 'Desk creates a real room folder with a map color'
 assert_dir_exists "$SITE_DATA/desk/office/writing-room" 'created room is a filesystem folder'
+
+nested_json=$(run_desk "action=create-room&$auth_query&room=writing-room&room_title=$(urlencode "Inner Study")")
+assert_jq "$nested_json" '.success == true and .created_room.path == "writing-room/inner-study" and .created_room.parent_path == "writing-room"' 'Desk nested folders become connected child rooms for the map'
+assert_dir_exists "$SITE_DATA/desk/office/writing-room/inner-study" 'nested room is a real filesystem folder'
+
+color_json=$(run_desk "action=set-room-color&$auth_query&room=writing-room&room_color=$(urlencode "#4f8fbd")")
+assert_jq "$color_json" '.success == true and .updated_room.color == "#4f8fbd"' 'Desk stores room-local map highlight color'
+assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"color": "#4f8fbd"' 'room metadata persists settable room color'
 
 archive_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Archive Room")")
 assert_jq "$archive_json" '.success == true and .created_room.path == "archive-room"' 'Desk creates a second room for task moves'
@@ -282,20 +290,29 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-wide2' 'Desk page cache-busts widescreen stylesheet'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-storage1' 'Desk page cache-busts guarded storage script'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-map1' 'Desk page cache-busts map interface assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'desk-cherrywood.jpg' 'Desk uses a cherrywood desktop photo texture'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body.desk-page-body' 'Desk has a class-based page layout fallback'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) {' 'Desk scopes page-level layout to the private root'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'max-width: none;' 'Desk removes the public content-column width cap'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'grid-template-columns: minmax(20rem, 24vw) minmax(0, 1fr);' 'Desk workbench uses a spacious widescreen layout'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-stage' 'Desk interface centers modes in an open stage'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-mode-dock' 'Desk has docked map, compose, and checklist launchers'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-link:hover .desk-map-room' 'Desk map rooms expand smoothly on hover'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav .nav-center' 'Desk hides public navbar page links'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) footer.site-footer' 'Desk hides the public site footer'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav > .nav-right' 'Desk keeps shared auth controls as a top-right dock'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk frontend talks to private API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function storageGet(key)' 'Desk frontend tolerates restricted localStorage'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "storageGet('session_token')" 'Desk auth reads session token through guarded storage'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mansionLayout(rooms)' 'Desk frontend lays out rooms as a deterministic mansion map'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'buildingBoundaryPath' 'Desk map computes a building-shaped outside boundary'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="map"' 'Desk frontend exposes map mode launcher'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="todo"' 'Desk frontend exposes checklist mode launcher'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compose"' 'Desk frontend exposes compose mode launcher'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'restore-task' 'Desk frontend exposes task restore after completion'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk_visibility_threshold' 'Desk frontend exposes the surfacing threshold control'
 assert_file_contains "$ROOT_DIR/site/includes/nav.md" 'href="/desk"' 'logged-in user menu links to Desk'

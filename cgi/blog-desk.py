@@ -98,6 +98,35 @@ def slugify(title: str) -> str:
     return (slug or "room")[:72].strip("-") or "room"
 
 
+ROOM_COLOR_PALETTE = (
+    "#b85c6a",
+    "#4f8fbd",
+    "#d59a3a",
+    "#6f77c8",
+    "#3f9b73",
+    "#b06ab3",
+    "#c66f3d",
+    "#5276ad",
+    "#8a9b3f",
+    "#b24b45",
+)
+
+
+def default_room_color(rel: str | None) -> str:
+    text = str(rel or "office")
+    total = 0
+    for index, char in enumerate(text):
+        total += (index + 7) * ord(char)
+    return ROOM_COLOR_PALETTE[total % len(ROOM_COLOR_PALETTE)]
+
+
+def normalize_room_color(value: str | None, fallback: str) -> str:
+    text = str(value or "").strip()
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", text):
+        return text.lower()
+    return fallback
+
+
 def safe_task_slug(text: str) -> str:
     first = (text or "").splitlines()[0].strip()
     return slugify(first)[:48] or "task"
@@ -285,6 +314,7 @@ class DeskStore:
             atomic_write_json(meta_path, {
                 "title": room_title,
                 "visibility": "private",
+                "color": default_room_color(room_rel),
                 "created_at": iso_now(),
             })
         (room / ".tasks").mkdir(exist_ok=True)
@@ -292,18 +322,51 @@ class DeskStore:
             os.chmod(room / ".tasks", 0o700)
         return room_rel
 
-    def room_title(self, rel: str | None) -> str:
+    def room_metadata(self, rel: str | None) -> dict[str, object]:
         room_rel = self.normalize_room_rel(rel)
         meta_path = self.room_dir(room_rel) / ".room.json"
         if meta_path.is_file():
             try:
                 data = json.loads(meta_path.read_text(encoding="utf-8"))
-                title = str(data.get("title") or "").strip()
-                if title:
-                    return title
+                if isinstance(data, dict):
+                    data["title"] = str(data.get("title") or "").strip()
+                    data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
+                    return data
             except (OSError, json.JSONDecodeError):
                 pass
+        return {
+            "title": "Office" if room_rel == "" else humanize_slug(Path(room_rel).name),
+            "visibility": "private",
+            "color": default_room_color(room_rel),
+        }
+
+    def update_room_metadata(self, rel: str | None, updates: dict[str, object]) -> dict[str, object]:
+        room_rel = self.ensure_room(rel)
+        room = self.room_dir(room_rel)
+        meta_path = room / ".room.json"
+        data = self.room_metadata(room_rel)
+        data.update(updates)
+        data["title"] = str(data.get("title") or self.room_title(room_rel)).strip()
+        data["visibility"] = str(data.get("visibility") or "private")
+        data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
+        if not str(data.get("created_at") or "").strip():
+            data["created_at"] = iso_now()
+        data["updated_at"] = iso_now()
+        atomic_write_json(meta_path, data)
+        return data
+
+    def room_title(self, rel: str | None) -> str:
+        room_rel = self.normalize_room_rel(rel)
+        data = self.room_metadata(room_rel)
+        title = str(data.get("title") or "").strip()
+        if title:
+            return title
         return "Office" if room_rel == "" else humanize_slug(Path(room_rel).name)
+
+    def room_color(self, rel: str | None) -> str:
+        room_rel = self.normalize_room_rel(rel)
+        data = self.room_metadata(room_rel)
+        return normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
 
     def all_room_rels(self) -> list[str]:
         self.setup()
@@ -395,10 +458,13 @@ class DeskStore:
         visible = [task for task in tasks if self.task_is_visible(task, threshold)]
         public_file = self.room_dir(room_rel) / "public.md"
         depth = 0 if not room_rel else room_rel.count("/") + 1
+        parent_path = "" if not room_rel or "/" not in room_rel else room_rel.rsplit("/", 1)[0]
         return {
             "path": room_rel,
             "title": self.room_title(room_rel),
+            "parent_path": parent_path,
             "depth": depth,
+            "color": self.room_color(room_rel),
             "url": self.room_url(room_rel),
             "overworld_url": self.overworld_url(room_rel),
             "task_count": len(tasks),
@@ -490,6 +556,19 @@ class DeskStore:
         self.append_log("create-room", {"room": room_rel, "title": clean_title})
         payload = self.state(room_rel, threshold)
         payload["created_room"] = self.room_summary(room_rel, threshold)
+        return payload
+
+    def set_room_color(self, room_rel: str, color: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if room and not self.room_dir(room).is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        clean = normalize_room_color(color, "")
+        if not clean:
+            raise DeskError("bad_room_color", "Room color must be a six-digit hex color.")
+        self.update_room_metadata(room, {"color": clean})
+        self.append_log("set-room-color", {"room": room, "color": clean})
+        payload = self.state(room, threshold)
+        payload["updated_room"] = self.room_summary(room, threshold)
         return payload
 
     def unique_task_path(self, room_rel: str, text: str) -> Path:
@@ -797,6 +876,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "move-task",
         "set-soonness",
         "set-status",
+        "set-room-color",
         "rebuild-indexes",
         "migrate-metadata",
     }
@@ -822,6 +902,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_soonness(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_SOONNESS"), threshold)
         if action == "set-status":
             return store.set_status(env("BLOG_DESK_ONLINE_STATUS"), threshold)
+        if action == "set-room-color":
+            return store.set_room_color(room, env("BLOG_DESK_ROOM_COLOR"), threshold)
         if action == "search":
             return store.search(env("BLOG_DESK_QUERY"), threshold)
         if action == "audit":

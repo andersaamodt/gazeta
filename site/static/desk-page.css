@@ -22,8 +22,13 @@ body:has(#desk-page-root) {
   margin: 0;
   padding: 0;
   background:
-    radial-gradient(circle at 20% 0%, rgba(20, 78, 183, 0.2), transparent 28rem),
-    linear-gradient(135deg, #031433 0%, #061c49 42%, #092a65 100%);
+    radial-gradient(circle at 18% 12%, rgba(245, 208, 121, 0.16), transparent 26rem),
+    radial-gradient(circle at 82% 2%, rgba(5, 24, 63, 0.3), transparent 30rem),
+    linear-gradient(180deg, rgba(28, 10, 4, 0.18), rgba(15, 6, 2, 0.32)),
+    url("/static/textures/desk-cherrywood.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--desk-ink);
 }
 
@@ -130,7 +135,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   max-width: none;
   min-height: 100vh;
   margin: 0;
-  padding: clamp(4.4rem, 6vw, 5.4rem) clamp(0.9rem, 2.2vw, 2.8rem) clamp(1rem, 2vw, 2.4rem);
+  padding: clamp(4rem, 5vw, 4.8rem) clamp(0.9rem, 2.2vw, 2.8rem) clamp(5.8rem, 8vw, 7rem);
   color: var(--desk-ink);
 }
 
@@ -141,8 +146,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 78% 18%, rgba(215, 173, 77, 0.12), transparent 24rem),
-    linear-gradient(145deg, rgba(3, 20, 51, 0.96), rgba(4, 33, 76, 0.92));
+    radial-gradient(circle at 78% 18%, rgba(215, 173, 77, 0.1), transparent 24rem),
+    linear-gradient(145deg, rgba(3, 20, 51, 0.28), rgba(4, 33, 76, 0.14));
 }
 
 .desk-shell[data-room-tone="1"]::before {
@@ -250,6 +255,116 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-layout {
   display: grid;
   gap: clamp(1rem, 2vw, 1.4rem);
+}
+
+.desk-stage {
+  position: relative;
+  min-height: clamp(34rem, calc(100vh - 13rem), 54rem);
+  display: grid;
+  align-items: stretch;
+  perspective: 1400px;
+}
+
+.desk-mode-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(240, 213, 138, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 42%),
+    rgba(4, 20, 51, 0.78);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  animation: desk-panel-arrive 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.desk-stage[data-desk-stage-mode="map"] .desk-mode-panel {
+  transform-origin: left bottom;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-mode-panel {
+  transform-origin: right bottom;
+}
+
+.desk-stage[data-desk-stage-mode="compose"] .desk-mode-panel {
+  transform-origin: center bottom;
+}
+
+@keyframes desk-panel-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(2.6rem) rotateX(11deg) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0) scale(1);
+  }
+}
+
+.desk-mode-dock {
+  position: fixed;
+  inset: auto clamp(0.8rem, 2vw, 2rem) max(0.8rem, env(safe-area-inset-bottom)) clamp(0.8rem, 2vw, 2rem);
+  z-index: 70;
+  height: 5.6rem;
+  pointer-events: none;
+}
+
+.desk-mode-launch {
+  position: absolute;
+  bottom: 0;
+  pointer-events: auto;
+  border: 1px solid rgba(240, 213, 138, 0.44);
+  border-radius: 8px;
+  color: var(--desk-gold-soft);
+  background:
+    linear-gradient(180deg, rgba(5, 25, 63, 0.9), rgba(3, 20, 51, 0.78)),
+    rgba(3, 20, 51, 0.8);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.desk-mode-launch:hover,
+.desk-mode-launch:focus-visible,
+.desk-mode-launch.is-active {
+  transform: translateY(-0.22rem);
+  border-color: rgba(240, 213, 138, 0.82);
+  background:
+    linear-gradient(180deg, rgba(14, 56, 127, 0.95), rgba(5, 25, 63, 0.9)),
+    rgba(5, 25, 63, 0.9);
+}
+
+.desk-mode-map {
+  left: 0;
+  width: min(19rem, 32vw);
+  min-height: 5.2rem;
+  text-align: left;
+  background:
+    linear-gradient(145deg, rgba(236, 211, 154, 0.92), rgba(179, 126, 67, 0.92)) !important;
+  color: #2b1b0c;
+}
+
+.desk-mode-map span {
+  display: inline-block;
+  margin: 0.8rem 1rem;
+  font-weight: 900;
+}
+
+.desk-mode-compose {
+  left: 50%;
+  width: 4.8rem;
+  height: 4.8rem;
+  border-radius: 50%;
+  font-size: 2rem;
+  transform: translateX(-50%);
+}
+
+.desk-mode-todo {
+  right: 0;
+  width: min(11rem, 25vw);
+  min-height: 5rem;
+  font-size: 1.8rem;
 }
 
 .desk-topbar {
@@ -442,6 +557,131 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   padding: clamp(0.9rem, 2vw, 1.15rem);
 }
 
+.desk-map-panel,
+.desk-todo-panel,
+.desk-compose-panel {
+  padding: clamp(0.9rem, 1.8vw, 1.4rem);
+}
+
+.desk-map-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent 40%),
+    rgba(2, 13, 35, 0.72);
+}
+
+.desk-map-scroll {
+  height: clamp(28rem, calc(100vh - 18rem), 46rem);
+  overflow: auto;
+  border: 1px solid rgba(91, 49, 23, 0.38);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.2), transparent 22rem),
+    #d8bd7d;
+  box-shadow: inset 0 0 38px rgba(75, 41, 18, 0.28);
+}
+
+.desk-map-svg {
+  display: block;
+  min-width: 100%;
+  min-height: 100%;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+}
+
+.desk-map-parchment {
+  fill: #dcc17f;
+}
+
+.desk-map-grid {
+  fill: url(#desk-map-grid);
+  stroke: rgba(84, 55, 28, 0.28);
+  stroke-width: 1;
+}
+
+.desk-map-building {
+  fill: rgba(250, 232, 177, 0.44);
+  stroke: rgba(68, 42, 21, 0.7);
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+
+.desk-map-corridor {
+  fill: none;
+  stroke: rgba(55, 37, 23, 0.58);
+  stroke-width: 18;
+  stroke-linecap: square;
+}
+
+.desk-map-room {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+}
+
+.desk-map-room rect {
+  fill: color-mix(in srgb, var(--room-color), #f4dfad 46%);
+  stroke: rgba(43, 27, 12, 0.76);
+  stroke-width: 3;
+}
+
+.desk-map-room text {
+  fill: #26180c;
+  font-size: 16px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.desk-map-room .desk-map-room-meta {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.desk-map-room-link:hover .desk-map-room,
+.desk-map-room-link:focus .desk-map-room,
+.desk-map-room.is-current {
+  transform: scale(1.075);
+  filter: drop-shadow(0 9px 7px rgba(66, 38, 15, 0.34));
+}
+
+.desk-map-room-link:hover .desk-map-room rect,
+.desk-map-room-link:focus .desk-map-room rect,
+.desk-map-room.is-current rect {
+  fill: color-mix(in srgb, var(--room-color), #ffe9a8 26%);
+  stroke: var(--room-color);
+}
+
+.desk-todo-panel,
+.desk-compose-panel {
+  overflow: auto;
+}
+
+.desk-color-form {
+  display: inline-flex;
+  align-items: end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.desk-color-form label {
+  display: grid;
+  gap: 0.22rem;
+  color: var(--desk-muted);
+  font-size: 0.78rem;
+}
+
+.desk-color-input {
+  width: 3.1rem;
+  height: 2.35rem;
+  padding: 0.12rem;
+  border: 1px solid rgba(240, 213, 138, 0.36);
+  border-radius: 6px;
+  background: rgba(2, 11, 29, 0.58);
+}
+
+.desk-compose-textarea {
+  min-height: clamp(14rem, 36vh, 24rem);
+}
+
 .desk-room-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
@@ -632,6 +872,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     grid-template-columns: 1fr;
   }
 
+  .desk-stage {
+    min-height: clamp(28rem, calc(100vh - 12rem), 44rem);
+  }
+
+  .desk-mode-map {
+    width: min(12rem, 32vw);
+  }
+
   .desk-surface {
     position: static;
   }
@@ -647,7 +895,27 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 @media (max-width: 520px) {
   .desk-shell {
-    padding: 4.4rem clamp(0.72rem, 3vw, 1rem) 0.9rem;
+    padding: 4.4rem clamp(0.72rem, 3vw, 1rem) 5.8rem;
+  }
+
+  .desk-mode-dock {
+    height: 4.3rem;
+  }
+
+  .desk-mode-map,
+  .desk-mode-todo {
+    width: auto;
+    min-width: 4.6rem;
+    min-height: 3.8rem;
+  }
+
+  .desk-mode-compose {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .desk-map-scroll {
+    height: clamp(24rem, calc(100vh - 18rem), 34rem);
   }
 
   .desk-room-card-head,
@@ -660,4 +928,9 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   .desk-link-btn {
     width: fit-content;
   }
+}
+.desk-mode-compose:hover,
+.desk-mode-compose:focus-visible,
+.desk-mode-compose.is-active {
+  transform: translateX(-50%) translateY(-0.22rem);
 }
