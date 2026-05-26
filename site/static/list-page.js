@@ -2339,6 +2339,46 @@
     }
   }
 
+  function capturePublicSubmitInputForRender() {
+    var input = document.getElementById('list-public-submit-title');
+    if (!(input instanceof HTMLInputElement)) {
+      return null;
+    }
+    return {
+      value: String(input.value || ''),
+      wasFocused: document.activeElement === input,
+      selectionStart: typeof input.selectionStart === 'number' ? input.selectionStart : null,
+      selectionEnd: typeof input.selectionEnd === 'number' ? input.selectionEnd : null
+    };
+  }
+
+  function restorePublicSubmitInputAfterRender(snapshot) {
+    if (!snapshot || !state.publicSubmitExpanded) {
+      return;
+    }
+    var input = document.getElementById('list-public-submit-title');
+    if (!(input instanceof HTMLInputElement) || input.disabled) {
+      return;
+    }
+    input.value = snapshot.value;
+    if (snapshot.wasFocused) {
+      input.focus();
+      if (snapshot.selectionStart !== null && snapshot.selectionEnd !== null) {
+        try {
+          input.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+        } catch (_err) {
+          // Ignore selection restore failures on unusual input implementations.
+        }
+      }
+    }
+  }
+
+  function replaceListContentHtml(html) {
+    var publicSubmitSnapshot = capturePublicSubmitInputForRender();
+    els.content.innerHTML = html;
+    restorePublicSubmitInputAfterRender(publicSubmitSnapshot);
+  }
+
   async function submitPublicListVote(entryId, value) {
     var auth = getAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
@@ -3595,24 +3635,24 @@
 
     if (!elements.length) {
       if (fullEditMode) {
-        els.content.innerHTML = renderInlineEditor([]) + afterContent;
+        replaceListContentHtml(renderInlineEditor([]) + afterContent);
       } else {
-        els.content.innerHTML = renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
+        replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
       }
       renderAdmin();
       return;
     }
 
     if (fullEditMode) {
-      els.content.innerHTML = renderInlineEditor(elements) + afterContent;
+      replaceListContentHtml(renderInlineEditor(elements) + afterContent);
       renderAdmin();
       return;
     }
 
     var readViewMode = currentReadViewMode(s);
-    els.content.innerHTML = renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
+    replaceListContentHtml(renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
+    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent);
     refreshProductCartButtons();
     renderAdmin();
   }
