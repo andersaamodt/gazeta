@@ -15,7 +15,7 @@
   --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
   --list-vote-down-color: var(--lapis, #3b70d0);
   --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
-  --list-vote-idle-color: color-mix(in srgb, var(--muted-text, #78644b) 38%, var(--bg, #f1e2c8) 62%);
+  --list-vote-idle-color: color-mix(in srgb, var(--muted-text, #78644b) 38%, var(--bg, #f2dfca) 62%);
 
   --text: #2f2517;
   --light-text: #62533f;
@@ -25,10 +25,10 @@
   --heading-fill: transparent;
   --heading-glow: none;
 
-  --border: #d0b78b;
-  --bg: #f1e2c8;
-  --light-bg: #e3d0ac;
-  --code-bg: #ead6b4;
+  --border: #d0b38b;
+  --bg: #f2dfca;
+  --light-bg: #e5cdae;
+  --code-bg: #ecd3b7;
   --shadow: rgba(46, 34, 20, 0.14);
 
   --nav-link-hover: rgba(106, 79, 163, 0.13);
@@ -39,13 +39,13 @@
   --nav-search-icon-hover: #1b614d;
   --nav-username-color: var(--lapis, #3b70d0);
   --nav-username-hover: color-mix(in srgb, var(--lapis, #3b70d0) 84%, var(--text, #2f2517) 16%);
-  --nav-button-bg: #eadcc4;
-  --nav-button-bg-dark: #ddc89f;
+  --nav-button-bg: #ecd8c3;
+  --nav-button-bg-dark: #dfc5a1;
   --nav-button-hover-bg: #efe4f5;
   --nav-button-hover-bg-dark: #e5d7ef;
   --nav-button-hover-border: rgba(106, 79, 163, 0.34);
-  --nav-bg: #e2cfab;
-  --nav-border: rgba(163, 128, 65, 0.40);
+  --nav-bg: #e4cbaa;
+  --nav-border: rgba(165, 119, 66, 0.40);
   --accent-hover-end: #244d99;
   --button-primary-start: var(--lapis);
   --button-primary-end: #244d99;
@@ -77,14 +77,14 @@
   --admin-nav-selected-bg: color-mix(in srgb, var(--lapis) 32%, var(--amethyst) 26%, var(--bg) 42%);
   --admin-nav-selected-text: #2f2517;
 
-  --post-card-bg: #f5e5ca;
-  --post-card-bg-single: #f7ead4;
-  --surface-raised: #f7ead4;
-  --surface-raised-strong: #f9eedb;
-  --surface-muted: #ead8b8;
+  --post-card-bg: #f6e2ca;
+  --post-card-bg-single: #f8e7d3;
+  --surface-raised: #f8e7d3;
+  --surface-raised-strong: #faecda;
+  --surface-muted: #ecd4b8;
   --surface-overlay: rgba(47, 37, 23, 0.56);
-  --menu-bg: #f9eedb;
-  --menu-border: #d1b98c;
+  --menu-bg: #faecda;
+  --menu-border: #d1b38d;
   --menu-shadow: 0 12px 30px rgba(54, 39, 20, 0.18);
   --menu-hover-bg: rgba(106, 79, 163, 0.16);
   --menu-danger-text: #a73b2f;
@@ -92,16 +92,16 @@
   --status-ok-bg: #e4f2eb;
   --status-ok-border: #8ebea8;
   --status-ok-text: #1e5f4b;
-  --status-warn-bg: #f1dfbd;
+  --status-warn-bg: #f2dcbc;
   --status-warn-border: #c9ad6f;
   --status-warn-text: #5f4615;
   --status-error-bg: #f3dfdc;
   --status-error-border: #c68d86;
   --status-error-text: #69251d;
-  --toast-info-bg: #f3e3c7;
-  --toast-info-border: #d1b98c;
+  --toast-info-bg: #f4dfc7;
+  --toast-info-border: #d1b38d;
   --toast-info-text: #2f2517;
-  --modal-bg: #f5e5ca;
+  --modal-bg: #f6e2ca;
   --modal-shadow: 0 20px 48px rgba(54, 39, 20, 0.26);
   --tag-bg: rgba(47, 95, 184, 0.11);
   --tag-border: rgba(47, 95, 184, 0.34);
@@ -137,15 +137,15 @@
   --lapidarist-parchment-size: 768px 768px;
   --lapidarist-page-parchment-size: 640px 640px;
   --lapidarist-parchment-surface:
-    radial-gradient(900px 360px at 18% 6%, rgba(255, 246, 224, 0.48) 0%, rgba(255, 246, 224, 0) 62%),
-    linear-gradient(180deg, rgba(250, 238, 213, 0.58) 0%, rgba(226, 199, 153, 0.36) 100%),
+    radial-gradient(900px 360px at 18% 6%, rgba(255, 244, 226, 0.50) 0%, rgba(255, 244, 226, 0) 62%),
+    linear-gradient(180deg, rgba(251, 235, 215, 0.60) 0%, rgba(228, 193, 156, 0.38) 100%),
     var(--lapidarist-parchment-smooth-texture);
   --lapidarist-parchment-muted:
-    radial-gradient(640px 260px at 18% 4%, rgba(253, 241, 216, 0.44) 0%, rgba(253, 241, 216, 0) 64%),
-    linear-gradient(180deg, rgba(246, 232, 203, 0.72) 0%, rgba(219, 190, 142, 0.46) 100%),
+    radial-gradient(640px 260px at 18% 4%, rgba(254, 238, 218, 0.46) 0%, rgba(254, 238, 218, 0) 64%),
+    linear-gradient(180deg, rgba(248, 228, 205, 0.73) 0%, rgba(221, 185, 145, 0.48) 100%),
     var(--lapidarist-parchment-fiber-texture);
   --lapidarist-parchment-control:
-    linear-gradient(180deg, rgba(251, 240, 218, 0.70), rgba(226, 202, 160, 0.48)),
+    linear-gradient(180deg, rgba(252, 237, 219, 0.70), rgba(228, 196, 162, 0.50)),
     var(--lapidarist-parchment-smooth-texture);
   --lapidarist-float-shadow:
     0 28px 54px rgba(48, 34, 16, 0.18),
@@ -172,9 +172,9 @@
   --action-soft-shadow: var(--lapidarist-control-shadow);
   --action-soft-hover-shadow: var(--lapidarist-control-shadow);
   --page-canvas-bg:
-    radial-gradient(1300px 540px at 18% -16%, rgba(176, 130, 46, 0.16) 0%, rgba(176, 130, 46, 0) 56%),
-    radial-gradient(900px 400px at 87% -7%, rgba(92, 70, 45, 0.06) 0%, rgba(92, 70, 45, 0) 60%),
-    linear-gradient(180deg, rgba(241, 225, 197, 0.92) 0%, rgba(229, 207, 168, 0.93) 100%),
+    radial-gradient(1300px 540px at 18% -16%, rgba(178, 113, 54, 0.17) 0%, rgba(178, 113, 54, 0) 56%),
+    radial-gradient(900px 400px at 87% -7%, rgba(114, 64, 52, 0.07) 0%, rgba(114, 64, 52, 0) 60%),
+    linear-gradient(180deg, rgba(242, 220, 198, 0.93) 0%, rgba(231, 199, 170, 0.94) 100%),
     var(--lapidarist-parchment-page-texture);
   --page-canvas-bg-size: auto, auto, auto, var(--lapidarist-page-parchment-size);
   --page-canvas-bg-position: center, center, center, center;
