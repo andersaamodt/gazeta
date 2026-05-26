@@ -945,7 +945,6 @@ blog_nostr_prerender_overworld_html() {
 <div class="overworld-godot-frame-wrap">
 <div class="overworld-godot-splash">
 <div class="overworld-godot-splash-panel">
-<div class="overworld-godot-kicker">Godot Web</div>
 <h2 class="overworld-godot-title">Overworld</h2>
 <button type="button" class="overworld-godot-download">Download (6.8 MB)</button>
 </div>

@@ -61,17 +61,6 @@
   max-width: 34rem;
   text-align: center;
 }
-.overworld-godot-kicker {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(247,241,223,.26);
-  border-radius: 999px;
-  padding: 4px 9px;
-  font-size: .78rem;
-  line-height: 1.15;
-  color: rgba(247,241,223,.82);
-  background: rgba(247,241,223,.10);
-}
 .overworld-godot-title {
   margin: 0;
   padding: 0;
@@ -338,9 +327,10 @@
 	    const splashPanel = splash.querySelector('.overworld-godot-splash-panel') || document.createElement('div');
 	    splashPanel.className = 'overworld-godot-splash-panel';
 
-	    const kicker = splashPanel.querySelector('.overworld-godot-kicker') || document.createElement('div');
-	    kicker.className = 'overworld-godot-kicker';
-	    kicker.textContent = 'Godot Web';
+	    const kicker = splashPanel.querySelector('.overworld-godot-kicker');
+	    if (kicker) {
+	      kicker.remove();
+	    }
 
 	    const title = splashPanel.querySelector('.overworld-godot-title') || document.createElement('h2');
 	    title.className = 'overworld-godot-title';
@@ -419,7 +409,6 @@
       });
     });
 
-	    ensureChild(splashPanel, kicker);
 	    ensureChild(splashPanel, title);
 	    ensureChild(splashPanel, downloadButton);
 	    ensureChild(splash, splashPanel);
