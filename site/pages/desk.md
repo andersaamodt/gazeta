@@ -10,4 +10,4 @@ title: Desk
   </div>
 </section>
 
-<script defer src="/static/desk-page.js?v=20260526-desk1"></script>
+<script defer src="/static/desk-page.js?v=20260526-desk-storage1"></script>

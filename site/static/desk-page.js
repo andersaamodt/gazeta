@@ -31,6 +31,27 @@
       .replace(/'/g, '&#39;');
   }
 
+  function storageGet(key) {
+    try {
+      if (!window.localStorage) {
+        return '';
+      }
+      return window.localStorage.getItem(key) || '';
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      if (window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch (_err) {
+      // Storage may be unavailable in restricted browser contexts.
+    }
+  }
+
   function roomFromLocation() {
     try {
       return String(new URL(window.location.href).searchParams.get('room') || '').trim();
@@ -40,7 +61,7 @@
   }
 
   function thresholdFromStorage() {
-    var stored = Number(localStorage.getItem('desk_visibility_threshold') || 1);
+    var stored = Number(storageGet('desk_visibility_threshold') || 1);
     if (!Number.isFinite(stored) || stored < 1) {
       return 1;
     }
@@ -66,8 +87,8 @@
 
   function authPayload() {
     return {
-      session_token: String(localStorage.getItem('session_token') || '').trim(),
-      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
+      session_token: String(storageGet('session_token') || '').trim(),
+      csrf_token: String(storageGet('csrf_token') || '').trim()
     };
   }
 
@@ -517,7 +538,7 @@
       next = 1;
     }
     state.threshold = Math.min(100, Math.floor(next));
-    localStorage.setItem('desk_visibility_threshold', String(state.threshold));
+    storageSet('desk_visibility_threshold', String(state.threshold));
     loadState();
   });
 
