@@ -60,7 +60,6 @@
 <a href="/oeuvre" data-page="oeuvre">Oeuvre</a>
 <a href="/projects" data-page="projects">Projects</a>
 <a href="/reading-list" data-page="reading-list">Reading list</a>
-<a href="/software" data-page="software">Software</a>
 <a href="/contact" data-page="contact">Contact</a>
 <a href="/overworld" data-page="overworld">Overworld</a>
 <div class="nav-overflow-menu" id="nav-overflow-menu" hidden>

@@ -464,6 +464,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: rgba(15, 
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" '<a id="nav-site-signature" class="nav-site-signature" href="/">Site</a>' 'site title is a link by default'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'data-page="index">Writing</a>' 'static navbar starts with Writing to match hydrated navbar order'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'data-page="blog">Blog</a>' 'static navbar includes Blog after Writing before hydration'
+assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'data-page="software">Software</a>' 'static navbar omits Software until the page is ready for public navigation'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'Bellheim zap target' 'zaps admin names the Bellheim-compatible zap target'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Nostr Wallet Connect is a separate wallet-control secret' 'zaps admin distinguishes Lightning Address from NWC secret'
