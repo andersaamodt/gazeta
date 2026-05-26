@@ -925,6 +925,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "await apiPostJson(
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-allow-submissions' 'list page settings expose signed-in submission toggle'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-allow-votes' 'list page settings expose signed-in vote toggle'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "'/cgi/blog-submit-list-entry'" 'list page public add form uses list-specific endpoint'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'refreshListPayloadFromResponse(mergeOptimisticListVoteIntoResponse(data, entryId, nextValue), beforeRects);' 'list page public add form does not reuse vote-only refresh state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-list-public-action="expand-submit"' 'list page public add form starts behind a compact add button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'focusPublicSubmitInput();' 'list page public add form focuses the textbox after expanding or adding'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-public-submit-reveal' 'list page public add form uses an animated reveal shell'

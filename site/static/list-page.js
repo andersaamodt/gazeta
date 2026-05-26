@@ -2295,7 +2295,7 @@
       });
       state.publicSubmitBusy = false;
       input.value = '';
-      refreshListPayloadFromResponse(mergeOptimisticListVoteIntoResponse(data, entryId, nextValue), beforeRects);
+      refreshListPayloadFromResponse(data);
       focusPublicSubmitInput();
     } catch (err) {
       setPublicSubmitBusy(false);
