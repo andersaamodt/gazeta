@@ -6886,7 +6886,7 @@
       const navTitle = String(page.placeholder_title || defaultNostrPageTitleFromSlug(slug) || 'Untitled');
       const isEditingNavTitle = state.nostrPagesEditingNavTitleIndex === idx;
       const showInNav = !!page.show_in_nav;
-      const showInFooter = !!page.show_in_footer;
+      const showInFooter = !showInNav && !!page.show_in_footer;
       const draftDiffers = !!page.draft_differs;
       const publishable = pageType !== 'overworld';
       const typeLabel = nostrPageTypeLabel(pageType);
@@ -6925,10 +6925,10 @@
       }
       html += '</div>';
       html += '<div class="nostr-page-nav-col">';
-      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="checkbox" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
+      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in navbar"><input type="radio" name="nostr-page-placement-' + String(idx) + '" value="nav" data-nostr-page-action="toggle-nav" data-index="' + String(idx) + '"' + (showInNav ? ' checked' : '') + ' aria-label="Show in navbar"></label>';
       html += '</div>';
       html += '<div class="nostr-page-footer-col">';
-      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in footer"><input type="checkbox" data-nostr-page-action="toggle-footer" data-index="' + String(idx) + '"' + (showInFooter ? ' checked' : '') + ' aria-label="Show in footer"></label>';
+      html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in footer"><input type="radio" name="nostr-page-placement-' + String(idx) + '" value="footer" data-nostr-page-action="toggle-footer" data-index="' + String(idx) + '"' + (showInFooter ? ' checked' : '') + ' aria-label="Show in footer"></label>';
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
       if (draftDiffers && publishable) {
@@ -9401,9 +9401,15 @@
         const before = state.nostrPages.slice();
         const next = state.nostrPages.slice();
         if (action === 'toggle-footer') {
-          next[idx] = Object.assign({}, next[idx], { show_in_footer: !!target.checked });
+          next[idx] = Object.assign({}, next[idx], {
+            show_in_nav: false,
+            show_in_footer: !!target.checked
+          });
         } else {
-          next[idx] = Object.assign({}, next[idx], { show_in_nav: !!target.checked });
+          next[idx] = Object.assign({}, next[idx], {
+            show_in_nav: !!target.checked,
+            show_in_footer: false
+          });
         }
         state.nostrPages = next;
         dispatchNavbarRefresh(state.nostrPages, true);

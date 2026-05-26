@@ -4108,8 +4108,8 @@ body {
   display: none;
 }
 
-#admin-panel .nostr-page-nav-col .nostr-page-nav-check-only input[type="checkbox"],
-#admin-panel .nostr-page-footer-col .nostr-page-nav-check-only input[type="checkbox"] {
+#admin-panel .nostr-page-nav-col .nostr-page-nav-check-only input[type="radio"],
+#admin-panel .nostr-page-footer-col .nostr-page-nav-check-only input[type="radio"] {
   margin: 0;
 }
 
