@@ -259,162 +259,179 @@
     return rooms;
   }
 
-  function occupy(layout, key, preferredX, preferredY) {
-    var occupied = {};
-    Object.keys(layout).forEach(function (path) {
-      occupied[layout[path].x + ',' + layout[path].y] = true;
-    });
-    var candidates = [[preferredX, preferredY]];
-    for (var radius = 1; radius < 12; radius += 1) {
-      for (var dx = -radius; dx <= radius; dx += 1) {
-        candidates.push([preferredX + dx, preferredY - radius], [preferredX + dx, preferredY + radius]);
-      }
-      for (var dy = -radius + 1; dy <= radius - 1; dy += 1) {
-        candidates.push([preferredX - radius, preferredY + dy], [preferredX + radius, preferredY + dy]);
-      }
-    }
-    for (var i = 0; i < candidates.length; i += 1) {
-      var candidate = candidates[i];
-      var occupiedKey = candidate[0] + ',' + candidate[1];
-      if (!occupied[occupiedKey]) {
-        layout[key] = { x: candidate[0], y: candidate[1] };
-        return layout[key];
-      }
-    }
-    layout[key] = { x: preferredX, y: preferredY };
-    return layout[key];
-  }
-
   function mansionLayout(rooms) {
-    var layout = { '': { x: 0, y: 0 } };
-    var children = {};
-    rooms.forEach(function (room) {
-      var parent = String(room.parent_path || '');
-      if (!children[parent]) children[parent] = [];
-      if (String(room.path || '') !== '') children[parent].push(room);
-    });
-    Object.keys(children).forEach(function (parent) {
-      children[parent].sort(function (left, right) {
-        return String(left.path || '').localeCompare(String(right.path || ''));
+    var layout = { '': { x: 0, y: 0, attachedTo: '' } };
+    var occupied = { '0,0': '' };
+    var doors = [];
+    var directions = [
+      { name: 'north', dx: 0, dy: -1 },
+      { name: 'east', dx: 1, dy: 0 },
+      { name: 'south', dx: 0, dy: 1 },
+      { name: 'west', dx: -1, dy: 0 }
+    ];
+
+    function rotateDirections(seed) {
+      var offset = hashText(seed) % directions.length;
+      return directions.slice(offset).concat(directions.slice(0, offset));
+    }
+
+    function distanceTo(point, target) {
+      return Math.abs(point.x - target.x) + Math.abs(point.y - target.y);
+    }
+
+    function anchorsFor(parentPath, roomPath) {
+      var parent = layout[parentPath] || layout[''];
+      return Object.keys(layout).sort(function (left, right) {
+        if (left === parentPath) return -1;
+        if (right === parentPath) return 1;
+        var leftDistance = distanceTo(layout[left], parent);
+        var rightDistance = distanceTo(layout[right], parent);
+        if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+        return String(left).localeCompare(String(right));
+      }).map(function (path) {
+        return { path: path, point: layout[path], seed: roomPath + ':' + path };
       });
-    });
-
-    function placeChildren(parentPath) {
-      var parent = layout[parentPath] || { x: 0, y: 0 };
-      var list = children[parentPath] || [];
-      var directions = parentPath === ''
-        ? [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]]
-        : (Math.abs(parent.x) >= Math.abs(parent.y)
-          ? [[parent.x >= 0 ? 1 : -1, 0], [0, 1], [0, -1], [parent.x >= 0 ? 1 : -1, 1], [parent.x >= 0 ? 1 : -1, -1]]
-          : [[0, parent.y >= 0 ? 1 : -1], [1, 0], [-1, 0], [1, parent.y >= 0 ? 1 : -1], [-1, parent.y >= 0 ? 1 : -1]]);
-      list.forEach(function (room, index) {
-        var direction = directions[index % directions.length];
-        var ring = Math.floor(index / directions.length) + 1;
-        occupy(layout, String(room.path || ''), parent.x + direction[0] * ring, parent.y + direction[1] * ring);
-        placeChildren(String(room.path || ''));
-      });
     }
 
-    placeChildren('');
-    return layout;
-  }
-
-  function buildingBoundaryPath(cells, unitW, unitH, margin) {
-    var edgeMap = {};
-    function key(x1, y1, x2, y2) {
-      return x1 + ',' + y1 + ',' + x2 + ',' + y2;
-    }
-    function reverseKey(x1, y1, x2, y2) {
-      return x2 + ',' + y2 + ',' + x1 + ',' + y1;
-    }
-    function addEdge(x1, y1, x2, y2) {
-      var reversed = reverseKey(x1, y1, x2, y2);
-      if (edgeMap[reversed]) {
-        delete edgeMap[reversed];
-      } else {
-        edgeMap[key(x1, y1, x2, y2)] = [x1, y1, x2, y2];
-      }
-    }
-    cells.forEach(function (cell) {
-      var left = cell.x * unitW - margin;
-      var top = cell.y * unitH - margin;
-      var right = (cell.x + 1) * unitW + margin;
-      var bottom = (cell.y + 1) * unitH + margin;
-      addEdge(left, top, right, top);
-      addEdge(right, top, right, bottom);
-      addEdge(right, bottom, left, bottom);
-      addEdge(left, bottom, left, top);
-    });
-    var edges = Object.keys(edgeMap).map(function (edgeKey) { return edgeMap[edgeKey]; });
-    if (!edges.length) return '';
-    var start = edges[0];
-    var path = 'M ' + start[0] + ' ' + start[1] + ' L ' + start[2] + ' ' + start[3];
-    var endX = start[2];
-    var endY = start[3];
-    edges.splice(0, 1);
-    var guard = 0;
-    while (edges.length && guard < 10000) {
-      guard += 1;
-      var found = -1;
-      for (var i = 0; i < edges.length; i += 1) {
-        if (edges[i][0] === endX && edges[i][1] === endY) {
-          found = i;
-          break;
+    function placeRoom(room) {
+      var roomPath = String(room.path || '');
+      if (!roomPath || layout[roomPath]) return;
+      var parentPath = layout[String(room.parent_path || '')] ? String(room.parent_path || '') : '';
+      var anchors = anchorsFor(parentPath, roomPath);
+      for (var a = 0; a < anchors.length; a += 1) {
+        var anchor = anchors[a];
+        var sideOrder = rotateDirections(anchor.seed);
+        for (var d = 0; d < sideOrder.length; d += 1) {
+          var side = sideOrder[d];
+          var x = anchor.point.x + side.dx;
+          var y = anchor.point.y + side.dy;
+          var key = x + ',' + y;
+          if (occupied[key] == null) {
+            layout[roomPath] = { x: x, y: y, attachedTo: anchor.path };
+            occupied[key] = roomPath;
+            doors.push({ from: anchor.path, to: roomPath, side: side.name });
+            return;
+          }
         }
       }
-      if (found === -1) break;
-      var edge = edges.splice(found, 1)[0];
-      endX = edge[2];
-      endY = edge[3];
-      path += ' L ' + endX + ' ' + endY;
+    }
+
+    rooms.forEach(placeRoom);
+    return { cells: layout, doors: doors, occupied: occupied };
+  }
+
+  function exteriorSides(point, occupied) {
+    return {
+      north: occupied[point.x + ',' + (point.y - 1)] == null,
+      east: occupied[(point.x + 1) + ',' + point.y] == null,
+      south: occupied[point.x + ',' + (point.y + 1)] == null,
+      west: occupied[(point.x - 1) + ',' + point.y] == null
+    };
+  }
+
+  function architecturalRoomPath(x, y, w, h, exterior, seed) {
+    var inset = 12 + (hashText(seed) % 5);
+    var bay = 9 + (hashText(seed + ':bay') % 5);
+    var path = 'M ' + x + ' ' + y;
+    if (exterior.north) {
+      path += ' H ' + (x + w * 0.18) + ' L ' + (x + w * 0.24) + ' ' + (y - bay) + ' H ' + (x + w * 0.42) + ' L ' + (x + w * 0.48) + ' ' + y +
+        ' H ' + (x + w * 0.66) + ' L ' + (x + w * 0.72) + ' ' + (y - inset) + ' H ' + (x + w * 0.84) + ' L ' + (x + w * 0.9) + ' ' + y + ' H ' + (x + w);
+    } else {
+      path += ' H ' + (x + w);
+    }
+    if (exterior.east) {
+      path += ' V ' + (y + h * 0.2) + ' L ' + (x + w + bay) + ' ' + (y + h * 0.28) + ' V ' + (y + h * 0.46) + ' L ' + (x + w) + ' ' + (y + h * 0.54) +
+        ' V ' + (y + h * 0.72) + ' L ' + (x + w + inset) + ' ' + (y + h * 0.78) + ' V ' + (y + h * 0.9) + ' L ' + (x + w) + ' ' + (y + h);
+    } else {
+      path += ' V ' + (y + h);
+    }
+    if (exterior.south) {
+      path += ' H ' + (x + w * 0.82) + ' L ' + (x + w * 0.76) + ' ' + (y + h + bay) + ' H ' + (x + w * 0.58) + ' L ' + (x + w * 0.52) + ' ' + (y + h) +
+        ' H ' + (x + w * 0.34) + ' L ' + (x + w * 0.28) + ' ' + (y + h + inset) + ' H ' + (x + w * 0.16) + ' L ' + (x + w * 0.1) + ' ' + (y + h) + ' H ' + x;
+    } else {
+      path += ' H ' + x;
+    }
+    if (exterior.west) {
+      path += ' V ' + (y + h * 0.8) + ' L ' + (x - bay) + ' ' + (y + h * 0.72) + ' V ' + (y + h * 0.54) + ' L ' + x + ' ' + (y + h * 0.46) +
+        ' V ' + (y + h * 0.28) + ' L ' + (x - inset) + ' ' + (y + h * 0.22) + ' V ' + (y + h * 0.1) + ' L ' + x + ' ' + y;
+    } else {
+      path += ' V ' + y;
     }
     return path + ' Z';
   }
 
+  function roomWallAdornments(x, y, w, h, exterior) {
+    var paths = [];
+    if (exterior.north) {
+      paths.push('M ' + (x + w * 0.08) + ' ' + y + ' v -10 M ' + (x + w * 0.92) + ' ' + y + ' v -10');
+    }
+    if (exterior.east) {
+      paths.push('M ' + (x + w) + ' ' + (y + h * 0.08) + ' h 10 M ' + (x + w) + ' ' + (y + h * 0.92) + ' h 10');
+    }
+    if (exterior.south) {
+      paths.push('M ' + (x + w * 0.08) + ' ' + (y + h) + ' v 10 M ' + (x + w * 0.92) + ' ' + (y + h) + ' v 10');
+    }
+    if (exterior.west) {
+      paths.push('M ' + x + ' ' + (y + h * 0.08) + ' h -10 M ' + x + ' ' + (y + h * 0.92) + ' h -10');
+    }
+    return paths.map(function (path) {
+      return '<path class="desk-map-wall-adornment" d="' + path + '"></path>';
+    }).join('');
+  }
+
+  function renderDoor(door, layout, unitW, unitH) {
+    var from = layout[door.from];
+    var to = layout[door.to];
+    if (!from || !to) return '';
+    var x;
+    var y;
+    if (door.side === 'east' || door.side === 'west') {
+      x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
+      y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
+      var swingX = x + (door.side === 'east' ? 20 : -20);
+      return '<g class="desk-map-door"><path d="M ' + x + ' ' + (y - 15) + ' V ' + (y + 15) + '"></path><path d="M ' + x + ' ' + (y - 15) + ' Q ' + swingX + ' ' + y + ' ' + x + ' ' + (y + 15) + '"></path></g>';
+    }
+    x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
+    y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
+    var swingY = y + (door.side === 'south' ? 20 : -20);
+    return '<g class="desk-map-door"><path d="M ' + (x - 15) + ' ' + y + ' H ' + (x + 15) + '"></path><path d="M ' + (x - 15) + ' ' + y + ' Q ' + x + ' ' + swingY + ' ' + (x + 15) + ' ' + y + '"></path></g>';
+  }
+
   function renderMap(data) {
     var rooms = mapRooms(data);
-    var layout = mansionLayout(rooms);
-    var unitW = 190;
-    var unitH = 138;
-    var roomW = 144;
-    var roomH = 92;
+    var plan = mansionLayout(rooms);
+    var layout = plan.cells;
+    var unitW = 170;
+    var unitH = 118;
     var cells = Object.keys(layout).map(function (path) { return layout[path]; });
     var minX = Math.min.apply(null, cells.map(function (cell) { return cell.x; }));
     var maxX = Math.max.apply(null, cells.map(function (cell) { return cell.x; }));
     var minY = Math.min.apply(null, cells.map(function (cell) { return cell.y; }));
     var maxY = Math.max.apply(null, cells.map(function (cell) { return cell.y; }));
-    var pad = 120;
+    var pad = 94;
     var viewX = minX * unitW - pad;
     var viewY = minY * unitH - pad;
     var viewW = (maxX - minX + 1) * unitW + pad * 2;
     var viewH = (maxY - minY + 1) * unitH + pad * 2;
-    var boundary = buildingBoundaryPath(cells, unitW, unitH, 24);
-    var connections = rooms.filter(function (room) { return String(room.path || '') !== ''; }).map(function (room) {
-      var roomPath = String(room.path || '');
-      var parentPath = String(room.parent_path || '');
-      var from = layout[parentPath] || layout[''];
-      var to = layout[roomPath];
-      if (!to) return '';
-      var x1 = from.x * unitW + unitW / 2;
-      var y1 = from.y * unitH + unitH / 2;
-      var x2 = to.x * unitW + unitW / 2;
-      var y2 = to.y * unitH + unitH / 2;
-      return '<path class="desk-map-corridor" d="M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + '"></path>';
-    }).join('');
     var roomShapes = rooms.map(function (room) {
       var path = String(room.path || '');
       var point = layout[path];
-      var x = point.x * unitW + (unitW - roomW) / 2;
-      var y = point.y * unitH + (unitH - roomH) / 2;
+      var x = point.x * unitW;
+      var y = point.y * unitH;
+      var exterior = exteriorSides(point, plan.occupied);
       var isCurrent = path === String(state.currentRoom || '');
       var title = room.title || 'Room';
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" class="desk-map-room-link">' +
         '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
-        '<rect x="' + x + '" y="' + y + '" width="' + roomW + '" height="' + roomH + '" rx="4"></rect>' +
-        '<text x="' + (x + roomW / 2) + '" y="' + (y + 35) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
-        '<text class="desk-map-room-meta" x="' + (x + roomW / 2) + '" y="' + (y + 58) + '" text-anchor="middle">+' + escapeHtml(room.visible_task_count || 0) + ' / ' + escapeHtml(room.sleeping_task_count || 0) + '</text>' +
+        '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>' +
+        roomWallAdornments(x, y, unitW, unitH, exterior) +
+        '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
+        '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(room.visible_task_count || 0) + ' / ' + escapeHtml(room.sleeping_task_count || 0) + '</text>' +
         '</g>' +
         '</a>';
+    }).join('');
+    var doorShapes = plan.doors.map(function (door) {
+      return renderDoor(door, layout, unitW, unitH);
     }).join('');
     return '<section class="desk-mode-panel desk-map-panel" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
@@ -422,8 +439,7 @@
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
-      '<path class="desk-map-building" d="' + boundary + '"></path>' +
-      connections + roomShapes +
+      roomShapes + doorShapes +
       '</svg>' +
       '</div>' +
       '<button type="button" class="desk-map-create-btn" data-desk-create-room-open aria-label="Create room">+</button>' +
