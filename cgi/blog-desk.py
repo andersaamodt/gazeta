@@ -578,10 +578,19 @@ class DeskStore:
         return target_path
 
     def move_task(self, from_room: str, task_id: str, to_room: str, threshold: int) -> dict[str, object]:
-        target_path = self.move_task_file(from_room, task_id, to_room)
+        source_rel = self.normalize_room_rel(from_room)
         target_rel = self.normalize_room_rel(to_room)
+        if source_rel == target_rel:
+            payload = self.state(source_rel, threshold)
+            task_path = self.task_path(source_rel, task_id)
+            if not task_path.is_file():
+                raise DeskError("missing_task", "Task file was not found.")
+            payload["moved_task"] = self.read_task(source_rel, task_path)
+            payload["move_skipped"] = True
+            return payload
+        target_path = self.move_task_file(from_room, task_id, to_room)
         self.set_metadata(target_path, {"updated_at": iso_now()})
-        self.append_log("move-task", {"from_room": self.normalize_room_rel(from_room), "to_room": target_rel, "task": target_path.name})
+        self.append_log("move-task", {"from_room": source_rel, "to_room": target_rel, "task": target_path.name})
         payload = self.state(target_rel, threshold)
         payload["moved_task"] = self.read_task(target_rel, target_path)
         return payload

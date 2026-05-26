@@ -323,6 +323,18 @@ body:has(#desk-page-root) {
   margin-bottom: 1rem;
 }
 
+.desk-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.desk-panel-title-row h2 {
+  margin-bottom: 0;
+}
+
 .desk-filter-controls {
   display: flex;
   flex-wrap: wrap;

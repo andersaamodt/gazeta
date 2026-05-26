@@ -205,6 +205,10 @@ create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "W
 assert_jq "$create_json" '.success == true and .created_room.path == "writing-room"' 'Desk creates a real room folder'
 assert_dir_exists "$SITE_DATA/desk/office/writing-room" 'created room is a filesystem folder'
 
+archive_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Archive Room")")
+assert_jq "$archive_json" '.success == true and .created_room.path == "archive-room"' 'Desk creates a second room for task moves'
+assert_dir_exists "$SITE_DATA/desk/office/archive-room" 'second room is a filesystem folder'
+
 task_text='Low task
 private body'
 add_json=$(run_desk "action=add-task&$auth_query&destination_room=writing-room&task_text=$(urlencode "$task_text")")
@@ -218,6 +222,21 @@ assert_jq "$office_after_low" '.rooms[] | select(.path == "writing-room" and .sl
 
 room_after_low=$(run_desk "action=state&$auth_query&room=writing-room")
 assert_jq "$room_after_low" '.tasks[] | select(.title == "Low task" and .body == "private body")' 'room-local view shows below-threshold task text'
+
+same_move_json=$(run_desk "action=move-task&$auth_query&room=writing-room&target_room=writing-room&task_id=$(urlencode "$task_id")")
+assert_jq "$same_move_json" '.success == true and .move_skipped == true and .moved_task.id == "'"$task_id"'"' 'Desk skips same-room task moves without renaming files'
+assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/$task_id" 'same-room move leaves original task file in place'
+
+move_json=$(run_desk "action=move-task&$auth_query&room=writing-room&target_room=archive-room&task_id=$(urlencode "$task_id")")
+assert_jq "$move_json" '.success == true and .current_room.path == "archive-room" and .moved_task.id == "'"$task_id"'"' 'Desk moves tasks by filesystem move to another room'
+assert_file_exists "$SITE_DATA/desk/office/archive-room/.tasks/$task_id" 'moved task file exists in destination room'
+
+move_back_json=$(run_desk "action=move-task&$auth_query&room=archive-room&target_room=writing-room&task_id=$(urlencode "$task_id")")
+assert_jq "$move_back_json" '.success == true and .current_room.path == "writing-room" and .moved_task.id == "'"$task_id"'"' 'Desk can move tasks back to the original room'
+assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/$task_id" 'moved-back task file exists in original room'
+
+soon_json=$(run_desk "action=set-soonness&$auth_query&room=writing-room&task_id=$(urlencode "$task_id")&soonness=$(urlencode "2030-01-02")")
+assert_jq "$soon_json" '.success == true and .updated_task.soonness == "2030-01-02"' 'Desk stores soonness metadata on a task'
 
 vote_json=$(run_desk "action=vote-task&$auth_query&room=writing-room&task_id=$(urlencode "$task_id")")
 assert_jq "$vote_json" '.success == true and .voted_task.upvotes == 1 and .voted_task.can_vote_now == false' 'private upvote increments xattr metadata and starts revote window'

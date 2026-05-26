@@ -165,6 +165,21 @@
     }).join('');
   }
 
+  function moveOptionRows(data, currentRoom) {
+    var current = String(currentRoom || '');
+    var rooms = [{ path: '', title: 'Office' }].concat((data && data.rooms) || []);
+    var options = rooms.filter(function (room) {
+      return String(room.path || '') !== current;
+    });
+    if (!options.length) {
+      return '<option value="' + escapeHtml(current) + '">No other rooms</option>';
+    }
+    return options.map(function (room) {
+      var path = String(room.path || '');
+      return '<option value="' + escapeHtml(path) + '">' + escapeHtml(room.title || 'Room') + '</option>';
+    }).join('');
+  }
+
   function heatWidth(heat) {
     var value = Math.max(8, Math.min(100, Number(heat || 0) * 10 + 8));
     return value + '%';
@@ -314,7 +329,7 @@
       '<form class="desk-move-form" data-desk-form="move-task">' +
       '<input type="hidden" name="room" value="' + escapeHtml(room) + '">' +
       '<input type="hidden" name="task_id" value="' + escapeHtml(task.id || '') + '">' +
-      '<select class="desk-select" name="target_room">' + roomOptionRows(data, room) + '</select>' +
+      '<select class="desk-select" name="target_room">' + moveOptionRows(data, room) + '</select>' +
       '<button type="submit" class="desk-btn subtle">Move</button>' +
       '</form>' +
       '<form class="desk-soonness-form" data-desk-form="soonness">' +
@@ -366,7 +381,7 @@
     }
     var results = data.results || [];
     return '<section class="desk-search-panel">' +
-      '<h2>Search Results</h2>' +
+      '<div class="desk-panel-title-row"><h2>Search Results</h2><button type="button" class="desk-btn subtle" data-desk-clear-search>Clear</button></div>' +
       '<p class="desk-room-note">' + escapeHtml(results.length) + ' result' + (results.length === 1 ? '' : 's') + ' for "' + escapeHtml(data.query || '') + '"</p>' +
       (results.length ? '<ul class="desk-search-list">' + results.map(function (result) {
         var title = result.kind === 'room' ? result.title : result.title + ' · ' + result.room_title;
@@ -472,6 +487,15 @@
       return;
     }
 
+    var clearSearch = event.target.closest('[data-desk-clear-search]');
+    if (clearSearch) {
+      state.search = null;
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
     var taskAction = event.target.closest('[data-desk-task-action]');
     if (taskAction) {
       var action = taskAction.getAttribute('data-desk-task-action');
@@ -540,10 +564,16 @@
       return;
     }
     if (type === 'move-task') {
+      var sourceRoom = formValue(form, 'room');
+      var targetRoom = formValue(form, 'target_room');
+      if (sourceRoom === targetRoom) {
+        showMessage('Choose a different room to move this task.', true);
+        return;
+      }
       api('move-task', {
-        room: formValue(form, 'room'),
+        room: sourceRoom,
         task_id: formValue(form, 'task_id'),
-        target_room: formValue(form, 'target_room')
+        target_room: targetRoom
       }).then(refreshFrom);
       return;
     }
