@@ -11,11 +11,13 @@
     search: null,
     currentRoom: roomFromLocation(),
     mode: 'map',
+    closingMode: '',
     createRoomOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
     inFlight: 0
   };
+  var modeCloseTimer = null;
 
   function markPageReady() {
     var gate = window.__wizardryHydration;
@@ -460,7 +462,7 @@
     var doorShapes = plan.doors.map(function (door) {
       return renderDoor(door, layout, unitW, unitH);
     }).join('');
-    return '<section class="desk-mode-panel desk-map-panel" aria-label="Room map">' +
+    return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + '" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
@@ -530,15 +532,61 @@
 
   function renderModeDock() {
     return '<div class="desk-mode-dock" aria-label="Desk modes">' +
-      '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="Open room map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5l5-2 8 2 5-2v15l-5 2-8-2-5 2z"></path><path d="M8 3.5v15"></path><path d="M16 5.5v15"></path></svg></button>' +
+      '<button type="button" class="desk-mode-launch desk-mode-map' + (state.mode === 'map' && state.closingMode !== 'map' ? ' is-active' : '') + '" data-desk-mode="map" aria-label="' + (state.mode === 'map' && state.closingMode !== 'map' ? 'Close room map' : 'Open room map') + '" aria-pressed="' + (state.mode === 'map' && state.closingMode !== 'map' ? 'true' : 'false') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5l5-2 8 2 5-2v15l-5 2-8-2-5 2z"></path><path d="M8 3.5v15"></path><path d="M16 5.5v15"></path></svg></button>' +
       '<button type="button" class="desk-mode-launch desk-mode-compose' + (state.mode === 'compose' ? ' is-active' : '') + '" data-desk-mode="compose" aria-label="Compose on the desk"><span>✎</span></button>' +
       '<button type="button" class="desk-mode-launch desk-mode-todo' + (state.mode === 'todo' ? ' is-active' : '') + '" data-desk-mode="todo" aria-label="Open checklist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h13"></path><path d="M7 10h13"></path><path d="M7 15.5h13"></path><path d="M3.5 4.5l.8.8 1.6-1.8"></path><path d="M3.5 10l.8.8L5.9 9"></path><path d="M3.5 15.5l.8.8 1.6-1.8"></path></svg></button>' +
       '</div>';
   }
 
   function renderStage(data) {
-    var content = state.mode === 'todo' ? renderMap(data) + renderTodo(data) : (state.mode === 'compose' ? renderCompose(data) : renderMap(data));
+    var content = '';
+    if (state.mode === 'todo') {
+      content = renderMap(data) + renderTodo(data);
+    } else if (state.mode === 'compose') {
+      content = renderCompose(data);
+    } else if (state.mode === 'map') {
+      content = renderMap(data);
+    }
     return '<div class="desk-stage" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
+  }
+
+  function clearModeCloseTimer() {
+    if (modeCloseTimer) {
+      window.clearTimeout(modeCloseTimer);
+      modeCloseTimer = null;
+    }
+  }
+
+  function openMode(mode) {
+    clearModeCloseTimer();
+    state.mode = mode || 'map';
+    state.closingMode = '';
+    state.search = null;
+    state.createRoomOpen = false;
+    if (state.data) {
+      render(state.data);
+    }
+  }
+
+  function closeMapMode() {
+    if (state.mode !== 'map' || state.closingMode === 'map') {
+      return;
+    }
+    clearModeCloseTimer();
+    state.closingMode = 'map';
+    state.search = null;
+    state.createRoomOpen = false;
+    if (state.data) {
+      render(state.data);
+    }
+    modeCloseTimer = window.setTimeout(function () {
+      state.mode = 'closed';
+      state.closingMode = '';
+      modeCloseTimer = null;
+      if (state.data) {
+        render(state.data);
+      }
+    }, 360);
   }
 
   function renderChromeControls(data) {
@@ -821,11 +869,11 @@
 
     var modeButton = event.target.closest('[data-desk-mode]');
     if (modeButton) {
-      state.mode = modeButton.getAttribute('data-desk-mode') || 'map';
-      state.search = null;
-      state.createRoomOpen = false;
-      if (state.data) {
-        render(state.data);
+      var requestedMode = modeButton.getAttribute('data-desk-mode') || 'map';
+      if (requestedMode === 'map' && state.mode === 'map' && state.closingMode !== 'map') {
+        closeMapMode();
+      } else {
+        openMode(requestedMode);
       }
       return;
     }
