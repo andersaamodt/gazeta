@@ -590,6 +590,33 @@
     }, 360);
   }
 
+  function closeOpenMode() {
+    clearModeCloseTimer();
+    state.mode = 'closed';
+    state.closingMode = '';
+    state.search = null;
+    state.createRoomOpen = false;
+    state.secretPassageSource = null;
+    if (state.data) {
+      render(state.data);
+    }
+  }
+
+  function isDeskBackgroundClick(event) {
+    var target = event.target;
+    var stage = target.closest && target.closest('.desk-stage');
+    if (!stage) {
+      return false;
+    }
+    if (state.mode === 'closed') {
+      return false;
+    }
+    if (target.closest('button, a, input, select, textarea, label, form, .desk-modal, .desk-todo-panel, .desk-compose-panel, .desk-map-room-link')) {
+      return false;
+    }
+    return target === stage || Boolean(target.closest('.desk-map-scroll'));
+  }
+
   function renderChromeControls(data) {
     return '<div class="desk-chrome-controls">' + statusButtons(data) + thresholdControl() + '</div>';
   }
@@ -910,6 +937,12 @@
       if (state.data) {
         render(state.data);
       }
+      return;
+    }
+
+    if (isDeskBackgroundClick(event)) {
+      event.preventDefault();
+      closeOpenMode();
       return;
     }
 
