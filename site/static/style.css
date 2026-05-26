@@ -6134,6 +6134,8 @@ button.contact-value-link {
   display: inline-flex;
   align-items: center;
   margin-left: 0.08rem;
+  padding-right: 0.28rem;
+  margin-right: -0.28rem;
   flex: 0 0 auto;
 }
 
@@ -6172,10 +6174,11 @@ button.contact-value-link {
   height: 1rem;
   padding: 0 0.22rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 0;
   background: var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
-  background-clip: padding-box;
-  box-shadow: 0 0 0 2px var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 0 0 3px var(--button-secondary-bg, var(--nav-button-bg, var(--light-bg)));
   color: var(--text);
   font-size: 0.63rem;
   font-weight: 700;
@@ -6185,6 +6188,7 @@ button.contact-value-link {
   justify-content: center;
   z-index: 3;
   pointer-events: none;
+  transition: none;
 }
 
 .nav-overflow-count[hidden] {
@@ -6192,18 +6196,21 @@ button.contact-value-link {
 }
 
 .nav-menu-btn.nav-overflow-btn:hover,
-.nav-menu-btn.nav-overflow-btn:focus-visible {
+.nav-menu-btn.nav-overflow-btn:focus-visible,
+.nav-overflow-menu:hover .nav-menu-btn.nav-overflow-btn {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--light-bg);
 }
 
 .nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count,
-.nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count {
-  border-color: currentColor;
+.nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count,
+.nav-overflow-menu:hover .nav-overflow-count {
   color: currentColor;
-  background: var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
-  box-shadow: 0 0 0 2px var(--nav-button-bg, var(--action-soft-bg, #f5e4d7));
+  background: rgba(15, 23, 42, 0.10);
+  box-shadow:
+    0 0 0 1px currentColor,
+    0 0 0 3px rgba(15, 23, 42, 0.10);
 }
 
 .nav-overflow-panel {
@@ -13045,7 +13052,15 @@ nav.site-nav .nav-overflow-menu {
   order: 99;
   flex: 0 0 auto !important;
   margin-left: 0;
-  margin-right: 0;
+  margin-right: -0.28rem;
+  padding-right: 0.28rem;
+}
+
+nav.site-nav .nav-menu-btn.nav-overflow-btn {
+  width: 2.05rem !important;
+  min-width: 2.05rem !important;
+  height: 2.05rem !important;
+  padding: 0 !important;
 }
 
 nav.site-nav > .nav-site-signature {
@@ -14184,6 +14199,29 @@ nav.site-nav .nav-user-menu .nav-menu-btn:focus-visible {
   border-radius: 7px !important;
   background: rgba(15, 23, 42, 0.10) !important;
   background-image: none !important;
+}
+
+nav.site-nav .nav-overflow-menu:hover .nav-menu-btn.nav-overflow-btn,
+nav.site-nav .nav-menu-btn.nav-overflow-btn:hover,
+nav.site-nav .nav-menu-btn.nav-overflow-btn:focus-visible {
+  width: 2.05rem !important;
+  min-width: 2.05rem !important;
+  height: 2.05rem !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(15, 23, 42, 0.10) !important;
+  background-image: none !important;
+  color: var(--accent) !important;
+}
+
+nav.site-nav .nav-overflow-menu:hover .nav-overflow-count,
+nav.site-nav .nav-menu-btn.nav-overflow-btn:hover .nav-overflow-count,
+nav.site-nav .nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count {
+  color: var(--accent) !important;
+  background: rgba(15, 23, 42, 0.10) !important;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 0 3px rgba(15, 23, 42, 0.10) !important;
 }
 
 .blog-compose-card .compose-post-type-toolbar {
