@@ -613,6 +613,13 @@ nav.site-nav > .nav-center {
     0 3px 10px rgba(48, 34, 16, 0.07) !important;
 }
 
+.list-page-shell .list-entry-line:not(.list-entry-inline).is-row-highlight > .list-entry-first-line,
+.list-page-shell .list-entries:not(.list-entries-inline) > .list-entry-line:not(.list-entry-inline):nth-child(even) > .list-entry-first-line,
+.list-page-shell .list-sub-entries > .list-entry-line:not(.list-entry-inline):nth-child(even) > .list-entry-first-line {
+  background-color: rgba(126, 96, 47, 0.075);
+  background-image: none;
+}
+
 
 .post-item {
   transition:
