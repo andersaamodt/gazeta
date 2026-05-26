@@ -305,7 +305,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-rename1' 'Desk page cache-busts room rename interface assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-connections1' 'Desk page cache-busts room connection label assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -347,6 +347,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compo
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-title'" 'Desk frontend can rename the current room'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-form="room-title"' 'Desk room view exposes a compact room-name editor'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Connects from' 'Desk create-room parent selector uses connection wording'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "join(' → ')" 'Desk room path labels use arrow separators instead of slashes'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-room-path' 'Desk removes the room breadcrumb styling'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-create-room-open' 'Desk frontend opens create room from the map plus button'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderCreateRoomModal(data)' 'Desk frontend renders create room in a modal'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'preserveAspectRatio="xMidYMid meet"' 'Desk map scales to fit the desk without scrolling'

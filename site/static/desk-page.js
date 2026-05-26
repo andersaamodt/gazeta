@@ -180,17 +180,44 @@
       '</select></label>';
   }
 
+  function humanizePathPart(value) {
+    return String(value || 'room').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (letter) {
+      return letter.toUpperCase();
+    });
+  }
+
+  function roomPathLabel(room, roomsByPath) {
+    var path = String(room && room.path || '');
+    if (!path) {
+      return 'Office';
+    }
+    var parts = path.split('/');
+    return ['Office'].concat(parts.map(function (_part, index) {
+      var partial = parts.slice(0, index + 1).join('/');
+      var matched = roomsByPath[partial];
+      return matched && matched.title ? matched.title : humanizePathPart(parts[index]);
+    })).join(' → ');
+  }
+
   function roomOptionRows(data, selected) {
     var rooms = [{ path: '', title: 'Office' }].concat((data && data.rooms) || []);
+    var roomsByPath = {};
+    rooms.forEach(function (room) {
+      roomsByPath[String(room.path || '')] = room;
+    });
     return rooms.map(function (room) {
       var path = String(room.path || '');
-      return '<option value="' + escapeHtml(path) + '"' + (path === selected ? ' selected' : '') + '>' + escapeHtml(room.title || 'Room') + '</option>';
+      return '<option value="' + escapeHtml(path) + '"' + (path === selected ? ' selected' : '') + '>' + escapeHtml(roomPathLabel(room, roomsByPath)) + '</option>';
     }).join('');
   }
 
   function moveOptionRows(data, currentRoom) {
     var current = String(currentRoom || '');
     var rooms = [{ path: '', title: 'Office' }].concat((data && data.rooms) || []);
+    var roomsByPath = {};
+    rooms.forEach(function (room) {
+      roomsByPath[String(room.path || '')] = room;
+    });
     var options = rooms.filter(function (room) {
       return String(room.path || '') !== current;
     });
@@ -199,7 +226,7 @@
     }
     return options.map(function (room) {
       var path = String(room.path || '');
-      return '<option value="' + escapeHtml(path) + '">' + escapeHtml(room.title || 'Room') + '</option>';
+      return '<option value="' + escapeHtml(path) + '">' + escapeHtml(roomPathLabel(room, roomsByPath)) + '</option>';
     }).join('');
   }
 
@@ -575,7 +602,7 @@
     return '<form class="desk-form desk-create-room-form" data-desk-form="create-room">' +
       '<div class="desk-form-row">' +
       '<label><span class="desk-visually-hidden">New Room</span><input class="desk-input" name="room_title" placeholder="New room" aria-label="New room" required></label>' +
-      '<label><span class="desk-visually-hidden">Inside</span><select class="desk-select" name="room" aria-label="Inside">' + roomOptionRows(data, current) + '</select></label>' +
+      '<label><span class="desk-visually-hidden">Connects from</span><select class="desk-select" name="room" aria-label="Connects from">' + roomOptionRows(data, current) + '</select></label>' +
       '<button type="submit" class="desk-btn subtle" aria-label="Create room">+</button>' +
       '</div>' +
       '</form>';

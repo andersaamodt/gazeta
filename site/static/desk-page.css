@@ -194,7 +194,6 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-kicker,
-.desk-room-path,
 .desk-room-note,
 .desk-muted {
   color: var(--desk-muted);
@@ -560,15 +559,6 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-room-heading h1 {
   font-size: clamp(2rem, 5vw, 4.6rem);
-}
-
-.desk-room-path {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.42rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.86rem;
 }
 
 .desk-status {
