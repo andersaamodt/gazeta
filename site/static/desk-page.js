@@ -392,25 +392,6 @@
     return path + ' Z';
   }
 
-  function roomWallAdornments(x, y, w, h, exterior) {
-    var paths = [];
-    if (exterior.north) {
-      paths.push('M ' + (x + w * 0.08) + ' ' + y + ' v -10 M ' + (x + w * 0.92) + ' ' + y + ' v -10');
-    }
-    if (exterior.east) {
-      paths.push('M ' + (x + w) + ' ' + (y + h * 0.08) + ' h 10 M ' + (x + w) + ' ' + (y + h * 0.92) + ' h 10');
-    }
-    if (exterior.south) {
-      paths.push('M ' + (x + w * 0.08) + ' ' + (y + h) + ' v 10 M ' + (x + w * 0.92) + ' ' + (y + h) + ' v 10');
-    }
-    if (exterior.west) {
-      paths.push('M ' + x + ' ' + (y + h * 0.08) + ' h -10 M ' + x + ' ' + (y + h * 0.92) + ' h -10');
-    }
-    return paths.map(function (path) {
-      return '<path class="desk-map-wall-adornment" d="' + path + '"></path>';
-    }).join('');
-  }
-
   function renderDoor(door, layout, unitW, unitH) {
     var from = layout[door.from];
     var to = layout[door.to];
@@ -420,13 +401,11 @@
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      var swingX = x + (door.side === 'east' ? 20 : -20);
-      return '<g class="desk-map-door"><path d="M ' + x + ' ' + (y - 15) + ' V ' + (y + 15) + '"></path><path d="M ' + x + ' ' + (y - 15) + ' Q ' + swingX + ' ' + y + ' ' + x + ' ' + (y + 15) + '"></path></g>';
+      return '<g class="desk-map-door"><path d="M ' + x + ' ' + (y - 18) + ' V ' + (y + 18) + '"></path><path d="M ' + x + ' ' + (y - 18) + ' Q ' + (x - 20) + ' ' + y + ' ' + x + ' ' + (y + 18) + '"></path><path d="M ' + x + ' ' + (y - 18) + ' Q ' + (x + 20) + ' ' + y + ' ' + x + ' ' + (y + 18) + '"></path></g>';
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    var swingY = y + (door.side === 'south' ? 20 : -20);
-    return '<g class="desk-map-door"><path d="M ' + (x - 15) + ' ' + y + ' H ' + (x + 15) + '"></path><path d="M ' + (x - 15) + ' ' + y + ' Q ' + x + ' ' + swingY + ' ' + (x + 15) + ' ' + y + '"></path></g>';
+    return '<g class="desk-map-door"><path d="M ' + (x - 18) + ' ' + y + ' H ' + (x + 18) + '"></path><path d="M ' + (x - 18) + ' ' + y + ' Q ' + x + ' ' + (y - 20) + ' ' + (x + 18) + ' ' + y + '"></path><path d="M ' + (x - 18) + ' ' + y + ' Q ' + x + ' ' + (y + 20) + ' ' + (x + 18) + ' ' + y + '"></path></g>';
   }
 
   function renderSecretPassage(passage, layout, unitW, unitH) {
@@ -470,7 +449,6 @@
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
         '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>' +
-        roomWallAdornments(x, y, unitW, unitH, exterior) +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
         '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(room.visible_task_count || 0) + ' / ' + escapeHtml(room.sleeping_task_count || 0) + '</text>' +
         '</g>' +
