@@ -91,6 +91,7 @@ blog_nostr_page_kind_for_type() {
     public-ranking) printf '30040\n' ;;
     overworld) printf '30023\n' ;;
     nip23|blog) printf '30023\n' ;;
+    software-gallery) printf '30267\n' ;;
     *) printf '30004\n' ;;
   esac
 }
@@ -1101,9 +1102,15 @@ blog_nostr_page_write_prerendered_source() {
     icon-gallery|*)
       content_html=$(blog_nostr_prerender_list_html "$payload_json")
       root_id=list-page-root
-      [ "$page_type" = "icon-gallery" ] && root_id=icon-gallery-root
+      root_class=''
+      case "$page_type" in
+        icon-gallery|software-gallery)
+          root_id=icon-gallery-root
+          root_class=' icon-gallery-shell'
+          ;;
+      esac
       {
-        printf '<section id="%s" class="list-page-shell%s" data-list-slug="%s" data-list-title="%s" data-page-type="%s"%s>\n' "$root_id" "$( [ "$page_type" = "icon-gallery" ] && printf ' icon-gallery-shell' || printf '' )" "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$page_type" "$attrs"
+        printf '<section id="%s" class="list-page-shell%s" data-list-slug="%s" data-list-title="%s" data-page-type="%s"%s>\n' "$root_id" "$root_class" "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$page_type" "$attrs"
         printf '<div class="list-page-head"><h1 id="list-page-title">%s</h1><p id="list-page-description" class="muted">%s</p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')" "$(printf '%s' "$page_description" | jq -Rr '@html')"
         printf '%s\n' '<div id="list-page-admin" class="list-admin" hidden></div><div id="list-page-validation" class="list-validation" hidden></div>'
         printf '<div id="list-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
@@ -1973,16 +1980,20 @@ blog_nostr_page_source_template_type() {
     printf 'list\n'
     return 0
   fi
+  if grep -q 'id="icon-gallery-root"' "$file" 2>/dev/null; then
+    page_type=$(sed -n 's/.*data-page-type="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1 | tr '[:upper:]' '[:lower:]')
+    case "$page_type" in
+      software-gallery) printf 'software-gallery\n' ;;
+      *) printf 'icon-gallery\n' ;;
+    esac
+    return 0
+  fi
   if grep -q 'data-list-slug="' "$file" 2>/dev/null &&
      grep -q 'id="list-page-title"' "$file" 2>/dev/null &&
      grep -q 'id="list-page-content"' "$file" 2>/dev/null; then
     # Legacy generated list wrappers (for example id="<slug>-root") are still
     # managed list pages and should be kept on the current template path.
     printf 'list\n'
-    return 0
-  fi
-  if grep -q 'id="icon-gallery-root"' "$file" 2>/dev/null; then
-    printf 'icon-gallery\n'
     return 0
   fi
   if grep -q 'id="blog-page-root"' "$file" 2>/dev/null; then

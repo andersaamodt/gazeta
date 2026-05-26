@@ -235,6 +235,8 @@ assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-entry-id
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.js" 'public-fixture-entry' 'list bootstrap includes public submitted list entries'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-gallery prerender includes tile label'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'
+assert_file_contains "$SITE_ROOT/site/pages/software.md" 'class="list-page-shell icon-gallery-shell"' 'icon-gallery prerender emits a stable shell class'
+assert_file_not_contains "$SITE_ROOT/site/pages/software.md" "printf ' icon-gallery-shell" 'icon-gallery prerender does not leak shell fragments into HTML'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'essay' 'blog prerender includes post tag text'
