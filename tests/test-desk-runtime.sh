@@ -194,7 +194,14 @@ unauth_json=$(run_desk 'action=state')
 assert_jq "$unauth_json" '.success == false and .code == "auth_required"' 'Desk rejects unauthenticated access'
 
 other_json=$(run_desk "action=state&$other_query")
-assert_jq "$other_json" '.success == false and .code == "owner_required"' 'Desk rejects a logged-in non-owner even when admin'
+assert_jq "$other_json" '.success == true and .office.title == "Office"' 'Desk accepts site admins even when they are not Nostr authors'
+
+config-set "$SITE_ROOT/site.conf" desk_owner_pubkeys "$owner_pubkey"
+explicit_other_json=$(run_desk "action=state&$other_query")
+assert_jq "$explicit_other_json" '.success == false and .code == "owner_required"' 'Desk explicit owner list overrides site admin access'
+explicit_owner_json=$(run_desk "action=state&$auth_query")
+assert_jq "$explicit_owner_json" '.success == true and .office.title == "Office"' 'Desk explicit owner can enter the office'
+config-set "$SITE_ROOT/site.conf" desk_owner_pubkeys ''
 
 state_json=$(run_desk "action=state&$auth_query")
 assert_jq "$state_json" '.success == true and .office.title == "Office" and .rooms == []' 'Desk owner can enter the office'

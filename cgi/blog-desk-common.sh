@@ -46,6 +46,10 @@ blog_desk_session_is_owner() {
     return $?
   fi
 
+  if [ "${BLOG_SESSION_IS_ADMIN-}" = "true" ]; then
+    return 0
+  fi
+
   author_lines=$(blog_nostr_list_file_lines "$blog_nostr_authors_file" 2>/dev/null | awk 'NF { print tolower($0) }' || printf '')
   author_count=$(printf '%s\n' "$author_lines" | awk 'NF { count += 1 } END { print count + 0 }')
   if [ "${author_count:-0}" -gt 0 ]; then
@@ -53,10 +57,7 @@ blog_desk_session_is_owner() {
     return $?
   fi
 
-  # Secure bootstrap fallback for local/private sites that have not configured
-  # an author allowlist yet. Once Desk owner pubkeys or Nostr authors exist,
-  # they become the authority.
-  [ "${BLOG_SESSION_IS_ADMIN-}" = "true" ]
+  return 1
 }
 
 blog_desk_require_owner() {
