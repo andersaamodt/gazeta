@@ -374,13 +374,111 @@ class DeskStore:
         for dirpath, dirnames, _filenames in os.walk(self.root):
             dirnames[:] = [
                 name for name in dirnames
-                if name != ".tasks" and not name.startswith(".")
+                if name not in (".tasks", ".passages") and not name.startswith(".")
             ]
             path = Path(dirpath)
             if path == self.root:
                 continue
             rooms.append(self.room_rel_for_path(path))
         return sorted(set(rooms), key=lambda rel: (rel.count("/"), self.room_title(rel).lower(), rel))
+
+    def passage_dir(self, room_rel: str | None) -> Path:
+        return self.room_dir(room_rel) / ".passages"
+
+    def passage_file_name(self, left: str, right: str) -> str:
+        left_name = slugify(left or "office")
+        right_name = slugify(right or "office")
+        return f"{left_name}--{right_name}.json"
+
+    def passage_payload(self, left: str, right: str) -> dict[str, object]:
+        rooms = sorted([self.normalize_room_rel(left), self.normalize_room_rel(right)])
+        return {
+            "type": "secret-passage",
+            "rooms": rooms,
+            "created_at": iso_now(),
+        }
+
+    def write_secret_passage_files(self, left: str, right: str, payload: dict[str, object], extra_remove: list[Path] | None = None) -> tuple[Path, Path]:
+        ordered = sorted([self.normalize_room_rel(left), self.normalize_room_rel(right)])
+        file_name = self.passage_file_name(ordered[0], ordered[1])
+        left_dir = self.passage_dir(ordered[0])
+        right_dir = self.passage_dir(ordered[1])
+        left_dir.mkdir(exist_ok=True)
+        right_dir.mkdir(exist_ok=True)
+        with contextlib.suppress(OSError):
+            os.chmod(left_dir, 0o700)
+        with contextlib.suppress(OSError):
+            os.chmod(right_dir, 0o700)
+        left_path = left_dir / file_name
+        right_path = right_dir / file_name
+        for path in list(extra_remove or []) + [left_path, right_path]:
+            with contextlib.suppress(FileNotFoundError):
+                path.unlink()
+        atomic_write_json(left_path, payload)
+        os.link(left_path, right_path)
+        return left_path, right_path
+
+    def passage_files(self) -> list[Path]:
+        files: list[Path] = []
+        for rel in self.all_room_rels():
+            directory = self.passage_dir(rel)
+            if directory.is_dir():
+                files.extend(sorted(path for path in directory.iterdir() if path.is_file() and path.name.endswith(".json")))
+        return files
+
+    def read_passage_file(self, path: Path) -> dict[str, object] | None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(data, dict) or data.get("type") != "secret-passage":
+            return None
+        rooms = data.get("rooms")
+        if not isinstance(rooms, list) or len(rooms) != 2:
+            return None
+        try:
+            left = self.normalize_room_rel(str(rooms[0]))
+            right = self.normalize_room_rel(str(rooms[1]))
+        except DeskError:
+            return None
+        if left == right:
+            return None
+        data["rooms"] = sorted([left, right])
+        return data
+
+    def all_secret_passages(self) -> list[dict[str, object]]:
+        passages: dict[tuple[str, str], dict[str, object]] = {}
+        for path in self.passage_files():
+            data = self.read_passage_file(path)
+            if not data:
+                continue
+            left, right = [str(value) for value in data["rooms"]]
+            if not self.room_dir(left).is_dir() or not self.room_dir(right).is_dir():
+                continue
+            key = tuple(sorted([left, right]))
+            passages[key] = {
+                "from": key[0],
+                "to": key[1],
+                "from_title": self.room_title(key[0]),
+                "to_title": self.room_title(key[1]),
+            }
+        return [passages[key] for key in sorted(passages)]
+
+    def room_secret_passages(self, rel: str | None) -> list[dict[str, object]]:
+        room = self.normalize_room_rel(rel)
+        results: list[dict[str, object]] = []
+        for passage in self.all_secret_passages():
+            left = str(passage["from"])
+            right = str(passage["to"])
+            if room not in (left, right):
+                continue
+            target = right if room == left else left
+            results.append({
+                "room": target,
+                "title": self.room_title(target),
+                "url": self.room_url(target),
+            })
+        return results
 
     def task_files(self, room_rel: str | None, status: str = "open") -> list[Path]:
         directory = self.tasks_dir(room_rel, status)
@@ -474,6 +572,7 @@ class DeskStore:
             "surfaced_tasks": visible[:3],
             "has_public_file": public_file.is_file(),
             "public_file_name": "public.md" if public_file.is_file() else "",
+            "secret_passages": self.room_secret_passages(room_rel),
         }
 
     def room_url(self, rel: str | None) -> str:
@@ -525,6 +624,7 @@ class DeskStore:
             "status": self.status(),
             "office": self.room_summary("", threshold),
             "rooms": rooms,
+            "secret_passages": self.all_secret_passages(),
             "current_room": current_summary,
         }
         if current_rel:
@@ -585,6 +685,98 @@ class DeskStore:
         payload = self.state(room, threshold)
         payload["updated_room"] = self.room_summary(room, threshold)
         return payload
+
+    def unique_room_move_rel(self, source_rel: str, target_parent_rel: str) -> str:
+        source_name = Path(source_rel).name
+        target_parent = self.normalize_room_rel(target_parent_rel)
+        base = f"{target_parent}/{source_name}" if target_parent else source_name
+        if not self.room_dir(base).exists():
+            return base
+        for index in range(2, 1000):
+            candidate = f"{base}-{index}"
+            if not self.room_dir(candidate).exists():
+                return candidate
+        raise DeskError("room_exists", "Could not choose a unique moved room path.")
+
+    def remap_room_ref(self, value: str, old_rel: str, new_rel: str) -> str:
+        if value == old_rel:
+            return new_rel
+        if value.startswith(old_rel + "/"):
+            return new_rel + value[len(old_rel):]
+        return value
+
+    def rewrite_passages_after_room_move(self, old_rel: str, new_rel: str) -> None:
+        rewritten: set[tuple[str, str]] = set()
+        for path in self.passage_files():
+            data = self.read_passage_file(path)
+            if not data:
+                continue
+            rooms = [
+                self.remap_room_ref(str(data["rooms"][0]), old_rel, new_rel),
+                self.remap_room_ref(str(data["rooms"][1]), old_rel, new_rel),
+            ]
+            if rooms != data["rooms"]:
+                ordered = sorted(rooms)
+                key = (ordered[0], ordered[1])
+                if key in rewritten:
+                    continue
+                data["rooms"] = ordered
+                data["updated_at"] = iso_now()
+                self.write_secret_passage_files(ordered[0], ordered[1], data, [path])
+                rewritten.add(key)
+
+    def move_room(self, source_room: str, target_parent_room: str, threshold: int) -> dict[str, object]:
+        source_rel = self.normalize_room_rel(source_room)
+        target_parent_rel = self.normalize_room_rel(target_parent_room)
+        if not source_rel:
+            raise DeskError("bad_room_move", "The office cannot be moved.")
+        source_path = self.room_dir(source_rel)
+        if not source_path.is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        if target_parent_rel == source_rel or target_parent_rel.startswith(source_rel + "/"):
+            raise DeskError("bad_room_move", "A room cannot be moved inside itself.")
+        target_parent_path = self.room_dir(target_parent_rel)
+        if not target_parent_path.is_dir():
+            raise DeskError("missing_room", "The destination room does not exist.")
+        target_rel = self.unique_room_move_rel(source_rel, target_parent_rel)
+        target_path = self.room_dir(target_rel)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        os.rename(source_path, target_path)
+        self.rewrite_passages_after_room_move(source_rel, target_rel)
+        self.append_log("move-room", {"from_room": source_rel, "to_room": target_rel, "target_parent": target_parent_rel})
+        payload = self.state(target_rel, threshold)
+        payload["moved_room"] = {
+            "from": source_rel,
+            "to": target_rel,
+            "parent_path": target_parent_rel,
+        }
+        return payload
+
+    def create_secret_passage(self, left_room: str, right_room: str, threshold: int) -> dict[str, object]:
+        left = self.normalize_room_rel(left_room)
+        right = self.normalize_room_rel(right_room)
+        if left == right:
+            raise DeskError("bad_passage", "Choose two different rooms for a secret passage.")
+        if not self.room_dir(left).is_dir() or not self.room_dir(right).is_dir():
+            raise DeskError("missing_room", "Both rooms must exist before a secret passage can be made.")
+        ordered = sorted([left, right])
+        payload = self.passage_payload(ordered[0], ordered[1])
+        file_name = self.passage_file_name(ordered[0], ordered[1])
+        left_dir = self.passage_dir(left)
+        right_dir = self.passage_dir(right)
+        left_dir.mkdir(exist_ok=True)
+        right_dir.mkdir(exist_ok=True)
+        left_path = left_dir / file_name
+        right_path = right_dir / file_name
+        if left_path.exists() and right_path.exists():
+            state = self.state(left, threshold)
+            state["secret_passage"] = {"from": ordered[0], "to": ordered[1], "already_exists": True}
+            return state
+        self.write_secret_passage_files(ordered[0], ordered[1], payload, [left_path, right_path])
+        self.append_log("create-secret-passage", {"from_room": ordered[0], "to_room": ordered[1]})
+        state = self.state(left, threshold)
+        state["secret_passage"] = {"from": ordered[0], "to": ordered[1], "already_exists": False}
+        return state
 
     def unique_task_path(self, room_rel: str, text: str) -> Path:
         tasks = self.tasks_dir(room_rel)
@@ -889,6 +1081,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "complete-task",
         "restore-task",
         "move-task",
+        "move-room",
+        "create-secret-passage",
         "set-soonness",
         "set-status",
         "set-room-color",
@@ -914,6 +1108,10 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.restore_task(room, env("BLOG_DESK_TASK_ID"), threshold)
         if action == "move-task":
             return store.move_task(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_TARGET_ROOM"), threshold)
+        if action == "move-room":
+            return store.move_room(room, env("BLOG_DESK_TARGET_ROOM"), threshold)
+        if action == "create-secret-passage":
+            return store.create_secret_passage(room, env("BLOG_DESK_TARGET_ROOM"), threshold)
         if action == "set-soonness":
             return store.set_soonness(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_SOONNESS"), threshold)
         if action == "set-status":

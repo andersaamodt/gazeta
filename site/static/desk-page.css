@@ -817,16 +817,29 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-room-link:hover .desk-map-room,
 .desk-map-room-link:focus .desk-map-room,
-.desk-map-room.is-current {
+.desk-map-room.is-current,
+.desk-map-room.is-passage-source,
+.desk-map-room-link.is-drop-target .desk-map-room {
   transform: scale(1.045);
   filter: drop-shadow(0 9px 7px rgba(66, 38, 15, 0.34));
 }
 
 .desk-map-room-link:hover .desk-map-room-shape,
 .desk-map-room-link:focus .desk-map-room-shape,
-.desk-map-room.is-current .desk-map-room-shape {
+.desk-map-room.is-current .desk-map-room-shape,
+.desk-map-room.is-passage-source .desk-map-room-shape,
+.desk-map-room-link.is-drop-target .desk-map-room-shape {
   fill: color-mix(in srgb, var(--room-color), #ffe9a8 26%);
   stroke: var(--room-color);
+}
+
+.desk-map-room-link[draggable="true"] {
+  cursor: grab;
+}
+
+.desk-map-room-link.is-dragging {
+  cursor: grabbing;
+  opacity: 0.55;
 }
 
 .desk-map-door {
@@ -837,6 +850,42 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   stroke-linejoin: round;
   filter: drop-shadow(0 1px 0 rgba(255, 238, 174, 0.55));
   pointer-events: none;
+}
+
+.desk-map-secret-passage {
+  fill: none;
+  stroke: rgba(238, 200, 89, 0.86);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 7 12;
+  filter: drop-shadow(0 0 7px rgba(238, 200, 89, 0.38));
+  pointer-events: none;
+}
+
+.desk-map-passage-btn {
+  position: absolute;
+  left: clamp(0.75rem, 1.6vw, 1rem);
+  bottom: clamp(0.75rem, 1.6vw, 1rem);
+  width: 2.65rem;
+  height: 2.65rem;
+  border: 1px solid rgba(240, 213, 138, 0.54);
+  border-radius: 999px;
+  color: #f4db87;
+  background:
+    linear-gradient(180deg, rgba(5, 25, 63, 0.94), rgba(3, 20, 51, 0.86)),
+    rgba(3, 20, 51, 0.88);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.desk-map-passage-btn:hover,
+.desk-map-passage-btn:focus-visible,
+.desk-map-passage-btn.is-active {
+  border-color: rgba(238, 200, 89, 0.9);
+  background:
+    linear-gradient(180deg, rgba(15, 60, 126, 0.96), rgba(5, 25, 63, 0.9)),
+    rgba(5, 25, 63, 0.92);
 }
 
 .desk-todo-panel,

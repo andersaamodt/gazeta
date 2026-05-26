@@ -239,6 +239,25 @@ archive_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "
 assert_jq "$archive_json" '.success == true and .created_room.path == "archive-room"' 'Desk creates a second room for task moves'
 assert_dir_exists "$SITE_DATA/desk/office/archive-room" 'second room is a filesystem folder'
 
+move_room_json=$(run_desk "action=move-room&$auth_query&room=writing-room/inner-study&target_room=archive-room")
+assert_jq "$move_room_json" '.success == true and .moved_room.from == "writing-room/inner-study" and .moved_room.to == "archive-room/inner-study" and .current_room.parent_path == "archive-room"' 'Desk moves rooms by moving the filesystem folder under another room'
+assert_dir_exists "$SITE_DATA/desk/office/archive-room/inner-study" 'moved room folder exists under its new connected room'
+if [ ! -d "$SITE_DATA/desk/office/writing-room/inner-study" ]; then
+  pass
+else
+  fail 'room move removes the old room folder location'
+fi
+
+passage_json=$(run_desk "action=create-secret-passage&$auth_query&room=writing-room&target_room=archive-room")
+assert_jq "$passage_json" '.success == true and .secret_passage.from == "archive-room" and .secret_passage.to == "writing-room" and (.secret_passages[] | select(.from == "archive-room" and .to == "writing-room"))' 'Desk creates a two-way secret passage between rooms'
+assert_file_exists "$SITE_DATA/desk/office/writing-room/.passages/archive-room--writing-room.json" 'secret passage appears inside the first room'
+assert_file_exists "$SITE_DATA/desk/office/archive-room/.passages/archive-room--writing-room.json" 'secret passage appears inside the second room'
+if [ "$SITE_DATA/desk/office/writing-room/.passages/archive-room--writing-room.json" -ef "$SITE_DATA/desk/office/archive-room/.passages/archive-room--writing-room.json" ]; then
+  pass
+else
+  fail 'secret passage files are hardlinked as one two-way passage'
+fi
+
 task_text='Low task
 private body'
 add_json=$(run_desk "action=add-task&$auth_query&destination_room=writing-room&task_text=$(urlencode "$task_text")")
@@ -305,7 +324,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-map-toggle1' 'Desk page cache-busts map toggle assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-move1' 'Desk page cache-busts room move and passage assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -332,6 +351,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '@keyframes desk-map-
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-shape' 'Desk map draws rooms as architectural floorplan shapes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'fill: #ead49a;' 'Desk map uses a neutral default room color'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-door' 'Desk map marks doors on shared room walls'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-secret-passage' 'Desk map draws secret passages between rooms'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-passage-btn' 'Desk map exposes a secret passage control'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav .nav-center' 'Desk hides public navbar page links'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) footer.site-footer' 'Desk hides the public site footer'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-root) nav.site-nav > .nav-right' 'Desk keeps shared auth controls as a top-right dock'
@@ -341,6 +362,7 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "storageGet('session_t
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mansionLayout(rooms)' 'Desk frontend lays out rooms as a deterministic mansion map'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function architecturalRoomPath' 'Desk map rooms form the building outline with architectural wall shapes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderDoor' 'Desk map renders doors between rooms that share a side'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderSecretPassage' 'Desk map renders explicit secret passages'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'attachedTo' 'Desk map layout connects each room to an already placed room'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-building' 'Desk map does not draw a separate outer house outline'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="map"' 'Desk frontend exposes map mode launcher'
@@ -350,6 +372,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="todo"
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compose"' 'Desk frontend exposes compose mode launcher'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-title'" 'Desk frontend can rename the current room'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('move-room'" 'Desk frontend moves rooms by dropping one room on another'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('create-secret-passage'" 'Desk frontend creates two-way secret passages between rooms'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "draggable=\"true\"" 'Desk map rooms are draggable for room moves'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-form="room-title"' 'Desk room view exposes a compact room-name editor'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Connects from' 'Desk create-room parent selector uses connection wording'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "join(' → ')" 'Desk room path labels use arrow separators instead of slashes'

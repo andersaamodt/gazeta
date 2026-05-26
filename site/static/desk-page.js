@@ -12,6 +12,9 @@
     currentRoom: roomFromLocation(),
     mode: 'map',
     closingMode: '',
+    draggedRoom: '',
+    suppressRoomClick: false,
+    secretPassageSource: null,
     createRoomOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
@@ -426,6 +429,19 @@
     return '<g class="desk-map-door"><path d="M ' + (x - 15) + ' ' + y + ' H ' + (x + 15) + '"></path><path d="M ' + (x - 15) + ' ' + y + ' Q ' + x + ' ' + swingY + ' ' + (x + 15) + ' ' + y + '"></path></g>';
   }
 
+  function renderSecretPassage(passage, layout, unitW, unitH) {
+    var from = layout[String(passage.from || '')];
+    var to = layout[String(passage.to || '')];
+    if (!from || !to) return '';
+    var x1 = from.x * unitW + unitW / 2;
+    var y1 = from.y * unitH + unitH / 2;
+    var x2 = to.x * unitW + unitW / 2;
+    var y2 = to.y * unitH + unitH / 2;
+    var cx = (x1 + x2) / 2;
+    var cy = (y1 + y2) / 2 - 42;
+    return '<path class="desk-map-secret-passage" d="M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '"></path>';
+  }
+
   function renderMap(data) {
     var rooms = mapRooms(data);
     var plan = mansionLayout(rooms);
@@ -449,9 +465,10 @@
       var y = point.y * unitH;
       var exterior = exteriorSides(point, plan.occupied);
       var isCurrent = path === String(state.currentRoom || '');
+      var isPassageSource = state.secretPassageSource === path;
       var title = room.title || 'Room';
-      return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" class="desk-map-room-link">' +
-        '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
+      return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
+        '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>' +
         roomWallAdornments(x, y, unitW, unitH, exterior) +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
@@ -462,15 +479,19 @@
     var doorShapes = plan.doors.map(function (door) {
       return renderDoor(door, layout, unitW, unitH);
     }).join('');
+    var passageShapes = ((data && data.secret_passages) || []).map(function (passage) {
+      return renderSecretPassage(passage, layout, unitW, unitH);
+    }).join('');
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + '" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
-      roomShapes + doorShapes +
+      passageShapes + roomShapes + doorShapes +
       '</svg>' +
       '</div>' +
+      '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage">⌁</button>' +
       '<button type="button" class="desk-map-create-btn" data-desk-create-room-open aria-label="Create room">+</button>' +
       (state.createRoomOpen ? renderCreateRoomModal(data) : '') +
       '</section>';
@@ -563,6 +584,7 @@
     state.closingMode = '';
     state.search = null;
     state.createRoomOpen = false;
+    state.secretPassageSource = null;
     if (state.data) {
       render(state.data);
     }
@@ -576,6 +598,7 @@
     state.closingMode = 'map';
     state.search = null;
     state.createRoomOpen = false;
+    state.secretPassageSource = null;
     if (state.data) {
       render(state.data);
     }
@@ -880,9 +903,19 @@
 
     if (event.target.closest('[data-desk-create-room-open]')) {
       state.createRoomOpen = true;
+      state.secretPassageSource = null;
       if (state.data) {
         render(state.data);
       }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-secret-passage]')) {
+      state.secretPassageSource = state.secretPassageSource === null ? '' : null;
+      if (state.data) {
+        render(state.data);
+      }
+      showMessage(state.secretPassageSource === null ? '' : 'Choose two rooms for the secret passage.', false);
       return;
     }
 
@@ -905,8 +938,34 @@
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (roomLink) {
       event.preventDefault();
+      if (state.suppressRoomClick) {
+        return;
+      }
+      var clickedRoom = roomLink.getAttribute('data-desk-room-link') || '';
+      if (state.secretPassageSource !== null) {
+        if (state.secretPassageSource === clickedRoom) {
+          showMessage('Choose a different room for the other end of the passage.', true);
+          return;
+        }
+        if (state.secretPassageSource === '') {
+          state.secretPassageSource = clickedRoom;
+          if (state.data) {
+            render(state.data);
+          }
+          showMessage('Choose the other room.', false);
+          return;
+        }
+        api('create-secret-passage', {
+          room: state.secretPassageSource,
+          target_room: clickedRoom
+        }).then(function (data) {
+          state.secretPassageSource = null;
+          refreshFrom(data);
+        });
+        return;
+      }
       state.mode = 'map';
-      setRoom(roomLink.getAttribute('data-desk-room-link') || '', false);
+      setRoom(clickedRoom, false);
       return;
     }
 
@@ -946,6 +1005,72 @@
         task_id: taskAction.getAttribute('data-task-id') || ''
       }).then(refreshFrom);
     }
+  });
+
+  root.addEventListener('dragstart', function (event) {
+    var roomLink = event.target.closest('[data-desk-room-link]');
+    if (!roomLink) {
+      return;
+    }
+    var room = roomLink.getAttribute('data-desk-room-link') || '';
+    if (!room) {
+      event.preventDefault();
+      return;
+    }
+    state.draggedRoom = room;
+    state.suppressRoomClick = true;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', room);
+    roomLink.classList.add('is-dragging');
+  });
+
+  root.addEventListener('dragover', function (event) {
+    var target = event.target.closest('[data-desk-room-drop]');
+    if (!target || !state.draggedRoom) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    target.classList.add('is-drop-target');
+  });
+
+  root.addEventListener('dragleave', function (event) {
+    var target = event.target.closest('[data-desk-room-drop]');
+    if (target) {
+      target.classList.remove('is-drop-target');
+    }
+  });
+
+  root.addEventListener('drop', function (event) {
+    var target = event.target.closest('[data-desk-room-drop]');
+    var source = state.draggedRoom || (event.dataTransfer && event.dataTransfer.getData('text/plain')) || '';
+    if (!target || !source) {
+      return;
+    }
+    event.preventDefault();
+    var targetRoom = target.getAttribute('data-desk-room-drop') || '';
+    root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
+      node.classList.remove('is-drop-target', 'is-dragging');
+    });
+    state.draggedRoom = '';
+    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+    api('move-room', {
+      room: source,
+      target_room: targetRoom
+    }).then(function (data) {
+      refreshFrom(data);
+      if (data && data.success !== false && data.moved_room) {
+        showMessage('Room moved.', false);
+      }
+    });
+  });
+
+  root.addEventListener('dragend', function () {
+    root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
+      node.classList.remove('is-drop-target', 'is-dragging');
+    });
+    state.draggedRoom = '';
+    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
   });
 
   root.addEventListener('change', function (event) {
