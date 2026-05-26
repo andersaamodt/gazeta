@@ -18,9 +18,11 @@ body.desk-page-body,
 body:has(#desk-page-root) {
   width: 100%;
   max-width: none;
+  height: 100dvh;
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   background:
     radial-gradient(circle at 18% 12%, rgba(20, 78, 183, 0.32), transparent 28rem),
     radial-gradient(circle at 80% 16%, rgba(215, 173, 77, 0.12), transparent 24rem),
@@ -134,9 +136,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   box-sizing: border-box;
   width: 100%;
   max-width: none;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   margin: 0;
   padding: clamp(0.7rem, 1.2vw, 1.1rem) clamp(0.8rem, 1.6vw, 1.4rem) clamp(4.9rem, 6vw, 5.7rem);
+  overflow: hidden;
   color: var(--desk-ink);
 }
 
@@ -283,8 +287,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   position: relative;
   box-sizing: border-box;
   width: min(88rem, calc(100vw - clamp(1.6rem, 3.2vw, 3.6rem)));
-  height: calc(100vh - clamp(5.8rem, 7.8vw, 7.2rem));
-  min-height: 30rem;
+  height: calc(100dvh - clamp(7.2rem, 9vw, 8.8rem));
+  min-height: min(30rem, calc(100dvh - 8.8rem));
   margin: 0 auto;
   padding: clamp(0.38rem, 0.9vw, 0.72rem);
   display: grid;
@@ -1206,8 +1210,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
   .desk-stage {
     width: min(100%, calc(100vw - 1.4rem));
-    height: calc(100vh - 6.2rem);
-    min-height: 25rem;
+    height: calc(100dvh - 7.2rem);
+    min-height: min(25rem, calc(100dvh - 7.2rem));
     padding: 0.44rem;
   }
 
