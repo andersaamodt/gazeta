@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var TARGET_SELECTOR = '.post-single-item, .blog-post-item:not(.blog-compose-card):not(.blog-compose-preview-card)';
+  var TARGET_SELECTOR = '.post-single-item';
   var WIDTH_KEY = 'nostrBlog.postWidthPx';
   var EDGE_PX = 14;
   var MIN_WIDTH = 320;

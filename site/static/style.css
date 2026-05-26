@@ -282,6 +282,10 @@ body.blog-post-resize-enabled {
   max-width: min(1820px, calc(100vw - 0.75rem));
 }
 
+body.blog-post-resize-enabled:has(#blog-page-root):not(:has(.post-single-item)) {
+  max-width: 800px;
+}
+
 /* Keep blog-listing canvas uniform without painting a second centered body panel. */
 html:has(#blog-page-root) {
   background: var(--page-canvas-bg) !important;
