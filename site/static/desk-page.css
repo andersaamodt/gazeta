@@ -462,11 +462,39 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-create-room-form {
   width: fit-content;
   max-width: min(100%, 34rem);
-  padding: 0.4rem;
+  padding: 0.5rem;
   border: 1px solid rgba(240, 213, 138, 0.22);
   border-radius: 8px;
   background: rgba(3, 20, 51, 0.72);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.desk-create-room-form .desk-form-row {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) max-content 2.4rem;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.desk-create-room-form .desk-input,
+.desk-create-room-form .desk-select {
+  height: 2.55rem;
+}
+
+.desk-create-room-form .desk-select {
+  min-width: 9.25rem;
+}
+
+.desk-create-room-form .desk-btn[type="submit"] {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border-radius: 6px;
+  appearance: none;
+  font-size: 1.45rem;
+  line-height: 1;
 }
 
 .desk-map-create-btn {
@@ -511,8 +539,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-modal {
   position: relative;
   width: fit-content;
-  max-width: min(28rem, 100%);
-  padding: 0.75rem;
+  max-width: min(33rem, 100%);
+  padding: 1rem 3.1rem 1rem 1rem;
   border: 1px solid rgba(240, 213, 138, 0.38);
   border-radius: 8px;
   background:
@@ -531,17 +559,28 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-modal-close {
   position: absolute;
-  top: -0.65rem;
-  right: -0.65rem;
-  width: 1.9rem;
-  height: 1.9rem;
-  border: 1px solid rgba(240, 213, 138, 0.4);
+  top: 0.62rem;
+  right: 0.62rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(240, 213, 138, 0.34);
   border-radius: 50%;
-  background: rgba(3, 20, 51, 0.96);
+  appearance: none;
+  background: rgba(3, 20, 51, 0.72);
   color: var(--desk-gold-soft);
   cursor: pointer;
   font-size: 1.2rem;
+  font-weight: 800;
   line-height: 1;
+}
+
+.desk-modal-close:hover,
+.desk-modal-close:focus-visible {
+  border-color: rgba(240, 213, 138, 0.74);
+  background: rgba(8, 39, 94, 0.86);
 }
 
 @keyframes desk-modal-arrive {
@@ -1411,6 +1450,18 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
   .desk-create-room-form {
     max-width: 100%;
+  }
+
+  .desk-create-room-form .desk-form-row {
+    grid-template-columns: 1fr 2.4rem;
+  }
+
+  .desk-create-room-form .desk-form-row label {
+    grid-column: 1 / -1;
+  }
+
+  .desk-modal {
+    padding: 3rem 1rem 1rem;
   }
 
   .desk-room-card-head,

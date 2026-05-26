@@ -324,7 +324,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-vector-map1' 'Desk page cache-busts vector map rendering assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-modal1' 'Desk page cache-busts create-room modal polish assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -348,6 +348,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-create-btn
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'place-items: center;' 'Desk map create room plus is centered in its circle'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'appearance: none;' 'Desk map create room button avoids native offset styling'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-modal-backdrop' 'Desk create room form opens in a modal'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'grid-template-columns: minmax(13rem, 1fr) max-content 2.4rem;' 'Desk create-room modal has a structured compact form row'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'padding: 1rem 3.1rem 1rem 1rem;' 'Desk create-room modal reserves space for the close control'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-modal-close:hover' 'Desk create-room modal close control has an interactive state'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'grid-template-columns: minmax(0, 1fr) minmax(18rem, min(24rem, 32vw));' 'Desk checklist opens beside the map instead of covering it'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'desk-todo-slide-in' 'Desk checklist slides in from the right'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'repeating-linear-gradient(to bottom, #f8f2d8' 'Desk checklist looks like ruled notebook paper'
