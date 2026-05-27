@@ -20,9 +20,12 @@
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
     pointerRoomDrag: null,
+    presence: {},
+    presenceTick: Date.now(),
     inFlight: 0
   };
   var modeCloseTimer = null;
+  var presenceTimer = null;
 
   function markPageReady() {
     var gate = window.__wizardryHydration;
@@ -63,7 +66,19 @@
 
   function roomFromLocation() {
     try {
-      return String(new URL(window.location.href).searchParams.get('room') || '').trim();
+      var url = new URL(window.location.href);
+      var legacy = String(url.searchParams.get('room') || '').trim();
+      if (legacy) {
+        return legacy;
+      }
+      var path = String(url.pathname || '').replace(/\/+$/, '');
+      if (path === '/desk' || path === '') {
+        return '';
+      }
+      if (path.indexOf('/desk/') === 0) {
+        return decodeURIComponent(path.slice('/desk/'.length));
+      }
+      return '';
     } catch (_err) {
       return '';
     }
@@ -77,13 +92,88 @@
     return Math.min(100, Math.floor(stored));
   }
 
+  function readPresence() {
+    try {
+      var parsed = JSON.parse(storageGet('desk_room_presence_v1') || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function writePresence(presence) {
+    storageSet('desk_room_presence_v1', JSON.stringify(presence || {}));
+  }
+
+  function clampPresence(value) {
+    var number = Number(value || 0);
+    if (!Number.isFinite(number) || number < 0) {
+      return 0;
+    }
+    return Math.min(1, number);
+  }
+
+  function updatePresence(now) {
+    var current = Number(now || Date.now());
+    var elapsed = Math.max(0, Math.min(30000, current - (state.presenceTick || current)));
+    var rooms = Object.assign({}, state.presence || readPresence());
+    var roomKeys = Object.keys(rooms);
+    roomKeys.forEach(function (room) {
+      rooms[room] = clampPresence(Number(rooms[room] || 0) - elapsed / 1800000);
+      if (rooms[room] <= 0.002) {
+        delete rooms[room];
+      }
+    });
+    var currentRoom = String(state.currentRoom || '');
+    rooms[currentRoom] = clampPresence(Number(rooms[currentRoom] || 0) + elapsed / 600000);
+    state.presence = rooms;
+    state.presenceTick = current;
+    writePresence(rooms);
+    return rooms;
+  }
+
+  function dimPresenceForRoom(room) {
+    var key = String(room || '');
+    var rooms = updatePresence(Date.now());
+    if (Object.prototype.hasOwnProperty.call(rooms, key)) {
+      rooms[key] = clampPresence(Number(rooms[key] || 0) * 0.82);
+      state.presence = rooms;
+      writePresence(rooms);
+    }
+  }
+
+  function applyPresenceToMap() {
+    var rooms = updatePresence(Date.now());
+    applyPresenceValues(rooms);
+  }
+
+  function applyPresenceValues(rooms) {
+    root.querySelectorAll('[data-desk-room-presence]').forEach(function (node) {
+      var room = node.getAttribute('data-desk-room-presence') || '';
+      node.style.setProperty('--presence', String(clampPresence(rooms[room])));
+    });
+  }
+
+  function startPresenceTimer() {
+    if (presenceTimer) {
+      return;
+    }
+    state.presence = readPresence();
+    state.presenceTick = Date.now();
+    presenceTimer = window.setInterval(applyPresenceToMap, 1500);
+  }
+
   function roomUrl(room) {
     var clean = String(room || '').trim();
-    return clean ? '/desk?room=' + encodeURIComponent(clean) : '/desk';
+    return clean ? '/desk/' + encodeURIComponent(clean) : '/desk';
   }
 
   function setRoom(room, replace) {
     var clean = String(room || '').trim();
+    if (clean !== state.currentRoom) {
+      dimPresenceForRoom(state.currentRoom);
+      applyPresenceValues(state.presence);
+    }
     state.currentRoom = clean;
     var next = roomUrl(clean);
     if (replace) {
@@ -563,6 +653,7 @@
   }
 
   function renderMap(data) {
+    var presence = updatePresence(Date.now());
     var rooms = mapRooms(data);
     var plan = mansionLayout(rooms);
     var layout = plan.cells;
@@ -599,9 +690,11 @@
       var roomShape = roomIsOutdoor(room)
         ? '<rect class="desk-map-room-grass" x="' + x + '" y="' + y + '" width="' + unitW + '" height="' + unitH + '" rx="10"></rect>' + renderOutdoorEdgeFades(x, y, unitW, unitH, exterior)
         : '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>';
+      var presenceGlow = '<ellipse class="desk-map-room-presence' + (roomIsOutdoor(room) ? ' is-outdoor' : '') + '" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" cx="' + (x + unitW / 2) + '" cy="' + (y + unitH / 2) + '" rx="' + (unitW * 0.38) + '" ry="' + (unitH * 0.34) + '"></ellipse>';
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
         '<g class="desk-map-room' + (roomIsOutdoor(room) ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
+        presenceGlow +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
         countLabel +
         '</g>' +
@@ -1469,6 +1562,7 @@
   });
 
   window.addEventListener('popstate', function () {
+    dimPresenceForRoom(state.currentRoom);
     state.currentRoom = roomFromLocation();
     loadState();
   });
@@ -1481,5 +1575,6 @@
 
   window.addEventListener('blog-auth-changed', loadState);
 
+  startPresenceTimer();
   loadState();
 })();

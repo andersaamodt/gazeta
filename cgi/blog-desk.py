@@ -595,7 +595,7 @@ class DeskStore:
         if not room_rel:
             return "/desk"
         from urllib.parse import quote
-        return "/desk?room=" + quote(room_rel, safe="")
+        return "/desk/" + quote(room_rel, safe="")
 
     def overworld_url(self, rel: str | None) -> str:
         from urllib.parse import quote

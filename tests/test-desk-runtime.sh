@@ -221,6 +221,7 @@ assert_file_exists "$SITE_DATA/desk/office/.room.json" 'Desk writes minimal offi
 
 create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Writing Room")")
 assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$")) and .created_room.kind == "indoor"' 'Desk creates a real room folder with an indoor default and map color'
+assert_jq "$create_json" '.created_room.url == "/desk/writing-room"' 'Desk room URLs use clean place paths instead of room query strings'
 assert_dir_exists "$SITE_DATA/desk/office/writing-room" 'created room is a filesystem folder'
 
 nested_json=$(run_desk "action=create-room&$auth_query&room=writing-room&room_title=$(urlencode "Inner Study")")
@@ -328,7 +329,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-last-door1' 'Desk page cache-busts the last-entered door highlight styling'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-presence1' 'Desk page cache-busts room presence glow and clean URL routing'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -400,6 +401,19 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-menu-heading' 
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk frontend talks to private API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function storageGet(key)' 'Desk frontend tolerates restricted localStorage'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "storageGet('session_token')" 'Desk auth reads session token through guarded storage'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomFromLocation()' 'Desk frontend can parse clean room URLs'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "path.indexOf('/desk/') === 0" 'Desk frontend reads the room slug from /desk/place paths'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "url.searchParams.get('room')" 'Desk frontend keeps legacy query-room fallback parsing'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "return clean ? '/desk/' + encodeURIComponent(clean) : '/desk';" 'Desk frontend writes clean room URLs'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" "'/desk?room='" 'Desk frontend no longer writes query-string room URLs'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk_room_presence_v1' 'Desk frontend stores ambient room presence locally'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function updatePresence' 'Desk frontend continuously updates room presence levels'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function dimPresenceForRoom' 'Desk frontend immediately soft-dims a room when leaving'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function applyPresenceValues' 'Desk frontend applies presence values before fetching the next room'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-room-presence' 'Desk map renders ambient room presence glows'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-presence' 'Desk map styles ambient room presence as a light glow'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-presence.is-outdoor' 'Desk map gives outdoor presence a sunnier glow'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'presence clock' 'Desk presence does not render clock text'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mansionLayout(rooms)' 'Desk frontend lays out rooms as a deterministic mansion map'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomKind(room)' 'Desk frontend distinguishes indoor and outdoor rooms'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomIsOutdoor(room)' 'Desk frontend can test outdoor room metadata'
