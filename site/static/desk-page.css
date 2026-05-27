@@ -999,13 +999,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-map-parchment {
-  fill: #dcc17f;
+  fill: url(#desk-map-parchment-texture);
 }
 
 .desk-map-grid {
   fill: url(#desk-map-grid);
-  stroke: rgba(84, 55, 28, 0.28);
-  stroke-width: 1;
 }
 
 .desk-map-room {
@@ -1027,12 +1025,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-greenbelt-strip {
   fill: url(#desk-map-grass);
-  opacity: 0.58;
-}
-
-.desk-map-greenbelt-wash {
-  fill: rgba(220, 193, 127, 0.42);
-  opacity: 0.64;
+  opacity: 0.66;
 }
 
 .desk-map-room-grass {
