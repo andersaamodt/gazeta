@@ -521,25 +521,48 @@
     return pieces.join('');
   }
 
-  function renderGreenbelt(cells, unitW, unitH) {
+  function renderGreenbelt(cells, occupied, unitW, unitH) {
     if (!cells.length) return '';
-    var minX = Math.min.apply(null, cells.map(function (cell) { return cell.x; }));
-    var maxX = Math.max.apply(null, cells.map(function (cell) { return cell.x; }));
-    var minY = Math.min.apply(null, cells.map(function (cell) { return cell.y; }));
-    var maxY = Math.max.apply(null, cells.map(function (cell) { return cell.y; }));
-    var padX = unitW * 0.62;
-    var padY = unitH * 0.7;
-    var x = minX * unitW - padX;
-    var y = minY * unitH - padY;
-    var width = (maxX - minX + 1) * unitW + padX * 2;
-    var height = (maxY - minY + 1) * unitH + padY * 2;
-    var meadows = cells.map(function (cell) {
-      return '<ellipse class="desk-map-greenbelt-meadow" cx="' + (cell.x * unitW + unitW / 2) + '" cy="' + (cell.y * unitH + unitH / 2) + '" rx="' + (unitW * 0.76) + '" ry="' + (unitH * 0.72) + '"></ellipse>';
-    }).join('');
+    var band = 54;
+    var overlap = 10;
+    var directions = [
+      { name: 'north', dx: 0, dy: -1 },
+      { name: 'east', dx: 1, dy: 0 },
+      { name: 'south', dx: 0, dy: 1 },
+      { name: 'west', dx: -1, dy: 0 }
+    ];
+    function stripRect(cell, direction, grow) {
+      var x = cell.x * unitW;
+      var y = cell.y * unitH;
+      var extra = Number(grow || 0);
+      if (direction.name === 'north') {
+        return { x: x - overlap - extra, y: y - band - extra, width: unitW + overlap * 2 + extra * 2, height: band + overlap + extra * 2 };
+      }
+      if (direction.name === 'east') {
+        return { x: x + unitW - overlap - extra, y: y - overlap - extra, width: band + overlap + extra * 2, height: unitH + overlap * 2 + extra * 2 };
+      }
+      if (direction.name === 'south') {
+        return { x: x - overlap - extra, y: y + unitH - overlap - extra, width: unitW + overlap * 2 + extra * 2, height: band + overlap + extra * 2 };
+      }
+      return { x: x - band - extra, y: y - overlap - extra, width: band + overlap + extra * 2, height: unitH + overlap * 2 + extra * 2 };
+    }
+    function rectSvg(className, rect) {
+      return '<rect class="' + className + '" x="' + rect.x + '" y="' + rect.y + '" width="' + rect.width + '" height="' + rect.height + '"></rect>';
+    }
+    var strips = [];
+    var washes = [];
+    cells.forEach(function (cell) {
+      directions.forEach(function (direction) {
+        if (occupied[(cell.x + direction.dx) + ',' + (cell.y + direction.dy)] != null) {
+          return;
+        }
+        strips.push(rectSvg('desk-map-greenbelt-strip', stripRect(cell, direction, 0)));
+        washes.push(rectSvg('desk-map-greenbelt-wash', stripRect(cell, direction, 20)));
+      });
+    });
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<rect class="desk-map-greenbelt-field" x="' + x + '" y="' + y + '" width="' + width + '" height="' + height + '" rx="' + (Math.min(unitW, unitH) * 0.72) + '"></rect>' +
-      meadows +
-      '<rect class="desk-map-greenbelt-wash" x="' + x + '" y="' + y + '" width="' + width + '" height="' + height + '" rx="' + (Math.min(unitW, unitH) * 0.72) + '"></rect>' +
+      washes.join('') +
+      strips.join('') +
       '</g>';
   }
 
@@ -673,7 +696,7 @@
     rooms.forEach(function (item) {
       roomsByPath[String(item.path || '')] = item;
     });
-    var greenbelt = renderGreenbelt(cells, unitW, unitH);
+    var greenbelt = renderGreenbelt(cells, plan.occupied, unitW, unitH);
     var roomShapes = rooms.map(function (room) {
       var path = String(room.path || '');
       var point = layout[path];
