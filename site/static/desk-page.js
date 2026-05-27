@@ -15,6 +15,7 @@
     draggedRoom: '',
     suppressRoomClick: false,
     secretPassageSource: null,
+    lastEnteredDoor: null,
     createRoomOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
@@ -483,31 +484,43 @@
     return path + ' Z';
   }
 
-  function renderDoorGlyph(x, y, side, isSecret) {
+  function renderDoorGlyph(x, y, side, isSecret, isLastEntered) {
     var secretClass = isSecret ? ' desk-map-secret-door' : '';
+    var enteredClass = isLastEntered ? ' is-last-entered' : '';
     var label = isSecret
       ? '<text class="desk-map-secret-door-label" x="' + x + '" y="' + (y + 5) + '" text-anchor="middle"' + (side === 'north' || side === 'south' ? ' transform="rotate(90 ' + x + ' ' + y + ')"' : '') + '>S</text>'
       : '';
     if (side === 'east' || side === 'west') {
-      return '<g class="desk-map-door' + secretClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path>' + label + '</g>';
+      return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path>' + label + '</g>';
     }
-    return '<g class="desk-map-door' + secretClass + '"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path>' + label + '</g>';
+    return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path>' + label + '</g>';
+  }
+
+  function isLastEnteredDoor(door) {
+    var entered = state.lastEnteredDoor;
+    if (!entered) return false;
+    var from = String(door.from || '');
+    var to = String(door.to || '');
+    var enteredFrom = String(entered.from || '');
+    var enteredTo = String(entered.to || '');
+    return (from === enteredFrom && to === enteredTo) || (from === enteredTo && to === enteredFrom);
   }
 
   function renderDoor(door, layout, unitW, unitH) {
     var from = layout[door.from];
     var to = layout[door.to];
     if (!from || !to) return '';
+    var isLastEntered = isLastEnteredDoor(door);
     var x;
     var y;
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      return renderDoorGlyph(x, y, door.side, false);
+      return renderDoorGlyph(x, y, door.side, false, isLastEntered);
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    return renderDoorGlyph(x, y, door.side, false);
+    return renderDoorGlyph(x, y, door.side, false, isLastEntered);
   }
 
   function secretDoorPoint(room, target, unitW, unitH) {
@@ -545,7 +558,7 @@
     var cy = (y1 + y2) / 2 - 42;
     return {
       line: '<path class="desk-map-secret-passage" d="M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '"></path>',
-      doors: renderDoorGlyph(first.x, first.y, first.side, true) + renderDoorGlyph(second.x, second.y, second.side, true)
+      doors: renderDoorGlyph(first.x, first.y, first.side, true, false) + renderDoorGlyph(second.x, second.y, second.side, true, false)
     };
   }
 
@@ -1165,6 +1178,12 @@
         return;
       }
       state.mode = 'map';
+      if (clickedRoom !== state.currentRoom) {
+        state.lastEnteredDoor = {
+          from: state.currentRoom,
+          to: clickedRoom
+        };
+      }
       setRoom(clickedRoom, false);
       return;
     }
