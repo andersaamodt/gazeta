@@ -329,7 +329,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-room-drag-fix2' 'Desk page cache-busts room click and drag/drop interaction fixes'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-greenbelt-contour1' 'Desk page cache-busts contour-traced greenbelt rendering'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function isDeskRootHost()' 'Desk frontend detects a dedicated desk subdomain root'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "return clean ? '/' + encodeURIComponent(clean) : '/';" 'Desk room URLs work when Desk is mounted at a subdomain root'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def room_url_base' 'Desk backend centralizes room URL base for subdomain migration'
@@ -458,7 +458,7 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function architectura
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderOutdoorEdgeFades' 'Desk map renders subtle fades on outdoor room edges'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderGreenbelt' 'Desk map renders a connected greenbelt around the mansion'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-greenbelt-strip' 'Desk map traces the greenbelt along exterior perimeter strips'
-assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'boundary.join' 'Desk greenbelt is traced as perimeter paths instead of overlapping rectangles'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'contourPaths' 'Desk greenbelt is traced as closed perimeter contours instead of overlapping rectangles'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'stroke-width: 54;' 'Desk greenbelt keeps a constant strip width around the perimeter'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-greenbelt-meadow' 'Desk greenbelt no longer uses oval meadow blobs'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-greenbelt-wash' 'Desk greenbelt no longer adds broad green wash blocks'

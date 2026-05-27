@@ -3154,6 +3154,27 @@ async function owlExportPayload(sinceSeq) {
   };
 }
 
+async function notificationStatusPayload(sinceSeq) {
+  const payload = await owlExportPayload(sinceSeq);
+  const incoming = (Array.isArray(payload.messages) ? payload.messages : [])
+    .filter((message) => String(message.direction || '') === 'incoming')
+    .slice(-12)
+    .map((message) => ({
+      id: String(message.id || message.message_ref || message.seq || ''),
+      seq: Number(message.seq || 0),
+      npub: String(message.npub || ''),
+      contact_name: String(message.contact_name || message.display_name || message.npub || 'Secure Chat'),
+      text: String(message.text || ''),
+      created_at: String(message.created_at || '')
+    }));
+  return {
+    success: true,
+    service: payload.service,
+    cursor_seq: Number(payload.cursor_seq || sinceSeq || 0),
+    messages: incoming
+  };
+}
+
 async function handleState(req, res) {
   const body = await parseJsonBody(req);
   const pubkeyHex = String(body.sessionPubkey || '').trim().toLowerCase();
@@ -3265,6 +3286,9 @@ async function handleAdmin(req, res) {
     metaSet('owner_contact_link', state.ownerContactLink);
   } else if (action === 'owl-export') {
     safeJson(res, 200, await owlExportPayload(body.sinceSeq || body.since_seq || 0));
+    return;
+  } else if (action === 'notification-status') {
+    safeJson(res, 200, await notificationStatusPayload(body.sinceSeq || body.since_seq || 0));
     return;
   } else if (action === 'owl-send') {
     await ensureRuntime();

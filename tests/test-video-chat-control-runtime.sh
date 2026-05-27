@@ -28,6 +28,17 @@ assert_jq() {
   fi
 }
 
+assert_file_contains() {
+  file=$1
+  needle=$2
+  label=$3
+  if grep -Fq "$needle" "$file"; then
+    pass
+  else
+    fail "$label"
+  fi
+}
+
 strip_cgi_headers() {
   awk '
     BEGIN { body = 0 }
@@ -139,13 +150,13 @@ assert_jq "$scheduled_bootstrap_json" '.success == true and .public_rooms == tru
 scheduled_join_json=$(call_token 'room_id=weekly-room&public_room=true')
 assert_jq "$scheduled_join_json" '.success == true and .room_id == "weekly-room" and .private_room == true and .room_password == "weekly-secret" and .participant_limit == 8 and .room_theme_images["weekly-room"] == "https://example.com/weekly.jpg"' 'active scheduled room joins inherit password, participant limit, and theme image'
 
-owner_call_json=$(call_token 'owner_call=true&display_name=Browser%20Caller')
+owner_call_json=$(call_token 'owner_call=true&call_mode=voice&display_name=Browser%20Caller')
 assert_jq "$owner_call_json" '.success == true and .private_room == true and (.room_id | startswith("anders-")) and (.room_password | length > 20)' 'public owner calls get a fresh private passworded room'
 owner_room=$(printf '%s\n' "$owner_call_json" | jq -r '.room_id')
 owner_password=$(printf '%s\n' "$owner_call_json" | jq -r '.room_password')
 
 admin_status_after_owner_json=$(call_control 'action=admin_status')
-assert_jq "$admin_status_after_owner_json" ".success == true and (.calls[] | select(.owner_call == true and .private_room == true and .room_id == \"$owner_room\" and .room_password == \"$owner_password\" and .to_user == \"admin\"))" 'public owner calls appear in admin call requests with room password'
+assert_jq "$admin_status_after_owner_json" ".success == true and (.calls[] | select(.owner_call == true and .private_room == true and .call_mode == \"voice\" and .room_id == \"$owner_room\" and .room_password == \"$owner_password\" and .to_user == \"admin\"))" 'public owner voice calls appear in admin call requests with room password and mode'
 owner_call_id=$(printf '%s\n' "$admin_status_after_owner_json" | jq -r ".calls[] | select(.owner_call == true and .room_id == \"$owner_room\") | .call_id" | head -n 1)
 
 blocked_join_json=$(call_token "room_id=$owner_room")
@@ -159,6 +170,9 @@ assert_jq "$answer_json" ".success == true and .room_id == \"$owner_room\" and .
 
 call_id_join_json=$(call_token "room_id=$owner_room&call_id=$owner_call_id")
 assert_jq "$call_id_join_json" ".success == true and .room_id == \"$owner_room\" and .private_room == true and .room_password == \"$owner_password\"" 'accepted owner-call rooms can resolve password by call id on first answered-page load'
+
+assert_file_contains "$ROOT_DIR/site/static/video-chat-widget.js" "body.set('call_mode', self.state.callMode === 'voice' ? 'voice' : 'video');" 'owner call token requests preserve voice/video mode for admin notifications'
+assert_file_contains "$ROOT_DIR/site/static/nav-auth.js" "var callKind = callMode === 'voice' ? 'voice call' : 'video call';" 'nav auth renders voice and video call notification labels from call mode'
 
 printf 'PASS: %s\n' "$PASS_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then

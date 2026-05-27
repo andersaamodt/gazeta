@@ -593,28 +593,87 @@
 
   function renderGreenbelt(cells, occupied, unitW, unitH) {
     if (!cells.length) return '';
-    var boundary = [];
+    var edges = [];
     function addEdge(x1, y1, x2, y2) {
-      boundary.push('M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2);
+      edges.push({ a: { x: x1, y: y1 }, b: { x: x2, y: y2 } });
     }
     cells.forEach(function (cell) {
-      var x = cell.x * unitW;
-      var y = cell.y * unitH;
       if (occupied[cell.x + ',' + (cell.y - 1)] == null) {
-        addEdge(x, y, x + unitW, y);
+        addEdge(cell.x, cell.y, cell.x + 1, cell.y);
       }
       if (occupied[(cell.x + 1) + ',' + cell.y] == null) {
-        addEdge(x + unitW, y, x + unitW, y + unitH);
+        addEdge(cell.x + 1, cell.y, cell.x + 1, cell.y + 1);
       }
       if (occupied[cell.x + ',' + (cell.y + 1)] == null) {
-        addEdge(x + unitW, y + unitH, x, y + unitH);
+        addEdge(cell.x + 1, cell.y + 1, cell.x, cell.y + 1);
       }
       if (occupied[(cell.x - 1) + ',' + cell.y] == null) {
-        addEdge(x, y + unitH, x, y);
+        addEdge(cell.x, cell.y + 1, cell.x, cell.y);
       }
     });
+    function pointKey(point) {
+      return point.x + ',' + point.y;
+    }
+    function px(point) {
+      return { x: point.x * unitW, y: point.y * unitH };
+    }
+    var adjacency = {};
+    edges.forEach(function (edge, index) {
+      var aKey = pointKey(edge.a);
+      var bKey = pointKey(edge.b);
+      if (!adjacency[aKey]) adjacency[aKey] = [];
+      if (!adjacency[bKey]) adjacency[bKey] = [];
+      adjacency[aKey].push({ index: index, point: edge.b, key: bKey });
+      adjacency[bKey].push({ index: index, point: edge.a, key: aKey });
+    });
+    var visited = {};
+    var loops = [];
+    edges.forEach(function (edge, startIndex) {
+      if (visited[startIndex]) {
+        return;
+      }
+      var start = edge.a;
+      var current = edge.b;
+      var previousKey = pointKey(start);
+      var currentKey = pointKey(current);
+      var loop = [px(start), px(current)];
+      visited[startIndex] = true;
+      while (currentKey !== pointKey(start)) {
+        var options = adjacency[currentKey] || [];
+        var next = null;
+        for (var i = 0; i < options.length; i += 1) {
+          var candidate = options[i];
+          if (visited[candidate.index]) {
+            continue;
+          }
+          if (candidate.key === previousKey && options.length > 1) {
+            continue;
+          }
+          next = candidate;
+          break;
+        }
+        if (!next) {
+          break;
+        }
+        visited[next.index] = true;
+        previousKey = currentKey;
+        current = next.point;
+        currentKey = next.key;
+        loop.push(px(current));
+      }
+      if (loop.length > 2) {
+        loops.push(loop);
+      }
+    });
+    var contourPaths = loops.map(function (loop) {
+      var path = 'M ' + loop[0].x + ' ' + loop[0].y;
+      for (var i = 1; i < loop.length; i += 1) {
+        path += ' L ' + loop[i].x + ' ' + loop[i].y;
+      }
+      return path + ' Z';
+    }).join(' ');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<path class="desk-map-greenbelt-strip" d="' + boundary.join(' ') + '"></path>' +
+      '<path class="desk-map-greenbelt-strip" d="' + contourPaths + '"></path>' +
       '</g>';
   }
 

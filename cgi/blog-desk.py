@@ -593,9 +593,16 @@ class DeskStore:
     def room_url(self, rel: str | None) -> str:
         room_rel = self.normalize_room_rel(rel)
         if not room_rel:
-            return "/desk"
+            return self.room_url_base()
         from urllib.parse import quote
-        return "/desk/" + quote(room_rel, safe="")
+        base = self.room_url_base().rstrip("/")
+        return (base + "/" if base else "/") + quote(room_rel, safe="")
+
+    def room_url_base(self) -> str:
+        host = os.environ.get("HTTP_HOST", "").split(":", 1)[0].lower()
+        if host.startswith("desk."):
+            return "/"
+        return "/desk"
 
     def overworld_url(self, rel: str | None) -> str:
         from urllib.parse import quote

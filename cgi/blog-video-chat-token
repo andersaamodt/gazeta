@@ -86,6 +86,8 @@ room_id=$(room_key "$room_id")
 
 owner_call=$(blog_param owner_call)
 case "$owner_call" in true|1|yes|on) owner_call=true ;; *) owner_call=false ;; esac
+call_mode=$(printf '%s' "$(blog_param call_mode)" | tr '[:upper:]' '[:lower:]')
+case "$call_mode" in voice) ;; *) call_mode=video ;; esac
 public_room=$(blog_param public_room)
 case "$public_room" in true|1|yes|on) public_room=true ;; *) public_room=false ;; esac
 bootstrap_request=$(blog_param bootstrap)
@@ -235,6 +237,7 @@ if [ "$owner_call" = "true" ]; then
   config-set "$call_path" to_user "$target_admin"
   config-set "$call_path" to_user_name "$target_admin_name"
   config-set "$call_path" status ringing
+  config-set "$call_path" call_mode "$call_mode"
   config-set "$call_path" owner_call true
   config-set "$call_path" self_test false
   config-set "$call_path" created_at "$issued_at"

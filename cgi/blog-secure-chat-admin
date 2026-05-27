@@ -17,13 +17,16 @@ fi
 
 action=$(blog_param action)
 npub=$(blog_param npub)
+since_seq=$(blog_param since_seq)
+case "$since_seq" in ''|*[!0-9]*) since_seq=0 ;; esac
 
 payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-admin.XXXXXX")
 trap 'rm -f "$payload_file"' EXIT HUP INT TERM
 jq -cn \
   --arg action "$action" \
   --arg npub "$npub" \
-  '{action:(if ($action | length) > 0 then $action else "status" end),npub:$npub}' > "$payload_file"
+  --argjson sinceSeq "$since_seq" \
+  '{action:(if ($action | length) > 0 then $action else "status" end),npub:$npub,sinceSeq:$sinceSeq}' > "$payload_file"
 
 response=$(blog_secure_chat_service_request_json POST /admin "$payload_file" application/json 2>/dev/null || printf '')
 if [ -z "$response" ]; then
