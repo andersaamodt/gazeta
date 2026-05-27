@@ -1129,24 +1129,35 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   opacity: 0.78;
 }
 
+.desk-map-room.is-current .desk-map-room-shape,
+.desk-map-room.is-passage-source .desk-map-room-shape {
+  stroke: color-mix(in srgb, var(--room-color) 72%, #d7b46f 28%);
+}
+
 .desk-map-room-link:hover .desk-map-room-shape,
 .desk-map-room-link:focus .desk-map-room-shape,
-.desk-map-room.is-current .desk-map-room-shape,
-.desk-map-room.is-passage-source .desk-map-room-shape,
 .desk-map-room-link.is-drop-target .desk-map-room-shape {
   stroke: var(--room-color);
 }
 
+.desk-map-room.is-current .desk-map-room-grass,
+.desk-map-room.is-passage-source .desk-map-room-grass {
+  filter: saturate(1.08) brightness(1.02);
+}
+
 .desk-map-room-link:hover .desk-map-room-grass,
 .desk-map-room-link:focus .desk-map-room-grass,
-.desk-map-room.is-current .desk-map-room-grass,
-.desk-map-room.is-passage-source .desk-map-room-grass,
 .desk-map-room-link.is-drop-target .desk-map-room-grass {
   filter: saturate(1.16) brightness(1.05);
 }
 
 .desk-map-room-link[draggable="true"] {
-  cursor: grab;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.desk-map-room-link[draggable="false"] {
+  cursor: pointer;
   touch-action: none;
 }
 

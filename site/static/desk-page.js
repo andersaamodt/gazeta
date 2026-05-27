@@ -75,6 +75,14 @@
         return legacy;
       }
       var path = String(url.pathname || '').replace(/\/+$/, '');
+      if (isDeskRootHost()) {
+        if (path === '' || path === '/') {
+          return '';
+        }
+        if (path.charAt(0) === '/') {
+          return decodeURIComponent(path.slice(1));
+        }
+      }
       if (path === '/desk' || path === '') {
         return '';
       }
@@ -84,6 +92,14 @@
       return '';
     } catch (_err) {
       return '';
+    }
+  }
+
+  function isDeskRootHost() {
+    try {
+      return String(window.location.hostname || '').toLowerCase().indexOf('desk.') === 0;
+    } catch (_err) {
+      return false;
     }
   }
 
@@ -168,6 +184,9 @@
 
   function roomUrl(room) {
     var clean = String(room || '').trim();
+    if (isDeskRootHost()) {
+      return clean ? '/' + encodeURIComponent(clean) : '/';
+    }
     return clean ? '/desk/' + encodeURIComponent(clean) : '/desk';
   }
 
@@ -774,7 +793,7 @@
           : '<path class="desk-map-room-current-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>')
         : '';
       var presenceGlow = '<rect class="desk-map-room-presence' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + x + '" y="' + y + '" width="' + unitW + '" height="' + unitH + '"></rect>';
-      return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
+      return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="false"' : '') + ' class="desk-map-room-link">' +
         '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
         currentTint +
@@ -1248,6 +1267,21 @@
   }
 
   function roomDropTargetAt(x, y, sourceRoom) {
+    if (typeof document.elementsFromPoint === 'function') {
+      var stack = document.elementsFromPoint(x, y);
+      for (var i = 0; i < stack.length; i += 1) {
+        var candidate = stack[i];
+        var targetLink = candidate && candidate.closest ? candidate.closest('[data-desk-room-drop]') : null;
+        if (!targetLink || !root.contains(targetLink)) {
+          continue;
+        }
+        var roomId = targetLink.getAttribute('data-desk-room-drop') || '';
+        if (roomId && roomId !== sourceRoom) {
+          return targetLink;
+        }
+      }
+      return null;
+    }
     var node = document.elementFromPoint(x, y);
     var target = node && node.closest ? node.closest('[data-desk-room-drop]') : null;
     if (!target || !root.contains(target)) {
@@ -1460,19 +1494,9 @@
 
   root.addEventListener('dragstart', function (event) {
     var roomLink = event.target.closest('[data-desk-room-link]');
-    if (!roomLink) {
-      return;
-    }
-    var room = roomLink.getAttribute('data-desk-room-link') || '';
-    if (!room) {
+    if (roomLink) {
       event.preventDefault();
-      return;
     }
-    state.draggedRoom = room;
-    suppressRoomClickFor(1200);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', room);
-    roomLink.classList.add('is-dragging');
   });
 
   root.addEventListener('pointerdown', function (event) {
@@ -1481,7 +1505,7 @@
       return;
     }
     var room = roomLink.getAttribute('data-desk-room-link') || '';
-    if (!room || event.button !== 0) {
+    if (!room || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
       return;
     }
     state.pointerRoomDrag = {
@@ -1530,60 +1554,25 @@
     if (drag.active) {
       event.preventDefault();
       finishRoomMove(drag.room, targetRoom, Boolean(target));
+      suppressRoomClickFor(220);
     }
     clearRoomDragClasses();
     state.pointerRoomDrag = null;
     state.draggedRoom = '';
-    suppressRoomClickFor(220);
   });
 
   root.addEventListener('pointercancel', function () {
+    var drag = state.pointerRoomDrag;
+    if (drag && drag.active) {
+      suppressRoomClickFor(220);
+    }
     clearRoomDragClasses();
     state.pointerRoomDrag = null;
     state.draggedRoom = '';
-    suppressRoomClickFor(220);
   });
 
-  root.addEventListener('dragover', function (event) {
-    var target = event.target.closest('[data-desk-room-drop]');
-    if (!target || !state.draggedRoom) {
-      return;
-    }
-    var targetRoom = target.getAttribute('data-desk-room-drop') || '';
-    if (targetRoom === state.draggedRoom) {
-      return;
-    }
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    target.classList.add('is-drop-target');
-  });
-
-  root.addEventListener('dragleave', function (event) {
-    var target = event.target.closest('[data-desk-room-drop]');
-    if (target) {
-      target.classList.remove('is-drop-target');
-    }
-  });
-
-  root.addEventListener('drop', function (event) {
-    var target = event.target.closest('[data-desk-room-drop]');
-    var source = state.draggedRoom || (event.dataTransfer && event.dataTransfer.getData('text/plain')) || '';
-    if (!target || !source) {
-      return;
-    }
-    event.preventDefault();
-    var targetRoom = target.getAttribute('data-desk-room-drop') || '';
-    clearRoomDragClasses();
-    state.draggedRoom = '';
-    suppressRoomClickFor(220);
-    finishRoomMove(source, targetRoom, true);
-  });
-
-  root.addEventListener('dragend', function () {
-    clearRoomDragClasses();
-    state.draggedRoom = '';
-    suppressRoomClickFor(220);
-  });
+  root.addEventListener('dragover', function (event) { event.preventDefault(); });
+  root.addEventListener('drop', function (event) { event.preventDefault(); });
 
   document.addEventListener('change', function (event) {
     var threshold = event.target.closest('[data-desk-threshold]');
