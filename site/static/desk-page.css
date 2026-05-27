@@ -1041,8 +1041,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   border: 0;
   border-radius: 8px;
   background:
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.2), transparent 22rem),
-    #d8bd7d;
+    radial-gradient(circle at 20% 18%, rgba(255, 239, 184, 0.22), transparent 22rem),
+    #dcc17f;
   box-shadow: inset 0 0 38px rgba(75, 41, 18, 0.28);
 }
 
@@ -1083,7 +1083,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-map-greenbelt-strip {
-  fill: url(#desk-map-grass);
+  fill: none;
+  stroke: url(#desk-map-grass);
+  stroke-width: 54;
+  stroke-linecap: square;
+  stroke-linejoin: round;
   opacity: 0.66;
 }
 

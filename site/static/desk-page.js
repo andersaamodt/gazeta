@@ -574,43 +574,28 @@
 
   function renderGreenbelt(cells, occupied, unitW, unitH) {
     if (!cells.length) return '';
-    var band = 54;
-    var overlap = 10;
-    var directions = [
-      { name: 'north', dx: 0, dy: -1 },
-      { name: 'east', dx: 1, dy: 0 },
-      { name: 'south', dx: 0, dy: 1 },
-      { name: 'west', dx: -1, dy: 0 }
-    ];
-    function stripRect(cell, direction, grow) {
+    var boundary = [];
+    function addEdge(x1, y1, x2, y2) {
+      boundary.push('M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2);
+    }
+    cells.forEach(function (cell) {
       var x = cell.x * unitW;
       var y = cell.y * unitH;
-      var extra = Number(grow || 0);
-      if (direction.name === 'north') {
-        return { x: x - overlap - extra, y: y - band - extra, width: unitW + overlap * 2 + extra * 2, height: band + overlap + extra * 2 };
+      if (occupied[cell.x + ',' + (cell.y - 1)] == null) {
+        addEdge(x, y, x + unitW, y);
       }
-      if (direction.name === 'east') {
-        return { x: x + unitW - overlap - extra, y: y - overlap - extra, width: band + overlap + extra * 2, height: unitH + overlap * 2 + extra * 2 };
+      if (occupied[(cell.x + 1) + ',' + cell.y] == null) {
+        addEdge(x + unitW, y, x + unitW, y + unitH);
       }
-      if (direction.name === 'south') {
-        return { x: x - overlap - extra, y: y + unitH - overlap - extra, width: unitW + overlap * 2 + extra * 2, height: band + overlap + extra * 2 };
+      if (occupied[cell.x + ',' + (cell.y + 1)] == null) {
+        addEdge(x + unitW, y + unitH, x, y + unitH);
       }
-      return { x: x - band - extra, y: y - overlap - extra, width: band + overlap + extra * 2, height: unitH + overlap * 2 + extra * 2 };
-    }
-    function rectSvg(className, rect) {
-      return '<rect class="' + className + '" x="' + rect.x + '" y="' + rect.y + '" width="' + rect.width + '" height="' + rect.height + '"></rect>';
-    }
-    var strips = [];
-    cells.forEach(function (cell) {
-      directions.forEach(function (direction) {
-        if (occupied[(cell.x + direction.dx) + ',' + (cell.y + direction.dy)] != null) {
-          return;
-        }
-        strips.push(rectSvg('desk-map-greenbelt-strip', stripRect(cell, direction, 0)));
-      });
+      if (occupied[(cell.x - 1) + ',' + cell.y] == null) {
+        addEdge(x, y + unitH, x, y);
+      }
     });
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      strips.join('') +
+      '<path class="desk-map-greenbelt-strip" d="' + boundary.join(' ') + '"></path>' +
       '</g>';
   }
 
@@ -796,7 +781,7 @@
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + '" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
-      '<defs><pattern id="desk-map-parchment-texture" width="256" height="256" patternUnits="userSpaceOnUse"><image href="/static/textures/lapidarist-parchment.webp" x="0" y="0" width="256" height="256" preserveAspectRatio="xMidYMid slice"></image></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="256" height="256" patternUnits="userSpaceOnUse"><image href="/static/textures/lapidarist-parchment.webp" x="0" y="0" width="256" height="256" preserveAspectRatio="xMidYMid slice"></image><rect width="256" height="256" fill="rgba(190,91,47,0.16)"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(122,66,37,0.18)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#7d9b5f"></rect><circle cx="12" cy="14" r="9" fill="rgba(129,169,101,0.35)"></circle><circle cx="54" cy="18" r="13" fill="rgba(83,124,70,0.22)"></circle><circle cx="32" cy="52" r="16" fill="rgba(158,184,106,0.28)"></circle><circle cx="70" cy="62" r="18" fill="rgba(65,105,61,0.2)"></circle><path d="M0 42C18 35 34 37 50 28S66 16 72 18M-4 70C18 61 40 64 76 50" stroke="rgba(238,224,146,0.16)" stroke-width="3" fill="none" stroke-linecap="round"></path></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
+      '<defs><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M4 16C25 11 42 20 64 13S87 8 96 13M0 58C20 53 39 63 60 56s27-11 38-4M16 90C33 82 54 93 76 85" stroke="rgba(116,69,31,0.11)" stroke-width="1.3" fill="none"></path><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#d7b46f"></rect><path d="M4 16C25 11 42 20 64 13S87 8 96 13M0 58C20 53 39 63 60 56s27-11 38-4M16 90C33 82 54 93 76 85" stroke="rgba(105,50,24,0.13)" stroke-width="1.3" fill="none"></path><path d="M 28 0 L 0 0 0 28" stroke="rgba(122,66,37,0.18)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#7d9b5f"></rect><circle cx="12" cy="14" r="9" fill="rgba(129,169,101,0.35)"></circle><circle cx="54" cy="18" r="13" fill="rgba(83,124,70,0.22)"></circle><circle cx="32" cy="52" r="16" fill="rgba(158,184,106,0.28)"></circle><circle cx="70" cy="62" r="18" fill="rgba(65,105,61,0.2)"></circle><path d="M0 42C18 35 34 37 50 28S66 16 72 18M-4 70C18 61 40 64 76 50" stroke="rgba(238,224,146,0.16)" stroke-width="3" fill="none" stroke-linecap="round"></path></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.76"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       greenbelt + passageShapes + roomShapes + doorShapes + passageDoorShapes +
