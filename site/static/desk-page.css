@@ -515,10 +515,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-mode-compose {
   left: 50%;
+  display: grid;
+  place-items: center;
   width: 4.8rem;
   height: 4.8rem;
   border-radius: 50%;
-  font-size: 2rem;
   transform: translateX(-50%);
 }
 
@@ -530,9 +531,10 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-mode-todo {
   right: 0;
+  display: grid;
+  place-items: center;
   width: 5rem;
   height: 5rem;
-  font-size: 1.8rem;
 }
 
 .desk-mode-todo.is-active {
@@ -540,8 +542,41 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   height: 6rem;
 }
 
-.desk-mode-todo svg {
+.desk-mode-compose .desk-compose-quill-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  fill: currentColor;
+  stroke: none;
+}
+
+.desk-mode-todo .desk-checklist-notebook-icon {
+  width: 3.25rem;
+  height: 3.65rem;
+  margin: 0;
+  overflow: visible;
   color: var(--desk-gold-soft);
+}
+
+.desk-checklist-page {
+  fill: #f8f2d8;
+  stroke: #6f4d1e;
+  stroke-width: 2.6;
+}
+
+.desk-checklist-margin {
+  stroke: rgba(210, 88, 74, 0.55);
+  stroke-width: 1.8;
+}
+
+.desk-checklist-rule {
+  stroke: rgba(69, 110, 185, 0.55);
+  stroke-width: 1.6;
+}
+
+.desk-checklist-check {
+  stroke: #144eb7;
+  stroke-width: 2.4;
 }
 
 .desk-topbar {
