@@ -439,6 +439,40 @@
       return Math.abs(point.x - target.x) + Math.abs(point.y - target.y);
     }
 
+    function layoutBoundsWith(candidate) {
+      var points = Object.keys(layout).map(function (path) {
+        return layout[path];
+      }).concat([{ x: candidate.x, y: candidate.y }]);
+      var xs = points.map(function (point) { return point.x; });
+      var ys = points.map(function (point) { return point.y; });
+      var minX = Math.min.apply(null, xs);
+      var maxX = Math.max.apply(null, xs);
+      var minY = Math.min.apply(null, ys);
+      var maxY = Math.max.apply(null, ys);
+      return {
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        area: (maxX - minX + 1) * (maxY - minY + 1)
+      };
+    }
+
+    function compactnessScore(candidate, parentPath, room) {
+      var bounds = layoutBoundsWith(candidate);
+      var maxSpan = Math.max(bounds.width, bounds.height);
+      var minSpan = Math.min(bounds.width, bounds.height);
+      var spreadPenalty = Math.max(0, maxSpan - 4) * 34 + Math.max(0, minSpan - 3) * 18;
+      var semanticPenalty = candidate.anchor.path === parentPath ? 0 : 28;
+      var anchorDistance = distanceTo(candidate.anchor.point, layout[parentPath] || layout['']);
+      var outsideBias = roomIsOutdoor(room) ? -openSidesForCandidate(candidate) * 2 : 0;
+      return spreadPenalty + semanticPenalty + bounds.area * 1.4 + anchorDistance * 1.6 + candidate.order * 0.01 + outsideBias;
+    }
+
+    function openSidesForCandidate(candidate) {
+      return directions.filter(function (direction) {
+        return occupied[(candidate.x + direction.dx) + ',' + (candidate.y + direction.dy)] == null;
+      }).length;
+    }
+
     function anchorsFor(parentPath, roomPath) {
       var parent = layout[parentPath] || layout[''];
       return Object.keys(layout).sort(function (left, right) {
@@ -473,18 +507,11 @@
         }
       }
       if (!candidates.length) return;
-      if (roomIsOutdoor(room)) {
-        candidates.sort(function (left, right) {
-          function openSides(candidate) {
-            return directions.filter(function (direction) {
-              return occupied[(candidate.x + direction.dx) + ',' + (candidate.y + direction.dy)] == null;
-            }).length;
-          }
-          var openDelta = openSides(right) - openSides(left);
-          if (openDelta) return openDelta;
-          return left.order - right.order;
-        });
-      }
+      candidates.sort(function (left, right) {
+        var scoreDelta = compactnessScore(left, parentPath, room) - compactnessScore(right, parentPath, room);
+        if (scoreDelta) return scoreDelta;
+        return left.order - right.order;
+      });
       var chosen = candidates[0];
       layout[roomPath] = { x: chosen.x, y: chosen.y, attachedTo: chosen.anchor.path };
       occupied[chosen.key] = roomPath;
