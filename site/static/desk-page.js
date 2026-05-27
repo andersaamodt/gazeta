@@ -474,11 +474,15 @@
       var isCurrent = path === String(state.currentRoom || '');
       var isPassageSource = state.secretPassageSource === path;
       var title = room.title || 'Room';
+      var visibleCount = Number(room.visible_task_count || 0);
+      var countLabel = visibleCount > 0
+        ? '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(visibleCount) + '</text>'
+        : '';
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
         '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>' +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
-        '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(room.visible_task_count || 0) + ' / ' + escapeHtml(room.sleeping_task_count || 0) + '</text>' +
+        countLabel +
         '</g>' +
         '</a>';
     }).join('');

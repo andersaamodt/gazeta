@@ -324,7 +324,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-status-menu1' 'Desk page cache-busts Desk status and settings menu assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-map-counts1' 'Desk page cache-busts map count label assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -388,6 +388,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function architectura
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderDoor' 'Desk map renders doors between rooms that share a side'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '(y - 20)' 'Desk map renders doors as two-way arcs across shared walls'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'roomWallAdornments' 'Desk map no longer draws corner wall adornment ticks'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'var visibleCount = Number(room.visible_task_count || 0);' 'Desk map room numbers use only above-threshold task counts'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'visibleCount > 0' 'Desk map hides room numbers when no above-threshold tasks are present'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" " + ' / ' +" 'Desk map room numbers omit the sleeping-task slash count'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderSecretPassage' 'Desk map renders explicit secret passages'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'attachedTo' 'Desk map layout connects each room to an already placed room'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-building' 'Desk map does not draw a separate outer house outline'
