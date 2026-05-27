@@ -1121,17 +1121,17 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-door-gap {
   stroke: #dcc17f;
-  stroke-width: 9;
+  stroke-width: 7;
 }
 
 .desk-map-door-leaf {
   stroke: #6f4d1e;
-  stroke-width: 4.5;
+  stroke-width: 3.8;
 }
 
 .desk-map-door-swing {
   stroke: rgba(111, 77, 30, 0.82);
-  stroke-width: 2.5;
+  stroke-width: 2.2;
   stroke-dasharray: 3 5;
 }
 

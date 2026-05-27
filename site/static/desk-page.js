@@ -600,13 +600,19 @@
   function renderDoorGlyph(x, y, side, isSecret, isLastEntered) {
     var secretClass = isSecret ? ' desk-map-secret-door' : '';
     var enteredClass = isLastEntered ? ' is-last-entered' : '';
+    var open = 13;
+    var leaf = 24;
     var label = isSecret
       ? '<text class="desk-map-secret-door-label" x="' + x + '" y="' + (y + 5) + '" text-anchor="middle"' + (side === 'north' || side === 'south' ? ' transform="rotate(90 ' + x + ' ' + y + ')"' : '') + '>S</text>'
       : '';
     if (side === 'east' || side === 'west') {
-      return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path>' + label + '</g>';
+      var xDirection = side === 'east' ? 1 : -1;
+      var xLeaf = x + xDirection * leaf;
+      return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
     }
-    return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path>' + label + '</g>';
+    var yDirection = side === 'south' ? 1 : -1;
+    var yLeaf = y + yDirection * leaf;
+    return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
   }
 
   function isLastEnteredDoor(door) {
