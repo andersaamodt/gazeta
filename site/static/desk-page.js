@@ -17,6 +17,7 @@
     secretPassageSource: null,
     lastEnteredDoor: null,
     createRoomOpen: false,
+    todoAddOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
     pointerRoomDrag: null,
@@ -26,6 +27,7 @@
   };
   var modeCloseTimer = null;
   var presenceTimer = null;
+  var suppressRoomClickTimer = null;
 
   function markPageReady() {
     var gate = window.__wizardryHydration;
@@ -796,6 +798,7 @@
     var tasks = data.tasks || [];
     var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
     var done = data.done_tasks || [];
+    var addExpanded = state.todoAddOpen === true;
     return '<section class="desk-mode-panel desk-todo-panel" aria-label="Checklist">' +
       '<form class="desk-room-name-form" data-desk-form="room-title">' +
       '<input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '">' +
@@ -811,10 +814,17 @@
       (room.has_public_file ? '<span class="desk-pill gold">public.md present</span>' : '<span class="desk-pill">private interior</span>') +
       '<span class="desk-pill">' + escapeHtml(room.sleeping_task_count || 0) + ' below threshold</span>' +
       '</div>' +
-      '<form class="desk-form" data-desk-form="room-add">' +
+      '<form class="desk-todo-add' + (addExpanded ? ' is-expanded' : '') + '" data-desk-form="room-add" aria-label="Add task">' +
       '<input type="hidden" name="destination_room" value="' + escapeHtml(room.path || '') + '">' +
-      '<label><span>Add Task</span><textarea class="desk-textarea" name="task_text" rows="4" required></textarea></label>' +
-      '<button type="submit" class="desk-btn primary">Add to Room</button>' +
+      '<div class="desk-todo-add-inline">' +
+      '<div class="desk-todo-add-reveal" ' + (addExpanded ? '' : 'aria-hidden="true"') + '>' +
+      '<div class="desk-todo-add-fields">' +
+      '<textarea class="desk-textarea desk-todo-add-textarea" name="task_text" rows="2" placeholder="New task" aria-label="New task"' + (addExpanded ? ' required' : '') + '></textarea>' +
+      '<button type="submit" class="desk-btn primary desk-todo-add-submit">Add</button>' +
+      '</div>' +
+      '</div>' +
+      '<button type="button" class="desk-todo-add-toggle" data-desk-todo-add-toggle aria-label="' + (addExpanded ? 'Close add task' : 'Add task') + '" title="' + (addExpanded ? 'Close add task' : 'Add task') + '" aria-expanded="' + (addExpanded ? 'true' : 'false') + '"><span class="desk-todo-add-toggle-icon" aria-hidden="true">+</span></button>' +
+      '</div>' +
       '</form>' +
       roomTaskFilterControls(tasks) +
       (visibleTasks.length ? '<ul class="desk-task-list desk-notebook-list">' + visibleTasks.map(notebookTaskItem).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
@@ -871,6 +881,17 @@
       window.clearTimeout(modeCloseTimer);
       modeCloseTimer = null;
     }
+  }
+
+  function suppressRoomClickFor(delay) {
+    state.suppressRoomClick = true;
+    if (suppressRoomClickTimer) {
+      window.clearTimeout(suppressRoomClickTimer);
+    }
+    suppressRoomClickTimer = window.setTimeout(function () {
+      state.suppressRoomClick = false;
+      suppressRoomClickTimer = null;
+    }, delay || 180);
   }
 
   function openMode(mode) {
@@ -1235,8 +1256,8 @@
     }
   }
 
-  function finishRoomMove(sourceRoom, targetRoom) {
-    if (!sourceRoom || sourceRoom === targetRoom) {
+  function finishRoomMove(sourceRoom, targetRoom, hasValidTarget) {
+    if (!hasValidTarget || !sourceRoom || sourceRoom === targetRoom) {
       return;
     }
     api('move-room', {
@@ -1391,6 +1412,23 @@
         task_id: taskAction.getAttribute('data-task-id') || ''
       }).then(refreshFrom);
     }
+
+    var todoAddToggle = event.target.closest('[data-desk-todo-add-toggle]');
+    if (todoAddToggle) {
+      event.preventDefault();
+      state.todoAddOpen = !state.todoAddOpen;
+      if (state.data) {
+        render(state.data);
+      }
+      if (state.todoAddOpen) {
+        window.setTimeout(function () {
+          var field = root.querySelector('.desk-todo-add-textarea');
+          if (field && typeof field.focus === 'function') {
+            field.focus();
+          }
+        }, 0);
+      }
+    }
   });
 
   root.addEventListener('dragstart', function (event) {
@@ -1404,7 +1442,7 @@
       return;
     }
     state.draggedRoom = room;
-    state.suppressRoomClick = true;
+    suppressRoomClickFor(1200);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', room);
     roomLink.classList.add('is-dragging');
@@ -1442,7 +1480,7 @@
     if (!drag.active) {
       drag.active = true;
       state.draggedRoom = drag.room;
-      state.suppressRoomClick = true;
+      suppressRoomClickFor(1200);
       drag.link.classList.add('is-dragging');
       if (drag.link.setPointerCapture) {
         try {
@@ -1464,24 +1502,28 @@
     var targetRoom = target ? target.getAttribute('data-desk-room-drop') || '' : '';
     if (drag.active) {
       event.preventDefault();
-      finishRoomMove(drag.room, targetRoom);
+      finishRoomMove(drag.room, targetRoom, Boolean(target));
     }
     clearRoomDragClasses();
     state.pointerRoomDrag = null;
     state.draggedRoom = '';
-    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+    suppressRoomClickFor(220);
   });
 
   root.addEventListener('pointercancel', function () {
     clearRoomDragClasses();
     state.pointerRoomDrag = null;
     state.draggedRoom = '';
-    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+    suppressRoomClickFor(220);
   });
 
   root.addEventListener('dragover', function (event) {
     var target = event.target.closest('[data-desk-room-drop]');
     if (!target || !state.draggedRoom) {
+      return;
+    }
+    var targetRoom = target.getAttribute('data-desk-room-drop') || '';
+    if (targetRoom === state.draggedRoom) {
       return;
     }
     event.preventDefault();
@@ -1506,14 +1548,14 @@
     var targetRoom = target.getAttribute('data-desk-room-drop') || '';
     clearRoomDragClasses();
     state.draggedRoom = '';
-    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
-    finishRoomMove(source, targetRoom);
+    suppressRoomClickFor(220);
+    finishRoomMove(source, targetRoom, true);
   });
 
   root.addEventListener('dragend', function () {
     clearRoomDragClasses();
     state.draggedRoom = '';
-    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+    suppressRoomClickFor(220);
   });
 
   document.addEventListener('change', function (event) {
@@ -1546,6 +1588,9 @@
       }).then(function (data) {
         if (data && data.success !== false) {
           form.reset();
+          if (type === 'room-add') {
+            state.todoAddOpen = false;
+          }
         }
         if (type === 'capture' && data && data.success !== false && destinationRoom !== originRoom) {
           var destinationTitle = data.current_room && data.current_room.title ? data.current_room.title : 'room';

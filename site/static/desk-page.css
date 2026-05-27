@@ -1340,10 +1340,6 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   display: none;
 }
 
-.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-form {
-  margin: 0 0 0.55rem 2.9rem;
-}
-
 .desk-room-name-form {
   display: flex;
   align-items: center;
@@ -1367,15 +1363,104 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   font-weight: 800;
 }
 
-.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-form label span {
-  color: #405174;
+.desk-todo-add {
+  margin: 0 0 0.55rem 2.55rem;
 }
 
-.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-textarea {
-  min-height: 3.6rem;
+.desk-todo-add-inline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-right: 0.28rem;
+}
+
+.desk-todo-add-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(69, 110, 185, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.36);
+  color: #144eb7;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.desk-todo-add.is-expanded .desk-todo-add-toggle {
+  color: #1c253c;
+  background: #e6cf7b;
+}
+
+.desk-todo-add-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  transform: rotate(0deg);
+}
+
+.desk-todo-add.is-expanded .desk-todo-add-toggle-icon {
+  transform: rotate(45deg);
+}
+
+.desk-todo-add-toggle:hover,
+.desk-todo-add-toggle:focus-visible {
+  border-color: rgba(20, 78, 183, 0.72);
+  background: rgba(69, 110, 185, 0.14);
+}
+
+.desk-todo-add-reveal {
+  display: grid;
+  grid-template-columns: 0fr;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(0.28rem);
+  transition: grid-template-columns 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.desk-todo-add.is-expanded .desk-todo-add-reveal {
+  grid-template-columns: 1fr;
+  flex: 1 1 auto;
+  opacity: 1;
+  overflow: visible;
+  transform: translateX(0);
+}
+
+.desk-todo-add-fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.desk-todo-add-textarea {
+  flex: 1 1 14rem;
+  min-width: min(100%, 10rem);
+  min-height: 2.1rem;
+  max-height: 5.4rem;
+  padding: 0.35rem 0.55rem;
   color: #18233b;
   background: rgba(255, 255, 255, 0.34);
   border-color: rgba(69, 110, 185, 0.34);
+  resize: vertical;
+}
+
+.desk-todo-add-submit {
+  flex: 0 0 auto;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.68rem;
 }
 
 .desk-notebook-list {
