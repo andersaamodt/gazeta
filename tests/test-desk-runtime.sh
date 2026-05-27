@@ -329,7 +329,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-toast-dismiss1' 'Desk page cache-busts toast dismissal refinements'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-compose-stable2' 'Desk page cache-busts stable centered compose launcher'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -484,6 +484,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compo
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-compose-quill-icon' 'Desk compose launcher uses the public site compose quill icon'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'm229.66 58.34l-32-32' 'Desk compose launcher matches the shared nav compose icon path'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-mode-compose .desk-compose-quill-icon' 'Desk compose launcher centers its quill icon'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-compose-quill-mark" transform="translate(-4 4)"' 'Desk compose launcher visually centers the shared quill mark'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'left: calc(50% - 2.4rem);' 'Desk compose launcher is centered without transform-based positioning'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-mode-compose.is-active' 'Desk compose launcher has an explicit stable active state'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" 'translateY(-0.22rem)' 'Desk dock launchers do not move on hover or focus'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-kind'" 'Desk frontend can set rooms indoor or outdoor'
