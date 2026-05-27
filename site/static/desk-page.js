@@ -255,6 +255,11 @@
     return 'Quiet';
   }
 
+  function statusTooltip(value, isCurrent) {
+    var label = statusLabel(value);
+    return (isCurrent ? label + ' is current' : 'Set status: ' + label);
+  }
+
   function statusIcon(value) {
     if (value === 'available') {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.8"></circle><path d="M12 8.2v3.8l2.7 2.1"></path></svg>';
@@ -270,7 +275,9 @@
     return '<div class="desk-status" aria-label="Desk status">' +
       ['available', 'quiet', 'offline'].map(function (value) {
         var label = statusLabel(value);
-        return '<button type="button" class="desk-status-btn" data-desk-status="' + value + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" aria-pressed="' + (current === value ? 'true' : 'false') + '">' + statusIcon(value) + '</button>';
+        var isCurrent = current === value;
+        var tooltip = statusTooltip(value, isCurrent);
+        return '<button type="button" class="desk-status-btn" data-desk-status="' + value + '" aria-label="' + escapeHtml(tooltip) + '" title="' + escapeHtml(tooltip) + '" data-desk-tooltip="' + escapeHtml(tooltip) + '" aria-pressed="' + (isCurrent ? 'true' : 'false') + '">' + statusIcon(value) + '</button>';
       }).join('') +
       '</div>';
   }
@@ -1346,6 +1353,10 @@
 
     var status = event.target.closest('[data-desk-status]');
     if (status) {
+      if (status.getAttribute('aria-pressed') === 'true') {
+        showMessage(statusLabel(status.getAttribute('data-desk-status') || 'quiet') + ' is already selected.', false);
+        return;
+      }
       api('set-status', {
         room: state.currentRoom,
         online_status: status.getAttribute('data-desk-status') || 'quiet'

@@ -806,6 +806,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-status-btn {
   display: grid;
   place-items: center;
+  position: relative;
   width: 2.15rem;
   height: 2.15rem;
   padding: 0;
@@ -826,6 +827,33 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-status-btn[aria-pressed="true"] {
   color: #10131f;
   background: var(--desk-gold);
+}
+
+.desk-status-btn::after {
+  content: attr(data-desk-tooltip);
+  position: absolute;
+  top: calc(100% + 0.42rem);
+  right: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 12rem;
+  padding: 0.28rem 0.42rem;
+  border: 1px solid rgba(240, 213, 138, 0.3);
+  border-radius: 5px;
+  background: rgba(2, 11, 29, 0.94);
+  color: var(--desk-ink);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.12rem);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.desk-status-btn:hover::after,
+.desk-status-btn:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .desk-menu-settings {
