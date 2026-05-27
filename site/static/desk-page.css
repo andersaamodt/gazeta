@@ -1205,46 +1205,66 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   position: absolute;
   left: clamp(0.75rem, 1.6vw, 1rem);
   bottom: clamp(0.75rem, 1.6vw, 1rem);
-  width: 2.65rem;
-  height: 2.65rem;
-  border: 1px solid rgba(240, 213, 138, 0.54);
-  border-radius: 999px;
-  color: #f4db87;
-  background:
-    linear-gradient(180deg, rgba(5, 25, 63, 0.94), rgba(3, 20, 51, 0.86)),
-    rgba(3, 20, 51, 0.88);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-  font-size: 1.5rem;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  padding: 0;
+  border: 1px solid rgba(255, 238, 169, 0.68);
+  border-radius: 50%;
+  appearance: none;
+  background: linear-gradient(180deg, var(--desk-gold-soft), var(--desk-gold));
+  color: #10131f;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
   cursor: pointer;
 }
 
 .desk-map-passage-btn svg {
   display: block;
-  width: 1.55rem;
-  height: 1.55rem;
-  margin: auto;
-  fill: rgba(240, 213, 138, 0.16);
+  width: 1.72rem;
+  height: 1.72rem;
+  margin: 0;
+  fill: rgba(16, 19, 31, 0.12);
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transform-origin: 37% 50%;
-  transition: transform 220ms cubic-bezier(0.2, 0.82, 0.18, 1);
 }
 
-.desk-map-passage-btn:hover svg,
-.desk-map-passage-btn:focus-visible svg,
-.desk-map-passage-btn.is-active svg {
-  transform: rotate(-22deg);
+.desk-passage-book,
+.desk-passage-book-line {
+  vector-effect: non-scaling-stroke;
+}
+
+.desk-passage-book {
+  transform-box: fill-box;
+  transition: transform 220ms cubic-bezier(0.2, 0.82, 0.18, 1), fill 180ms ease;
+}
+
+.desk-passage-book.middle {
+  fill: rgba(16, 19, 31, 0.22);
+  transform-origin: 16px 16px;
+}
+
+.desk-passage-book-line {
+  fill: none;
+  stroke-width: 2.2;
 }
 
 .desk-map-passage-btn:hover,
 .desk-map-passage-btn:focus-visible,
 .desk-map-passage-btn.is-active {
   border-color: rgba(238, 200, 89, 0.9);
-  background:
-    linear-gradient(180deg, rgba(15, 60, 126, 0.96), rgba(5, 25, 63, 0.9)),
-    rgba(5, 25, 63, 0.92);
+  background: linear-gradient(180deg, #ffe694, var(--desk-gold));
+  transform: translateY(-2px);
+}
+
+.desk-map-passage-btn:hover .desk-passage-book.middle,
+.desk-map-passage-btn:focus-visible .desk-passage-book.middle,
+.desk-map-passage-btn.is-active .desk-passage-book.middle {
+  fill: rgba(16, 19, 31, 0.34);
+  transform: translateY(-3px) rotate(-8deg);
 }
 
 .desk-todo-panel,

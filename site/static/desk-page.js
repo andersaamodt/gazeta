@@ -787,7 +787,7 @@
       greenbelt + passageShapes + roomShapes + doorShapes + passageDoorShapes +
       '</svg>' +
       '</div>' +
-      '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-passage-book-cover" d="M7 4.6h8.2c1 0 1.8.8 1.8 1.8v12.9H8.4A2.4 2.4 0 0 1 6 16.9V5.6c0-.6.4-1 1-1z"></path><path d="M8.4 19.3A2.4 2.4 0 0 1 6 16.9c0-1.3 1.1-2.4 2.4-2.4H17"></path><path d="M9.4 7.5h4.8"></path></svg></button>' +
+      '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 32 32" aria-hidden="true"><g class="desk-passage-books"><path class="desk-passage-book side left" d="M7 8h5v16H7z"></path><path class="desk-passage-book-cover desk-passage-book middle" d="M13.5 6.5h5v18.5h-5z"></path><path class="desk-passage-book side right" d="M20 8h5v16h-5z"></path><path class="desk-passage-book-line" d="M9.5 11.5h0M16 10.5h0M22.5 11.5h0M9.5 20.5h0M16 21.5h0M22.5 20.5h0"></path></g></svg></button>' +
       '<button type="button" class="desk-map-create-btn" data-desk-create-room-open aria-label="Create room">+</button>' +
       (state.createRoomOpen ? renderCreateRoomModal(data) : '') +
       '</section>';
