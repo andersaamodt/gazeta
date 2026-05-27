@@ -1090,17 +1090,15 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-room-presence {
   --presence: 0;
-  fill: rgba(255, 186, 88, 0.72);
-  stroke: rgba(255, 226, 154, 0.54);
-  stroke-width: calc(10px + var(--presence) * 14px);
-  opacity: calc(0.12 + var(--presence) * 0.8);
+  fill: url(#desk-map-presence-glow);
+  opacity: calc(var(--presence) * 0.74);
   pointer-events: none;
-  transition: opacity 1400ms ease, fill 1400ms ease, stroke 1400ms ease, stroke-width 1400ms ease;
+  transition: opacity 1400ms ease;
 }
 
 .desk-map-room-presence.is-outdoor {
-  fill: rgba(255, 226, 122, 0.66);
-  stroke: rgba(255, 242, 166, 0.46);
+  fill: url(#desk-map-presence-glow-outdoor);
+  opacity: calc(var(--presence) * 0.62);
 }
 
 .desk-map-outdoor-fade {
