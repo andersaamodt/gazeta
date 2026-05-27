@@ -435,14 +435,82 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   width: 5.2rem;
   height: 5.2rem;
   text-align: left;
-  background:
-    linear-gradient(145deg, rgba(236, 211, 154, 0.92), rgba(179, 126, 67, 0.92)) !important;
-  color: #2b1b0c;
+  border: 0;
+  overflow: visible;
+  background: transparent !important;
+  box-shadow: none;
+  color: #5a3714;
+  transform: rotate(-17deg);
+  transform-origin: 28% 78%;
 }
 
 .desk-mode-map.is-active {
   width: 6.2rem;
   height: 6.2rem;
+}
+
+.desk-mode-map::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  bottom: 0.2rem;
+  width: 4.7rem;
+  height: 2.9rem;
+  border-radius: 999px 999px 12px 12px;
+  background:
+    radial-gradient(ellipse at 50% 22%, rgba(255, 241, 190, 0.82), transparent 36%),
+    linear-gradient(145deg, #f0d58a 0%, #d3aa56 48%, #8b5d22 100%);
+  box-shadow:
+    0 16px 24px rgba(0, 0, 0, 0.34),
+    0 -8px 14px rgba(92, 51, 17, 0.24) inset,
+    0 7px 10px rgba(255, 244, 198, 0.18) inset;
+}
+
+.desk-mode-map:hover,
+.desk-mode-map:focus-visible,
+.desk-mode-map.is-active {
+  background: transparent !important;
+  box-shadow: none;
+  transform: rotate(-17deg);
+}
+
+.desk-mode-map .desk-map-scroll-icon {
+  position: absolute;
+  left: 0.25rem;
+  bottom: 0.05rem;
+  width: 5.55rem;
+  height: 5.55rem;
+  margin: 0;
+  overflow: visible;
+  fill: none;
+  stroke-width: 2.1;
+}
+
+.desk-map-scroll-shadow {
+  stroke: rgba(47, 24, 6, 0.24);
+  stroke-width: 9;
+}
+
+.desk-map-scroll-body {
+  fill: #e8c778;
+  stroke: #6f4d1e;
+  stroke-width: 2.6;
+}
+
+.desk-map-scroll-roll {
+  fill: none;
+  stroke: #6f4d1e;
+  stroke-width: 4.2;
+}
+
+.desk-map-scroll-grid {
+  stroke: rgba(122, 66, 37, 0.42);
+  stroke-width: 1.25;
+}
+
+.desk-map-scroll-route {
+  stroke: #154da7;
+  stroke-width: 2.5;
 }
 
 .desk-mode-compose {
