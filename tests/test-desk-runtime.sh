@@ -329,7 +329,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-compact-layout1' 'Desk page cache-busts compact room layout scoring'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-current-room-color1' 'Desk page cache-busts current-room color highlighting'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -377,6 +377,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '@keyframes desk-map-
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '@keyframes desk-map-furl' 'Desk map closes with a furling animation'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-shape' 'Desk map draws rooms as architectural floorplan shapes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'fill: url(#desk-map-room-paper);' 'Desk map rooms use a warmer parchment texture with grid squares'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-current-tint' 'Desk map highlights the current room with its own room color'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'class="desk-map-room-current-tint" fill="' 'Desk current room highlight uses an explicit configured room color fill'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'var currentTint = isCurrent' 'Desk renders current-room color tint only for the active room'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-grass' 'Desk map draws outdoor spaces with a grassy texture fill'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-outdoor-fade' 'Desk map fades outdoor space edges into parchment'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'fill="#e7c996"' 'Desk map room parchment texture uses a warmer base color'

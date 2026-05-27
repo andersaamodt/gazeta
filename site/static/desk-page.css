@@ -1041,6 +1041,15 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   opacity: 0.72;
 }
 
+.desk-map-room-current-tint {
+  opacity: 0.26;
+  pointer-events: none;
+}
+
+.desk-map-room.is-current .desk-map-room-current-tint {
+  opacity: 0.34;
+}
+
 .desk-map-room-presence {
   --presence: 0;
   fill: rgba(255, 186, 88, 0.72);

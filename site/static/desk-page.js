@@ -743,13 +743,21 @@
       var countLabel = visibleCount > 0
         ? '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(visibleCount) + '</text>'
         : '';
-      var roomShape = roomIsOutdoor(room)
+      var isOutdoor = roomIsOutdoor(room);
+      var roomPathShape = architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office');
+      var roomShape = isOutdoor
         ? '<rect class="desk-map-room-grass" x="' + x + '" y="' + y + '" width="' + unitW + '" height="' + unitH + '" rx="10"></rect>' + renderOutdoorEdgeFades(x, y, unitW, unitH, exterior)
-        : '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>';
+        : '<path class="desk-map-room-shape" d="' + roomPathShape + '"></path>';
+      var currentTint = isCurrent
+        ? (isOutdoor
+          ? '<rect class="desk-map-room-current-tint" fill="' + escapeHtml(roomColor(room)) + '" x="' + x + '" y="' + y + '" width="' + unitW + '" height="' + unitH + '" rx="10"></rect>'
+          : '<path class="desk-map-room-current-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>')
+        : '';
       var presenceGlow = '<ellipse class="desk-map-room-presence' + (roomIsOutdoor(room) ? ' is-outdoor' : '') + '" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" cx="' + (x + unitW / 2) + '" cy="' + (y + unitH / 2) + '" rx="' + (unitW * 0.38) + '" ry="' + (unitH * 0.34) + '"></ellipse>';
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
-        '<g class="desk-map-room' + (roomIsOutdoor(room) ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
+        '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
+        currentTint +
         presenceGlow +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
         countLabel +
