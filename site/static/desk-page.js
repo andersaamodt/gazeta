@@ -469,11 +469,11 @@
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      return '<g class="desk-map-door"><path d="M ' + x + ' ' + (y - 18) + ' V ' + (y + 18) + '"></path><path d="M ' + x + ' ' + (y - 18) + ' Q ' + (x - 20) + ' ' + y + ' ' + x + ' ' + (y + 18) + '"></path><path d="M ' + x + ' ' + (y - 18) + ' Q ' + (x + 20) + ' ' + y + ' ' + x + ' ' + (y + 18) + '"></path></g>';
+      return '<g class="desk-map-door"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path></g>';
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    return '<g class="desk-map-door"><path d="M ' + (x - 18) + ' ' + y + ' H ' + (x + 18) + '"></path><path d="M ' + (x - 18) + ' ' + y + ' Q ' + x + ' ' + (y - 20) + ' ' + (x + 18) + ' ' + y + '"></path><path d="M ' + (x - 18) + ' ' + y + ' Q ' + x + ' ' + (y + 20) + ' ' + (x + 18) + ' ' + y + '"></path></g>';
+    return '<g class="desk-map-door"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (door.side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (door.side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (door.side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path></g>';
   }
 
   function renderSecretPassage(passage, layout, unitW, unitH) {
