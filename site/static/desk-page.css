@@ -915,6 +915,15 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   stroke-linejoin: round;
 }
 
+.desk-map-room-grass {
+  fill: url(#desk-map-grass);
+  stroke: none;
+}
+
+.desk-map-outdoor-fade {
+  pointer-events: none;
+}
+
 .desk-map-room text {
   fill: #26180c;
   font-size: 16px;
@@ -943,6 +952,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-map-room-link.is-drop-target .desk-map-room-shape {
   fill: color-mix(in srgb, var(--room-color), #ffe9a8 26%);
   stroke: var(--room-color);
+}
+
+.desk-map-room-link:hover .desk-map-room-grass,
+.desk-map-room-link:focus .desk-map-room-grass,
+.desk-map-room.is-current .desk-map-room-grass,
+.desk-map-room.is-passage-source .desk-map-room-grass,
+.desk-map-room-link.is-drop-target .desk-map-room-grass {
+  filter: saturate(1.16) brightness(1.05);
 }
 
 .desk-map-room-link[draggable="true"] {
@@ -1160,14 +1177,16 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   font-size: 0.78rem;
 }
 
-.desk-color-form {
+.desk-color-form,
+.desk-kind-form {
   display: inline-flex;
   align-items: end;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
 
-.desk-color-form label {
+.desk-color-form label,
+.desk-kind-form label {
   display: grid;
   gap: 0.22rem;
   color: var(--desk-muted);

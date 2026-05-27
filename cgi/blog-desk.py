@@ -127,6 +127,11 @@ def normalize_room_color(value: str | None, fallback: str) -> str:
     return fallback
 
 
+def normalize_room_kind(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return "outdoor" if text == "outdoor" else "indoor"
+
+
 def safe_task_slug(text: str) -> str:
     first = (text or "").splitlines()[0].strip()
     return slugify(first)[:48] or "task"
@@ -315,6 +320,7 @@ class DeskStore:
                 "title": room_title,
                 "visibility": "private",
                 "color": default_room_color(room_rel),
+                "kind": "indoor",
                 "created_at": iso_now(),
             })
         (room / ".tasks").mkdir(exist_ok=True)
@@ -331,6 +337,7 @@ class DeskStore:
                 if isinstance(data, dict):
                     data["title"] = str(data.get("title") or "").strip()
                     data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
+                    data["kind"] = normalize_room_kind(data.get("kind"))
                     return data
             except (OSError, json.JSONDecodeError):
                 pass
@@ -338,6 +345,7 @@ class DeskStore:
             "title": "Office" if room_rel == "" else humanize_slug(Path(room_rel).name),
             "visibility": "private",
             "color": default_room_color(room_rel),
+            "kind": "indoor",
         }
 
     def update_room_metadata(self, rel: str | None, updates: dict[str, object]) -> dict[str, object]:
@@ -349,6 +357,7 @@ class DeskStore:
         data["title"] = str(data.get("title") or self.room_title(room_rel)).strip()
         data["visibility"] = str(data.get("visibility") or "private")
         data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
+        data["kind"] = normalize_room_kind(data.get("kind"))
         if not str(data.get("created_at") or "").strip():
             data["created_at"] = iso_now()
         data["updated_at"] = iso_now()
@@ -367,6 +376,11 @@ class DeskStore:
         room_rel = self.normalize_room_rel(rel)
         data = self.room_metadata(room_rel)
         return normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
+
+    def room_kind(self, rel: str | None) -> str:
+        room_rel = self.normalize_room_rel(rel)
+        data = self.room_metadata(room_rel)
+        return normalize_room_kind(data.get("kind"))
 
     def all_room_rels(self) -> list[str]:
         self.setup()
@@ -563,6 +577,7 @@ class DeskStore:
             "parent_path": parent_path,
             "depth": depth,
             "color": self.room_color(room_rel),
+            "kind": self.room_kind(room_rel),
             "url": self.room_url(room_rel),
             "overworld_url": self.overworld_url(room_rel),
             "task_count": len(tasks),
@@ -667,6 +682,17 @@ class DeskStore:
             raise DeskError("bad_room_color", "Room color must be a six-digit hex color.")
         self.update_room_metadata(room, {"color": clean})
         self.append_log("set-room-color", {"room": room, "color": clean})
+        payload = self.state(room, threshold)
+        payload["updated_room"] = self.room_summary(room, threshold)
+        return payload
+
+    def set_room_kind(self, room_rel: str, kind: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if room and not self.room_dir(room).is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        clean = normalize_room_kind(kind)
+        self.update_room_metadata(room, {"kind": clean})
+        self.append_log("set-room-kind", {"room": room, "kind": clean})
         payload = self.state(room, threshold)
         payload["updated_room"] = self.room_summary(room, threshold)
         return payload
@@ -1086,6 +1112,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "set-soonness",
         "set-status",
         "set-room-color",
+        "set-room-kind",
         "set-room-title",
         "rebuild-indexes",
         "migrate-metadata",
@@ -1118,6 +1145,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_status(env("BLOG_DESK_ONLINE_STATUS"), threshold)
         if action == "set-room-color":
             return store.set_room_color(room, env("BLOG_DESK_ROOM_COLOR"), threshold)
+        if action == "set-room-kind":
+            return store.set_room_kind(room, env("BLOG_DESK_ROOM_KIND"), threshold)
         if action == "set-room-title":
             return store.set_room_title(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
         if action == "search":

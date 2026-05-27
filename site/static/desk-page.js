@@ -286,6 +286,14 @@
     return palette[hashText(room && room.path) % palette.length];
   }
 
+  function roomKind(room) {
+    return String(room && room.kind || '').trim().toLowerCase() === 'outdoor' ? 'outdoor' : 'indoor';
+  }
+
+  function roomIsOutdoor(room) {
+    return roomKind(room) === 'outdoor';
+  }
+
   function roomPathParent(path) {
     var text = String(path || '');
     if (!text || text.indexOf('/') === -1) {
@@ -358,6 +366,7 @@
       if (!roomPath || layout[roomPath]) return;
       var parentPath = layout[String(room.parent_path || '')] ? String(room.parent_path || '') : '';
       var anchors = anchorsFor(parentPath, roomPath);
+      var candidates = [];
       for (var a = 0; a < anchors.length; a += 1) {
         var anchor = anchors[a];
         var sideOrder = rotateDirections(anchor.seed);
@@ -367,26 +376,57 @@
           var y = anchor.point.y + side.dy;
           var key = x + ',' + y;
           if (occupied[key] == null) {
-            layout[roomPath] = { x: x, y: y, attachedTo: anchor.path };
-            occupied[key] = roomPath;
-            doors.push({ from: anchor.path, to: roomPath, side: side.name });
-            return;
+            candidates.push({ anchor: anchor, side: side, x: x, y: y, key: key, order: candidates.length });
           }
         }
       }
+      if (!candidates.length) return;
+      if (roomIsOutdoor(room)) {
+        candidates.sort(function (left, right) {
+          function openSides(candidate) {
+            return directions.filter(function (direction) {
+              return occupied[(candidate.x + direction.dx) + ',' + (candidate.y + direction.dy)] == null;
+            }).length;
+          }
+          var openDelta = openSides(right) - openSides(left);
+          if (openDelta) return openDelta;
+          return left.order - right.order;
+        });
+      }
+      var chosen = candidates[0];
+      layout[roomPath] = { x: chosen.x, y: chosen.y, attachedTo: chosen.anchor.path };
+      occupied[chosen.key] = roomPath;
+      doors.push({ from: chosen.anchor.path, to: roomPath, side: chosen.side.name });
     }
 
     rooms.forEach(placeRoom);
     return { cells: layout, doors: doors, occupied: occupied };
   }
 
-  function exteriorSides(point, occupied) {
+  function exteriorSides(point, occupied, roomsByPath, room) {
+    if (roomIsOutdoor(room)) {
+      return { north: true, east: true, south: true, west: true };
+    }
+    function isExterior(dx, dy) {
+      var neighbor = occupied[(point.x + dx) + ',' + (point.y + dy)];
+      return neighbor == null || roomIsOutdoor(roomsByPath[neighbor]);
+    }
     return {
-      north: occupied[point.x + ',' + (point.y - 1)] == null,
-      east: occupied[(point.x + 1) + ',' + point.y] == null,
-      south: occupied[point.x + ',' + (point.y + 1)] == null,
-      west: occupied[(point.x - 1) + ',' + point.y] == null
+      north: isExterior(0, -1),
+      east: isExterior(1, 0),
+      south: isExterior(0, 1),
+      west: isExterior(-1, 0)
     };
+  }
+
+  function renderOutdoorEdgeFades(x, y, w, h, exterior) {
+    var band = 18;
+    var pieces = [];
+    if (exterior.north) pieces.push('<rect class="desk-map-outdoor-fade" x="' + x + '" y="' + y + '" width="' + w + '" height="' + band + '" fill="url(#desk-map-grass-fade-n)"></rect>');
+    if (exterior.east) pieces.push('<rect class="desk-map-outdoor-fade" x="' + (x + w - band) + '" y="' + y + '" width="' + band + '" height="' + h + '" fill="url(#desk-map-grass-fade-e)"></rect>');
+    if (exterior.south) pieces.push('<rect class="desk-map-outdoor-fade" x="' + x + '" y="' + (y + h - band) + '" width="' + w + '" height="' + band + '" fill="url(#desk-map-grass-fade-s)"></rect>');
+    if (exterior.west) pieces.push('<rect class="desk-map-outdoor-fade" x="' + x + '" y="' + y + '" width="' + band + '" height="' + h + '" fill="url(#desk-map-grass-fade-w)"></rect>');
+    return pieces.join('');
   }
 
   function architecturalRoomPath(x, y, w, h, exterior, seed) {
@@ -465,12 +505,16 @@
     var viewY = minY * unitH - pad;
     var viewW = (maxX - minX + 1) * unitW + pad * 2;
     var viewH = (maxY - minY + 1) * unitH + pad * 2;
+    var roomsByPath = {};
+    rooms.forEach(function (item) {
+      roomsByPath[String(item.path || '')] = item;
+    });
     var roomShapes = rooms.map(function (room) {
       var path = String(room.path || '');
       var point = layout[path];
       var x = point.x * unitW;
       var y = point.y * unitH;
-      var exterior = exteriorSides(point, plan.occupied);
+      var exterior = exteriorSides(point, plan.occupied, roomsByPath, room);
       var isCurrent = path === String(state.currentRoom || '');
       var isPassageSource = state.secretPassageSource === path;
       var title = room.title || 'Room';
@@ -478,9 +522,12 @@
       var countLabel = visibleCount > 0
         ? '<text class="desk-map-room-meta" x="' + (x + unitW / 2) + '" y="' + (y + 70) + '" text-anchor="middle">+' + escapeHtml(visibleCount) + '</text>'
         : '';
+      var roomShape = roomIsOutdoor(room)
+        ? '<rect class="desk-map-room-grass" x="' + x + '" y="' + y + '" width="' + unitW + '" height="' + unitH + '" rx="10"></rect>' + renderOutdoorEdgeFades(x, y, unitW, unitH, exterior)
+        : '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>';
       return '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="true"' : '') + ' class="desk-map-room-link">' +
-        '<g class="desk-map-room' + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
-        '<path class="desk-map-room-shape" d="' + architecturalRoomPath(x, y, unitW, unitH, exterior, path || 'office') + '"></path>' +
+        '<g class="desk-map-room' + (roomIsOutdoor(room) ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
+        roomShape +
         '<text x="' + (x + unitW / 2) + '" y="' + (y + 47) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
         countLabel +
         '</g>' +
@@ -495,7 +542,7 @@
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + '" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
-      '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern></defs>' +
+      '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern><pattern id="desk-map-grass" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#9fb876"></rect><path d="M4 28C8 18 10 14 16 8M18 31C21 22 25 15 31 8M2 10C8 8 14 6 22 3M9 33C14 29 20 26 29 24" stroke="rgba(50,91,45,0.2)" stroke-width="1.2" fill="none" stroke-linecap="round"></path><circle cx="8" cy="12" r="1" fill="rgba(238,226,160,0.28)"></circle><circle cx="27" cy="19" r="0.9" fill="rgba(238,226,160,0.24)"></circle></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       passageShapes + roomShapes + doorShapes +
@@ -519,6 +566,7 @@
       '<button type="submit" class="desk-btn subtle">Save</button>' +
       '</form>' +
       '<div class="desk-panel-tools">' +
+      '<form class="desk-kind-form" data-desk-form="room-kind"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span class="desk-visually-hidden">Room Type</span><select class="desk-select" name="room_kind" aria-label="Room type"><option value="indoor"' + (roomKind(room) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(room) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><button type="submit" class="desk-btn subtle">Set</button></form>' +
       '<form class="desk-color-form" data-desk-form="room-color"><input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '"><label><span class="desk-visually-hidden">Room Color</span><input class="desk-color-input" type="color" name="room_color" value="' + escapeHtml(roomColor(room)) + '" aria-label="Room color"></label><button type="submit" class="desk-btn subtle">Set</button></form></div>' +
       '<div class="desk-room-actions">' +
       '<a class="desk-link-btn" href="/desk" data-desk-room-link="">Office</a>' +
@@ -1178,6 +1226,13 @@
       api('set-room-color', {
         room: formValue(form, 'room'),
         room_color: formValue(form, 'room_color')
+      }).then(refreshFrom);
+      return;
+    }
+    if (type === 'room-kind') {
+      api('set-room-kind', {
+        room: formValue(form, 'room'),
+        room_kind: formValue(form, 'room_kind')
       }).then(refreshFrom);
       return;
     }

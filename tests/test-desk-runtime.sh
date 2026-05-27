@@ -220,7 +220,7 @@ assert_dir_exists "$SITE_DATA/desk/office" 'Desk creates the real office folder'
 assert_file_exists "$SITE_DATA/desk/office/.room.json" 'Desk writes minimal office metadata'
 
 create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Writing Room")")
-assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$"))' 'Desk creates a real room folder with a map color'
+assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$")) and .created_room.kind == "indoor"' 'Desk creates a real room folder with an indoor default and map color'
 assert_dir_exists "$SITE_DATA/desk/office/writing-room" 'created room is a filesystem folder'
 
 nested_json=$(run_desk "action=create-room&$auth_query&room=writing-room&room_title=$(urlencode "Inner Study")")
@@ -230,6 +230,10 @@ assert_dir_exists "$SITE_DATA/desk/office/writing-room/inner-study" 'nested room
 color_json=$(run_desk "action=set-room-color&$auth_query&room=writing-room&room_color=$(urlencode "#4f8fbd")")
 assert_jq "$color_json" '.success == true and .updated_room.color == "#4f8fbd"' 'Desk stores room-local map highlight color'
 assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"color": "#4f8fbd"' 'room metadata persists settable room color'
+
+kind_json=$(run_desk "action=set-room-kind&$auth_query&room=writing-room&room_kind=outdoor")
+assert_jq "$kind_json" '.success == true and .updated_room.kind == "outdoor" and .current_room.kind == "outdoor"' 'Desk stores room-local indoor/outdoor kind'
+assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"kind": "outdoor"' 'room metadata persists outdoor room kind'
 
 rename_json=$(run_desk "action=set-room-title&$auth_query&room=writing-room&room_title=$(urlencode "Library Desk")")
 assert_jq "$rename_json" '.success == true and .current_room.path == "writing-room" and .current_room.title == "Library Desk" and .updated_room.title == "Library Desk"' 'Desk lets the owner edit the current room name without moving the folder'
@@ -324,7 +328,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-map-counts1' 'Desk page cache-busts map count label assets'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-outdoor-rooms1' 'Desk page cache-busts outdoor room rendering assets'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -368,6 +372,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-link:
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '@keyframes desk-map-unfurl' 'Desk map opens with an unfurling animation'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '@keyframes desk-map-furl' 'Desk map closes with a furling animation'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-shape' 'Desk map draws rooms as architectural floorplan shapes'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-grass' 'Desk map draws outdoor spaces with a grassy texture fill'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-outdoor-fade' 'Desk map fades outdoor space edges into parchment'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'fill: #ead49a;' 'Desk map uses a neutral default room color'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-door' 'Desk map marks doors on shared room walls'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-wall-adornment' 'Desk map omits short exterior corner tick marks'
@@ -384,7 +390,13 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function storageGet(key)' 'Desk frontend tolerates restricted localStorage'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "storageGet('session_token')" 'Desk auth reads session token through guarded storage'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mansionLayout(rooms)' 'Desk frontend lays out rooms as a deterministic mansion map'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomKind(room)' 'Desk frontend distinguishes indoor and outdoor rooms'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomIsOutdoor(room)' 'Desk frontend can test outdoor room metadata'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'openSides(right) - openSides(left)' 'Desk map positioning prefers exterior exposure for outdoor rooms'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function architecturalRoomPath' 'Desk map rooms form the building outline with architectural wall shapes'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderOutdoorEdgeFades' 'Desk map renders subtle fades on outdoor room edges'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-grass' 'Desk map defines a subtle abstract grass texture'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-room-grass' 'Desk map renders outdoor spaces without exterior wall strokes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderDoor' 'Desk map renders doors between rooms that share a side'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '(y - 20)' 'Desk map renders doors as two-way arcs across shared walls'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'roomWallAdornments' 'Desk map no longer draws corner wall adornment ticks'
@@ -411,11 +423,13 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-mode="compo
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'M4 20h4l10-10-4-4L4 16v4zM13 7l4 4' 'Desk compose launcher uses the public site compose SVG icon'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" 'translateY(-0.22rem)' 'Desk dock launchers do not move on hover or focus'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-kind'" 'Desk frontend can set rooms indoor or outdoor'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-title'" 'Desk frontend can rename the current room'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('move-room'" 'Desk frontend moves rooms by dropping one room on another'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('create-secret-passage'" 'Desk frontend creates two-way secret passages between rooms'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "draggable=\"true\"" 'Desk map rooms are draggable for room moves'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-form="room-title"' 'Desk room view exposes a compact room-name editor'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-form="room-kind"' 'Desk room view exposes an indoor/outdoor selector'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Connects from' 'Desk create-room parent selector uses connection wording'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "join(' → ')" 'Desk room path labels use arrow separators instead of slashes'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-room-path' 'Desk removes the room breadcrumb styling'
