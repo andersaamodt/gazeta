@@ -335,7 +335,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-stage[data-desk-stage-mode="todo"] {
-  grid-template-columns: minmax(0, min(46rem, 52vw)) clamp(13rem, 19vw, 15.5rem);
+  grid-template-columns: 1fr;
   align-items: center;
   justify-content: center;
   gap: clamp(0.7rem, 1.4vw, 1.1rem);
@@ -1010,9 +1010,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-stage[data-desk-stage-mode="todo"] .desk-map-panel {
-  width: 100%;
-  height: 76%;
+  width: min(100%, 76rem);
+  height: 88%;
   align-self: center;
+  justify-self: center;
+  animation: none;
 }
 
 .desk-map-scroll {
@@ -1270,7 +1272,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+  position: absolute;
+  top: 50%;
+  right: clamp(1rem, 3vw, 2.2rem);
   width: 100%;
+  width: clamp(13rem, 19vw, 15.5rem);
   max-height: min(38rem, 88%);
   min-height: min(27rem, 88%);
   align-self: center;
@@ -1282,18 +1288,19 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   color: #1c253c;
   box-shadow: 0 24px 54px rgba(0, 0, 0, 0.32);
   transform-origin: right bottom;
+  transform: translateY(-50%);
   animation: desk-todo-unfold-from-corner 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes desk-todo-unfold-from-corner {
   from {
     opacity: 0;
-    transform: translate(clamp(5rem, 22vw, 14rem), clamp(8rem, 42vh, 20rem)) rotateZ(-6deg) rotateY(-10deg) scale(0.18);
+    transform: translate(clamp(5rem, 22vw, 14rem), calc(-50% + clamp(8rem, 42vh, 20rem))) rotateZ(-6deg) rotateY(-10deg) scale(0.18);
   }
 
   to {
     opacity: 1;
-    transform: translateX(0) rotateY(0);
+    transform: translate(0, -50%) rotateY(0);
   }
 }
 
@@ -1793,15 +1800,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   }
 
   .desk-stage[data-desk-stage-mode="todo"] {
-    display: block;
+    display: grid;
   }
 
   .desk-stage[data-desk-stage-mode="todo"] .desk-map-panel {
-    height: 100%;
+    height: 88%;
   }
 
   .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
-    position: absolute;
     top: 50%;
     right: 0.85rem;
     width: min(20rem, 82%);
