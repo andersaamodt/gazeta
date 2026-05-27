@@ -666,13 +666,56 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-status-btn {
-  padding: 0.38rem 0.58rem;
-  font-size: 0.86rem;
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
 }
 
-.desk-status-btn.is-active {
+.desk-status-btn svg {
+  display: block;
+  width: 1.14rem;
+  height: 1.14rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.desk-status-btn.is-active,
+.desk-status-btn[aria-pressed="true"] {
   color: #10131f;
   background: var(--desk-gold);
+}
+
+.desk-menu-settings {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.28rem;
+  padding: 0.58rem;
+  border-top: 1px solid rgba(240, 213, 138, 0.2);
+}
+
+.desk-menu-heading {
+  margin: 0;
+  border: 0;
+  color: var(--desk-gold-soft);
+  -webkit-text-fill-color: currentColor;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.desk-menu-settings .desk-threshold-control {
+  gap: 0.28rem;
+}
+
+.desk-menu-settings .desk-select {
+  min-width: 5rem;
 }
 
 .desk-workbench {
@@ -1449,8 +1492,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   }
 
   .desk-status-btn {
-    padding: 0.32rem 0.42rem;
-    font-size: 0.78rem;
+    width: 2rem;
+    height: 2rem;
   }
 
   .desk-threshold-control .desk-select {

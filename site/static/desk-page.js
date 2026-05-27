@@ -163,11 +163,22 @@
     return 'Quiet';
   }
 
+  function statusIcon(value) {
+    if (value === 'available') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.8"></circle><path d="M12 8.2v3.8l2.7 2.1"></path></svg>';
+    }
+    if (value === 'offline') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17.2c2.9 2.4 7.2 2.2 9.8-.4 2.6-2.6 2.8-6.9.4-9.8-1.7 4.3-5.9 8.5-10.2 10.2z"></path></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 10.5a3.8 3.8 0 0 1 7.6 0c0 4 1.7 4.6 1.7 4.6h-11s1.7-.6 1.7-4.6z"></path><path d="M10.8 18a1.6 1.6 0 0 0 2.4 0"></path><path d="M5.5 5.5l13 13"></path></svg>';
+  }
+
   function statusButtons(data) {
     var current = data && data.status && data.status.online_status ? data.status.online_status : 'quiet';
     return '<div class="desk-status" aria-label="Desk status">' +
       ['available', 'quiet', 'offline'].map(function (value) {
-        return '<button type="button" class="desk-status-btn' + (current === value ? ' is-active' : '') + '" data-desk-status="' + value + '">' + escapeHtml(statusLabel(value)) + '</button>';
+        var label = statusLabel(value);
+        return '<button type="button" class="desk-status-btn" data-desk-status="' + value + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" aria-pressed="' + (current === value ? 'true' : 'false') + '">' + statusIcon(value) + '</button>';
       }).join('') +
       '</div>';
   }
@@ -178,11 +189,28 @@
       values.push(state.threshold);
       values.sort(function (left, right) { return left - right; });
     }
-    return '<label class="desk-threshold-control"><span class="desk-visually-hidden">Surface at</span><select class="desk-select" data-desk-threshold aria-label="Surface threshold">' +
+    return '<label class="desk-threshold-control"><span>Surface at</span><select class="desk-select" data-desk-threshold aria-label="Surface threshold">' +
       values.map(function (value) {
         return '<option value="' + value + '"' + (value === state.threshold ? ' selected' : '') + '>+' + value + '</option>';
       }).join('') +
       '</select></label>';
+  }
+
+  function syncDeskMenuSettings() {
+    var panel = document.getElementById('nav-menu-panel');
+    if (!panel) {
+      return;
+    }
+    var existing = panel.querySelector('[data-desk-menu-settings]');
+    var html = '<div class="desk-menu-settings" data-desk-menu-settings role="none">' +
+      '<h2 class="desk-menu-heading">Settings</h2>' +
+      thresholdControl() +
+      '</div>';
+    if (existing) {
+      existing.outerHTML = html;
+      return;
+    }
+    panel.insertAdjacentHTML('beforeend', html);
   }
 
   function humanizePathPart(value) {
@@ -618,7 +646,7 @@
   }
 
   function renderChromeControls(data) {
-    return '<div class="desk-chrome-controls">' + statusButtons(data) + thresholdControl() + '</div>';
+    return '<div class="desk-chrome-controls">' + statusButtons(data) + '</div>';
   }
 
   function renderDeskSurface(data) {
@@ -839,6 +867,7 @@
     root.innerHTML = renderChromeControls(data) +
       '<div data-desk-message></div>' +
       renderStage(data);
+    syncDeskMenuSettings();
     markPageReady();
   }
 
@@ -1084,7 +1113,7 @@
     window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
   });
 
-  root.addEventListener('change', function (event) {
+  document.addEventListener('change', function (event) {
     var threshold = event.target.closest('[data-desk-threshold]');
     if (!threshold) {
       return;
