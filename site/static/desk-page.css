@@ -440,8 +440,6 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   background: transparent !important;
   box-shadow: none;
   color: #5a3714;
-  transform: rotate(-17deg);
-  transform-origin: 28% 78%;
 }
 
 .desk-mode-map.is-active {
@@ -471,7 +469,6 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-mode-map.is-active {
   background: transparent !important;
   box-shadow: none;
-  transform: rotate(-17deg);
 }
 
 .desk-mode-map .desk-map-scroll-icon {
@@ -484,11 +481,30 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   overflow: visible;
   fill: none;
   stroke-width: 2.1;
+  transform-origin: 18% 88%;
+  transition: transform 180ms cubic-bezier(0.2, 0.82, 0.18, 1);
+}
+
+.desk-mode-map:hover .desk-map-scroll-icon,
+.desk-mode-map:focus-visible .desk-map-scroll-icon,
+.desk-mode-map.is-active .desk-map-scroll-icon {
+  transform: scale(1.14);
+}
+
+.desk-map-scroll-art {
+  transform: rotate(-17deg);
+  transform-origin: 26px 54px;
 }
 
 .desk-map-scroll-shadow {
   stroke: rgba(47, 24, 6, 0.24);
   stroke-width: 9;
+}
+
+.desk-map-scroll-back {
+  fill: #c38b32;
+  stroke: #6f4d1e;
+  stroke-width: 2.2;
 }
 
 .desk-map-scroll-body {
@@ -501,6 +517,12 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   fill: none;
   stroke: #6f4d1e;
   stroke-width: 4.2;
+}
+
+.desk-map-scroll-curl {
+  fill: none;
+  stroke: #7c5522;
+  stroke-width: 3.2;
 }
 
 .desk-map-scroll-grid {
@@ -535,11 +557,21 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   place-items: center;
   width: 5rem;
   height: 5rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .desk-mode-todo.is-active {
   width: 6rem;
   height: 6rem;
+}
+
+.desk-mode-todo:hover,
+.desk-mode-todo:focus-visible,
+.desk-mode-todo.is-active {
+  background: transparent;
+  box-shadow: none;
 }
 
 .desk-mode-compose .desk-compose-quill-icon {
