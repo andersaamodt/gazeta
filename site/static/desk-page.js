@@ -1164,7 +1164,9 @@
   }
 
   function loadState() {
-    root.innerHTML = '<div class="desk-loading"><h1>Desk</h1></div>';
+    if (!state.data) {
+      root.innerHTML = '<div class="desk-loading"><h1>Desk</h1></div>';
+    }
     api('state', { room: state.currentRoom }).then(function (data) {
       if (!data || data.success === false) {
         showGate(data && data.error ? data.error : 'Desk is not available.');
