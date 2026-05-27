@@ -955,6 +955,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-room-link[draggable="true"] {
   cursor: grab;
+  touch-action: none;
 }
 
 .desk-map-room-link.is-dragging {

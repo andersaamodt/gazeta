@@ -18,6 +18,7 @@
     createRoomOpen: false,
     threshold: thresholdFromStorage(),
     showSurfacedOnly: false,
+    pointerRoomDrag: null,
     inFlight: 0
   };
   var modeCloseTimer = null;
@@ -1005,6 +1006,51 @@
     return field ? field.value : '';
   }
 
+  function clearRoomDragClasses() {
+    root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
+      node.classList.remove('is-drop-target', 'is-dragging');
+    });
+  }
+
+  function roomDropTargetAt(x, y, sourceRoom) {
+    var node = document.elementFromPoint(x, y);
+    var target = node && node.closest ? node.closest('[data-desk-room-drop]') : null;
+    if (!target || !root.contains(target)) {
+      return null;
+    }
+    var targetRoom = target.getAttribute('data-desk-room-drop') || '';
+    if (targetRoom === sourceRoom) {
+      return null;
+    }
+    return target;
+  }
+
+  function markRoomDropTarget(target) {
+    root.querySelectorAll('.desk-map-room-link.is-drop-target').forEach(function (node) {
+      if (node !== target) {
+        node.classList.remove('is-drop-target');
+      }
+    });
+    if (target) {
+      target.classList.add('is-drop-target');
+    }
+  }
+
+  function finishRoomMove(sourceRoom, targetRoom) {
+    if (!sourceRoom || sourceRoom === targetRoom) {
+      return;
+    }
+    api('move-room', {
+      room: sourceRoom,
+      target_room: targetRoom
+    }).then(function (data) {
+      refreshFrom(data);
+      if (data && data.success !== false && data.moved_room) {
+        showMessage('Room moved.', false);
+      }
+    });
+  }
+
   root.addEventListener('click', function (event) {
     var login = event.target.closest('[data-desk-login]');
     if (login) {
@@ -1155,6 +1201,75 @@
     roomLink.classList.add('is-dragging');
   });
 
+  root.addEventListener('pointerdown', function (event) {
+    var roomLink = event.target.closest('[data-desk-room-link]');
+    if (!roomLink || state.secretPassageSource !== null) {
+      return;
+    }
+    var room = roomLink.getAttribute('data-desk-room-link') || '';
+    if (!room || event.button !== 0) {
+      return;
+    }
+    state.pointerRoomDrag = {
+      room: room,
+      link: roomLink,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false
+    };
+  });
+
+  root.addEventListener('pointermove', function (event) {
+    var drag = state.pointerRoomDrag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    var moved = Math.abs(event.clientX - drag.startX) + Math.abs(event.clientY - drag.startY);
+    if (!drag.active && moved < 8) {
+      return;
+    }
+    event.preventDefault();
+    if (!drag.active) {
+      drag.active = true;
+      state.draggedRoom = drag.room;
+      state.suppressRoomClick = true;
+      drag.link.classList.add('is-dragging');
+      if (drag.link.setPointerCapture) {
+        try {
+          drag.link.setPointerCapture(event.pointerId);
+        } catch (_err) {
+          // Pointer capture may fail for SVG links in older browsers.
+        }
+      }
+    }
+    markRoomDropTarget(roomDropTargetAt(event.clientX, event.clientY, drag.room));
+  });
+
+  root.addEventListener('pointerup', function (event) {
+    var drag = state.pointerRoomDrag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    var target = drag.active ? roomDropTargetAt(event.clientX, event.clientY, drag.room) : null;
+    var targetRoom = target ? target.getAttribute('data-desk-room-drop') || '' : '';
+    if (drag.active) {
+      event.preventDefault();
+      finishRoomMove(drag.room, targetRoom);
+    }
+    clearRoomDragClasses();
+    state.pointerRoomDrag = null;
+    state.draggedRoom = '';
+    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+  });
+
+  root.addEventListener('pointercancel', function () {
+    clearRoomDragClasses();
+    state.pointerRoomDrag = null;
+    state.draggedRoom = '';
+    window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
+  });
+
   root.addEventListener('dragover', function (event) {
     var target = event.target.closest('[data-desk-room-drop]');
     if (!target || !state.draggedRoom) {
@@ -1180,26 +1295,14 @@
     }
     event.preventDefault();
     var targetRoom = target.getAttribute('data-desk-room-drop') || '';
-    root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
-      node.classList.remove('is-drop-target', 'is-dragging');
-    });
+    clearRoomDragClasses();
     state.draggedRoom = '';
     window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
-    api('move-room', {
-      room: source,
-      target_room: targetRoom
-    }).then(function (data) {
-      refreshFrom(data);
-      if (data && data.success !== false && data.moved_room) {
-        showMessage('Room moved.', false);
-      }
-    });
+    finishRoomMove(source, targetRoom);
   });
 
   root.addEventListener('dragend', function () {
-    root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
-      node.classList.remove('is-drop-target', 'is-dragging');
-    });
+    clearRoomDragClasses();
     state.draggedRoom = '';
     window.setTimeout(function () { state.suppressRoomClick = false; }, 0);
   });
