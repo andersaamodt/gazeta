@@ -19,6 +19,7 @@
   var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var THEME_CACHE_KEY = 'wizardry_blog_theme_v1';
   var PLUGINS_CACHE_KEY = 'wizardry_plugins_v1';
+  var SITE_NOTIFICATION_CURSOR_PREFIX = 'wizardry_site_notification_cursor_v1:';
   var NOSTR_PAGE_PREFETCH_EXCLUDE = {
     about: true,
     blog: true,
@@ -31,6 +32,7 @@
   var state = {
     currentTheme: 'archmage',
     isAuthenticated: false,
+    isAdmin: false,
     plugins: {
       nostr_support: true,
       nostr_login: true,
@@ -74,6 +76,11 @@
     videoCallNotification: null,
     videoCallCurrentCallId: '',
     videoCallAllowAdminCalls: false,
+    siteNotificationTimer: 0,
+    siteNotificationHost: null,
+    secureChatNotificationCursor: 0,
+    seenSiteNotifications: {},
+    requestedNotificationPermission: false,
     activeAuthTab: 'register',
     activeAuthFlavor: 'desktop'
   };
@@ -1401,6 +1408,139 @@
     return next;
   }
 
+  function isDeskSurface() {
+    try {
+      var host = String(window.location.hostname || '').toLowerCase();
+      var path = String(window.location.pathname || '').replace(/\/+$/, '');
+      return !!document.getElementById('desk-page-root') || host.indexOf('desk.') === 0 || path === '/desk' || path.indexOf('/desk/') === 0;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function siteNotificationCursorKey(kind) {
+    var host = 'site';
+    try {
+      host = String(window.location.hostname || 'site').toLowerCase();
+    } catch (_err) {
+      host = 'site';
+    }
+    return SITE_NOTIFICATION_CURSOR_PREFIX + host + ':' + String(kind || 'default');
+  }
+
+  function notificationTag(kind, id) {
+    return String(kind || 'site') + ':' + String(id || '');
+  }
+
+  function ensureSiteNotificationHost() {
+    if (state.siteNotificationHost && state.siteNotificationHost.parentNode) {
+      return state.siteNotificationHost;
+    }
+    var host = document.getElementById('site-notification-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'site-notification-host';
+      host.setAttribute('aria-live', 'polite');
+      document.body.appendChild(host);
+    }
+    state.siteNotificationHost = host;
+    return host;
+  }
+
+  function ensureSiteNotificationStyles() {
+    if (document.getElementById('site-notification-styles')) {
+      return;
+    }
+    var style = document.createElement('style');
+    style.id = 'site-notification-styles';
+    style.textContent = ''
+      + '#site-notification-host{position:fixed;right:16px;bottom:18px;z-index:2147482600;display:flex;flex-direction:column;gap:10px;max-width:min(23rem,calc(100vw - 32px));pointer-events:none;}'
+      + '.site-notification-card{background:#fffaf1;color:#241b12;border:1px solid rgba(98,75,42,.28);box-shadow:0 16px 40px rgba(36,27,18,.2);border-radius:10px;padding:12px;font-family:Georgia,Times New Roman,serif;pointer-events:auto;}'
+      + '.site-notification-card strong{display:block;font-size:1rem;line-height:1.2;margin:0 0 5px;}'
+      + '.site-notification-card p{margin:0;color:#5c4b36;font-size:.92rem;line-height:1.35;}'
+      + '.site-notification-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px;}'
+      + '.site-notification-card button,.site-notification-card a{appearance:none;border:1px solid rgba(98,75,42,.36);background:#f5ead7;color:#241b12;border-radius:999px;padding:7px 12px;font:inherit;font-size:.92rem;line-height:1;text-decoration:none;cursor:pointer;}'
+      + '.site-notification-card .primary{background:#2f63be;border-color:#2b56a4;color:white;}';
+    document.head.appendChild(style);
+  }
+
+  function maybeRequestSiteNotificationPermission() {
+    if (!isDeskSurface() || state.requestedNotificationPermission || !('Notification' in window)) {
+      return;
+    }
+    if (window.Notification.permission !== 'default' || typeof window.Notification.requestPermission !== 'function') {
+      return;
+    }
+    state.requestedNotificationPermission = true;
+    var requestOnce = function () {
+      document.removeEventListener('pointerdown', requestOnce, true);
+      document.removeEventListener('keydown', requestOnce, true);
+      window.Notification.requestPermission().catch(function () {});
+    };
+    document.addEventListener('pointerdown', requestOnce, true);
+    document.addEventListener('keydown', requestOnce, true);
+  }
+
+  function showBrowserNotification(title, body, tag, url) {
+    if (!('Notification' in window) || window.Notification.permission !== 'granted') {
+      return;
+    }
+    try {
+      var note = new window.Notification(title, {
+        body: body,
+        tag: tag,
+        renotify: false
+      });
+      note.onclick = function () {
+        try {
+          window.focus();
+        } catch (_err) {}
+        if (url) {
+          window.location.href = url;
+        }
+        note.close();
+      };
+    } catch (_err) {
+      // Browser notifications are optional; the in-page card is authoritative.
+    }
+  }
+
+  function showSiteNotification(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var id = notificationTag(opts.kind || 'site', opts.id || opts.title || Date.now());
+    if (state.seenSiteNotifications[id]) {
+      return;
+    }
+    state.seenSiteNotifications[id] = true;
+    ensureSiteNotificationStyles();
+    var host = ensureSiteNotificationHost();
+    var card = document.createElement('section');
+    card.className = 'site-notification-card';
+    card.setAttribute('role', opts.assertive ? 'alertdialog' : 'status');
+    card.setAttribute('aria-live', opts.assertive ? 'assertive' : 'polite');
+    var primaryUrl = String(opts.url || '');
+    card.innerHTML = ''
+      + '<strong>' + escapeHtml(opts.title || 'Site notification') + '</strong>'
+      + '<p>' + escapeHtml(opts.body || '') + '</p>'
+      + '<div class="site-notification-actions">'
+      + (primaryUrl ? '<a class="primary" href="' + escapeHtml(primaryUrl) + '">' + escapeHtml(opts.actionLabel || 'Open') + '</a>' : '')
+      + '<button type="button" data-site-notification-dismiss="true">Dismiss</button>'
+      + '</div>';
+    card.addEventListener('click', function (event) {
+      var dismiss = event.target instanceof Element ? event.target.closest('[data-site-notification-dismiss]') : null;
+      if (dismiss && card.parentNode) {
+        card.parentNode.removeChild(card);
+      }
+    });
+    host.appendChild(card);
+    window.setTimeout(function () {
+      if (card.parentNode) {
+        card.parentNode.removeChild(card);
+      }
+    }, opts.assertive ? 45000 : 18000);
+    showBrowserNotification(opts.title || 'Site notification', opts.body || '', id, primaryUrl);
+  }
+
   function ensureVideoCallNotificationStyles() {
     if (document.getElementById('video-call-notification-styles')) {
       return;
@@ -1440,8 +1580,9 @@
       hideVideoCallNotification(callId);
       var roomId = String(data.room_id || (data.call && data.call.room_id) || '').trim();
       var roomPassword = String(data.room_password || (data.call && data.call.room_password) || '').trim();
+      var callMode = String((data.call && data.call.call_mode) || 'video') === 'voice' ? 'voice' : 'video';
       if (roomId) {
-        var url = '/contact?room=' + encodeURIComponent(roomId) + '&auto_start=1&mode=video';
+        var url = '/contact?room=' + encodeURIComponent(roomId) + '&auto_start=1&mode=' + encodeURIComponent(callMode);
         if (callId) {
           url += '&call_id=' + encodeURIComponent(callId);
         }
@@ -1482,9 +1623,13 @@
     node.setAttribute('aria-live', 'assertive');
     var isSelfTest = !!call.self_test;
     var isOwnerCall = !!call.owner_call;
+    var callMode = String(call.call_mode || 'video') === 'voice' ? 'voice' : 'video';
+    var callKind = callMode === 'voice' ? 'voice call' : 'video call';
+    var title = isOwnerCall ? ('Private ' + callKind + ' for Anders') : (isSelfTest ? ('Self-test ' + callKind) : ('Incoming ' + callKind));
+    var body = isOwnerCall ? escapeHtml(call.from_admin_name || 'Website visitor') + ' is waiting in a private 1:1 room.' : (isSelfTest ? 'You started a test call to this signed-in account.' : escapeHtml(call.from_admin_name || call.from_admin || 'Site admin') + ' is calling you on this site.');
     node.innerHTML = ''
-      + '<strong>' + (isOwnerCall ? 'Private call for Anders' : (isSelfTest ? 'Self-test video call' : 'Incoming video call')) + '</strong>'
-      + '<p>' + (isOwnerCall ? escapeHtml(call.from_admin_name || 'Website visitor') + ' is waiting in a private 1:1 room.' : (isSelfTest ? 'You started a test call to this signed-in account.' : escapeHtml(call.from_admin_name || call.from_admin || 'Site admin') + ' is calling you on this site.')) + '</p>'
+      + '<strong>' + escapeHtml(title) + '</strong>'
+      + '<p>' + body + '</p>'
       + '<div class="video-call-notification-actions">'
       + '<button type="button" class="primary" data-video-call-action="answer">Answer</button>'
       + '<button type="button" data-video-call-action="decline">Decline</button>'
@@ -1504,6 +1649,7 @@
     document.body.appendChild(node);
     state.videoCallNotification = node;
     state.videoCallCurrentCallId = callId;
+    showBrowserNotification(title, String(node.querySelector('p') && node.querySelector('p').textContent || ''), notificationTag('video-call', callId), '');
   }
 
   function pollVideoCallPresence() {
@@ -1550,10 +1696,68 @@
     }
     pollVideoCallPresence();
     state.videoCallPresenceTimer = window.setInterval(function () {
-      if (document.visibilityState !== 'hidden') {
-        pollVideoCallPresence();
-      }
+      pollVideoCallPresence();
     }, 12000);
+  }
+
+  function pollSecureChatAdminNotifications() {
+    if (!state.isAuthenticated || !state.isAdmin || !hasStoredSessionToken() || !getCsrfToken()) {
+      return Promise.resolve(false);
+    }
+    var cursor = Number(state.secureChatNotificationCursor || localStorage.getItem(siteNotificationCursorKey('secure-chat')) || 0);
+    if (!isFinite(cursor) || cursor < 0) {
+      cursor = 0;
+    }
+    return postForm('/cgi/blog-secure-chat-admin', videoCallAuthPayload({
+      action: 'notification-status',
+      since_seq: String(cursor)
+    })).then(function (data) {
+      if (!data || !data.success) {
+        return false;
+      }
+      var nextCursor = Number(data.cursor_seq || cursor || 0);
+      var messages = Array.isArray(data.messages) ? data.messages : [];
+      if (cursor > 0) {
+        messages.forEach(function (message) {
+          var seq = Number(message && message.seq || 0);
+          if (seq <= cursor) {
+            return;
+          }
+          var text = compact(message && message.text || '');
+          showSiteNotification({
+            kind: 'secure-chat',
+            id: message && (message.id || message.seq),
+            title: 'Private message',
+            body: (message && message.contact_name ? String(message.contact_name) + ': ' : '') + (text || 'New Secure Chat message'),
+            url: '/admin#account',
+            actionLabel: 'Open',
+            assertive: false
+          });
+        });
+      }
+      if (nextCursor > cursor) {
+        state.secureChatNotificationCursor = nextCursor;
+        localStorage.setItem(siteNotificationCursorKey('secure-chat'), String(nextCursor));
+      }
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function syncSiteNotificationPolling() {
+    if (state.siteNotificationTimer) {
+      window.clearInterval(state.siteNotificationTimer);
+      state.siteNotificationTimer = 0;
+    }
+    if (!state.isAuthenticated || !state.isAdmin || !hasStoredSessionToken()) {
+      return;
+    }
+    maybeRequestSiteNotificationPermission();
+    pollSecureChatAdminNotifications();
+    state.siteNotificationTimer = window.setInterval(function () {
+      pollSecureChatAdminNotifications();
+    }, isDeskSurface() ? 15000 : 30000);
   }
 
   function encodeBase64Utf8(text) {
@@ -1897,6 +2101,7 @@
   function applyLoggedInUi(isLoggedIn, isAdmin, username) {
     var displayName = String(username || '');
     state.isAuthenticated = !!isLoggedIn;
+    state.isAdmin = !!isAdmin;
 
     // Always reset both auth presentations first so they remain mutually exclusive.
     if (els.loginSplit) {
@@ -1948,6 +2153,7 @@
       }
       scheduleNavOverflowMenuSync();
       syncVideoCallPresencePolling();
+      syncSiteNotificationPolling();
       return;
     }
 
@@ -1965,6 +2171,7 @@
     syncPluginAuthUi();
     scheduleNavOverflowMenuSync();
     syncVideoCallPresencePolling();
+    syncSiteNotificationPolling();
   }
 
   function updateLogoutOtherSessionsUi(countRaw) {

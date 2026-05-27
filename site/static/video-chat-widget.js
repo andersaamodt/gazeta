@@ -1614,6 +1614,7 @@
     }
     if (self.state.ownerCallPending) {
       body.set('owner_call', 'true');
+      body.set('call_mode', self.state.callMode === 'voice' ? 'voice' : 'video');
       body.set('display_name', self.options.displayName || 'Website visitor');
     }
     if (self.state.publicRoomPending) {
