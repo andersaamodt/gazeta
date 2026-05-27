@@ -332,6 +332,8 @@ assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-secret-passages1' 'Des
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '#123f3a' 'Desk ambient background avoids green lower-right tint'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '#2c315e' 'Desk ambient background avoids purple lower-right tint'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'url("/static/textures/desk-mahogany.jpg")' 'Desk uses a dark mahogany desktop rectangle texture'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body.desk-page-body #title-block-header' 'Desk hides the generated page title block'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'html.desk-page-document' 'Desk clamps the document itself to one viewport'

@@ -171,14 +171,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-shell[data-room-tone="1"]::before {
   background:
-    radial-gradient(circle at 72% 16%, rgba(35, 90, 73, 0.22), transparent 22rem),
-    linear-gradient(145deg, #041838, #072b58 54%, #123f3a);
+    radial-gradient(circle at 72% 16%, rgba(20, 78, 183, 0.2), transparent 22rem),
+    linear-gradient(145deg, #041838, #072b58 54%, #0a3b8f);
 }
 
 .desk-shell[data-room-tone="2"]::before {
   background:
-    radial-gradient(circle at 76% 20%, rgba(215, 173, 77, 0.18), transparent 23rem),
-    linear-gradient(145deg, #031433, #0b2d6d 58%, #2c315e);
+    radial-gradient(circle at 76% 20%, rgba(70, 126, 214, 0.16), transparent 23rem),
+    linear-gradient(145deg, #031433, #0b2d6d 58%, #10398a);
 }
 
 .desk-loading,
