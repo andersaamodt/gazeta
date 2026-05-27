@@ -905,11 +905,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-map-room {
   transform-box: fill-box;
   transform-origin: center;
-  transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+  transition: filter 180ms ease, opacity 180ms ease;
 }
 
 .desk-map-room-shape {
-  fill: #ead49a;
+  fill: url(#desk-map-room-paper);
   stroke: rgba(43, 27, 12, 0.76);
   stroke-width: 4;
   stroke-linejoin: round;
@@ -937,20 +937,11 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   opacity: 0.78;
 }
 
-.desk-map-room-link:hover .desk-map-room,
-.desk-map-room-link:focus .desk-map-room,
-.desk-map-room.is-current,
-.desk-map-room.is-passage-source,
-.desk-map-room-link.is-drop-target .desk-map-room {
-  transform: scale(1.045);
-}
-
 .desk-map-room-link:hover .desk-map-room-shape,
 .desk-map-room-link:focus .desk-map-room-shape,
 .desk-map-room.is-current .desk-map-room-shape,
 .desk-map-room.is-passage-source .desk-map-room-shape,
 .desk-map-room-link.is-drop-target .desk-map-room-shape {
-  fill: color-mix(in srgb, var(--room-color), #ffe9a8 26%);
   stroke: var(--room-color);
 }
 
@@ -996,10 +987,20 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-map-secret-passage {
   fill: none;
-  stroke: rgba(238, 200, 89, 0.86);
-  stroke-width: 5;
+  stroke: #6f4d1e;
+  stroke-width: 6;
   stroke-linecap: round;
-  stroke-dasharray: 7 12;
+  stroke-dasharray: 2 13;
+  pointer-events: none;
+}
+
+.desk-map-secret-door-label {
+  fill: #6f4d1e;
+  stroke: #dcc17f;
+  stroke-width: 2.8;
+  paint-order: stroke;
+  font-size: 16px;
+  font-weight: 900;
   pointer-events: none;
 }
 
@@ -1018,6 +1019,26 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
   font-size: 1.5rem;
   cursor: pointer;
+}
+
+.desk-map-passage-btn svg {
+  display: block;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: auto;
+  fill: rgba(240, 213, 138, 0.16);
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 37% 50%;
+  transition: transform 220ms cubic-bezier(0.2, 0.82, 0.18, 1);
+}
+
+.desk-map-passage-btn:hover svg,
+.desk-map-passage-btn:focus-visible svg,
+.desk-map-passage-btn.is-active svg {
+  transform: rotate(-22deg);
 }
 
 .desk-map-passage-btn:hover,

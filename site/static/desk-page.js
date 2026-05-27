@@ -460,6 +460,17 @@
     return path + ' Z';
   }
 
+  function renderDoorGlyph(x, y, side, isSecret) {
+    var secretClass = isSecret ? ' desk-map-secret-door' : '';
+    var label = isSecret
+      ? '<text class="desk-map-secret-door-label" x="' + x + '" y="' + (y + 5) + '" text-anchor="middle"' + (side === 'north' || side === 'south' ? ' transform="rotate(90 ' + x + ' ' + y + ')"' : '') + '>S</text>'
+      : '';
+    if (side === 'east' || side === 'west') {
+      return '<g class="desk-map-door' + secretClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path>' + label + '</g>';
+    }
+    return '<g class="desk-map-door' + secretClass + '"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path>' + label + '</g>';
+  }
+
   function renderDoor(door, layout, unitW, unitH) {
     var from = layout[door.from];
     var to = layout[door.to];
@@ -469,24 +480,50 @@
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      return '<g class="desk-map-door"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - 20) + ' V ' + (y + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + 20) + ' L ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + (y + 20) + '"></path><path class="desk-map-door-swing" d="M ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + (y + 20) + ' Q ' + (x + (door.side === 'east' ? -32 : 32)) + ' ' + y + ' ' + x + ' ' + (y - 12) + '"></path></g>';
+      return renderDoorGlyph(x, y, door.side, false);
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    return '<g class="desk-map-door"><path class="desk-map-door-gap" d="M ' + (x - 20) + ' ' + y + ' H ' + (x + 20) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 20) + ' ' + y + ' L ' + (x - 20) + ' ' + (y + (door.side === 'south' ? -32 : 32)) + '"></path><path class="desk-map-door-swing" d="M ' + (x - 20) + ' ' + (y + (door.side === 'south' ? -32 : 32)) + ' Q ' + x + ' ' + (y + (door.side === 'south' ? -32 : 32)) + ' ' + (x + 12) + ' ' + y + '"></path></g>';
+    return renderDoorGlyph(x, y, door.side, false);
   }
 
-  function renderSecretPassage(passage, layout, unitW, unitH) {
+  function secretDoorPoint(room, target, unitW, unitH) {
+    var centerX = room.x * unitW + unitW / 2;
+    var centerY = room.y * unitH + unitH / 2;
+    var targetX = target.x * unitW + unitW / 2;
+    var targetY = target.y * unitH + unitH / 2;
+    var dx = targetX - centerX;
+    var dy = targetY - centerY;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return {
+        x: centerX + (dx >= 0 ? unitW / 2 : -unitW / 2),
+        y: centerY,
+        side: dx >= 0 ? 'east' : 'west'
+      };
+    }
+    return {
+      x: centerX,
+      y: centerY + (dy >= 0 ? unitH / 2 : -unitH / 2),
+      side: dy >= 0 ? 'south' : 'north'
+    };
+  }
+
+  function renderSecretPassageParts(passage, layout, unitW, unitH) {
     var from = layout[String(passage.from || '')];
     var to = layout[String(passage.to || '')];
-    if (!from || !to) return '';
-    var x1 = from.x * unitW + unitW / 2;
-    var y1 = from.y * unitH + unitH / 2;
-    var x2 = to.x * unitW + unitW / 2;
-    var y2 = to.y * unitH + unitH / 2;
+    if (!from || !to) return { line: '', doors: '' };
+    var first = secretDoorPoint(from, to, unitW, unitH);
+    var second = secretDoorPoint(to, from, unitW, unitH);
+    var x1 = first.x;
+    var y1 = first.y;
+    var x2 = second.x;
+    var y2 = second.y;
     var cx = (x1 + x2) / 2;
     var cy = (y1 + y2) / 2 - 42;
-    return '<path class="desk-map-secret-passage" d="M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '"></path>';
+    return {
+      line: '<path class="desk-map-secret-passage" d="M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '"></path>',
+      doors: renderDoorGlyph(first.x, first.y, first.side, true) + renderDoorGlyph(second.x, second.y, second.side, true)
+    };
   }
 
   function renderMap(data) {
@@ -536,19 +573,21 @@
     var doorShapes = plan.doors.map(function (door) {
       return renderDoor(door, layout, unitW, unitH);
     }).join('');
-    var passageShapes = ((data && data.secret_passages) || []).map(function (passage) {
-      return renderSecretPassage(passage, layout, unitW, unitH);
-    }).join('');
+    var passageParts = ((data && data.secret_passages) || []).map(function (passage) {
+      return renderSecretPassageParts(passage, layout, unitW, unitH);
+    });
+    var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
+    var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + '" aria-label="Room map">' +
       '<div class="desk-map-scroll" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" viewBox="' + viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
-      '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern><pattern id="desk-map-grass" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#9fb876"></rect><path d="M4 28C8 18 10 14 16 8M18 31C21 22 25 15 31 8M2 10C8 8 14 6 22 3M9 33C14 29 20 26 29 24" stroke="rgba(50,91,45,0.2)" stroke-width="1.2" fill="none" stroke-linecap="round"></path><circle cx="8" cy="12" r="1" fill="rgba(238,226,160,0.28)"></circle><circle cx="27" cy="19" r="0.9" fill="rgba(238,226,160,0.24)"></circle></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
+      '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#e7c996"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(122,66,37,0.2)" stroke-width="1" fill="none"></path><path d="M2 24C8 20 15 24 26 18M4 8C12 5 18 9 25 4" stroke="rgba(151,76,48,0.09)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#9fb876"></rect><path d="M4 28C8 18 10 14 16 8M18 31C21 22 25 15 31 8M2 10C8 8 14 6 22 3M9 33C14 29 20 26 29 24" stroke="rgba(50,91,45,0.2)" stroke-width="1.2" fill="none" stroke-linecap="round"></path><circle cx="8" cy="12" r="1" fill="rgba(238,226,160,0.28)"></circle><circle cx="27" cy="19" r="0.9" fill="rgba(238,226,160,0.24)"></circle></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
-      passageShapes + roomShapes + doorShapes +
+      passageShapes + roomShapes + doorShapes + passageDoorShapes +
       '</svg>' +
       '</div>' +
-      '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage">⌁</button>' +
+      '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-passage-book-cover" d="M7 4.6h8.2c1 0 1.8.8 1.8 1.8v12.9H8.4A2.4 2.4 0 0 1 6 16.9V5.6c0-.6.4-1 1-1z"></path><path d="M8.4 19.3A2.4 2.4 0 0 1 6 16.9c0-1.3 1.1-2.4 2.4-2.4H17"></path><path d="M9.4 7.5h4.8"></path></svg></button>' +
       '<button type="button" class="desk-map-create-btn" data-desk-create-room-open aria-label="Create room">+</button>' +
       (state.createRoomOpen ? renderCreateRoomModal(data) : '') +
       '</section>';
