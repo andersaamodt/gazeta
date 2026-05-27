@@ -28,6 +28,7 @@
   var modeCloseTimer = null;
   var presenceTimer = null;
   var suppressRoomClickTimer = null;
+  var messageTimer = null;
 
   function markPageReady() {
     var gate = window.__wizardryHydration;
@@ -235,11 +236,25 @@
     if (!slot) {
       return;
     }
+    if (messageTimer) {
+      window.clearTimeout(messageTimer);
+      messageTimer = null;
+    }
     if (!message) {
       slot.innerHTML = '';
       return;
     }
     slot.innerHTML = '<p class="desk-message' + (isError ? ' is-error' : '') + '">' + escapeHtml(message) + '</p>';
+    messageTimer = window.setTimeout(function () {
+      var messageNode = slot.querySelector('.desk-message');
+      if (messageNode) {
+        messageNode.classList.add('is-leaving');
+      }
+      messageTimer = window.setTimeout(function () {
+        slot.innerHTML = '';
+        messageTimer = null;
+      }, 220);
+    }, isError ? 6500 : 3600);
   }
 
   function roomTone(room) {

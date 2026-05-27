@@ -329,7 +329,7 @@ assert_file_exists "$SITE_DATA/desk/office/writing-room/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-todo-drag1' 'Desk page cache-busts todo and room drag refinements'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-toast-dismiss1' 'Desk page cache-busts toast dismissal refinements'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-gold' 'Desk stylesheet carries gold theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-blue-deep' 'Desk stylesheet carries deep blue theme tokens'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'linear-gradient(135deg, #031433 0%, #061c49 44%, #08275e 100%)' 'Desk page background remains deep blue'
@@ -405,6 +405,9 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function statusToolti
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-tooltip="' 'Desk status icons expose visible custom tooltips'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-status-btn::after' 'Desk status icon tooltips render without relying only on native title'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'is already selected.' 'Desk clicking the current status gives feedback instead of feeling broken'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'messageTimer = window.setTimeout' 'Desk toasts dismiss themselves after a short delay'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-message.is-leaving' 'Desk toasts fade out before disappearing'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background: #061c49;' 'Desk toasts use an opaque deep-blue panel instead of transparent wood'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-menu-settings' 'Desk injects private settings into the top-right user menu'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-menu-heading' 'Desk menu settings have a visible section heading'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/cgi/blog-desk' 'Desk frontend talks to private API'
