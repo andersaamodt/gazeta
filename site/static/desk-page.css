@@ -536,21 +536,19 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   right: 0;
   display: grid;
   place-items: center;
-  width: 5rem;
-  height: 5rem;
+  width: 4.05rem;
+  height: 4.55rem;
+  padding: 0;
   border: 0;
+  border-radius: 0;
+  appearance: none;
   background: transparent;
   box-shadow: none;
 }
 
-.desk-mode-todo.is-active {
-  width: 6rem;
-  height: 6rem;
-}
-
 .desk-mode-todo:hover,
-.desk-mode-todo:focus-visible,
-.desk-mode-todo.is-active {
+.desk-mode-todo:focus-visible {
+  border: 0;
   background: transparent;
   box-shadow: none;
 }
@@ -564,8 +562,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-mode-todo .desk-checklist-notebook-icon {
-  width: 3.25rem;
-  height: 3.65rem;
+  width: 4.05rem;
+  height: 4.55rem;
   margin: 0;
   overflow: visible;
   color: var(--desk-gold-soft);
@@ -1283,14 +1281,14 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     #f8f2d8;
   color: #1c253c;
   box-shadow: 0 24px 54px rgba(0, 0, 0, 0.32);
-  transform-origin: right center;
-  animation: desk-todo-slide-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: right bottom;
+  animation: desk-todo-unfold-from-corner 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes desk-todo-slide-in {
+@keyframes desk-todo-unfold-from-corner {
   from {
     opacity: 0;
-    transform: translateX(2rem) rotateY(-7deg);
+    transform: translate(clamp(5rem, 22vw, 14rem), clamp(8rem, 42vh, 20rem)) rotateZ(-6deg) rotateY(-10deg) scale(0.18);
   }
 
   to {
@@ -1813,13 +1811,13 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   }
 
   .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
-    animation-name: desk-todo-slide-in-small;
+    animation-name: desk-todo-unfold-from-corner-small;
   }
 
-  @keyframes desk-todo-slide-in-small {
+  @keyframes desk-todo-unfold-from-corner-small {
     from {
       opacity: 0;
-      transform: translate(2rem, -50%) rotateY(-7deg);
+      transform: translate(calc(100% + 1.2rem), calc(50% + 4.2rem)) rotateZ(-5deg) rotateY(-8deg) scale(0.2);
     }
 
     to {
@@ -1865,14 +1863,17 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
     height: 4.3rem;
   }
 
-  .desk-mode-map,
   .desk-mode-todo {
+    width: 3.7rem;
+    height: 4.15rem;
+  }
+
+  .desk-mode-map {
     width: 4.6rem;
     height: 4.1rem;
   }
 
-  .desk-mode-map.is-active,
-  .desk-mode-todo.is-active {
+  .desk-mode-map.is-active {
     width: 5.2rem;
     height: 4.7rem;
   }
