@@ -813,7 +813,8 @@
     var visibleTasks = state.showSurfacedOnly ? tasks.filter(taskIsSurfaced) : tasks;
     var done = data.done_tasks || [];
     var addExpanded = state.todoAddOpen === true;
-    return '<section class="desk-mode-panel desk-todo-panel" aria-label="Checklist">' +
+    var todoLines = Math.max(8, Math.min(24, 3 + visibleTasks.length + (done.length ? done.length + 1 : 1) + (addExpanded ? 1 : 0)));
+    return '<section class="desk-mode-panel desk-todo-panel" aria-label="Checklist" style="--todo-lines:' + escapeHtml(todoLines) + '">' +
       '<form class="desk-room-name-form" data-desk-form="room-title">' +
       '<input type="hidden" name="room" value="' + escapeHtml(room.path || '') + '">' +
       '<label><span class="desk-visually-hidden">Room name</span><input class="desk-input desk-room-name-input" name="room_title" value="' + escapeHtml(room.title || 'Room') + '" maxlength="96" aria-label="Room name" required></label>' +
@@ -833,7 +834,7 @@
       '<div class="desk-todo-add-inline">' +
       '<div class="desk-todo-add-reveal" ' + (addExpanded ? '' : 'aria-hidden="true"') + '>' +
       '<div class="desk-todo-add-fields">' +
-      '<textarea class="desk-textarea desk-todo-add-textarea" name="task_text" rows="2" placeholder="New task" aria-label="New task"' + (addExpanded ? ' required' : '') + '></textarea>' +
+      '<textarea class="desk-textarea desk-todo-add-textarea" name="task_text" rows="1" wrap="off" placeholder="New task" aria-label="New task"' + (addExpanded ? ' required' : '') + '></textarea>' +
       '<button type="submit" class="desk-btn primary desk-todo-add-submit">Add</button>' +
       '</div>' +
       '</div>' +
@@ -1445,6 +1446,18 @@
     }
   });
 
+  root.addEventListener('keydown', function (event) {
+    var todoInput = event.target.closest('.desk-todo-add-textarea');
+    if (!todoInput || event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    event.preventDefault();
+    var form = todoInput.closest('[data-desk-form="room-add"]');
+    if (form && typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+    }
+  });
+
   root.addEventListener('dragstart', function (event) {
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (!roomLink) {
@@ -1602,9 +1615,6 @@
       }).then(function (data) {
         if (data && data.success !== false) {
           form.reset();
-          if (type === 'room-add') {
-            state.todoAddOpen = false;
-          }
         }
         if (type === 'capture' && data && data.success !== false && destinationRoom !== originRoom) {
           var destinationTitle = data.current_room && data.current_room.title ? data.current_room.title : 'room';
@@ -1616,6 +1626,15 @@
           return;
         }
         refreshFrom(data);
+        if (type === 'room-add' && data && data.success !== false) {
+          state.todoAddOpen = true;
+          window.setTimeout(function () {
+            var field = root.querySelector('.desk-todo-add-textarea');
+            if (field && typeof field.focus === 'function') {
+              field.focus();
+            }
+          }, 0);
+        }
       });
       return;
     }

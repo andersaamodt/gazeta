@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Desk Patrick Hand";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/fonts/patrick-hand-latin-400-normal.woff2") format("woff2");
+}
+
 :root {
   --desk-ink: #f5f0df;
   --desk-muted: #c9c0a7;
@@ -12,6 +20,8 @@
   --desk-panel: rgba(4, 20, 51, 0.78);
   --desk-panel-strong: rgba(5, 25, 63, 0.94);
   --desk-shadow: 0 18px 54px rgba(0, 0, 0, 0.34);
+  --desk-notebook-line: 1.9rem;
+  --desk-notebook-margin: 2.6rem;
 }
 
 html.desk-page-document,
@@ -339,6 +349,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   align-items: center;
   justify-content: center;
   gap: clamp(0.7rem, 1.4vw, 1.1rem);
+  width: min(96rem, calc(100vw - clamp(0.7rem, 1.4vw, 1.6rem)));
 }
 
 .desk-mode-panel {
@@ -1272,20 +1283,26 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+  --todo-lines: 8;
   position: absolute;
   top: 50%;
   right: clamp(1rem, 3vw, 2.2rem);
-  width: 100%;
-  width: clamp(13rem, 19vw, 15.5rem);
-  max-height: min(38rem, 88%);
-  min-height: min(27rem, 88%);
+  width: clamp(24rem, calc(20rem + var(--todo-lines) * 0.55rem), min(33rem, calc(100% - 2rem)));
+  height: clamp(20rem, calc((var(--todo-lines) + 3) * var(--desk-notebook-line)), min(46.7rem, 88%));
+  max-height: min(46.7rem, 88%);
+  min-height: 20rem;
   align-self: center;
+  padding: 0;
   border-color: rgba(68, 104, 173, 0.46);
   background:
-    linear-gradient(90deg, transparent 0 2.55rem, rgba(210, 88, 74, 0.45) 2.6rem, transparent 2.66rem),
-    repeating-linear-gradient(to bottom, #f8f2d8 0 1.78rem, rgba(69, 110, 185, 0.34) 1.82rem, #f8f2d8 1.9rem),
+    linear-gradient(90deg, transparent 0 calc(var(--desk-notebook-margin) - 0.06rem), rgba(210, 88, 74, 0.45) var(--desk-notebook-margin), transparent calc(var(--desk-notebook-margin) + 0.06rem)),
+    repeating-linear-gradient(to bottom, #f8f2d8 0 calc(var(--desk-notebook-line) - 0.08rem), rgba(69, 110, 185, 0.34) calc(var(--desk-notebook-line) - 0.04rem), #f8f2d8 var(--desk-notebook-line)),
     #f8f2d8;
   color: #1c253c;
+  font-family: "Desk Patrick Hand", "Bradley Hand", "Comic Sans MS", cursive;
+  font-size: 1.08rem;
+  line-height: var(--desk-notebook-line);
+  overflow-y: auto;
   box-shadow: 0 24px 54px rgba(0, 0, 0, 0.32);
   transform-origin: right bottom;
   transform: translateY(-50%);
@@ -1348,13 +1365,22 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   display: none;
 }
 
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-empty,
+.desk-stage[data-desk-stage-mode="todo"] .desk-done-list {
+  margin: 0 0 0 var(--desk-notebook-margin);
+  color: rgba(28, 37, 60, 0.56);
+  font: inherit;
+  line-height: var(--desk-notebook-line);
+}
+
 .desk-room-name-form {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  gap: 0.42rem;
-  width: fit-content;
-  max-width: calc(100% - 2.75rem);
-  margin: 0 0 0.45rem 2.9rem;
+  gap: 0.36rem;
+  width: calc(100% - var(--desk-notebook-margin) - 0.55rem);
+  height: var(--desk-notebook-line);
+  margin: 0 0 0 var(--desk-notebook-margin);
 }
 
 .desk-room-name-form label {
@@ -1362,25 +1388,41 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 }
 
 .desk-room-name-input {
-  width: min(14rem, 46vw);
-  min-width: 7rem;
-  padding-block: 0.34rem;
+  width: 100%;
+  min-width: 0;
+  height: var(--desk-notebook-line);
+  padding: 0;
   color: #18233b;
-  background: rgba(255, 255, 255, 0.42);
-  border-color: rgba(69, 110, 185, 0.34);
-  font-weight: 800;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  font-weight: 400;
+  line-height: var(--desk-notebook-line);
+}
+
+.desk-room-name-form .desk-btn {
+  min-height: 0;
+  height: calc(var(--desk-notebook-line) - 0.34rem);
+  padding: 0 0.4rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .desk-todo-add {
-  margin: 0 0 0.55rem 2.55rem;
+  height: var(--desk-notebook-line);
+  margin: 0 0 0 var(--desk-notebook-margin);
 }
 
 .desk-todo-add-inline {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.36rem;
+  height: var(--desk-notebook-line);
   padding-right: 0.28rem;
+  flex-wrap: nowrap;
 }
 
 .desk-todo-add-toggle {
@@ -1397,7 +1439,8 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   background: rgba(255, 255, 255, 0.36);
   color: #144eb7;
   font-size: 1.2rem;
-  font-weight: 800;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
@@ -1415,6 +1458,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   height: 1em;
   line-height: 1;
   transform: rotate(0deg);
+  transition: transform 180ms ease;
 }
 
 .desk-todo-add.is-expanded .desk-todo-add-toggle-icon {
@@ -1448,32 +1492,44 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-todo-add-fields {
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.36rem;
   min-width: 0;
+  height: var(--desk-notebook-line);
+  flex-wrap: nowrap;
 }
 
 .desk-todo-add-textarea {
-  flex: 1 1 14rem;
-  min-width: min(100%, 10rem);
-  min-height: 2.1rem;
-  max-height: 5.4rem;
-  padding: 0.35rem 0.55rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--desk-notebook-line);
+  min-height: var(--desk-notebook-line);
+  max-height: var(--desk-notebook-line);
+  padding: 0;
   color: #18233b;
-  background: rgba(255, 255, 255, 0.34);
-  border-color: rgba(69, 110, 185, 0.34);
-  resize: vertical;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  line-height: var(--desk-notebook-line);
+  resize: none;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .desk-todo-add-submit {
   flex: 0 0 auto;
-  min-height: 2.1rem;
-  padding: 0.35rem 0.68rem;
+  min-height: 0;
+  height: calc(var(--desk-notebook-line) - 0.34rem);
+  padding: 0 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .desk-notebook-list {
   gap: 0;
-  margin-left: 2.55rem;
+  margin-left: var(--desk-notebook-margin);
   margin-right: 0.28rem;
   min-width: 0;
 }
@@ -1481,14 +1537,17 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 .desk-notebook-task {
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: 0.42rem;
+  gap: 0.36rem;
   min-width: 0;
-  min-height: 1.9rem;
-  padding: 0 0.35rem;
+  height: var(--desk-notebook-line);
+  min-height: var(--desk-notebook-line);
+  padding: 0 0.35rem 0 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #1c253c;
+  font: inherit;
+  line-height: var(--desk-notebook-line);
 }
 
 .desk-notebook-check {
@@ -1503,18 +1562,21 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-notebook-votes {
   color: #53648a;
-  font-size: 0.78rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: var(--desk-notebook-line);
 }
 
 .desk-notebook-btn {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.35rem;
+  height: 1.35rem;
   border: 0;
   border-radius: 50%;
   background: rgba(69, 110, 185, 0.13);
   color: #2d426f;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
 }
 
 .desk-color-form,
@@ -1678,7 +1740,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-task-list.desk-notebook-list {
   gap: 0;
-  margin-left: 2.55rem;
+  margin-left: var(--desk-notebook-margin);
   margin-right: 0.28rem;
   min-width: 0;
 }
@@ -1687,14 +1749,17 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: 0.42rem;
+  gap: 0.36rem;
   min-width: 0;
-  min-height: 1.9rem;
-  padding: 0 0.35rem;
+  height: var(--desk-notebook-line);
+  min-height: var(--desk-notebook-line);
+  padding: 0 0.35rem 0 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #1c253c;
+  font: inherit;
+  line-height: var(--desk-notebook-line);
 }
 
 .desk-notebook-check {
@@ -1709,18 +1774,21 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
 
 .desk-notebook-votes {
   color: #53648a;
-  font-size: 0.78rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: var(--desk-notebook-line);
 }
 
 .desk-notebook-btn {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.35rem;
+  height: 1.35rem;
   border: 0;
   border-radius: 50%;
   background: rgba(69, 110, 185, 0.13);
   color: #2d426f;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
 }
 
 .desk-soonness-form,
