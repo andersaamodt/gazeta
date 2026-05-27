@@ -430,6 +430,28 @@
     return pieces.join('');
   }
 
+  function renderGreenbelt(cells, unitW, unitH) {
+    if (!cells.length) return '';
+    var minX = Math.min.apply(null, cells.map(function (cell) { return cell.x; }));
+    var maxX = Math.max.apply(null, cells.map(function (cell) { return cell.x; }));
+    var minY = Math.min.apply(null, cells.map(function (cell) { return cell.y; }));
+    var maxY = Math.max.apply(null, cells.map(function (cell) { return cell.y; }));
+    var padX = unitW * 0.62;
+    var padY = unitH * 0.7;
+    var x = minX * unitW - padX;
+    var y = minY * unitH - padY;
+    var width = (maxX - minX + 1) * unitW + padX * 2;
+    var height = (maxY - minY + 1) * unitH + padY * 2;
+    var meadows = cells.map(function (cell) {
+      return '<ellipse class="desk-map-greenbelt-meadow" cx="' + (cell.x * unitW + unitW / 2) + '" cy="' + (cell.y * unitH + unitH / 2) + '" rx="' + (unitW * 0.76) + '" ry="' + (unitH * 0.72) + '"></ellipse>';
+    }).join('');
+    return '<g class="desk-map-greenbelt" aria-hidden="true">' +
+      '<rect class="desk-map-greenbelt-field" x="' + x + '" y="' + y + '" width="' + width + '" height="' + height + '" rx="' + (Math.min(unitW, unitH) * 0.72) + '"></rect>' +
+      meadows +
+      '<rect class="desk-map-greenbelt-wash" x="' + x + '" y="' + y + '" width="' + width + '" height="' + height + '" rx="' + (Math.min(unitW, unitH) * 0.72) + '"></rect>' +
+      '</g>';
+  }
+
   function architecturalRoomPath(x, y, w, h, exterior, seed) {
     var inset = 12 + (hashText(seed) % 5);
     var bay = 9 + (hashText(seed + ':bay') % 5);
@@ -547,6 +569,7 @@
     rooms.forEach(function (item) {
       roomsByPath[String(item.path || '')] = item;
     });
+    var greenbelt = renderGreenbelt(cells, unitW, unitH);
     var roomShapes = rooms.map(function (room) {
       var path = String(room.path || '');
       var point = layout[path];
@@ -585,7 +608,7 @@
       '<defs><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#e7c996"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(122,66,37,0.2)" stroke-width="1" fill="none"></path><path d="M2 24C8 20 15 24 26 18M4 8C12 5 18 9 25 4" stroke="rgba(151,76,48,0.09)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="#9fb876"></rect><path d="M4 28C8 18 10 14 16 8M18 31C21 22 25 15 31 8M2 10C8 8 14 6 22 3M9 33C14 29 20 26 29 24" stroke="rgba(50,91,45,0.2)" stroke-width="1.2" fill="none" stroke-linecap="round"></path><circle cx="8" cy="12" r="1" fill="rgba(238,226,160,0.28)"></circle><circle cx="27" cy="19" r="0.9" fill="rgba(238,226,160,0.24)"></circle></pattern><linearGradient id="desk-map-grass-fade-n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-e" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-s" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-grass-fade-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dcc17f" stop-opacity="0.82"></stop><stop offset="1" stop-color="#dcc17f" stop-opacity="0"></stop></linearGradient></defs>' +
       '<rect class="desk-map-parchment" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
       '<rect class="desk-map-grid" x="' + viewX + '" y="' + viewY + '" width="' + viewW + '" height="' + viewH + '"></rect>' +
-      passageShapes + roomShapes + doorShapes + passageDoorShapes +
+      greenbelt + passageShapes + roomShapes + doorShapes + passageDoorShapes +
       '</svg>' +
       '</div>' +
       '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-passage-book-cover" d="M7 4.6h8.2c1 0 1.8.8 1.8 1.8v12.9H8.4A2.4 2.4 0 0 1 6 16.9V5.6c0-.6.4-1 1-1z"></path><path d="M8.4 19.3A2.4 2.4 0 0 1 6 16.9c0-1.3 1.1-2.4 2.4-2.4H17"></path><path d="M9.4 7.5h4.8"></path></svg></button>' +

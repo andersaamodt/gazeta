@@ -1021,9 +1021,31 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-panel {
   stroke-linejoin: round;
 }
 
+.desk-map-greenbelt {
+  pointer-events: none;
+}
+
+.desk-map-greenbelt-field {
+  fill: url(#desk-map-grass);
+  opacity: 0.5;
+}
+
+.desk-map-greenbelt-meadow {
+  fill: url(#desk-map-grass);
+  opacity: 0.62;
+}
+
+.desk-map-greenbelt-wash {
+  fill: none;
+  stroke: rgba(220, 193, 127, 0.58);
+  stroke-width: 58;
+  opacity: 0.78;
+}
+
 .desk-map-room-grass {
   fill: url(#desk-map-grass);
   stroke: none;
+  opacity: 0.72;
 }
 
 .desk-map-outdoor-fade {
