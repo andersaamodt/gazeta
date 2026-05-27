@@ -107,8 +107,13 @@
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
     <a id="nav-menu-desk-link" class="nav-menu-item" href="/desk" role="menuitem">Desk</a>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
-    <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
-    <button id="nav-menu-logout" class="nav-menu-item nav-menu-item-danger" type="button" role="menuitem">Logout</button>
+    <div class="nav-menu-logout-row" id="nav-menu-logout-row">
+      <button id="nav-menu-logout" class="nav-menu-item nav-menu-item-danger" type="button" role="menuitem">Logout</button>
+      <button id="nav-menu-logout-more" class="nav-menu-logout-more" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More logout actions" title="More logout actions" style="display:none;"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
+      <div class="nav-menu-logout-submenu" id="nav-menu-logout-submenu" role="menu" hidden>
+        <button id="nav-menu-logout-everywhere" class="nav-menu-item" type="button" role="menuitem" style="display:none;">Log out other sessions</button>
+      </div>
+    </div>
   </div>
 </div>
 <div class="nav-login-split" id="nav-login-split" style="display:none;">
@@ -645,7 +650,7 @@
   </div>
 </div>
 
-<script defer src="/static/nav-auth.js?v=20260526-desk-notifications1"></script>
+<script defer src="/static/nav-auth.js?v=20260527-logout-overflow1"></script>
 <script defer src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

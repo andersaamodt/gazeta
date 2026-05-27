@@ -106,6 +106,8 @@
     navOverflowPanel: document.getElementById('nav-overflow-panel'),
     menuPrimaryLink: document.getElementById('nav-menu-primary-link'),
     menuLogoutBtn: document.getElementById('nav-menu-logout'),
+    menuLogoutMoreBtn: document.getElementById('nav-menu-logout-more'),
+    menuLogoutSubmenu: document.getElementById('nav-menu-logout-submenu'),
     menuLogoutEverywhereBtn: document.getElementById('nav-menu-logout-everywhere'),
     userName: document.getElementById('nav-user-name'),
 
@@ -2185,10 +2187,18 @@
     if (count < 1) {
       els.menuLogoutEverywhereBtn.style.display = 'none';
       els.menuLogoutEverywhereBtn.textContent = 'Log out other sessions';
+      if (els.menuLogoutMoreBtn) {
+        els.menuLogoutMoreBtn.style.display = 'none';
+        els.menuLogoutMoreBtn.setAttribute('aria-expanded', 'false');
+      }
+      closeLogoutSubmenu();
       return;
     }
     els.menuLogoutEverywhereBtn.style.display = 'block';
     els.menuLogoutEverywhereBtn.textContent = 'Log out other sessions (' + String(count) + ')';
+    if (els.menuLogoutMoreBtn) {
+      els.menuLogoutMoreBtn.style.display = 'inline-flex';
+    }
   }
 
   function checkAuth() {
@@ -2313,8 +2323,25 @@
     if (!els.menuPanel || !els.menuBtn) {
       return;
     }
+    closeLogoutSubmenu();
     els.menuPanel.hidden = true;
     els.menuBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openLogoutSubmenu() {
+    if (!els.menuLogoutSubmenu || !els.menuLogoutMoreBtn) {
+      return;
+    }
+    els.menuLogoutSubmenu.hidden = false;
+    els.menuLogoutMoreBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeLogoutSubmenu() {
+    if (!els.menuLogoutSubmenu || !els.menuLogoutMoreBtn) {
+      return;
+    }
+    els.menuLogoutSubmenu.hidden = true;
+    els.menuLogoutMoreBtn.setAttribute('aria-expanded', 'false');
   }
 
   function openLoginMenu() {
@@ -4241,6 +4268,18 @@
       });
     }
 
+    if (els.menuLogoutMoreBtn && els.menuLogoutSubmenu) {
+      els.menuLogoutMoreBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (els.menuLogoutSubmenu.hidden) {
+          openLogoutSubmenu();
+        } else {
+          closeLogoutSubmenu();
+        }
+      });
+    }
+
     if (els.menuLogoutEverywhereBtn) {
       els.menuLogoutEverywhereBtn.addEventListener('click', function () {
         closeUserMenu();
@@ -4264,6 +4303,8 @@
       }
       if (!els.userMenu.contains(event.target)) {
         closeUserMenu();
+      } else if (els.menuLogoutSubmenu && !els.menuLogoutSubmenu.hidden && !els.menuLogoutSubmenu.contains(event.target) && event.target !== els.menuLogoutMoreBtn && !(els.menuLogoutMoreBtn && els.menuLogoutMoreBtn.contains(event.target))) {
+        closeLogoutSubmenu();
       }
       if (els.loginSplit && els.loginMenu && !els.loginMenu.hidden && !els.loginSplit.contains(event.target)) {
         closeLoginMenu();
@@ -4282,6 +4323,10 @@
         closeLoginMenu();
       }
       if (event.key === 'Escape' && els.menuPanel && !els.menuPanel.hidden) {
+        if (els.menuLogoutSubmenu && !els.menuLogoutSubmenu.hidden) {
+          closeLogoutSubmenu();
+          return;
+        }
         closeUserMenu();
       }
       if (event.key === 'Escape' && els.navOverflowPanel && !els.navOverflowPanel.hidden) {
