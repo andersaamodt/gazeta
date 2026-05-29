@@ -1680,7 +1680,9 @@
       return path + ' Z';
     }).join(' ');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
+      '<path class="desk-map-greenbelt-outer-fade" d="' + contourPaths + '"></path>' +
       '<path class="desk-map-greenbelt-strip" d="' + contourPaths + '"></path>' +
+      '<path class="desk-map-greenbelt-core" d="' + contourPaths + '"></path>' +
       '</g>';
   }
 

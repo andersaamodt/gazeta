@@ -1289,16 +1289,31 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: none;
 }
 
-.desk-map-greenbelt-strip {
+.desk-map-greenbelt-outer-fade,
+.desk-map-greenbelt-strip,
+.desk-map-greenbelt-core {
   fill: none;
-  stroke: url(#desk-map-greenbelt-gradient);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+.desk-map-greenbelt-outer-fade {
+  stroke: #87936a;
+  stroke-width: 82;
+  opacity: 0.22;
+  filter: url(#desk-map-greenery-blur);
+}
+
 .desk-map-greenbelt-strip {
-  stroke-width: 44;
-  opacity: 0.84;
+  stroke: url(#desk-map-greenbelt-gradient);
+  stroke-width: 62;
+  opacity: 0.54;
+}
+
+.desk-map-greenbelt-core {
+  stroke: #87936a;
+  stroke-width: 34;
+  opacity: 0.72;
 }
 
 .desk-map-room-grass {
