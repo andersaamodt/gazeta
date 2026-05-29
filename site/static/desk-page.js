@@ -134,6 +134,24 @@
     return value;
   }
 
+  function applyComposePaperToDom() {
+    var paper = composePaperClass();
+    var sheet = root.querySelector('.desk-compose-sheet');
+    var textarea = root.querySelector('.desk-compose-textarea');
+    if (!sheet || !textarea) {
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+    sheet.className = 'desk-compose-sheet desk-compose-sheet-' + paper;
+    textarea.className = 'desk-textarea desk-compose-textarea desk-compose-textarea-' + paper;
+    root.querySelectorAll('[data-desk-compose-paper]').forEach(function (button) {
+      button.setAttribute('aria-pressed', button.getAttribute('data-desk-compose-paper') === paper ? 'true' : 'false');
+    });
+    applyDeskTooltips();
+  }
+
   function composePaperIcon(option) {
     var color = escapeHtml(option.color || '#f4f0df');
     var icon = String(option.icon || 'sheet');
@@ -3340,9 +3358,7 @@
     if (composePaperButton) {
       event.preventDefault();
       state.composePaper = composePaperButton.getAttribute('data-desk-compose-paper') || 'printer';
-      if (state.data) {
-        render(state.data);
-      }
+      applyComposePaperToDom();
       window.setTimeout(function () {
         var field = root.querySelector('.desk-compose-textarea');
         if (field && typeof field.focus === 'function') {
