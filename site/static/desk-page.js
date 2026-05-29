@@ -4595,6 +4595,9 @@
     if (mapSvg && state.mapZoomMode === 'room' && beginMapPan(event, mapSvg)) {
       return;
     }
+    if (state.mapZoomMode === 'room') {
+      return;
+    }
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (!roomLink || state.secretPassageSource !== null) {
       return;
