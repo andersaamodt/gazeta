@@ -33,6 +33,7 @@
     suppressComposeAnimation: false,
     secretPassageSource: null,
     lastEnteredDoor: null,
+    lastMapRoomTravel: null,
     createRoomOpen: false,
     todoAddOpen: false,
     composePaper: 'printer',
@@ -2927,6 +2928,11 @@
       from: state.currentRoom,
       to: clickedRoom
     };
+    state.lastMapRoomTravel = {
+      room: clickedRoom,
+      from: state.currentRoom,
+      at: Date.now()
+    };
     state.mapZoomMode = 'room';
     state.mapPanX = 0;
     state.mapPanY = 0;
@@ -4288,9 +4294,12 @@
     var roomPath = roomLink.getAttribute('data-desk-room-link') || '';
     state.mapRenameRoom = null;
     state.mapRenameValue = '';
-    if (roomPath === state.currentRoom) {
+    var recentTravel = state.lastMapRoomTravel;
+    var doubleClickedAfterTravel = Boolean(recentTravel && recentTravel.room === roomPath && recentTravel.from !== roomPath && Date.now() - recentTravel.at < 900);
+    if (roomPath === state.currentRoom && !doubleClickedAfterTravel) {
       return;
     }
+    state.lastMapRoomTravel = null;
     state.suppressTodoAnimation = false;
     state.suppressMapAnimation = true;
     var wasTodoOpen = state.mode === 'todo';
