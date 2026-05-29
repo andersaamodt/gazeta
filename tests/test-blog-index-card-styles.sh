@@ -29,6 +29,7 @@ assert_file_not_contains() {
 }
 
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'post-resize.js?v=20260529-blog-index-cleanup1' 'post resize cache buster fetches the blog index cleanup build'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/archmage.css?v=20260529-blog-tags-final2' 'theme cache buster fetches the blog tag recovery build'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" "TARGET_SELECTOR = '.post-single-item'" 'post resize behavior only targets single post islands'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/post-resize.js" "TARGET_SELECTOR = '.post-single-item, .blog-post-item" 'post resize behavior does not target blog index cards'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" "document.body.classList.remove('blog-post-resize-enabled')" 'post resize behavior clears stale resize mode on index pages'
