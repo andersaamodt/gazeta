@@ -593,6 +593,20 @@
     });
   }
 
+  function fadeRoomHoverForTravel(roomPath) {
+    var targetRoom = String(roomPath || '');
+    root.querySelectorAll('[data-desk-room-link]').forEach(function (node) {
+      if (node.getAttribute('data-desk-room-link') === targetRoom) {
+        node.classList.add('is-travel-fading');
+      }
+    });
+    root.querySelectorAll('.desk-map-room-hover-outline').forEach(function (node) {
+      if (node.getAttribute('data-desk-room-hover-outline') === targetRoom) {
+        node.classList.add('is-travel-fading');
+      }
+    });
+  }
+
   function storageGet(key) {
     try {
       if (!window.localStorage) {
@@ -2921,6 +2935,7 @@
       from: state.currentRoom,
       at: Date.now()
     };
+    fadeRoomHoverForTravel(clickedRoom);
     state.mapZoomMode = 'room';
     state.mapPanX = 0;
     state.mapPanY = 0;

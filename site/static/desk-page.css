@@ -1425,6 +1425,13 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: 0.28;
 }
 
+.desk-map-room-link.is-travel-fading .desk-map-room-hover-tint,
+.desk-map-room-link.is-travel-fading:hover .desk-map-room-hover-tint,
+.desk-map-room-link.is-travel-fading:focus .desk-map-room-hover-tint {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
 .desk-map-room-dim {
   --presence: 0;
   fill: rgba(44, 39, 32, 0.72);
@@ -1561,6 +1568,12 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke: var(--room-color);
   stroke-width: 7.8;
   transition: none;
+}
+
+.desk-map-room-hover-outline.is-travel-fading,
+.desk-map-room-hover-outline.is-hovered.is-travel-fading {
+  stroke: transparent;
+  transition: stroke 220ms ease;
 }
 
 .desk-map-door {
