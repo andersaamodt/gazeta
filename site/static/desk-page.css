@@ -353,7 +353,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-status-btn:hover,
 .desk-link-btn:hover {
   border-color: rgba(240, 213, 138, 0.66);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .desk-layout {
@@ -1032,7 +1032,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   background: rgba(3, 20, 51, 0.72);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24);
+  box-shadow: none;
   pointer-events: auto;
 }
 
@@ -2848,7 +2848,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border-radius: 11px;
   background: rgba(3, 18, 48, 0.78);
   border: 1px solid rgba(240, 213, 138, 0.3);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 .desk-compose-paper-option {
@@ -3807,27 +3807,45 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 #desk-page-root button,
+#desk-page-root input[type="button"],
+#desk-page-root input[type="submit"],
+#desk-page-root input[type="reset"],
+#desk-page-root [role="button"],
 #desk-page-root .desk-btn,
 #desk-page-root .desk-icon-btn,
 #desk-page-root .desk-link-btn,
+#desk-page-root .desk-mode-launch,
 body.desk-page-body nav.site-nav button,
 body:has(#desk-page-root) nav.site-nav button,
 body.desk-page-body nav.site-nav .btn-login,
 body:has(#desk-page-root) nav.site-nav .btn-login {
+  appearance: none !important;
+  -webkit-appearance: none !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
+  border-image: none !important;
   filter: none !important;
   text-shadow: none !important;
 }
 
 #desk-page-root button::before,
 #desk-page-root button::after,
+#desk-page-root input[type="button"]::before,
+#desk-page-root input[type="button"]::after,
+#desk-page-root input[type="submit"]::before,
+#desk-page-root input[type="submit"]::after,
+#desk-page-root input[type="reset"]::before,
+#desk-page-root input[type="reset"]::after,
+#desk-page-root [role="button"]::before,
+#desk-page-root [role="button"]::after,
 #desk-page-root .desk-btn::before,
 #desk-page-root .desk-btn::after,
 #desk-page-root .desk-icon-btn::before,
 #desk-page-root .desk-icon-btn::after,
 #desk-page-root .desk-link-btn::before,
 #desk-page-root .desk-link-btn::after,
+#desk-page-root .desk-mode-launch::before,
+#desk-page-root .desk-mode-launch::after,
 body.desk-page-body nav.site-nav button::before,
 body.desk-page-body nav.site-nav button::after,
 body:has(#desk-page-root) nav.site-nav button::before,
@@ -3836,6 +3854,29 @@ body:has(#desk-page-root) nav.site-nav button::after {
   -webkit-box-shadow: none !important;
   filter: none !important;
   text-shadow: none !important;
+}
+
+#desk-page-root :is(
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"],
+  .desk-btn,
+  .desk-icon-btn,
+  .desk-link-btn,
+  .desk-mode-launch
+):is(:hover, :focus-visible, :active, .is-active, [aria-pressed="true"]) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+#desk-page-root :is(.desk-status, .desk-compose-paper-picker) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
 }
 
 #desk-page-root .desk-todo-close,
