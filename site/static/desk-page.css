@@ -850,6 +850,40 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   text-align: center;
 }
 
+.desk-map-create-btn,
+.desk-map-passage-btn,
+.desk-map-props-btn,
+.desk-map-zoom-btn,
+.desk-map-close {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  transition: none !important;
+}
+
+.desk-map-create-btn::before,
+.desk-map-create-btn::after,
+.desk-map-passage-btn::before,
+.desk-map-passage-btn::after,
+.desk-map-props-btn::before,
+.desk-map-props-btn::after,
+.desk-map-zoom-btn::before,
+.desk-map-zoom-btn::after,
+.desk-map-close::before,
+.desk-map-close::after {
+  box-shadow: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+
+.desk-map-create-btn *,
+.desk-map-passage-btn *,
+.desk-map-props-btn *,
+.desk-map-zoom-btn *,
+.desk-map-close * {
+  transition: none !important;
+}
+
 .desk-map-create-btn:hover,
 .desk-map-create-btn:focus-visible {
   border: 0;
