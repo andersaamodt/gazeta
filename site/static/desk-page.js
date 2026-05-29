@@ -2004,7 +2004,8 @@
         points.push({
           x: run.horizontal ? along : run.fixed,
           y: run.horizontal ? run.fixed : along,
-          horizontal: run.horizontal
+          horizontal: run.horizontal,
+          side: run.side
         });
       }
     });
@@ -2028,6 +2029,21 @@
     }).join('');
   }
 
+  function wallSconcePath(light) {
+    var x = Number(light.x || 0);
+    var y = Number(light.y || 0);
+    if (light.side === 'south') {
+      return 'M ' + (x - 4.6) + ' ' + (y + 3.2) + ' L ' + (x + 4.6) + ' ' + (y + 3.2) + ' Q ' + (x + 4.2) + ' ' + (y - 5.4) + ' ' + x + ' ' + (y - 6.4) + ' Q ' + (x - 4.2) + ' ' + (y - 5.4) + ' ' + (x - 4.6) + ' ' + (y + 3.2) + ' Z';
+    }
+    if (light.side === 'west') {
+      return 'M ' + (x - 3.2) + ' ' + (y - 4.6) + ' L ' + (x - 3.2) + ' ' + (y + 4.6) + ' Q ' + (x + 5.4) + ' ' + (y + 4.2) + ' ' + (x + 6.4) + ' ' + y + ' Q ' + (x + 5.4) + ' ' + (y - 4.2) + ' ' + (x - 3.2) + ' ' + (y - 4.6) + ' Z';
+    }
+    if (light.side === 'east') {
+      return 'M ' + (x + 3.2) + ' ' + (y - 4.6) + ' L ' + (x + 3.2) + ' ' + (y + 4.6) + ' Q ' + (x - 5.4) + ' ' + (y + 4.2) + ' ' + (x - 6.4) + ' ' + y + ' Q ' + (x - 5.4) + ' ' + (y - 4.2) + ' ' + (x + 3.2) + ' ' + (y - 4.6) + ' Z';
+    }
+    return 'M ' + (x - 4.6) + ' ' + (y - 3.2) + ' L ' + (x + 4.6) + ' ' + (y - 3.2) + ' Q ' + (x + 4.2) + ' ' + (y + 5.4) + ' ' + x + ' ' + (y + 6.4) + ' Q ' + (x - 4.2) + ' ' + (y + 5.4) + ' ' + (x - 4.6) + ' ' + (y - 3.2) + ' Z';
+  }
+
   function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId) {
     var lights = roomWallLightPoints(cells, unitW, unitH);
     if (!lights.length) return '';
@@ -2037,7 +2053,7 @@
       return '<circle class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"></circle>';
     }).join('') + '</g>';
     var visibleLamps = '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
-      return '<circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
+      return '<path class="desk-map-wall-light" d="' + wallSconcePath(light) + '"></path>';
     }).join('') + '</g>';
     return floorLight + visibleLamps;
   }

@@ -1481,9 +1481,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-wall-light {
   fill: #ffe6a3;
   opacity: calc(var(--presence) * 0.72);
-  paint-order: stroke;
-  stroke: rgba(99, 61, 24, 0.28);
-  stroke-width: 1.2;
+  stroke: none;
   transition: opacity 1400ms ease;
 }
 
