@@ -577,6 +577,21 @@
     });
   }
 
+  function syncCurrentRoomInMapDom(roomPath) {
+    var currentRoom = String(roomPath || '');
+    root.querySelectorAll('[data-desk-room-link]').forEach(function (node) {
+      var isCurrent = node.getAttribute('data-desk-room-link') === currentRoom;
+      node.classList.toggle('is-current', isCurrent);
+      var roomGroup = node.querySelector('.desk-map-room');
+      if (roomGroup) {
+        roomGroup.classList.toggle('is-current', isCurrent);
+      }
+    });
+    root.querySelectorAll('[data-desk-room-outline]').forEach(function (node) {
+      node.classList.toggle('is-current', node.getAttribute('data-desk-room-outline') === currentRoom);
+    });
+  }
+
   function storageGet(key) {
     try {
       if (!window.localStorage) {
@@ -791,6 +806,7 @@
     } else {
       window.history.pushState({ room: clean }, '', next);
     }
+    syncCurrentRoomInMapDom(clean);
     loadState();
   }
 

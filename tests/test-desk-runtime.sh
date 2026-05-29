@@ -1118,6 +1118,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'pendingMapViewBoxFrom
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function applyPendingMapRoomPan' 'Desk map pans smoothly after a room navigation refresh'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'state.pendingMapViewBoxFrom = currentMapViewBox();' 'Desk captures the current zoomed view before loading another room'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'svg.setAttribute('\''viewBox'\'', formatViewBox(fromViewBox));' 'Desk renders the new room map from the previous closeup before animating'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function syncCurrentRoomInMapDom' 'Desk map can preserve the clicked room outline while navigation refreshes'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'syncCurrentRoomInMapDom(clean);' 'Desk map marks the clicked room current before the delayed pan refresh'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "root.addEventListener('wheel'" 'Desk map handles mouse-wheel zoom while hovered'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "setMapZoomMode(event.deltaY < 0 ? 'room' : 'full')" 'Desk map wheel up zooms in and wheel down zooms out'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "if (nextMode === 'full')" 'Desk map canonicalizes the full-map view even when already zoomed out'
