@@ -1446,7 +1446,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nav-overflow-panel.i
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'touch-action: manipulation;' 'post overflow menu trigger remains tappable on mobile'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'overflow: visible;' 'mobile nav keeps absolute account and overflow menus visible'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages load the shared post resize behavior'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '20260525-blog-index-width1' 'post resize cache buster tracks blog index width stability'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '20260529-blog-index-cleanup1' 'post resize cache buster tracks stale blog index width cleanup'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'EDGE_PX = 14' 'post resize behavior uses edge-only drag detection'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" "TARGET_SELECTOR = '.post-single-item'" 'post resize behavior does not resize blog index cards after hydration'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-resize.js" 'delta * 2' 'post resize behavior grows symmetrically from the center'

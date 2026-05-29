@@ -94,6 +94,13 @@
   function refreshTargets() {
     var targets = allTargets();
     if (!targets.length) {
+      document.body.classList.remove('blog-post-resize-enabled');
+      document.documentElement.style.removeProperty('--blog-post-resizable-width');
+      Array.prototype.slice.call(document.querySelectorAll('.blog-post-item.blog-post-resizable')).forEach(function (item) {
+        item.classList.remove('blog-post-resizable');
+        delete item.dataset.postResizable;
+        item.style.cursor = '';
+      });
       return;
     }
     document.body.classList.add('blog-post-resize-enabled');
