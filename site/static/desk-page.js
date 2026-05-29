@@ -1958,13 +1958,51 @@
     var edges = [];
     var corners = {};
     var bandRadius = 34;
-    var gradientWidth = 30;
+    var gradientWidth = 60;
+    var gradientOverlap = 3;
     var gradientOuter = bandRadius + gradientWidth;
+    var gradientCapOverlap = gradientOverlap;
     function addEdge(side, x1, y1, x2, y2) {
       edges.push({ side: side, a: { x: x1, y: y1 }, b: { x: x2, y: y2 } });
     }
     function addCorner(type, x, y) {
       corners[type + ':' + x + ':' + y] = { type: type, x: x, y: y };
+    }
+    function mergeGreenbeltEdges(sourceEdges) {
+      var groups = {};
+      sourceEdges.forEach(function (edge) {
+        var isHorizontal = edge.side === 'north' || edge.side === 'south';
+        var axis = isHorizontal ? edge.a.y : edge.a.x;
+        var start = isHorizontal ? Math.min(edge.a.x, edge.b.x) : Math.min(edge.a.y, edge.b.y);
+        var end = isHorizontal ? Math.max(edge.a.x, edge.b.x) : Math.max(edge.a.y, edge.b.y);
+        var key = edge.side + ':' + axis;
+        if (!groups[key]) groups[key] = { side: edge.side, axis: axis, horizontal: isHorizontal, ranges: [] };
+        groups[key].ranges.push({ start: start, end: end });
+      });
+      return Object.keys(groups).reduce(function (merged, key) {
+        var group = groups[key];
+        group.ranges.sort(function (a, b) { return a.start - b.start; });
+        group.ranges.forEach(function (range) {
+          var previous = merged.length ? merged[merged.length - 1] : null;
+          if (
+            previous &&
+            previous.side === group.side &&
+            previous.axis === group.axis &&
+            previous.horizontal === group.horizontal &&
+            range.start <= previous.end
+          ) {
+            previous.end = Math.max(previous.end, range.end);
+            return;
+          }
+          merged.push({ side: group.side, axis: group.axis, horizontal: group.horizontal, start: range.start, end: range.end });
+        });
+        return merged;
+      }, []).map(function (edge) {
+        if (edge.horizontal) {
+          return { side: edge.side, a: { x: edge.start, y: edge.axis }, b: { x: edge.end, y: edge.axis } };
+        }
+        return { side: edge.side, a: { x: edge.axis, y: edge.start }, b: { x: edge.axis, y: edge.end } };
+      });
     }
     cells.forEach(function (cell) {
       var northOpen = occupied[cell.x + ',' + (cell.y - 1)] == null;
@@ -2003,41 +2041,44 @@
       var y2 = edge.b.y * unitH;
       var minX = Math.min(x1, x2);
       var minY = Math.min(y1, y2);
+      var gradientSpan = gradientWidth + gradientOverlap;
       if (edge.side === 'north') {
-        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + minX + '" y="' + (y1 - gradientOuter) + '" width="' + Math.abs(x2 - x1) + '" height="' + gradientWidth + '" fill="url(#desk-map-greenbelt-gradient-north)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (minX - gradientCapOverlap) + '" y="' + (y1 - gradientOuter) + '" width="' + (Math.abs(x2 - x1) + gradientCapOverlap * 2) + '" height="' + gradientSpan + '" fill="url(#desk-map-greenbelt-gradient-north)"></rect>';
       }
       if (edge.side === 'south') {
-        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + minX + '" y="' + (y1 + bandRadius) + '" width="' + Math.abs(x2 - x1) + '" height="' + gradientWidth + '" fill="url(#desk-map-greenbelt-gradient-south)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (minX - gradientCapOverlap) + '" y="' + (y1 + bandRadius - gradientOverlap) + '" width="' + (Math.abs(x2 - x1) + gradientCapOverlap * 2) + '" height="' + gradientSpan + '" fill="url(#desk-map-greenbelt-gradient-south)"></rect>';
       }
       if (edge.side === 'east') {
-        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 + bandRadius) + '" y="' + minY + '" width="' + gradientWidth + '" height="' + Math.abs(y2 - y1) + '" fill="url(#desk-map-greenbelt-gradient-east)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 + bandRadius - gradientOverlap) + '" y="' + (minY - gradientCapOverlap) + '" width="' + gradientSpan + '" height="' + (Math.abs(y2 - y1) + gradientCapOverlap * 2) + '" fill="url(#desk-map-greenbelt-gradient-east)"></rect>';
       }
-      return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 - gradientOuter) + '" y="' + minY + '" width="' + gradientWidth + '" height="' + Math.abs(y2 - y1) + '" fill="url(#desk-map-greenbelt-gradient-west)"></rect>';
+      return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 - gradientOuter) + '" y="' + (minY - gradientCapOverlap) + '" width="' + gradientSpan + '" height="' + (Math.abs(y2 - y1) + gradientCapOverlap * 2) + '" fill="url(#desk-map-greenbelt-gradient-west)"></rect>';
     }
     function gradientCorner(corner) {
       var x = corner.x * unitW;
       var y = corner.y * unitH;
+      var cornerSpan = gradientOuter + gradientOverlap;
       if (corner.type === 'ne') {
-        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + x + '" y="' + (y - gradientOuter) + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-ne)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOverlap) + '" y="' + (y - gradientOuter) + '" width="' + cornerSpan + '" height="' + cornerSpan + '" fill="url(#desk-map-greenbelt-gradient-corner-ne)"></rect>';
       }
       if (corner.type === 'se') {
-        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + x + '" y="' + y + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-se)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOverlap) + '" y="' + (y - gradientOverlap) + '" width="' + cornerSpan + '" height="' + cornerSpan + '" fill="url(#desk-map-greenbelt-gradient-corner-se)"></rect>';
       }
       if (corner.type === 'sw') {
-        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + y + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-sw)"></rect>';
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + (y - gradientOverlap) + '" width="' + cornerSpan + '" height="' + cornerSpan + '" fill="url(#desk-map-greenbelt-gradient-corner-sw)"></rect>';
       }
-      return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + (y - gradientOuter) + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-nw)"></rect>';
+      return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + (y - gradientOuter) + '" width="' + cornerSpan + '" height="' + cornerSpan + '" fill="url(#desk-map-greenbelt-gradient-corner-nw)"></rect>';
     }
-    var greenbeltPaths = edges.map(function (edge) {
+    var mergedEdges = mergeGreenbeltEdges(edges);
+    var greenbeltPaths = mergedEdges.map(function (edge) {
       return 'M ' + (edge.a.x * unitW) + ' ' + (edge.a.y * unitH) +
         ' L ' + (edge.b.x * unitW) + ' ' + (edge.b.y * unitH);
     }).join(' ');
-    var gradientEdges = edges.map(gradientEdge).join('');
+    var gradientEdges = mergedEdges.map(gradientEdge).join('');
     var gradientCorners = Object.keys(corners).map(function (key) {
       return gradientCorner(corners[key]);
     }).join('');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<defs><linearGradient id="desk-map-greenbelt-gradient-north" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-south" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-east" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-west" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><radialGradient id="desk-map-greenbelt-gradient-corner-nw" cx="100%" cy="100%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-ne" cx="0%" cy="100%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-se" cx="0%" cy="0%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-sw" cx="100%" cy="0%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient></defs>' +
+      '<defs><linearGradient id="desk-map-greenbelt-gradient-north" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="0.95" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-south" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="0.05" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-east" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="0.05" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-west" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="0.95" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><radialGradient id="desk-map-greenbelt-gradient-corner-nw" cx="100%" cy="100%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-ne" cx="0%" cy="100%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-se" cx="0%" cy="0%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-sw" cx="100%" cy="0%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient></defs>' +
       gradientEdges +
       gradientCorners +
       '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + greenbeltPaths + '"></path>' +
