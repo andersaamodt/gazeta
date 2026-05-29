@@ -3813,6 +3813,22 @@
     }, 0);
   }
 
+  function mapRoomTitleAtPoint(clientX, clientY) {
+    var best = null;
+    root.querySelectorAll('[data-desk-room-title]').forEach(function (title) {
+      var hit = title.querySelector('.desk-map-room-title-hit') || title;
+      var rect = hit.getBoundingClientRect ? hit.getBoundingClientRect() : null;
+      if (!rect || rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+        return;
+      }
+      best = title;
+    });
+    return best;
+  }
+
   function clearRoomDragClasses() {
     root.querySelectorAll('.is-drop-target, .is-dragging').forEach(function (node) {
       node.classList.remove('is-drop-target', 'is-dragging');
@@ -4258,16 +4274,18 @@
   });
 
   root.addEventListener('dblclick', function (event) {
+    var roomTitle = event.target.closest('.desk-map-room-title') || mapRoomTitleAtPoint(event.clientX, event.clientY);
+    if (roomTitle) {
+      event.preventDefault();
+      beginMapRoomRename(roomTitle.getAttribute('data-desk-room-title') || '');
+      return;
+    }
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (!roomLink || !root.contains(roomLink)) {
       return;
     }
     event.preventDefault();
     var roomPath = roomLink.getAttribute('data-desk-room-link') || '';
-    if (event.target.closest('.desk-map-room-title')) {
-      beginMapRoomRename(roomPath);
-      return;
-    }
     state.mapRenameRoom = null;
     state.mapRenameValue = '';
     if (roomPath === state.currentRoom) {
