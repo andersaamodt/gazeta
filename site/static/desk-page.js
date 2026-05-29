@@ -603,6 +603,8 @@
       var fromPresence = clampPresence(rooms[node.getAttribute('data-desk-door-from') || '']);
       var toPresence = clampPresence(rooms[node.getAttribute('data-desk-door-to') || '']);
       node.style.setProperty('--door-spill', String(Math.abs(fromPresence - toPresence)));
+      node.style.setProperty('--door-spill-to', String(Math.max(0, fromPresence - toPresence)));
+      node.style.setProperty('--door-spill-from', String(Math.max(0, toPresence - fromPresence)));
       node.style.setProperty('--door-light', String(Math.max(fromPresence, toPresence)));
     });
   }
@@ -1783,14 +1785,33 @@
     return points;
   }
 
-  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue) {
+  function roomLightGradientId(path, index) {
+    return 'desk-room-light-gradient-' + hashText((path || 'office') + ':' + index);
+  }
+
+  function renderRoomLightGradientDefs(path, cells, unitW, unitH) {
     var lights = roomWallLightPoints(cells, unitW, unitH);
     if (!lights.length) return '';
-    return '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
+    var bounds = footprintBounds(cells);
+    var radius = Math.max(unitW * 1.7, unitH * 1.9, Math.sqrt(Math.pow(bounds.w * unitW, 2) + Math.pow(bounds.h * unitH, 2)) * 0.72);
+    return lights.map(function (light, index) {
+      return '<radialGradient id="' + roomLightGradientId(path, index) + '" gradientUnits="userSpaceOnUse" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"><stop offset="0" stop-color="#ffe69d" stop-opacity="0.82"></stop><stop offset="0.34" stop-color="#ffd06f" stop-opacity="0.44"></stop><stop offset="0.72" stop-color="#ffbf56" stop-opacity="0.16"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0"></stop></radialGradient>';
+    }).join('');
+  }
+
+  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId, overlay) {
+    var lights = roomWallLightPoints(cells, unitW, unitH);
+    if (!lights.length) return '';
+    var presenceStyle = ' style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '"';
+    var floorLight = '<g class="desk-map-room-light-gradients" data-desk-room-presence="' + escapeHtml(path) + '"' + presenceStyle + '>' + lights.map(function (_light, index) {
+      return '<rect class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" x="' + overlay.x + '" y="' + overlay.y + '" width="' + overlay.w + '" height="' + overlay.h + '"></rect>';
+    }).join('') + '</g>';
+    var visibleLamps = '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
       var glowRadiusX = light.horizontal ? 15 : 10;
       var glowRadiusY = light.horizontal ? 10 : 15;
       return '<ellipse class="desk-map-wall-light-halo" cx="' + light.x + '" cy="' + light.y + '" rx="' + glowRadiusX + '" ry="' + glowRadiusY + '"></ellipse><circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
     }).join('') + '</g>';
+    return floorLight + visibleLamps;
   }
 
   function segmentHasDoor(from, to, doorSegments) {
@@ -1940,8 +1961,27 @@
     var toPresence = clampPresence(presence && presence[to]);
     return {
       attrs: ' data-desk-door-from="' + escapeHtml(from) + '" data-desk-door-to="' + escapeHtml(to) + '"',
-      style: ' style="--door-spill:' + escapeHtml(Math.abs(fromPresence - toPresence)) + ';--door-light:' + escapeHtml(Math.max(fromPresence, toPresence)) + '"'
+      style: ' style="--door-spill:' + escapeHtml(Math.abs(fromPresence - toPresence)) + ';--door-spill-to:' + escapeHtml(Math.max(0, fromPresence - toPresence)) + ';--door-spill-from:' + escapeHtml(Math.max(0, toPresence - fromPresence)) + ';--door-light:' + escapeHtml(Math.max(fromPresence, toPresence)) + '"'
     };
+  }
+
+  function doorFanPath(x, y, side, towardTo) {
+    var toward = doorFanDirection(side, towardTo);
+    if (toward === 'east') {
+      return 'M ' + x + ' ' + (y - 14) + ' C ' + (x + 28) + ' ' + (y - 22) + ' ' + (x + 66) + ' ' + (y - 44) + ' ' + (x + 96) + ' ' + (y - 62) + ' L ' + (x + 96) + ' ' + (y + 62) + ' C ' + (x + 66) + ' ' + (y + 44) + ' ' + (x + 28) + ' ' + (y + 22) + ' ' + x + ' ' + (y + 14) + ' Z';
+    }
+    if (toward === 'west') {
+      return 'M ' + x + ' ' + (y - 14) + ' C ' + (x - 28) + ' ' + (y - 22) + ' ' + (x - 66) + ' ' + (y - 44) + ' ' + (x - 96) + ' ' + (y - 62) + ' L ' + (x - 96) + ' ' + (y + 62) + ' C ' + (x - 66) + ' ' + (y + 44) + ' ' + (x - 28) + ' ' + (y + 22) + ' ' + x + ' ' + (y + 14) + ' Z';
+    }
+    if (toward === 'south') {
+      return 'M ' + (x - 14) + ' ' + y + ' C ' + (x - 22) + ' ' + (y + 28) + ' ' + (x - 44) + ' ' + (y + 66) + ' ' + (x - 62) + ' ' + (y + 96) + ' L ' + (x + 62) + ' ' + (y + 96) + ' C ' + (x + 44) + ' ' + (y + 66) + ' ' + (x + 22) + ' ' + (y + 28) + ' ' + (x + 14) + ' ' + y + ' Z';
+    }
+    return 'M ' + (x - 14) + ' ' + y + ' C ' + (x - 22) + ' ' + (y - 28) + ' ' + (x - 44) + ' ' + (y - 66) + ' ' + (x - 62) + ' ' + (y - 96) + ' L ' + (x + 62) + ' ' + (y - 96) + ' C ' + (x + 44) + ' ' + (y - 66) + ' ' + (x + 22) + ' ' + (y - 28) + ' ' + (x + 14) + ' ' + y + ' Z';
+  }
+
+  function doorFanDirection(side, towardTo) {
+    if (towardTo) return side;
+    return { north: 'south', south: 'north', east: 'west', west: 'east' }[side] || side;
   }
 
   function renderDoorGlyph(x, y, side, isSecret, isLastEntered, spill) {
@@ -1957,11 +1997,11 @@
     if (side === 'east' || side === 'west') {
       var xDirection = side === 'east' ? 1 : -1;
       var xLeaf = x + xDirection * leaf;
-      return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill" d="M ' + (x - 32) + ' ' + y + ' H ' + (x + 32) + '"></path><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
+      return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
     }
     var yDirection = side === 'south' ? 1 : -1;
     var yLeaf = y + yDirection * leaf;
-    return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill" d="M ' + x + ' ' + (y - 32) + ' V ' + (y + 32) + '"></path><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
+    return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
   }
 
   function isLastEnteredDoor(door) {
@@ -2166,10 +2206,8 @@
       var contour = roomIsOutdoor(room)
         ? footprintContourPath(footprint, unitW, unitH, path || 'office', false, null, roomDoorSegments)
         : footprintContourPath(footprint, unitW, unitH, path || 'office', true, buildingOccupied, roomDoorSegments);
-      if (roomIsOutdoor(room)) {
-        return '<clipPath id="' + roomClipId(path) + '"><path d="' + contour + '"></path></clipPath>';
-      }
-      return '<clipPath id="' + roomClipId(path) + '"><path d="' + contour + '"></path></clipPath>';
+      var lightGradients = roomIsOutdoor(room) ? '' : renderRoomLightGradientDefs(path, footprint, unitW, unitH);
+      return '<clipPath id="' + roomClipId(path) + '"><path d="' + contour + '"></path></clipPath>' + lightGradients;
     }).join('');
     var roomParts = renderRooms.map(function (room) {
       var path = String(room.path || '');
@@ -2211,8 +2249,10 @@
         : '<path class="desk-map-room-shape" d="' + roomPathShape + '"></path>';
       var hoverTint = '<path class="desk-map-room-hover-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>';
       var dimLayer = '<rect class="desk-map-room-dim' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-dim="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>';
-      var presenceGlow = '<rect class="desk-map-room-presence' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>';
-      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path]) : '';
+      var presenceGlow = isOutdoor
+        ? '<rect class="desk-map-room-presence is-outdoor" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>'
+        : '';
+      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path), { x: overlayX, y: overlayY, w: overlayW, h: overlayH }) : '';
       var titleNode = state.mapRenameRoom !== null && state.mapRenameRoom === path
         ? '<foreignObject x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"><form xmlns="http://www.w3.org/1999/xhtml" class="desk-map-rename-form" data-desk-form="rename-room-inline"><input type="hidden" name="room" value="' + escapeHtml(path) + '"><input class="desk-map-rename-input" name="room_title" value="' + escapeHtml(state.mapRenameValue || title) + '" maxlength="96" required></form></foreignObject>'
         : '<text class="desk-map-room-title" x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle" tabindex="0">' + escapeHtml(title) + '</text>';
@@ -2253,7 +2293,7 @@
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';">' +
       '<div class="desk-map-scroll' + (state.mapZoomMode === 'room' ? ' is-closeup' : '') + '" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml(formatViewBox(fullViewBox)) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(roomViewBox)) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
-      '<defs><filter id="desk-map-greenery-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter><linearGradient id="desk-map-greenbelt-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6f7f55" stop-opacity="0.28"></stop><stop offset="0.28" stop-color="#87936a" stop-opacity="0.82"></stop><stop offset="0.62" stop-color="#94a373" stop-opacity="0.72"></stop><stop offset="1" stop-color="#6f7f55" stop-opacity="0.18"></stop></linearGradient><radialGradient id="desk-map-presence-glow" cx="50%" cy="47%" r="76%"><stop offset="0" stop-color="#ffce76" stop-opacity="0.92"></stop><stop offset="0.42" stop-color="#ffbe5c" stop-opacity="0.38"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#87936a"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(74,81,49,0.16)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(206,199,137,0.1)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
+      '<defs><filter id="desk-map-greenery-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter><linearGradient id="desk-map-greenbelt-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6f7f55" stop-opacity="0.28"></stop><stop offset="0.28" stop-color="#87936a" stop-opacity="0.82"></stop><stop offset="0.62" stop-color="#94a373" stop-opacity="0.72"></stop><stop offset="1" stop-color="#6f7f55" stop-opacity="0.18"></stop></linearGradient><radialGradient id="desk-map-door-spill-gradient-east" cx="0%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-west" cx="100%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-south" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-north" cx="50%" cy="100%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#87936a"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(74,81,49,0.16)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(206,199,137,0.1)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
       '<rect class="desk-map-grid" x="' + fullViewBox.x + '" y="' + fullViewBox.y + '" width="' + fullViewBox.w + '" height="' + fullViewBox.h + '"></rect>' +
       greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
       '</svg>' +

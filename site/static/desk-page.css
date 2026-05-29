@@ -1367,8 +1367,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-presence {
   --presence: 0;
-  fill: url(#desk-map-presence-glow);
-  opacity: calc(var(--presence) * 0.84);
+  fill: transparent;
+  opacity: 0;
   pointer-events: none;
   transition: opacity 1400ms ease;
 }
@@ -1378,6 +1378,17 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: calc(var(--presence) * 0.58);
 }
 
+.desk-map-room-light-gradients {
+  --presence: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.desk-map-room-light-gradient {
+  opacity: calc(var(--presence) * 0.58);
+  transition: opacity 1400ms ease;
+}
+
 .desk-map-wall-lights {
   --presence: 0;
   pointer-events: none;
@@ -1385,14 +1396,14 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-wall-light-halo {
   fill: #ffd579;
-  opacity: calc(0.06 + var(--presence) * 0.28);
+  opacity: calc(var(--presence) * 0.28);
   mix-blend-mode: screen;
   transition: opacity 1400ms ease;
 }
 
 .desk-map-wall-light {
   fill: #ffe6a3;
-  opacity: calc(0.16 + var(--presence) * 0.68);
+  opacity: calc(var(--presence) * 0.72);
   paint-order: stroke;
   stroke: rgba(99, 61, 24, 0.28);
   stroke-width: 1.2;
@@ -1488,6 +1499,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-door {
   --door-spill: 0;
+  --door-spill-to: 0;
+  --door-spill-from: 0;
   --door-light: 0;
   fill: none;
   stroke-linecap: round;
@@ -1495,12 +1508,40 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: none;
 }
 
-.desk-map-door-spill {
-  stroke: #ffd36c;
-  stroke-width: calc(9px + var(--door-spill) * 20px);
-  opacity: calc(var(--door-spill) * (0.24 + var(--door-light) * 0.5));
+.desk-map-door-spill-fan {
+  opacity: 0;
   mix-blend-mode: screen;
-  transition: opacity 1400ms ease, stroke-width 1400ms ease;
+  transition: opacity 1400ms ease;
+}
+
+.desk-map-door-spill-fan.spill-east {
+  fill: url(#desk-map-door-spill-gradient-east);
+}
+
+.desk-map-door-spill-fan.spill-west {
+  fill: url(#desk-map-door-spill-gradient-west);
+}
+
+.desk-map-door-spill-fan.spill-south {
+  fill: url(#desk-map-door-spill-gradient-south);
+}
+
+.desk-map-door-spill-fan.spill-north {
+  fill: url(#desk-map-door-spill-gradient-north);
+}
+
+.desk-map-door-spill-fan.to-room {
+  opacity: calc(var(--door-spill-to) * (0.22 + var(--door-light) * 0.48));
+}
+
+.desk-map-door-spill-fan.from-room {
+  opacity: calc(var(--door-spill-from) * (0.22 + var(--door-light) * 0.48));
+}
+
+.desk-map-door .desk-map-door-gap,
+.desk-map-door .desk-map-door-leaf,
+.desk-map-door .desk-map-door-swing {
+  filter: brightness(calc(1 + var(--door-spill) * 0.65));
 }
 
 .desk-map-door.is-last-entered .desk-map-door-gap {
