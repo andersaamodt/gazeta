@@ -1296,12 +1296,29 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-greenbelt-strip {
   fill: none;
-  stroke: #9fac63;
-  stroke-width: 92;
-  opacity: 0.5;
-  filter: url(#desk-map-greenery-blur);
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.desk-map-greenbelt-fade {
+  stroke: #9fac63;
+  stroke-width: 82;
+  opacity: 0.28;
+  filter: url(#desk-map-greenery-blur);
+}
+
+.desk-map-greenbelt-band {
+  stroke: #9fac63;
+  stroke-width: 62;
+  opacity: 1;
+}
+
+.desk-map-room.is-outdoor .desk-map-greenbelt-band {
+  opacity: 0.94;
+}
+
+.desk-map-room.is-outdoor .desk-map-greenbelt-fade {
+  opacity: 0.24;
 }
 
 .desk-map-room-grass {
