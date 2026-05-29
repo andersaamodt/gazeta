@@ -147,13 +147,29 @@ artificer_web_content_type() {
   esac
 }
 
+artificer_web_cacheable_asset() {
+  path=$1
+  case "$path" in
+    /static/*.js|/static/*.css|/static/*.svg|/static/*.png|/static/*.jpg|/static/*.jpeg|/static/*.webp|/static/*.woff2)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 artificer_web_send_headers() {
   content_type=$1
+  path=${2:-}
   http-status 200 "OK"
   http-header "Content-Type" "$content_type"
-  http-header "Cache-Control" "no-store, no-cache, must-revalidate, max-age=0"
-  http-header "Pragma" "no-cache"
-  http-header "Expires" "0"
+  if artificer_web_cacheable_asset "$path"; then
+    http-header "Cache-Control" "private, max-age=604800, stale-while-revalidate=86400"
+    http-header "Vary" "Accept-Encoding"
+  else
+    http-header "Cache-Control" "no-store, no-cache, must-revalidate, max-age=0"
+    http-header "Pragma" "no-cache"
+    http-header "Expires" "0"
+  fi
   blog_send_security_headers
   http-end-headers
 }
@@ -195,19 +211,19 @@ artificer_web_curl() {
   if [ "$method" = "POST" ] || [ "$method" = "PUT" ] || [ "$method" = "PATCH" ]; then
     if [ "$transport" = "tor" ]; then
       socks=${BLOG_ARTIFICER_TOR_SOCKS:-127.0.0.1:9050}
-      printf '%s' "$BLOG_REQUEST_BODY" | curl --silent --show-error --fail --location --max-time "$timeout" --socks5-hostname "$socks" \
+      printf '%s' "$BLOG_REQUEST_BODY" | curl --silent --show-error --fail --location --compressed --max-time "$timeout" --socks5-hostname "$socks" \
         -X "$method" -H "X-Artificer-Remote-Token: $token" -H "Content-Type: ${CONTENT_TYPE:-application/json}" --data-binary @- "$target"
     else
-      printf '%s' "$BLOG_REQUEST_BODY" | curl --silent --show-error --fail --location --max-time "$timeout" \
+      printf '%s' "$BLOG_REQUEST_BODY" | curl --silent --show-error --fail --location --compressed --max-time "$timeout" \
         -X "$method" -H "X-Artificer-Remote-Token: $token" -H "Content-Type: ${CONTENT_TYPE:-application/json}" --data-binary @- "$target"
     fi
   else
     if [ "$transport" = "tor" ]; then
       socks=${BLOG_ARTIFICER_TOR_SOCKS:-127.0.0.1:9050}
-      curl --silent --show-error --fail --location --max-time "$timeout" --socks5-hostname "$socks" \
+      curl --silent --show-error --fail --location --compressed --max-time "$timeout" --socks5-hostname "$socks" \
         -H "X-Artificer-Remote-Token: $token" "$target"
     else
-      curl --silent --show-error --fail --location --max-time "$timeout" \
+      curl --silent --show-error --fail --location --compressed --max-time "$timeout" \
         -H "X-Artificer-Remote-Token: $token" "$target"
     fi
   fi
@@ -309,7 +325,7 @@ if [ -n "$query" ]; then
 fi
 
 content_type=$(artificer_web_content_type "$safe_path")
-artificer_web_send_headers "$content_type"
+artificer_web_send_headers "$content_type" "$safe_path"
 case "$content_type" in
   text/html*|application/javascript*|text/css*)
     if ! artificer_web_curl "$base" "$token" "$target" | artificer_web_rewrite_text "$safe_path"; then

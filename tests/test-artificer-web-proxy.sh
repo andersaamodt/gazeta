@@ -64,7 +64,10 @@ assert_file_contains "$CGI" 'blog_load_session "$req_token"' "proxy validates th
 assert_file_contains "$CGI" 'artificer_web_session=$BLOG_ARTIFICER_WEB_COOKIE_VALUE' "proxy sets same-origin auth cookie for iframe assets"
 assert_file_contains "$CGI" 'artificer_web_cookie_value' "proxy accepts same-origin auth cookie for iframe assets"
 assert_file_contains "$CGI" 'X-Artificer-Remote-Token' "proxy injects remote token server-side"
+assert_file_contains "$CGI" '--compressed' "proxy requests compressed upstream transfers"
 assert_file_contains "$CGI" '--socks5-hostname "$socks"' "proxy uses Tor SOCKS for onion remotes"
+assert_file_contains "$CGI" 'artificer_web_cacheable_asset' "proxy detects cacheable Artificer assets"
+assert_file_contains "$CGI" 'private, max-age=604800, stale-while-revalidate=86400' "proxy allows browser caching for private static assets"
 assert_file_contains "$CGI" 'BLOG_ARTIFICER_REMOTE_BASE' "proxy supports env-configured remote base"
 assert_file_contains "$CGI" 'artificer_remote_token_file' "proxy supports token file configuration"
 assert_file_contains "$CGI" '*/../*|*/..|/..|*%0a*|*%0A*|*%0d*|*%0D*) return 1' "proxy rejects path traversal and encoded newlines"
@@ -260,12 +263,25 @@ else
 fi
 
 cookie_pair="$admin_token:$admin_csrf"
-proxy_body=$(REQUEST_METHOD=GET QUERY_STRING='path=/static/app.js&action=state' HTTP_COOKIE="artificer_web_session=$cookie_pair" "$CGI" | strip_cgi_headers)
+proxy_output=$(REQUEST_METHOD=GET QUERY_STRING='path=/static/app.js&action=state' HTTP_COOKIE="artificer_web_session=$cookie_pair" "$CGI")
+proxy_body=$(printf '%s\n' "$proxy_output" | strip_cgi_headers)
 if printf '%s\n' "$proxy_body" | grep -Fq 'fetch("/cgi/blog-artificer-web?path=/cgi/artificer-api?action=ping")'; then
   pass
 else
   fail "proxy rewrites Artificer API calls"
   printf '%s\n' "$proxy_body" >&2
+fi
+if printf '%s\n' "$proxy_output" | grep -Fq 'HEADER:Cache-Control=private, max-age=604800, stale-while-revalidate=86400'; then
+  pass
+else
+  fail "proxy marks static Artificer assets cacheable"
+  printf '%s\n' "$proxy_output" >&2
+fi
+if printf '%s\n' "$proxy_output" | grep -Fq 'HEADER:Pragma='; then
+  fail "proxy sends no-cache pragma for static Artificer assets"
+  printf '%s\n' "$proxy_output" >&2
+else
+  pass
 fi
 if grep -Fq -- '--socks5-hostname 127.0.0.1:9050' "$CURL_LOG"; then
   pass
@@ -277,6 +293,12 @@ if grep -Fq -- 'X-Artificer-Remote-Token: bridge-token' "$CURL_LOG"; then
   pass
 else
   fail "runtime proxy sends bridge token header"
+  cat "$CURL_LOG" >&2
+fi
+if grep -Fq -- '--compressed' "$CURL_LOG"; then
+  pass
+else
+  fail "runtime proxy requests compressed upstream transfers"
   cat "$CURL_LOG" >&2
 fi
 if grep -Fq -- 'session_token=' "$CURL_LOG"; then
