@@ -2037,6 +2037,12 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: all;
 }
 
+.desk-map-room-title-hit {
+  fill: rgba(255, 255, 255, 0.001);
+  stroke: none;
+  pointer-events: all;
+}
+
 .desk-map-rename-form {
   width: 100%;
   height: 100%;

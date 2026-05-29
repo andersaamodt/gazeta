@@ -2475,7 +2475,10 @@
       var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path)) : '';
       var titleNode = state.mapRenameRoom !== null && state.mapRenameRoom === path
         ? '<foreignObject x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"><form xmlns="http://www.w3.org/1999/xhtml" class="desk-map-rename-form" data-desk-form="rename-room-inline"><input type="hidden" name="room" value="' + escapeHtml(path) + '"><input class="desk-map-rename-input" name="room_title" value="' + escapeHtml(state.mapRenameValue || title) + '" maxlength="96" required></form></foreignObject>'
-        : '<text class="desk-map-room-title" x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle" tabindex="0">' + escapeHtml(title) + '</text>';
+        : '<g class="desk-map-room-title" data-desk-room-title="' + escapeHtml(path) + '" tabindex="0">' +
+          '<rect class="desk-map-room-title-hit" x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"></rect>' +
+          '<text x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
+          '</g>';
       var foregroundShape = '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="false"' : '') + ' class="desk-map-room-link' + (isCurrent ? ' is-current' : '') + '">' +
         '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
