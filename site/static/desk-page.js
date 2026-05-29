@@ -41,6 +41,7 @@
     mapZoomMode: 'full',
     mapPanX: 0,
     mapPanY: 0,
+    pendingMapViewBoxFrom: null,
     mapPropsOpen: false,
     mapRenameRoom: null,
     mapRenameValue: '',
@@ -440,6 +441,26 @@
     animateMapViewBox(svg, currentViewBox, targetViewBox);
   }
 
+  function currentMapViewBox() {
+    var svg = root.querySelector('[data-desk-map-svg]');
+    if (!svg) return null;
+    return parseViewBoxText(svg.getAttribute('viewBox'));
+  }
+
+  function applyPendingMapRoomPan() {
+    if (!state.pendingMapViewBoxFrom) return;
+    var svg = root.querySelector('[data-desk-map-svg]');
+    var fromViewBox = state.pendingMapViewBoxFrom;
+    state.pendingMapViewBoxFrom = null;
+    if (!svg || state.mapZoomMode !== 'room') return;
+    var targetViewBox = parseViewBoxText(svg.getAttribute('data-desk-room-viewbox'));
+    if (!targetViewBox) return;
+    svg.setAttribute('viewBox', formatViewBox(fromViewBox));
+    window.requestAnimationFrame(function () {
+      animateMapViewBox(svg, fromViewBox, targetViewBox);
+    });
+  }
+
   function storageGet(key) {
     try {
       if (!window.localStorage) {
@@ -600,6 +621,9 @@
     if (clean !== state.currentRoom) {
       dimPresenceForRoom(state.currentRoom);
       applyPresenceValues(state.presence);
+      if (state.mapZoomMode === 'room') {
+        state.pendingMapViewBoxFrom = currentMapViewBox();
+      }
       if (state.mode === 'map' || state.mode === 'todo' || state.mode === 'compose') {
         state.suppressMapAnimation = true;
       }
@@ -3159,6 +3183,7 @@
       state.suppressTodoAnimation = false;
       syncDeskMenuSettings();
       applyDeskTooltips();
+      applyPendingMapRoomPan();
       markPageReady();
     } catch (err) {
       root.innerHTML = renderChromeControls(data || {}) +
