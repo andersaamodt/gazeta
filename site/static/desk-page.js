@@ -854,6 +854,7 @@
       ['[data-desk-close-map]', 'Close the room map'],
       ['[data-desk-map-zoom]', 'Toggle between the full mansion map and a closeup of this room'],
       ['[data-desk-map-props]', 'Edit this room kind and color'],
+      ['[data-desk-map-props-close]', 'Close room properties'],
       ['[data-desk-secret-passage]', 'Choose two rooms to connect with a secret passage'],
       ['[data-desk-create-room-open]', 'Create a room connected to this one'],
       ['[data-desk-close-todo]', 'Close the checklist'],
@@ -2405,7 +2406,7 @@
     var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
     var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     var propsPanel = state.mapPropsOpen
-      ? '<aside class="desk-map-properties" aria-label="Room properties"><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected room</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivision</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form></aside>'
+      ? '<aside class="desk-map-properties" aria-label="Room properties"><button type="button" class="desk-map-properties-close" data-desk-map-props-close aria-label="Close room properties" title="Close room properties">×</button><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected room</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivision</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form></aside>'
       : '';
     var mapAspect = fullViewBox.w && fullViewBox.h ? (fullViewBox.w / fullViewBox.h).toFixed(5) : '1.33333';
     var viewBoxText = formatViewBox(mapViewBox);
@@ -3649,6 +3650,17 @@
         closeMapMode();
       } else {
         closeOpenMode();
+      }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-map-props-close]')) {
+      event.preventDefault();
+      state.mapPropsOpen = false;
+      state.suppressMapAnimation = true;
+      state.suppressTodoAnimation = state.mode === 'todo';
+      if (state.data) {
+        render(state.data);
       }
       return;
     }
