@@ -865,6 +865,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-create-btn,
 .desk-map-passage-btn,
 .desk-map-props-btn,
+.desk-map-greenbelt-tone-btn,
 .desk-map-zoom-btn,
 .desk-map-close {
   border: 0 !important;
@@ -886,6 +887,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-passage-btn::after,
 .desk-map-props-btn::before,
 .desk-map-props-btn::after,
+.desk-map-greenbelt-tone-btn::before,
+.desk-map-greenbelt-tone-btn::after,
 .desk-map-zoom-btn::before,
 .desk-map-zoom-btn::after,
 .desk-map-close::before,
@@ -898,6 +901,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-create-btn *,
 .desk-map-passage-btn *,
 .desk-map-props-btn *,
+.desk-map-greenbelt-tone-btn *,
 .desk-map-zoom-btn *,
 .desk-map-close * {
   transition: none;
@@ -909,6 +913,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-passage-btn:focus-visible,
 .desk-map-props-btn:hover,
 .desk-map-props-btn:focus-visible,
+.desk-map-greenbelt-tone-btn:hover,
+.desk-map-greenbelt-tone-btn:focus-visible,
 .desk-map-zoom-btn:hover,
 .desk-map-zoom-btn:focus-visible,
 .desk-map-close:hover,
@@ -1389,13 +1395,13 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-greenbelt-band {
-  stroke: #9fac63;
+  stroke: var(--desk-greenbelt-color, #9fac63);
   stroke-width: 68;
   opacity: 1;
 }
 
 .desk-map-room-grass {
-  fill: #9fac63;
+  fill: var(--desk-greenbelt-color, #9fac63);
   stroke: none;
   opacity: 1;
   pointer-events: none;
@@ -1443,7 +1449,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-dim.is-outdoor {
   fill: rgba(43, 50, 35, 0.58);
-  opacity: calc((1 - var(--presence)) * 0.36);
+  opacity: 0;
 }
 
 .desk-map-room-presence {
@@ -1456,7 +1462,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-presence.is-outdoor {
   fill: url(#desk-map-presence-glow-outdoor);
-  opacity: calc(var(--presence) * 0.58);
+  opacity: 0;
 }
 
 .desk-map-room-light-gradients {
@@ -1902,6 +1908,52 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   appearance: none;
   color: #5d4527;
   cursor: pointer;
+}
+
+.desk-map-greenbelt-tone-btn {
+  position: absolute;
+  right: calc(clamp(0.95rem, 1.6vw, 1.3rem) + 8.76rem);
+  top: clamp(0.95rem, 1.6vw, 1.3rem);
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  appearance: none;
+  color: #5d4527;
+  cursor: pointer;
+}
+
+.desk-map-greenbelt-tone-btn svg {
+  width: 1.42rem;
+  height: 1.42rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.desk-greenbelt-swatch {
+  stroke: rgba(93, 69, 39, 0.58);
+  stroke-width: 1.1;
+}
+
+.desk-greenbelt-swatch.is-spring {
+  fill: #9fac63;
+}
+
+.desk-greenbelt-swatch.is-deep {
+  fill: #87954f;
+}
+
+.desk-greenbelt-swatch-mark {
+  fill: none;
+  stroke: #f8edbf;
+  stroke-width: 1.8;
 }
 
 .desk-map-zoom-btn svg {

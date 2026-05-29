@@ -65,6 +65,7 @@
     presence: {},
     presenceTick: Date.now(),
     flashlightStrength: flashlightStrengthFromStorage(),
+    greenbeltTone: greenbeltToneFromStorage(),
     inFlight: 0,
     pendingStatus: '',
     forgottenOpen: false,
@@ -708,6 +709,20 @@
     return flashlightSteps[Math.max(0, Math.min(flashlightSteps.length - 1, Number(state.flashlightStrength || 0)))] || flashlightSteps[3];
   }
 
+  function greenbeltToneFromStorage() {
+    return storageGet('desk_greenbelt_tone_v1') === 'deep' ? 'deep' : 'spring';
+  }
+
+  function greenbeltColor() {
+    return state.greenbeltTone === 'deep' ? '#87954f' : '#9fac63';
+  }
+
+  function renderGreenbeltToneIcon() {
+    var isDeep = state.greenbeltTone === 'deep';
+    var nextLabel = isDeep ? 'Switch to lighter greenbelt' : 'Switch to darker greenbelt';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-greenbelt-swatch is-spring" d="M5 5h6v14H5z"></path><path class="desk-greenbelt-swatch is-deep" d="M13 5h6v14h-6z"></path><path class="desk-greenbelt-swatch-mark" d="' + (isDeep ? 'M14.8 12l1.4 1.4 2.8-3.3' : 'M6.8 12l1.4 1.4 2.8-3.3') + '"></path><title>' + escapeHtml(nextLabel) + '</title></svg>';
+  }
+
   function readPresence() {
     try {
       var parsed = JSON.parse(storageGet('desk_room_presence_v1') || '{}');
@@ -961,6 +976,7 @@
     var specs = [
       ['[data-desk-login]', 'Sign in with the owner Nostr identity'],
       ['[data-desk-close-map]', 'Close the room map'],
+      ['[data-desk-map-greenbelt-tone]', 'Switch greenbelt color'],
       ['[data-desk-map-zoom]', 'Toggle between the full mansion map and a closeup of this room'],
       ['[data-desk-map-props]', 'Edit this room kind and color'],
       ['[data-desk-map-props-close]', 'Close room properties'],
@@ -1953,8 +1969,9 @@
     return ' L ' + x1 + ' ' + y1;
   }
 
-  function renderGreenbelt(cells, occupied, unitW, unitH) {
+  function renderGreenbelt(cells, occupied, unitW, unitH, color) {
     if (!cells.length) return '';
+    var green = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#9fac63';
     var edges = [];
     var corners = {};
     var bandRadius = 34;
@@ -2078,7 +2095,7 @@
       return gradientCorner(corners[key]);
     }).join('');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<defs><linearGradient id="desk-map-greenbelt-gradient-north" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="0.95" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-south" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="0.05" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-east" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="0.05" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-west" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="0.95" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><radialGradient id="desk-map-greenbelt-gradient-corner-nw" cx="100%" cy="100%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-ne" cx="0%" cy="100%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-se" cx="0%" cy="0%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-sw" cx="100%" cy="0%" r="100%"><stop offset="0.36" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient></defs>' +
+      '<defs><linearGradient id="desk-map-greenbelt-gradient-north" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + green + '" stop-opacity="0"></stop><stop offset="0.95" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="1"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-south" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="0.05" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-east" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="0.05" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-west" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + green + '" stop-opacity="0"></stop><stop offset="0.95" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="1"></stop></linearGradient><radialGradient id="desk-map-greenbelt-gradient-corner-nw" cx="100%" cy="100%" r="100%"><stop offset="0.36" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-ne" cx="0%" cy="100%" r="100%"><stop offset="0.36" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-se" cx="0%" cy="0%" r="100%"><stop offset="0.36" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-sw" cx="100%" cy="0%" r="100%"><stop offset="0.36" stop-color="' + green + '" stop-opacity="1"></stop><stop offset="1" stop-color="' + green + '" stop-opacity="0"></stop></radialGradient></defs>' +
       gradientEdges +
       gradientCorners +
       '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + greenbeltPaths + '"></path>' +
@@ -2623,7 +2640,8 @@
         }
       });
     });
-    var greenbelt = renderGreenbelt(greenbeltCells, greenbeltOccupied, unitW, unitH);
+    var mapGreen = greenbeltColor();
+    var greenbelt = renderGreenbelt(greenbeltCells, greenbeltOccupied, unitW, unitH, mapGreen);
     function doorSegmentsForRoom(path) {
       var segments = plan.doors.filter(function (door) {
         return String(door.from || '') === path || String(door.to || '') === path;
@@ -2748,14 +2766,15 @@
       w: fullViewBox.w + gridPadX * 2,
       h: fullViewBox.h + gridPadY * 2
     };
-    return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' || state.closingMap ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';">' +
+    return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' || state.closingMap ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';--desk-greenbelt-color:' + escapeHtml(mapGreen) + ';">' +
       '<div class="desk-map-scroll' + (state.mapZoomMode === 'room' ? ' is-closeup' : '') + '" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml(formatViewBox(fullViewBox)) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(roomViewBox)) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
-      '<defs><radialGradient id="desk-map-door-spill-gradient-east" cx="0%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-west" cx="100%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-south" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-north" cx="50%" cy="100%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#9fac63"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(83,91,42,0.14)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(229,221,142,0.13)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
+      '<defs><radialGradient id="desk-map-door-spill-gradient-east" cx="0%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-west" cx="100%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-south" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-north" cx="50%" cy="100%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="' + escapeHtml(mapGreen) + '"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(83,91,42,0.14)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(229,221,142,0.13)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
       '<rect class="desk-map-grid" x="' + gridBox.x + '" y="' + gridBox.y + '" width="' + gridBox.w + '" height="' + gridBox.h + '"></rect>' +
       greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
       '</svg>' +
       '<button type="button" class="desk-map-close" data-desk-close-map aria-label="Close map" title="Close map">×</button>' +
+      '<button type="button" class="desk-map-greenbelt-tone-btn' + (state.greenbeltTone === 'deep' ? ' is-deep' : '') + '" data-desk-map-greenbelt-tone aria-label="Switch greenbelt color" title="Switch greenbelt color">' + renderGreenbeltToneIcon() + '</button>' +
       '<button type="button" class="desk-map-zoom-btn' + (state.mapZoomMode === 'room' ? ' is-active' : '') + '" data-desk-map-zoom aria-label="' + escapeHtml(zoomLabel) + '" title="' + escapeHtml(zoomLabel) + '">' + renderMapZoomIcon() + '</button>' +
       '<button type="button" class="desk-map-props-btn' + (state.mapPropsOpen ? ' is-active' : '') + '" data-desk-map-props aria-label="Room properties" title="Room properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-blueprint-sheet" d="M5 3.8h10.3L19 7.5v12.7H5z"></path><path class="desk-blueprint-fold" d="M15.3 3.8v4h3.9"></path><path class="desk-blueprint-grid" d="M8 9.2h8M8 13h8M8 16.8h4M9.7 7v12M14.4 9.2v9.8"></path><path class="desk-blueprint-mark" d="M13.1 16.8l1.4 1.4 2.8-3.2"></path></svg></button>' +
       propsPanel +
@@ -4152,6 +4171,19 @@
       state.mapPropsOpen = !state.mapPropsOpen;
       state.suppressMapAnimation = true;
       state.suppressTodoAnimation = state.mode === 'todo';
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-map-greenbelt-tone]')) {
+      event.preventDefault();
+      state.greenbeltTone = state.greenbeltTone === 'deep' ? 'spring' : 'deep';
+      storageSet('desk_greenbelt_tone_v1', state.greenbeltTone);
+      state.suppressMapAnimation = true;
+      state.suppressTodoAnimation = state.mode === 'todo';
+      state.suppressComposeAnimation = state.mode === 'compose';
       if (state.data) {
         render(state.data);
       }
