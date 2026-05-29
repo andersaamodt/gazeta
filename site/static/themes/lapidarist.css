@@ -1941,3 +1941,19 @@ html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:not(.u
   filter: none !important;
   -webkit-filter: none !important;
 }
+
+html body .blog-post-item .tag,
+html body .blog-post-item .tag:hover,
+html body .blog-post-item .tag:focus-visible,
+html body .blog-post-item .blog-type-pill,
+html body .blog-post-item .blog-type-pill:hover,
+html body .blog-post-item .blog-type-pill:focus-visible,
+html body .blog-post-item .blog-year-pill,
+html body .blog-post-item .blog-year-pill:hover,
+html body .blog-post-item .blog-year-pill:focus-visible {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  text-shadow: none !important;
+}
