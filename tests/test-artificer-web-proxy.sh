@@ -44,7 +44,7 @@ JS="$ROOT_DIR/site/static/artificer-web-page.js"
 
 assert_file_contains "$PAGE" 'title: Artificer Web' "artificer page has title"
 assert_file_contains "$PAGE" '/static/artificer-web-page.css?v=20260529-artificer-web4' "artificer page loads cache-busted shell styles"
-assert_file_contains "$PAGE" '/static/artificer-web-page.js?v=20260529-artificer-web3' "artificer page loads cache-busted shell script"
+assert_file_contains "$PAGE" '/static/artificer-web-page.js?v=20260529-artificer-web4' "artificer page loads cache-busted shell script"
 assert_file_contains "$JS" "bridgeUrl('', { action: 'status' })" "shell checks bridge status first"
 assert_file_contains "$JS" "frame.src = bridgeUrl('/');" "shell mounts proxied Artificer Web in iframe"
 assert_file_contains "$JS" "localStorage.getItem(key)" "shell forwards existing site auth to bridge"
@@ -54,12 +54,12 @@ assert_file_contains "$JS" "data-artificer-overflow" "shell renders a web overfl
 assert_file_contains "$JS" "data-artificer-logout" "overflow menu includes logout"
 assert_file_contains "$JS" "fetch('/cgi/ssh-auth-logout'" "logout invalidates the site session"
 assert_file_contains "$JS" "storageRemove('session_token')" "logout clears local session token"
-assert_file_contains "$JS" "admin_nostr_required" "Nostr admin auth failure shows login gate"
+assert_file_contains "$JS" "nostr_key_required" "Nostr allowlist auth failure shows login gate"
 
 assert_file_contains "$CGI" '. "$SCRIPT_DIR/blog-desk-common.sh"' "proxy reuses Desk owner helpers"
-assert_file_contains "$CGI" 'artificer_web_session_is_nostr_admin' "proxy requires a Nostr admin identity"
+assert_file_contains "$CGI" 'artificer_web_session_is_allowed_nostr_key' "proxy requires an allowed Nostr identity"
 assert_file_contains "$CGI" 'BLOG_SESSION_AUTH_METHOD' "proxy requires Nostr-backed auth"
-assert_file_contains "$CGI" 'blog_user_is_admin "$BLOG_SESSION_USERNAME"' "proxy rechecks site admin status"
+assert_file_contains "$CGI" 'artificer_web_allowed_nostr_pubkeys' "proxy reads the allowed Nostr pubkey list"
 assert_file_contains "$CGI" 'blog_load_session "$req_token"' "proxy validates the site session"
 assert_file_contains "$CGI" 'artificer_web_session=$BLOG_ARTIFICER_WEB_COOKIE_VALUE' "proxy sets same-origin auth cookie for iframe assets"
 assert_file_contains "$CGI" 'artificer_web_cookie_value' "proxy accepts same-origin auth cookie for iframe assets"
@@ -110,6 +110,7 @@ plugin_nostr_support=true
 plugin_nostr_login=true
 artificer_remote_base=http://exampleonionabcdef.onion
 artificer_remote_token_file=/tmp/artificer-web-test-token
+artificer_web_allowed_nostr_pubkeys=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 EOFCONF
 
 printf 'bridge-token\n' > /tmp/artificer-web-test-token
@@ -228,19 +229,19 @@ auth_query="session_token=$(urlencode "$admin_token")&csrf_token=$(urlencode "$a
 
 author_output=$(REQUEST_METHOD=GET QUERY_STRING="action=status&$author_query" "$CGI")
 author_body=$(printf '%s\n' "$author_output" | strip_cgi_headers)
-if printf '%s\n' "$author_body" | jq -e '.success == false and .code == "admin_nostr_required"' >/dev/null 2>&1; then
+if printf '%s\n' "$author_body" | jq -e '.success == false and .code == "nostr_key_required"' >/dev/null 2>&1; then
   pass
 else
-  fail "Artificer Web rejects non-admin Nostr authors"
+  fail "Artificer Web rejects unlisted Nostr identities"
   printf '%s\n' "$author_output" >&2
 fi
 
 password_admin_output=$(REQUEST_METHOD=GET QUERY_STRING="action=status&$password_admin_query" "$CGI")
 password_admin_body=$(printf '%s\n' "$password_admin_output" | strip_cgi_headers)
-if printf '%s\n' "$password_admin_body" | jq -e '.success == false and .code == "admin_nostr_required"' >/dev/null 2>&1; then
+if printf '%s\n' "$password_admin_body" | jq -e '.success == false and .code == "nostr_key_required"' >/dev/null 2>&1; then
   pass
 else
-  fail "Artificer Web rejects admin sessions that were not authenticated with Nostr"
+  fail "Artificer Web rejects allowed pubkeys that were not authenticated with Nostr"
   printf '%s\n' "$password_admin_output" >&2
 fi
 

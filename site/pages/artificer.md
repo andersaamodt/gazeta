@@ -15,4 +15,4 @@ title: Artificer Web
 </div>
 </section>
 
-<script defer src="/static/artificer-web-page.js?v=20260529-artificer-web3"></script>
+<script defer src="/static/artificer-web-page.js?v=20260529-artificer-web4"></script>

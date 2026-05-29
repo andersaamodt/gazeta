@@ -109,7 +109,7 @@
       .then((state) => {
         if (!state || state.success !== true) {
           const code = state && state.code ? String(state.code) : '';
-          if (code === 'auth_required' || code === 'admin_nostr_required' || code === 'owner_required') {
+          if (code === 'auth_required' || code === 'admin_nostr_required' || code === 'owner_required' || code === 'nostr_key_required') {
             showLoginGate();
           } else {
             showError(state && state.error ? state.error : 'Artificer Web could not authenticate.');
