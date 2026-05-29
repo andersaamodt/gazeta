@@ -2319,7 +2319,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   place-items: center;
   width: var(--desk-notebook-line);
   height: calc(var(--desk-notebook-line) - 0.16rem);
-  align-self: end;
+  align-self: start;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -3276,7 +3276,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   place-items: center;
   width: var(--desk-notebook-line);
   height: calc(var(--desk-notebook-line) - 0.16rem);
-  align-self: end;
+  align-self: start;
   padding: 0;
   border: 0;
   border-radius: 999px;
