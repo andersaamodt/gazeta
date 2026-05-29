@@ -1139,7 +1139,11 @@
   }
 
   function settingsGearIcon() {
-    return '<img class="desk-settings-gear-icon" src="/static/icons/settings-gear.svg" alt="" aria-hidden="true" decoding="async">';
+    return '<svg class="desk-settings-gear-icon" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M14 8.3V5.73l-1.58-.264c-.117-.44-.292-.848-.496-1.2l.93-1.285-1.81-1.84-1.31.908c-.371-.205-.781-.38-1.187-.497L8.288 0H5.72l-.263 1.578c-.437.117-.816.293-1.196.497L2.979 1.17 1.141 2.98l.934 1.287c-.2.38-.376.79-.493 1.228L.004 5.73V8.3l1.575.264c.117.438.292.818.496 1.198l-.93 1.315 1.809 1.813 1.312-.938c.38.205.787.38 1.224.497l.26 1.55h2.566l.263-1.58c.408-.117.817-.293 1.196-.497l1.315.935 1.81-1.812-.935-1.315c.203-.38.38-.76.495-1.2L14 8.305zM7 9.704c-1.488 0-2.683-1.2-2.683-2.69S5.542 4.327 7 4.327s2.683 1.198 2.683 2.69c0 1.49-1.195 2.688-2.683 2.688z"></path></svg>';
+  }
+
+  function userMenuDotsIcon() {
+    return '<svg class="overflow-menu-icon-svg desk-user-menu-dots-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9"></circle><circle cx="12" cy="12" r="1.9"></circle><circle cx="12" cy="18.5" r="1.9"></circle></svg>';
   }
 
   function flashlightIcon(bright) {
@@ -1176,6 +1180,9 @@
     }
     var menuButton = document.getElementById('nav-menu-btn');
     var settingsButton = document.getElementById('desk-settings-btn');
+    if (menuButton && !menuButton.querySelector('.desk-user-menu-dots-icon')) {
+      menuButton.innerHTML = userMenuDotsIcon();
+    }
     if (!settingsButton && menuButton) {
       menuButton.insertAdjacentHTML('beforebegin', '<button class="nav-menu-btn desk-settings-menu-btn" id="desk-settings-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Desk settings" title="Desk settings" data-desk-settings-toggle>' + settingsGearIcon() + '</button>');
       settingsButton = document.getElementById('desk-settings-btn');

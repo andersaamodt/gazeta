@@ -153,6 +153,15 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   display: block;
   width: 1.05rem;
   height: 1.05rem;
+  fill: currentColor;
+}
+
+body.desk-page-body nav.site-nav .nav-menu-btn .desk-user-menu-dots-icon,
+body:has(#desk-page-root) nav.site-nav .nav-menu-btn .desk-user-menu-dots-icon {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
 }
 
 .desk-settings-menu-btn {
