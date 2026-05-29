@@ -3,7 +3,7 @@
   if (!root) return;
 
   const status = root.querySelector('.artificer-web-status');
-  let settingsPanel = null;
+  let overflowPanel = null;
 
   function showError(message) {
     if (!status) return;
@@ -40,18 +40,18 @@
     return '/cgi/blog-artificer-web?' + params.toString();
   }
 
-  function closeSettings() {
-    const button = root.querySelector('[data-artificer-settings]');
-    if (settingsPanel) settingsPanel.hidden = true;
+  function closeOverflow() {
+    const button = root.querySelector('[data-artificer-overflow]');
+    if (overflowPanel) overflowPanel.hidden = true;
     if (button) button.setAttribute('aria-expanded', 'false');
   }
 
-  function toggleSettings() {
-    const button = root.querySelector('[data-artificer-settings]');
-    settingsPanel = root.querySelector('[data-artificer-settings-panel]');
-    if (!button || !settingsPanel) return;
-    const willOpen = settingsPanel.hidden;
-    settingsPanel.hidden = !willOpen;
+  function toggleOverflow() {
+    const button = root.querySelector('[data-artificer-overflow]');
+    overflowPanel = root.querySelector('[data-artificer-overflow-panel]');
+    if (!button || !overflowPanel) return;
+    const willOpen = overflowPanel.hidden;
+    overflowPanel.hidden = !willOpen;
     button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
   }
 
@@ -90,10 +90,10 @@
     const toolbar = document.createElement('div');
     toolbar.className = 'artificer-web-toolbar';
     toolbar.innerHTML = '' +
-      '<button type="button" class="artificer-web-settings-btn" data-artificer-settings aria-haspopup="menu" aria-expanded="false" aria-label="Settings" title="Settings">' +
-      '<img src="/static/icons/settings-gear.svg" alt="" aria-hidden="true" decoding="async">' +
+      '<button type="button" class="artificer-web-overflow-btn" data-artificer-overflow aria-haspopup="menu" aria-expanded="false" aria-label="Artificer Web menu" title="Artificer Web menu">' +
+      '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>' +
       '</button>' +
-      '<div class="artificer-web-settings-panel" data-artificer-settings-panel role="menu" hidden>' +
+      '<div class="artificer-web-overflow-panel" data-artificer-overflow-panel role="menu" hidden>' +
       '<button type="button" role="menuitem" data-artificer-logout>Logout</button>' +
       '</div>';
 
@@ -134,27 +134,27 @@
       if (loginButton) loginButton.click();
       return;
     }
-    if (event.target.closest('[data-artificer-settings]')) {
+    if (event.target.closest('[data-artificer-overflow]')) {
       event.preventDefault();
       event.stopPropagation();
-      toggleSettings();
+      toggleOverflow();
       return;
     }
     if (event.target.closest('[data-artificer-logout]')) {
       event.preventDefault();
-      closeSettings();
+      closeOverflow();
       logout();
       return;
     }
-    if (settingsPanel && !settingsPanel.hidden && !event.target.closest('[data-artificer-settings-panel]')) {
-      closeSettings();
+    if (overflowPanel && !overflowPanel.hidden && !event.target.closest('[data-artificer-overflow-panel]')) {
+      closeOverflow();
     }
   });
 
   document.addEventListener('click', function (event) {
-    if (!settingsPanel || settingsPanel.hidden) return;
+    if (!overflowPanel || overflowPanel.hidden) return;
     if (root.contains(event.target)) return;
-    closeSettings();
+    closeOverflow();
   });
 
   window.addEventListener('storage', function (event) {

@@ -85,43 +85,48 @@
 
 .artificer-web-toolbar {
   position: fixed;
-  top: 0.75rem;
-  right: 0.75rem;
+  bottom: 0.8rem;
+  left: 3.7rem;
   z-index: 10000;
 }
 
-.artificer-web-settings-btn {
+.artificer-web-overflow-btn {
   appearance: none;
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  min-width: 2.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  min-width: 2.2rem;
   border: 0;
-  border-radius: 10px;
-  background: rgba(3, 20, 51, 0.72);
+  border-radius: 8px;
+  background: rgba(3, 20, 51, 0.7);
   color: #f0d58a;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24);
   cursor: pointer;
 }
 
-.artificer-web-settings-btn:hover,
-.artificer-web-settings-btn:focus-visible,
-.artificer-web-settings-btn[aria-expanded="true"] {
+.artificer-web-overflow-btn:hover,
+.artificer-web-overflow-btn:focus-visible,
+.artificer-web-overflow-btn[aria-expanded="true"] {
   background: rgba(3, 20, 51, 0.9);
   outline: none;
 }
 
-.artificer-web-settings-btn img {
+.artificer-web-overflow-btn span {
   display: block;
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 0.24rem;
+  height: 0.24rem;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.artificer-web-settings-panel {
+.artificer-web-overflow-panel {
   position: absolute;
-  top: calc(100% + 0.45rem);
-  right: 0;
+  bottom: calc(100% + 0.45rem);
+  left: 0;
   width: fit-content;
   min-width: 9rem;
   padding: 0.35rem;
@@ -131,11 +136,11 @@
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
 }
 
-.artificer-web-settings-panel[hidden] {
+.artificer-web-overflow-panel[hidden] {
   display: none;
 }
 
-.artificer-web-settings-panel button {
+.artificer-web-overflow-panel button {
   appearance: none;
   display: block;
   width: 100%;
@@ -149,8 +154,8 @@
   cursor: pointer;
 }
 
-.artificer-web-settings-panel button:hover,
-.artificer-web-settings-panel button:focus-visible {
+.artificer-web-overflow-panel button:hover,
+.artificer-web-overflow-panel button:focus-visible {
   background: rgba(240, 213, 138, 0.12);
   outline: none;
 }
