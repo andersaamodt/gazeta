@@ -1537,31 +1537,31 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-door.is-last-entered .desk-map-door-gap {
   stroke: color-mix(in srgb, var(--room-color, #3d66c8) 78%, #ffe4a6 22%);
-  stroke-width: 6.2;
+  stroke-width: 6.8;
 }
 
 .desk-map-door.is-last-entered .desk-map-door-leaf {
-  stroke: rgba(118, 128, 142, 0.42);
-  stroke-width: 2.8;
+  stroke: rgba(92, 73, 55, 0.56);
+  stroke-width: 3.2;
 }
 
 .desk-map-door.is-last-entered .desk-map-door-swing {
-  stroke: rgba(118, 128, 142, 0.4);
+  stroke: rgba(92, 73, 55, 0.5);
 }
 
 .desk-map-door-gap {
-  stroke: #5a3f1d;
-  stroke-width: 5.2;
+  stroke: #624527;
+  stroke-width: 5.8;
 }
 
 .desk-map-door-leaf {
-  stroke: rgba(111, 121, 132, 0.44);
-  stroke-width: 2.4;
+  stroke: rgba(82, 68, 54, 0.58);
+  stroke-width: 2.9;
 }
 
 .desk-map-door-swing {
-  stroke: rgba(111, 121, 132, 0.42);
-  stroke-width: 1.9;
+  stroke: rgba(82, 68, 54, 0.52);
+  stroke-width: 2.25;
   stroke-dasharray: 3 5;
 }
 
