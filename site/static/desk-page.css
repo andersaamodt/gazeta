@@ -2094,6 +2094,45 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   padding: 0.34rem 0.62rem;
 }
 
+.desk-map-room-delete-control {
+  display: grid;
+  justify-items: center;
+  gap: 0.22rem;
+  margin: 0.72rem 0 0 -2.6rem;
+  padding-top: 0.62rem;
+  border-top: 1px solid rgba(117, 80, 44, 0.24);
+}
+
+.desk-map-room-delete-btn {
+  border: 1px solid rgba(103, 22, 22, 0.52);
+  border-radius: 7px;
+  background: #b83f3f;
+  color: #fff7ec;
+  box-shadow: none;
+  padding: 0.42rem 0.74rem;
+  font: 700 0.78rem/1.1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+
+.desk-map-room-delete-btn:hover,
+.desk-map-room-delete-btn:focus-visible {
+  background: #a83232;
+  outline: 0;
+}
+
+.desk-map-room-delete-btn:disabled {
+  border-color: rgba(103, 22, 22, 0.24);
+  background: rgba(184, 63, 63, 0.38);
+  color: rgba(255, 247, 236, 0.72);
+  cursor: not-allowed;
+}
+
+.desk-map-room-delete-control small {
+  color: rgba(79, 53, 26, 0.72);
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
 .desk-map-room-title {
   cursor: text;
   pointer-events: all;

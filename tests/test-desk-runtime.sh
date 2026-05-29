@@ -275,6 +275,24 @@ archive_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "
 assert_jq "$archive_json" '.success == true and .created_room.path == "archive-room"' 'Desk creates a second room for task moves'
 assert_dir_exists "$SITE_DATA/desk/office/archive-room" 'second room is a filesystem folder'
 
+delete_room_create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Delete Me")")
+assert_jq "$delete_room_create_json" '.success == true and .created_room.path == "delete-me" and .current_room.can_delete_room == true' 'Desk empty rooms advertise that they can be deleted'
+delete_room_json=$(run_desk "action=delete-room&$auth_query&room=delete-me")
+assert_jq "$delete_room_json" '.success == true and .deleted_room.path == "delete-me" and .current_room.path == ""' 'Desk deletes empty rooms and returns to the parent room'
+if [ ! -d "$SITE_DATA/desk/office/delete-me" ]; then
+  pass
+else
+  fail 'deleted empty room folder is removed from disk'
+fi
+
+not_empty_room_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Not Empty")")
+assert_jq "$not_empty_room_json" '.success == true and .created_room.path == "not-empty"' 'Desk creates a room for non-empty delete protection'
+not_empty_task_json=$(run_desk "action=add-task&$auth_query&destination_room=not-empty&task_text=$(urlencode "Keep this")")
+assert_jq "$not_empty_task_json" '.success == true and .current_room.can_delete_room == false and .current_room.delete_room_disabled_reason == "Room is not empty."' 'Desk non-empty rooms report why delete is disabled'
+not_empty_delete_json=$(run_desk "action=delete-room&$auth_query&room=not-empty")
+assert_jq "$not_empty_delete_json" '.success == false and .code == "room_not_empty"' 'Desk refuses to delete rooms that still have files'
+assert_dir_exists "$SITE_DATA/desk/office/not-empty" 'non-empty room folder remains on disk after refused delete'
+
 move_room_json=$(run_desk "action=move-room&$auth_query&room=forest-study/inner-study&target_room=archive-room")
 assert_jq "$move_room_json" '.success == true and .moved_room.from == "forest-study/inner-study" and .moved_room.to == "archive-room/inner-study" and .current_room.parent_path == "archive-room"' 'Desk moves rooms by moving the filesystem folder under another room'
 assert_dir_exists "$SITE_DATA/desk/office/archive-room/inner-study" 'moved room folder exists under its new connected room'
@@ -411,7 +429,7 @@ assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" '/static/icons/desk-favicon.svg' 'Desk page uses its custom interface favicon'
 assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" '#08275e' 'Desk favicon uses the Desk blue palette'
 assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" 'desk-wood' 'Desk favicon renders a woodgrain desktop motif'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" '20260529-current-title-rename1' 'Desk page cache-busts latest Desk interface updates'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" '20260529-delete-empty-room1' 'Desk page cache-busts latest Desk interface updates'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'rel="preload" href="/static/fonts/architects-daughter-latin-400-normal.ttf"' 'Desk preloads the default handwriting font before the notepad can open'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'rel="preload" href="/static/fonts/patrick-hand-latin-400-normal.woff2"' 'Desk preloads the alternate handwriting font before the notepad can open'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function isDeskRootHost()' 'Desk frontend detects a dedicated desk subdomain root'
@@ -1114,6 +1132,10 @@ assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" '<span>Subrooms</s
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" '>Connected rooms</option>' 'Desk room topology option no longer uses plural rooms'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" '>Contained subdivisions</option>' 'Desk room topology option no longer uses plural subdivisions'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def set_room_topology' 'Desk API persists room child topology'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def delete_room' 'Desk API can delete empty room folders'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def room_delete_status' 'Desk API reports whether a room can be deleted'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"can_delete_room"' 'Desk room summaries expose delete eligibility'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"room_not_empty"' 'Desk delete-room action refuses non-empty rooms'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk" 'BLOG_DESK_ROOM_TOPOLOGY=$(blog_param room_topology)' 'Desk CGI wrapper forwards room topology changes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "'rename-room';" 'Desk frontend can still rename non-current rooms with path updates through Desk API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-map-props' 'Desk map has a top-right blueprint properties control'
@@ -1128,6 +1150,15 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'state.suppressMapAnim
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "state.suppressTodoAnimation = state.mode === 'todo';" 'Desk map properties toggle keeps an open notepad from replaying its open animation'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '<h2 class="desk-map-properties-title">' 'Desk room properties panel shows the current room name above the controls'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "escapeHtml(currentRoom.title || 'Room')" 'Desk room properties title uses the current room name'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderRoomDeleteControl(room)' 'Desk room properties render a delete-room control'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-delete-room' 'Desk room properties expose a delete-room button'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('delete-room'" 'Desk room delete button calls the real delete-room API'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Room is not empty.' 'Desk delete-room control explains when a room still has files'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-delete-control' 'Desk room properties place delete-room controls at the bottom'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-delete-btn' 'Desk room properties style the delete-room button distinctly'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background: #b83f3f;' 'Desk delete-room button is red'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'justify-items: center;' 'Desk delete-room button is centered in the room properties panel'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'font-size: 0.62rem;' 'Desk delete-room disabled reason is tiny text'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-properties-title' 'Desk room properties title has centered panel styling'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'margin: 0 2rem 0.45rem -2.6rem;' 'Desk room properties title offsets the button-footprint padding and leaves room for close icon'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'text-align: center;' 'Desk room properties title is centered'

@@ -395,6 +395,38 @@ class DeskStore:
         data = self.room_metadata(room_rel)
         return normalize_room_topology(data.get("topology"))
 
+    def room_delete_status(self, rel: str | None) -> dict[str, object]:
+        room_rel = self.normalize_room_rel(rel)
+        if not room_rel:
+            return {"can_delete": False, "reason": "Office cannot be deleted."}
+        room = self.room_dir(room_rel)
+        if not room.is_dir():
+            return {"can_delete": False, "reason": "Room does not exist."}
+        allowed_system_dirs = {".tasks", ".docs", ".passages"}
+        for child in room.iterdir():
+            if child.name == ".room.json":
+                continue
+            if child.name in allowed_system_dirs and child.is_dir():
+                if self.system_room_dir_has_user_files(child):
+                    return {"can_delete": False, "reason": "Room is not empty."}
+                continue
+            return {"can_delete": False, "reason": "Room is not empty."}
+        return {"can_delete": True, "reason": ""}
+
+    def system_room_dir_has_user_files(self, directory: Path) -> bool:
+        for path in directory.rglob("*"):
+            if not path.is_file():
+                continue
+            if directory.name == ".tasks" and path.suffix == ".txt" and ".meta" not in path.parts:
+                return True
+            if directory.name == ".docs" and path.suffix == ".md" and not path.name.startswith("."):
+                return True
+            if directory.name == ".passages" and path.suffix == ".json" and not path.name.startswith("."):
+                return True
+            if directory.name not in (".tasks", ".docs", ".passages") and not path.name.startswith("."):
+                return True
+        return False
+
     def all_room_rels(self) -> list[str]:
         self.setup()
         rooms = [""]
@@ -602,6 +634,8 @@ class DeskStore:
             "has_public_file": public_file.is_file(),
             "public_file_name": "public.md" if public_file.is_file() else "",
             "secret_passages": self.room_secret_passages(room_rel),
+            "can_delete_room": bool(self.room_delete_status(room_rel).get("can_delete")),
+            "delete_room_disabled_reason": str(self.room_delete_status(room_rel).get("reason") or ""),
         }
 
     def room_url(self, rel: str | None) -> str:
@@ -811,6 +845,23 @@ class DeskStore:
             "to": target_rel,
             "parent_path": target_parent_rel,
         }
+        return payload
+
+    def delete_room(self, room_rel: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if not room:
+            raise DeskError("bad_room_delete", "The office cannot be deleted.")
+        room_path = self.room_dir(room)
+        if not room_path.is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        status = self.room_delete_status(room)
+        if not status.get("can_delete"):
+            raise DeskError("room_not_empty", str(status.get("reason") or "Room is not empty."))
+        parent = "" if "/" not in room else room.rsplit("/", 1)[0]
+        shutil.rmtree(room_path)
+        self.append_log("delete-room", {"room": room, "parent": parent})
+        payload = self.state(parent, threshold)
+        payload["deleted_room"] = {"path": room, "parent_path": parent}
         return payload
 
     def create_secret_passage(self, left_room: str, right_room: str, threshold: int) -> dict[str, object]:
@@ -1150,6 +1201,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "set-room-kind",
         "set-room-topology",
         "set-room-title",
+        "delete-room",
         "rebuild-indexes",
         "migrate-metadata",
     }
@@ -1187,6 +1239,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_room_topology(room, env("BLOG_DESK_ROOM_TOPOLOGY"), threshold)
         if action == "set-room-title":
             return store.set_room_title(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
+        if action == "delete-room":
+            return store.delete_room(room, threshold)
         if action == "search":
             return store.search(env("BLOG_DESK_QUERY"), threshold)
         if action == "audit":
