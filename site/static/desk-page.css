@@ -1405,7 +1405,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-greenbelt-band {
   stroke: var(--desk-greenbelt-color, #9fac63);
-  stroke-width: 68;
+  stroke-width: 60;
   opacity: 1;
 }
 
