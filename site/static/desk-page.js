@@ -1300,6 +1300,26 @@
       return roomTopology(roomsByPath[String(parentPath || '')] || {});
     }
 
+    function containedChildrenForParent(parentPath) {
+      var children = childrenByParent[parentPath] || [];
+      if (roomChildrenTopology(parentPath) === 'contained') {
+        return children;
+      }
+      return children.filter(function (room) {
+        return roomTopology(room) === 'contained';
+      });
+    }
+
+    function connectedChildrenForParent(parentPath) {
+      var children = childrenByParent[parentPath] || [];
+      if (roomChildrenTopology(parentPath) === 'contained') {
+        return [];
+      }
+      return children.filter(function (room) {
+        return roomTopology(room) !== 'contained';
+      });
+    }
+
     function containedShareBoxes(parentPath, count) {
       var parent = layout[parentPath] || layout[''];
       var total = Math.max(1, count + 1);
@@ -1323,18 +1343,23 @@
     }
 
     function assignContainedChildren(parentPath) {
-      if (roomChildrenTopology(parentPath) !== 'contained') {
-        return;
-      }
-      var children = childrenByParent[parentPath] || [];
+      var children = containedChildrenForParent(parentPath);
       if (!children.length || !layout[parentPath]) {
         return;
       }
       var containedShareCount = children.length + 1;
       var boxes = containedShareBoxes(parentPath, containedShareCount - 1);
       var selfBox = boxes[0];
+      layout[parentPath].x = selfBox.x;
+      layout[parentPath].y = selfBox.y;
+      layout[parentPath].w = selfBox.w;
+      layout[parentPath].h = selfBox.h;
       layout[parentPath].originX = selfBox.x + selfBox.w / 2 - 0.5;
       layout[parentPath].originY = selfBox.y + selfBox.h / 2 - 0.5;
+      layout[parentPath].containedSelf = true;
+      if (footprints[parentPath]) {
+        footprints[parentPath] = [{ x: selfBox.x, y: selfBox.y, w: selfBox.w, h: selfBox.h, containedSelf: true }];
+      }
       children.forEach(function (room, index) {
         var roomPath = String(room.path || '');
         var box = boxes[index + 1];
@@ -1751,15 +1776,18 @@
     }
 
     function placeSubtree(parentPath) {
-      var children = childrenByParent[parentPath] || [];
-      if (roomChildrenTopology(parentPath) === 'contained') {
-        assignContainedChildren(parentPath);
-        return;
-      }
-      children.forEach(function (room, index) {
+      var connectedChildren = connectedChildrenForParent(parentPath);
+      connectedChildren.forEach(function (room, index) {
         var roomPath = String(room.path || '');
         if (!roomPath || layout[roomPath]) return;
         if (placeChildRoom(parentPath, roomPath, index)) {
+          placeSubtree(roomPath);
+        }
+      });
+      assignContainedChildren(parentPath);
+      containedChildrenForParent(parentPath).forEach(function (room) {
+        var roomPath = String(room.path || '');
+        if (roomPath && layout[roomPath]) {
           placeSubtree(roomPath);
         }
       });
@@ -1928,10 +1956,10 @@
       var southInside = y + h - 9;
       var westInside = x + 9;
       var eastInside = x + w - 9;
-      if (cell.containedIn || !local[cell.x + ',' + (cell.y - 1)]) addSegment('north', x + 18, northInside, x + w - 18, northInside);
-      if (cell.containedIn || !local[cell.x + ',' + (cell.y + 1)]) addSegment('south', x + 18, southInside, x + w - 18, southInside);
-      if (cell.containedIn || !local[(cell.x - 1) + ',' + cell.y]) addSegment('west', westInside, y + 18, westInside, y + h - 18);
-      if (cell.containedIn || !local[(cell.x + 1) + ',' + cell.y]) addSegment('east', eastInside, y + 18, eastInside, y + h - 18);
+      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y - 1)]) addSegment('north', x + 18, northInside, x + w - 18, northInside);
+      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y + 1)]) addSegment('south', x + 18, southInside, x + w - 18, southInside);
+      if (isContainedRoomCell(cell) || !local[(cell.x - 1) + ',' + cell.y]) addSegment('west', westInside, y + 18, westInside, y + h - 18);
+      if (isContainedRoomCell(cell) || !local[(cell.x + 1) + ',' + cell.y]) addSegment('east', eastInside, y + 18, eastInside, y + h - 18);
     });
     var grouped = {};
     segments.forEach(function (segment) {
@@ -2114,8 +2142,12 @@
     return 'M ' + x + ' ' + y + ' H ' + (x + w) + ' V ' + (y + h) + ' H ' + x + ' Z';
   }
 
+  function isContainedRoomCell(roomCell) {
+    return Boolean(roomCell && (Object.prototype.hasOwnProperty.call(roomCell, 'containedIn') || roomCell.containedSelf));
+  }
+
   function roomFootprintPath(roomCell, footprint, unitW, unitH, path, isOutdoor, buildingOccupied, roomDoorSegments) {
-    if (roomCell && roomCell.containedIn) {
+    if (isContainedRoomCell(roomCell)) {
       return containedRoomPath(roomCell, unitW, unitH);
     }
     return isOutdoor
@@ -2458,7 +2490,7 @@
       var roomPassiveOutlineShape = isOutdoor
         ? outdoorExposedOutlinePath(footprint, plan.occupied, roomsByPath, unitW, unitH)
         : roomPathShape;
-      if (roomCell && roomCell.containedIn) {
+      if (isContainedRoomCell(roomCell)) {
         roomPassiveOutlineShape = roomPathShape;
       }
       var backgroundShape = isOutdoor
