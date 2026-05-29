@@ -2108,7 +2108,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   position: relative;
   z-index: 1;
   display: block;
-  isolation: isolate;
   margin: 0 var(--desk-notebook-right-margin) 0 var(--desk-notebook-content-margin);
   padding-right: 0.15rem;
   color: #1e2a46;
@@ -2119,25 +2118,15 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   min-height: var(--desk-notebook-line);
 }
 
-.desk-room-name-title::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  height: 0.14rem;
-  background: #faf9f2;
-  pointer-events: none;
-}
-
 .desk-room-name-title span {
   position: relative;
-  z-index: 1;
   display: inline-block;
+  box-sizing: border-box;
   height: var(--desk-notebook-line);
+  line-height: var(--desk-notebook-line);
   border-bottom: 0.08rem solid rgba(69, 110, 185, 0.74);
   text-decoration: none;
+  vertical-align: top;
 }
 
 .desk-todo-add {
