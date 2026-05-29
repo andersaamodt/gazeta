@@ -12730,7 +12730,16 @@ html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .z
 #main-content .blog-post-item button.blog-type-pill:focus-visible:not(:disabled),
 #main-content .blog-post-item button.blog-year-pill,
 #main-content .blog-post-item button.blog-year-pill:hover:not(:disabled),
-#main-content .blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
+#main-content .blog-post-item button.blog-year-pill:focus-visible:not(:disabled),
+.blog-post-item button.tag,
+.blog-post-item button.tag:hover:not(:disabled),
+.blog-post-item button.tag:focus-visible:not(:disabled),
+.blog-post-item button.blog-type-pill,
+.blog-post-item button.blog-type-pill:hover:not(:disabled),
+.blog-post-item button.blog-type-pill:focus-visible:not(:disabled),
+.blog-post-item button.blog-year-pill,
+.blog-post-item button.blog-year-pill:hover:not(:disabled),
+.blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
   border-color: var(--post-tag-standard-border) !important;
   background: var(--post-tag-standard-bg) !important;
   background-color: var(--post-tag-standard-bg) !important;
