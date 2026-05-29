@@ -1921,7 +1921,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   overflow-x: hidden;
 }
 
-.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel {
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel,
+.desk-stage.is-paper-switching .desk-todo-panel {
   --todo-lines: 8;
   position: relative;
   top: auto;
@@ -1956,6 +1957,28 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel.is-steady {
   animation: none;
+}
+
+.desk-stage.is-paper-switching .desk-map-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.desk-stage.is-paper-switching .desk-todo-panel,
+.desk-stage.is-paper-switching .desk-compose-panel {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+}
+
+.desk-stage.is-paper-switching .desk-todo-panel.is-closing,
+.desk-stage.is-paper-switching .desk-compose-panel.is-closing {
+  z-index: 2;
+}
+
+.desk-stage.is-paper-switching .desk-todo-panel:not(.is-closing),
+.desk-stage.is-paper-switching .desk-compose-panel:not(.is-closing) {
+  z-index: 1;
 }
 
 @keyframes desk-todo-unfold-from-corner {
@@ -3222,6 +3245,12 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
   .desk-stage[data-desk-stage-mode="compose"] {
     grid-template-columns: 1fr;
+  }
+
+  .desk-stage.is-paper-switching .desk-map-panel,
+  .desk-stage.is-paper-switching .desk-todo-panel,
+  .desk-stage.is-paper-switching .desk-compose-panel {
+    grid-column: 1;
   }
 
   .desk-stage[data-desk-stage-mode="todo"] .desk-map-panel {

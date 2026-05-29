@@ -23,6 +23,7 @@
     currentRoom: roomFromLocation(),
     mode: 'map',
     closingMode: '',
+    paperSwitchFrom: '',
     draggedRoom: '',
     suppressRoomClick: false,
     suppressMapAnimation: true,
@@ -2257,14 +2258,15 @@
 
   function renderStage(data) {
     var content = '';
+    var isPaperSwitching = state.paperSwitchFrom && state.closingMode === state.paperSwitchFrom && (state.mode === 'todo' || state.mode === 'compose');
     if (state.mode === 'todo') {
-      content = renderMapSafely(data) + renderTodo(data);
+      content = renderMapSafely(data) + (isPaperSwitching && state.paperSwitchFrom === 'compose' ? renderCompose(data) : '') + renderTodo(data);
     } else if (state.mode === 'compose') {
-      content = renderMapSafely(data) + renderCompose(data);
+      content = renderMapSafely(data) + (isPaperSwitching && state.paperSwitchFrom === 'todo' ? renderTodo(data) : '') + renderCompose(data);
     } else if (state.mode === 'map') {
       content = renderMapSafely(data);
     }
-    return '<div class="desk-stage" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
+    return '<div class="desk-stage' + (isPaperSwitching ? ' is-paper-switching' : '') + '" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
   function clearModeCloseTimer() {
@@ -2291,11 +2293,12 @@
     var mapResizeRect = previousMode === 'map' && (nextMode === 'todo' || nextMode === 'compose') ? captureMapPanelRect() : null;
     clearModeCloseTimer();
     if ((previousMode === 'todo' || previousMode === 'compose') && (nextMode === 'todo' || nextMode === 'compose') && previousMode !== nextMode && !state.closingMode) {
-      switchPaperModeWithClose(previousMode, nextMode);
+      switchPaperModeTogether(previousMode, nextMode);
       return;
     }
     state.mode = nextMode;
     state.closingMode = '';
+    state.paperSwitchFrom = '';
     state.search = null;
     state.createRoomOpen = false;
     state.secretPassageSource = null;
@@ -2313,25 +2316,27 @@
     }
   }
 
-  function switchPaperModeWithClose(previousMode, nextMode) {
+  function switchPaperModeTogether(previousMode, nextMode) {
     playSound(deskSounds.book);
+    state.mode = nextMode;
     state.closingMode = previousMode;
+    state.paperSwitchFrom = previousMode;
     state.search = null;
     state.createRoomOpen = false;
     state.secretPassageSource = null;
     state.todoAddOpen = false;
     state.suppressMapAnimation = true;
+    if (nextMode === 'compose' && !state.composeTargetRoom) {
+      state.composeTargetRoom = state.currentRoom;
+    }
     if (state.data) {
       render(state.data);
     }
     modeCloseTimer = window.setTimeout(function () {
-      state.mode = nextMode;
       state.closingMode = '';
+      state.paperSwitchFrom = '';
       modeCloseTimer = null;
       state.suppressMapAnimation = true;
-      if (nextMode === 'compose' && !state.composeTargetRoom) {
-        state.composeTargetRoom = state.currentRoom;
-      }
       if (state.data) {
         render(state.data);
       }
@@ -2354,6 +2359,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'closed';
       state.closingMode = '';
+      state.paperSwitchFrom = '';
       modeCloseTimer = null;
       if (state.data) {
         render(state.data);
@@ -2382,6 +2388,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'closed';
       state.closingMode = '';
+      state.paperSwitchFrom = '';
       modeCloseTimer = null;
       if (state.data) {
         render(state.data);
@@ -2406,6 +2413,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'map';
       state.closingMode = '';
+      state.paperSwitchFrom = '';
       modeCloseTimer = null;
       state.suppressMapAnimation = true;
       if (state.data) {
@@ -2433,6 +2441,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'map';
       state.closingMode = '';
+      state.paperSwitchFrom = '';
       modeCloseTimer = null;
       state.suppressMapAnimation = true;
       if (state.data) {
