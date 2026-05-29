@@ -1052,7 +1052,7 @@
   }
 
   function settingsGearIcon() {
-    return '<svg class="desk-settings-gear-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.9v3M12 18.1v3M4.2 6.5l2.1 2.1M17.7 17.4l2.1 2.1M2.9 12h3M18.1 12h3M4.2 17.5l2.1-2.1M17.7 6.6l2.1-2.1"></path></svg>';
+    return '<img class="desk-settings-gear-icon" src="/static/icons/settings-gear.svg" alt="" aria-hidden="true" decoding="async">';
   }
 
   function flashlightIcon(bright) {

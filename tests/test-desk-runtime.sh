@@ -648,6 +648,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'body:has(#desk-page-
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background: rgba(3, 20, 51, 0.72) !important;' 'Desk three-dot menu button uses the same dark surface as the status selector'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'height: 2.6rem !important;' 'Desk three-dot menu button matches the status selector height'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-settings-toggle' 'Desk injects a top-right settings gear button before the user menu'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '/static/icons/settings-gear.svg' 'Desk settings button uses the shared Wizardry stock gear icon'
+assert_file_contains "$ROOT_DIR/site/static/icons/settings-gear.svg" 'M14 8.3V5.73' 'Desk carries the stock Wizardry settings gear asset'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-settings-panel' 'Desk settings controls live in their own gear menu panel'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-settings-menu-btn' 'Desk settings gear is styled alongside the top-right menu button'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-status-btn svg' 'Desk online status controls use icons instead of text labels'

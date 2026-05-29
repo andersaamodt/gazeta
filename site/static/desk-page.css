@@ -149,15 +149,10 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24) !important;
 }
 
-.desk-settings-menu-btn svg {
+.desk-settings-menu-btn .desk-settings-gear-icon {
   display: block;
   width: 1.05rem;
   height: 1.05rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .desk-settings-menu-btn {
