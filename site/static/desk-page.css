@@ -1261,6 +1261,14 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   animation: none;
 }
 
+.desk-shell.is-map-resizing .desk-map-panel,
+.desk-map-panel.is-resizing {
+  backface-visibility: hidden;
+  contain: layout paint;
+  transition: none;
+  will-change: transform;
+}
+
 .desk-map-panel.is-closing {
   pointer-events: none;
   animation: desk-map-furl 380ms cubic-bezier(0.62, 0, 0.22, 1) forwards;
