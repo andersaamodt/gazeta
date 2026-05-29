@@ -810,6 +810,15 @@
       if (state.mode === 'map' || state.mode === 'todo' || state.mode === 'compose') {
         state.suppressMapAnimation = true;
       }
+      state.suppressTodoAnimation = state.mode === 'todo';
+      state.suppressComposeAnimation = state.mode === 'compose';
+      if (state.mode === 'compose' && !state.composeDirty) {
+        state.composeTargetRoom = clean;
+        state.composeDocId = '';
+        state.composeDocText = '';
+        state.composeDocTitle = '';
+        state.composeDocType = 'shortform';
+      }
       state.mapZoomMode = 'room';
       state.mapPanX = 0;
       state.mapPanY = 0;
@@ -2975,8 +2984,12 @@
     if (clickedRoom === state.currentRoom) {
       return true;
     }
-    state.mode = 'map';
+    if (state.mode !== 'todo' && state.mode !== 'compose') {
+      state.mode = 'map';
+    }
     state.paperMapVisible = true;
+    state.suppressTodoAnimation = state.mode === 'todo';
+    state.suppressComposeAnimation = state.mode === 'compose';
     state.lastEnteredDoor = {
       from: state.currentRoom,
       to: clickedRoom
@@ -4355,10 +4368,14 @@
       return;
     }
     state.lastMapRoomTravel = null;
-    state.suppressTodoAnimation = false;
+    var keepOpenPaper = state.mode === 'todo' || state.mode === 'compose';
+    state.suppressTodoAnimation = state.mode === 'todo';
+    state.suppressComposeAnimation = state.mode === 'compose';
     state.suppressMapAnimation = true;
     var wasTodoOpen = state.mode === 'todo';
-    state.mode = 'todo';
+    if (!keepOpenPaper) {
+      state.mode = 'todo';
+    }
     state.paperMapVisible = true;
     state.closingMode = '';
     state.closingMap = false;
