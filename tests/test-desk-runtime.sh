@@ -451,6 +451,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "state.mapZoomMode = s
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-room-viewbox' 'Desk map carries the current-room zoom target on the SVG'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function animateMapViewBox' 'Desk map zoom animates the SVG viewBox directly'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'applyMapZoomToDom();' 'Desk map zoom updates the existing DOM instead of replaying mode animations'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderMapZoomIcon' 'Desk map zoom button swaps magnifying glass icons by zoom mode'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "zoomButton.innerHTML = renderMapZoomIcon();" 'Desk map updates the zoom icon without rerendering the whole map'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "state.mapZoomMode = 'room';" 'Desk room navigation switches the map to closeup mode'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'pointerMapPan: null' 'Desk map tracks closeup panning pointer state'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "state.pointerMapPan = {" 'Desk map starts panning when grabbing the closeup map background'

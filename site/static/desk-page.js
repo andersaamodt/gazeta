@@ -437,8 +437,16 @@
       zoomButton.classList.toggle('is-active', state.mapZoomMode === 'room');
       zoomButton.setAttribute('aria-label', zoomLabel);
       zoomButton.setAttribute('title', zoomLabel);
+      zoomButton.innerHTML = renderMapZoomIcon();
     }
     animateMapViewBox(svg, currentViewBox, targetViewBox);
+  }
+
+  function renderMapZoomIcon() {
+    var symbol = state.mapZoomMode === 'room'
+      ? '<path d="M7.8 10.4H13"></path>'
+      : '<path d="M10.4 7.8v5.2M7.8 10.4H13"></path>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="5.7"></circle><path d="M14.7 14.7 20 20"></path>' + symbol + '</svg>';
   }
 
   function currentMapViewBox() {
@@ -2250,7 +2258,7 @@
       greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
       '</svg>' +
       '<button type="button" class="desk-map-close" data-desk-close-map aria-label="Close map" title="Close map">×</button>' +
-      '<button type="button" class="desk-map-zoom-btn' + (state.mapZoomMode === 'room' ? ' is-active' : '') + '" data-desk-map-zoom aria-label="' + escapeHtml(zoomLabel) + '" title="' + escapeHtml(zoomLabel) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.4" cy="10.4" r="5.7"></circle><path d="M14.7 14.7 20 20"></path><path d="M10.4 7.8v5.2M7.8 10.4H13"></path></svg></button>' +
+      '<button type="button" class="desk-map-zoom-btn' + (state.mapZoomMode === 'room' ? ' is-active' : '') + '" data-desk-map-zoom aria-label="' + escapeHtml(zoomLabel) + '" title="' + escapeHtml(zoomLabel) + '">' + renderMapZoomIcon() + '</button>' +
       '<button type="button" class="desk-map-props-btn' + (state.mapPropsOpen ? ' is-active' : '') + '" data-desk-map-props aria-label="Room properties" title="Room properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-blueprint-sheet" d="M5 3.8h10.3L19 7.5v12.7H5z"></path><path class="desk-blueprint-fold" d="M15.3 3.8v4h3.9"></path><path class="desk-blueprint-grid" d="M8 9.2h8M8 13h8M8 16.8h4M9.7 7v12M14.4 9.2v9.8"></path><path class="desk-blueprint-mark" d="M13.1 16.8l1.4 1.4 2.8-3.2"></path></svg></button>' +
       propsPanel +
       '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 32 32" aria-hidden="true"><g class="desk-passage-books"><path class="desk-passage-book side left" d="M7 8h5v16H7z"></path><path class="desk-passage-book-cover desk-passage-book middle" d="M13.5 6.5h5v18.5h-5z"></path><path class="desk-passage-book side right" d="M20 8h5v16h-5z"></path><path class="desk-passage-book-line" d="M9.5 11.5h0M16 10.5h0M22.5 11.5h0M9.5 20.5h0M16 21.5h0M22.5 20.5h0"></path></g></svg></button>' +
