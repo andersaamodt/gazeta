@@ -1379,23 +1379,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-linejoin: round;
 }
 
-.desk-map-greenbelt-fade {
-  stroke: #9fac63;
-}
-
-.desk-map-greenbelt-fade.far {
-  stroke-width: 92;
-  opacity: 0.025;
-}
-
-.desk-map-greenbelt-fade.mid {
-  stroke-width: 84;
-  opacity: 0.06;
-}
-
-.desk-map-greenbelt-fade.near {
-  stroke-width: 76;
-  opacity: 0.12;
+.desk-map-greenbelt-gradient-edge,
+.desk-map-greenbelt-gradient-corner {
+  pointer-events: none;
 }
 
 .desk-map-greenbelt-band {

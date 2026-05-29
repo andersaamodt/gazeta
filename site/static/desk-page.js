@@ -1881,31 +1881,90 @@
   function renderGreenbelt(cells, occupied, unitW, unitH) {
     if (!cells.length) return '';
     var edges = [];
-    function addEdge(x1, y1, x2, y2) {
-      edges.push({ a: { x: x1, y: y1 }, b: { x: x2, y: y2 } });
+    var corners = {};
+    var bandRadius = 34;
+    var gradientWidth = 30;
+    var gradientOuter = bandRadius + gradientWidth;
+    function addEdge(side, x1, y1, x2, y2) {
+      edges.push({ side: side, a: { x: x1, y: y1 }, b: { x: x2, y: y2 } });
+    }
+    function addCorner(type, x, y) {
+      corners[type + ':' + x + ':' + y] = { type: type, x: x, y: y };
     }
     cells.forEach(function (cell) {
-      if (occupied[cell.x + ',' + (cell.y - 1)] == null) {
-        addEdge(cell.x, cell.y, cell.x + 1, cell.y);
+      var northOpen = occupied[cell.x + ',' + (cell.y - 1)] == null;
+      var eastOpen = occupied[(cell.x + 1) + ',' + cell.y] == null;
+      var southOpen = occupied[cell.x + ',' + (cell.y + 1)] == null;
+      var westOpen = occupied[(cell.x - 1) + ',' + cell.y] == null;
+      if (northOpen) {
+        addEdge('north', cell.x, cell.y, cell.x + 1, cell.y);
       }
-      if (occupied[(cell.x + 1) + ',' + cell.y] == null) {
-        addEdge(cell.x + 1, cell.y, cell.x + 1, cell.y + 1);
+      if (eastOpen) {
+        addEdge('east', cell.x + 1, cell.y, cell.x + 1, cell.y + 1);
       }
-      if (occupied[cell.x + ',' + (cell.y + 1)] == null) {
-        addEdge(cell.x + 1, cell.y + 1, cell.x, cell.y + 1);
+      if (southOpen) {
+        addEdge('south', cell.x + 1, cell.y + 1, cell.x, cell.y + 1);
       }
-      if (occupied[(cell.x - 1) + ',' + cell.y] == null) {
-        addEdge(cell.x, cell.y + 1, cell.x, cell.y);
+      if (westOpen) {
+        addEdge('west', cell.x, cell.y + 1, cell.x, cell.y);
+      }
+      if (northOpen && westOpen) {
+        addCorner('nw', cell.x, cell.y);
+      }
+      if (northOpen && eastOpen) {
+        addCorner('ne', cell.x + 1, cell.y);
+      }
+      if (southOpen && eastOpen) {
+        addCorner('se', cell.x + 1, cell.y + 1);
+      }
+      if (southOpen && westOpen) {
+        addCorner('sw', cell.x, cell.y + 1);
       }
     });
+    function gradientEdge(edge) {
+      var x1 = edge.a.x * unitW;
+      var y1 = edge.a.y * unitH;
+      var x2 = edge.b.x * unitW;
+      var y2 = edge.b.y * unitH;
+      var minX = Math.min(x1, x2);
+      var minY = Math.min(y1, y2);
+      if (edge.side === 'north') {
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + minX + '" y="' + (y1 - gradientOuter) + '" width="' + Math.abs(x2 - x1) + '" height="' + gradientWidth + '" fill="url(#desk-map-greenbelt-gradient-north)"></rect>';
+      }
+      if (edge.side === 'south') {
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + minX + '" y="' + (y1 + bandRadius) + '" width="' + Math.abs(x2 - x1) + '" height="' + gradientWidth + '" fill="url(#desk-map-greenbelt-gradient-south)"></rect>';
+      }
+      if (edge.side === 'east') {
+        return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 + bandRadius) + '" y="' + minY + '" width="' + gradientWidth + '" height="' + Math.abs(y2 - y1) + '" fill="url(#desk-map-greenbelt-gradient-east)"></rect>';
+      }
+      return '<rect class="desk-map-greenbelt-gradient-edge" x="' + (x1 - gradientOuter) + '" y="' + minY + '" width="' + gradientWidth + '" height="' + Math.abs(y2 - y1) + '" fill="url(#desk-map-greenbelt-gradient-west)"></rect>';
+    }
+    function gradientCorner(corner) {
+      var x = corner.x * unitW;
+      var y = corner.y * unitH;
+      if (corner.type === 'ne') {
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + x + '" y="' + (y - gradientOuter) + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-ne)"></rect>';
+      }
+      if (corner.type === 'se') {
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + x + '" y="' + y + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-se)"></rect>';
+      }
+      if (corner.type === 'sw') {
+        return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + y + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-sw)"></rect>';
+      }
+      return '<rect class="desk-map-greenbelt-gradient-corner" x="' + (x - gradientOuter) + '" y="' + (y - gradientOuter) + '" width="' + gradientOuter + '" height="' + gradientOuter + '" fill="url(#desk-map-greenbelt-gradient-corner-nw)"></rect>';
+    }
     var greenbeltPaths = edges.map(function (edge) {
       return 'M ' + (edge.a.x * unitW) + ' ' + (edge.a.y * unitH) +
         ' L ' + (edge.b.x * unitW) + ' ' + (edge.b.y * unitH);
     }).join(' ');
+    var gradientEdges = edges.map(gradientEdge).join('');
+    var gradientCorners = Object.keys(corners).map(function (key) {
+      return gradientCorner(corners[key]);
+    }).join('');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade far" d="' + greenbeltPaths + '"></path>' +
-      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade mid" d="' + greenbeltPaths + '"></path>' +
-      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade near" d="' + greenbeltPaths + '"></path>' +
+      '<defs><linearGradient id="desk-map-greenbelt-gradient-north" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-south" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-east" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></linearGradient><linearGradient id="desk-map-greenbelt-gradient-west" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9fac63" stop-opacity="0"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="1"></stop></linearGradient><radialGradient id="desk-map-greenbelt-gradient-corner-nw" cx="100%" cy="100%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-ne" cx="0%" cy="100%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-se" cx="0%" cy="0%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-greenbelt-gradient-corner-sw" cx="100%" cy="0%" r="100%"><stop offset="0.52" stop-color="#9fac63" stop-opacity="1"></stop><stop offset="1" stop-color="#9fac63" stop-opacity="0"></stop></radialGradient></defs>' +
+      gradientEdges +
+      gradientCorners +
       '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + greenbeltPaths + '"></path>' +
       '</g>';
   }
@@ -2526,7 +2585,7 @@
         roomPassiveOutlineShape = roomPathShape;
       }
       var backgroundShape = isOutdoor
-        ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade far" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-fade mid" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-fade near" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
+        ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
         : '';
       var roomShape = isOutdoor
         ? '<path class="desk-map-room-outdoor-hit" d="' + roomPathShape + '"></path>'
