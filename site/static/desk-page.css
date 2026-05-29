@@ -1321,7 +1321,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-room-hover-tint {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease;
+  transition: none;
 }
 
 .desk-map-room-link:not(.is-current):hover .desk-map-room-hover-tint,
@@ -1467,6 +1467,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-room-hover-outline.is-hovered {
   stroke: var(--room-color);
   stroke-width: 7.8;
+  transition: none;
 }
 
 .desk-map-door {
