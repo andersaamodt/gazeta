@@ -1339,15 +1339,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: all;
 }
 
-.desk-map-room-current-tint {
-  opacity: 0.26;
-  pointer-events: none;
-}
-
-.desk-map-room.is-current .desk-map-room-current-tint {
-  opacity: 0.34;
-}
-
 .desk-map-room-hover-tint {
   opacity: 0;
   pointer-events: none;
@@ -1387,6 +1378,27 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: calc(var(--presence) * 0.58);
 }
 
+.desk-map-wall-lights {
+  --presence: 0;
+  pointer-events: none;
+}
+
+.desk-map-wall-light-halo {
+  fill: #ffd579;
+  opacity: calc(0.06 + var(--presence) * 0.28);
+  mix-blend-mode: screen;
+  transition: opacity 1400ms ease;
+}
+
+.desk-map-wall-light {
+  fill: #ffe6a3;
+  opacity: calc(0.16 + var(--presence) * 0.68);
+  paint-order: stroke;
+  stroke: rgba(99, 61, 24, 0.28);
+  stroke-width: 1.2;
+  transition: opacity 1400ms ease;
+}
+
 .desk-map-room text {
   fill: #26180c;
   font-size: 16px;
@@ -1400,9 +1412,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: 0.78;
 }
 
-.desk-map-room.is-current .desk-map-room-shape,
 .desk-map-room.is-passage-source .desk-map-room-shape,
-.desk-map-room.is-current .desk-map-room-outdoor-hit,
 .desk-map-room.is-passage-source .desk-map-room-outdoor-hit {
   stroke: color-mix(in srgb, var(--room-color) 72%, #d7b46f 28%);
   stroke-width: 5.4;
@@ -1418,7 +1428,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-width: 0;
 }
 
-.desk-map-room.is-current .desk-map-room-grass,
 .desk-map-room.is-passage-source .desk-map-room-grass {
   filter: saturate(1.08) brightness(1.02);
 }
@@ -1462,10 +1471,14 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   transition: stroke 140ms ease, stroke-width 140ms ease, opacity 140ms ease;
 }
 
-.desk-map-room-outline.is-current,
 .desk-map-room-outline.is-passage-source {
   stroke: color-mix(in srgb, var(--room-color) 72%, #d7b46f 28%);
   stroke-width: 5.6;
+}
+
+.desk-map-room-outline.is-current {
+  stroke: var(--room-color);
+  stroke-width: 7.8;
 }
 
 .desk-map-room-hover-outline.is-hovered {
@@ -1474,10 +1487,20 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-door {
+  --door-spill: 0;
+  --door-light: 0;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
+}
+
+.desk-map-door-spill {
+  stroke: #ffd36c;
+  stroke-width: calc(9px + var(--door-spill) * 20px);
+  opacity: calc(var(--door-spill) * (0.24 + var(--door-light) * 0.5));
+  mix-blend-mode: screen;
+  transition: opacity 1400ms ease, stroke-width 1400ms ease;
 }
 
 .desk-map-door.is-last-entered .desk-map-door-gap {

@@ -570,6 +570,12 @@
       var room = node.getAttribute('data-desk-room-presence') || node.getAttribute('data-desk-room-dim') || '';
       node.style.setProperty('--presence', String(clampPresence(rooms[room])));
     });
+    root.querySelectorAll('[data-desk-door-from][data-desk-door-to]').forEach(function (node) {
+      var fromPresence = clampPresence(rooms[node.getAttribute('data-desk-door-from') || '']);
+      var toPresence = clampPresence(rooms[node.getAttribute('data-desk-door-to') || '']);
+      node.style.setProperty('--door-spill', String(Math.abs(fromPresence - toPresence)));
+      node.style.setProperty('--door-light', String(Math.max(fromPresence, toPresence)));
+    });
   }
 
   function startPresenceTimer() {
@@ -1708,6 +1714,53 @@
     return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
   }
 
+  function roomWallLightPoints(cells, unitW, unitH) {
+    var bounds = footprintBounds(cells);
+    var horizontalWalls = bounds.w * unitW >= bounds.h * unitH;
+    var local = {};
+    var points = [];
+    cells.forEach(function (cell) {
+      local[cell.x + ',' + cell.y] = true;
+    });
+    function addLightRun(side, x1, y1, x2, y2) {
+      var horizontal = side === 'north' || side === 'south';
+      if (horizontal !== horizontalWalls) return;
+      var length = horizontal ? Math.abs(x2 - x1) : Math.abs(y2 - y1);
+      var count = Math.max(1, Math.round(length / 84));
+      for (var i = 1; i <= count; i += 1) {
+        var ratio = i / (count + 1);
+        points.push({
+          x: x1 + (x2 - x1) * ratio,
+          y: y1 + (y2 - y1) * ratio,
+          horizontal: horizontal
+        });
+      }
+    }
+    cells.forEach(function (cell) {
+      var x = cell.x * unitW;
+      var y = cell.y * unitH;
+      var northInside = y + 9;
+      var southInside = y + unitH - 9;
+      var westInside = x + 9;
+      var eastInside = x + unitW - 9;
+      if (!local[cell.x + ',' + (cell.y - 1)]) addLightRun('north', x + 18, northInside, x + unitW - 18, northInside);
+      if (!local[cell.x + ',' + (cell.y + 1)]) addLightRun('south', x + 18, southInside, x + unitW - 18, southInside);
+      if (!local[(cell.x - 1) + ',' + cell.y]) addLightRun('west', westInside, y + 18, westInside, y + unitH - 18);
+      if (!local[(cell.x + 1) + ',' + cell.y]) addLightRun('east', eastInside, y + 18, eastInside, y + unitH - 18);
+    });
+    return points;
+  }
+
+  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue) {
+    var lights = roomWallLightPoints(cells, unitW, unitH);
+    if (!lights.length) return '';
+    return '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
+      var glowRadiusX = light.horizontal ? 15 : 10;
+      var glowRadiusY = light.horizontal ? 10 : 15;
+      return '<ellipse class="desk-map-wall-light-halo" cx="' + light.x + '" cy="' + light.y + '" rx="' + glowRadiusX + '" ry="' + glowRadiusY + '"></ellipse><circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
+    }).join('') + '</g>';
+  }
+
   function segmentHasDoor(from, to, doorSegments) {
     if (!doorSegments || !doorSegments.length) return false;
     var minX = Math.min(from.x, to.x);
@@ -1847,9 +1900,23 @@
     return path + ' Z';
   }
 
-  function renderDoorGlyph(x, y, side, isSecret, isLastEntered) {
+  function doorPresenceVars(fromRoom, toRoom, presence) {
+    if (fromRoom == null || toRoom == null) return { attrs: '', style: '' };
+    var from = String(fromRoom || '');
+    var to = String(toRoom || '');
+    var fromPresence = clampPresence(presence && presence[from]);
+    var toPresence = clampPresence(presence && presence[to]);
+    return {
+      attrs: ' data-desk-door-from="' + escapeHtml(from) + '" data-desk-door-to="' + escapeHtml(to) + '"',
+      style: ' style="--door-spill:' + escapeHtml(Math.abs(fromPresence - toPresence)) + ';--door-light:' + escapeHtml(Math.max(fromPresence, toPresence)) + '"'
+    };
+  }
+
+  function renderDoorGlyph(x, y, side, isSecret, isLastEntered, spill) {
     var secretClass = isSecret ? ' desk-map-secret-door' : '';
     var enteredClass = isLastEntered ? ' is-last-entered' : '';
+    var spillAttrs = spill && spill.attrs ? spill.attrs : '';
+    var spillStyle = spill && spill.style ? spill.style : '';
     var open = 13;
     var leaf = 24;
     var label = isSecret
@@ -1858,11 +1925,11 @@
     if (side === 'east' || side === 'west') {
       var xDirection = side === 'east' ? 1 : -1;
       var xLeaf = x + xDirection * leaf;
-      return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
+      return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill" d="M ' + (x - 32) + ' ' + y + ' H ' + (x + 32) + '"></path><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
     }
     var yDirection = side === 'south' ? 1 : -1;
     var yLeaf = y + yDirection * leaf;
-    return '<g class="desk-map-door' + secretClass + enteredClass + '"><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
+    return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill" d="M ' + x + ' ' + (y - 32) + ' V ' + (y + 32) + '"></path><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
   }
 
   function isLastEnteredDoor(door) {
@@ -1875,24 +1942,25 @@
     return (from === enteredFrom && to === enteredTo) || (from === enteredTo && to === enteredFrom);
   }
 
-  function renderDoor(door, layout, unitW, unitH) {
+  function renderDoor(door, layout, unitW, unitH, presence) {
     var from = layout[door.from];
     var to = layout[door.to];
     if (!from || !to) return '';
     var isLastEntered = isLastEnteredDoor(door);
+    var spill = doorPresenceVars(door.from, door.to, presence);
     if (Number.isFinite(door.x) && Number.isFinite(door.y)) {
-      return renderDoorGlyph(door.x * unitW, door.y * unitH, door.side, false, isLastEntered);
+      return renderDoorGlyph(door.x * unitW, door.y * unitH, door.side, false, isLastEntered, spill);
     }
     var x;
     var y;
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      return renderDoorGlyph(x, y, door.side, false, isLastEntered);
+      return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill);
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    return renderDoorGlyph(x, y, door.side, false, isLastEntered);
+    return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill);
   }
 
   function rootEntranceDoorSegment(layout, occupied) {
@@ -2109,14 +2177,10 @@
       var roomShape = isOutdoor
         ? '<path class="desk-map-room-outdoor-hit" d="' + roomPathShape + '"></path>'
         : '<path class="desk-map-room-shape" d="' + roomPathShape + '"></path>';
-      var currentTint = isCurrent
-        ? (isOutdoor
-          ? '<path class="desk-map-room-current-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>'
-          : '<path class="desk-map-room-current-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>')
-        : '';
       var hoverTint = '<path class="desk-map-room-hover-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>';
       var dimLayer = '<rect class="desk-map-room-dim' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-dim="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>';
       var presenceGlow = '<rect class="desk-map-room-presence' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>';
+      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path]) : '';
       var titleNode = state.mapRenameRoom !== null && state.mapRenameRoom === path
         ? '<foreignObject x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"><form xmlns="http://www.w3.org/1999/xhtml" class="desk-map-rename-form" data-desk-form="rename-room-inline"><input type="hidden" name="room" value="' + escapeHtml(path) + '"><input class="desk-map-rename-input" name="room_title" value="' + escapeHtml(state.mapRenameValue || title) + '" maxlength="96" required></form></foreignObject>'
         : '<text class="desk-map-room-title" x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle" tabindex="0">' + escapeHtml(title) + '</text>';
@@ -2124,9 +2188,9 @@
         '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
         dimLayer +
-        currentTint +
         hoverTint +
         presenceGlow +
+        wallLights +
         titleNode +
         countLabel +
         '</g>' +
@@ -2140,7 +2204,7 @@
     var roomOutlines = roomParts.map(function (part) { return part.outline; }).join('');
     var roomHoverOutlines = roomParts.map(function (part) { return part.hoverOutline; }).join('');
     var doorShapes = plan.doors.map(function (door) {
-      return renderDoor(door, layout, unitW, unitH);
+      return renderDoor(door, layout, unitW, unitH, presence);
     }).join('');
     var entranceDoorShape = renderRootEntranceDoor(layout, plan.occupied, unitW, unitH);
     var passageParts = ((data && data.secret_passages) || []).map(function (passage) {
