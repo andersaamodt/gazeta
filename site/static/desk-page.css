@@ -15,6 +15,7 @@
 }
 
 :root {
+  --desk-handwriting-font: "Desk Architects Daughter", "Architects Daughter", "Segoe Print", cursive;
   --desk-ink: #f5f0df;
   --desk-muted: #c9c0a7;
   --desk-blue: #08275e;
@@ -146,6 +147,25 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   background: rgba(3, 20, 51, 0.72) !important;
   color: var(--desk-gold-soft) !important;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+}
+
+.desk-settings-menu-btn svg {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.desk-settings-menu-btn {
+  margin-right: 0.46rem !important;
+}
+
+.desk-settings-panel {
+  right: calc(100% + 0.46rem) !important;
 }
 
 body.desk-page-body nav.site-nav .btn-login:hover,
@@ -349,7 +369,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-chrome-controls {
   position: fixed;
   top: max(0.75rem, env(safe-area-inset-top));
-  right: max(4.6rem, calc(env(safe-area-inset-right) + 4.6rem));
+  right: max(10.3rem, calc(env(safe-area-inset-right) + 10.3rem));
   z-index: 1602;
   display: flex;
   align-items: center;
@@ -1007,7 +1027,15 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   font-size: 0.78rem;
 }
 
-.desk-threshold-control .desk-select {
+.desk-handwriting-font-control {
+  display: grid;
+  gap: 0.22rem;
+  color: var(--desk-muted);
+  font-size: 0.78rem;
+}
+
+.desk-threshold-control .desk-select,
+.desk-handwriting-font-control .desk-select {
   min-width: 4.8rem;
 }
 
@@ -1075,6 +1103,10 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-menu-settings .desk-threshold-control {
+  gap: 0.28rem;
+}
+
+.desk-menu-settings .desk-handwriting-font-control {
   gap: 0.28rem;
 }
 
@@ -2076,7 +2108,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
     repeating-linear-gradient(to bottom, #faf9f2 0 calc(var(--desk-notebook-line) - 0.08rem), rgba(69, 110, 185, 0.3) calc(var(--desk-notebook-line) - 0.04rem), #faf9f2 var(--desk-notebook-line)),
     #faf9f2;
   color: #1c253c;
-  font-family: "Desk Architects Daughter", "Architects Daughter", "Desk Patrick Hand", "Segoe Print", cursive;
+  font-family: var(--desk-handwriting-font);
   font-size: 1.08rem;
   line-height: var(--desk-notebook-line);
   overflow-y: auto;
@@ -2934,7 +2966,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-compose-textarea-lined {
   color: #22479f;
-  font-family: "Desk Architects Daughter", "Desk Patrick Hand", "Patrick Hand", "Segoe Print", cursive;
+  font-family: var(--desk-handwriting-font);
   line-height: var(--desk-compose-lined-line);
   padding-top: calc(var(--desk-compose-lined-top) - 1.15rem);
   padding-left: calc(var(--desk-compose-lined-margin) + 0.58rem);
@@ -3376,7 +3408,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
   .desk-chrome-controls {
     left: 0.75rem;
-    right: 4.4rem;
+    right: 7.7rem;
     justify-content: flex-end;
   }
 

@@ -35,6 +35,7 @@
     todoAddOpen: false,
     composePaper: 'printer',
     threshold: thresholdFromStorage(),
+    handwritingFont: handwritingFontFromStorage(),
     showSurfacedOnly: false,
     pointerRoomDrag: null,
     pointerDocDrag: null,
@@ -600,6 +601,38 @@
     return Math.min(100, Math.floor(stored));
   }
 
+  function handwritingFontOptions() {
+    return [
+      { value: 'architects', label: 'Architects Daughter', family: '"Desk Architects Daughter", "Architects Daughter", "Segoe Print", cursive' },
+      { value: 'patrick', label: 'Patrick Hand', family: '"Desk Patrick Hand", "Patrick Hand", "Segoe Print", cursive' },
+      { value: 'segoe-print', label: 'Segoe Print', family: '"Segoe Print", "Desk Patrick Hand", cursive' },
+      { value: 'bradley', label: 'Bradley Hand', family: '"Bradley Hand", "Bradley Hand ITC", "Desk Patrick Hand", cursive' },
+      { value: 'noteworthy', label: 'Noteworthy', family: '"Noteworthy", "Desk Architects Daughter", cursive' },
+      { value: 'chalkboard', label: 'Chalkboard', family: '"Chalkboard SE", "Comic Sans MS", "Desk Patrick Hand", cursive' },
+      { value: 'comic', label: 'Comic Sans', family: '"Comic Sans MS", "Comic Sans", "Desk Patrick Hand", cursive' }
+    ];
+  }
+
+  function handwritingFontOption(value) {
+    var clean = String(value || 'architects');
+    var options = handwritingFontOptions();
+    for (var i = 0; i < options.length; i += 1) {
+      if (options[i].value === clean) {
+        return options[i];
+      }
+    }
+    return options[0];
+  }
+
+  function handwritingFontFromStorage() {
+    return handwritingFontOption(storageGet('desk_handwriting_font_v1')).value;
+  }
+
+  function applyHandwritingFont() {
+    var option = handwritingFontOption(state.handwritingFont);
+    root.style.setProperty('--desk-handwriting-font', option.family);
+  }
+
   function flashlightStrengthFromStorage() {
     var stored = Number(storageGet('desk_flashlight_strength_v1') || 4);
     if (!Number.isFinite(stored)) {
@@ -977,6 +1010,18 @@
       '</select></label>';
   }
 
+  function handwritingFontControl() {
+    return '<label class="desk-handwriting-font-control"><span>Handwriting font</span><select class="desk-select" data-desk-handwriting-font aria-label="Handwriting font">' +
+      handwritingFontOptions().map(function (option) {
+        return '<option value="' + escapeHtml(option.value) + '"' + (option.value === state.handwritingFont ? ' selected' : '') + '>' + escapeHtml(option.label) + '</option>';
+      }).join('') +
+      '</select></label>';
+  }
+
+  function settingsGearIcon() {
+    return '<svg class="desk-settings-gear-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.9v3M12 18.1v3M4.2 6.5l2.1 2.1M17.7 17.4l2.1 2.1M2.9 12h3M18.1 12h3M4.2 17.5l2.1-2.1M17.7 6.6l2.1-2.1"></path></svg>';
+  }
+
   function flashlightIcon(bright) {
     var beam = bright
       ? '<path class="desk-flashlight-beam" d="M14 10l11-5v22l-11-5z"></path>'
@@ -999,24 +1044,42 @@
   }
 
   function syncDeskMenuSettings() {
+    applyHandwritingFont();
+    var userMenu = document.getElementById('nav-user-menu');
     var panel = document.getElementById('nav-menu-panel');
-    if (!panel) {
+    if (!panel || !userMenu) {
       return;
     }
     var deskLink = document.getElementById('nav-menu-desk-link');
     if (deskLink && deskLink.parentNode) {
       deskLink.parentNode.removeChild(deskLink);
     }
-    var existing = panel.querySelector('[data-desk-menu-settings]');
+    var menuButton = document.getElementById('nav-menu-btn');
+    var settingsButton = document.getElementById('desk-settings-btn');
+    if (!settingsButton && menuButton) {
+      menuButton.insertAdjacentHTML('beforebegin', '<button class="nav-menu-btn desk-settings-menu-btn" id="desk-settings-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Desk settings" title="Desk settings" data-desk-settings-toggle>' + settingsGearIcon() + '</button>');
+      settingsButton = document.getElementById('desk-settings-btn');
+    }
+    var settingsPanel = document.getElementById('desk-settings-panel');
+    if (!settingsPanel) {
+      userMenu.insertAdjacentHTML('beforeend', '<div class="nav-menu-panel desk-settings-panel" id="desk-settings-panel" role="menu" hidden></div>');
+      settingsPanel = document.getElementById('desk-settings-panel');
+    }
+    var staleMenuSettings = panel.querySelector('[data-desk-menu-settings]');
+    if (staleMenuSettings && staleMenuSettings.parentNode) {
+      staleMenuSettings.parentNode.removeChild(staleMenuSettings);
+    }
+    var existing = settingsPanel.querySelector('[data-desk-menu-settings]');
     var html = '<div class="desk-menu-settings" data-desk-menu-settings role="none">' +
       '<h2 class="desk-menu-heading">Settings</h2>' +
       thresholdControl() +
+      handwritingFontControl() +
       '</div>';
     if (existing) {
       existing.outerHTML = html;
       return;
     }
-    panel.insertAdjacentHTML('beforeend', html);
+    settingsPanel.insertAdjacentHTML('beforeend', html);
   }
 
   function humanizePathPart(value) {
@@ -4334,16 +4397,51 @@
 
   document.addEventListener('change', function (event) {
     var threshold = event.target.closest('[data-desk-threshold]');
-    if (!threshold) {
+    if (threshold) {
+      var next = Number(threshold.value || 1);
+      if (!Number.isFinite(next) || next < 1) {
+        next = 1;
+      }
+      state.threshold = Math.min(100, Math.floor(next));
+      storageSet('desk_visibility_threshold', String(state.threshold));
+      loadState();
       return;
     }
-    var next = Number(threshold.value || 1);
-    if (!Number.isFinite(next) || next < 1) {
-      next = 1;
+    var handwritingFont = event.target.closest('[data-desk-handwriting-font]');
+    if (handwritingFont) {
+      state.handwritingFont = handwritingFontOption(handwritingFont.value).value;
+      storageSet('desk_handwriting_font_v1', state.handwritingFont);
+      applyHandwritingFont();
     }
-    state.threshold = Math.min(100, Math.floor(next));
-    storageSet('desk_visibility_threshold', String(state.threshold));
-    loadState();
+  });
+
+  document.addEventListener('click', function (event) {
+    var settingsButton = event.target.closest('[data-desk-settings-toggle]');
+    var settingsPanel = document.getElementById('desk-settings-panel');
+    var navMenuPanel = document.getElementById('nav-menu-panel');
+    var navMenuButton = document.getElementById('nav-menu-btn');
+    if (settingsButton && settingsPanel) {
+      event.preventDefault();
+      event.stopPropagation();
+      var willOpen = settingsPanel.hidden;
+      if (navMenuPanel) {
+        navMenuPanel.hidden = true;
+      }
+      if (navMenuButton) {
+        navMenuButton.setAttribute('aria-expanded', 'false');
+      }
+      settingsPanel.hidden = !willOpen;
+      settingsButton.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      return;
+    }
+    if (!settingsPanel || settingsPanel.hidden) {
+      return;
+    }
+    var currentButton = document.getElementById('desk-settings-btn');
+    if (!settingsPanel.contains(event.target) && currentButton && !currentButton.contains(event.target)) {
+      settingsPanel.hidden = true;
+      currentButton.setAttribute('aria-expanded', 'false');
+    }
   });
 
   root.addEventListener('input', function (event) {
