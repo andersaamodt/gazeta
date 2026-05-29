@@ -3764,6 +3764,7 @@
     try {
       state.data = data;
       syncComposeState(data);
+      applyHandwritingFont();
       root.dataset.roomTone = roomTone(data.current_room && data.current_room.path);
       root.innerHTML = renderChromeControls(data) +
         '<div data-desk-message></div>' +
@@ -4954,5 +4955,6 @@
   window.addEventListener('blog-auth-changed', loadState);
 
   startPresenceTimer();
+  applyHandwritingFont();
   loadState();
 })();

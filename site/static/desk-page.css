@@ -2,7 +2,7 @@
   font-family: "Desk Architects Daughter";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("/static/fonts/architects-daughter-latin-400-normal.ttf") format("truetype");
 }
 
@@ -10,7 +10,7 @@
   font-family: "Desk Patrick Hand";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("/static/fonts/patrick-hand-latin-400-normal.woff2") format("woff2");
 }
 
