@@ -116,7 +116,7 @@
       { value: 'card25x3', label: 'half-index card', icon: 'card', color: '#f1d6aa' },
       { value: 'card3x5', label: '3x5 index card', icon: 'wide-card', color: '#f0cf9d' },
       { value: 'lined', label: 'Lined paper', icon: 'lined', color: '#f9fbff' },
-      { value: 'lavender', label: 'Stationery', icon: 'stationery', color: '#dfd4ff' }
+      { value: 'lavender', label: 'Stationery', icon: 'stationery', color: '#e7e2ff' }
     ];
   }
 

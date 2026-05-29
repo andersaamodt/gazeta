@@ -2729,6 +2729,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 999px;
+  box-shadow: none;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -2737,6 +2738,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-compose-doc-menu-btn:hover,
 .desk-compose-doc-menu-btn:focus-visible {
   background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
 }
 
 .desk-compose-doc-menu {
@@ -2748,7 +2750,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 1px solid rgba(63, 58, 88, 0.16);
   border-radius: 8px;
   background: rgba(250, 250, 255, 0.94);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: none;
 }
 
 .desk-compose-doc-menu button {
@@ -2866,11 +2868,11 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-compose-sheet-lavender {
   aspect-ratio: 0.74;
-  background-color: #dfd4ff;
+  background-color: #e7e2ff;
 }
 
 .desk-compose-textarea-lavender {
-  color: #3d3169;
+  color: #364173;
   font-family: ui-serif, Georgia, serif;
 }
 

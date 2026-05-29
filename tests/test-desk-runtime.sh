@@ -70,6 +70,23 @@ assert_file_not_contains() {
   fi
 }
 
+assert_css_block_contains() {
+  file=$1
+  selector=$2
+  needle=$3
+  label=$4
+  if awk -v selector="$selector" -v needle="$needle" '
+    index($0, selector) { in_block = 1 }
+    in_block && index($0, needle) { found = 1 }
+    in_block && index($0, "}") { exit }
+    END { exit found ? 0 : 1 }
+  ' "$file"; then
+    pass
+  else
+    fail "$label (missing: $needle in $selector block)"
+  fi
+}
+
 strip_cgi_headers() {
   awk '
     BEGIN { body = 0 }
@@ -931,8 +948,13 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '5.25% 50%' 'Desk com
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '5.25% 88.64%' 'Desk compose lined paper places the bottom binder hole at the real three-hole position'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'font-family: "Desk Architects Daughter"' 'Desk compose lined paper uses the print handwriting font'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet-lavender' 'Desk compose supports a lavender stationery mode'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background-color: #e7e2ff;' 'Desk lavender stationery is lighter and bluer'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "color: '#e7e2ff'" 'Desk lavender stationery swatch matches the lighter bluer paper'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" '#dfd4ff' 'Desk lavender stationery no longer uses the darker violet'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-toolbar' 'Desk compose separates toolbar controls so the advanced button does not overlap selectors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-doc-menu' 'Desk compose styles an in-document three-dot menu'
+assert_css_block_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-doc-menu-btn {' 'box-shadow: none;' 'Desk compose three-dot menu button has no drop shadow'
+assert_css_block_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-doc-menu {' 'box-shadow: none;' 'Desk compose three-dot menu panel has no drop shadow'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'height: 100%;' 'Desk compose textarea fills the paper instead of leaving a horizontal page seam'
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" 'translateY(-0.22rem)' 'Desk dock launchers do not move on hover or focus'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
