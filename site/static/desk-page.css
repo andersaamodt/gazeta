@@ -2805,17 +2805,43 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 5.25% 11.36%, transparent 0 0.28rem, rgba(115, 124, 145, 0.34) 0.3rem 0.39rem, transparent 0.41rem),
-    radial-gradient(circle at 5.25% 50%, transparent 0 0.28rem, rgba(115, 124, 145, 0.34) 0.3rem 0.39rem, transparent 0.41rem),
-    radial-gradient(circle at 5.25% 88.64%, transparent 0 0.28rem, rgba(115, 124, 145, 0.34) 0.3rem 0.39rem, transparent 0.41rem),
     linear-gradient(90deg, transparent 0 calc(var(--desk-compose-lined-margin) - 0.055rem), rgba(210, 88, 74, 0.34) var(--desk-compose-lined-margin), transparent calc(var(--desk-compose-lined-margin) + 0.055rem)),
     repeating-linear-gradient(to bottom, transparent 0 calc(var(--desk-compose-lined-line) - 0.06rem), rgba(69, 110, 185, 0.32) calc(var(--desk-compose-lined-line) - 0.04rem), transparent var(--desk-compose-lined-line));
-  background-position: 0 0, 0 0, 0 0, 0 0, 0 var(--desk-compose-lined-top);
-  background-size: auto, auto, auto, auto, 100% var(--desk-compose-lined-line);
+  background-position: 0 0, 0 var(--desk-compose-lined-top);
+  background-size: auto, 100% var(--desk-compose-lined-line);
   transition: opacity 220ms ease;
 }
 
 .desk-compose-sheet-lined::before {
+  opacity: 1;
+}
+
+.desk-compose-sheet::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 5.25% 11.36%, transparent 0 0.36rem, rgba(18, 8, 4, 0.42) 0.42rem 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 50%, transparent 0 0.36rem, rgba(18, 8, 4, 0.42) 0.42rem 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 88.64%, transparent 0 0.36rem, rgba(18, 8, 4, 0.42) 0.42rem 0.52rem, transparent 0.56rem),
+    url("/static/textures/desk-mahogany.jpg") center / 38rem auto;
+  -webkit-mask:
+    radial-gradient(circle at 5.25% 11.36%, #000 0 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 50%, #000 0 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 88.64%, #000 0 0.52rem, transparent 0.56rem);
+  mask:
+    radial-gradient(circle at 5.25% 11.36%, #000 0 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 50%, #000 0 0.52rem, transparent 0.56rem),
+    radial-gradient(circle at 5.25% 88.64%, #000 0 0.52rem, transparent 0.56rem);
+  filter: saturate(1.05) brightness(0.72);
+  transition: opacity 220ms ease;
+}
+
+.desk-compose-sheet-lined::after,
+.desk-compose-sheet-lavender::after {
   opacity: 1;
 }
 
@@ -3005,7 +3031,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   --desk-compose-lined-top: 4.35rem;
   --desk-compose-lined-margin: 3.35rem;
   position: relative;
-  aspect-ratio: 8.5 / 11;
+  aspect-ratio: 8 / 10.5;
   background-color: #fbfcf8;
 }
 
@@ -3019,7 +3045,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-compose-sheet-lavender {
-  aspect-ratio: 0.74;
+  aspect-ratio: 8.5 / 11;
   background-color: #e7e2ff;
 }
 
