@@ -334,6 +334,13 @@ if [ "$SITE_DATA/desk/office/forest-study/.passages/archive-room--forest-study.j
 else
   fail 'secret passage files are hardlinked as one two-way passage'
 fi
+collapse_passages_json=$(run_desk "action=collapse-secret-passages&$auth_query&room=forest-study")
+assert_jq "$collapse_passages_json" '.success == true and (.collapsed_secret_passages[] | select(.from == "archive-room" and .to == "forest-study")) and ([.secret_passages[] | select(.from == "archive-room" and .to == "forest-study")] | length == 0)' 'Desk collapses all secret passages connected to the current room'
+if [ ! -e "$SITE_DATA/desk/office/forest-study/.passages/archive-room--forest-study.json" ] && [ ! -e "$SITE_DATA/desk/office/archive-room/.passages/archive-room--forest-study.json" ]; then
+  pass
+else
+  fail 'collapsed secret passage files are removed from both room folders'
+fi
 
 task_text='Low task
 private body'
@@ -429,7 +436,7 @@ assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" '/static/icons/desk-favicon.svg' 'Desk page uses its custom interface favicon'
 assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" '#08275e' 'Desk favicon uses the Desk blue palette'
 assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" 'desk-wood' 'Desk favicon renders a woodgrain desktop motif'
-assert_file_contains "$ROOT_DIR/site/pages/desk.md" '20260529-delete-empty-room1' 'Desk page cache-busts latest Desk interface updates'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" '20260529-collapse-passages1' 'Desk page cache-busts latest Desk interface updates'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'rel="preload" href="/static/fonts/architects-daughter-latin-400-normal.ttf"' 'Desk preloads the default handwriting font before the notepad can open'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'rel="preload" href="/static/fonts/patrick-hand-latin-400-normal.woff2"' 'Desk preloads the alternate handwriting font before the notepad can open'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function isDeskRootHost()' 'Desk frontend detects a dedicated desk subdomain root'
@@ -1136,6 +1143,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def delete_room' 'Desk API ca
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def room_delete_status' 'Desk API reports whether a room can be deleted'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"can_delete_room"' 'Desk room summaries expose delete eligibility'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"room_not_empty"' 'Desk delete-room action refuses non-empty rooms'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def collapse_secret_passages' 'Desk API can collapse secret passages connected to a room'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"collapse-secret-passages"' 'Desk dispatch exposes the collapse secret passages action'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk" 'BLOG_DESK_ROOM_TOPOLOGY=$(blog_param room_topology)' 'Desk CGI wrapper forwards room topology changes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "'rename-room';" 'Desk frontend can still rename non-current rooms with path updates through Desk API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-map-props' 'Desk map has a top-right blueprint properties control'
@@ -1151,9 +1160,16 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "state.suppressTodoAni
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" '<h2 class="desk-map-properties-title">' 'Desk room properties panel shows the current room name above the controls'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "escapeHtml(currentRoom.title || 'Room')" 'Desk room properties title uses the current room name'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderRoomDeleteControl(room)' 'Desk room properties render a delete-room control'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function renderSecretPassageCollapseControl(room)' 'Desk room properties render a collapse secret passages control'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-collapse-secret-passages' 'Desk room properties expose a collapse secret passages button'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('collapse-secret-passages'" 'Desk collapse secret passages button calls the real API'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Collapse Secret Passages' 'Desk room properties use thematic collapse secret passages copy'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-delete-room' 'Desk room properties expose a delete-room button'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('delete-room'" 'Desk room delete button calls the real delete-room API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Room is not empty.' 'Desk delete-room control explains when a room still has files'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-passage-collapse-control' 'Desk room properties place collapse secret passages above delete room'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-passage-collapse-btn' 'Desk room properties style the collapse secret passages button'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background: rgba(247, 233, 196, 0.9);' 'Desk collapse secret passages button uses normal room properties coloring'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-delete-control' 'Desk room properties place delete-room controls at the bottom'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-map-room-delete-btn' 'Desk room properties style the delete-room button distinctly'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'background: #b83f3f;' 'Desk delete-room button is red'

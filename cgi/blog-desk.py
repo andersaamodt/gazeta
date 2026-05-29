@@ -890,6 +890,33 @@ class DeskStore:
         state["secret_passage"] = {"from": ordered[0], "to": ordered[1], "already_exists": False}
         return state
 
+    def collapse_secret_passages(self, room_rel: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if not self.room_dir(room).is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        removed: set[tuple[str, str]] = set()
+        for path in self.passage_files():
+            data = self.read_passage_file(path)
+            if not data:
+                continue
+            left, right = [str(value) for value in data["rooms"]]
+            if room not in (left, right):
+                continue
+            ordered = tuple(sorted([left, right]))
+            file_name = self.passage_file_name(ordered[0], ordered[1])
+            for target in (self.passage_dir(ordered[0]) / file_name, self.passage_dir(ordered[1]) / file_name, path):
+                with contextlib.suppress(FileNotFoundError):
+                    target.unlink()
+            removed.add(ordered)
+        if removed:
+            self.append_log("collapse-secret-passages", {"room": room, "count": len(removed)})
+        state = self.state(room, threshold)
+        state["collapsed_secret_passages"] = [
+            {"from": left, "to": right}
+            for left, right in sorted(removed)
+        ]
+        return state
+
     def unique_task_path(self, room_rel: str, text: str) -> Path:
         tasks = self.tasks_dir(room_rel)
         tasks.mkdir(parents=True, exist_ok=True)
@@ -1195,6 +1222,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "move-task",
         "move-room",
         "create-secret-passage",
+        "collapse-secret-passages",
         "set-soonness",
         "set-status",
         "set-room-color",
@@ -1227,6 +1255,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.move_room(room, env("BLOG_DESK_TARGET_ROOM"), threshold)
         if action == "create-secret-passage":
             return store.create_secret_passage(room, env("BLOG_DESK_TARGET_ROOM"), threshold)
+        if action == "collapse-secret-passages":
+            return store.collapse_secret_passages(room, threshold)
         if action == "set-soonness":
             return store.set_soonness(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_SOONNESS"), threshold)
         if action == "set-status":

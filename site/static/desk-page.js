@@ -1186,6 +1186,14 @@
       '</div>';
   }
 
+  function renderSecretPassageCollapseControl(room) {
+    var path = String(room && room.path || '');
+    var passages = Array.isArray(room && room.secret_passages) ? room.secret_passages : [];
+    return '<div class="desk-map-passage-collapse-control">' +
+      '<button type="button" class="desk-map-passage-collapse-btn" data-desk-collapse-secret-passages="' + escapeHtml(path) + '"' + (passages.length ? '' : ' disabled') + '>Collapse Secret Passages</button>' +
+      '</div>';
+  }
+
   function syncDeskMenuSettings() {
     applyHandwritingFont();
     var userMenu = document.getElementById('nav-user-menu');
@@ -2909,7 +2917,7 @@
     var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
     var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     var propsPanel = state.mapPropsOpen
-      ? '<aside class="desk-map-properties" aria-label="Room properties"><button type="button" class="desk-map-properties-close" data-desk-map-props-close aria-label="Close room properties" title="Close room properties">×</button><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected room</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivision</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form>' + renderRoomDeleteControl(currentRoom) + '</aside>'
+      ? '<aside class="desk-map-properties" aria-label="Room properties"><button type="button" class="desk-map-properties-close" data-desk-map-props-close aria-label="Close room properties" title="Close room properties">×</button><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected room</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivision</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form>' + renderSecretPassageCollapseControl(currentRoom) + renderRoomDeleteControl(currentRoom) + '</aside>'
       : '';
     var mapAspect = fullViewBox.w && fullViewBox.h ? (fullViewBox.w / fullViewBox.h).toFixed(5) : '1.33333';
     var viewBoxText = formatViewBox(mapViewBox);
@@ -4371,6 +4379,18 @@
         }
         refreshFrom(data);
       });
+      return;
+    }
+
+    var collapsePassages = event.target.closest('[data-desk-collapse-secret-passages]');
+    if (collapsePassages) {
+      event.preventDefault();
+      if (collapsePassages.disabled) {
+        return;
+      }
+      api('collapse-secret-passages', {
+        room: collapsePassages.getAttribute('data-desk-collapse-secret-passages') || ''
+      }).then(refreshFrom);
       return;
     }
 
