@@ -1306,27 +1306,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: none;
 }
 
-.desk-map-room-grass-area,
-.desk-map-room-grass-edge {
+.desk-map-room-grass-area {
   pointer-events: none;
-}
-
-.desk-map-room-grass-edge {
-  fill: none;
-  stroke: #9fac63;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.desk-map-room-grass-edge-soft {
-  stroke-width: 68;
-  opacity: 0.42;
-  filter: url(#desk-map-greenery-blur);
-}
-
-.desk-map-room-grass-edge-core {
-  stroke-width: 34;
-  opacity: 0.62;
 }
 
 .desk-map-room-outdoor-hit {

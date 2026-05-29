@@ -1750,108 +1750,13 @@
         addEdge(cell.x, cell.y + 1, cell.x, cell.y);
       }
     });
-    function pointKey(point) {
-      return point.x + ',' + point.y;
-    }
-    function px(point) {
-      return { x: point.x * unitW, y: point.y * unitH };
-    }
-    var adjacency = {};
-    edges.forEach(function (edge, index) {
-      var aKey = pointKey(edge.a);
-      var bKey = pointKey(edge.b);
-      if (!adjacency[aKey]) adjacency[aKey] = [];
-      if (!adjacency[bKey]) adjacency[bKey] = [];
-      adjacency[aKey].push({ index: index, point: edge.b, key: bKey });
-      adjacency[bKey].push({ index: index, point: edge.a, key: aKey });
-    });
-    var visited = {};
-    var loops = [];
-    edges.forEach(function (edge, startIndex) {
-      if (visited[startIndex]) {
-        return;
-      }
-      var start = edge.a;
-      var current = edge.b;
-      var previousKey = pointKey(start);
-      var currentKey = pointKey(current);
-      var loop = [px(start), px(current)];
-      visited[startIndex] = true;
-      while (currentKey !== pointKey(start)) {
-        var options = adjacency[currentKey] || [];
-        var next = null;
-        for (var i = 0; i < options.length; i += 1) {
-          var candidate = options[i];
-          if (visited[candidate.index]) {
-            continue;
-          }
-          if (candidate.key === previousKey && options.length > 1) {
-            continue;
-          }
-          next = candidate;
-          break;
-        }
-        if (!next) {
-          break;
-        }
-        visited[next.index] = true;
-        previousKey = currentKey;
-        current = next.point;
-        currentKey = next.key;
-        loop.push(px(current));
-      }
-      if (loop.length > 2) {
-        loops.push(loop);
-      }
-    });
-    var contourPaths = loops.map(function (loop, loopIndex) {
-      var path = 'M ' + loop[0].x + ' ' + loop[0].y;
-      for (var i = 1; i < loop.length; i += 1) {
-        path += contourSegmentPath(
-          { x: loop[i - 1].x / unitW, y: loop[i - 1].y / unitH },
-          { x: loop[i].x / unitW, y: loop[i].y / unitH },
-          unitW,
-          unitH,
-          'building-greenbelt-' + loopIndex,
-          i,
-          true
-        );
-      }
-      return path + ' Z';
+    var contourPaths = edges.map(function (edge, index) {
+      return 'M ' + (edge.a.x * unitW) + ' ' + (edge.a.y * unitH) +
+        contourSegmentPath(edge.a, edge.b, unitW, unitH, 'shared-greenbelt-' + index, index + 1, true);
     }).join(' ');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
       '<path class="desk-map-greenbelt-strip" d="' + contourPaths + '"></path>' +
       '</g>';
-  }
-
-  function outdoorFringePath(cells, occupied, roomsByPath, unitW, unitH) {
-    var paths = [];
-    var local = {};
-    cells.forEach(function (cell) {
-      local[cell.x + ',' + cell.y] = true;
-    });
-    function neighborIsOpen(x, y) {
-      if (local[x + ',' + y]) return false;
-      var owner = occupied[x + ',' + y];
-      if (owner == null) return true;
-      return false;
-    }
-    function addEdge(x1, y1, x2, y2) {
-      var from = { x: x1, y: y1 };
-      var to = { x: x2, y: y2 };
-      var index = paths.length + 1;
-      paths.push(
-        'M ' + (from.x * unitW) + ' ' + (from.y * unitH) +
-        contourSegmentPath(from, to, unitW, unitH, 'outdoor-fringe-' + index, index, false)
-      );
-    }
-    cells.forEach(function (cell) {
-      if (neighborIsOpen(cell.x, cell.y - 1)) addEdge(cell.x, cell.y, cell.x + 1, cell.y);
-      if (neighborIsOpen(cell.x + 1, cell.y)) addEdge(cell.x + 1, cell.y, cell.x + 1, cell.y + 1);
-      if (neighborIsOpen(cell.x, cell.y + 1)) addEdge(cell.x + 1, cell.y + 1, cell.x, cell.y + 1);
-      if (neighborIsOpen(cell.x - 1, cell.y)) addEdge(cell.x, cell.y + 1, cell.x, cell.y);
-    });
-    return paths.join(' ');
   }
 
   function outdoorExposedOutlinePath(cells, occupied, roomsByPath, unitW, unitH) {
@@ -1891,26 +1796,21 @@
   }
 
   function roomWallLightPoints(cells, unitW, unitH) {
-    var bounds = footprintBounds(cells);
-    var horizontalWalls = bounds.w * unitW >= bounds.h * unitH;
     var local = {};
-    var points = [];
+    var segments = [];
     cells.forEach(function (cell) {
       local[cell.x + ',' + cell.y] = true;
     });
-    function addLightRun(side, x1, y1, x2, y2) {
+    function addSegment(side, x1, y1, x2, y2) {
       var horizontal = side === 'north' || side === 'south';
-      if (horizontal !== horizontalWalls) return;
-      var length = horizontal ? Math.abs(x2 - x1) : Math.abs(y2 - y1);
-      var count = Math.max(1, Math.round(length / 84));
-      for (var i = 1; i <= count; i += 1) {
-        var ratio = i / (count + 1);
-        points.push({
-          x: x1 + (x2 - x1) * ratio,
-          y: y1 + (y2 - y1) * ratio,
-          horizontal: horizontal
-        });
-      }
+      segments.push({
+        side: side,
+        horizontal: horizontal,
+        key: horizontal ? side + ':' + y1 : side + ':' + x1,
+        start: horizontal ? Math.min(x1, x2) : Math.min(y1, y2),
+        end: horizontal ? Math.max(x1, x2) : Math.max(y1, y2),
+        fixed: horizontal ? y1 : x1
+      });
     }
     cells.forEach(function (cell) {
       var x = cell.x * unitW;
@@ -1921,12 +1821,47 @@
       var southInside = y + h - 9;
       var westInside = x + 9;
       var eastInside = x + w - 9;
-      if (cell.containedIn || !local[cell.x + ',' + (cell.y - 1)]) addLightRun('north', x + 18, northInside, x + w - 18, northInside);
-      if (cell.containedIn || !local[cell.x + ',' + (cell.y + 1)]) addLightRun('south', x + 18, southInside, x + w - 18, southInside);
-      if (cell.containedIn || !local[(cell.x - 1) + ',' + cell.y]) addLightRun('west', westInside, y + 18, westInside, y + h - 18);
-      if (cell.containedIn || !local[(cell.x + 1) + ',' + cell.y]) addLightRun('east', eastInside, y + 18, eastInside, y + h - 18);
+      if (cell.containedIn || !local[cell.x + ',' + (cell.y - 1)]) addSegment('north', x + 18, northInside, x + w - 18, northInside);
+      if (cell.containedIn || !local[cell.x + ',' + (cell.y + 1)]) addSegment('south', x + 18, southInside, x + w - 18, southInside);
+      if (cell.containedIn || !local[(cell.x - 1) + ',' + cell.y]) addSegment('west', westInside, y + 18, westInside, y + h - 18);
+      if (cell.containedIn || !local[(cell.x + 1) + ',' + cell.y]) addSegment('east', eastInside, y + 18, eastInside, y + h - 18);
+    });
+    var grouped = {};
+    segments.forEach(function (segment) {
+      if (!grouped[segment.key]) grouped[segment.key] = [];
+      grouped[segment.key].push(segment);
+    });
+    var runs = [];
+    Object.keys(grouped).forEach(function (key) {
+      grouped[key].sort(function (left, right) { return left.start - right.start; });
+      grouped[key].forEach(function (segment) {
+        var current = runs.length ? runs[runs.length - 1] : null;
+        if (!current || current.key !== key || segment.start > current.end + 0.5) {
+          runs.push(Object.assign({}, segment));
+          return;
+        }
+        current.end = Math.max(current.end, segment.end);
+      });
+    });
+    var points = [];
+    runs.forEach(function (run) {
+      var length = run.end - run.start;
+      var count = Math.max(1, Math.round(length / 96));
+      for (var i = 1; i <= count; i += 1) {
+        var ratio = i / (count + 1);
+        var along = run.start + length * ratio;
+        points.push({
+          x: run.horizontal ? along : run.fixed,
+          y: run.horizontal ? run.fixed : along,
+          horizontal: run.horizontal
+        });
+      }
     });
     return points;
+  }
+
+  function roomLampLightRadius(unitW, unitH) {
+    return Math.max(unitW, unitH) * 1.12;
   }
 
   function roomLightGradientId(path, index) {
@@ -1936,29 +1871,19 @@
   function renderRoomLightGradientDefs(path, cells, unitW, unitH) {
     var lights = roomWallLightPoints(cells, unitW, unitH);
     if (!lights.length) return '';
-    var bounds = footprintBounds(cells);
+    var radius = roomLampLightRadius(unitW, unitH);
     return lights.map(function (light, index) {
-      var x1 = bounds.x * unitW;
-      var y1 = bounds.y * unitH;
-      var x2 = (bounds.x + bounds.w) * unitW;
-      var y2 = (bounds.y + bounds.h) * unitH;
-      var farthestCorner = Math.max(
-        Math.hypot(light.x - x1, light.y - y1),
-        Math.hypot(light.x - x2, light.y - y1),
-        Math.hypot(light.x - x1, light.y - y2),
-        Math.hypot(light.x - x2, light.y - y2)
-      );
-      var radius = Math.max(unitW * 1.9, unitH * 1.9, farthestCorner * 1.08);
-      return '<radialGradient id="' + roomLightGradientId(path, index) + '" gradientUnits="userSpaceOnUse" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"><stop offset="0" stop-color="#ffe69d" stop-opacity="0.9"></stop><stop offset="0.32" stop-color="#ffd06f" stop-opacity="0.54"></stop><stop offset="0.74" stop-color="#ffbf56" stop-opacity="0.2"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0.06"></stop></radialGradient>';
+      return '<radialGradient id="' + roomLightGradientId(path, index) + '" gradientUnits="userSpaceOnUse" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"><stop offset="0" stop-color="#ffe69d" stop-opacity="0.9"></stop><stop offset="0.34" stop-color="#ffd06f" stop-opacity="0.54"></stop><stop offset="0.72" stop-color="#ffbf56" stop-opacity="0.18"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0"></stop></radialGradient>';
     }).join('');
   }
 
-  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId, overlay) {
+  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId) {
     var lights = roomWallLightPoints(cells, unitW, unitH);
     if (!lights.length) return '';
+    var radius = roomLampLightRadius(unitW, unitH);
     var presenceStyle = ' style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '"';
-    var floorLight = '<g class="desk-map-room-light-gradients" data-desk-room-presence="' + escapeHtml(path) + '"' + presenceStyle + '>' + lights.map(function (_light, index) {
-      return '<rect class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" x="' + overlay.x + '" y="' + overlay.y + '" width="' + overlay.w + '" height="' + overlay.h + '"></rect>';
+    var floorLight = '<g class="desk-map-room-light-gradients" data-desk-room-presence="' + escapeHtml(path) + '"' + presenceStyle + '>' + lights.map(function (light, index) {
+      return '<circle class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"></circle>';
     }).join('') + '</g>';
     var visibleLamps = '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
       return '<circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
@@ -2334,18 +2259,32 @@
     function roomClipId(path) {
       return 'desk-room-presence-clip-' + hashText(path || 'office');
     }
+    var greenbeltOccupied = {};
+    var greenbeltCells = [];
     var buildingOccupied = {};
-    var buildingCells = [];
-    Object.keys(plan.occupied).forEach(function (key) {
-      var owner = String(plan.occupied[key] || '');
-      if (roomIsOutdoor(roomsByPath[owner])) {
-        return;
-      }
-      buildingOccupied[key] = owner;
-      var parts = key.split(',');
-      buildingCells.push({ x: Number(parts[0]), y: Number(parts[1]) });
+    renderRooms.forEach(function (room) {
+      var owner = String(room.path || '');
+      var footprint = plan.footprints[owner] || [layout[owner]];
+      footprint.forEach(function (cell) {
+        var cellW = Number.isFinite(cell && cell.w) ? cell.w : 1;
+        var cellH = Number.isFinite(cell && cell.h) ? cell.h : 1;
+        for (var dx = 0; dx < cellW; dx += 1) {
+          for (var dy = 0; dy < cellH; dy += 1) {
+            var x = Number(cell.x) + dx;
+            var y = Number(cell.y) + dy;
+            var key = x + ',' + y;
+            if (!Object.prototype.hasOwnProperty.call(greenbeltOccupied, key)) {
+              greenbeltCells.push({ x: x, y: y });
+            }
+            greenbeltOccupied[key] = owner;
+            if (!roomIsOutdoor(room)) {
+              buildingOccupied[key] = owner;
+            }
+          }
+        }
+      });
     });
-    var greenbelt = renderGreenbelt(buildingCells, buildingOccupied, unitW, unitH);
+    var greenbelt = renderGreenbelt(greenbeltCells, greenbeltOccupied, unitW, unitH);
     function doorSegmentsForRoom(path) {
       var segments = plan.doors.filter(function (door) {
         return String(door.from || '') === path || String(door.to || '') === path;
@@ -2410,9 +2349,8 @@
       if (roomCell && roomCell.containedIn) {
         roomPassiveOutlineShape = roomPathShape;
       }
-      var outdoorFringe = isOutdoor && !(roomCell && roomCell.containedIn) ? outdoorFringePath(footprint, plan.occupied, roomsByPath, unitW, unitH) : '';
       var backgroundShape = isOutdoor
-        ? '<g class="desk-map-room-grass-area"><path class="desk-map-room-grass-edge desk-map-room-grass-edge-soft" d="' + outdoorFringe + '"></path><path class="desk-map-room-grass" d="' + roomPathShape + '"></path><path class="desk-map-room-grass-edge desk-map-room-grass-edge-core" d="' + outdoorFringe + '"></path></g>'
+        ? '<path class="desk-map-greenbelt-strip" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
         : '';
       var roomShape = isOutdoor
         ? '<path class="desk-map-room-outdoor-hit" d="' + roomPathShape + '"></path>'
@@ -2422,7 +2360,7 @@
       var presenceGlow = isOutdoor
         ? '<rect class="desk-map-room-presence is-outdoor" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>'
         : '';
-      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path), { x: overlayX, y: overlayY, w: overlayW, h: overlayH }) : '';
+      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path)) : '';
       var titleNode = state.mapRenameRoom !== null && state.mapRenameRoom === path
         ? '<foreignObject x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"><form xmlns="http://www.w3.org/1999/xhtml" class="desk-map-rename-form" data-desk-form="rename-room-inline"><input type="hidden" name="room" value="' + escapeHtml(path) + '"><input class="desk-map-rename-input" name="room_title" value="' + escapeHtml(state.mapRenameValue || title) + '" maxlength="96" required></form></foreignObject>'
         : '<text class="desk-map-room-title" x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle" tabindex="0">' + escapeHtml(title) + '</text>';
