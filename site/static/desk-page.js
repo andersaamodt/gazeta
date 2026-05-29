@@ -472,6 +472,7 @@
     if (!mapSvg || state.mapZoomMode !== 'room' || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
       return false;
     }
+    var roomLink = event.target.closest('[data-desk-room-link]');
     var view = mapSvg.viewBox && mapSvg.viewBox.baseVal;
     var rect = mapSvg.getBoundingClientRect();
     var fullParts = String(mapSvg.getAttribute('data-desk-full-viewbox') || '').split(/\s+/).map(Number);
@@ -501,6 +502,8 @@
       fullH: fullParts[3],
       scaleX: view.width / rect.width,
       scaleY: view.height / rect.height,
+      roomPath: roomLink ? roomLink.getAttribute('data-desk-room-link') || '' : null,
+      startedOnRoomTitle: Boolean(event.target.closest('.desk-map-room-title')),
       active: false
     };
     if (mapSvg.setPointerCapture) {
@@ -2657,6 +2660,49 @@
     }, delay || 180);
   }
 
+  function activateMapRoom(roomPath) {
+    var clickedRoom = roomPath || '';
+    if (state.mapRenameRoom !== null || state.suppressRoomClick) {
+      return false;
+    }
+    if (state.secretPassageSource !== null) {
+      if (state.secretPassageSource === clickedRoom) {
+        showMessage('Choose a different room for the other end of the passage.', true);
+        return true;
+      }
+      if (state.secretPassageSource === '') {
+        state.secretPassageSource = clickedRoom;
+        if (state.data) {
+          render(state.data);
+        }
+        showMessage('Choose the other room.', false);
+        return true;
+      }
+      api('create-secret-passage', {
+        room: state.secretPassageSource,
+        target_room: clickedRoom
+      }).then(function (data) {
+        state.secretPassageSource = null;
+        refreshFrom(data);
+      });
+      return true;
+    }
+    if (clickedRoom === state.currentRoom) {
+      return true;
+    }
+    state.mode = 'map';
+    state.paperMapVisible = true;
+    state.lastEnteredDoor = {
+      from: state.currentRoom,
+      to: clickedRoom
+    };
+    state.mapZoomMode = 'room';
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    setRoom(clickedRoom, false);
+    return true;
+  }
+
   function openMode(mode) {
     var nextMode = mode || 'map';
     var previousMode = state.mode;
@@ -3792,53 +3838,10 @@
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (roomLink) {
       event.preventDefault();
-      if (state.mapRenameRoom !== null) {
-        return;
-      }
-      if (state.suppressRoomClick) {
-        return;
-      }
-      var clickedRoom = roomLink.getAttribute('data-desk-room-link') || '';
       if (event.target.closest('.desk-map-room-title')) {
         return;
       }
-      if (state.secretPassageSource !== null) {
-        if (state.secretPassageSource === clickedRoom) {
-          showMessage('Choose a different room for the other end of the passage.', true);
-          return;
-        }
-        if (state.secretPassageSource === '') {
-          state.secretPassageSource = clickedRoom;
-          if (state.data) {
-            render(state.data);
-          }
-          showMessage('Choose the other room.', false);
-          return;
-        }
-        api('create-secret-passage', {
-          room: state.secretPassageSource,
-          target_room: clickedRoom
-        }).then(function (data) {
-          state.secretPassageSource = null;
-          refreshFrom(data);
-        });
-        return;
-      }
-      if (clickedRoom === state.currentRoom) {
-        return;
-      }
-      state.mode = 'map';
-      state.paperMapVisible = true;
-      if (clickedRoom !== state.currentRoom) {
-        state.lastEnteredDoor = {
-          from: state.currentRoom,
-          to: clickedRoom
-        };
-      }
-      state.mapZoomMode = 'room';
-      state.mapPanX = 0;
-      state.mapPanY = 0;
-      setRoom(clickedRoom, false);
+      activateMapRoom(roomLink.getAttribute('data-desk-room-link') || '');
       return;
     }
 
@@ -4247,11 +4250,18 @@
   root.addEventListener('pointerup', function (event) {
     var mapPan = state.pointerMapPan;
     if (mapPan && mapPan.pointerId === event.pointerId) {
+      var shouldActivateRoom = !mapPan.active && mapPan.roomPath !== null && !mapPan.startedOnRoomTitle;
       if (mapPan.active) {
         event.preventDefault();
         suppressRoomClickFor(180);
       }
       state.pointerMapPan = null;
+      if (shouldActivateRoom) {
+        event.preventDefault();
+        if (activateMapRoom(mapPan.roomPath)) {
+          suppressRoomClickFor(120);
+        }
+      }
       return;
     }
     var docDrag = state.pointerDocDrag;
