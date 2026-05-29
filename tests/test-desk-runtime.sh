@@ -408,6 +408,9 @@ assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/.meta/$task_id.js
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
+assert_file_contains "$ROOT_DIR/site/pages/desk.md" '/static/icons/desk-favicon.svg' 'Desk page uses its custom interface favicon'
+assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" '#08275e' 'Desk favicon uses the Desk blue palette'
+assert_file_contains "$ROOT_DIR/site/static/icons/desk-favicon.svg" 'desk-wood' 'Desk favicon renders a woodgrain desktop motif'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-map-zoom1' 'Desk page cache-busts latest Desk interface updates'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function isDeskRootHost()' 'Desk frontend detects a dedicated desk subdomain root'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "clean.split('/').filter(Boolean).map(function (part)" 'Desk room URLs encode path segments without encoding slashes'
