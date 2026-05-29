@@ -634,14 +634,17 @@
     var elapsed = Math.max(0, Math.min(5 * 60 * 1000, current - (state.presenceTick || current)));
     var strength = flashlightStep();
     var rooms = Object.assign({}, state.presence || readPresence());
+    var currentRoom = String(state.currentRoom || '');
     var roomKeys = Object.keys(rooms);
     roomKeys.forEach(function (room) {
+      if (room === currentRoom) {
+        return;
+      }
       rooms[room] = clampPresence(Number(rooms[room] || 0) - elapsed / strength.fadeMs);
       if (rooms[room] <= 0.002) {
         delete rooms[room];
       }
     });
-    var currentRoom = String(state.currentRoom || '');
     rooms[currentRoom] = clampPresence(Number(rooms[currentRoom] || 0) + elapsed / strength.buildMs);
     state.presence = rooms;
     state.presenceTick = current;

@@ -673,6 +673,7 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function updatePresen
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'strength.fadeMs' 'Desk presence fade rate follows the flashlight strength'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'strength.buildMs' 'Desk presence build rate follows the flashlight strength'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'Math.min(5 * 60 * 1000' 'Desk presence keeps several minutes of elapsed room time when timers are throttled'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'if (room === currentRoom)' 'Desk current room does not fade while it is actively occupied'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function dimPresenceForRoom' 'Desk frontend immediately soft-dims a room when leaving'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function applyPresenceValues' 'Desk frontend applies presence values before fetching the next room'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-room-presence' 'Desk map updates room light gradients from ambient presence'
