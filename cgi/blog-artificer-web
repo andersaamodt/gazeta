@@ -202,7 +202,17 @@ artificer_web_curl() {
   fi
 }
 
-artificer_web_require_owner() {
+artificer_web_session_is_nostr_admin() {
+  session_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
+  [ -n "$session_pubkey" ] || return 1
+  case "${BLOG_SESSION_AUTH_METHOD-}" in
+    nostr|nostr_*) ;;
+    *) return 1 ;;
+  esac
+  [ "${BLOG_SESSION_IS_ADMIN-}" = "true" ]
+}
+
+artificer_web_require_nostr_admin() {
   ARTIFICER_WEB_AUTH_ERROR=''
   req_token=$(blog_param "session_token")
   req_csrf=$(blog_param "csrf_token")
@@ -221,7 +231,7 @@ artificer_web_require_owner() {
   esac
 
   if ! blog_load_session "$req_token"; then
-    ARTIFICER_WEB_AUTH_ERROR=$(blog_json_error "Sign in with the owner Nostr identity to open Artificer Web." "auth_required")
+    ARTIFICER_WEB_AUTH_ERROR=$(blog_json_error "Sign in with an andersaamodt.com admin Nostr identity to open Artificer Web." "auth_required")
     return 1
   fi
   if [ -z "$req_csrf" ] || [ "$req_csrf" != "$BLOG_SESSION_CSRF" ]; then
@@ -231,15 +241,15 @@ artificer_web_require_owner() {
   if blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
     BLOG_SESSION_IS_ADMIN=true
   fi
-  if ! blog_desk_session_is_owner; then
-    ARTIFICER_WEB_AUTH_ERROR=$(blog_json_error "Sign in with the owner Nostr identity to open Artificer Web." "owner_required")
+  if ! artificer_web_session_is_nostr_admin; then
+    ARTIFICER_WEB_AUTH_ERROR=$(blog_json_error "Sign in with an andersaamodt.com admin Nostr identity to open Artificer Web." "admin_nostr_required")
     return 1
   fi
   blog_extend_session
   return 0
 }
 
-if ! artificer_web_require_owner; then
+if ! artificer_web_require_nostr_admin; then
   artificer_web_send_json_headers
   printf '%s\n' "$ARTIFICER_WEB_AUTH_ERROR"
   exit 0

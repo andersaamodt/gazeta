@@ -49,7 +49,9 @@ assert_file_contains "$JS" "frame.src = bridgeUrl('/');" "shell mounts proxied A
 assert_file_contains "$JS" "localStorage.getItem(key)" "shell forwards existing site auth to bridge"
 
 assert_file_contains "$CGI" '. "$SCRIPT_DIR/blog-desk-common.sh"' "proxy reuses Desk owner helpers"
-assert_file_contains "$CGI" 'blog_desk_session_is_owner' "proxy requires Desk owner identity"
+assert_file_contains "$CGI" 'artificer_web_session_is_nostr_admin' "proxy requires a Nostr admin identity"
+assert_file_contains "$CGI" 'BLOG_SESSION_AUTH_METHOD' "proxy requires Nostr-backed auth"
+assert_file_contains "$CGI" 'blog_user_is_admin "$BLOG_SESSION_USERNAME"' "proxy rechecks site admin status"
 assert_file_contains "$CGI" 'blog_load_session "$req_token"' "proxy validates the site session"
 assert_file_contains "$CGI" 'artificer_web_session=$BLOG_ARTIFICER_WEB_COOKIE_VALUE' "proxy sets same-origin auth cookie for iframe assets"
 assert_file_contains "$CGI" 'artificer_web_cookie_value' "proxy accepts same-origin auth cookie for iframe assets"
@@ -175,19 +177,64 @@ export PATH WIZARDRY_SITES_DIR="$SITES_DIR" WIZARDRY_SITE_NAME="$SITE_NAME"
 . "$ROOT_DIR/cgi/blog-lib.sh"
 blog_init
 
-owner_pubkey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-owner_profile=$(blog_user_profile owner)
-config-set "$owner_profile" username owner
-config-set "$owner_profile" fingerprint owner-fingerprint
-config-set "$owner_profile" is_admin false
-config-set "$owner_profile" nostr_pubkey "$owner_pubkey"
-printf '%s\n' "$owner_pubkey" > "$blog_nostr_authors_file"
+author_pubkey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+admin_pubkey=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+password_admin_pubkey=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
-owner_session=$(blog_create_session owner owner-fingerprint "$owner_pubkey" "$owner_pubkey" '' nostr false)
-owner_token=${owner_session%%;*}
-owner_rest=${owner_session#*;}
-owner_csrf=${owner_rest%%;*}
-auth_query="session_token=$(urlencode "$owner_token")&csrf_token=$(urlencode "$owner_csrf")"
+author_profile=$(blog_user_profile author)
+config-set "$author_profile" username author
+config-set "$author_profile" fingerprint author-fingerprint
+config-set "$author_profile" is_admin false
+config-set "$author_profile" nostr_pubkey "$author_pubkey"
+printf '%s\n' "$author_pubkey" > "$blog_nostr_authors_file"
+
+admin_profile=$(blog_user_profile admin)
+config-set "$admin_profile" username admin
+config-set "$admin_profile" fingerprint admin-fingerprint
+config-set "$admin_profile" is_admin true
+config-set "$admin_profile" nostr_pubkey "$admin_pubkey"
+
+password_admin_profile=$(blog_user_profile password-admin)
+config-set "$password_admin_profile" username password-admin
+config-set "$password_admin_profile" fingerprint password-admin-fingerprint
+config-set "$password_admin_profile" is_admin true
+config-set "$password_admin_profile" nostr_pubkey "$password_admin_pubkey"
+
+author_session=$(blog_create_session author author-fingerprint "$author_pubkey" "$author_pubkey" '' nostr false)
+author_token=${author_session%%;*}
+author_rest=${author_session#*;}
+author_csrf=${author_rest%%;*}
+author_query="session_token=$(urlencode "$author_token")&csrf_token=$(urlencode "$author_csrf")"
+
+password_admin_session=$(blog_create_session password-admin password-admin-fingerprint "$password_admin_pubkey" "$password_admin_pubkey" '' password false)
+password_admin_token=${password_admin_session%%;*}
+password_admin_rest=${password_admin_session#*;}
+password_admin_csrf=${password_admin_rest%%;*}
+password_admin_query="session_token=$(urlencode "$password_admin_token")&csrf_token=$(urlencode "$password_admin_csrf")"
+
+admin_session=$(blog_create_session admin admin-fingerprint "$admin_pubkey" "$admin_pubkey" '' nostr false)
+admin_token=${admin_session%%;*}
+admin_rest=${admin_session#*;}
+admin_csrf=${admin_rest%%;*}
+auth_query="session_token=$(urlencode "$admin_token")&csrf_token=$(urlencode "$admin_csrf")"
+
+author_output=$(REQUEST_METHOD=GET QUERY_STRING="action=status&$author_query" "$CGI")
+author_body=$(printf '%s\n' "$author_output" | strip_cgi_headers)
+if printf '%s\n' "$author_body" | jq -e '.success == false and .code == "admin_nostr_required"' >/dev/null 2>&1; then
+  pass
+else
+  fail "Artificer Web rejects non-admin Nostr authors"
+  printf '%s\n' "$author_output" >&2
+fi
+
+password_admin_output=$(REQUEST_METHOD=GET QUERY_STRING="action=status&$password_admin_query" "$CGI")
+password_admin_body=$(printf '%s\n' "$password_admin_output" | strip_cgi_headers)
+if printf '%s\n' "$password_admin_body" | jq -e '.success == false and .code == "admin_nostr_required"' >/dev/null 2>&1; then
+  pass
+else
+  fail "Artificer Web rejects admin sessions that were not authenticated with Nostr"
+  printf '%s\n' "$password_admin_output" >&2
+fi
 
 status_output=$(REQUEST_METHOD=GET QUERY_STRING="action=status&$auth_query" "$CGI")
 status_body=$(printf '%s\n' "$status_output" | strip_cgi_headers)
@@ -203,7 +250,7 @@ else
   fail "status action sets iframe auth cookie"
 fi
 
-cookie_pair="$owner_token:$owner_csrf"
+cookie_pair="$admin_token:$admin_csrf"
 proxy_body=$(REQUEST_METHOD=GET QUERY_STRING='path=/static/app.js&action=state' HTTP_COOKIE="artificer_web_session=$cookie_pair" "$CGI" | strip_cgi_headers)
 if printf '%s\n' "$proxy_body" | grep -Fq 'fetch("/cgi/blog-artificer-web?path=/cgi/artificer-api?action=ping")'; then
   pass
