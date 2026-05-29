@@ -854,10 +854,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   appearance: none;
-  background: transparent !important;
-  background-image: none !important;
   color: #5d4527;
-  box-shadow: none !important;
   cursor: pointer;
   font-size: 1.62rem;
   font-weight: 900;
@@ -870,10 +867,16 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-props-btn,
 .desk-map-zoom-btn,
 .desk-map-close {
-  box-shadow: none !important;
-  filter: none !important;
-  text-shadow: none !important;
-  transition: none !important;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  filter: none;
+  text-shadow: none;
+  transition: none;
 }
 
 .desk-map-create-btn::before,
@@ -886,9 +889,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-zoom-btn::after,
 .desk-map-close::before,
 .desk-map-close::after {
-  box-shadow: none !important;
-  filter: none !important;
-  transition: none !important;
+  box-shadow: none;
+  filter: none;
+  transition: none;
 }
 
 .desk-map-create-btn *,
@@ -896,14 +899,21 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-props-btn *,
 .desk-map-zoom-btn *,
 .desk-map-close * {
-  transition: none !important;
+  transition: none;
 }
 
 .desk-map-create-btn:hover,
-.desk-map-create-btn:focus-visible {
-  border: 0;
-  background: #e8cf8b !important;
-  box-shadow: none !important;
+.desk-map-create-btn:focus-visible,
+.desk-map-passage-btn:hover,
+.desk-map-passage-btn:focus-visible,
+.desk-map-props-btn:hover,
+.desk-map-props-btn:focus-visible,
+.desk-map-zoom-btn:hover,
+.desk-map-zoom-btn:focus-visible,
+.desk-map-close:hover,
+.desk-map-close:focus-visible {
+  background: #e8cf8b;
+  outline: 0;
 }
 
 .desk-modal-backdrop {
@@ -1680,10 +1690,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   appearance: none;
-  background: transparent !important;
-  background-image: none !important;
   color: #5d4527;
-  box-shadow: none !important;
   cursor: pointer;
 }
 
@@ -1717,13 +1724,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-passage-book-line {
   fill: none;
   stroke-width: 2.2;
-}
-
-.desk-map-passage-btn:hover,
-.desk-map-passage-btn:focus-visible {
-  border: 0;
-  background: #e8cf8b !important;
-  box-shadow: none !important;
 }
 
 .desk-map-passage-btn:hover .desk-passage-book.middle,
@@ -1864,10 +1864,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   appearance: none;
-  background: transparent !important;
-  background-image: none !important;
   color: #5d4527;
-  box-shadow: none !important;
   cursor: pointer;
 }
 
@@ -1889,13 +1886,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-width: 2;
 }
 
-.desk-map-props-btn:hover,
-.desk-map-props-btn:focus-visible {
-  border: 0;
-  background: #e8cf8b !important;
-  box-shadow: none !important;
-}
-
 .desk-map-zoom-btn {
   position: absolute;
   right: calc(clamp(0.95rem, 1.6vw, 1.3rem) + 5.84rem);
@@ -1909,10 +1899,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   appearance: none;
-  background: transparent !important;
-  background-image: none !important;
   color: #5d4527;
-  box-shadow: none !important;
   cursor: pointer;
 }
 
@@ -1924,14 +1911,6 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.desk-map-zoom-btn:hover,
-.desk-map-zoom-btn:focus-visible {
-  border: 0;
-  background: #e8cf8b !important;
-  box-shadow: none !important;
-  outline: 0;
 }
 
 .desk-map-close {
@@ -1947,20 +1926,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border: 0;
   border-radius: 10px;
   appearance: none;
-  background: transparent !important;
-  background-image: none !important;
   color: #5d4527;
-  box-shadow: none !important;
   cursor: pointer;
   font: 700 1.18rem/1 ui-serif, Georgia, "Times New Roman", serif;
-}
-
-.desk-map-close:hover,
-.desk-map-close:focus-visible {
-  border: 0;
-  background: #e8cf8b !important;
-  box-shadow: none !important;
-  outline: 0;
 }
 
 .desk-map-properties {
