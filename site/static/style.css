@@ -14665,6 +14665,22 @@ nav.site-nav .nav-menu-btn.nav-overflow-btn:focus-visible .nav-overflow-count {
     0 0 0 3px rgba(15, 23, 42, 0.10) !important;
 }
 
+html body .blog-post-item button.tag,
+html body .blog-post-item button.tag:hover:not(:disabled),
+html body .blog-post-item button.tag:focus-visible:not(:disabled),
+html body .blog-post-item button.blog-type-pill,
+html body .blog-post-item button.blog-type-pill:hover:not(:disabled),
+html body .blog-post-item button.blog-type-pill:focus-visible:not(:disabled),
+html body .blog-post-item button.blog-year-pill,
+html body .blog-post-item button.blog-year-pill:hover:not(:disabled),
+html body .blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  text-shadow: none !important;
+}
+
 .blog-compose-card .compose-post-type-toolbar {
   box-shadow: none !important;
 }
