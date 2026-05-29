@@ -23,6 +23,7 @@
     currentRoom: roomFromLocation(),
     mode: 'map',
     closingMode: '',
+    closingMap: false,
     paperSwitchFrom: '',
     paperMapVisible: true,
     draggedRoom: '',
@@ -2485,7 +2486,7 @@
       w: fullViewBox.w + gridPadX * 2,
       h: fullViewBox.h + gridPadY * 2
     };
-    return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';">' +
+    return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' || state.closingMap ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';">' +
       '<div class="desk-map-scroll' + (state.mapZoomMode === 'room' ? ' is-closeup' : '') + '" aria-label="Desk mansion map">' +
       '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml(formatViewBox(fullViewBox)) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(roomViewBox)) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><radialGradient id="desk-map-door-spill-gradient-east" cx="0%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-west" cx="100%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-south" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-north" cx="50%" cy="100%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#9fac63"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(83,91,42,0.14)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(229,221,142,0.13)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
@@ -2665,11 +2666,15 @@
   }
 
   function isMapVisibleMode(mode) {
-    return mode === 'map' || ((mode === 'todo' || mode === 'compose') && state.paperMapVisible);
+    return mode === 'map' || state.closingMap || ((mode === 'todo' || mode === 'compose') && state.paperMapVisible);
   }
 
   function shouldRenderMapWithPaper() {
     return (state.mode === 'todo' || state.mode === 'compose') && state.paperMapVisible;
+  }
+
+  function shouldRenderClosingMapWithPaper() {
+    return (state.mode === 'todo' || state.mode === 'compose') && state.closingMap;
   }
 
   function renderModeDock() {
@@ -2695,14 +2700,15 @@
     var content = '';
     var isPaperSwitching = state.paperSwitchFrom && state.closingMode === state.paperSwitchFrom && (state.mode === 'todo' || state.mode === 'compose');
     var renderPaperMap = shouldRenderMapWithPaper();
+    var renderClosingMap = shouldRenderClosingMapWithPaper();
     if (state.mode === 'todo') {
-      content = (renderPaperMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'compose' ? renderCompose(data) : '') + renderTodo(data);
+      content = (renderPaperMap || renderClosingMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'compose' ? renderCompose(data) : '') + renderTodo(data);
     } else if (state.mode === 'compose') {
-      content = (renderPaperMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'todo' ? renderTodo(data) : '') + renderCompose(data);
+      content = (renderPaperMap || renderClosingMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'todo' ? renderTodo(data) : '') + renderCompose(data);
     } else if (state.mode === 'map') {
       content = renderMapSafely(data);
     }
-    return '<div class="desk-stage' + (isPaperSwitching ? ' is-paper-switching' : '') + (!renderPaperMap && (state.mode === 'todo' || state.mode === 'compose') ? ' is-paper-only' : '') + '" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
+    return '<div class="desk-stage' + (isPaperSwitching ? ' is-paper-switching' : '') + (!renderPaperMap && !renderClosingMap && (state.mode === 'todo' || state.mode === 'compose') ? ' is-paper-only' : '') + '" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
   function clearModeCloseTimer() {
@@ -2779,6 +2785,7 @@
     state.mode = nextMode;
     state.paperMapVisible = nextMode === 'map' || ((nextMode === 'todo' || nextMode === 'compose') && keepPaperMap);
     state.closingMode = '';
+    state.closingMap = false;
     state.paperSwitchFrom = '';
     state.search = null;
     state.createRoomOpen = false;
@@ -2817,6 +2824,7 @@
     }
     modeCloseTimer = window.setTimeout(function () {
       state.closingMode = '';
+      state.closingMap = false;
       state.paperSwitchFrom = '';
       modeCloseTimer = null;
       state.suppressMapAnimation = true;
@@ -2834,6 +2842,7 @@
     playSound(deskSounds.mapClose);
     state.paperMapVisible = false;
     state.closingMode = 'map';
+    state.closingMap = false;
     state.search = null;
     state.createRoomOpen = false;
     state.secretPassageSource = null;
@@ -2843,6 +2852,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'closed';
       state.closingMode = '';
+      state.closingMap = false;
       state.paperSwitchFrom = '';
       modeCloseTimer = null;
       if (state.data) {
@@ -2861,8 +2871,12 @@
       playSound(deskSounds.mapClose);
     } else if (previousMode === 'todo' || previousMode === 'compose') {
       playSound(deskSounds.book);
+      if (state.paperMapVisible) {
+        playSound(deskSounds.mapClose);
+      }
     }
     state.closingMode = previousMode;
+    state.closingMap = (previousMode === 'todo' || previousMode === 'compose') && state.paperMapVisible;
     state.paperMapVisible = false;
     state.search = null;
     state.createRoomOpen = false;
@@ -2873,6 +2887,7 @@
     modeCloseTimer = window.setTimeout(function () {
       state.mode = 'closed';
       state.closingMode = '';
+      state.closingMap = false;
       state.paperSwitchFrom = '';
       modeCloseTimer = null;
       if (state.data) {
@@ -2886,6 +2901,7 @@
     state.mode = 'map';
     state.paperMapVisible = true;
     state.closingMode = '';
+    state.closingMap = false;
     state.paperSwitchFrom = '';
     modeCloseTimer = null;
     state.suppressMapAnimation = true;
@@ -2916,6 +2932,7 @@
       }
       state.mode = 'closed';
       state.closingMode = '';
+      state.closingMap = false;
       state.paperSwitchFrom = '';
       state.paperMapVisible = false;
       modeCloseTimer = null;
@@ -2949,6 +2966,7 @@
       }
       state.mode = 'closed';
       state.closingMode = '';
+      state.closingMap = false;
       state.paperSwitchFrom = '';
       state.paperMapVisible = false;
       modeCloseTimer = null;
@@ -4060,6 +4078,7 @@
     state.mode = 'todo';
     state.paperMapVisible = true;
     state.closingMode = '';
+    state.closingMap = false;
     if (roomPath !== state.currentRoom) {
       state.lastEnteredDoor = {
         from: state.currentRoom,
