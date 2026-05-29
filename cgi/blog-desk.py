@@ -132,6 +132,11 @@ def normalize_room_kind(value: object) -> str:
     return "outdoor" if text == "outdoor" else "indoor"
 
 
+def normalize_room_topology(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return "contained" if text == "contained" else "connected"
+
+
 def safe_task_slug(text: str) -> str:
     first = (text or "").splitlines()[0].strip()
     return slugify(first)[:48] or "task"
@@ -338,6 +343,7 @@ class DeskStore:
                     data["title"] = str(data.get("title") or "").strip()
                     data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
                     data["kind"] = normalize_room_kind(data.get("kind"))
+                    data["topology"] = normalize_room_topology(data.get("topology"))
                     return data
             except (OSError, json.JSONDecodeError):
                 pass
@@ -346,6 +352,7 @@ class DeskStore:
             "visibility": "private",
             "color": default_room_color(room_rel),
             "kind": "indoor",
+            "topology": "connected",
         }
 
     def update_room_metadata(self, rel: str | None, updates: dict[str, object]) -> dict[str, object]:
@@ -358,6 +365,7 @@ class DeskStore:
         data["visibility"] = str(data.get("visibility") or "private")
         data["color"] = normalize_room_color(str(data.get("color") or ""), default_room_color(room_rel))
         data["kind"] = normalize_room_kind(data.get("kind"))
+        data["topology"] = normalize_room_topology(data.get("topology"))
         if not str(data.get("created_at") or "").strip():
             data["created_at"] = iso_now()
         data["updated_at"] = iso_now()
@@ -381,6 +389,11 @@ class DeskStore:
         room_rel = self.normalize_room_rel(rel)
         data = self.room_metadata(room_rel)
         return normalize_room_kind(data.get("kind"))
+
+    def room_topology(self, rel: str | None) -> str:
+        room_rel = self.normalize_room_rel(rel)
+        data = self.room_metadata(room_rel)
+        return normalize_room_topology(data.get("topology"))
 
     def all_room_rels(self) -> list[str]:
         self.setup()
@@ -578,6 +591,7 @@ class DeskStore:
             "depth": depth,
             "color": self.room_color(room_rel),
             "kind": self.room_kind(room_rel),
+            "topology": self.room_topology(room_rel),
             "url": self.room_url(room_rel),
             "overworld_url": self.overworld_url(room_rel),
             "task_count": len(tasks),
@@ -700,6 +714,17 @@ class DeskStore:
         clean = normalize_room_kind(kind)
         self.update_room_metadata(room, {"kind": clean})
         self.append_log("set-room-kind", {"room": room, "kind": clean})
+        payload = self.state(room, threshold)
+        payload["updated_room"] = self.room_summary(room, threshold)
+        return payload
+
+    def set_room_topology(self, room_rel: str, topology: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        if room and not self.room_dir(room).is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        clean = normalize_room_topology(topology)
+        self.update_room_metadata(room, {"topology": clean})
+        self.append_log("set-room-topology", {"room": room, "topology": clean})
         payload = self.state(room, threshold)
         payload["updated_room"] = self.room_summary(room, threshold)
         return payload
@@ -1123,6 +1148,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "set-status",
         "set-room-color",
         "set-room-kind",
+        "set-room-topology",
         "set-room-title",
         "rebuild-indexes",
         "migrate-metadata",
@@ -1157,6 +1183,8 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_room_color(room, env("BLOG_DESK_ROOM_COLOR"), threshold)
         if action == "set-room-kind":
             return store.set_room_kind(room, env("BLOG_DESK_ROOM_KIND"), threshold)
+        if action == "set-room-topology":
+            return store.set_room_topology(room, env("BLOG_DESK_ROOM_TOPOLOGY"), threshold)
         if action == "set-room-title":
             return store.set_room_title(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
         if action == "search":

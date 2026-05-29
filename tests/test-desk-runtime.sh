@@ -220,7 +220,7 @@ assert_dir_exists "$SITE_DATA/desk/office" 'Desk creates the real office folder'
 assert_file_exists "$SITE_DATA/desk/office/.room.json" 'Desk writes minimal office metadata'
 
 create_json=$(run_desk "action=create-room&$auth_query&room_title=$(urlencode "Writing Room")")
-assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$")) and .created_room.kind == "indoor"' 'Desk creates a real room folder with an indoor default and map color'
+assert_jq "$create_json" '.success == true and .created_room.path == "writing-room" and (.created_room.color | test("^#[0-9a-f]{6}$")) and .created_room.kind == "indoor" and .created_room.topology == "connected"' 'Desk creates a real room folder with indoor connected defaults and map color'
 assert_jq "$create_json" '.created_room.url == "/writing-room"' 'Desk room URLs use clean place paths from the dedicated subdomain root'
 assert_dir_exists "$SITE_DATA/desk/office/writing-room" 'created room is a filesystem folder'
 
@@ -236,6 +236,10 @@ assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"color": 
 kind_json=$(run_desk "action=set-room-kind&$auth_query&room=writing-room&room_kind=outdoor")
 assert_jq "$kind_json" '.success == true and .updated_room.kind == "outdoor" and .current_room.kind == "outdoor"' 'Desk stores room-local indoor/outdoor kind'
 assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"kind": "outdoor"' 'room metadata persists outdoor room kind'
+
+topology_json=$(run_desk "action=set-room-topology&$auth_query&room=writing-room&room_topology=contained")
+assert_jq "$topology_json" '.success == true and .updated_room.topology == "contained" and .current_room.topology == "contained"' 'Desk stores room-local child topology for contained subdivisions'
+assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"topology": "contained"' 'room metadata persists contained child topology'
 
 rename_json=$(run_desk "action=set-room-title&$auth_query&room=writing-room&room_title=$(urlencode "Library Desk")")
 assert_jq "$rename_json" '.success == true and .current_room.path == "writing-room" and .current_room.title == "Library Desk" and .updated_room.title == "Library Desk"' 'Desk lets the owner edit the current room name without moving the folder'
@@ -693,8 +697,13 @@ assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'presence clock' '
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mansionLayout(rooms)' 'Desk frontend lays out rooms as a deterministic mansion map'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "originY: 4" 'Desk root room starts lower on the mansion plan like a grand entrance'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomKind(room)' 'Desk frontend distinguishes indoor and outdoor rooms'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomTopology(room)' 'Desk frontend distinguishes connected rooms from contained subdivisions'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function roomIsOutdoor(room)' 'Desk frontend can test outdoor room metadata'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'childrenByParent' 'Desk layout groups rooms by semantic parent before placing wings'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function assignContainedChildren(parentPath)' 'Desk layout can subdivide a room into contained child shares'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'children.length + 1' 'Desk contained-room layout reserves one share for the parent room itself'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'containedIn: parentPath' 'Desk contained child rooms remember their parent subdivision'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'containedRoomPath(roomCell, unitW, unitH)' 'Desk contained rooms render as subdivisions inside the parent footprint'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function attachPoint(parentPath, direction, index, forcedSide)' 'Desk layout creates deterministic parent wing attachment points'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function primaryWingDirection(parentPath)' 'Desk layout gives each parent one straight wing spine'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function manorEntranceDirection(index)' 'Desk layout treats the office as a lower-center manor entrance'
@@ -928,6 +937,10 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" 'height: 100%;' 'Desk
 assert_file_not_contains "$ROOT_DIR/site/static/desk-page.css" 'translateY(-0.22rem)' 'Desk dock launchers do not move on hover or focus'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-color'" 'Desk frontend can set room map colors'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-kind'" 'Desk frontend can set rooms indoor or outdoor'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('set-room-topology'" 'Desk frontend can set child rooms connected or contained'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'name="room_topology"' 'Desk room properties expose a subroom topology selector'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def set_room_topology' 'Desk API persists room child topology'
+assert_file_contains "$ROOT_DIR/cgi/blog-desk" 'BLOG_DESK_ROOM_TOPOLOGY=$(blog_param room_topology)' 'Desk CGI wrapper forwards room topology changes'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "'rename-room';" 'Desk frontend can still rename non-current rooms with path updates through Desk API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-map-props' 'Desk map has a top-right blueprint properties control'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-close-map' 'Desk map has a top-right close button'

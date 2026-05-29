@@ -1027,6 +1027,10 @@
     return String(room && room.kind || '').trim().toLowerCase() === 'outdoor' ? 'outdoor' : 'indoor';
   }
 
+  function roomTopology(room) {
+    return String(room && room.topology || '').trim().toLowerCase() === 'contained' ? 'contained' : 'connected';
+  }
+
   function roomIsOutdoor(room) {
     return roomKind(room) === 'outdoor';
   }
@@ -1044,13 +1048,15 @@
       path: '',
       title: (data.office && data.office.title) || 'Office',
       depth: 0,
-      parent_path: ''
+      parent_path: '',
+      topology: roomTopology(data.office || {})
     });
     var rooms = [office].concat((data.rooms || []).map(function (room) {
       var path = String(room.path || '');
       return Object.assign({}, room, {
         path: path,
-        parent_path: typeof room.parent_path === 'string' ? room.parent_path : roomPathParent(path)
+        parent_path: typeof room.parent_path === 'string' ? room.parent_path : roomPathParent(path),
+        topology: roomTopology(room)
       });
     }));
     rooms.sort(function (left, right) {
@@ -1108,10 +1114,70 @@
       var cells = footprints[path] || [];
       var xs = cells.map(function (point) { return point.x; });
       var ys = cells.map(function (point) { return point.y; });
+      var x2s = cells.map(function (point) { return point.x + (Number.isFinite(point.w) ? point.w : 1); });
+      var y2s = cells.map(function (point) { return point.y + (Number.isFinite(point.h) ? point.h : 1); });
       layout[path].x = Math.min.apply(null, xs);
       layout[path].y = Math.min.apply(null, ys);
-      layout[path].w = Math.max.apply(null, xs) - layout[path].x + 1;
-      layout[path].h = Math.max.apply(null, ys) - layout[path].y + 1;
+      layout[path].w = Math.max.apply(null, x2s) - layout[path].x;
+      layout[path].h = Math.max.apply(null, y2s) - layout[path].y;
+    }
+
+    function roomChildrenTopology(parentPath) {
+      return roomTopology(roomsByPath[String(parentPath || '')] || {});
+    }
+
+    function containedShareBoxes(parentPath, count) {
+      var parent = layout[parentPath] || layout[''];
+      var total = Math.max(1, count + 1);
+      var cols = Math.ceil(Math.sqrt(total));
+      var rows = Math.ceil(total / cols);
+      var gap = Math.min(0.08, Math.max(0.035, Math.min(parent.w || 1, parent.h || 1) * 0.04));
+      var cellW = (parent.w || 1) / cols;
+      var cellH = (parent.h || 1) / rows;
+      var boxes = [];
+      for (var index = 0; index < total; index += 1) {
+        var col = index % cols;
+        var row = Math.floor(index / cols);
+        boxes.push({
+          x: parent.x + col * cellW + gap,
+          y: parent.y + row * cellH + gap,
+          w: Math.max(0.22, cellW - gap * 2),
+          h: Math.max(0.22, cellH - gap * 2)
+        });
+      }
+      return boxes;
+    }
+
+    function assignContainedChildren(parentPath) {
+      if (roomChildrenTopology(parentPath) !== 'contained') {
+        return;
+      }
+      var children = childrenByParent[parentPath] || [];
+      if (!children.length || !layout[parentPath]) {
+        return;
+      }
+      var containedShareCount = children.length + 1;
+      var boxes = containedShareBoxes(parentPath, containedShareCount - 1);
+      var selfBox = boxes[0];
+      layout[parentPath].originX = selfBox.x + selfBox.w / 2 - 0.5;
+      layout[parentPath].originY = selfBox.y + selfBox.h / 2 - 0.5;
+      children.forEach(function (room, index) {
+        var roomPath = String(room.path || '');
+        var box = boxes[index + 1];
+        if (!roomPath || !box) return;
+        layout[roomPath] = {
+          x: box.x,
+          y: box.y,
+          w: box.w,
+          h: box.h,
+          originX: box.x + box.w / 2 - 0.5,
+          originY: box.y + box.h / 2 - 0.5,
+          attachedTo: parentPath,
+          containedIn: parentPath
+        };
+        footprints[roomPath] = [{ x: box.x, y: box.y, w: box.w, h: box.h, containedIn: parentPath }];
+        assignContainedChildren(roomPath);
+      });
     }
 
     function cellFree(x, y) {
@@ -1512,6 +1578,10 @@
 
     function placeSubtree(parentPath) {
       var children = childrenByParent[parentPath] || [];
+      if (roomChildrenTopology(parentPath) === 'contained') {
+        assignContainedChildren(parentPath);
+        return;
+      }
       children.forEach(function (room, index) {
         var roomPath = String(room.path || '');
         if (!roomPath || layout[roomPath]) return;
@@ -1741,11 +1811,13 @@
   function footprintBounds(cells) {
     var xs = cells.map(function (point) { return point.x; });
     var ys = cells.map(function (point) { return point.y; });
+    var x2s = cells.map(function (point) { return point.x + (Number.isFinite(point.w) ? point.w : 1); });
+    var y2s = cells.map(function (point) { return point.y + (Number.isFinite(point.h) ? point.h : 1); });
     var minX = Math.min.apply(null, xs);
-    var maxX = Math.max.apply(null, xs);
+    var maxX = Math.max.apply(null, x2s);
     var minY = Math.min.apply(null, ys);
-    var maxY = Math.max.apply(null, ys);
-    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    var maxY = Math.max.apply(null, y2s);
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
   function roomWallLightPoints(cells, unitW, unitH) {
@@ -1773,14 +1845,16 @@
     cells.forEach(function (cell) {
       var x = cell.x * unitW;
       var y = cell.y * unitH;
+      var w = (Number.isFinite(cell.w) ? cell.w : 1) * unitW;
+      var h = (Number.isFinite(cell.h) ? cell.h : 1) * unitH;
       var northInside = y + 9;
-      var southInside = y + unitH - 9;
+      var southInside = y + h - 9;
       var westInside = x + 9;
-      var eastInside = x + unitW - 9;
-      if (!local[cell.x + ',' + (cell.y - 1)]) addLightRun('north', x + 18, northInside, x + unitW - 18, northInside);
-      if (!local[cell.x + ',' + (cell.y + 1)]) addLightRun('south', x + 18, southInside, x + unitW - 18, southInside);
-      if (!local[(cell.x - 1) + ',' + cell.y]) addLightRun('west', westInside, y + 18, westInside, y + unitH - 18);
-      if (!local[(cell.x + 1) + ',' + cell.y]) addLightRun('east', eastInside, y + 18, eastInside, y + unitH - 18);
+      var eastInside = x + w - 9;
+      if (cell.containedIn || !local[cell.x + ',' + (cell.y - 1)]) addLightRun('north', x + 18, northInside, x + w - 18, northInside);
+      if (cell.containedIn || !local[cell.x + ',' + (cell.y + 1)]) addLightRun('south', x + 18, southInside, x + w - 18, southInside);
+      if (cell.containedIn || !local[(cell.x - 1) + ',' + cell.y]) addLightRun('west', westInside, y + 18, westInside, y + h - 18);
+      if (cell.containedIn || !local[(cell.x + 1) + ',' + cell.y]) addLightRun('east', eastInside, y + 18, eastInside, y + h - 18);
     });
     return points;
   }
@@ -1928,6 +2002,23 @@
       path += segmentPath(finalPoint, firstPoint, points.length);
     }
     return path + ' Z';
+  }
+
+  function containedRoomPath(roomCell, unitW, unitH) {
+    var x = roomCell.x * unitW;
+    var y = roomCell.y * unitH;
+    var w = (Number.isFinite(roomCell.w) ? roomCell.w : 1) * unitW;
+    var h = (Number.isFinite(roomCell.h) ? roomCell.h : 1) * unitH;
+    return 'M ' + x + ' ' + y + ' H ' + (x + w) + ' V ' + (y + h) + ' H ' + x + ' Z';
+  }
+
+  function roomFootprintPath(roomCell, footprint, unitW, unitH, path, isOutdoor, buildingOccupied, roomDoorSegments) {
+    if (roomCell && roomCell.containedIn) {
+      return containedRoomPath(roomCell, unitW, unitH);
+    }
+    return isOutdoor
+      ? footprintContourPath(footprint, unitW, unitH, path || 'office', false, null, roomDoorSegments)
+      : footprintContourPath(footprint, unitW, unitH, path || 'office', true, buildingOccupied, roomDoorSegments);
   }
 
   function architecturalRoomPath(x, y, w, h, exterior, seed) {
@@ -2199,6 +2290,7 @@
     }
     var roomClipPaths = renderRooms.map(function (room) {
       var path = String(room.path || '');
+      var roomCell = layout[path];
       var footprint = plan.footprints[path] || [layout[path]];
       var roomDoorSegments = doorSegmentsForRoom(path);
       var bounds = footprintBounds(footprint);
@@ -2211,14 +2303,13 @@
       var overlayY = y - overlayPad;
       var overlayW = w + overlayPad * 2;
       var overlayH = h + overlayPad * 2;
-      var contour = roomIsOutdoor(room)
-        ? footprintContourPath(footprint, unitW, unitH, path || 'office', false, null, roomDoorSegments)
-        : footprintContourPath(footprint, unitW, unitH, path || 'office', true, buildingOccupied, roomDoorSegments);
+      var contour = roomFootprintPath(roomCell, footprint, unitW, unitH, path, roomIsOutdoor(room), buildingOccupied, roomDoorSegments);
       var lightGradients = roomIsOutdoor(room) ? '' : renderRoomLightGradientDefs(path, footprint, unitW, unitH);
       return '<clipPath id="' + roomClipId(path) + '"><path d="' + contour + '"></path></clipPath>' + lightGradients;
     }).join('');
     var roomParts = renderRooms.map(function (room) {
       var path = String(room.path || '');
+      var roomCell = layout[path];
       var footprint = plan.footprints[path] || [layout[path]];
       var bounds = footprintBounds(footprint);
       var x = bounds.x * unitW;
@@ -2242,13 +2333,14 @@
         : '';
       var isOutdoor = roomIsOutdoor(room);
       var roomDoorSegments = doorSegmentsForRoom(path);
-      var roomPathShape = isOutdoor
-        ? footprintContourPath(footprint, unitW, unitH, path || 'office', false, null, roomDoorSegments)
-        : footprintContourPath(footprint, unitW, unitH, path || 'office', true, buildingOccupied, roomDoorSegments);
+      var roomPathShape = roomFootprintPath(roomCell, footprint, unitW, unitH, path, isOutdoor, buildingOccupied, roomDoorSegments);
       var roomPassiveOutlineShape = isOutdoor
         ? outdoorExposedOutlinePath(footprint, plan.occupied, roomsByPath, unitW, unitH)
         : roomPathShape;
-      var outdoorFringe = isOutdoor ? outdoorFringePath(footprint, plan.occupied, roomsByPath, unitW, unitH) : '';
+      if (roomCell && roomCell.containedIn) {
+        roomPassiveOutlineShape = roomPathShape;
+      }
+      var outdoorFringe = isOutdoor && !(roomCell && roomCell.containedIn) ? outdoorFringePath(footprint, plan.occupied, roomsByPath, unitW, unitH) : '';
       var backgroundShape = isOutdoor
         ? '<g class="desk-map-room-grass-area"><path class="desk-map-room-grass-edge desk-map-room-grass-edge-soft" d="' + outdoorFringe + '"></path><path class="desk-map-room-grass" d="' + roomPathShape + '"></path><path class="desk-map-room-grass-edge desk-map-room-grass-edge-core" d="' + outdoorFringe + '"></path></g>'
         : '';
@@ -2293,7 +2385,7 @@
     var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
     var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     var propsPanel = state.mapPropsOpen
-      ? '<aside class="desk-map-properties" aria-label="Room properties"><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form></aside>'
+      ? '<aside class="desk-map-properties" aria-label="Room properties"><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subrooms</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected rooms</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivisions</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form></aside>'
       : '';
     var mapAspect = fullViewBox.w && fullViewBox.h ? (fullViewBox.w / fullViewBox.h).toFixed(5) : '1.33333';
     var viewBoxText = formatViewBox(mapViewBox);
@@ -4350,6 +4442,7 @@
     if (type === 'room-properties') {
       var sourceRoom = formValue(form, 'room');
       var nextKind = formValue(form, 'room_kind');
+      var nextTopology = formValue(form, 'room_topology');
       var nextColor = formValue(form, 'room_color');
       api('set-room-kind', {
         room: sourceRoom,
@@ -4357,12 +4450,25 @@
       }).then(function (data) {
         if (!data || data.success === false) {
           refreshFrom(data);
-          return;
+          throw new Error('desk-room-properties-handled');
         }
-        api('set-room-color', {
+        return api('set-room-topology', {
+          room: sourceRoom,
+          room_topology: nextTopology
+        });
+      }).then(function (data) {
+        if (!data || data.success === false) {
+          refreshFrom(data);
+          throw new Error('desk-room-properties-handled');
+        }
+        return api('set-room-color', {
           room: sourceRoom,
           room_color: nextColor
-        }).then(refreshFrom);
+        });
+      }).then(refreshFrom).catch(function (err) {
+        if (!err || err.message !== 'desk-room-properties-handled') {
+          throw err;
+        }
       });
       return;
     }
