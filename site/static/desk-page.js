@@ -359,6 +359,87 @@
       .replace(/'/g, '&#39;');
   }
 
+  function parseViewBoxText(value) {
+    var parts = String(value || '').trim().split(/\s+/).map(Number);
+    if (parts.length !== 4 || parts.some(function (part) { return !Number.isFinite(part); })) {
+      return null;
+    }
+    return { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+  }
+
+  function formatViewBox(viewBox) {
+    return [viewBox.x, viewBox.y, viewBox.w, viewBox.h].map(function (number) {
+      return Number(number).toFixed(3);
+    }).join(' ');
+  }
+
+  function easeMapZoom(progress) {
+    return progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+  }
+
+  function animateMapViewBox(svg, fromViewBox, toViewBox) {
+    if (!svg || !fromViewBox || !toViewBox) {
+      return;
+    }
+    if (svg._deskMapZoomFrame) {
+      window.cancelAnimationFrame(svg._deskMapZoomFrame);
+    }
+    var startedAt = window.performance && window.performance.now ? window.performance.now() : Date.now();
+    var duration = 320;
+    function step(now) {
+      var elapsed = now - startedAt;
+      var progress = Math.min(1, Math.max(0, elapsed / duration));
+      var eased = easeMapZoom(progress);
+      var nextViewBox = {
+        x: fromViewBox.x + (toViewBox.x - fromViewBox.x) * eased,
+        y: fromViewBox.y + (toViewBox.y - fromViewBox.y) * eased,
+        w: fromViewBox.w + (toViewBox.w - fromViewBox.w) * eased,
+        h: fromViewBox.h + (toViewBox.h - fromViewBox.h) * eased
+      };
+      svg.setAttribute('viewBox', formatViewBox(nextViewBox));
+      if (progress < 1) {
+        svg._deskMapZoomFrame = window.requestAnimationFrame(step);
+      } else {
+        svg._deskMapZoomFrame = 0;
+        svg.setAttribute('viewBox', formatViewBox(toViewBox));
+      }
+    }
+    svg._deskMapZoomFrame = window.requestAnimationFrame(step);
+  }
+
+  function applyMapZoomToDom() {
+    var svg = root.querySelector('[data-desk-map-svg]');
+    if (!svg) {
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+    var scroll = svg.closest('.desk-map-scroll');
+    var zoomButton = root.querySelector('[data-desk-map-zoom]');
+    var targetAttr = state.mapZoomMode === 'room' ? 'data-desk-room-viewbox' : 'data-desk-full-viewbox';
+    var targetViewBox = parseViewBoxText(svg.getAttribute(targetAttr));
+    var currentViewBox = parseViewBoxText(svg.getAttribute('viewBox')) || targetViewBox;
+    if (!targetViewBox) {
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
+    if (scroll) {
+      scroll.classList.toggle('is-closeup', state.mapZoomMode === 'room');
+    }
+    if (zoomButton) {
+      var zoomLabel = state.mapZoomMode === 'room' ? 'Show whole map' : 'Zoom to current room';
+      zoomButton.classList.toggle('is-active', state.mapZoomMode === 'room');
+      zoomButton.setAttribute('aria-label', zoomLabel);
+      zoomButton.setAttribute('title', zoomLabel);
+    }
+    animateMapViewBox(svg, currentViewBox, targetViewBox);
+  }
+
   function storageGet(key) {
     try {
       if (!window.localStorage) {
@@ -1911,6 +1992,8 @@
     var currentPath = String(state.currentRoom || '');
     var currentRoom = roomsByPath[currentPath] || roomsByPath[''] || { path: '', title: 'Office', kind: 'indoor', color: '#4f8fbd' };
     function closeupViewBoxForRoom(path) {
+      var panX = arguments.length > 1 ? Number(arguments[1] || 0) : Number(state.mapPanX || 0);
+      var panY = arguments.length > 2 ? Number(arguments[2] || 0) : Number(state.mapPanY || 0);
       var roomCell = layout[path] || layout[''];
       var footprint = plan.footprints[path] || (roomCell ? [roomCell] : []);
       if (!footprint.length) {
@@ -1929,8 +2012,8 @@
       }
       width = Math.min(fullViewBox.w, width);
       height = Math.min(fullViewBox.h, height);
-      var centerX = (bounds.x + bounds.w / 2) * unitW + Number(state.mapPanX || 0);
-      var centerY = (bounds.y + bounds.h / 2) * unitH + Number(state.mapPanY || 0);
+      var centerX = (bounds.x + bounds.w / 2) * unitW + panX;
+      var centerY = (bounds.y + bounds.h / 2) * unitH + panY;
       var x = centerX - width / 2;
       var y = centerY - height / 2;
       x = Math.max(fullViewBox.x, Math.min(fullViewBox.x + fullViewBox.w - width, x));
@@ -1938,6 +2021,7 @@
       return { x: x, y: y, w: width, h: height };
     }
     var mapViewBox = state.mapZoomMode === 'room' ? closeupViewBoxForRoom(currentPath) : fullViewBox;
+    var roomViewBox = closeupViewBoxForRoom(currentPath, 0, 0);
     function roomClipId(path) {
       return 'desk-room-presence-clip-' + hashText(path || 'office');
     }
@@ -2068,13 +2152,11 @@
       ? '<aside class="desk-map-properties" aria-label="Room properties"><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form></aside>'
       : '';
     var mapAspect = fullViewBox.w && fullViewBox.h ? (fullViewBox.w / fullViewBox.h).toFixed(5) : '1.33333';
-    var viewBoxText = [mapViewBox.x, mapViewBox.y, mapViewBox.w, mapViewBox.h].map(function (number) {
-      return Number(number).toFixed(3);
-    }).join(' ');
+    var viewBoxText = formatViewBox(mapViewBox);
     var zoomLabel = state.mapZoomMode === 'room' ? 'Show whole map' : 'Zoom to current room';
     return '<section class="desk-mode-panel desk-map-panel' + (state.closingMode === 'map' ? ' is-closing' : '') + (state.suppressMapAnimation ? ' is-steady' : '') + '" aria-label="Room map" style="--desk-map-aspect:' + escapeHtml(mapAspect) + ';">' +
       '<div class="desk-map-scroll' + (state.mapZoomMode === 'room' ? ' is-closeup' : '') + '" aria-label="Desk mansion map">' +
-      '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml([fullViewBox.x, fullViewBox.y, fullViewBox.w, fullViewBox.h].join(' ')) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
+      '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml(formatViewBox(fullViewBox)) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(roomViewBox)) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><filter id="desk-map-greenery-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter><linearGradient id="desk-map-greenbelt-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6f7f55" stop-opacity="0.28"></stop><stop offset="0.28" stop-color="#87936a" stop-opacity="0.82"></stop><stop offset="0.62" stop-color="#94a373" stop-opacity="0.72"></stop><stop offset="1" stop-color="#6f7f55" stop-opacity="0.18"></stop></linearGradient><radialGradient id="desk-map-presence-glow" cx="50%" cy="47%" r="76%"><stop offset="0" stop-color="#ffce76" stop-opacity="0.92"></stop><stop offset="0.42" stop-color="#ffbe5c" stop-opacity="0.38"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#87936a"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(74,81,49,0.16)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(206,199,137,0.1)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
       '<rect class="desk-map-grid" x="' + fullViewBox.x + '" y="' + fullViewBox.y + '" width="' + fullViewBox.w + '" height="' + fullViewBox.h + '"></rect>' +
       greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
@@ -3289,9 +3371,7 @@
       state.mapPanX = 0;
       state.mapPanY = 0;
       state.suppressMapAnimation = true;
-      if (state.data) {
-        render(state.data);
-      }
+      applyMapZoomToDom();
       return;
     }
 
