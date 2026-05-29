@@ -1914,6 +1914,13 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   gap: 0.45rem;
 }
 
+.desk-map-properties-title {
+  margin: 0 0 0.45rem -2.6rem;
+  color: #4f351a;
+  font: 700 0.95rem/1.2 ui-serif, Georgia, "Times New Roman", serif;
+  text-align: center;
+}
+
 .desk-map-properties-form label {
   display: grid;
   gap: 0.22rem;
