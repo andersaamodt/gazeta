@@ -4617,11 +4617,14 @@
   root.addEventListener('dblclick', function (event) {
     var roomTitle = event.target.closest('.desk-map-room-title') || mapRoomTitleAtPoint(event.clientX, event.clientY);
     if (roomTitle) {
-      event.preventDefault();
-      beginMapRoomRename(roomTitle.getAttribute('data-desk-room-title') || '');
-      return;
+      var titleRoomPath = roomTitle.getAttribute('data-desk-room-title') || '';
+      if (titleRoomPath === state.currentRoom) {
+        event.preventDefault();
+        beginMapRoomRename(titleRoomPath);
+        return;
+      }
     }
-    var roomLink = event.target.closest('[data-desk-room-link]');
+    var roomLink = event.target.closest('[data-desk-room-link]') || (roomTitle && roomTitle.closest('[data-desk-room-link]'));
     if (!roomLink || !root.contains(roomLink)) {
       return;
     }
