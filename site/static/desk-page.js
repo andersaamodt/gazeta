@@ -3635,7 +3635,7 @@
         return;
       }
       var clickedRoom = roomLink.getAttribute('data-desk-room-link') || '';
-      if (event.target.closest('.desk-map-room-title') && clickedRoom === state.currentRoom) {
+      if (event.target.closest('.desk-map-room-title')) {
         return;
       }
       if (state.secretPassageSource !== null) {
@@ -3658,6 +3658,9 @@
           state.secretPassageSource = null;
           refreshFrom(data);
         });
+        return;
+      }
+      if (clickedRoom === state.currentRoom) {
         return;
       }
       state.mode = 'map';
@@ -3811,13 +3814,13 @@
     }
     event.preventDefault();
     var roomPath = roomLink.getAttribute('data-desk-room-link') || '';
-    if (event.target.closest('.desk-map-room-title') && (event.shiftKey || roomPath === state.currentRoom)) {
+    if (event.target.closest('.desk-map-room-title')) {
       beginMapRoomRename(roomPath);
       return;
     }
     state.mapRenameRoom = null;
     state.mapRenameValue = '';
-    if (roomPath === state.currentRoom && state.mode === 'todo' && state.closingMode !== 'todo') {
+    if (roomPath === state.currentRoom) {
       return;
     }
     state.suppressTodoAnimation = false;
