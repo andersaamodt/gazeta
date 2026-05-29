@@ -72,6 +72,8 @@ assert_file_contains "$CGI" 'BLOG_ARTIFICER_REMOTE_BASE' "proxy supports env-con
 assert_file_contains "$CGI" 'artificer_remote_token_file' "proxy supports token file configuration"
 assert_file_contains "$CGI" '*/../*|*/..|/..|*%0a*|*%0A*|*%0d*|*%0D*) return 1' "proxy rejects path traversal and encoded newlines"
 assert_file_contains "$CGI" 's#"/cgi/artificer-api#"/cgi/blog-artificer-web?path=/cgi/artificer-api#g' "proxy rewrites API calls"
+assert_file_contains "$CGI" 'fetch(moduleUrl, { cache: "default" })' "proxy restores browser caching for boot modules"
+assert_file_contains "$CGI" 'encodeURIComponent(launchKey)#?v=' "proxy removes per-launch module cache busting"
 assert_file_not_contains "$PAGE" 'desk-page' "artificer page is not a Desk link/embed"
 
 strip_cgi_headers() {
@@ -178,6 +180,9 @@ case "$last" in
     ;;
   *)
     printf '<script src="/static/app.js"></script>\n'
+    printf 'script.src = "/static/artificer-app.js?v=" + encodeURIComponent(versionTag) + "&launch=" + encodeURIComponent(launchKey);\n'
+    printf 'var moduleUrl = "/static/artificer-app-modules/" + modules[index] + "?v=" + encodeURIComponent(versionTag) + "&launch=" + encodeURIComponent(launchKey);\n'
+    printf 'fetch(moduleUrl, { cache: "no-store" })\n'
     ;;
 esac
 EOS
@@ -263,6 +268,20 @@ else
 fi
 
 cookie_pair="$admin_token:$admin_csrf"
+html_body=$(REQUEST_METHOD=GET QUERY_STRING='path=/' HTTP_COOKIE="artificer_web_session=$cookie_pair" "$CGI" | strip_cgi_headers)
+if printf '%s\n' "$html_body" | grep -Fq 'fetch(moduleUrl, { cache: "default" })'; then
+  pass
+else
+  fail "proxy restores browser caching for module fetches"
+  printf '%s\n' "$html_body" >&2
+fi
+if printf '%s\n' "$html_body" | grep -Fq 'launchKey'; then
+  fail "proxy leaves per-launch Artificer static cache busters in boot HTML"
+  printf '%s\n' "$html_body" >&2
+else
+  pass
+fi
+
 proxy_output=$(REQUEST_METHOD=GET QUERY_STRING='path=/static/app.js&action=state' HTTP_COOKIE="artificer_web_session=$cookie_pair" "$CGI")
 proxy_body=$(printf '%s\n' "$proxy_output" | strip_cgi_headers)
 if printf '%s\n' "$proxy_body" | grep -Fq 'fetch("/cgi/blog-artificer-web?path=/cgi/artificer-api?action=ping")'; then

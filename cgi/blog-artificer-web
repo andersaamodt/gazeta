@@ -189,6 +189,8 @@ artificer_web_rewrite_text() {
       ;;
     *)
       sed \
+        -e 's#?v=" + encodeURIComponent(versionTag) + "\&launch=" + encodeURIComponent(launchKey)#?v=" + encodeURIComponent(versionTag)#g' \
+        -e 's#fetch(moduleUrl, { cache: "no-store" })#fetch(moduleUrl, { cache: "default" })#g' \
         -e 's#href="/#href="/cgi/blog-artificer-web?path=/#g' \
         -e 's#src="/#src="/cgi/blog-artificer-web?path=/#g' \
         -e 's#action="/#action="/cgi/blog-artificer-web?path=/#g'
