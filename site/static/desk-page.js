@@ -1340,6 +1340,38 @@
       return true;
     }
 
+    function rectCells(rect) {
+      var cells = [];
+      var x = Math.floor(Number(rect && rect.x) || 0);
+      var y = Math.floor(Number(rect && rect.y) || 0);
+      var w = Math.max(1, Math.ceil(Number(rect && rect.w) || 1));
+      var h = Math.max(1, Math.ceil(Number(rect && rect.h) || 1));
+      for (var yy = y; yy < y + h; yy += 1) {
+        for (var xx = x; xx < x + w; xx += 1) {
+          cells.push({ x: xx, y: yy });
+        }
+      }
+      return cells;
+    }
+
+    function clearOccupiedOwners(ownerPaths) {
+      var owners = {};
+      (ownerPaths || []).forEach(function (path) {
+        owners[String(path || '')] = true;
+      });
+      Object.keys(occupied).forEach(function (key) {
+        if (owners[String(occupied[key] || '')]) {
+          delete occupied[key];
+        }
+      });
+    }
+
+    function markOccupiedRect(path, rect) {
+      rectCells(rect).forEach(function (cell) {
+        occupied[cell.x + ',' + cell.y] = path;
+      });
+    }
+
     function updateBounds(path) {
       var cells = footprints[path] || [];
       var xs = cells.map(function (point) { return point.x; });
@@ -1382,6 +1414,14 @@
       }, 0);
     }
 
+    function containedTreePaths(parentPath) {
+      var paths = [String(parentPath || '')];
+      containedChildrenForParent(parentPath).forEach(function (room) {
+        paths = paths.concat(containedTreePaths(String(room.path || '')));
+      });
+      return paths;
+    }
+
     function containedGridRect(parentPath, totalShares) {
       var parent = layout[parentPath] || layout[''];
       var target = Math.max(1, totalShares);
@@ -1392,9 +1432,32 @@
         rows = cols;
         cols = swap;
       }
-      return {
-        x: Math.floor(parent.x || 0),
-        y: Math.floor(parent.y || 0),
+      var anchorX = Math.floor(parent.x || 0);
+      var anchorY = Math.floor(parent.y || 0);
+      var allowedOwners = {};
+      containedTreePaths(parentPath).forEach(function (path) {
+        allowedOwners[String(path || '')] = true;
+      });
+      var candidates = [];
+      for (var y = anchorY - rows + 1; y <= anchorY; y += 1) {
+        for (var x = anchorX - cols + 1; x <= anchorX; x += 1) {
+          var rect = { x: x, y: y, w: Math.max(1, cols), h: Math.max(1, rows) };
+          var collisions = rectCells(rect).reduce(function (total, cell) {
+            var owner = occupied[cell.x + ',' + cell.y];
+            return total + (owner != null && !allowedOwners[String(owner || '')] ? 1 : 0);
+          }, 0);
+          candidates.push({
+            rect: rect,
+            score: collisions * 10000 + Math.abs(x - anchorX) * 4 + Math.abs(y - anchorY) * 3 + roomBalanceScore(x, y) * 0.02
+          });
+        }
+      }
+      candidates.sort(function (left, right) {
+        return left.score - right.score;
+      });
+      return candidates[0] ? candidates[0].rect : {
+        x: anchorX,
+        y: anchorY,
         w: Math.max(1, cols),
         h: Math.max(1, rows)
       };
@@ -1457,6 +1520,7 @@
         boxesByPath[box.path] = box;
       });
       var selfBox = boxesByPath[parentPath] || container;
+      clearOccupiedOwners(containedTreePaths(parentPath));
       layout[parentPath].x = container.x;
       layout[parentPath].y = container.y;
       layout[parentPath].w = container.w;
@@ -1464,9 +1528,11 @@
       layout[parentPath].originX = selfBox.x + selfBox.w / 2 - 0.5;
       layout[parentPath].originY = selfBox.y + selfBox.h / 2 - 0.5;
       layout[parentPath].containedSelf = true;
+      layout[parentPath].selfBox = { x: selfBox.x, y: selfBox.y, w: selfBox.w, h: selfBox.h };
       if (footprints[parentPath]) {
         footprints[parentPath] = [{ x: container.x, y: container.y, w: container.w, h: container.h, containedSelf: true }];
       }
+      markOccupiedRect(parentPath, selfBox);
       children.forEach(function (room, index) {
         var roomPath = String(room.path || '');
         var box = boxesByPath[roomPath];
@@ -1482,6 +1548,7 @@
           containedIn: parentPath
         };
         footprints[roomPath] = [{ x: box.x, y: box.y, w: box.w, h: box.h, containedIn: parentPath }];
+        markOccupiedRect(roomPath, box);
         assignContainedChildren(roomPath, box);
       });
     }
@@ -1514,6 +1581,12 @@
 
     function directionNamesForParent(parentPath) {
       return parentPath ? ['west', 'east', 'north', 'south'] : rootDirectionNames();
+    }
+
+    function compactDirectionNamesForParent(parentPath) {
+      return layout[parentPath] && layout[parentPath].containedSelf
+        ? ['north', 'east', 'west', 'south']
+        : directionNamesForParent(parentPath);
     }
 
     function manorEntranceDirection(index) {
@@ -1686,21 +1759,35 @@
       };
     }
 
+    function parentAttachmentCells(parentPath) {
+      var parent = layout[parentPath] || layout[''];
+      if (parent && parent.containedSelf && parent.selfBox) {
+        return rectCells(parent.selfBox);
+      }
+      return (footprints[parentPath] || [parent]).reduce(function (cells, footprint) {
+        return cells.concat(rectCells(footprint));
+      }, []);
+    }
+
     function compactAttachment(parentPath, index, roomPath) {
-      var parentCells = (footprints[parentPath] || [layout[parentPath] || layout['']]).slice();
-      var directionOrder = directionNamesForParent(parentPath);
+      var parentCells = parentAttachmentCells(parentPath);
+      var directionOrder = compactDirectionNamesForParent(parentPath);
       var offset = (index + hashText(parentPath || 'office')) % directionOrder.length;
+      if (layout[parentPath] && layout[parentPath].containedSelf) {
+        offset = 0;
+      }
       var candidates = [];
       directionOrder.forEach(function (_name, orderIndex) {
         var direction = directionByName(directionOrder[(orderIndex + offset) % directionOrder.length]);
         parentCells.forEach(function (cell) {
           var child = { x: cell.x + direction.dx, y: cell.y + direction.dy };
           if (!cellFree(child.x, child.y)) return;
+          var directionPreferencePenalty = layout[parentPath] && layout[parentPath].containedSelf ? orderIndex * 240 : orderIndex * 0.7;
           candidates.push({
             parentCell: { x: cell.x, y: cell.y },
             child: child,
             direction: direction,
-            score: 80 + roomBalanceScore(child.x, child.y) + rootCenteredSpreadScore(child.x, child.y) + doorlessWallPenalty([child], [parentPath]) + outdoorWrapPenalty([child], roomPath, [parentPath]) + orderIndex * 0.7 + Math.abs(child.y) * 0.28
+            score: 80 + roomBalanceScore(child.x, child.y) + rootCenteredSpreadScore(child.x, child.y) + doorlessWallPenalty([child], [parentPath]) + outdoorWrapPenalty([child], roomPath, [parentPath]) + directionPreferencePenalty + Math.abs(child.y) * 0.28
           });
         });
       });
@@ -1848,6 +1935,18 @@
     }
 
     function placeChildRoom(parentPath, roomPath, index) {
+      if (layout[parentPath] && layout[parentPath].containedSelf) {
+        var subdividedCompact = findCompactAttachment(parentPath, index, roomPath);
+        if (subdividedCompact) {
+          return placeRoomAtAttachment(
+            parentPath,
+            roomPath,
+            { child: subdividedCompact.child },
+            [],
+            doorForAdjacentCells(parentPath, roomPath, subdividedCompact.parentCell, subdividedCompact.child)
+          );
+        }
+      }
       var wing = findWingAttachment(parentPath, index, roomPath);
       if (wing) {
         return placeRoomAtAttachment(
@@ -1883,6 +1982,7 @@
     }
 
     function placeSubtree(parentPath) {
+      assignContainedChildren(parentPath);
       var connectedChildren = connectedChildrenForParent(parentPath);
       connectedChildren.forEach(function (room, index) {
         var roomPath = String(room.path || '');
@@ -1891,7 +1991,6 @@
           placeSubtree(roomPath);
         }
       });
-      assignContainedChildren(parentPath);
       containedChildrenForParent(parentPath).forEach(function (room) {
         var roomPath = String(room.path || '');
         if (roomPath && layout[roomPath]) {
