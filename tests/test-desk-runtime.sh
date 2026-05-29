@@ -876,6 +876,8 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet:
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet-lined::before' 'Desk compose fades lined-paper rules in and out'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet-card25x3' 'Desk compose supports a 2.5x3 notecard mode'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet-card3x5' 'Desk compose supports a 3x5 notecard mode'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "label: 'half-index card'" 'Desk compose half-card tooltip uses the requested index-card wording'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "label: '3x5 index card'" 'Desk compose 3x5 tooltip uses the requested index-card wording'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '.desk-compose-sheet-lined' 'Desk compose supports a lined-paper mode with binder-hole styling'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-compose-lined-top: 4.35rem;' 'Desk compose lined paper has a larger real-notebook top margin'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.css" '--desk-compose-lined-margin: 3.35rem;' 'Desk compose lined paper has a red vertical notebook margin'

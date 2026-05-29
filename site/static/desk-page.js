@@ -112,8 +112,8 @@
     return [
       { value: 'printer', label: 'Printer', icon: 'sheet', color: '#f4f8ff' },
       { value: 'typewriter', label: 'Typewriter', icon: 'type', color: '#eadfc8' },
-      { value: 'card25x3', label: '2.5x3 notecard', icon: 'card', color: '#f1d6aa' },
-      { value: 'card3x5', label: '3x5 notecard', icon: 'wide-card', color: '#f0cf9d' },
+      { value: 'card25x3', label: 'half-index card', icon: 'card', color: '#f1d6aa' },
+      { value: 'card3x5', label: '3x5 index card', icon: 'wide-card', color: '#f0cf9d' },
       { value: 'lined', label: 'Lined paper', icon: 'lined', color: '#f9fbff' },
       { value: 'lavender', label: 'Stationery', icon: 'stationery', color: '#dfd4ff' }
     ];
