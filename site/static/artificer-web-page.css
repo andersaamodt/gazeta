@@ -32,8 +32,8 @@
   padding: 1.5rem;
 }
 
-.artificer-web-status h1 {
-  color: #f4efe6;
+.artificer-web-shell .artificer-web-status h1 {
+  color: #f4efe6 !important;
   font-size: clamp(2rem, 6vw, 4.5rem);
   line-height: 0.95;
   margin: 0 0 1rem;
