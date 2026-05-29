@@ -983,7 +983,7 @@
       ['[data-desk-task-action="forget"]', 'Sleep this task for later'],
       ['[data-desk-task-action="remember"]', 'Return this slept task to the checklist'],
       ['[data-desk-task-menu]', 'Task options'],
-      ['[data-desk-forgotten-toggle]', 'Show or hide slept tasks'],
+      ['[data-desk-forgotten-toggle]', 'Show or hide archived tasks'],
       ['[data-desk-create-room-close]', 'Close create room'],
       ['[data-desk-compose-rename-close]', 'Close rename document'],
       ['[data-desk-clear-search]', 'Clear search results'],
@@ -2733,14 +2733,11 @@
     var done = data.done_tasks || [];
     var forgotten = data.forgotten_tasks || [];
     var files = data.documents || [];
-    var forgottenLines = state.forgottenOpen ? forgotten.length + 3 : (forgotten.length ? 1 : 0);
-    var todoLines = Math.max(10, Math.min(28, 4 + visibleTasks.length + forgottenLines + 1 + (done.length ? done.length : 0)));
+    var archivedTasks = forgotten.concat(done);
+    var archivedLines = archivedTasks.length ? (state.forgottenOpen ? archivedTasks.length + 1 : 1) : 0;
+    var todoLines = Math.max(10, Math.min(28, 4 + visibleTasks.length + archivedLines + 1));
     var taskList = visibleTasks.length ? '<ul class="desk-task-list desk-notebook-list">' + visibleTasks.map(notebookTaskItem).join('') + '</ul>' : '';
-    var forgottenList = renderForgottenTasks(forgotten);
-    var doneList = done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
-      return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
-        '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
-    }).join('') + '</ul>' : '';
+    var archiveList = renderArchivedTasks(archivedTasks);
     var addPrompt = todoTypePrompt();
     var filesPanel = files.length
       ? '<aside class="desk-files-frame" aria-label="Files"><h3>Files</h3><ul class="desk-files-list">' + files.map(function (doc) {
@@ -2762,13 +2759,12 @@
       '</div>' +
       roomTaskFilterControls(tasks) +
       taskList +
-      forgottenList +
       '<form class="desk-todo-add" data-desk-form="room-add" aria-label="Add task" novalidate>' +
       '<input type="hidden" name="destination_room" value="' + escapeHtml(room.path || '') + '">' +
       '<label class="desk-todo-add-line"><span class="desk-visually-hidden">New task</span><textarea class="desk-textarea desk-todo-add-textarea" name="task_text" rows="1" placeholder="' + escapeHtml(addPrompt) + '" aria-label="New task"></textarea></label>' +
       '<button type="submit" class="desk-visually-hidden">Save task</button>' +
       '</form>' +
-      doneList +
+      archiveList +
       '</section>';
   }
 
@@ -2786,6 +2782,9 @@
     if (name === 'remember') {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M7 10l5-5 5 5"></path><path d="M6 19h12"></path></svg>';
     }
+    if (name === 'restore') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h9a4 4 0 0 1 0 8H8"></path><path d="M7 8l4-4M7 8l4 4"></path></svg>';
+    }
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg>';
   }
 
@@ -2796,24 +2795,24 @@
     return '<span class="desk-notebook-row-actions">' +
       (status === 'open' && task.completed_at ? '<button type="button" class="desk-notebook-row-icon is-archive" title="Archive" aria-label="Archive" data-desk-task-action="archive" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">' + taskIcon('archive') + '</button><button type="button" class="desk-notebook-row-icon is-trash" title="Trash" aria-label="Trash" data-desk-task-action="trash" data-task-status="open" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">' + taskIcon('trash') + '</button>' : '') +
       (status === 'forgotten' ? '<button type="button" class="desk-notebook-row-icon is-remember" title="Remember" aria-label="Remember" data-desk-task-action="remember" data-task-status="forgotten" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">' + taskIcon('remember') + '</button>' : '') +
+      (status === 'done' ? '<button type="button" class="desk-notebook-row-icon is-restore" title="Restore" aria-label="Restore" data-desk-task-action="restore" data-task-status="done" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">' + taskIcon('restore') + '</button>' : '') +
       '<button type="button" class="desk-notebook-menu-btn" title="Task menu" aria-label="Task menu" data-desk-task-menu="' + escapeHtml(key) + '">' + taskIcon('menu') + '</button>' +
       (state.taskMenuKey === key ? '<span class="desk-notebook-task-menu" role="menu">' +
-        (status === 'open' ? '<button type="button" role="menuitem" data-desk-task-action="forget" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Forget</button>' : '<button type="button" role="menuitem" data-desk-task-action="remember" data-task-status="forgotten" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Remember</button>') +
+        (status === 'open' ? '<button type="button" role="menuitem" data-desk-task-action="forget" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Forget</button>' : (status === 'done' ? '<button type="button" role="menuitem" data-desk-task-action="restore" data-task-status="done" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button>' : '<button type="button" role="menuitem" data-desk-task-action="remember" data-task-status="forgotten" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Remember</button>')) +
         '<button type="button" role="menuitem" data-desk-task-action="clear-upvotes" data-task-status="' + escapeHtml(status) + '" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Clear upvotes</button>' +
         '<button type="button" role="menuitem" data-desk-task-action="trash" data-task-status="' + escapeHtml(status) + '" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '">Delete</button>' +
       '</span>' : '') +
     '</span>';
   }
 
-  function renderForgottenTasks(tasks) {
-    if (!tasks.length) {
+  function renderArchivedTasks(tasks) {
+    var count = Array.isArray(tasks) ? tasks.length : 0;
+    if (!count) {
       return '';
     }
-    return '<section class="desk-forgotten-section' + (state.forgottenOpen ? ' is-open' : '') + '">' +
-      '<button type="button" class="desk-forgotten-toggle" data-desk-forgotten-toggle aria-expanded="' + (state.forgottenOpen ? 'true' : 'false') + '">' + escapeHtml(tasks.length) + ' forgotten ' + (tasks.length === 1 ? 'task' : 'tasks') + '</button>' +
-      '<div class="desk-forgotten-drawer">' +
-      '<ul class="desk-task-list desk-notebook-list desk-forgotten-list">' + tasks.map(notebookTaskItem).join('') + '</ul>' +
-      '</div>' +
+    return '<section class="desk-archive-section' + (state.forgottenOpen ? ' is-open' : '') + '">' +
+      '<button type="button" class="desk-archive-toggle" data-desk-forgotten-toggle aria-expanded="' + (state.forgottenOpen ? 'true' : 'false') + '" aria-label="' + (state.forgottenOpen ? 'Hide archived tasks' : 'Show archived tasks') + '" title="' + (state.forgottenOpen ? 'Hide archived tasks' : 'Show archived tasks') + '">' + taskIcon('archive') + '<span class="desk-archive-count">' + escapeHtml(count) + '</span></button>' +
+      (count ? '<div class="desk-archive-drawer"><ul class="desk-task-list desk-notebook-list desk-archive-list">' + tasks.map(notebookTaskItem).join('') + '</ul></div>' : '') +
       '</section>';
   }
 
@@ -3716,7 +3715,7 @@
       roomTaskFilterControls(tasks) +
       (visibleTasks.length ? '<ul class="desk-task-list">' + visibleTasks.map(function (task) { return taskItem(task, data); }).join('') + '</ul>' : '<p class="desk-empty">No tasks match this view.</p>') +
       '<h2>Done</h2>' +
-      (done.length ? '<ul class="desk-done-list">' + done.map(function (task) {
+      (done.length ? '<ul class="desk-task-list">' + done.map(function (task) {
         return '<li class="desk-task"><h3>' + escapeHtml(task.title || 'Task') + '</h3>' + (task.body ? '<p class="desk-task-body">' + escapeHtml(task.body) + '</p>' : '') + taskMeta(task) +
           '<div class="desk-task-actions"><button type="button" class="desk-btn subtle" data-desk-task-action="restore" data-room="' + escapeHtml(task.room || '') + '" data-task-id="' + escapeHtml(task.id || '') + '">Restore</button></div></li>';
       }).join('') + '</ul>' : '<p class="desk-empty">No archived tasks here.</p>') +

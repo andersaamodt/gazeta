@@ -2200,8 +2200,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   display: none;
 }
 
-.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-empty,
-.desk-stage[data-desk-stage-mode="todo"] .desk-done-list {
+.desk-stage[data-desk-stage-mode="todo"] .desk-todo-panel .desk-empty {
   margin: 0 var(--desk-notebook-right-margin) 0 var(--desk-notebook-content-margin);
   color: rgba(28, 37, 60, 0.56);
   font: inherit;
@@ -2456,6 +2455,10 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-notebook-row-icon.is-remember {
   color: #315d91;
+}
+
+.desk-notebook-row-icon.is-restore {
+  color: #5b6270;
 }
 
 .desk-notebook-task-menu {
@@ -3209,8 +3212,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-surfaced-list,
 .desk-task-list,
-.desk-search-list,
-.desk-done-list {
+.desk-search-list {
   display: grid;
   gap: 0.62rem;
   margin: 0;
@@ -3302,43 +3304,86 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   box-shadow: none;
 }
 
-.desk-forgotten-section {
-  margin: var(--desk-notebook-line) var(--desk-notebook-right-margin) 0 0;
+.desk-notebook-task.is-forgotten .desk-notebook-title {
+  color: rgba(28, 37, 60, 0.62);
 }
 
-.desk-forgotten-toggle {
-  display: block;
-  margin-left: calc(var(--desk-notebook-margin) + var(--desk-notebook-writing-inset));
+.desk-archive-section {
+  position: relative;
+  min-height: var(--desk-notebook-line);
+  margin: 0 var(--desk-notebook-right-margin) 0 0;
+}
+
+.desk-archive-toggle {
+  position: absolute;
+  right: 0;
+  bottom: 0.08rem;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  width: 1.72rem;
+  height: 1.72rem;
   padding: 0;
   border: 0;
+  border-radius: 999px;
   background: transparent;
-  color: rgba(28, 37, 60, 0.58);
-  font: inherit;
-  line-height: var(--desk-notebook-line);
+  box-shadow: none;
+  color: rgba(77, 84, 96, 0.72);
   cursor: pointer;
+  appearance: none;
 }
 
-.desk-forgotten-drawer {
+.desk-archive-toggle svg {
+  grid-area: 1 / 1;
+  width: 1.18rem;
+  height: 1.18rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.desk-archive-toggle:hover,
+.desk-archive-toggle:focus-visible {
+  background: rgba(105, 113, 128, 0.16);
+  color: rgba(48, 54, 66, 0.88);
+  outline: 0;
+}
+
+.desk-archive-count {
+  grid-area: 1 / 1;
+  min-width: 0.72rem;
+  height: 0.72rem;
+  margin: 0.82rem 0 0 0.94rem;
+  border-radius: 999px;
+  background: #f7f7f2;
+  color: rgba(48, 54, 66, 0.82);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 0.72rem;
+  text-align: center;
+}
+
+.desk-archive-drawer {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transform: translateY(-0.35rem);
+  transform: translateY(0.9rem);
   transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.desk-forgotten-section.is-open .desk-forgotten-drawer {
+.desk-archive-section.is-open .desk-archive-drawer {
   grid-template-rows: 1fr;
   opacity: 1;
   transform: translateY(0);
 }
 
-.desk-forgotten-drawer > .desk-forgotten-list {
+.desk-archive-drawer > .desk-archive-list {
   overflow: hidden;
-  margin-top: var(--desk-notebook-line);
-}
-
-.desk-notebook-task.is-forgotten .desk-notebook-title {
-  color: rgba(28, 37, 60, 0.62);
+  margin-top: 0;
 }
 
 .desk-notebook-vote-controls {
