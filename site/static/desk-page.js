@@ -3464,6 +3464,41 @@
     return true;
   }
 
+  function removeDeskTask(tasks, room, taskId) {
+    var targetRoom = normalizeTaskRoom(room);
+    var targetId = String(taskId || '');
+    if (!Array.isArray(tasks) || !targetId) {
+      return null;
+    }
+    for (var i = 0; i < tasks.length; i += 1) {
+      var task = tasks[i] || {};
+      if (String(task.id || '') === targetId && normalizeTaskRoom(task.room) === targetRoom) {
+        return tasks.splice(i, 1)[0];
+      }
+    }
+    return null;
+  }
+
+  function applyOptimisticDeskRestore(room, taskId) {
+    if (!state.data || !Array.isArray(state.data.done_tasks)) {
+      return false;
+    }
+    var targetRoom = normalizeTaskRoom(room || state.currentRoom);
+    var task = removeDeskTask(state.data.done_tasks, targetRoom, taskId);
+    if (!task) {
+      return false;
+    }
+    task.status = 'open';
+    task.completed_at = '';
+    task.room = targetRoom;
+    if (!Array.isArray(state.data.tasks)) {
+      state.data.tasks = [];
+    }
+    state.data.tasks = sortDeskTasks(state.data.tasks.concat([task]));
+    updateOptimisticRoomSummary(state.data, targetRoom);
+    return true;
+  }
+
   function captureNotebookTaskRects() {
     var map = {};
     if (!root) {
@@ -4270,6 +4305,28 @@
           renderDeskDataSteady(data, captureNotebookTaskRects());
         }).catch(function (err) {
           restoreDeskVoteSnapshot(rollbackData, beforeVoteRects, err && err.message ? err.message : 'Desk vote failed.');
+        });
+        return;
+      }
+      if (action === 'restore') {
+        var beforeRestoreRects = captureNotebookTaskRects();
+        var restoreRollbackData = cloneDeskDataForRollback(state.data);
+        var optimisticallyRestored = applyOptimisticDeskRestore(taskRoom, taskId);
+        if (optimisticallyRestored) {
+          renderDeskDataSteady(state.data, beforeRestoreRects);
+        }
+        api(apiAction, {
+          room: taskRoom,
+          task_id: taskId,
+          task_status: taskAction.getAttribute('data-task-status') || 'done'
+        }, { silentBusy: true }).then(function (data) {
+          if (!data || data.success === false) {
+            restoreDeskVoteSnapshot(restoreRollbackData, beforeRestoreRects, data && data.error ? data.error : 'Desk restore failed.');
+            return;
+          }
+          renderDeskDataSteady(data, captureNotebookTaskRects());
+        }).catch(function (err) {
+          restoreDeskVoteSnapshot(restoreRollbackData, beforeRestoreRects, err && err.message ? err.message : 'Desk restore failed.');
         });
         return;
       }
