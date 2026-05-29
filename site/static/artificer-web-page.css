@@ -17,6 +17,10 @@
   display: grid;
 }
 
+.artificer-web-body #title-block-header {
+  display: none;
+}
+
 .artificer-web-status {
   align-self: center;
   justify-self: center;
