@@ -2083,8 +2083,10 @@
     return { north: 'south', south: 'north', east: 'west', west: 'east' }[side] || side;
   }
 
-  function renderDoorGlyph(x, y, side, isSecret, isLastEntered, spill) {
+  function renderDoorGlyph(x, y, side, isSecret, isLastEntered, spill, options) {
     var secretClass = isSecret ? ' desk-map-secret-door' : '';
+    var doorwayOnly = Boolean(options && options.doorwayOnly);
+    var doorwayClass = doorwayOnly ? ' is-doorway-only' : '';
     var enteredClass = isLastEntered ? ' is-last-entered' : '';
     var spillAttrs = spill && spill.attrs ? spill.attrs : '';
     var spillStyle = spill && spill.style ? spill.style : '';
@@ -2096,11 +2098,11 @@
     if (side === 'east' || side === 'west') {
       var xDirection = side === 'east' ? 1 : -1;
       var xLeaf = x + xDirection * leaf;
-      return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="desk-map-door-gap" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path><path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>' + label + '</g>';
+      return '<g class="desk-map-door' + secretClass + doorwayClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="' + (doorwayOnly ? 'desk-map-doorway-gap' : 'desk-map-door-gap') + '" d="M ' + x + ' ' + (y - open) + ' V ' + (y + open) + '"></path>' + (doorwayOnly ? '' : '<path class="desk-map-door-leaf" d="M ' + x + ' ' + (y + open) + ' L ' + xLeaf + ' ' + (y + open) + '"></path><path class="desk-map-door-swing" d="M ' + xLeaf + ' ' + (y + open) + ' Q ' + xLeaf + ' ' + y + ' ' + x + ' ' + (y - open) + '"></path>') + label + '</g>';
     }
     var yDirection = side === 'south' ? 1 : -1;
     var yLeaf = y + yDirection * leaf;
-    return '<g class="desk-map-door' + secretClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="desk-map-door-gap" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>' + label + '</g>';
+    return '<g class="desk-map-door' + secretClass + doorwayClass + enteredClass + '"' + spillAttrs + spillStyle + '><path class="desk-map-door-spill-fan to-room spill-' + doorFanDirection(side, true) + '" d="' + doorFanPath(x, y, side, true) + '"></path><path class="desk-map-door-spill-fan from-room spill-' + doorFanDirection(side, false) + '" d="' + doorFanPath(x, y, side, false) + '"></path><path class="' + (doorwayOnly ? 'desk-map-doorway-gap' : 'desk-map-door-gap') + '" d="M ' + (x - open) + ' ' + y + ' H ' + (x + open) + '"></path>' + (doorwayOnly ? '' : '<path class="desk-map-door-leaf" d="M ' + (x - open) + ' ' + y + ' L ' + (x - open) + ' ' + yLeaf + '"></path><path class="desk-map-door-swing" d="M ' + (x - open) + ' ' + yLeaf + ' Q ' + x + ' ' + yLeaf + ' ' + (x + open) + ' ' + y + '"></path>') + label + '</g>';
   }
 
   function isLastEnteredDoor(door) {
@@ -2113,25 +2115,28 @@
     return (from === enteredFrom && to === enteredTo) || (from === enteredTo && to === enteredFrom);
   }
 
-  function renderDoor(door, layout, unitW, unitH, presence) {
+  function renderDoor(door, layout, unitW, unitH, presence, roomsByPath) {
     var from = layout[door.from];
     var to = layout[door.to];
     if (!from || !to) return '';
     var isLastEntered = isLastEnteredDoor(door);
     var spill = doorPresenceVars(door.from, door.to, presence);
+    var fromRoom = roomsByPath && roomsByPath[String(door.from || '')];
+    var toRoom = roomsByPath && roomsByPath[String(door.to || '')];
+    var renderDoorwayOnly = roomIsOutdoor(fromRoom) && roomIsOutdoor(toRoom);
     if (Number.isFinite(door.x) && Number.isFinite(door.y)) {
-      return renderDoorGlyph(door.x * unitW, door.y * unitH, door.side, false, isLastEntered, spill);
+      return renderDoorGlyph(door.x * unitW, door.y * unitH, door.side, false, isLastEntered, spill, { doorwayOnly: renderDoorwayOnly });
     }
     var x;
     var y;
     if (door.side === 'east' || door.side === 'west') {
       x = (door.side === 'east' ? from.x + 1 : from.x) * unitW;
       y = (Math.max(from.y, to.y) * unitH) + unitH / 2;
-      return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill);
+      return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill, { doorwayOnly: renderDoorwayOnly });
     }
     x = (Math.max(from.x, to.x) * unitW) + unitW / 2;
     y = (door.side === 'south' ? from.y + 1 : from.y) * unitH;
-    return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill);
+    return renderDoorGlyph(x, y, door.side, false, isLastEntered, spill, { doorwayOnly: renderDoorwayOnly });
   }
 
   function rootEntranceDoorSegment(layout, occupied) {
@@ -2389,7 +2394,7 @@
     var roomOutlines = roomParts.map(function (part) { return part.outline; }).join('');
     var roomHoverOutlines = roomParts.map(function (part) { return part.hoverOutline; }).join('');
     var doorShapes = plan.doors.map(function (door) {
-      return renderDoor(door, layout, unitW, unitH, presence);
+      return renderDoor(door, layout, unitW, unitH, presence, roomsByPath);
     }).join('');
     var entranceDoorShape = renderRootEntranceDoor(layout, plan.occupied, unitW, unitH);
     var passageParts = ((data && data.secret_passages) || []).map(function (passage) {

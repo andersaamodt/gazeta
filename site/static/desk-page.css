@@ -1535,7 +1535,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-door .desk-map-door-gap,
 .desk-map-door .desk-map-door-leaf,
-.desk-map-door .desk-map-door-swing {
+.desk-map-door .desk-map-door-swing,
+.desk-map-door .desk-map-doorway-gap {
   filter: brightness(calc(1 + var(--door-spill) * 0.65));
 }
 
@@ -1556,6 +1557,11 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-door-gap {
   stroke: #624527;
   stroke-width: 5.8;
+}
+
+.desk-map-doorway-gap {
+  stroke: #9fac63;
+  stroke-width: 8.2;
 }
 
 .desk-map-door-leaf {
