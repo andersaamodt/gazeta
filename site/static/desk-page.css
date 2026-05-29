@@ -1291,9 +1291,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-greenbelt-strip {
   fill: none;
-  stroke: #87936a;
-  stroke-width: 70;
-  opacity: 0.58;
+  stroke: #9fac63;
+  stroke-width: 92;
+  opacity: 0.5;
   filter: url(#desk-map-greenery-blur);
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1313,20 +1313,20 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-grass-edge {
   fill: none;
-  stroke: #87936a;
+  stroke: #9fac63;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .desk-map-room-grass-edge-soft {
-  stroke-width: 46;
-  opacity: 0.5;
+  stroke-width: 68;
+  opacity: 0.42;
   filter: url(#desk-map-greenery-blur);
 }
 
 .desk-map-room-grass-edge-core {
-  stroke-width: 28;
-  opacity: 0.68;
+  stroke-width: 34;
+  opacity: 0.62;
 }
 
 .desk-map-room-outdoor-hit {
