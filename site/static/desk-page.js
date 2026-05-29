@@ -30,6 +30,7 @@
     suppressRoomClick: false,
     suppressMapAnimation: true,
     suppressTodoAnimation: false,
+    suppressComposeAnimation: false,
     secretPassageSource: null,
     lastEnteredDoor: null,
     createRoomOpen: false,
@@ -2648,7 +2649,7 @@
     var docMenu = state.composeMenuOpen
       ? '<div class="desk-compose-doc-menu" role="menu"><button type="button" role="menuitem" data-desk-compose-rename-open>Rename...</button></div>'
       : '';
-    return '<section class="desk-mode-panel desk-compose-panel' + (state.closingMode === 'compose' ? ' is-closing' : '') + '" aria-label="Compose">' +
+    return '<section class="desk-mode-panel desk-compose-panel' + (state.closingMode === 'compose' ? ' is-closing' : '') + (state.suppressComposeAnimation ? ' is-steady' : '') + '" aria-label="Compose">' +
       '<div class="desk-compose-toolbar">' +
       '<div class="desk-compose-paper-picker" role="group" aria-label="Compose paper style">' + paperOptions + '</div>' +
       '<button type="button" class="desk-icon-btn desk-compose-advanced-toggle' + (state.composeAdvanced ? ' is-active' : '') + '" data-desk-compose-advanced aria-label="Toggle full compose controls" title="Toggle full compose controls">' + advancedIcon + '</button>' +
@@ -3557,6 +3558,7 @@
         renderStage(data);
       state.suppressMapAnimation = false;
       state.suppressTodoAnimation = false;
+      state.suppressComposeAnimation = false;
       syncDeskMenuSettings();
       applyDeskTooltips();
       applyPendingMapRoomPan();
@@ -3899,6 +3901,7 @@
     if (event.target.closest('[data-desk-compose-advanced]')) {
       event.preventDefault();
       state.composeAdvanced = !state.composeAdvanced;
+      state.suppressComposeAnimation = true;
       if (state.data) {
         render(state.data);
       }
