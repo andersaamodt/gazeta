@@ -1351,49 +1351,100 @@
       });
     }
 
-    function containedShareBoxes(parentPath, count) {
-      var parent = layout[parentPath] || layout[''];
-      var total = Math.max(1, count + 1);
-      var cols = Math.ceil(Math.sqrt(total));
-      var rows = Math.ceil(total / cols);
-      var gap = Math.min(0.08, Math.max(0.035, Math.min(parent.w || 1, parent.h || 1) * 0.04));
-      var cellW = (parent.w || 1) / cols;
-      var cellH = (parent.h || 1) / rows;
-      var boxes = [];
-      for (var index = 0; index < total; index += 1) {
-        var col = index % cols;
-        var row = Math.floor(index / cols);
-        boxes.push({
-          x: parent.x + col * cellW + gap,
-          y: parent.y + row * cellH + gap,
-          w: Math.max(0.22, cellW - gap * 2),
-          h: Math.max(0.22, cellH - gap * 2)
-        });
-      }
-      return boxes;
+    function containedShareCount(parentPath) {
+      return 1 + containedChildrenForParent(parentPath).reduce(function (total, room) {
+        return total + containedShareCount(String(room.path || ''));
+      }, 0);
     }
 
-    function assignContainedChildren(parentPath) {
+    function containedGridRect(parentPath, totalShares) {
+      var parent = layout[parentPath] || layout[''];
+      var target = Math.max(1, totalShares);
+      var cols = Math.ceil(Math.sqrt(target));
+      var rows = Math.ceil(target / cols);
+      if (parent.w > parent.h && rows > cols) {
+        var swap = rows;
+        rows = cols;
+        cols = swap;
+      }
+      return {
+        x: Math.floor(parent.x || 0),
+        y: Math.floor(parent.y || 0),
+        w: Math.max(1, cols),
+        h: Math.max(1, rows)
+      };
+    }
+
+    function containedShareBoxes(rect, items) {
+      if (!items.length) return [];
+      if (items.length === 1) {
+        return [Object.assign({ path: items[0].path }, rect)];
+      }
+      var total = items.reduce(function (sum, item) {
+        return sum + Math.max(1, item.shares || 1);
+      }, 0);
+      var half = total / 2;
+      var running = 0;
+      var splitIndex = 1;
+      for (; splitIndex < items.length; splitIndex += 1) {
+        var next = running + Math.max(1, items[splitIndex - 1].shares || 1);
+        if (next >= half) break;
+        running = next;
+      }
+      if (splitIndex >= items.length) {
+        splitIndex = items.length - 1;
+      }
+      var leftItems = items.slice(0, splitIndex);
+      var rightItems = items.slice(splitIndex);
+      var leftShares = leftItems.reduce(function (sum, item) {
+        return sum + Math.max(1, item.shares || 1);
+      }, 0);
+      var rightShares = total - leftShares;
+      var canSplitVertical = rect.w > 1 && Math.ceil(leftShares / rect.h) + Math.ceil(rightShares / rect.h) <= rect.w;
+      var canSplitHorizontal = rect.h > 1 && Math.ceil(leftShares / rect.w) + Math.ceil(rightShares / rect.w) <= rect.h;
+      if ((rect.w >= rect.h && canSplitVertical) || !canSplitHorizontal) {
+        var minLeftW = Math.ceil(leftShares / rect.h);
+        var maxLeftW = rect.w - Math.ceil(rightShares / rect.h);
+        var leftW = Math.max(minLeftW, Math.min(maxLeftW, Math.round(rect.w * leftShares / total)));
+        return containedShareBoxes({ x: rect.x, y: rect.y, w: leftW, h: rect.h }, leftItems)
+          .concat(containedShareBoxes({ x: rect.x + leftW, y: rect.y, w: rect.w - leftW, h: rect.h }, rightItems));
+      }
+      var minTopH = Math.ceil(leftShares / rect.w);
+      var maxTopH = rect.h - Math.ceil(rightShares / rect.w);
+      var topH = Math.max(minTopH, Math.min(maxTopH, Math.round(rect.h * leftShares / total)));
+      return containedShareBoxes({ x: rect.x, y: rect.y, w: rect.w, h: topH }, leftItems)
+        .concat(containedShareBoxes({ x: rect.x, y: rect.y + topH, w: rect.w, h: rect.h - topH }, rightItems));
+    }
+
+    function assignContainedChildren(parentPath, parentRect) {
       var children = containedChildrenForParent(parentPath);
       if (!children.length || !layout[parentPath]) {
         return;
       }
-      var containedShareCount = children.length + 1;
-      var boxes = containedShareBoxes(parentPath, containedShareCount - 1);
-      var selfBox = boxes[0];
-      layout[parentPath].x = selfBox.x;
-      layout[parentPath].y = selfBox.y;
-      layout[parentPath].w = selfBox.w;
-      layout[parentPath].h = selfBox.h;
+      var totalShares = containedShareCount(parentPath);
+      var container = parentRect || containedGridRect(parentPath, totalShares);
+      var items = [{ path: parentPath, shares: 1 }].concat(children.map(function (room) {
+        var roomPath = String(room.path || '');
+        return { path: roomPath, shares: containedShareCount(roomPath) };
+      }));
+      var boxesByPath = {};
+      containedShareBoxes(container, items).forEach(function (box) {
+        boxesByPath[box.path] = box;
+      });
+      var selfBox = boxesByPath[parentPath] || container;
+      layout[parentPath].x = container.x;
+      layout[parentPath].y = container.y;
+      layout[parentPath].w = container.w;
+      layout[parentPath].h = container.h;
       layout[parentPath].originX = selfBox.x + selfBox.w / 2 - 0.5;
       layout[parentPath].originY = selfBox.y + selfBox.h / 2 - 0.5;
       layout[parentPath].containedSelf = true;
       if (footprints[parentPath]) {
-        footprints[parentPath] = [{ x: selfBox.x, y: selfBox.y, w: selfBox.w, h: selfBox.h, containedSelf: true }];
+        footprints[parentPath] = [{ x: container.x, y: container.y, w: container.w, h: container.h, containedSelf: true }];
       }
       children.forEach(function (room, index) {
         var roomPath = String(room.path || '');
-        var box = boxes[index + 1];
+        var box = boxesByPath[roomPath];
         if (!roomPath || !box) return;
         layout[roomPath] = {
           x: box.x,
@@ -1406,7 +1457,7 @@
           containedIn: parentPath
         };
         footprints[roomPath] = [{ x: box.x, y: box.y, w: box.w, h: box.h, containedIn: parentPath }];
-        assignContainedChildren(roomPath);
+        assignContainedChildren(roomPath, box);
       });
     }
 
