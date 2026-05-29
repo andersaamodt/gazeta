@@ -1754,13 +1754,15 @@
         addEdge(cell.x, cell.y + 1, cell.x, cell.y);
       }
     });
-    var contourPaths = edges.map(function (edge, index) {
+    var greenbeltPaths = edges.map(function (edge) {
       return 'M ' + (edge.a.x * unitW) + ' ' + (edge.a.y * unitH) +
-        contourSegmentPath(edge.a, edge.b, unitW, unitH, 'shared-greenbelt-' + index, index + 1, true);
+        ' L ' + (edge.b.x * unitW) + ' ' + (edge.b.y * unitH);
     }).join(' ');
     return '<g class="desk-map-greenbelt" aria-hidden="true">' +
-      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade" d="' + contourPaths + '"></path>' +
-      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + contourPaths + '"></path>' +
+      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade far" d="' + greenbeltPaths + '"></path>' +
+      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade mid" d="' + greenbeltPaths + '"></path>' +
+      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade near" d="' + greenbeltPaths + '"></path>' +
+      '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + greenbeltPaths + '"></path>' +
       '</g>';
   }
 
@@ -2360,7 +2362,7 @@
         roomPassiveOutlineShape = roomPathShape;
       }
       var backgroundShape = isOutdoor
-        ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
+        ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-fade far" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-fade mid" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-fade near" d="' + roomPathShape + '"></path><path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
         : '';
       var roomShape = isOutdoor
         ? '<path class="desk-map-room-outdoor-hit" d="' + roomPathShape + '"></path>'

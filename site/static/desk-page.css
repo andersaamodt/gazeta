@@ -1302,8 +1302,21 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-greenbelt-fade {
   stroke: #9fac63;
+}
+
+.desk-map-greenbelt-fade.far {
+  stroke-width: 92;
+  opacity: 0.025;
+}
+
+.desk-map-greenbelt-fade.mid {
   stroke-width: 84;
-  opacity: 0.18;
+  opacity: 0.06;
+}
+
+.desk-map-greenbelt-fade.near {
+  stroke-width: 76;
+  opacity: 0.12;
 }
 
 .desk-map-greenbelt-band {
@@ -1313,9 +1326,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-room-grass {
-  fill: url(#desk-map-grass);
+  fill: #9fac63;
   stroke: none;
-  opacity: 0.93;
+  opacity: 1;
   pointer-events: none;
 }
 
