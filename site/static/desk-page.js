@@ -2232,9 +2232,13 @@
       '</svg>';
   }
 
+  function isMapVisibleMode(mode) {
+    return mode === 'map' || mode === 'todo' || mode === 'compose';
+  }
+
   function renderModeDock() {
     return '<div class="desk-mode-dock" aria-label="Desk modes">' +
-      (state.mode === 'map' ? '' : '<button type="button" class="desk-mode-launch desk-mode-map" data-desk-mode="map" aria-label="Open room map" aria-pressed="false"><svg class="desk-map-fold-icon" viewBox="0 0 72 72" aria-hidden="true"><g class="desk-map-fold-art"><path class="desk-map-fold-shadow" d="M8 58L27 43L45 50L64 34"></path><path class="desk-map-fold-panel left" d="M8 20L27 12V55L8 64Z"></path><path class="desk-map-fold-panel mid" d="M27 12L45 20V62L27 55Z"></path><path class="desk-map-fold-panel right" d="M45 20L64 11V51L45 62Z"></path><path class="desk-map-fold-crease" d="M27 12V55M45 20V62"></path><path class="desk-map-fold-grid" d="M13 29l10-4M13 39l10-4M32 25l9 4M32 37l9 4M50 28l9-4M50 40l9-4"></path><path class="desk-map-fold-route" d="M12 52c7-11 13-2 21-13 6-8 11-3 15-10 3-5 7-7 12-8"></path></g></svg></button>') +
+      (isMapVisibleMode(state.mode) ? '' : '<button type="button" class="desk-mode-launch desk-mode-map" data-desk-mode="map" aria-label="Open room map" aria-pressed="false"><svg class="desk-map-fold-icon" viewBox="0 0 72 72" aria-hidden="true"><g class="desk-map-fold-art"><path class="desk-map-fold-shadow" d="M8 58L27 43L45 50L64 34"></path><path class="desk-map-fold-panel left" d="M8 20L27 12V55L8 64Z"></path><path class="desk-map-fold-panel mid" d="M27 12L45 20V62L27 55Z"></path><path class="desk-map-fold-panel right" d="M45 20L64 11V51L45 62Z"></path><path class="desk-map-fold-crease" d="M27 12V55M45 20V62"></path><path class="desk-map-fold-grid" d="M13 29l10-4M13 39l10-4M32 25l9 4M32 37l9 4M50 28l9-4M50 40l9-4"></path><path class="desk-map-fold-route" d="M12 52c7-11 13-2 21-13 6-8 11-3 15-10 3-5 7-7 12-8"></path></g></svg></button>') +
       (state.mode === 'compose' ? '' : '<button type="button" class="desk-mode-launch desk-mode-compose" data-desk-mode="compose" aria-label="Compose on the desk">' + renderCompositionBookIcon() + '</button>') +
       (state.mode === 'todo' ? '' : '<button type="button" class="desk-mode-launch desk-mode-todo" data-desk-mode="todo" aria-label="Open checklist"><svg class="desk-checklist-notebook-icon" viewBox="0 0 64 72" aria-hidden="true"><path class="desk-checklist-page" d="M15 7h37c2.6 0 4.8 2.1 4.8 4.8v48.6c0 2.6-2.1 4.8-4.8 4.8H15c-2.6 0-4.8-2.1-4.8-4.8V11.8C10.2 9.1 12.4 7 15 7Z"></path><path class="desk-checklist-margin" d="M22 8v56"></path><path class="desk-checklist-rule" d="M27 21h20M27 34h20M27 47h20"></path><path class="desk-checklist-check" d="M15.8 21.2l2.4 2.4 4.4-5.1M15.8 34.2l2.4 2.4 4.4-5.1M15.8 47.2l2.4 2.4 4.4-5.1"></path></svg></button>') +
       '</div>';
