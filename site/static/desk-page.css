@@ -2647,7 +2647,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   margin-bottom: 0.45rem;
 }
 
-.desk-compose-drag-handle-wrap {
+.desk-compose-type-control-wrap {
   position: absolute;
   top: 0.2rem;
   left: 0.15rem;
@@ -2655,33 +2655,74 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   opacity: 1;
 }
 
-.desk-compose-drag-handle {
+.desk-compose-type-control {
   display: grid;
-  place-items: center;
-  width: 1.55rem;
-  height: 1.55rem;
-  padding: 0;
+  grid-template-columns: 1.9rem 0fr;
+  align-items: center;
+  gap: 0;
+  width: 2.14rem;
+  padding: 0.12rem;
   border: 0;
-  border-radius: 4px;
-  background: transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.34);
   box-shadow: none;
   color: #5d6b84;
-  cursor: grab;
-  font: 700 0.9rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  opacity: 0;
-  transition: opacity 140ms ease, background-color 140ms ease;
+  overflow: hidden;
+  transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1), grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1), background-color 160ms ease;
 }
 
-.desk-compose-drag-handle:hover,
-.desk-compose-drag-handle:focus-visible {
+.desk-compose-type-control.is-open {
+  grid-template-columns: 1.9rem 4.5rem;
+  width: 6.88rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.desk-compose-type-toggle,
+.desk-compose-type-control .desk-compose-type-option {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background: transparent;
+  box-shadow: none;
+  color: currentColor;
+  cursor: pointer;
+}
+
+.desk-compose-type-toggle svg,
+.desk-compose-type-control .desk-compose-type-option svg {
+  width: 1.28rem;
+  height: 1.28rem;
+}
+
+.desk-compose-type-toggle:hover,
+.desk-compose-type-toggle:focus-visible,
+.desk-compose-type-control .desk-compose-type-option:hover,
+.desk-compose-type-control .desk-compose-type-option:focus-visible {
   background: rgba(105, 113, 128, 0.14);
-  opacity: 1;
   outline: 0;
 }
 
-.desk-compose-drag-handle:active {
-  cursor: grabbing;
+.desk-compose-type-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.desk-compose-type-control.is-open .desk-compose-type-selector {
   opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .desk-compose-paper-picker {

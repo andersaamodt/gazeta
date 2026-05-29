@@ -39,7 +39,6 @@
     handwritingFont: handwritingFontFromStorage(),
     showSurfacedOnly: false,
     pointerRoomDrag: null,
-    pointerDocDrag: null,
     pointerMapPan: null,
     mapZoomMode: 'full',
     mapPanX: 0,
@@ -55,6 +54,7 @@
     composeTargetRoom: '',
     composeAdvanced: false,
     composeMenuOpen: false,
+    composeTypeMenuOpen: false,
     composeRenameOpen: false,
     composeRenameValue: '',
     composeDirty: false,
@@ -130,6 +130,17 @@
     ];
   }
 
+  function composeTypeOption(value) {
+    var clean = String(value || 'shortform') === 'article' ? 'article' : 'shortform';
+    var options = composeTypeOptions();
+    for (var i = 0; i < options.length; i += 1) {
+      if (options[i].value === clean) {
+        return options[i];
+      }
+    }
+    return options[0];
+  }
+
   function composePaperClass() {
     var value = String(state.composePaper || 'printer');
     if (!/^(printer|typewriter|card25x3|card3x5|lined|lavender)$/.test(value)) {
@@ -154,6 +165,26 @@
       button.setAttribute('aria-pressed', button.getAttribute('data-desk-compose-paper') === paper ? 'true' : 'false');
     });
     applyDeskTooltips();
+  }
+
+  function applyComposeTypeMenuToDom() {
+    var control = root.querySelector('.desk-compose-type-control');
+    var toggle = root.querySelector('[data-desk-compose-type-toggle]');
+    var selector = root.querySelector('.desk-compose-type-selector');
+    if (!control || !toggle) {
+      return;
+    }
+    var isOpen = Boolean(state.composeTypeMenuOpen);
+    control.classList.toggle('is-open', isOpen);
+    control.style.width = isOpen ? '6.88rem' : '2.14rem';
+    control.style.gridTemplateColumns = isOpen ? '1.9rem 4.5rem' : '1.9rem 0fr';
+    control.style.backgroundColor = isOpen ? 'rgba(255, 255, 255, 0.72)' : 'rgba(255, 255, 255, 0.34)';
+    if (selector) {
+      selector.style.opacity = isOpen ? '1' : '0';
+      selector.style.transform = isOpen ? 'translateX(0)' : 'translateX(-0.25rem)';
+      selector.style.pointerEvents = isOpen ? 'auto' : 'none';
+    }
+    toggle.setAttribute('aria-expanded', state.composeTypeMenuOpen ? 'true' : 'false');
   }
 
   function composePaperIcon(option) {
@@ -897,8 +928,8 @@
       ['[data-desk-close-todo]', 'Close the checklist'],
       ['[data-desk-close-compose]', 'Close the composition book'],
       ['[data-desk-compose-menu]', 'Document options'],
+      ['[data-desk-compose-type-toggle]', 'Choose this document type'],
       ['[data-desk-compose-advanced]', 'Show paper and post-type controls'],
-      ['[data-desk-doc-drag]', 'Drag this document onto a room to move it'],
       ['[data-desk-compose-paper]', 'Choose this paper style'],
       ['[data-desk-compose-type]', 'Choose this document type'],
       ['[data-desk-mode="map"]', 'Open the room map'],
@@ -2609,17 +2640,21 @@
     var typeOptions = composeTypeOptions().map(function (option) {
       return '<button type="button" class="desk-compose-paper-option desk-compose-type-option" data-desk-compose-type="' + escapeHtml(option.value) + '" aria-label="' + escapeHtml(option.label) + '" title="' + escapeHtml(option.label) + '" aria-pressed="' + (state.composeDocType === option.value ? 'true' : 'false') + '">' + composeTypeIcon(option) + '</button>';
     }).join('');
+    var currentType = composeTypeOption(state.composeDocType);
+    var typeControl = '<div class="desk-compose-type-control' + (state.composeTypeMenuOpen ? ' is-open' : '') + '">' +
+      '<button type="button" class="desk-compose-type-toggle" data-desk-compose-type-toggle aria-label="Choose this document type" title="Choose this document type" aria-expanded="' + (state.composeTypeMenuOpen ? 'true' : 'false') + '">' + composeTypeIcon(currentType) + '</button>' +
+      '<div class="desk-compose-type-selector" role="group" aria-label="Compose post type">' + typeOptions + '</div>' +
+      '</div>';
     var docMenu = state.composeMenuOpen
       ? '<div class="desk-compose-doc-menu" role="menu"><button type="button" role="menuitem" data-desk-compose-rename-open>Rename...</button></div>'
       : '';
     return '<section class="desk-mode-panel desk-compose-panel' + (state.closingMode === 'compose' ? ' is-closing' : '') + '" aria-label="Compose">' +
       '<div class="desk-compose-toolbar">' +
       '<div class="desk-compose-paper-picker" role="group" aria-label="Compose paper style">' + paperOptions + '</div>' +
-      (state.composeAdvanced ? '<div class="desk-compose-paper-picker desk-compose-type-picker" role="group" aria-label="Compose post type">' + typeOptions + '</div>' : '') +
       '<button type="button" class="desk-icon-btn desk-compose-advanced-toggle' + (state.composeAdvanced ? ' is-active' : '') + '" data-desk-compose-advanced aria-label="Toggle full compose controls" title="Toggle full compose controls">' + advancedIcon + '</button>' +
       '</div>' +
       '<form class="desk-form desk-compose-form" data-desk-form="compose-doc">' +
-      '<div class="desk-compose-drag-handle-wrap"><button type="button" class="desk-compose-drag-handle" data-desk-doc-drag aria-label="Drag document to another room" title="Drag document to another room">::</button></div>' +
+      '<div class="desk-compose-type-control-wrap">' + typeControl + '</div>' +
       (state.composeAdvanced && showTitle ? '<label><span>Title</span><input class="desk-input" type="text" name="doc_title" value="' + escapeHtml(state.composeDocTitle) + '" maxlength="180"></label>' : '') +
       '<div class="desk-compose-sheet desk-compose-sheet-' + escapeHtml(paper) + '">' +
       '<button type="button" class="desk-compose-close" data-desk-close-compose aria-label="Close compose" title="Close compose">×</button>' +
@@ -2954,6 +2989,7 @@
     state.createRoomOpen = false;
     state.secretPassageSource = null;
     state.composeMenuOpen = false;
+    state.composeTypeMenuOpen = false;
     state.composeRenameOpen = false;
     state.suppressMapAnimation = true;
     if (state.data) {
@@ -3505,7 +3541,7 @@
       state.composeDirty = false;
       return;
     }
-    if (!state.composeDocText) {
+    if (!state.composeDocText && !state.composeDirty) {
       state.composeDocType = 'shortform';
       state.composeDocTitle = '';
     }
@@ -3832,6 +3868,7 @@
     if (event.target.closest('[data-desk-compose-menu]')) {
       event.preventDefault();
       state.composeMenuOpen = !state.composeMenuOpen;
+      state.composeTypeMenuOpen = false;
       if (state.data) {
         render(state.data);
       }
@@ -3886,11 +3923,20 @@
     if (composeTypeButton) {
       event.preventDefault();
       state.composeDocType = composeTypeButton.getAttribute('data-desk-compose-type') === 'article' ? 'article' : 'shortform';
+      state.composeTypeMenuOpen = false;
       state.composeDirty = true;
       scheduleComposeAutosave();
       if (state.data) {
         render(state.data);
       }
+      return;
+    }
+
+    if (event.target.closest('[data-desk-compose-type-toggle]')) {
+      event.preventDefault();
+      state.composeTypeMenuOpen = !state.composeTypeMenuOpen;
+      state.composeMenuOpen = false;
+      applyComposeTypeMenuToDom();
       return;
     }
 
@@ -4235,16 +4281,6 @@
   });
 
   root.addEventListener('pointerdown', function (event) {
-    var docHandle = event.target.closest('[data-desk-doc-drag]');
-    if (docHandle && state.mode === 'compose') {
-      state.pointerDocDrag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        active: false
-      };
-      return;
-    }
     var mapSvg = event.target.closest('[data-desk-map-svg]');
     if (mapSvg && state.mapZoomMode === 'room' && beginMapPan(event, mapSvg)) {
       return;
@@ -4293,17 +4329,6 @@
       }
       return;
     }
-    var docDrag = state.pointerDocDrag;
-    if (docDrag && docDrag.pointerId === event.pointerId) {
-      var docMoved = Math.abs(event.clientX - docDrag.startX) + Math.abs(event.clientY - docDrag.startY);
-      if (!docDrag.active && docMoved < 8) {
-        return;
-      }
-      event.preventDefault();
-      docDrag.active = true;
-      markRoomDropTarget(roomDropTargetAt(event.clientX, event.clientY, state.currentRoom));
-      return;
-    }
     var drag = state.pointerRoomDrag;
     if (!drag || drag.pointerId !== event.pointerId) {
       return;
@@ -4346,30 +4371,6 @@
       }
       return;
     }
-    var docDrag = state.pointerDocDrag;
-    if (docDrag && docDrag.pointerId === event.pointerId) {
-      var docTarget = docDrag.active ? roomDropTargetAt(event.clientX, event.clientY, state.currentRoom) : null;
-      var dropRoom = docTarget ? docTarget.getAttribute('data-desk-room-drop') || '' : '';
-      if (docDrag.active && dropRoom && state.composeDocId && dropRoom !== state.currentRoom) {
-        event.preventDefault();
-        api('move-document', {
-          room: state.currentRoom,
-          doc_id: state.composeDocId,
-          target_room: dropRoom
-        }).then(function (data) {
-          if (data && data.success !== false) {
-            state.composeDocId = '';
-            state.composeDocText = '';
-            state.composeDocTitle = '';
-            state.composeDirty = false;
-          }
-          refreshFrom(data, dropRoom || state.currentRoom);
-        });
-      }
-      clearRoomDragClasses();
-      state.pointerDocDrag = null;
-      return;
-    }
     var drag = state.pointerRoomDrag;
     if (!drag || drag.pointerId !== event.pointerId) {
       return;
@@ -4388,7 +4389,6 @@
 
   root.addEventListener('pointercancel', function () {
     state.pointerMapPan = null;
-    state.pointerDocDrag = null;
     var drag = state.pointerRoomDrag;
     if (drag && drag.active) {
       suppressRoomClickFor(220);
