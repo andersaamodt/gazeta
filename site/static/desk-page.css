@@ -146,7 +146,7 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn {
   border-radius: 10px !important;
   background: rgba(3, 20, 51, 0.72) !important;
   color: var(--desk-gold-soft) !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+  box-shadow: none !important;
 }
 
 .desk-settings-menu-btn .desk-settings-gear-icon {
@@ -305,7 +305,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border-radius: 6px;
   background: rgba(8, 39, 94, 0.78);
   color: var(--desk-ink);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 8px 18px rgba(0, 0, 0, 0.22);
+  box-shadow: none;
   cursor: pointer;
 }
 
@@ -506,9 +506,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   background:
     linear-gradient(180deg, rgba(5, 25, 63, 0.9), rgba(3, 20, 51, 0.78)),
     rgba(3, 20, 51, 0.8);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
   cursor: pointer;
-  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  transition: border-color 180ms ease, background 180ms ease;
 }
 
 .desk-mode-launch svg {
@@ -530,7 +530,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   background:
     linear-gradient(180deg, rgba(14, 56, 127, 0.95), rgba(5, 25, 63, 0.9)),
     rgba(5, 25, 63, 0.9);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36);
+  box-shadow: none;
 }
 
 .desk-mode-map {
@@ -2361,7 +2361,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-check:hover,
 .desk-notebook-check:focus-visible {
   border: 0;
-  background: rgba(105, 113, 128, 0.16);
+  background: transparent;
   box-shadow: none;
   outline: 0;
 }
@@ -2442,7 +2442,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-row-icon:focus-visible,
 .desk-notebook-menu-btn:hover,
 .desk-notebook-menu-btn:focus-visible {
-  background: rgba(105, 113, 128, 0.16);
+  background: transparent;
+  box-shadow: none;
 }
 
 .desk-notebook-row-icon.is-archive {
@@ -3114,7 +3115,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-todo-close:focus-visible {
   text-decoration: none;
   border: 0;
-  background: rgba(105, 113, 128, 0.16);
+  background: transparent;
   box-shadow: none;
   outline: 0;
 }
@@ -3674,4 +3675,56 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   .desk-link-btn {
     width: fit-content;
   }
+}
+
+#desk-page-root button,
+#desk-page-root .desk-btn,
+#desk-page-root .desk-icon-btn,
+#desk-page-root .desk-link-btn,
+body.desk-page-body nav.site-nav button,
+body:has(#desk-page-root) nav.site-nav button,
+body.desk-page-body nav.site-nav .btn-login,
+body:has(#desk-page-root) nav.site-nav .btn-login {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+#desk-page-root button::before,
+#desk-page-root button::after,
+#desk-page-root .desk-btn::before,
+#desk-page-root .desk-btn::after,
+#desk-page-root .desk-icon-btn::before,
+#desk-page-root .desk-icon-btn::after,
+#desk-page-root .desk-link-btn::before,
+#desk-page-root .desk-link-btn::after,
+body.desk-page-body nav.site-nav button::before,
+body.desk-page-body nav.site-nav button::after,
+body:has(#desk-page-root) nav.site-nav button::before,
+body:has(#desk-page-root) nav.site-nav button::after {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+#desk-page-root .desk-todo-close,
+#desk-page-root .desk-todo-close:hover,
+#desk-page-root .desk-todo-close:focus-visible,
+#desk-page-root .desk-notebook-check,
+#desk-page-root .desk-notebook-check:hover,
+#desk-page-root .desk-notebook-check:focus-visible,
+#desk-page-root .desk-notebook-vote-btn,
+#desk-page-root .desk-notebook-vote-btn:hover,
+#desk-page-root .desk-notebook-vote-btn:focus-visible,
+#desk-page-root .desk-notebook-menu-btn,
+#desk-page-root .desk-notebook-menu-btn:hover,
+#desk-page-root .desk-notebook-menu-btn:focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
 }
