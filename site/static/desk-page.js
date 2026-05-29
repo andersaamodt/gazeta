@@ -3190,7 +3190,7 @@
       if (state.secretPassageSource === '') {
         state.secretPassageSource = clickedRoom;
         if (state.data) {
-          render(state.data);
+          renderMapSteady(state.data);
         }
         showMessage('Choose the other room.', false);
         return true;
@@ -3200,7 +3200,7 @@
         target_room: clickedRoom
       }).then(function (data) {
         state.secretPassageSource = null;
-        refreshFrom(data);
+        refreshMapSteadyFrom(data);
       });
       return true;
     }
@@ -3856,6 +3856,11 @@
     }
   }
 
+  function renderMapSteady(data) {
+    state.suppressMapAnimation = true;
+    render(data);
+  }
+
   function restoreDeskVoteSnapshot(snapshot, beforeRects, message) {
     if (snapshot) {
       renderDeskDataSteady(snapshot, beforeRects);
@@ -4106,6 +4111,11 @@
     render(data);
   }
 
+  function refreshMapSteadyFrom(data, fallbackRoom) {
+    state.suppressMapAnimation = true;
+    refreshFrom(data, fallbackRoom);
+  }
+
   function formValue(form, name) {
     var field = form.elements[name];
     return field ? field.value : '';
@@ -4292,7 +4302,7 @@
     if (event.target.closest('[data-desk-secret-passage]')) {
       state.secretPassageSource = state.secretPassageSource === null ? '' : null;
       if (state.data) {
-        render(state.data);
+        renderMapSteady(state.data);
       }
       showMessage(state.secretPassageSource === null ? '' : 'Choose two rooms for the secret passage.', false);
       return;
