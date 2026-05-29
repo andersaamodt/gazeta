@@ -2496,6 +2496,18 @@
     }, 380);
   }
 
+  function finishPaperCloseToMap() {
+    var mapResizeRect = captureMapPanelRect();
+    state.mode = 'map';
+    state.closingMode = '';
+    state.paperSwitchFrom = '';
+    modeCloseTimer = null;
+    state.suppressMapAnimation = true;
+    if (state.data) {
+      renderWithMapResize(state.data, mapResizeRect);
+    }
+  }
+
   function closeTodoMode() {
     if (state.mode !== 'todo' || state.closingMode === 'todo') {
       return;
@@ -2511,14 +2523,7 @@
       render(state.data);
     }
     modeCloseTimer = window.setTimeout(function () {
-      state.mode = 'map';
-      state.closingMode = '';
-      state.paperSwitchFrom = '';
-      modeCloseTimer = null;
-      state.suppressMapAnimation = true;
-      if (state.data) {
-        render(state.data);
-      }
+      finishPaperCloseToMap();
     }, 380);
   }
 
@@ -2539,14 +2544,7 @@
       render(state.data);
     }
     modeCloseTimer = window.setTimeout(function () {
-      state.mode = 'map';
-      state.closingMode = '';
-      state.paperSwitchFrom = '';
-      modeCloseTimer = null;
-      state.suppressMapAnimation = true;
-      if (state.data) {
-        render(state.data);
-      }
+      finishPaperCloseToMap();
     }, 380);
   }
 
