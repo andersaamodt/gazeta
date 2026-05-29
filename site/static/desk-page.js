@@ -814,8 +814,39 @@
     return encoded ? '/' + encoded : '/';
   }
 
-  function setRoom(room, replace) {
+  function paperModeOpen() {
+    return state.mode === 'todo' || state.mode === 'compose';
+  }
+
+  function preserveOpenPaperMode() {
+    if (!paperModeOpen()) {
+      return null;
+    }
+    return {
+      mode: state.mode,
+      paperMapVisible: state.paperMapVisible,
+      closingMode: state.closingMode,
+      closingMap: state.closingMap,
+      paperSwitchFrom: state.paperSwitchFrom
+    };
+  }
+
+  function restoreOpenPaperMode(snapshot) {
+    if (!snapshot || (state.mode !== 'todo' && state.mode !== 'compose' && state.mode !== 'map' && state.mode !== 'closed')) {
+      return;
+    }
+    state.mode = snapshot.mode;
+    state.paperMapVisible = snapshot.paperMapVisible;
+    state.closingMode = snapshot.closingMode;
+    state.closingMap = snapshot.closingMap;
+    state.paperSwitchFrom = snapshot.paperSwitchFrom;
+    state.suppressTodoAnimation = snapshot.mode === 'todo';
+    state.suppressComposeAnimation = snapshot.mode === 'compose';
+  }
+
+  function setRoom(room, replace, options) {
     var clean = String(room || '').trim();
+    var openPaperSnapshot = options && options.preserveOpenPaper ? preserveOpenPaperMode() : null;
     if (clean !== state.currentRoom) {
       dimPresenceForRoom(state.currentRoom);
       applyPresenceValues(state.presence);
@@ -846,7 +877,7 @@
       window.history.pushState({ room: clean }, '', next);
     }
     syncCurrentRoomInMapDom(clean);
-    loadState();
+    loadState({ openPaperSnapshot: openPaperSnapshot });
   }
 
   function authPayload() {
@@ -3161,7 +3192,7 @@
     state.mapZoomMode = 'room';
     state.mapPanX = 0;
     state.mapPanY = 0;
-    setRoom(clickedRoom, false);
+    setRoom(clickedRoom, false, { preserveOpenPaper: true });
     return true;
   }
 
@@ -4003,7 +4034,7 @@
     markPageReady();
   }
 
-  function loadState() {
+  function loadState(options) {
     if (!state.data) {
       root.innerHTML = '<div class="desk-loading" aria-hidden="true"></div>';
     }
@@ -4019,6 +4050,7 @@
       if (state.mode === 'map' || state.mode === 'todo' || state.mode === 'compose') {
         state.suppressMapAnimation = true;
       }
+      restoreOpenPaperMode(options && options.openPaperSnapshot);
       render(data);
     }).catch(function (err) {
       showGate(err && err.message ? err.message : 'Desk is not available.');
@@ -4612,7 +4644,7 @@
         from: state.currentRoom,
         to: roomPath
       };
-      setRoom(roomPath, false);
+      setRoom(roomPath, false, { preserveOpenPaper: true });
       return;
     }
     if (!wasTodoOpen) {
