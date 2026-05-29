@@ -1793,9 +1793,19 @@
     var lights = roomWallLightPoints(cells, unitW, unitH);
     if (!lights.length) return '';
     var bounds = footprintBounds(cells);
-    var radius = Math.max(unitW * 1.7, unitH * 1.9, Math.sqrt(Math.pow(bounds.w * unitW, 2) + Math.pow(bounds.h * unitH, 2)) * 0.72);
     return lights.map(function (light, index) {
-      return '<radialGradient id="' + roomLightGradientId(path, index) + '" gradientUnits="userSpaceOnUse" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"><stop offset="0" stop-color="#ffe69d" stop-opacity="0.82"></stop><stop offset="0.34" stop-color="#ffd06f" stop-opacity="0.44"></stop><stop offset="0.72" stop-color="#ffbf56" stop-opacity="0.16"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0"></stop></radialGradient>';
+      var x1 = bounds.x * unitW;
+      var y1 = bounds.y * unitH;
+      var x2 = (bounds.x + bounds.w) * unitW;
+      var y2 = (bounds.y + bounds.h) * unitH;
+      var farthestCorner = Math.max(
+        Math.hypot(light.x - x1, light.y - y1),
+        Math.hypot(light.x - x2, light.y - y1),
+        Math.hypot(light.x - x1, light.y - y2),
+        Math.hypot(light.x - x2, light.y - y2)
+      );
+      var radius = Math.max(unitW * 1.9, unitH * 1.9, farthestCorner * 1.08);
+      return '<radialGradient id="' + roomLightGradientId(path, index) + '" gradientUnits="userSpaceOnUse" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"><stop offset="0" stop-color="#ffe69d" stop-opacity="0.9"></stop><stop offset="0.32" stop-color="#ffd06f" stop-opacity="0.54"></stop><stop offset="0.74" stop-color="#ffbf56" stop-opacity="0.2"></stop><stop offset="1" stop-color="#ffb14b" stop-opacity="0.06"></stop></radialGradient>';
     }).join('');
   }
 
@@ -1807,9 +1817,7 @@
       return '<rect class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" x="' + overlay.x + '" y="' + overlay.y + '" width="' + overlay.w + '" height="' + overlay.h + '"></rect>';
     }).join('') + '</g>';
     var visibleLamps = '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
-      var glowRadiusX = light.horizontal ? 15 : 10;
-      var glowRadiusY = light.horizontal ? 10 : 15;
-      return '<ellipse class="desk-map-wall-light-halo" cx="' + light.x + '" cy="' + light.y + '" rx="' + glowRadiusX + '" ry="' + glowRadiusY + '"></ellipse><circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
+      return '<circle class="desk-map-wall-light" cx="' + light.x + '" cy="' + light.y + '" r="3.8"></circle>';
     }).join('') + '</g>';
     return floorLight + visibleLamps;
   }

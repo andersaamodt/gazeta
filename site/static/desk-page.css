@@ -1352,7 +1352,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-room-dim {
   --presence: 0;
   fill: rgba(44, 39, 32, 0.72);
-  opacity: calc((1 - var(--presence)) * 0.48);
+  opacity: calc(0.66 - var(--presence) * 0.24);
   pointer-events: none;
   mix-blend-mode: multiply;
   transition: opacity 1400ms ease;
@@ -1383,20 +1383,13 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-room-light-gradient {
-  opacity: calc(var(--presence) * 0.58);
+  opacity: calc(var(--presence) * 0.86);
   transition: opacity 1400ms ease;
 }
 
 .desk-map-wall-lights {
   --presence: 0;
   pointer-events: none;
-}
-
-.desk-map-wall-light-halo {
-  fill: #ffd579;
-  opacity: calc(var(--presence) * 0.28);
-  mix-blend-mode: screen;
-  transition: opacity 1400ms ease;
 }
 
 .desk-map-wall-light {
