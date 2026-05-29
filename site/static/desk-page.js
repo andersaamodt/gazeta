@@ -24,6 +24,7 @@
     mode: 'map',
     closingMode: '',
     paperSwitchFrom: '',
+    paperMapVisible: true,
     draggedRoom: '',
     suppressRoomClick: false,
     suppressMapAnimation: true,
@@ -2589,7 +2590,11 @@
   }
 
   function isMapVisibleMode(mode) {
-    return mode === 'map' || mode === 'todo' || mode === 'compose';
+    return mode === 'map' || ((mode === 'todo' || mode === 'compose') && state.paperMapVisible);
+  }
+
+  function shouldRenderMapWithPaper() {
+    return (state.mode === 'todo' || state.mode === 'compose') && state.paperMapVisible;
   }
 
   function renderModeDock() {
@@ -2614,14 +2619,15 @@
   function renderStage(data) {
     var content = '';
     var isPaperSwitching = state.paperSwitchFrom && state.closingMode === state.paperSwitchFrom && (state.mode === 'todo' || state.mode === 'compose');
+    var renderPaperMap = shouldRenderMapWithPaper();
     if (state.mode === 'todo') {
-      content = renderMapSafely(data) + (isPaperSwitching && state.paperSwitchFrom === 'compose' ? renderCompose(data) : '') + renderTodo(data);
+      content = (renderPaperMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'compose' ? renderCompose(data) : '') + renderTodo(data);
     } else if (state.mode === 'compose') {
-      content = renderMapSafely(data) + (isPaperSwitching && state.paperSwitchFrom === 'todo' ? renderTodo(data) : '') + renderCompose(data);
+      content = (renderPaperMap ? renderMapSafely(data) : '') + (isPaperSwitching && state.paperSwitchFrom === 'todo' ? renderTodo(data) : '') + renderCompose(data);
     } else if (state.mode === 'map') {
       content = renderMapSafely(data);
     }
-    return '<div class="desk-stage' + (isPaperSwitching ? ' is-paper-switching' : '') + '" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
+    return '<div class="desk-stage' + (isPaperSwitching ? ' is-paper-switching' : '') + (!renderPaperMap && (state.mode === 'todo' || state.mode === 'compose') ? ' is-paper-only' : '') + '" data-desk-stage-mode="' + escapeHtml(state.mode) + '">' + content + '</div>' + renderModeDock();
   }
 
   function clearModeCloseTimer() {
@@ -2646,12 +2652,14 @@
     var nextMode = mode || 'map';
     var previousMode = state.mode;
     var mapResizeRect = previousMode === 'map' && (nextMode === 'todo' || nextMode === 'compose') ? captureMapPanelRect() : null;
+    var keepPaperMap = previousMode === 'map' || ((previousMode === 'todo' || previousMode === 'compose') && state.paperMapVisible);
     clearModeCloseTimer();
     if ((previousMode === 'todo' || previousMode === 'compose') && (nextMode === 'todo' || nextMode === 'compose') && previousMode !== nextMode && !state.closingMode) {
       switchPaperModeTogether(previousMode, nextMode);
       return;
     }
     state.mode = nextMode;
+    state.paperMapVisible = nextMode === 'map' || ((nextMode === 'todo' || nextMode === 'compose') && keepPaperMap);
     state.closingMode = '';
     state.paperSwitchFrom = '';
     state.search = null;
@@ -2673,7 +2681,9 @@
 
   function switchPaperModeTogether(previousMode, nextMode) {
     playSound(deskSounds.book);
+    var keepPaperMap = state.paperMapVisible;
     state.mode = nextMode;
+    state.paperMapVisible = keepPaperMap;
     state.closingMode = previousMode;
     state.paperSwitchFrom = previousMode;
     state.search = null;
@@ -2704,6 +2714,7 @@
     }
     clearModeCloseTimer();
     playSound(deskSounds.mapClose);
+    state.paperMapVisible = false;
     state.closingMode = 'map';
     state.search = null;
     state.createRoomOpen = false;
@@ -2734,6 +2745,7 @@
       playSound(deskSounds.book);
     }
     state.closingMode = previousMode;
+    state.paperMapVisible = false;
     state.search = null;
     state.createRoomOpen = false;
     state.secretPassageSource = null;
@@ -2754,6 +2766,7 @@
   function finishPaperCloseToMap() {
     var mapResizeRect = captureMapPanelRect();
     state.mode = 'map';
+    state.paperMapVisible = true;
     state.closingMode = '';
     state.paperSwitchFrom = '';
     modeCloseTimer = null;
@@ -2769,6 +2782,7 @@
     }
     clearModeCloseTimer();
     playSound(deskSounds.book);
+    var returnToMap = state.paperMapVisible;
     state.closingMode = 'todo';
     state.search = null;
     state.createRoomOpen = false;
@@ -2778,7 +2792,18 @@
       render(state.data);
     }
     modeCloseTimer = window.setTimeout(function () {
-      finishPaperCloseToMap();
+      if (returnToMap) {
+        finishPaperCloseToMap();
+        return;
+      }
+      state.mode = 'closed';
+      state.closingMode = '';
+      state.paperSwitchFrom = '';
+      state.paperMapVisible = false;
+      modeCloseTimer = null;
+      if (state.data) {
+        render(state.data);
+      }
     }, 380);
   }
 
@@ -2788,6 +2813,7 @@
     }
     clearModeCloseTimer();
     playSound(deskSounds.book);
+    var returnToMap = state.paperMapVisible;
     state.closingMode = 'compose';
     state.search = null;
     state.createRoomOpen = false;
@@ -2799,7 +2825,18 @@
       render(state.data);
     }
     modeCloseTimer = window.setTimeout(function () {
-      finishPaperCloseToMap();
+      if (returnToMap) {
+        finishPaperCloseToMap();
+        return;
+      }
+      state.mode = 'closed';
+      state.closingMode = '';
+      state.paperSwitchFrom = '';
+      state.paperMapVisible = false;
+      modeCloseTimer = null;
+      if (state.data) {
+        render(state.data);
+      }
     }, 380);
   }
 
@@ -3771,6 +3808,7 @@
         return;
       }
       state.mode = 'map';
+      state.paperMapVisible = true;
       if (clickedRoom !== state.currentRoom) {
         state.lastEnteredDoor = {
           from: state.currentRoom,
@@ -3934,6 +3972,7 @@
     state.suppressMapAnimation = true;
     var wasTodoOpen = state.mode === 'todo';
     state.mode = 'todo';
+    state.paperMapVisible = true;
     state.closingMode = '';
     if (roomPath !== state.currentRoom) {
       state.lastEnteredDoor = {

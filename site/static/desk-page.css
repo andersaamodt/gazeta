@@ -447,6 +447,11 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   gap: clamp(0.65rem, 1.35vw, 1.1rem);
 }
 
+.desk-stage.is-paper-only[data-desk-stage-mode="todo"],
+.desk-stage.is-paper-only[data-desk-stage-mode="compose"] {
+  grid-template-columns: minmax(0, auto);
+}
+
 .desk-stage[data-desk-stage-mode="compose"] .desk-map-panel {
   width: min(100%, 63.5rem);
   height: 88%;
@@ -2008,6 +2013,11 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   position: relative;
 }
 
+.desk-stage.is-paper-only.is-paper-switching .desk-todo-panel,
+.desk-stage.is-paper-only.is-paper-switching .desk-compose-panel {
+  grid-column: 1;
+}
+
 .desk-stage.is-paper-switching .desk-todo-panel.is-closing,
 .desk-stage.is-paper-switching .desk-compose-panel.is-closing {
   z-index: 2;
@@ -2021,7 +2031,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 @keyframes desk-todo-unfold-from-corner {
   from {
     opacity: 0.32;
-    transform: translateX(clamp(4rem, 18vw, 9rem)) translateY(clamp(2.6rem, 8vh, 5rem)) rotateZ(-4deg) rotateY(-10deg) scale(0.18);
+    transform: translateX(clamp(5rem, 18vw, 10rem)) translateY(clamp(16rem, 42vh, 30rem)) rotateZ(-4deg) rotateY(-10deg) scale(0.18);
   }
 
   to {
@@ -2038,7 +2048,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
   to {
     opacity: 0.28;
-    transform: translateX(clamp(4rem, 18vw, 9rem)) translateY(clamp(2.6rem, 8vh, 5rem)) rotateZ(-4deg) rotateY(-10deg) scale(0.18);
+    transform: translateX(clamp(5rem, 18vw, 10rem)) translateY(clamp(16rem, 42vh, 30rem)) rotateZ(-4deg) rotateY(-10deg) scale(0.18);
   }
 }
 
@@ -3348,7 +3358,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   @keyframes desk-todo-unfold-from-corner-small {
     from {
       opacity: 0.32;
-      transform: translate(calc(100% + 1.2rem), calc(50% + 4.2rem)) rotateZ(-5deg) rotateY(-8deg) scale(0.2);
+      transform: translate(calc(100% + 1.2rem), calc(50% + 14rem)) rotateZ(-5deg) rotateY(-8deg) scale(0.2);
     }
 
     to {
@@ -3365,7 +3375,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
     to {
       opacity: 0.28;
-      transform: translate(calc(100% + 1.2rem), calc(50% + 4.2rem)) rotateZ(-5deg) rotateY(-8deg) scale(0.2);
+      transform: translate(calc(100% + 1.2rem), calc(50% + 14rem)) rotateZ(-5deg) rotateY(-8deg) scale(0.2);
     }
   }
 
