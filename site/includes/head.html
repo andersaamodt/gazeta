@@ -1,3 +1,50 @@
+<script>
+(function () {
+  try {
+    var host = window.location.hostname || '';
+    var path = window.location.pathname || '';
+    if (host === 'desk.andersaamodt.com') {
+      document.documentElement.classList.add('desk-host-route');
+    }
+    if (path === '/artificer' || path.indexOf('/artificer/') === 0) {
+      document.documentElement.classList.add('artificer-web-route');
+    }
+  } catch (_err) {
+    // Ignore early route detection failures.
+  }
+})();
+</script>
+<style id="private-app-route-guard">
+html.artificer-web-route,
+html.artificer-web-route body {
+  background: #111418 !important;
+}
+
+html.artificer-web-route nav.site-nav,
+html.artificer-web-route footer.site-footer,
+html.artificer-web-route #title-block-header {
+  display: none !important;
+}
+
+html.artificer-web-route body,
+html.artificer-web-route main,
+html.artificer-web-route .page,
+html.artificer-web-route .content {
+  margin: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+html.desk-host-route,
+html.desk-host-route body {
+  background: #f7f5ef;
+}
+
+html.desk-host-route footer.site-footer,
+html.desk-host-route #title-block-header {
+  display: none !important;
+}
+</style>
 <script src="/static/site-bootstrap.js"></script>
 <script>
 (function () {
