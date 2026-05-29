@@ -1,0 +1,51 @@
+.artificer-web-document,
+.artificer-web-body {
+  min-height: 100%;
+}
+
+.artificer-web-body {
+  margin: 0;
+  background: #111418;
+}
+
+.artificer-web-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(73, 143, 181, 0.22), transparent 28rem),
+    linear-gradient(135deg, #111418 0%, #20252b 58%, #171a1f 100%);
+  color: #f4efe6;
+  display: grid;
+}
+
+.artificer-web-status {
+  align-self: center;
+  justify-self: center;
+  width: min(34rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+}
+
+.artificer-web-status h1 {
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 0.95;
+  margin: 0 0 1rem;
+  letter-spacing: 0;
+}
+
+.artificer-web-status p {
+  color: #c9d7d6;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.artificer-web-frame {
+  width: 100%;
+  height: 100vh;
+  border: 0;
+  display: block;
+  background: #111418;
+}
+
+.artificer-web-error {
+  border-left: 3px solid #e07155;
+}
