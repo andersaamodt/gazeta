@@ -720,9 +720,12 @@ class DeskStore:
         return payload
 
     def unique_room_move_rel(self, source_rel: str, target_parent_rel: str) -> str:
+        source = self.normalize_room_rel(source_rel)
         source_name = Path(source_rel).name
         target_parent = self.normalize_room_rel(target_parent_rel)
         base = f"{target_parent}/{source_name}" if target_parent else source_name
+        if base == source:
+            return source
         if not self.room_dir(base).exists():
             return base
         for index in range(2, 1000):

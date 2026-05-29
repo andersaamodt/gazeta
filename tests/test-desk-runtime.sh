@@ -263,6 +263,14 @@ else
   fail 'room move removes the old room folder location'
 fi
 
+same_parent_move_json=$(run_desk "action=move-room&$auth_query&room=archive-room/inner-study&target_room=archive-room")
+assert_jq "$same_parent_move_json" '.success == true and .moved_room.from == "archive-room/inner-study" and .moved_room.to == "archive-room/inner-study" and .current_room.path == "archive-room/inner-study"' 'Desk moving a room to its existing parent is a no-op instead of appending repeated numeric suffixes'
+if [ ! -d "$SITE_DATA/desk/office/archive-room/inner-study-2" ]; then
+  pass
+else
+  fail 'same-parent room move must not create a suffixed duplicate path'
+fi
+
 save_doc_json=$(run_desk "action=save-document&$auth_query&room=archive-room&doc_type=shortform&doc_body=$(urlencode "Draft lines for room document")")
 assert_jq "$save_doc_json" '.success == true and (.saved_document.id | endswith(".md")) and .saved_document.room == "archive-room"' 'Desk saves compose documents as markdown files in room folders'
 saved_doc_id=$(printf '%s\n' "$save_doc_json" | jq -r '.saved_document.id')
