@@ -7,14 +7,14 @@
   }
 
   var flashlightSteps = [
-    { label: '5m', fadeMs: 5 * 60 * 1000, buildMs: 4 * 60 * 1000 },
-    { label: '10m', fadeMs: 10 * 60 * 1000, buildMs: 3 * 60 * 1000 },
-    { label: '30m', fadeMs: 30 * 60 * 1000, buildMs: 2 * 60 * 1000 },
+    { label: '5m', fadeMs: 5 * 60 * 1000, buildMs: 20 * 1000 },
+    { label: '10m', fadeMs: 10 * 60 * 1000, buildMs: 35 * 1000 },
+    { label: '30m', fadeMs: 30 * 60 * 1000, buildMs: 60 * 1000 },
     { label: '1h', fadeMs: 60 * 60 * 1000, buildMs: 90 * 1000 },
-    { label: '3h', fadeMs: 3 * 60 * 60 * 1000, buildMs: 60 * 1000 },
-    { label: '12h', fadeMs: 12 * 60 * 60 * 1000, buildMs: 45 * 1000 },
-    { label: '18h', fadeMs: 18 * 60 * 60 * 1000, buildMs: 30 * 1000 },
-    { label: '1d', fadeMs: 24 * 60 * 60 * 1000, buildMs: 20 * 1000 }
+    { label: '3h', fadeMs: 3 * 60 * 60 * 1000, buildMs: 3 * 60 * 1000 },
+    { label: '12h', fadeMs: 12 * 60 * 60 * 1000, buildMs: 8 * 60 * 1000 },
+    { label: '18h', fadeMs: 18 * 60 * 60 * 1000, buildMs: 12 * 60 * 1000 },
+    { label: '1d', fadeMs: 24 * 60 * 60 * 1000, buildMs: 16 * 60 * 1000 }
   ];
 
   var state = {
