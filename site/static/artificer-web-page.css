@@ -21,6 +21,34 @@
   display: grid;
 }
 
+.artificer-web-login-gate {
+  align-self: center;
+  justify-self: center;
+}
+
+.artificer-web-login-btn {
+  appearance: none;
+  width: fit-content;
+  min-width: 0;
+  border: 1px solid rgba(240, 213, 138, 0.42);
+  border-radius: 8px;
+  background: rgba(240, 213, 138, 0.1);
+  color: #f0d58a;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.72rem 1rem;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.artificer-web-login-btn:hover,
+.artificer-web-login-btn:focus-visible {
+  border-color: rgba(240, 213, 138, 0.72);
+  background: rgba(3, 20, 51, 0.86);
+  outline: none;
+}
+
 .artificer-web-body #title-block-header {
   display: none;
 }
@@ -53,6 +81,78 @@
   border: 0;
   display: block;
   background: #111418;
+}
+
+.artificer-web-toolbar {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10000;
+}
+
+.artificer-web-settings-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  min-width: 2.6rem;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(3, 20, 51, 0.72);
+  color: #f0d58a;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 22px rgba(0, 0, 0, 0.24);
+  cursor: pointer;
+}
+
+.artificer-web-settings-btn:hover,
+.artificer-web-settings-btn:focus-visible,
+.artificer-web-settings-btn[aria-expanded="true"] {
+  background: rgba(3, 20, 51, 0.9);
+  outline: none;
+}
+
+.artificer-web-settings-btn img {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.artificer-web-settings-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: fit-content;
+  min-width: 9rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(240, 213, 138, 0.32);
+  border-radius: 8px;
+  background: rgba(3, 20, 51, 0.96);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+}
+
+.artificer-web-settings-panel[hidden] {
+  display: none;
+}
+
+.artificer-web-settings-panel button {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #f0d58a;
+  font: inherit;
+  text-align: left;
+  padding: 0.62rem 0.7rem;
+  cursor: pointer;
+}
+
+.artificer-web-settings-panel button:hover,
+.artificer-web-settings-panel button:focus-visible {
+  background: rgba(240, 213, 138, 0.12);
+  outline: none;
 }
 
 .artificer-web-error {

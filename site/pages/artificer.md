@@ -6,7 +6,7 @@ title: Artificer Web
   document.documentElement.classList.add('artificer-web-document');
   document.body.classList.add('artificer-web-body');
 </script>
-<link rel="stylesheet" href="/static/artificer-web-page.css?v=20260529-artificer-web2">
+<link rel="stylesheet" href="/static/artificer-web-page.css?v=20260529-artificer-web3">
 
 <section id="artificer-web-root" class="artificer-web-shell" aria-live="polite">
 <div class="artificer-web-status">
@@ -15,4 +15,4 @@ title: Artificer Web
 </div>
 </section>
 
-<script defer src="/static/artificer-web-page.js?v=20260529-artificer-web1"></script>
+<script defer src="/static/artificer-web-page.js?v=20260529-artificer-web2"></script>
