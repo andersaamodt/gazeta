@@ -442,6 +442,64 @@
     animateMapViewBox(svg, currentViewBox, targetViewBox);
   }
 
+  function setMapZoomMode(mode) {
+    var nextMode = mode === 'room' ? 'room' : 'full';
+    if (state.mapZoomMode === nextMode) {
+      return false;
+    }
+    state.mapZoomMode = nextMode;
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    state.suppressMapAnimation = true;
+    applyMapZoomToDom();
+    return true;
+  }
+
+  function beginMapPan(event, mapSvg) {
+    if (!mapSvg || state.mapZoomMode !== 'room' || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+      return false;
+    }
+    var view = mapSvg.viewBox && mapSvg.viewBox.baseVal;
+    var rect = mapSvg.getBoundingClientRect();
+    var fullParts = String(mapSvg.getAttribute('data-desk-full-viewbox') || '').split(/\s+/).map(Number);
+    if (!view || rect.width <= 0 || rect.height <= 0 || fullParts.length !== 4 || !fullParts.every(Number.isFinite)) {
+      return false;
+    }
+    if (mapSvg._deskMapZoomFrame) {
+      window.cancelAnimationFrame(mapSvg._deskMapZoomFrame);
+      mapSvg._deskMapZoomFrame = 0;
+    }
+    state.pointerMapPan = {
+      pointerId: event.pointerId,
+      svg: mapSvg,
+      startX: event.clientX,
+      startY: event.clientY,
+      startPanX: Number(state.mapPanX || 0),
+      startPanY: Number(state.mapPanY || 0),
+      baseCenterX: view.x + view.width / 2 - Number(state.mapPanX || 0),
+      baseCenterY: view.y + view.height / 2 - Number(state.mapPanY || 0),
+      viewX: view.x,
+      viewY: view.y,
+      viewW: view.width,
+      viewH: view.height,
+      fullX: fullParts[0],
+      fullY: fullParts[1],
+      fullW: fullParts[2],
+      fullH: fullParts[3],
+      scaleX: view.width / rect.width,
+      scaleY: view.height / rect.height,
+      active: false
+    };
+    if (mapSvg.setPointerCapture) {
+      try {
+        mapSvg.setPointerCapture(event.pointerId);
+      } catch (_err) {
+        // SVG pointer capture is best-effort.
+      }
+    }
+    return true;
+  }
+
   function renderMapZoomIcon() {
     var symbol = state.mapZoomMode === 'room'
       ? '<path d="M7.8 10.4H13"></path>'
@@ -3602,11 +3660,7 @@
 
     if (event.target.closest('[data-desk-map-zoom]')) {
       event.preventDefault();
-      state.mapZoomMode = state.mapZoomMode === 'room' ? 'full' : 'room';
-      state.mapPanX = 0;
-      state.mapPanY = 0;
-      state.suppressMapAnimation = true;
-      applyMapZoomToDom();
+      setMapZoomMode(state.mapZoomMode === 'room' ? 'full' : 'room');
       return;
     }
 
@@ -4066,6 +4120,15 @@
     }
   });
 
+  root.addEventListener('wheel', function (event) {
+    var mapScroll = event.target.closest('.desk-map-scroll');
+    if (!mapScroll || !root.contains(mapScroll) || event.deltaY === 0) {
+      return;
+    }
+    event.preventDefault();
+    setMapZoomMode(event.deltaY < 0 ? 'room' : 'full');
+  });
+
   root.addEventListener('pointerdown', function (event) {
     var docHandle = event.target.closest('[data-desk-doc-drag]');
     if (docHandle && state.mode === 'compose') {
@@ -4078,40 +4141,7 @@
       return;
     }
     var mapSvg = event.target.closest('[data-desk-map-svg]');
-    if (mapSvg && state.mapZoomMode === 'room' && !event.target.closest('[data-desk-room-link]') && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-      var view = mapSvg.viewBox && mapSvg.viewBox.baseVal;
-      var rect = mapSvg.getBoundingClientRect();
-      var fullParts = String(mapSvg.getAttribute('data-desk-full-viewbox') || '').split(/\s+/).map(Number);
-      if (view && rect.width > 0 && rect.height > 0 && fullParts.length === 4 && fullParts.every(Number.isFinite)) {
-        state.pointerMapPan = {
-          pointerId: event.pointerId,
-          svg: mapSvg,
-          startX: event.clientX,
-          startY: event.clientY,
-          startPanX: Number(state.mapPanX || 0),
-          startPanY: Number(state.mapPanY || 0),
-          baseCenterX: view.x + view.width / 2 - Number(state.mapPanX || 0),
-          baseCenterY: view.y + view.height / 2 - Number(state.mapPanY || 0),
-          viewX: view.x,
-          viewY: view.y,
-          viewW: view.width,
-          viewH: view.height,
-          fullX: fullParts[0],
-          fullY: fullParts[1],
-          fullW: fullParts[2],
-          fullH: fullParts[3],
-          scaleX: view.width / rect.width,
-          scaleY: view.height / rect.height,
-          active: false
-        };
-        if (mapSvg.setPointerCapture) {
-          try {
-            mapSvg.setPointerCapture(event.pointerId);
-          } catch (_err) {
-            // SVG pointer capture is best-effort.
-          }
-        }
-      }
+    if (mapSvg && state.mapZoomMode === 'room' && beginMapPan(event, mapSvg)) {
       return;
     }
     var roomLink = event.target.closest('[data-desk-room-link]');
