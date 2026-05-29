@@ -2006,68 +2006,52 @@
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
-  function roomWallLightPoints(cells, unitW, unitH) {
+  function roomWallLightPoints(cells, unitW, unitH, doorSegments) {
     var local = {};
     var segments = [];
     cells.forEach(function (cell) {
       local[cell.x + ',' + cell.y] = true;
     });
-    function addSegment(side, x1, y1, x2, y2) {
+    function addSegment(side, from, to) {
+      if (segmentHasDoor(from, to, doorSegments)) {
+        return;
+      }
       var horizontal = side === 'north' || side === 'south';
+      var x1 = from.x * unitW;
+      var y1 = from.y * unitH;
+      var x2 = to.x * unitW;
+      var y2 = to.y * unitH;
       segments.push({
         side: side,
         horizontal: horizontal,
-        key: horizontal ? side + ':' + y1 : side + ':' + x1,
         start: horizontal ? Math.min(x1, x2) : Math.min(y1, y2),
         end: horizontal ? Math.max(x1, x2) : Math.max(y1, y2),
         fixed: horizontal ? y1 : x1
       });
     }
     cells.forEach(function (cell) {
-      var x = cell.x * unitW;
-      var y = cell.y * unitH;
-      var w = (Number.isFinite(cell.w) ? cell.w : 1) * unitW;
-      var h = (Number.isFinite(cell.h) ? cell.h : 1) * unitH;
-      var northInside = y + 9;
-      var southInside = y + h - 9;
-      var westInside = x + 9;
-      var eastInside = x + w - 9;
-      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y - 1)]) addSegment('north', x + 18, northInside, x + w - 18, northInside);
-      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y + 1)]) addSegment('south', x + 18, southInside, x + w - 18, southInside);
-      if (isContainedRoomCell(cell) || !local[(cell.x - 1) + ',' + cell.y]) addSegment('west', westInside, y + 18, westInside, y + h - 18);
-      if (isContainedRoomCell(cell) || !local[(cell.x + 1) + ',' + cell.y]) addSegment('east', eastInside, y + 18, eastInside, y + h - 18);
-    });
-    var grouped = {};
-    segments.forEach(function (segment) {
-      if (!grouped[segment.key]) grouped[segment.key] = [];
-      grouped[segment.key].push(segment);
-    });
-    var runs = [];
-    Object.keys(grouped).forEach(function (key) {
-      grouped[key].sort(function (left, right) { return left.start - right.start; });
-      grouped[key].forEach(function (segment) {
-        var current = runs.length ? runs[runs.length - 1] : null;
-        if (!current || current.key !== key || segment.start > current.end + 0.5) {
-          runs.push(Object.assign({}, segment));
-          return;
-        }
-        current.end = Math.max(current.end, segment.end);
-      });
+      var cellW = Number.isFinite(cell.w) ? cell.w : 1;
+      var cellH = Number.isFinite(cell.h) ? cell.h : 1;
+      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y - 1)]) addSegment('north', { x: cell.x, y: cell.y }, { x: cell.x + cellW, y: cell.y });
+      if (isContainedRoomCell(cell) || !local[cell.x + ',' + (cell.y + cellH)]) addSegment('south', { x: cell.x + cellW, y: cell.y + cellH }, { x: cell.x, y: cell.y + cellH });
+      if (isContainedRoomCell(cell) || !local[(cell.x - 1) + ',' + cell.y]) addSegment('west', { x: cell.x, y: cell.y + cellH }, { x: cell.x, y: cell.y });
+      if (isContainedRoomCell(cell) || !local[(cell.x + cellW) + ',' + cell.y]) addSegment('east', { x: cell.x + cellW, y: cell.y }, { x: cell.x + cellW, y: cell.y + cellH });
     });
     var points = [];
-    runs.forEach(function (run) {
-      var length = run.end - run.start;
-      var count = Math.max(1, Math.round(length / 96));
-      for (var i = 1; i <= count; i += 1) {
-        var ratio = i / (count + 1);
-        var along = run.start + length * ratio;
-        points.push({
-          x: run.horizontal ? along : run.fixed,
-          y: run.horizontal ? run.fixed : along,
-          horizontal: run.horizontal,
-          side: run.side
-        });
-      }
+    segments.forEach(function (segment) {
+      var along = segment.start + (segment.end - segment.start) / 2;
+      var x = segment.horizontal ? along : segment.fixed;
+      var y = segment.horizontal ? segment.fixed : along;
+      if (segment.side === 'north') y += 2.4;
+      if (segment.side === 'south') y -= 2.4;
+      if (segment.side === 'west') x += 2.4;
+      if (segment.side === 'east') x -= 2.4;
+      points.push({
+        x: x,
+        y: y,
+        horizontal: segment.horizontal,
+        side: segment.side
+      });
     });
     return points;
   }
@@ -2080,8 +2064,8 @@
     return 'desk-room-light-gradient-' + hashText((path || 'office') + ':' + index);
   }
 
-  function renderRoomLightGradientDefs(path, cells, unitW, unitH) {
-    var lights = roomWallLightPoints(cells, unitW, unitH);
+  function renderRoomLightGradientDefs(path, cells, unitW, unitH, doorSegments) {
+    var lights = roomWallLightPoints(cells, unitW, unitH, doorSegments);
     if (!lights.length) return '';
     var radius = roomLampLightRadius(unitW, unitH);
     return lights.map(function (light, index) {
@@ -2092,20 +2076,24 @@
   function wallSconcePath(light) {
     var x = Number(light.x || 0);
     var y = Number(light.y || 0);
+    var half = 3.8;
+    var flat = 2.4;
+    var shoulder = 3.9;
+    var tip = 4.9;
     if (light.side === 'south') {
-      return 'M ' + (x - 4.6) + ' ' + (y + 3.2) + ' L ' + (x + 4.6) + ' ' + (y + 3.2) + ' Q ' + (x + 4.2) + ' ' + (y - 5.4) + ' ' + x + ' ' + (y - 6.4) + ' Q ' + (x - 4.2) + ' ' + (y - 5.4) + ' ' + (x - 4.6) + ' ' + (y + 3.2) + ' Z';
+      return 'M ' + (x - half) + ' ' + (y + flat) + ' L ' + (x + half) + ' ' + (y + flat) + ' Q ' + (x + half) + ' ' + (y - shoulder) + ' ' + x + ' ' + (y - tip) + ' Q ' + (x - half) + ' ' + (y - shoulder) + ' ' + (x - half) + ' ' + (y + flat) + ' Z';
     }
     if (light.side === 'west') {
-      return 'M ' + (x - 3.2) + ' ' + (y - 4.6) + ' L ' + (x - 3.2) + ' ' + (y + 4.6) + ' Q ' + (x + 5.4) + ' ' + (y + 4.2) + ' ' + (x + 6.4) + ' ' + y + ' Q ' + (x + 5.4) + ' ' + (y - 4.2) + ' ' + (x - 3.2) + ' ' + (y - 4.6) + ' Z';
+      return 'M ' + (x - flat) + ' ' + (y - half) + ' L ' + (x - flat) + ' ' + (y + half) + ' Q ' + (x + shoulder) + ' ' + (y + half) + ' ' + (x + tip) + ' ' + y + ' Q ' + (x + shoulder) + ' ' + (y - half) + ' ' + (x - flat) + ' ' + (y - half) + ' Z';
     }
     if (light.side === 'east') {
-      return 'M ' + (x + 3.2) + ' ' + (y - 4.6) + ' L ' + (x + 3.2) + ' ' + (y + 4.6) + ' Q ' + (x - 5.4) + ' ' + (y + 4.2) + ' ' + (x - 6.4) + ' ' + y + ' Q ' + (x - 5.4) + ' ' + (y - 4.2) + ' ' + (x + 3.2) + ' ' + (y - 4.6) + ' Z';
+      return 'M ' + (x + flat) + ' ' + (y - half) + ' L ' + (x + flat) + ' ' + (y + half) + ' Q ' + (x - shoulder) + ' ' + (y + half) + ' ' + (x - tip) + ' ' + y + ' Q ' + (x - shoulder) + ' ' + (y - half) + ' ' + (x + flat) + ' ' + (y - half) + ' Z';
     }
-    return 'M ' + (x - 4.6) + ' ' + (y - 3.2) + ' L ' + (x + 4.6) + ' ' + (y - 3.2) + ' Q ' + (x + 4.2) + ' ' + (y + 5.4) + ' ' + x + ' ' + (y + 6.4) + ' Q ' + (x - 4.2) + ' ' + (y + 5.4) + ' ' + (x - 4.6) + ' ' + (y - 3.2) + ' Z';
+    return 'M ' + (x - half) + ' ' + (y - flat) + ' L ' + (x + half) + ' ' + (y - flat) + ' Q ' + (x + half) + ' ' + (y + shoulder) + ' ' + x + ' ' + (y + tip) + ' Q ' + (x - half) + ' ' + (y + shoulder) + ' ' + (x - half) + ' ' + (y - flat) + ' Z';
   }
 
-  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId) {
-    var lights = roomWallLightPoints(cells, unitW, unitH);
+  function renderRoomWallLights(path, cells, unitW, unitH, presenceValue, clipId, doorSegments) {
+    var lights = roomWallLightPoints(cells, unitW, unitH, doorSegments);
     if (!lights.length) return '';
     var radius = roomLampLightRadius(unitW, unitH);
     var presenceStyle = ' style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '"';
@@ -2113,7 +2101,7 @@
       return '<circle class="desk-map-room-light-gradient" fill="url(#' + roomLightGradientId(path, index) + ')" clip-path="url(#' + clipId + ')" cx="' + light.x + '" cy="' + light.y + '" r="' + radius + '"></circle>';
     }).join('') + '</g>';
     var visibleLamps = '<g class="desk-map-wall-lights" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presenceValue)) + '">' + lights.map(function (light) {
-      return '<path class="desk-map-wall-light" d="' + wallSconcePath(light) + '"></path>';
+      return '<path class="desk-map-wall-light" data-desk-wall-light-side="' + escapeHtml(light.side) + '" data-desk-wall-light-x="' + escapeHtml(light.x) + '" data-desk-wall-light-y="' + escapeHtml(light.y) + '" d="' + wallSconcePath(light) + '"></path>';
     }).join('') + '</g>';
     return floorLight + visibleLamps;
   }
@@ -2549,7 +2537,7 @@
       var overlayW = w + overlayPad * 2;
       var overlayH = h + overlayPad * 2;
       var contour = roomFootprintPath(roomCell, footprint, unitW, unitH, path, roomIsOutdoor(room), buildingOccupied, roomDoorSegments);
-      var lightGradients = roomIsOutdoor(room) ? '' : renderRoomLightGradientDefs(path, footprint, unitW, unitH);
+      var lightGradients = roomIsOutdoor(room) ? '' : renderRoomLightGradientDefs(path, footprint, unitW, unitH, roomDoorSegments);
       return '<clipPath id="' + roomClipId(path) + '"><path d="' + contour + '"></path></clipPath>' + lightGradients;
     }).join('');
     var roomParts = renderRooms.map(function (room) {
@@ -2596,7 +2584,7 @@
       var presenceGlow = isOutdoor
         ? '<rect class="desk-map-room-presence is-outdoor" data-desk-room-presence="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>'
         : '';
-      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path)) : '';
+      var wallLights = !isOutdoor ? renderRoomWallLights(path, footprint, unitW, unitH, presence[path], roomClipId(path), roomDoorSegments) : '';
       var titleNode = state.mapRenameRoom !== null && state.mapRenameRoom === path
         ? '<foreignObject x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"><form xmlns="http://www.w3.org/1999/xhtml" class="desk-map-rename-form" data-desk-form="rename-room-inline"><input type="hidden" name="room" value="' + escapeHtml(path) + '"><input class="desk-map-rename-input" name="room_title" value="' + escapeHtml(state.mapRenameValue || title) + '" maxlength="96" required></form></foreignObject>'
         : '<g class="desk-map-room-title" data-desk-room-title="' + escapeHtml(path) + '" tabindex="0">' +

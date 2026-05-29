@@ -7,10 +7,10 @@ title: Desk
   document.body.classList.add('desk-page-body');
 </script>
 <link rel="icon" type="image/svg+xml" href="/static/icons/desk-favicon.svg?v=20260529-desk-favicon1">
-<link rel="stylesheet" href="/static/desk-page.css?v=20260529-map-buttons1">
+<link rel="stylesheet" href="/static/desk-page.css?v=20260529-lamp-sconces1">
 
 <section id="desk-page-root" class="desk-shell" aria-live="polite">
   <div class="desk-loading" aria-hidden="true"></div>
 </section>
 
-<script defer src="/static/desk-page.js?v=20260529-map-buttons1"></script>
+<script defer src="/static/desk-page.js?v=20260529-lamp-sconces1"></script>
