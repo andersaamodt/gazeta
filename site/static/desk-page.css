@@ -1457,8 +1457,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-room-dim.is-outdoor {
-  fill: rgba(43, 50, 35, 0.58);
-  opacity: 0;
+  fill: rgba(44, 51, 31, 0.46);
+  opacity: calc(0.42 - var(--presence) * 0.32);
 }
 
 .desk-map-room-presence {
@@ -1471,7 +1471,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-presence.is-outdoor {
   fill: url(#desk-map-presence-glow-outdoor);
-  opacity: 0;
+  opacity: calc(var(--presence) * 0.28);
 }
 
 .desk-map-room-light-gradients {
