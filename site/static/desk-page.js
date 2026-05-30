@@ -64,8 +64,8 @@
     composeDirty: false,
     composeSaving: false,
     composeSavedPulse: false,
-    presence: {},
-    presenceTick: Date.now(),
+    presence: null,
+    presenceTick: 0,
     flashlightStrength: flashlightStrengthFromStorage(),
     greenbeltTone: greenbeltToneFromStorage(),
     inFlight: 0,
@@ -826,7 +826,7 @@
     var current = Number(now || Date.now());
     var elapsed = Math.max(0, Math.min(5 * 60 * 1000, current - (state.presenceTick || current)));
     var strength = flashlightStep();
-    var rooms = Object.assign({}, state.presence || readPresence());
+    var rooms = Object.assign({}, readPresence(), state.presence || {});
     var currentRoom = String(state.currentRoom || '');
     var roomKeys = Object.keys(rooms);
     roomKeys.forEach(function (room) {
@@ -879,7 +879,7 @@
     if (presenceTimer) {
       return;
     }
-    state.presence = readPresence();
+    state.presence = Object.assign({}, readPresence(), state.presence || {});
     state.presenceTick = Date.now();
     presenceTimer = window.setInterval(applyPresenceToMap, 1500);
   }
