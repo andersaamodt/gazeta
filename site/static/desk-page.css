@@ -2665,20 +2665,26 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-notebook-vote-controls {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 1.05rem minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 0.04rem;
+  justify-content: start;
+  column-gap: 0.05rem;
   width: var(--desk-notebook-margin);
   min-width: 0;
   line-height: 1;
 }
 
 .desk-notebook-votes {
+  display: block;
+  min-width: 0;
   color: #53648a;
   font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.88rem;
   line-height: 1;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .desk-notebook-vote-btn {
@@ -3560,20 +3566,26 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-notebook-vote-controls {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 1.05rem minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 0.04rem;
+  justify-content: start;
+  column-gap: 0.05rem;
   width: var(--desk-notebook-margin);
   min-width: 0;
   line-height: 1;
 }
 
 .desk-notebook-votes {
+  display: block;
+  min-width: 0;
   color: #53648a;
   font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 0.88rem;
   line-height: 1;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .desk-notebook-vote-btn {
