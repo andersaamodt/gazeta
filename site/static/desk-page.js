@@ -1286,12 +1286,15 @@
     }
     var menuButton = document.getElementById('nav-menu-btn');
     var settingsButton = document.getElementById('desk-settings-btn');
-    if (menuButton && !menuButton.querySelector('.desk-user-menu-dots-icon')) {
+    if (menuButton) {
       menuButton.innerHTML = userMenuDotsIcon();
     }
     if (!settingsButton && menuButton) {
       menuButton.insertAdjacentHTML('beforebegin', '<button class="nav-menu-btn desk-settings-menu-btn" id="desk-settings-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Desk settings" title="Desk settings" data-desk-settings-toggle>' + settingsGearIcon() + '</button>');
       settingsButton = document.getElementById('desk-settings-btn');
+    }
+    if (settingsButton) {
+      settingsButton.innerHTML = settingsGearIcon();
     }
     var settingsPanel = document.getElementById('desk-settings-panel');
     if (!settingsPanel) {
@@ -2646,12 +2649,16 @@
     return 'M ' + x + ' ' + y + ' H ' + (x + w) + ' V ' + (y + h) + ' H ' + x + ' Z';
   }
 
+  function isContainedSubdivisionCell(roomCell) {
+    return Boolean(roomCell && Object.prototype.hasOwnProperty.call(roomCell, 'containedIn'));
+  }
+
   function isContainedRoomCell(roomCell) {
-    return Boolean(roomCell && (Object.prototype.hasOwnProperty.call(roomCell, 'containedIn') || roomCell.containedSelf));
+    return Boolean(roomCell && (isContainedSubdivisionCell(roomCell) || roomCell.containedSelf));
   }
 
   function roomFootprintPath(roomCell, footprint, unitW, unitH, path, isOutdoor, buildingOccupied, roomDoorSegments) {
-    if (isContainedRoomCell(roomCell)) {
+    if (isContainedSubdivisionCell(roomCell)) {
       return containedRoomPath(roomCell, unitW, unitH);
     }
     return isOutdoor
@@ -4225,9 +4232,13 @@
     var completed = String(task.completed_at || '') ? ' is-complete' : '';
     var forgotten = String(task.status || '') === 'forgotten' ? ' is-forgotten' : '';
     var status = String(task.status || 'open');
+    var canVoteNow = task.can_vote_now !== false;
+    var voteButtonClass = 'desk-notebook-vote-btn' + (canVoteNow ? '' : ' is-voted');
+    var voteTitle = canVoteNow ? 'Upvote' : 'Upvoted';
+    var voteDisabled = canVoteNow ? '' : ' disabled aria-disabled="true"';
     return '<li class="desk-task desk-notebook-task' + completed + forgotten + '" data-task-id="' + escapeHtml(task.id || '') + '" draggable="' + (forgotten ? 'true' : 'false') + '" data-desk-task-drag="' + escapeHtml(task.id || '') + '" data-task-status="' + escapeHtml(task.status || 'open') + '">' +
       '<span class="desk-notebook-vote-controls" aria-label="Task votes">' +
-      '<button type="button" class="desk-notebook-vote-btn" title="Upvote" aria-label="Upvote" data-desk-task-action="vote" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '"><svg class="desk-notebook-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z" fill="currentColor"></path></svg></button>' +
+      '<button type="button" class="' + voteButtonClass + '" title="' + voteTitle + '" aria-label="' + voteTitle + '" data-desk-task-action="vote" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '"' + voteDisabled + '><svg class="desk-notebook-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z" fill="currentColor"></path></svg></button>' +
       '<span class="desk-notebook-votes">' + escapeHtml(task.upvotes || 0) + '</span>' +
       '</span>' +
       '<button type="button" class="desk-notebook-check" title="Done" aria-label="Done" draggable="' + (status === 'open' ? 'true' : 'false') + '" data-desk-task-drag-handle="' + escapeHtml(task.id || '') + '" data-desk-task-action="complete" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '" data-task-status="' + escapeHtml(status) + '"><svg class="desk-notebook-check-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path class="desk-notebook-check-box" d="M6.2 6.9c4.8-.8 10.8-.7 19.1-.3 1.1 5.9 1 12.3.2 18.6-6.1.8-12.1.8-18.7.2C5.9 19.1 5.7 12.7 6.2 6.9Z"></path><path class="desk-notebook-check-shadow" d="M8.2 8.1c4.2-.4 9.8-.3 15.4.1"></path></svg></button>' +
@@ -4878,6 +4889,9 @@
       state.taskMenuKey = '';
       state.suppressTodoAnimation = state.mode === 'todo';
       if (action === 'vote') {
+        if (taskAction.disabled || taskAction.getAttribute('aria-disabled') === 'true') {
+          return;
+        }
         var beforeVoteRects = captureNotebookTaskRects();
         var rollbackData = cloneDeskDataForRollback(state.data);
         var optimisticallyChanged = applyOptimisticDeskVote(taskRoom, taskId);

@@ -33,7 +33,7 @@
   --desk-notebook-margin: 2.6rem;
   --desk-notebook-writing-inset: 0.58rem;
   --desk-notebook-content-margin: calc(var(--desk-notebook-margin) + var(--desk-notebook-writing-inset));
-  --desk-notebook-right-margin: var(--desk-notebook-content-margin);
+  --desk-notebook-right-margin: var(--desk-notebook-margin);
 }
 
 html.desk-page-document,
@@ -499,9 +499,13 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-mode-dock {
   position: fixed;
-  inset: auto clamp(1rem, 2.2vw, 2.2rem) max(0.9rem, env(safe-area-inset-bottom)) clamp(1rem, 2.2vw, 2.2rem);
+  left: 50%;
+  right: auto;
+  bottom: max(0.9rem, env(safe-area-inset-bottom));
+  width: min(96rem, calc(100vw - clamp(1.6rem, 3.2vw, 3.6rem)));
   z-index: 70;
   height: 5.6rem;
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -2226,8 +2230,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   top: auto;
   right: auto;
   width: 100%;
-  height: clamp(25rem, calc((var(--todo-lines) + 3) * var(--desk-notebook-line)), min(46.7rem, 88%));
-  max-height: min(46.7rem, 88%);
+  height: clamp(25rem, calc((var(--todo-lines) + 3) * var(--desk-notebook-line)), calc(100% - clamp(1.4rem, 3vh, 2.4rem)));
+  max-height: calc(100% - clamp(1.4rem, 3vh, 2.4rem));
   min-height: 25rem;
   align-self: center;
   justify-self: end;
@@ -2371,6 +2375,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   font-weight: 400;
   line-height: var(--desk-notebook-line);
   min-height: var(--desk-notebook-line);
+  cursor: default;
 }
 
 .desk-room-name-title::before {
@@ -2714,6 +2719,19 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   background: transparent !important;
   box-shadow: none;
   outline: 0;
+}
+
+.desk-notebook-vote-btn.is-voted,
+.desk-notebook-vote-btn:disabled,
+.desk-notebook-vote-btn[aria-disabled="true"],
+.desk-notebook-vote-btn.is-voted:hover,
+.desk-notebook-vote-btn:disabled:hover,
+.desk-notebook-vote-btn[aria-disabled="true"]:hover,
+.desk-notebook-vote-btn.is-voted:focus-visible,
+.desk-notebook-vote-btn:disabled:focus-visible,
+.desk-notebook-vote-btn[aria-disabled="true"]:focus-visible {
+  color: var(--list-vote-up-color, #2f8a5c);
+  cursor: default;
 }
 
 .desk-notebook-vote-icon {
@@ -3615,6 +3633,19 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   background: transparent !important;
   box-shadow: none;
   outline: 0;
+}
+
+.desk-notebook-vote-btn.is-voted,
+.desk-notebook-vote-btn:disabled,
+.desk-notebook-vote-btn[aria-disabled="true"],
+.desk-notebook-vote-btn.is-voted:hover,
+.desk-notebook-vote-btn:disabled:hover,
+.desk-notebook-vote-btn[aria-disabled="true"]:hover,
+.desk-notebook-vote-btn.is-voted:focus-visible,
+.desk-notebook-vote-btn:disabled:focus-visible,
+.desk-notebook-vote-btn[aria-disabled="true"]:focus-visible {
+  color: var(--list-vote-up-color, #2f8a5c);
+  cursor: default;
 }
 
 .desk-notebook-vote-icon {
