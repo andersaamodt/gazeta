@@ -277,6 +277,29 @@ class DeskStore:
                 return legacy_path
         return path
 
+    def migrate_legacy_open_tasks(self, room_rel: str | None) -> None:
+        room = self.room_dir(room_rel)
+        legacy = self.legacy_open_tasks_dir(room_rel)
+        if not legacy.is_dir():
+            return
+        for old_path in sorted(legacy.iterdir(), key=lambda path: path.name.lower()):
+            if not old_path.is_file() or old_path.name.startswith(".") or old_path.suffix != ".txt":
+                continue
+            target_path = room / old_path.name
+            if target_path.exists():
+                stem = old_path.stem
+                suffix = old_path.suffix
+                for index in range(2, 1000):
+                    candidate = room / f"{stem}-{index}{suffix}"
+                    if not candidate.exists():
+                        target_path = candidate
+                        break
+            metadata = self.metadata(old_path)
+            os.rename(old_path, target_path)
+            self.move_sidecar(old_path, target_path)
+            if metadata:
+                self.set_metadata(target_path, metadata)
+
     def meta_path(self, task_path: Path) -> Path:
         return task_path.parent / ".meta" / f"{task_path.name}.json"
 
@@ -553,6 +576,8 @@ class DeskStore:
         return results
 
     def task_files(self, room_rel: str | None, status: str = "open") -> list[Path]:
+        if status == "open":
+            self.migrate_legacy_open_tasks(room_rel)
         directory = self.tasks_dir(room_rel, status)
         paths = []
         if directory.is_dir():
