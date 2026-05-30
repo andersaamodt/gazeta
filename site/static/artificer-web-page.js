@@ -16,6 +16,16 @@
     root.innerHTML = '<div class="artificer-web-login-gate"><button type="button" class="artificer-web-login-btn" data-artificer-login>Login</button></div>';
   }
 
+  function isAuthFailure(state) {
+    const code = state && state.code ? String(state.code) : '';
+    const message = state && state.error ? String(state.error) : '';
+    return code === 'auth_required' ||
+      code === 'admin_nostr_required' ||
+      code === 'owner_required' ||
+      code === 'nostr_key_required' ||
+      /\bsign in\b/i.test(message);
+  }
+
   function storageGet(key) {
     try {
       return localStorage.getItem(key);
@@ -108,8 +118,7 @@
       .then((response) => response.json())
       .then((state) => {
         if (!state || state.success !== true) {
-          const code = state && state.code ? String(state.code) : '';
-          if (code === 'auth_required' || code === 'admin_nostr_required' || code === 'owner_required' || code === 'nostr_key_required') {
+          if (isAuthFailure(state)) {
             showLoginGate();
           } else {
             showError(state && state.error ? state.error : 'Artificer Web could not authenticate.');
