@@ -2716,42 +2716,114 @@
     return '<g class="desk-map-door desk-map-entrance-door"><path class="desk-map-door-gap" d="M ' + (x - opening) + ' ' + y + ' H ' + (x + opening) + '"></path><path class="desk-map-door-leaf" d="M ' + (x - 3) + ' ' + y + ' L ' + (x - opening) + ' ' + (y + leaf) + '"></path><path class="desk-map-door-leaf" d="M ' + (x + 3) + ' ' + y + ' L ' + (x + opening) + ' ' + (y + leaf) + '"></path><path class="desk-map-door-swing" d="M ' + (x - opening) + ' ' + (y + leaf) + ' Q ' + (x - opening) + ' ' + y + ' ' + x + ' ' + y + '"></path><path class="desk-map-door-swing" d="M ' + (x + opening) + ' ' + (y + leaf) + ' Q ' + (x + opening) + ' ' + y + ' ' + x + ' ' + y + '"></path></g>';
   }
 
-  function secretDoorPoint(room, target, unitW, unitH) {
-    var centerX = room.x * unitW + (room.w || 1) * unitW / 2;
-    var centerY = room.y * unitH + (room.h || 1) * unitH / 2;
-    var targetX = target.x * unitW + (target.w || 1) * unitW / 2;
-    var targetY = target.y * unitH + (target.h || 1) * unitH / 2;
-    var dx = targetX - centerX;
-    var dy = targetY - centerY;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      return {
-        x: centerX + (dx >= 0 ? (room.w || 1) * unitW / 2 : -(room.w || 1) * unitW / 2),
-        y: centerY,
-        side: dx >= 0 ? 'east' : 'west'
-      };
-    }
+  function doorSlotKey(point) {
+    return Math.round(Number(point.x || 0) * 1000) + ',' + Math.round(Number(point.y || 0) * 1000);
+  }
+
+  function rectCenter(rect) {
     return {
-      x: centerX,
-      y: centerY + (dy >= 0 ? (room.h || 1) * unitH / 2 : -(room.h || 1) * unitH / 2),
-      side: dy >= 0 ? 'south' : 'north'
+      x: Number(rect.x || 0) + (Number.isFinite(rect.w) ? rect.w : 1) / 2,
+      y: Number(rect.y || 0) + (Number.isFinite(rect.h) ? rect.h : 1) / 2
     };
   }
 
-  function renderSecretPassageParts(passage, layout, unitW, unitH) {
+  function secretDoorCandidates(roomPath, layout, footprints) {
+    var room = layout[String(roomPath || '')];
+    var cells = footprints[String(roomPath || '')] || (room ? [room] : []);
+    if (!room || !cells.length) return [];
+    var local = {};
+    cells.forEach(function (cell) {
+      var cellW = Math.max(1, Number.isFinite(cell.w) ? cell.w : 1);
+      var cellH = Math.max(1, Number.isFinite(cell.h) ? cell.h : 1);
+      for (var dx = 0; dx < cellW; dx += 1) {
+        for (var dy = 0; dy < cellH; dy += 1) {
+          local[(Number(cell.x) + dx) + ',' + (Number(cell.y) + dy)] = true;
+        }
+      }
+    });
+    var candidates = [];
+    function addSegment(side, from, to, outwardX, outwardY) {
+      var horizontal = side === 'north' || side === 'south';
+      candidates.push({
+        x: horizontal ? (from.x + to.x) / 2 : from.x,
+        y: horizontal ? from.y : (from.y + to.y) / 2,
+        side: side,
+        outwardX: outwardX,
+        outwardY: outwardY,
+        length: horizontal ? Math.abs(to.x - from.x) : Math.abs(to.y - from.y)
+      });
+    }
+    cells.forEach(function (cell) {
+      var cellW = Math.max(1, Number.isFinite(cell.w) ? cell.w : 1);
+      var cellH = Math.max(1, Number.isFinite(cell.h) ? cell.h : 1);
+      for (var x = cell.x; x < cell.x + cellW; x += 1) {
+        if (!local[x + ',' + (cell.y - 1)]) addSegment('north', { x: x, y: cell.y }, { x: x + 1, y: cell.y }, 0, -1);
+        if (!local[x + ',' + (cell.y + cellH)]) addSegment('south', { x: x + 1, y: cell.y + cellH }, { x: x, y: cell.y + cellH }, 0, 1);
+      }
+      for (var y = cell.y; y < cell.y + cellH; y += 1) {
+        if (!local[(cell.x - 1) + ',' + y]) addSegment('west', { x: cell.x, y: y + 1 }, { x: cell.x, y: y }, -1, 0);
+        if (!local[(cell.x + cellW) + ',' + y]) addSegment('east', { x: cell.x + cellW, y: y }, { x: cell.x + cellW, y: y + 1 }, 1, 0);
+      }
+    });
+    return candidates;
+  }
+
+  function chooseSecretDoorPoint(roomPath, targetPath, layout, footprints, usedDoorSlots) {
+    var room = layout[String(roomPath || '')];
+    var target = layout[String(targetPath || '')];
+    if (!room || !target) return null;
+    var roomCenter = rectCenter(room);
+    var targetCenter = rectCenter(target);
+    var targetDx = targetCenter.x - roomCenter.x;
+    var targetDy = targetCenter.y - roomCenter.y;
+    var dominantSide = Math.abs(targetDx) >= Math.abs(targetDy)
+      ? (targetDx >= 0 ? 'east' : 'west')
+      : (targetDy >= 0 ? 'south' : 'north');
+    var candidates = secretDoorCandidates(roomPath, layout, footprints).filter(function (candidate) {
+      return !usedDoorSlots[doorSlotKey(candidate)];
+    });
+    if (!candidates.length) {
+      candidates = secretDoorCandidates(roomPath, layout, footprints);
+    }
+    candidates.sort(function (left, right) {
+      function score(candidate) {
+        var dx = targetCenter.x - candidate.x;
+        var dy = targetCenter.y - candidate.y;
+        var outwardAlignment = -(candidate.outwardX * targetDx + candidate.outwardY * targetDy) * 32;
+        var sidePenalty = candidate.side === dominantSide ? 0 : 280;
+        var distance = Math.sqrt(dx * dx + dy * dy) * 12;
+        var shortSegmentPenalty = candidate.length < 0.99 ? 60 : 0;
+        return sidePenalty + distance + outwardAlignment + shortSegmentPenalty;
+      }
+      return score(left) - score(right);
+    });
+    var chosen = candidates[0];
+    if (chosen) {
+      usedDoorSlots[doorSlotKey(chosen)] = true;
+    }
+    return chosen || null;
+  }
+
+  function renderSecretPassageParts(passage, layout, footprints, unitW, unitH, usedDoorSlots) {
     var from = layout[String(passage.from || '')];
     var to = layout[String(passage.to || '')];
     if (!from || !to) return { line: '', doors: '' };
-    var first = secretDoorPoint(from, to, unitW, unitH);
-    var second = secretDoorPoint(to, from, unitW, unitH);
-    var x1 = first.x;
-    var y1 = first.y;
-    var x2 = second.x;
-    var y2 = second.y;
+    var first = chooseSecretDoorPoint(passage.from, passage.to, layout, footprints, usedDoorSlots);
+    var second = chooseSecretDoorPoint(passage.to, passage.from, layout, footprints, usedDoorSlots);
+    if (!first || !second) return { line: '', doors: '', segments: [] };
+    var x1 = first.x * unitW;
+    var y1 = first.y * unitH;
+    var x2 = second.x * unitW;
+    var y2 = second.y * unitH;
     var cx = (x1 + x2) / 2;
     var cy = (y1 + y2) / 2 - 42;
     return {
       line: '<path class="desk-map-secret-passage" d="M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '"></path>',
-      doors: renderDoorGlyph(first.x, first.y, first.side, true, false) + renderDoorGlyph(second.x, second.y, second.side, true, false)
+      doors: renderDoorGlyph(x1, y1, first.side, true, false) + renderDoorGlyph(x2, y2, second.side, true, false),
+      segments: [
+        { room: String(passage.from || ''), x: first.x, y: first.y },
+        { room: String(passage.to || ''), x: second.x, y: second.y }
+      ]
     };
   }
 
@@ -2856,14 +2928,39 @@
     });
     var mapGreen = greenbeltColor();
     var greenbelt = renderGreenbelt(greenbeltCells, greenbeltOccupied, unitW, unitH, mapGreen);
+    var usedDoorSlots = {};
+    plan.doors.forEach(function (door) {
+      if (Number.isFinite(door.x) && Number.isFinite(door.y)) {
+        usedDoorSlots[doorSlotKey(door)] = true;
+      }
+    });
+    var entranceSegment = rootEntranceDoorSegment(layout, plan.occupied);
+    if (entranceSegment) {
+      usedDoorSlots[doorSlotKey(entranceSegment)] = true;
+    }
+    var secretPassageDoorSegmentsByRoom = {};
+    var passageParts = ((data && data.secret_passages) || []).map(function (passage) {
+      var part = renderSecretPassageParts(passage, layout, plan.footprints, unitW, unitH, usedDoorSlots);
+      (part.segments || []).forEach(function (segment) {
+        var roomPath = String(segment.room || '');
+        if (!secretPassageDoorSegmentsByRoom[roomPath]) {
+          secretPassageDoorSegmentsByRoom[roomPath] = [];
+        }
+        secretPassageDoorSegmentsByRoom[roomPath].push({ x: Number(segment.x), y: Number(segment.y) });
+      });
+      return part;
+    });
     function doorSegmentsForRoom(path) {
       var segments = plan.doors.filter(function (door) {
         return String(door.from || '') === path || String(door.to || '') === path;
       }).map(function (door) {
         return { x: Number(door.x), y: Number(door.y) };
       });
+      (secretPassageDoorSegmentsByRoom[String(path || '')] || []).forEach(function (segment) {
+        segments.push(segment);
+      });
       if (path === '') {
-        var entrance = rootEntranceDoorSegment(layout, plan.occupied);
+        var entrance = entranceSegment;
         if (entrance) segments.push(entrance);
       }
       return segments;
@@ -2961,9 +3058,6 @@
       return renderDoor(door, layout, unitW, unitH, presence, roomsByPath);
     }).join('');
     var entranceDoorShape = renderRootEntranceDoor(layout, plan.occupied, unitW, unitH);
-    var passageParts = ((data && data.secret_passages) || []).map(function (passage) {
-      return renderSecretPassageParts(passage, layout, unitW, unitH);
-    });
     var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
     var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     var propsPanel = state.mapPropsOpen
