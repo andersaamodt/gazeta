@@ -35,6 +35,7 @@
     secretPassageSource: null,
     lastEnteredDoor: null,
     lastMapRoomTravel: null,
+    navigationCursorRoom: '',
     createRoomOpen: false,
     todoAddOpen: false,
     composePaper: 'printer',
@@ -78,6 +79,8 @@
   var suppressRoomClickTimer = null;
   var messageTimer = null;
   var composeAutosaveTimer = null;
+  var navigationCursorTimer = null;
+  var mapZoomAnimationMs = 320;
   var composeForceSaveTimer = null;
   var typewriterQueue = [];
   var typewriterTimer = null;
@@ -426,7 +429,7 @@
       window.cancelAnimationFrame(svg._deskMapZoomFrame);
     }
     var startedAt = window.performance && window.performance.now ? window.performance.now() : Date.now();
-    var duration = 320;
+    var duration = mapZoomAnimationMs;
     function step(now) {
       var elapsed = now - startedAt;
       var progress = Math.min(1, Math.max(0, elapsed / duration));
@@ -446,6 +449,39 @@
       }
     }
     svg._deskMapZoomFrame = window.requestAnimationFrame(step);
+  }
+
+  function startNavigationCursorHold(roomPath) {
+    state.navigationCursorRoom = String(roomPath || '');
+    if (navigationCursorTimer) {
+      window.clearTimeout(navigationCursorTimer);
+      navigationCursorTimer = null;
+    }
+  }
+
+  function clearNavigationCursorHold(roomPath) {
+    if (roomPath == null || state.navigationCursorRoom === String(roomPath || '')) {
+      state.navigationCursorRoom = '';
+      if (navigationCursorTimer) {
+        window.clearTimeout(navigationCursorTimer);
+        navigationCursorTimer = null;
+      }
+      syncCurrentRoomInMapDom(state.currentRoom);
+    }
+  }
+
+  function finishNavigationCursorHoldAfterMapAnimation(roomPath) {
+    var heldRoom = String(roomPath || '');
+    if (!heldRoom || state.navigationCursorRoom !== heldRoom) {
+      return;
+    }
+    if (navigationCursorTimer) {
+      window.clearTimeout(navigationCursorTimer);
+    }
+    navigationCursorTimer = window.setTimeout(function () {
+      navigationCursorTimer = null;
+      clearNavigationCursorHold(heldRoom);
+    }, mapZoomAnimationMs + 40);
   }
 
   function applyMapZoomToDom() {
@@ -571,12 +607,19 @@
     var svg = root.querySelector('[data-desk-map-svg]');
     var fromViewBox = state.pendingMapViewBoxFrom;
     state.pendingMapViewBoxFrom = null;
-    if (!svg || state.mapZoomMode !== 'room') return;
+    if (!svg || state.mapZoomMode !== 'room') {
+      finishNavigationCursorHoldAfterMapAnimation(state.navigationCursorRoom);
+      return;
+    }
     var targetViewBox = parseViewBoxText(svg.getAttribute('data-desk-room-viewbox'));
-    if (!targetViewBox) return;
+    if (!targetViewBox) {
+      finishNavigationCursorHoldAfterMapAnimation(state.navigationCursorRoom);
+      return;
+    }
     svg.setAttribute('viewBox', formatViewBox(fromViewBox));
     window.requestAnimationFrame(function () {
       animateMapViewBox(svg, fromViewBox, targetViewBox);
+      finishNavigationCursorHoldAfterMapAnimation(state.navigationCursorRoom);
     });
   }
 
@@ -618,6 +661,7 @@
     root.querySelectorAll('[data-desk-room-link]').forEach(function (node) {
       var isCurrent = node.getAttribute('data-desk-room-link') === currentRoom;
       node.classList.toggle('is-current', isCurrent);
+      node.classList.toggle('is-navigation-pending', isCurrent && state.navigationCursorRoom === currentRoom);
       var roomGroup = node.querySelector('.desk-map-room');
       if (roomGroup) {
         roomGroup.classList.toggle('is-current', isCurrent);
@@ -3408,6 +3452,7 @@
       at: Date.now()
     };
     fadeRoomHoverForTravel(clickedRoom);
+    startNavigationCursorHold(clickedRoom);
     state.mapZoomMode = 'room';
     state.mapPanX = 0;
     state.mapPanY = 0;
@@ -4289,6 +4334,9 @@
       syncDeskMenuSettings();
       applyDeskTooltips();
       applyPendingMapRoomPan();
+      if (state.navigationCursorRoom && !navigationCursorTimer) {
+        finishNavigationCursorHoldAfterMapAnimation(state.navigationCursorRoom);
+      }
       markPageReady();
     } catch (err) {
       root.innerHTML = renderChromeControls(data || {}) +
