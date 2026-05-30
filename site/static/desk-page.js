@@ -928,7 +928,7 @@
     if (clean !== state.currentRoom) {
       dimPresenceForRoom(state.currentRoom);
       applyPresenceValues(state.presence);
-      if (state.mapZoomMode === 'room') {
+      if (state.mapZoomMode === 'room' && !(options && options.previewedMapNavigation)) {
         state.pendingMapViewBoxFrom = currentMapViewBox();
       }
       if (state.mode === 'map' || state.mode === 'todo' || state.mode === 'compose') {
@@ -3495,7 +3495,7 @@
     state.mapPanX = 0;
     state.mapPanY = 0;
     previewMapRoomNavigation(clickedRoom);
-    setRoom(clickedRoom, false, { preserveOpenPaper: true });
+    setRoom(clickedRoom, false, { preserveOpenPaper: true, previewedMapNavigation: true });
     return true;
   }
 

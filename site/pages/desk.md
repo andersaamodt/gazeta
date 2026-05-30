@@ -15,4 +15,4 @@ title: Desk
   <div class="desk-loading" aria-hidden="true"></div>
 </section>
 
-<script defer src="/static/desk-page.js?v=20260530-todo-nav-polish1"></script>
+<script defer src="/static/desk-page.js?v=20260530-desk-single-room-zoom1"></script>
