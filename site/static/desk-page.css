@@ -2167,6 +2167,10 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   pointer-events: all;
 }
 
+.desk-map-room-link:not(.is-current) .desk-map-room-title {
+  cursor: pointer;
+}
+
 .desk-map-room-title-hit {
   fill: rgba(255, 255, 255, 0.001);
   stroke: none;

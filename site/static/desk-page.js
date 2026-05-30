@@ -1036,7 +1036,8 @@
       ['[data-desk-clear-search]', 'Clear search results'],
       ['[data-desk-threshold]', 'Minimum upvotes for tasks surfaced on the map'],
       ['[data-desk-flashlight-strength]', 'How long room light lingers after activity'],
-      ['.desk-map-room-title', 'Double-click to rename this room'],
+      ['.desk-map-room-link:not(.is-current) .desk-map-room-title', 'Go to room'],
+      ['.desk-map-room-link.is-current .desk-map-room-title', 'Double-click to rename this room'],
       ['.desk-map-rename-input', 'Edit room name'],
       ['.desk-todo-add-textarea', 'Type a task and press Enter'],
       ['.desk-compose-textarea', 'Write in the composition book'],
@@ -4574,7 +4575,8 @@
     var roomLink = event.target.closest('[data-desk-room-link]');
     if (roomLink) {
       event.preventDefault();
-      if (event.target.closest('.desk-map-room-title')) {
+      var clickedTitle = event.target.closest('.desk-map-room-title');
+      if (clickedTitle && (clickedTitle.getAttribute('data-desk-room-title') || '') === state.currentRoom) {
         return;
       }
       activateMapRoom(roomLink.getAttribute('data-desk-room-link') || '');
@@ -4797,6 +4799,10 @@
     }
     event.preventDefault();
     var roomPath = roomLink.getAttribute('data-desk-room-link') || '';
+    if (roomPath !== state.currentRoom) {
+      activateMapRoom(roomPath);
+      return;
+    }
     beginMapRoomRename(roomPath);
   });
 
