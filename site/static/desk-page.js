@@ -1487,6 +1487,47 @@
       return paths;
     }
 
+    function attachmentVectorAwayFromParent(parentPath) {
+      var room = layout[parentPath];
+      if (!room || !Object.prototype.hasOwnProperty.call(room, 'attachedTo')) {
+        return { dx: 0, dy: 0 };
+      }
+      var attachedTo = String(room.attachedTo || '');
+      var parent = layout[attachedTo];
+      if (!parent) {
+        return { dx: 0, dy: 0 };
+      }
+      var roomX = Number.isFinite(room.originX) ? room.originX : room.x + (room.w - 1) / 2;
+      var roomY = Number.isFinite(room.originY) ? room.originY : room.y + (room.h - 1) / 2;
+      var parentX = Number.isFinite(parent.originX) ? parent.originX : parent.x + (parent.w - 1) / 2;
+      var parentY = Number.isFinite(parent.originY) ? parent.originY : parent.y + (parent.h - 1) / 2;
+      var dx = roomX - parentX;
+      var dy = roomY - parentY;
+      if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0.01) {
+        return { dx: dx < 0 ? -1 : 1, dy: 0 };
+      }
+      if (Math.abs(dy) > 0.01) {
+        return { dx: 0, dy: dy < 0 ? -1 : 1 };
+      }
+      return { dx: 0, dy: 0 };
+    }
+
+    function containedRectExpansionPenalty(rect, parentPath, anchorX, anchorY) {
+      var away = attachmentVectorAwayFromParent(parentPath);
+      var penalty = 0;
+      if (away.dx < 0) {
+        penalty += Math.abs(rect.x - (anchorX - rect.w + 1)) * 680;
+      } else if (away.dx > 0) {
+        penalty += Math.abs(rect.x - anchorX) * 680;
+      }
+      if (away.dy < 0) {
+        penalty += Math.abs(rect.y - (anchorY - rect.h + 1)) * 680;
+      } else if (away.dy > 0) {
+        penalty += Math.abs(rect.y - anchorY) * 680;
+      }
+      return penalty;
+    }
+
     function containedGridRect(parentPath, totalShares) {
       var parent = layout[parentPath] || layout[''];
       var target = Math.max(1, totalShares);
@@ -1504,16 +1545,24 @@
         allowedOwners[String(path || '')] = true;
       });
       var candidates = [];
-      for (var y = anchorY - rows + 1; y <= anchorY; y += 1) {
-        for (var x = anchorX - cols + 1; x <= anchorX; x += 1) {
+      var searchRadius = Math.max(4, Math.ceil(Math.sqrt(target)) + 2);
+      for (var y = anchorY - rows + 1 - searchRadius; y <= anchorY + searchRadius; y += 1) {
+        for (var x = anchorX - cols + 1 - searchRadius; x <= anchorX + searchRadius; x += 1) {
           var rect = { x: x, y: y, w: Math.max(1, cols), h: Math.max(1, rows) };
+          var includesAnchor = anchorX >= rect.x && anchorX < rect.x + rect.w && anchorY >= rect.y && anchorY < rect.y + rect.h;
           var collisions = rectCells(rect).reduce(function (total, cell) {
             var owner = occupied[cell.x + ',' + cell.y];
             return total + (owner != null && !allowedOwners[String(owner || '')] ? 1 : 0);
           }, 0);
           candidates.push({
             rect: rect,
-            score: collisions * 10000 + Math.abs(x - anchorX) * 4 + Math.abs(y - anchorY) * 3 + roomBalanceScore(x, y) * 0.02
+            collisions: collisions,
+            score: collisions * 100000
+              + (includesAnchor ? 0 : 18000 + (Math.abs(x - anchorX) + Math.abs(y - anchorY)) * 1200)
+              + containedRectExpansionPenalty(rect, parentPath, anchorX, anchorY)
+              + Math.abs(x - anchorX) * 4
+              + Math.abs(y - anchorY) * 3
+              + roomBalanceScore(x, y) * 0.02
           });
         }
       }
