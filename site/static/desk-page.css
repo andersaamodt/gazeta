@@ -2433,12 +2433,18 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   margin: 0 var(--desk-notebook-right-margin) 0 var(--desk-notebook-content-margin);
   padding-right: 0.15rem;
   color: #1e2a46;
+  -webkit-text-fill-color: #1e2a46;
   font-family: inherit;
   font-size: inherit;
   font-weight: 400;
   line-height: var(--desk-notebook-line);
   min-height: var(--desk-notebook-line);
   cursor: default;
+}
+
+.desk-stage[data-desk-stage-mode="todo"] .desk-room-name-title {
+  color: #1e2a46;
+  -webkit-text-fill-color: #1e2a46;
 }
 
 .desk-room-name-title::before {
