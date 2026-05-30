@@ -1577,6 +1577,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-room-outline.is-current {
   stroke: var(--room-color);
   stroke-width: 7.8;
+  stroke-dasharray: none;
+  stroke-linecap: round;
 }
 
 .desk-map-room-hover-outline.is-hovered {
