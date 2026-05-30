@@ -1287,6 +1287,7 @@
     var menuButton = document.getElementById('nav-menu-btn');
     var settingsButton = document.getElementById('desk-settings-btn');
     if (menuButton) {
+      menuButton.classList.add('desk-user-menu-btn');
       menuButton.innerHTML = userMenuDotsIcon();
     }
     if (!settingsButton && menuButton) {
@@ -1294,6 +1295,7 @@
       settingsButton = document.getElementById('desk-settings-btn');
     }
     if (settingsButton) {
+      settingsButton.classList.add('desk-settings-menu-btn');
       settingsButton.innerHTML = settingsGearIcon();
     }
     var settingsPanel = document.getElementById('desk-settings-panel');
@@ -1414,11 +1416,11 @@
     return '<div class="desk-topology-toggle' + extraClass + '" role="radiogroup" aria-label="Subroom type">' +
       '<label class="desk-topology-option' + (current === 'connected' ? ' is-selected' : '') + '">' +
       '<input type="radio" name="' + escapeHtml(name) + '" value="connected"' + (current === 'connected' ? ' checked' : '') + '>' +
-      '<span>Connected</span>' +
+      '<span>Connected room</span>' +
       '</label>' +
       '<label class="desk-topology-option' + (current === 'contained' ? ' is-selected' : '') + '">' +
       '<input type="radio" name="' + escapeHtml(name) + '" value="contained"' + (current === 'contained' ? ' checked' : '') + '>' +
-      '<span>Subroom</span>' +
+      '<span>Contained subdivision</span>' +
       '</label>' +
       '</div>';
   }

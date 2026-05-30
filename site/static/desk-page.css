@@ -33,7 +33,7 @@
   --desk-notebook-margin: 2.6rem;
   --desk-notebook-writing-inset: 0.58rem;
   --desk-notebook-content-margin: calc(var(--desk-notebook-margin) + var(--desk-notebook-writing-inset));
-  --desk-notebook-right-margin: var(--desk-notebook-margin);
+  --desk-notebook-right-margin: var(--desk-notebook-content-margin);
 }
 
 html.desk-page-document,
@@ -162,6 +162,13 @@ body:has(#desk-page-root) nav.site-nav .nav-menu-btn .desk-user-menu-dots-icon {
   width: 1.05rem;
   height: 1.05rem;
   fill: currentColor;
+}
+
+body.desk-page-body nav.site-nav .desk-settings-menu-btn > :not(.desk-settings-gear-icon),
+body:has(#desk-page-root) nav.site-nav .desk-settings-menu-btn > :not(.desk-settings-gear-icon),
+body.desk-page-body nav.site-nav .desk-user-menu-btn > :not(.desk-user-menu-dots-icon),
+body:has(#desk-page-root) nav.site-nav .desk-user-menu-btn > :not(.desk-user-menu-dots-icon) {
+  display: none !important;
 }
 
 .desk-settings-menu-btn {
@@ -547,7 +554,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-mode-map {
-  left: 0;
+  left: clamp(0.35rem, 0.8vw, 0.75rem);
   width: 5.2rem;
   height: 5.2rem;
   text-align: left;
@@ -657,7 +664,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-mode-todo {
-  right: 0;
+  right: clamp(0.35rem, 0.8vw, 0.75rem);
   display: grid;
   place-items: center;
   width: 4.05rem;
@@ -2087,7 +2094,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   background: #dcc17f;
   color: #5d4527;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
-  padding: 0.65rem 0.72rem 0.65rem;
+  padding: 0.55rem 0.6rem 0.55rem 3.2rem;
   transform-origin: top right;
   animation: desk-map-properties-open 180ms cubic-bezier(0.2, 0.82, 0.18, 1);
 }
@@ -2136,7 +2143,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-properties-title {
-  margin: 0 2.1rem 0.45rem 0;
+  margin: 0 2rem 0.45rem -2.6rem;
   padding-left: 0;
   color: #4f351a;
   font: 700 0.95rem/1.2 ui-serif, Georgia, "Times New Roman", serif;
@@ -2295,7 +2302,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   top: auto;
   right: auto;
   width: 100%;
-  height: clamp(25rem, calc((var(--todo-lines) + 3) * var(--desk-notebook-line)), calc(100% - clamp(1.4rem, 3vh, 2.4rem)));
+  height: clamp(25rem, calc((var(--todo-lines) + 3) * var(--desk-notebook-line)), min(46.7rem, 88%));
   max-height: calc(100% - clamp(1.4rem, 3vh, 2.4rem));
   min-height: 25rem;
   align-self: center;
@@ -2466,6 +2473,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   border-bottom: 0.08rem solid rgba(69, 110, 185, 0.74);
   text-decoration: none;
   vertical-align: top;
+  cursor: default;
 }
 
 .desk-todo-add {
@@ -2535,8 +2543,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-notebook-task {
+  position: relative;
   display: grid;
-  grid-template-columns: var(--desk-notebook-margin) var(--desk-notebook-line) minmax(0, 1fr) auto;
+  grid-template-columns: var(--desk-notebook-margin) var(--desk-notebook-line) minmax(0, 1fr);
   align-items: start;
   gap: var(--desk-notebook-writing-inset);
   min-width: 0;
@@ -2642,7 +2651,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-notebook-row-actions {
-  position: relative;
+  position: absolute;
+  top: 0;
+  right: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.14rem;
@@ -2650,6 +2661,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   min-height: var(--desk-notebook-line);
   justify-content: flex-end;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 140ms ease;
 }
 
@@ -2658,6 +2670,14 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-task.is-complete .desk-notebook-row-actions,
 .desk-notebook-task.is-forgotten .desk-notebook-row-actions {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.desk-notebook-task:hover .desk-notebook-title,
+.desk-notebook-task:focus-within .desk-notebook-title,
+.desk-notebook-task.is-complete .desk-notebook-title,
+.desk-notebook-task.is-forgotten .desk-notebook-title {
+  padding-right: 4.6rem;
 }
 
 .desk-notebook-row-icon,
@@ -2780,7 +2800,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   appearance: none;
   clip-path: polygon(50% 0, 100% 52%, 72% 52%, 72% 100%, 28% 100%, 28% 52%, 0 52%);
   transform: none;
-  transition: color 140ms ease;
+  -webkit-text-fill-color: currentColor;
+  transition: none !important;
+  animation: none !important;
 }
 
 .desk-notebook-vote-btn:hover,
@@ -2802,6 +2824,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-vote-btn:disabled:focus-visible,
 .desk-notebook-vote-btn[aria-disabled="true"]:focus-visible {
   color: var(--list-vote-up-color, #2f8a5c);
+  -webkit-text-fill-color: var(--list-vote-up-color, #2f8a5c);
   cursor: default;
 }
 
@@ -3524,8 +3547,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-task.desk-notebook-task {
+  position: relative;
   display: grid;
-  grid-template-columns: var(--desk-notebook-margin) var(--desk-notebook-line) minmax(0, 1fr) auto;
+  grid-template-columns: var(--desk-notebook-margin) var(--desk-notebook-line) minmax(0, 1fr);
   align-items: start;
   gap: var(--desk-notebook-writing-inset);
   min-width: 0;
@@ -3694,7 +3718,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   appearance: none;
   clip-path: polygon(50% 0, 100% 52%, 72% 52%, 72% 100%, 28% 100%, 28% 52%, 0 52%);
   transform: none;
-  transition: color 140ms ease;
+  -webkit-text-fill-color: currentColor;
+  transition: none !important;
+  animation: none !important;
 }
 
 .desk-notebook-vote-btn:hover,
@@ -3716,6 +3742,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-vote-btn:disabled:focus-visible,
 .desk-notebook-vote-btn[aria-disabled="true"]:focus-visible {
   color: var(--list-vote-up-color, #2f8a5c);
+  -webkit-text-fill-color: var(--list-vote-up-color, #2f8a5c);
   cursor: default;
 }
 
