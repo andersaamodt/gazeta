@@ -1408,6 +1408,21 @@
     return String(room && room.topology || '').trim().toLowerCase() === 'contained' ? 'contained' : 'connected';
   }
 
+  function topologyToggle(name, value, tone) {
+    var current = value === 'contained' ? 'contained' : 'connected';
+    var extraClass = tone === 'paper' ? ' is-paper' : ' is-dark';
+    return '<div class="desk-topology-toggle' + extraClass + '" role="radiogroup" aria-label="Subroom type">' +
+      '<label class="desk-topology-option' + (current === 'connected' ? ' is-selected' : '') + '">' +
+      '<input type="radio" name="' + escapeHtml(name) + '" value="connected"' + (current === 'connected' ? ' checked' : '') + '>' +
+      '<span>Connected</span>' +
+      '</label>' +
+      '<label class="desk-topology-option' + (current === 'contained' ? ' is-selected' : '') + '">' +
+      '<input type="radio" name="' + escapeHtml(name) + '" value="contained"' + (current === 'contained' ? ' checked' : '') + '>' +
+      '<span>Subroom</span>' +
+      '</label>' +
+      '</div>';
+  }
+
   function roomIsOutdoor(room) {
     return roomKind(room) === 'outdoor';
   }
@@ -3153,7 +3168,7 @@
     var passageShapes = passageParts.map(function (part) { return part.line; }).join('');
     var passageDoorShapes = passageParts.map(function (part) { return part.doors; }).join('');
     var propsPanel = state.mapPropsOpen
-      ? '<aside class="desk-map-properties" aria-label="Room properties"><button type="button" class="desk-map-properties-close" data-desk-map-props-close aria-label="Close room properties" title="Close room properties">×</button><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span><select class="desk-map-prop-select" name="room_topology"><option value="connected"' + (roomTopology(currentRoom) === 'connected' ? ' selected' : '') + '>Connected room</option><option value="contained"' + (roomTopology(currentRoom) === 'contained' ? ' selected' : '') + '>Contained subdivision</option></select></label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form>' + renderSecretPassageCollapseControl(currentRoom) + renderRoomDeleteControl(currentRoom) + '</aside>'
+      ? '<aside class="desk-map-properties" aria-label="Room properties"><button type="button" class="desk-map-properties-close" data-desk-map-props-close aria-label="Close room properties" title="Close room properties">×</button><h2 class="desk-map-properties-title">' + escapeHtml(currentRoom.title || 'Room') + '</h2><form class="desk-map-properties-form" data-desk-form="room-properties"><input type="hidden" name="room" value="' + escapeHtml(currentRoom.path || '') + '"><label><span>Kind</span><select class="desk-map-prop-select" name="room_kind"><option value="indoor"' + (roomKind(currentRoom) === 'indoor' ? ' selected' : '') + '>Indoor</option><option value="outdoor"' + (roomKind(currentRoom) === 'outdoor' ? ' selected' : '') + '>Outdoor</option></select></label><label><span>Subroom</span>' + topologyToggle('room_topology', roomTopology(currentRoom), 'paper') + '</label><label><span>Color</span><input class="desk-map-prop-color" type="color" name="room_color" value="' + escapeHtml(roomColor(currentRoom)) + '"></label><div class="desk-map-properties-actions"><button type="submit" class="desk-map-prop-save">Apply</button></div></form>' + renderSecretPassageCollapseControl(currentRoom) + renderRoomDeleteControl(currentRoom) + '</aside>'
       : '';
     var mapAspect = fullViewBox.w && fullViewBox.h ? (fullViewBox.w / fullViewBox.h).toFixed(5) : '1.33333';
     var viewBoxText = formatViewBox(mapViewBox);
@@ -3752,6 +3767,7 @@
       '<div class="desk-create-room-fields">' +
       '<label><span>Room name</span><input class="desk-input" name="room_title" placeholder="New room" aria-label="Room name" required></label>' +
       '<label><span>Connects from</span><select class="desk-select" name="room" aria-label="Connects from">' + roomImmediateOptionRows(data, current) + '</select></label>' +
+      '<label><span>Subroom</span>' + topologyToggle('room_topology', 'connected', 'dark') + '</label>' +
       '</div>' +
       '<button type="submit" class="desk-btn subtle">Create room</button>' +
       '</form>';
@@ -5591,7 +5607,8 @@
     if (type === 'create-room') {
       api('create-room', {
         room: formValue(form, 'room'),
-        room_title: formValue(form, 'room_title')
+        room_title: formValue(form, 'room_title'),
+        room_topology: formValue(form, 'room_topology')
       }).then(function (data) {
         if (data && data.created_room) {
           state.currentRoom = data.created_room.path || '';

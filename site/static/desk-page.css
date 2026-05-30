@@ -843,6 +843,68 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   width: 100%;
 }
 
+.desk-topology-toggle {
+  display: inline-grid;
+  grid-template-columns: repeat(2, max-content);
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.14rem;
+  border: 1px solid rgba(240, 213, 138, 0.28);
+  border-radius: 8px;
+  background: rgba(3, 20, 51, 0.36);
+}
+
+.desk-topology-toggle.is-paper {
+  border-color: rgba(117, 80, 44, 0.34);
+  background: rgba(117, 80, 44, 0.08);
+}
+
+.desk-topology-option {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  padding: 0 0.72rem;
+  border-radius: 6px;
+  color: rgba(255, 237, 179, 0.78);
+  font: 700 0.82rem/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.desk-topology-toggle.is-paper .desk-topology-option {
+  color: rgba(75, 52, 28, 0.72);
+}
+
+.desk-topology-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.desk-topology-option.is-selected,
+.desk-topology-option:has(input:checked) {
+  background: rgba(240, 213, 138, 0.24);
+  color: var(--desk-gold-soft);
+}
+
+.desk-topology-toggle.is-paper .desk-topology-option.is-selected,
+.desk-topology-toggle.is-paper .desk-topology-option:has(input:checked) {
+  background: rgba(117, 80, 44, 0.18);
+  color: #4b341c;
+}
+
+.desk-topology-option:hover,
+.desk-topology-option:focus-within {
+  background: rgba(240, 213, 138, 0.16);
+}
+
+.desk-topology-toggle.is-paper .desk-topology-option:hover,
+.desk-topology-toggle.is-paper .desk-topology-option:focus-within {
+  background: rgba(117, 80, 44, 0.12);
+}
+
 .desk-create-room-form .desk-btn[type="submit"] {
   width: fit-content;
   justify-self: end;

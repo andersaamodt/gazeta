@@ -717,13 +717,15 @@ class DeskStore:
                 return next_candidate
         raise DeskError("room_exists", "Could not choose a unique room slug.")
 
-    def create_room(self, parent_rel: str, title: str, threshold: int) -> dict[str, object]:
+    def create_room(self, parent_rel: str, title: str, threshold: int, topology: str = "connected") -> dict[str, object]:
         clean_title = str(title or "").strip()
         if not clean_title:
             raise DeskError("missing_title", "Room title is required.")
         room_rel = self.unique_room_rel(parent_rel, clean_title)
         self.ensure_room(room_rel, clean_title)
-        self.append_log("create-room", {"room": room_rel, "title": clean_title})
+        clean_topology = normalize_room_topology(topology)
+        self.update_room_metadata(room_rel, {"topology": clean_topology})
+        self.append_log("create-room", {"room": room_rel, "title": clean_title, "topology": clean_topology})
         payload = self.state(room_rel, threshold)
         payload["created_room"] = self.room_summary(room_rel, threshold)
         return payload
@@ -1239,7 +1241,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         if action in ("state", "office"):
             return store.state(room, threshold)
         if action == "create-room":
-            return store.create_room(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
+            return store.create_room(room, env("BLOG_DESK_ROOM_TITLE"), threshold, env("BLOG_DESK_ROOM_TOPOLOGY", "connected"))
         if action == "add-task":
             target = env("BLOG_DESK_DESTINATION_ROOM", room)
             return store.add_task(target, env("BLOG_DESK_TASK_TEXT"), threshold)
