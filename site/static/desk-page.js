@@ -3867,6 +3867,43 @@
     return true;
   }
 
+  function applyOptimisticDeskAdd(room, taskText) {
+    if (!state.data) {
+      return false;
+    }
+    var cleanText = String(taskText || '').trim();
+    if (!cleanText) {
+      return false;
+    }
+    var targetRoom = normalizeTaskRoom(room || state.currentRoom);
+    if (normalizeTaskRoom(state.currentRoom) !== targetRoom) {
+      return false;
+    }
+    if (!Array.isArray(state.data.tasks)) {
+      state.data.tasks = [];
+    }
+    var now = new Date().toISOString();
+    state.data.tasks = sortDeskTasks(state.data.tasks.concat([{
+      id: '__optimistic_add_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+      room: targetRoom,
+      status: 'open',
+      title: cleanText.split(/\r?\n/)[0].trim() || cleanText,
+      body: cleanText.split(/\r?\n/).slice(1).join('\n').trim(),
+      text: cleanText + '\n',
+      upvotes: 0,
+      last_vote_at: 0,
+      next_vote_at: 0,
+      can_vote_now: true,
+      soonness: '',
+      soonness_epoch: 0,
+      created_at: now,
+      updated_at: now,
+      completed_at: ''
+    }]));
+    updateOptimisticRoomSummary(state.data, targetRoom);
+    return true;
+  }
+
   function captureNotebookTaskRects() {
     var map = {};
     if (!root) {
@@ -4010,6 +4047,20 @@
       renderDeskDataSteady(snapshot, beforeRects);
     }
     showMessage(message || 'Desk vote failed.', true);
+  }
+
+  function focusTodoAddField(value) {
+    window.setTimeout(function () {
+      var field = root.querySelector('.desk-todo-add-textarea');
+      if (!field || typeof field.focus !== 'function') {
+        return;
+      }
+      if (value != null) {
+        field.value = String(value || '');
+      }
+      resizeTodoAddTextarea(field);
+      field.focus();
+    }, 0);
   }
 
   function normalizeEditableTaskText(node) {
@@ -5278,11 +5329,29 @@
         }
         return;
       }
+      var optimisticAddSnapshot = null;
+      var optimisticAddRects = null;
+      var didOptimisticAdd = false;
+      if (type === 'room-add') {
+        optimisticAddSnapshot = cloneDeskDataForRollback(state.data);
+        optimisticAddRects = captureNotebookTaskRects();
+        didOptimisticAdd = applyOptimisticDeskAdd(destinationRoom, taskText);
+        if (didOptimisticAdd) {
+          renderDeskDataSteady(state.data, optimisticAddRects);
+          focusTodoAddField('');
+        }
+      }
       api('add-task', {
         destination_room: destinationRoom,
         task_text: taskText
-      }).then(function (data) {
-        if (data && data.success !== false) {
+      }, didOptimisticAdd ? { silentBusy: true } : null).then(function (data) {
+        if (!data || data.success === false) {
+          if (didOptimisticAdd) {
+            restoreDeskVoteSnapshot(optimisticAddSnapshot, optimisticAddRects, data && data.error ? data.error : 'Desk add failed.');
+            focusTodoAddField(taskText);
+            return;
+          }
+        } else {
           form.reset();
         }
         if (type === 'capture' && data && data.success !== false && destinationRoom !== originRoom) {
@@ -5299,14 +5368,15 @@
         }
         refreshFrom(data);
         if (type === 'room-add' && data && data.success !== false) {
-          window.setTimeout(function () {
-            var field = root.querySelector('.desk-todo-add-textarea');
-            if (field && typeof field.focus === 'function') {
-              resizeTodoAddTextarea(field);
-              field.focus();
-            }
-          }, 0);
+          focusTodoAddField('');
         }
+      }).catch(function (err) {
+        if (didOptimisticAdd) {
+          restoreDeskVoteSnapshot(optimisticAddSnapshot, optimisticAddRects, err && err.message ? err.message : 'Desk add failed.');
+          focusTodoAddField(taskText);
+          return;
+        }
+        showMessage(err && err.message ? err.message : 'Desk add failed.', true);
       });
       return;
     }
