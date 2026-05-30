@@ -579,6 +579,39 @@
     });
   }
 
+  function mapRoomLinkForPath(roomPath) {
+    var wanted = String(roomPath || '');
+    var match = null;
+    root.querySelectorAll('[data-desk-room-link]').forEach(function (node) {
+      if (!match && node.getAttribute('data-desk-room-link') === wanted) {
+        match = node;
+      }
+    });
+    return match;
+  }
+
+  function previewMapRoomNavigation(roomPath) {
+    var svg = root.querySelector('[data-desk-map-svg]');
+    if (!svg) return;
+    var roomLink = mapRoomLinkForPath(roomPath);
+    var targetViewBox = parseViewBoxText(roomLink && roomLink.getAttribute('data-desk-room-viewbox'));
+    if (!targetViewBox) return;
+    var currentViewBox = parseViewBoxText(svg.getAttribute('viewBox')) || targetViewBox;
+    var scroll = svg.closest('.desk-map-scroll');
+    var zoomButton = root.querySelector('[data-desk-map-zoom]');
+    if (scroll) {
+      scroll.classList.add('is-closeup');
+    }
+    if (zoomButton) {
+      zoomButton.classList.add('is-active');
+      zoomButton.setAttribute('aria-label', 'Show whole map');
+      zoomButton.setAttribute('title', 'Show whole map');
+      zoomButton.innerHTML = renderMapZoomIcon();
+    }
+    syncCurrentRoomInMapDom(roomPath);
+    animateMapViewBox(svg, currentViewBox, targetViewBox);
+  }
+
   function syncCurrentRoomInMapDom(roomPath) {
     var currentRoom = String(roomPath || '');
     root.querySelectorAll('[data-desk-room-link]').forEach(function (node) {
@@ -3041,7 +3074,7 @@
           '<rect class="desk-map-room-title-hit" x="' + (labelX - unitW / 2 + 18) + '" y="' + (labelY - 20) + '" width="' + (unitW - 36) + '" height="36"></rect>' +
           '<text x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
           '</g>';
-      var foregroundShape = '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="false"' : '') + ' class="desk-map-room-link' + (isCurrent ? ' is-current' : '') + '">' +
+      var foregroundShape = '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(closeupViewBoxForRoom(path, 0, 0))) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="false"' : '') + ' class="desk-map-room-link' + (isCurrent ? ' is-current' : '') + '">' +
         '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
         dimLayer +
@@ -3377,6 +3410,7 @@
     state.mapZoomMode = 'room';
     state.mapPanX = 0;
     state.mapPanY = 0;
+    previewMapRoomNavigation(clickedRoom);
     setRoom(clickedRoom, false, { preserveOpenPaper: true });
     return true;
   }
