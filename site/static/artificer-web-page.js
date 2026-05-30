@@ -16,6 +16,19 @@
     root.innerHTML = '<div class="artificer-web-login-gate"><button type="button" class="artificer-web-login-btn" data-artificer-login>Login</button></div>';
   }
 
+  function openSiteLogin() {
+    if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
+      window.blogAuth.openLoginModal('register');
+      return true;
+    }
+    const loginButton = document.getElementById('login-btn');
+    if (loginButton) {
+      loginButton.click();
+      return true;
+    }
+    return false;
+  }
+
   function isAuthFailure(state) {
     const code = state && state.code ? String(state.code) : '';
     const message = state && state.error ? String(state.error) : '';
@@ -139,8 +152,9 @@
   root.addEventListener('click', function (event) {
     const login = event.target.closest('[data-artificer-login]');
     if (login) {
-      const loginButton = document.getElementById('login-btn');
-      if (loginButton) loginButton.click();
+      event.preventDefault();
+      if (openSiteLogin()) return;
+      setTimeout(openSiteLogin, 120);
       return;
     }
     if (event.target.closest('[data-artificer-overflow]')) {

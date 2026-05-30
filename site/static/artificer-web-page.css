@@ -21,6 +21,10 @@
   display: grid;
 }
 
+body.auth-modal-open .artificer-web-shell {
+  z-index: 900;
+}
+
 .artificer-web-login-gate {
   align-self: center;
   justify-self: center;
