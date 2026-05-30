@@ -2356,6 +2356,14 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   min-height: var(--desk-notebook-line);
 }
 
+.desk-room-name-title::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #faf9f2;
+}
+
 .desk-room-name-title span {
   position: relative;
   display: inline-block;
