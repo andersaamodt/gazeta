@@ -4849,15 +4849,25 @@
     state.mapRenameValue = '';
     var recentTravel = state.lastMapRoomTravel;
     var doubleClickedAfterTravel = Boolean(recentTravel && recentTravel.room === roomPath && recentTravel.from !== roomPath && Date.now() - recentTravel.at < 900);
-    if (roomPath === state.currentRoom && !doubleClickedAfterTravel) {
-      return;
-    }
     state.lastMapRoomTravel = null;
     var keepOpenPaper = state.mode === 'todo' || state.mode === 'compose';
     state.suppressTodoAnimation = state.mode === 'todo';
     state.suppressComposeAnimation = state.mode === 'compose';
     state.suppressMapAnimation = true;
     var wasTodoOpen = state.mode === 'todo';
+    if (roomPath === state.currentRoom && !doubleClickedAfterTravel) {
+      state.mode = 'todo';
+      state.paperMapVisible = true;
+      state.closingMode = '';
+      state.closingMap = false;
+      if (!wasTodoOpen) {
+        playSound(deskSounds.book);
+      }
+      if (state.data) {
+        render(state.data);
+      }
+      return;
+    }
     if (!keepOpenPaper) {
       state.mode = 'todo';
     }
