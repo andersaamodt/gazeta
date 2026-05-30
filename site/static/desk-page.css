@@ -932,7 +932,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-zoom-btn:focus-visible,
 .desk-map-close:hover,
 .desk-map-close:focus-visible {
-  background: #e8cf8b;
+  background: rgba(93, 69, 39, 0.14) !important;
+  background-color: rgba(93, 69, 39, 0.14) !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
   filter: none !important;
