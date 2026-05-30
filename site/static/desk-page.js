@@ -27,6 +27,7 @@
     paperSwitchFrom: '',
     paperMapVisible: true,
     draggedRoom: '',
+    draggedTask: null,
     suppressRoomClick: false,
     suppressMapAnimation: true,
     suppressTodoAnimation: false,
@@ -4178,12 +4179,13 @@
     var room = String(task.room || '');
     var completed = String(task.completed_at || '') ? ' is-complete' : '';
     var forgotten = String(task.status || '') === 'forgotten' ? ' is-forgotten' : '';
+    var status = String(task.status || 'open');
     return '<li class="desk-task desk-notebook-task' + completed + forgotten + '" data-task-id="' + escapeHtml(task.id || '') + '" draggable="' + (forgotten ? 'true' : 'false') + '" data-desk-task-drag="' + escapeHtml(task.id || '') + '" data-task-status="' + escapeHtml(task.status || 'open') + '">' +
       '<span class="desk-notebook-vote-controls" aria-label="Task votes">' +
       '<button type="button" class="desk-notebook-vote-btn" title="Upvote" aria-label="Upvote" data-desk-task-action="vote" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '"><svg class="desk-notebook-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z" fill="currentColor"></path></svg></button>' +
       '<span class="desk-notebook-votes">' + escapeHtml(task.upvotes || 0) + '</span>' +
       '</span>' +
-      '<button type="button" class="desk-notebook-check" title="Done" aria-label="Done" data-desk-task-action="complete" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '"><svg class="desk-notebook-check-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path class="desk-notebook-check-box" d="M6.2 6.9c4.8-.8 10.8-.7 19.1-.3 1.1 5.9 1 12.3.2 18.6-6.1.8-12.1.8-18.7.2C5.9 19.1 5.7 12.7 6.2 6.9Z"></path><path class="desk-notebook-check-shadow" d="M8.2 8.1c4.2-.4 9.8-.3 15.4.1"></path></svg></button>' +
+      '<button type="button" class="desk-notebook-check" title="Done" aria-label="Done" draggable="' + (status === 'open' ? 'true' : 'false') + '" data-desk-task-drag-handle="' + escapeHtml(task.id || '') + '" data-desk-task-action="complete" data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '" data-task-status="' + escapeHtml(status) + '"><svg class="desk-notebook-check-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path class="desk-notebook-check-box" d="M6.2 6.9c4.8-.8 10.8-.7 19.1-.3 1.1 5.9 1 12.3.2 18.6-6.1.8-12.1.8-18.7.2C5.9 19.1 5.7 12.7 6.2 6.9Z"></path><path class="desk-notebook-check-shadow" d="M8.2 8.1c4.2-.4 9.8-.3 15.4.1"></path></svg></button>' +
       '<span class="desk-notebook-title" contenteditable="plaintext-only" spellcheck="true" role="textbox" aria-label="Edit task" data-desk-edit-task data-room="' + escapeHtml(room) + '" data-task-id="' + escapeHtml(task.id || '') + '" data-task-status="' + escapeHtml(task.status || 'open') + '" data-original-text="' + escapeHtml(task.title || 'Task') + '">' + escapeHtml(task.title || 'Task') + '</span>' +
       renderTaskMenu(task) +
       '</li>';
@@ -4414,6 +4416,14 @@
     });
   }
 
+  function clearTaskDrag() {
+    state.draggedTask = null;
+    markRoomDropTarget(null);
+    root.querySelectorAll('.desk-notebook-task.is-dragging').forEach(function (node) {
+      node.classList.remove('is-dragging');
+    });
+  }
+
   function currentParentRoom(sourceRoom) {
     var room = roomByPath(state.data, sourceRoom);
     if (room && typeof room.parent_path === 'string') {
@@ -4494,6 +4504,20 @@
         showMessage('Room moved.', false);
       }
     });
+  }
+
+  function finishTaskMove(taskDrag, targetRoom) {
+    if (!taskDrag || !taskDrag.id || targetRoom === taskDrag.room) {
+      return false;
+    }
+    api('move-task', {
+      room: taskDrag.room,
+      task_id: taskDrag.id,
+      target_room: targetRoom
+    }).then(refreshFrom).catch(function (err) {
+      showMessage(err && err.message ? err.message : 'Task move failed.', true);
+    });
+    return true;
   }
 
   root.addEventListener('click', function (event) {
@@ -5104,6 +5128,24 @@
   });
 
   root.addEventListener('dragstart', function (event) {
+    var taskHandle = event.target.closest('[data-desk-task-drag-handle]');
+    if (taskHandle && taskHandle.getAttribute('data-task-status') === 'open') {
+      var taskItemNode = taskHandle.closest('.desk-notebook-task');
+      var taskPayload = {
+        id: taskHandle.getAttribute('data-desk-task-drag-handle') || '',
+        room: taskHandle.getAttribute('data-room') || state.currentRoom,
+        status: taskHandle.getAttribute('data-task-status') || 'open'
+      };
+      state.draggedTask = taskPayload;
+      if (taskItemNode) {
+        taskItemNode.classList.add('is-dragging');
+      }
+      event.dataTransfer.setData('application/x-desk-task-id', taskPayload.id);
+      event.dataTransfer.setData('application/x-desk-task-room', taskPayload.room);
+      event.dataTransfer.setData('application/x-desk-task-status', taskPayload.status);
+      event.dataTransfer.effectAllowed = 'move';
+      return;
+    }
     var taskDrag = event.target.closest('[data-desk-task-drag]');
     if (taskDrag && taskDrag.getAttribute('data-task-status') === 'forgotten') {
       event.dataTransfer.setData('application/x-desk-task-id', taskDrag.getAttribute('data-desk-task-drag') || '');
@@ -5114,6 +5156,10 @@
     if (roomLink) {
       event.preventDefault();
     }
+  });
+
+  root.addEventListener('dragend', function () {
+    clearTaskDrag();
   });
 
   root.addEventListener('wheel', function (event) {
@@ -5247,9 +5293,29 @@
     state.draggedRoom = '';
   });
 
-  root.addEventListener('dragover', function (event) { event.preventDefault(); });
+  root.addEventListener('dragover', function (event) {
+    var taskDrag = state.draggedTask;
+    if (taskDrag && taskDrag.status === 'open') {
+      var target = roomDropTargetAt(event.clientX, event.clientY, taskDrag.room, true);
+      markRoomDropTarget(target);
+      if (target && event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+    }
+    event.preventDefault();
+  });
   root.addEventListener('drop', function (event) {
     var taskId = event.dataTransfer ? event.dataTransfer.getData('application/x-desk-task-id') : '';
+    var taskRoom = event.dataTransfer ? event.dataTransfer.getData('application/x-desk-task-room') : '';
+    var taskStatus = event.dataTransfer ? event.dataTransfer.getData('application/x-desk-task-status') : '';
+    var draggedTask = state.draggedTask || (taskId && taskRoom ? { id: taskId, room: taskRoom, status: taskStatus || 'open' } : null);
+    var targetRoomLink = draggedTask && draggedTask.status === 'open' ? roomDropTargetAt(event.clientX, event.clientY, draggedTask.room, true) : null;
+    if (targetRoomLink) {
+      event.preventDefault();
+      finishTaskMove(draggedTask, targetRoomLink.getAttribute('data-desk-room-drop') || '');
+      clearTaskDrag();
+      return;
+    }
     if (taskId && event.target.closest('.desk-task-list, .desk-todo-add, .desk-room-name-title')) {
       event.preventDefault();
       state.suppressTodoAnimation = true;
@@ -5258,8 +5324,10 @@
         task_id: taskId,
         task_status: 'forgotten'
       }).then(refreshFrom);
+      clearTaskDrag();
       return;
     }
+    clearTaskDrag();
     event.preventDefault();
   });
 

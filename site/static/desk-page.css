@@ -2490,6 +2490,18 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   transition: background-color 140ms ease, color 140ms ease;
 }
 
+.desk-notebook-check[draggable="true"] {
+  cursor: grab;
+}
+
+.desk-notebook-check[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.desk-notebook-task.is-dragging {
+  opacity: 0.58;
+}
+
 .desk-notebook-check-icon {
   display: block;
   width: calc(var(--desk-notebook-line) - 0.22rem);
