@@ -1900,6 +1900,19 @@
       return penalty;
     }
 
+    function hasDisallowedWallContact(cells, allowedOwners) {
+      var allowed = {};
+      (allowedOwners || []).forEach(function (owner) {
+        allowed[String(owner || '')] = true;
+      });
+      return cells.some(function (cell) {
+        return directions.some(function (direction) {
+          var owner = occupied[(cell.x + direction.dx) + ',' + (cell.y + direction.dy)];
+          return owner != null && !allowed[String(owner || '')];
+        });
+      });
+    }
+
     function symmetryFallbackPenalty(parentPath) {
       return roomIsOutdoor(roomsByPath[String(parentPath || '')]) ? 176 : 128;
     }
@@ -1994,6 +2007,7 @@
           var child = { x: cell.x + direction.dx, y: cell.y + direction.dy };
           if (!cellFree(child.x, child.y)) return;
           var directionPreferencePenalty = layout[parentPath] && layout[parentPath].containedSelf ? orderIndex * 240 : orderIndex * 0.7;
+          if (layout[parentPath] && layout[parentPath].containedSelf && hasDisallowedWallContact([child], [parentPath])) return;
           candidates.push({
             parentCell: { x: cell.x, y: cell.y },
             child: child,
