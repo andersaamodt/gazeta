@@ -5103,7 +5103,8 @@
   root.addEventListener('pointerup', function (event) {
     var mapPan = state.pointerMapPan;
     if (mapPan && mapPan.pointerId === event.pointerId) {
-      var shouldActivateRoom = !mapPan.active && mapPan.roomPath !== null && !mapPan.startedOnRoomTitle;
+      var shouldKeepTitleForRename = mapPan.startedOnRoomTitle && mapPan.roomPath === state.currentRoom;
+      var shouldActivateRoom = !mapPan.active && mapPan.roomPath !== null && !shouldKeepTitleForRename;
       if (mapPan.active) {
         event.preventDefault();
         suppressRoomClickFor(180);
