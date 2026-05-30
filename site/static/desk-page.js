@@ -3017,12 +3017,18 @@
       if (isContainedRoomCell(roomCell)) {
         roomPassiveOutlineShape = roomPathShape;
       }
+      var isContainedParent = Boolean(roomCell && roomCell.containedSelf);
+      var isContainedSubdivision = Boolean(roomCell && Object.prototype.hasOwnProperty.call(roomCell, 'containedIn'));
+      var containedRoomClass = isContainedSubdivision ? ' is-contained-subdivision' : '';
       var backgroundShape = isOutdoor
         ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
         : '';
       var roomShape = isOutdoor
         ? '<path class="desk-map-room-outdoor-hit" d="' + roomPathShape + '"></path>'
-        : '<path class="desk-map-room-shape" d="' + roomPathShape + '"></path>';
+        : '<path class="desk-map-room-shape' + containedRoomClass + '" d="' + roomPathShape + '"></path>';
+      var perimeterShape = isContainedParent && !isOutdoor
+        ? '<path class="desk-map-room-perimeter" d="' + roomPathShape + '"></path>'
+        : '';
       var hoverTint = '<path class="desk-map-room-hover-tint" fill="' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>';
       var dimLayer = '<rect class="desk-map-room-dim' + (isOutdoor ? ' is-outdoor' : '') + '" data-desk-room-dim="' + escapeHtml(path) + '" style="--presence:' + escapeHtml(clampPresence(presence[path])) + '" clip-path="url(#' + roomClipId(path) + ')" x="' + overlayX + '" y="' + overlayY + '" width="' + overlayW + '" height="' + overlayH + '"></rect>';
       var presenceGlow = isOutdoor
@@ -3048,10 +3054,11 @@
         '</a>';
       var outlineShape = '<path class="desk-map-room-outline' + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" data-desk-room-outline="' + escapeHtml(path) + '" style="--room-color:' + escapeHtml(roomColor(room)) + '" d="' + roomPassiveOutlineShape + '"></path>';
       var hoverOutlineShape = '<path class="desk-map-room-outline desk-map-room-hover-outline" data-desk-room-hover-outline="' + escapeHtml(path) + '" style="--room-color:' + escapeHtml(roomColor(room)) + '" d="' + roomPathShape + '"></path>';
-      return { background: backgroundShape, foreground: foregroundShape, outline: outlineShape, hoverOutline: hoverOutlineShape };
+      return { background: backgroundShape, foreground: foregroundShape, perimeter: perimeterShape, outline: outlineShape, hoverOutline: hoverOutlineShape };
     });
     var outdoorBackgroundShapes = roomParts.map(function (part) { return part.background; }).join('');
     var roomShapes = roomParts.map(function (part) { return part.foreground; }).join('');
+    var roomPerimeters = roomParts.map(function (part) { return part.perimeter; }).join('');
     var roomOutlines = roomParts.map(function (part) { return part.outline; }).join('');
     var roomHoverOutlines = roomParts.map(function (part) { return part.hoverOutline; }).join('');
     var doorShapes = plan.doors.map(function (door) {
@@ -3079,7 +3086,7 @@
       '<svg class="desk-map-svg" data-desk-map-svg data-desk-full-viewbox="' + escapeHtml(formatViewBox(fullViewBox)) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(roomViewBox)) + '" viewBox="' + viewBoxText + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Top-down mansion map of Desk rooms">' +
       '<defs><radialGradient id="desk-map-door-spill-gradient-east" cx="0%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-west" cx="100%" cy="50%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-south" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><radialGradient id="desk-map-door-spill-gradient-north" cx="50%" cy="100%" r="100%"><stop offset="0" stop-color="#ffe6a4" stop-opacity="0.76"></stop><stop offset="0.46" stop-color="#ffd274" stop-opacity="0.28"></stop><stop offset="1" stop-color="#ffbd54" stop-opacity="0"></stop></radialGradient><linearGradient id="desk-map-presence-glow-outdoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffeaa2" stop-opacity="0.38"></stop><stop offset="0.55" stop-color="#ffd66f" stop-opacity="0.22"></stop><stop offset="1" stop-color="#f3c65f" stop-opacity="0.08"></stop></linearGradient><pattern id="desk-map-parchment-texture" width="96" height="96" patternUnits="userSpaceOnUse"><rect width="96" height="96" fill="#dcc17f"></rect><path d="M20 0v96M68 0v96M0 31h96M0 77h96" stroke="rgba(255,244,194,0.07)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-room-paper" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#d7b46f"></rect><path d="M 28 0 L 0 0 0 28" stroke="rgba(84,55,28,0.23)" stroke-width="1" fill="none"></path></pattern><pattern id="desk-map-grass" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="' + escapeHtml(mapGreen) + '"></rect><path d="M8 16c7-4 12-4 19 0M38 13c8-5 14-3 22 1M12 43c10-5 18-4 27 1M46 49c7-4 12-4 18 0" stroke="rgba(83,91,42,0.14)" stroke-width="2.2" fill="none" stroke-linecap="round"></path><path d="M4 68h68M0 28h72" stroke="rgba(229,221,142,0.13)" stroke-width="1" fill="none"></path></pattern>' + roomClipPaths + '</defs>' +
       '<rect class="desk-map-grid" x="' + gridBox.x + '" y="' + gridBox.y + '" width="' + gridBox.w + '" height="' + gridBox.h + '"></rect>' +
-      greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
+      greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + roomPerimeters + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
       '</svg>' +
       '<button type="button" class="desk-map-close" data-desk-close-map aria-label="Close map" title="Close map">×</button>' +
       '<button type="button" class="desk-map-greenbelt-tone-btn' + (state.greenbeltTone === 'deep' ? ' is-deep' : '') + '" data-desk-map-greenbelt-tone aria-label="Switch greenbelt color" title="Switch greenbelt color">' + renderGreenbeltToneIcon() + '</button>' +

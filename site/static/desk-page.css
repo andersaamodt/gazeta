@@ -1388,6 +1388,19 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-linejoin: round;
 }
 
+.desk-map-room-shape.is-contained-subdivision {
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+}
+
+.desk-map-room-perimeter {
+  fill: none;
+  stroke: rgba(43, 27, 12, 0.76);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
 .desk-map-greenbelt {
   pointer-events: none;
 }
