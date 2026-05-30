@@ -68,11 +68,11 @@ css_path=$(asset_url "$page_html" 'artificer-web-page.css')
 [ -n "$css_path" ] || fail "live Artificer page did not reference artificer-web-page.css"
 
 case "$js_path" in
-  *20260529-artificer-web7*) ;;
+  *20260529-artificer-web9*) ;;
   *) fail "live Artificer page points at stale JS cache key: $js_path" ;;
 esac
 case "$css_path" in
-  *20260529-artificer-web7*) ;;
+  *20260529-artificer-web9*) ;;
   *) fail "live Artificer page points at stale CSS cache key: $css_path" ;;
 esac
 
@@ -81,7 +81,7 @@ fetch "$(absolute_url "$css_path")" "$page_css"
 
 assert_contains "$page_js" 'function isAuthFailure(state)' "live Artificer JS has the auth-failure gate"
 assert_contains "$page_js" "code === 'nostr_key_required'" "live Artificer JS treats Nostr allowlist failures as login states"
-assert_contains "$page_js" "window.blogAuth.openLoginModal('register')" "live Artificer JS opens the site login modal directly"
+assert_contains "$page_js" "window.blogAuth.startLogin({ fallbackModal: false })" "live Artificer JS starts the primary Nostr signer login flow without helper UI"
 assert_contains "$page_js" 'showLoginGate();' "live Artificer JS renders the login gate"
 assert_contains "$page_css" '.artificer-web-error {' "live Artificer CSS has the error block"
 assert_contains "$page_css" 'text-align: center;' "live Artificer CSS centers the fallback error block"

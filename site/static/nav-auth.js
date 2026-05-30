@@ -2469,11 +2469,16 @@
     return preferredAuthInitialSelection();
   }
 
-  function startPrimaryLogin() {
+  function startPrimaryLogin(options) {
+    var showFallbackModal = !(options && options.fallbackModal === false);
     closeLoginMenu();
     return waitForDesktopSigner(1200).then(function (available) {
       if (!available) {
-        showAuthModal(preferredUnsignedLoginTab());
+        if (showFallbackModal) {
+          showAuthModal(preferredUnsignedLoginTab());
+        } else {
+          showNavToast('No Nostr browser signer was found.', 'info', 4200);
+        }
         return false;
       }
       return startDesktopSignerLogin(false, '');
@@ -4516,10 +4521,13 @@
     setTimeout(scheduleNavOverflowMenuSync, 180);
     window.blogAuth = window.blogAuth || {};
     window.blogAuth.openLoginModal = showAuthModal;
-    window.blogAuth.startLogin = function () {
-      return startPrimaryLogin().catch(function (err) {
+    window.blogAuth.startLogin = function (options) {
+      var showFallbackModal = !(options && options.fallbackModal === false);
+      return startPrimaryLogin(options).catch(function (err) {
         showNavToast(err && err.message ? err.message : 'Nostr signer login failed.', 'info', 4200);
-        showAuthModal(preferredUnsignedLoginTab());
+        if (showFallbackModal) {
+          showAuthModal(preferredUnsignedLoginTab());
+        }
         throw err;
       });
     };

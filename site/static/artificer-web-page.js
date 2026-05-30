@@ -17,8 +17,10 @@
   }
 
   function openSiteLogin() {
-    if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-      window.blogAuth.openLoginModal('register');
+    if (window.blogAuth && typeof window.blogAuth.startLogin === 'function') {
+      window.blogAuth.startLogin({ fallbackModal: false }).catch(function () {
+        // The shared auth layer reports signer failures and may show fallback UI.
+      });
       return true;
     }
     const loginButton = document.getElementById('login-btn');
