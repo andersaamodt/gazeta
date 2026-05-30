@@ -5635,8 +5635,7 @@
     if (type === 'rename-room-inline') {
       var renameSource = formValue(form, 'room');
       var renameTitle = formValue(form, 'room_title');
-      var renameAction = renameSource === state.currentRoom ? 'set-room-title' : 'rename-room';
-      api(renameAction, {
+      api('rename-room', {
         room: renameSource,
         room_title: renameTitle
       }).then(function (data) {

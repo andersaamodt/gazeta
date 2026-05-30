@@ -15,4 +15,4 @@ title: Desk
   <div class="desk-loading" aria-hidden="true"></div>
 </section>
 
-<script defer src="/static/desk-page.js?v=20260530-presence-storage1"></script>
+<script defer src="/static/desk-page.js?v=20260530-room-folder-tasks1"></script>

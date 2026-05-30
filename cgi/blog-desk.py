@@ -253,16 +253,29 @@ class DeskStore:
             raise DeskError("bad_task", "Task id is not valid.")
         return name
 
+    def legacy_open_tasks_dir(self, room_rel: str | None) -> Path:
+        return self.room_dir(room_rel) / ".tasks"
+
     def tasks_dir(self, room_rel: str | None, status: str = "open") -> Path:
-        base = self.room_dir(room_rel) / ".tasks"
+        if status == "open":
+            return self.room_dir(room_rel)
+        base = self.legacy_open_tasks_dir(room_rel)
         if status == "done":
             return base / "done"
         if status == "trash":
             return base / "trash"
+        if status == "forgotten":
+            return base / "forgotten"
         return base
 
     def task_path(self, room_rel: str | None, task_id: str, status: str = "open") -> Path:
-        return self.tasks_dir(room_rel, status) / self.task_name(task_id)
+        name = self.task_name(task_id)
+        path = self.tasks_dir(room_rel, status) / name
+        if status == "open" and not path.is_file():
+            legacy_path = self.legacy_open_tasks_dir(room_rel) / name
+            if legacy_path.is_file():
+                return legacy_path
+        return path
 
     def meta_path(self, task_path: Path) -> Path:
         return task_path.parent / ".meta" / f"{task_path.name}.json"
@@ -402,7 +415,7 @@ class DeskStore:
         room = self.room_dir(room_rel)
         if not room.is_dir():
             return {"can_delete": False, "reason": "Room does not exist."}
-        allowed_system_dirs = {".tasks", ".docs", ".passages"}
+        allowed_system_dirs = {".tasks", ".docs", ".passages", ".meta"}
         for child in room.iterdir():
             if child.name == ".room.json":
                 continue
@@ -423,7 +436,7 @@ class DeskStore:
                 return True
             if directory.name == ".passages" and path.suffix == ".json" and not path.name.startswith("."):
                 return True
-            if directory.name not in (".tasks", ".docs", ".passages") and not path.name.startswith("."):
+            if directory.name not in (".tasks", ".docs", ".passages", ".meta") and not path.name.startswith("."):
                 return True
         return False
 
@@ -541,12 +554,24 @@ class DeskStore:
 
     def task_files(self, room_rel: str | None, status: str = "open") -> list[Path]:
         directory = self.tasks_dir(room_rel, status)
-        if not directory.is_dir():
-            return []
-        return sorted([
-            path for path in directory.iterdir()
-            if path.is_file() and path.name.endswith(".txt") and not path.name.startswith(".")
-        ])
+        paths = []
+        if directory.is_dir():
+            paths.extend([
+                path for path in directory.iterdir()
+                if path.is_file() and path.name.endswith(".txt") and not path.name.startswith(".")
+            ])
+        if status == "open":
+            legacy = self.legacy_open_tasks_dir(room_rel)
+            if legacy.is_dir():
+                existing = {path.name for path in paths}
+                paths.extend([
+                    path for path in legacy.iterdir()
+                    if path.is_file() and path.name.endswith(".txt") and not path.name.startswith(".") and path.name not in existing
+                ])
+        return sorted(
+            paths,
+            key=lambda path: (0 if path.parent == directory else 1, path.name.lower()),
+        )
 
     def read_task(self, room_rel: str | None, task_path: Path, status: str = "open") -> dict[str, object]:
         try:
@@ -1150,21 +1175,21 @@ class DeskStore:
     def list_orphans(self) -> dict[str, object]:
         orphans: list[dict[str, object]] = []
         for rel in self.all_room_rels():
-            task_dir = self.tasks_dir(rel)
-            if not task_dir.is_dir():
+            for path in self.task_files(rel):
+                try:
+                    path.read_text(encoding="utf-8")
+                except OSError:
+                    orphans.append({"room": rel, "path": path.name, "reason": "unreadable"})
+            legacy_dir = self.legacy_open_tasks_dir(rel)
+            if not legacy_dir.is_dir():
                 continue
-            for path in task_dir.iterdir():
-                if path.name.startswith(".") or path.name == "done" or path.name == "trash":
+            for path in legacy_dir.iterdir():
+                if path.name.startswith(".") or path.name in ("done", "trash", "forgotten"):
                     continue
-                if path.is_file() and not path.name.endswith(".txt"):
-                    orphans.append({"room": rel, "path": path.name, "reason": "non_task_file"})
-                elif path.is_symlink():
+                if path.is_symlink():
                     orphans.append({"room": rel, "path": path.name, "reason": "symlink"})
-                elif path.is_file():
-                    try:
-                        path.read_text(encoding="utf-8")
-                    except OSError:
-                        orphans.append({"room": rel, "path": path.name, "reason": "unreadable"})
+                elif path.is_file() and not path.name.endswith(".txt"):
+                    orphans.append({"room": rel, "path": path.name, "reason": "non_task_file"})
         return {"success": True, "orphans": orphans, "orphan_count": len(orphans)}
 
     def rebuild_indexes(self, threshold: int) -> dict[str, object]:
@@ -1270,7 +1295,7 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         if action == "set-room-topology":
             return store.set_room_topology(room, env("BLOG_DESK_ROOM_TOPOLOGY"), threshold)
         if action == "set-room-title":
-            return store.set_room_title(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
+            return store.rename_room(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
         if action == "delete-room":
             return store.delete_room(room, threshold)
         if action == "search":

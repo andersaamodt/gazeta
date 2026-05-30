@@ -259,13 +259,18 @@ assert_jq "$topology_json" '.success == true and .updated_room.topology == "cont
 assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"topology": "contained"' 'room metadata persists contained child topology'
 
 rename_json=$(run_desk "action=set-room-title&$auth_query&room=writing-room&room_title=$(urlencode "Library Desk")")
-assert_jq "$rename_json" '.success == true and .current_room.path == "writing-room" and .current_room.title == "Library Desk" and .updated_room.title == "Library Desk"' 'Desk lets the owner edit the current room name without moving the folder'
-assert_file_contains "$SITE_DATA/desk/office/writing-room/.room.json" '"title": "Library Desk"' 'room metadata persists edited room names'
-
-rename_slug_json=$(run_desk "action=rename-room&$auth_query&room=writing-room&room_title=$(urlencode "Forest Study")")
-assert_jq "$rename_slug_json" '.success == true and .renamed_room.from == "writing-room" and .renamed_room.to == "forest-study" and .current_room.path == "forest-study"' 'Desk room renaming can move folders and update current room URL path'
-assert_dir_exists "$SITE_DATA/desk/office/forest-study" 'renamed room exists at its new slug path'
+assert_jq "$rename_json" '.success == true and .renamed_room.from == "writing-room" and .renamed_room.to == "library-desk" and .current_room.path == "library-desk" and .current_room.title == "Library Desk"' 'Desk room title edits rename the backing folder'
+assert_file_contains "$SITE_DATA/desk/office/library-desk/.room.json" '"title": "Library Desk"' 'room metadata persists edited room names after moving the folder'
 if [ ! -d "$SITE_DATA/desk/office/writing-room" ]; then
+  pass
+else
+  fail 'room title edit removes the old folder path'
+fi
+
+rename_slug_json=$(run_desk "action=rename-room&$auth_query&room=library-desk&room_title=$(urlencode "Forest Study")")
+assert_jq "$rename_slug_json" '.success == true and .renamed_room.from == "library-desk" and .renamed_room.to == "forest-study" and .current_room.path == "forest-study"' 'Desk room renaming can move folders and update current room URL path'
+assert_dir_exists "$SITE_DATA/desk/office/forest-study" 'renamed room exists at its new slug path'
+if [ ! -d "$SITE_DATA/desk/office/library-desk" ]; then
   pass
 else
   fail 'room rename removes the old folder path'
@@ -347,8 +352,8 @@ private body'
 add_json=$(run_desk "action=add-task&$auth_query&destination_room=forest-study&task_text=$(urlencode "$task_text")")
 assert_jq "$add_json" '.success == true and .created_task.title == "Low task" and .created_task.body == "private body"' 'Desk stores task text as canonical content'
 task_id=$(printf '%s\n' "$add_json" | jq -r '.created_task.id')
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'task is one plain text file in room .tasks'
-assert_file_contains "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'Low task' 'task file contains first-line title'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'task is one plain text file in the room folder'
+assert_file_contains "$SITE_DATA/desk/office/forest-study/$task_id" 'Low task' 'task file contains first-line title'
 
 office_after_low=$(run_desk "action=state&$auth_query")
 assert_jq "$office_after_low" '.rooms[] | select(.path == "forest-study" and .sleeping_task_count == 1 and (.surfaced_tasks | length) == 0)' 'office counts sleeping local tasks without exposing below-threshold text'
@@ -358,15 +363,15 @@ assert_jq "$room_after_low" '.tasks[] | select(.title == "Low task" and .body ==
 
 same_move_json=$(run_desk "action=move-task&$auth_query&room=forest-study&target_room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$same_move_json" '.success == true and .move_skipped == true and .moved_task.id == "'"$task_id"'"' 'Desk skips same-room task moves without renaming files'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'same-room move leaves original task file in place'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'same-room move leaves original task file in place'
 
 move_json=$(run_desk "action=move-task&$auth_query&room=forest-study&target_room=archive-room&task_id=$(urlencode "$task_id")")
 assert_jq "$move_json" '.success == true and .current_room.path == "archive-room" and .moved_task.id == "'"$task_id"'"' 'Desk moves tasks by filesystem move to another room'
-assert_file_exists "$SITE_DATA/desk/office/archive-room/.tasks/$task_id" 'moved task file exists in destination room'
+assert_file_exists "$SITE_DATA/desk/office/archive-room/$task_id" 'moved task file exists in destination room'
 
 move_back_json=$(run_desk "action=move-task&$auth_query&room=archive-room&target_room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$move_back_json" '.success == true and .current_room.path == "forest-study" and .moved_task.id == "'"$task_id"'"' 'Desk can move tasks back to the original room'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'moved-back task file exists in original room'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'moved-back task file exists in original room'
 
 soon_json=$(run_desk "action=set-soonness&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")&soonness=$(urlencode "2030-01-02")")
 assert_jq "$soon_json" '.success == true and .updated_task.soonness == "2030-01-02"' 'Desk stores soonness metadata on a task'
@@ -379,7 +384,7 @@ assert_jq "$revote_json" '.success == false and .code == "vote_wait" and (.next_
 
 edit_json=$(run_desk "action=edit-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")&task_text=$(urlencode "Edited low task")")
 assert_jq "$edit_json" '.success == true and .edited_task.title == "Edited low task" and (.tasks[]?.title == "Edited low task")' 'Desk edits task text in place while preserving the task file'
-assert_file_contains "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'Edited low task' 'Desk task edit rewrites the canonical text file'
+assert_file_contains "$SITE_DATA/desk/office/forest-study/$task_id" 'Edited low task' 'Desk task edit rewrites the canonical text file'
 
 office_after_vote=$(run_desk "action=state&$auth_query")
 assert_jq "$office_after_vote" '.rooms[] | select(.path == "forest-study" and (.surfaced_tasks[]?.title == "Edited low task"))' 'office surfaces room tasks only after they cross threshold'
@@ -390,7 +395,7 @@ assert_jq "$public_json" '.current_room.has_public_file == true and .current_roo
 
 complete_json=$(run_desk "action=complete-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$complete_json" '.success == true and .completed_task.status == "open" and (.completed_task.completed_at | length > 0)' 'Desk marks completion in place so checked tasks stay visible'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'completed task remains in the active task list until archived'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'completed task remains in the active task list until archived'
 
 archive_task_json=$(run_desk "action=archive-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$archive_task_json" '.success == true and .archived_task.status == "done"' 'Desk archives a checked task to the done archive when requested'
@@ -398,7 +403,7 @@ assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/done/$task_id" 'a
 
 restore_json=$(run_desk "action=restore-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$restore_json" '.success == true and .restored_task.status == "open" and .restored_task.completed_at == ""' 'Desk can restore completed tasks from the done archive'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'restored task moved back to room .tasks'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'restored task moved back to the room folder'
 
 forget_json=$(run_desk "action=forget-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$forget_json" '.success == true and .forgotten_task.status == "forgotten" and (.forgotten_tasks[]?.id == "'"$task_id"'")' 'Desk can forget a task into a separate forgotten drawer without clearing votes'
@@ -409,7 +414,7 @@ assert_jq "$clear_votes_json" '.success == true and .updated_task.status == "for
 
 remember_json=$(run_desk "action=remember-task&$auth_query&room=forest-study&task_id=$(urlencode "$task_id")")
 assert_jq "$remember_json" '.success == true and .remembered_task.status == "open" and (.tasks[]?.id == "'"$task_id"'")' 'Desk can remember a forgotten task back into the active notebook area'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/$task_id" 'remembered task moved back to room .tasks'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/$task_id" 'remembered task moved back to the room folder'
 
 trash_task_json=$(run_desk "action=add-task&$auth_query&destination_room=forest-study&task_text=$(urlencode "Trash me safely")")
 trash_task_id=$(printf '%s' "$trash_task_json" | jq -r '.created_task.id')
@@ -429,7 +434,7 @@ assert_jq "$orphans_json" '.success == true and .orphan_count == 0' 'Desk list-o
 
 migrate_json=$(run_desk "action=migrate-metadata&$auth_query&metadata_backend=sidecar")
 assert_jq "$migrate_json" '.success == true and .target == "sidecar" and .migrated >= 1' 'Desk migrates task metadata to portable sidecars'
-assert_file_exists "$SITE_DATA/desk/office/forest-study/.tasks/.meta/$task_id.json" 'metadata sidecar mirrors xattr fields after migration'
+assert_file_exists "$SITE_DATA/desk/office/forest-study/.meta/$task_id.json" 'metadata sidecar mirrors xattr fields after migration'
 
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'id="desk-page-root"' 'Desk page mounts private app root'
 assert_file_contains "$ROOT_DIR/site/pages/desk.md" 'desk-page-body' 'Desk marks the body before loading private chrome'
@@ -1155,7 +1160,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"room_not_empty"' 'Desk delet
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" 'def collapse_secret_passages' 'Desk API can collapse secret passages connected to a room'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk.py" '"collapse-secret-passages"' 'Desk dispatch exposes the collapse secret passages action'
 assert_file_contains "$ROOT_DIR/cgi/blog-desk" 'BLOG_DESK_ROOM_TOPOLOGY=$(blog_param room_topology)' 'Desk CGI wrapper forwards room topology changes'
-assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "'rename-room';" 'Desk frontend can still rename non-current rooms with path updates through Desk API'
+assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "api('rename-room'" 'Desk frontend renames room labels through the folder-moving Desk API'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-map-props' 'Desk map has a top-right blueprint properties control'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-map-props-close' 'Desk room properties panel has its own close control'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'state.mapPropsOpen = false;' 'Desk room properties close control closes only the properties panel'
@@ -1204,7 +1209,7 @@ assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "activateMapRoom(roomL
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'if (titleRoomPath === state.currentRoom)' 'Desk map double-click edits only the current room title instead of every title'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "roomTitle && roomTitle.closest('[data-desk-room-link]')" 'Desk map double-clicking another room title falls through to room travel'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function beginMapRoomRename(roomPath)' 'Desk map title rename uses one focused inline-edit path'
-assert_file_contains "$ROOT_DIR/site/static/desk-page.js" "var renameAction = renameSource === state.currentRoom ? 'set-room-title' : 'rename-room';" 'Desk current-room title edits do not move the room folder'
+assert_file_not_contains "$ROOT_DIR/site/static/desk-page.js" 'set-room-title' 'Desk inline room title edits do not call the metadata-only title endpoint'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'data-desk-room-title="' 'Desk room titles have an explicit title hit target for current-room inline rename'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'desk-map-room-title-hit' 'Desk room titles include a full label-area hit rectangle'
 assert_file_contains "$ROOT_DIR/site/static/desk-page.js" 'function mapRoomTitleAtPoint' 'Desk map can rename room titles even when Safari targets the SVG root'
