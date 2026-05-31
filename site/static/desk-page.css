@@ -852,9 +852,9 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-topology-toggle {
   display: inline-grid;
-  grid-template-columns: repeat(2, max-content);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   padding: 0.14rem;
   border: 1px solid rgba(240, 213, 138, 0.28);
@@ -872,12 +872,15 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   display: grid;
   place-items: center;
   min-height: 2rem;
-  padding: 0 0.72rem;
+  min-width: 0;
+  padding: 0 0.45rem;
   border-radius: 6px;
   color: rgba(255, 237, 179, 0.78);
   font: 700 0.82rem/1 ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .desk-topology-toggle.is-paper .desk-topology-option {
@@ -2087,6 +2090,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   right: clamp(0.95rem, 1.6vw, 1.3rem);
   top: calc(clamp(0.95rem, 1.6vw, 1.3rem) + 3.05rem);
   z-index: 6;
+  box-sizing: border-box;
   width: min(18rem, 46vw);
   min-height: 2.55rem;
   border: 1px solid rgba(117, 80, 44, 0.45);
@@ -2097,6 +2101,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   padding: 0.55rem 0.6rem 0.55rem 3.2rem;
   transform-origin: top right;
   animation: desk-map-properties-open 180ms cubic-bezier(0.2, 0.82, 0.18, 1);
+  overflow: hidden;
 }
 
 .desk-map-properties-close {
@@ -2139,6 +2144,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-properties-form {
   display: grid;
+  min-width: 0;
   gap: 0.45rem;
 }
 
@@ -2148,10 +2154,15 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   color: #4f351a;
   font: 700 0.95rem/1.2 ui-serif, Georgia, "Times New Roman", serif;
   text-align: center;
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: none;
 }
 
 .desk-map-properties-form label {
   display: grid;
+  min-width: 0;
   gap: 0.22rem;
   color: #5d4527;
   font-size: 0.82rem;
@@ -2160,6 +2171,10 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-prop-input,
 .desk-map-prop-select,
 .desk-map-prop-color {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid rgba(117, 80, 44, 0.38);
   border-radius: 6px;
   background: rgba(247, 233, 196, 0.8);
@@ -2449,6 +2464,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   line-height: var(--desk-notebook-line);
   min-height: var(--desk-notebook-line);
   cursor: default;
+  background: #faf9f2;
 }
 
 .desk-stage[data-desk-stage-mode="todo"] .desk-room-name-title {
@@ -2457,11 +2473,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-room-name-title::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: #faf9f2;
+  content: none;
 }
 
 .desk-room-name-title span {
@@ -2653,7 +2665,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-row-actions {
   position: absolute;
   top: 0;
-  right: 0;
+  right: calc(-1 * var(--desk-notebook-right-margin) + 0.18rem);
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.14rem;
@@ -2677,7 +2690,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-notebook-task:focus-within .desk-notebook-title,
 .desk-notebook-task.is-complete .desk-notebook-title,
 .desk-notebook-task.is-forgotten .desk-notebook-title {
-  padding-right: 4.6rem;
+  padding-right: 0;
 }
 
 .desk-notebook-row-icon,

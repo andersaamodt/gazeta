@@ -67,7 +67,6 @@
     presence: null,
     presenceTick: 0,
     flashlightStrength: flashlightStrengthFromStorage(),
-    greenbeltTone: greenbeltToneFromStorage(),
     inFlight: 0,
     pendingStatus: '',
     forgottenOpen: false,
@@ -787,18 +786,8 @@
     return flashlightSteps[Math.max(0, Math.min(flashlightSteps.length - 1, Number(state.flashlightStrength || 0)))] || flashlightSteps[3];
   }
 
-  function greenbeltToneFromStorage() {
-    return storageGet('desk_greenbelt_tone_v1') === 'deep' ? 'deep' : 'spring';
-  }
-
   function greenbeltColor() {
-    return state.greenbeltTone === 'deep' ? '#87954f' : '#9fac63';
-  }
-
-  function renderGreenbeltToneIcon() {
-    var isDeep = state.greenbeltTone === 'deep';
-    var nextLabel = isDeep ? 'Switch to lighter greenbelt' : 'Switch to darker greenbelt';
-    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-greenbelt-swatch is-spring" d="M5 5h6v14H5z"></path><path class="desk-greenbelt-swatch is-deep" d="M13 5h6v14h-6z"></path><path class="desk-greenbelt-swatch-mark" d="' + (isDeep ? 'M14.8 12l1.4 1.4 2.8-3.3' : 'M6.8 12l1.4 1.4 2.8-3.3') + '"></path><title>' + escapeHtml(nextLabel) + '</title></svg>';
+    return '#8d9a54';
   }
 
   function readPresence() {
@@ -1085,7 +1074,6 @@
     var specs = [
       ['[data-desk-login]', 'Sign in with the owner Nostr identity'],
       ['[data-desk-close-map]', 'Close the room map'],
-      ['[data-desk-map-greenbelt-tone]', 'Switch greenbelt color'],
       ['[data-desk-map-zoom]', 'Toggle between the full mansion map and a closeup of this room'],
       ['[data-desk-map-props]', 'Edit this room kind and color'],
       ['[data-desk-map-props-close]', 'Close room properties'],
@@ -3205,7 +3193,6 @@
       greenbelt + outdoorBackgroundShapes + passageShapes + '<g class="desk-map-room-layer">' + roomShapes + roomPerimeters + '</g><g class="desk-map-door-layer">' + doorShapes + entranceDoorShape + passageDoorShapes + '</g><g class="desk-map-room-outline-layer">' + roomOutlines + '</g><g class="desk-map-room-hover-outline-layer">' + roomHoverOutlines + '</g>' +
       '</svg>' +
       '<button type="button" class="desk-map-close" data-desk-close-map aria-label="Close map" title="Close map">×</button>' +
-      '<button type="button" class="desk-map-greenbelt-tone-btn' + (state.greenbeltTone === 'deep' ? ' is-deep' : '') + '" data-desk-map-greenbelt-tone aria-label="Switch greenbelt color" title="Switch greenbelt color">' + renderGreenbeltToneIcon() + '</button>' +
       '<button type="button" class="desk-map-zoom-btn' + (state.mapZoomMode === 'room' ? ' is-active' : '') + '" data-desk-map-zoom aria-label="' + escapeHtml(zoomLabel) + '" title="' + escapeHtml(zoomLabel) + '">' + renderMapZoomIcon() + '</button>' +
       '<button type="button" class="desk-map-props-btn' + (state.mapPropsOpen ? ' is-active' : '') + '" data-desk-map-props aria-label="Room properties" title="Room properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-blueprint-sheet" d="M5 3.8h10.3L19 7.5v12.7H5z"></path><path class="desk-blueprint-fold" d="M15.3 3.8v4h3.9"></path><path class="desk-blueprint-grid" d="M8 9.2h8M8 13h8M8 16.8h4M9.7 7v12M14.4 9.2v9.8"></path><path class="desk-blueprint-mark" d="M13.1 16.8l1.4 1.4 2.8-3.2"></path></svg></button>' +
       propsPanel +
@@ -3958,6 +3945,29 @@
     return true;
   }
 
+  function preserveOptimisticDeskVote(data, room, taskId) {
+    if (!data || !Array.isArray(data.tasks) || !state.data || !Array.isArray(state.data.tasks)) {
+      return data;
+    }
+    var targetRoom = normalizeTaskRoom(room || state.currentRoom);
+    var optimisticTask = findDeskTask(state.data.tasks, targetRoom, taskId);
+    var responseTask = findDeskTask(data.tasks, targetRoom, taskId);
+    if (!optimisticTask || !responseTask) {
+      return data;
+    }
+    var optimisticVotes = Number(optimisticTask.upvotes || 0);
+    var responseVotes = Number(responseTask.upvotes || 0);
+    if (optimisticTask.can_vote_now === false && (responseTask.can_vote_now !== false || responseVotes < optimisticVotes)) {
+      responseTask.upvotes = Math.max(responseVotes, optimisticVotes);
+      responseTask.last_vote_at = optimisticTask.last_vote_at;
+      responseTask.next_vote_at = optimisticTask.next_vote_at;
+      responseTask.can_vote_now = false;
+      data.tasks = sortDeskTasks(data.tasks);
+      updateOptimisticRoomSummary(data, targetRoom);
+    }
+    return data;
+  }
+
   function removeDeskTask(tasks, room, taskId) {
     var targetRoom = normalizeTaskRoom(room);
     var targetId = String(taskId || '');
@@ -4703,19 +4713,6 @@
       return;
     }
 
-    if (event.target.closest('[data-desk-map-greenbelt-tone]')) {
-      event.preventDefault();
-      state.greenbeltTone = state.greenbeltTone === 'deep' ? 'spring' : 'deep';
-      storageSet('desk_greenbelt_tone_v1', state.greenbeltTone);
-      state.suppressMapAnimation = true;
-      state.suppressTodoAnimation = state.mode === 'todo';
-      state.suppressComposeAnimation = state.mode === 'compose';
-      if (state.data) {
-        render(state.data);
-      }
-      return;
-    }
-
     if (event.target.closest('[data-desk-map-zoom]')) {
       event.preventDefault();
       setMapZoomMode(state.mapZoomMode === 'room' ? 'full' : 'room');
@@ -4938,9 +4935,10 @@
             restoreDeskVoteSnapshot(rollbackData, beforeVoteRects, data && data.error ? data.error : 'Desk vote failed.');
             return;
           }
+          data = preserveOptimisticDeskVote(data, taskRoom, taskId);
           renderDeskDataSteady(data, captureNotebookTaskRects());
         }).catch(function (err) {
-          restoreDeskVoteSnapshot(rollbackData, beforeVoteRects, err && err.message ? err.message : 'Desk vote failed.');
+          showMessage(err && err.message ? err.message : 'Desk vote may still be saving.', true);
         });
         return;
       }
