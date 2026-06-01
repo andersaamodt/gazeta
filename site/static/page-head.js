@@ -207,7 +207,7 @@
 
   function reconcileThemeLink() {
     var theme = themeFromConfig();
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260526-title-action-edge1';
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260529-blog-tags-final2';
     var link = document.getElementById('theme-stylesheet');
     if (!link) {
       link = document.createElement('link');
