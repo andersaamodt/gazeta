@@ -189,6 +189,30 @@
     return parseMoney(value).toFixed(2);
   }
 
+  function hasProductPrice(s) {
+    return !!normalizePrice((s && s.price) || '');
+  }
+
+  function productPriceDisplayText(s) {
+    var priceText = normalizePrice((s && s.price) || '');
+    if (!priceText) {
+      return '';
+    }
+    var priceValue = parseMoney(priceText);
+    if (priceValue === 0) {
+      return 'Free';
+    }
+    var currency = normalizeCurrency((s && s.currency) || 'USD');
+    if (currency === 'USD') {
+      return '$' + moneyText(priceValue);
+    }
+    return moneyText(priceValue) + ' ' + currency;
+  }
+
+  function productCheckoutPriceText(s) {
+    return productPriceDisplayText(s) || '$0.00';
+  }
+
   function authPayload() {
     return {
       session_token: String(localStorage.getItem('session_token') || '').trim(),
@@ -421,6 +445,66 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Local newer than Nostr',
+          message: 'Local source is newer than latest published Nostr state.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer than local',
+          message: 'Published Nostr state is newer than local source.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'In sync',
+          message: 'Local source and published state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Unpublished local changes',
+          message: 'No published Nostr state yet for this page.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync status unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function pageSyncStatusInfo() {
+    var sync = state.payload && state.payload.sync_status && typeof state.payload.sync_status === 'object' ? state.payload.sync_status : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusConfig(status);
+    var message = String(sync.message || config.message).trim();
+    return {
+      label: config.label,
+      message: message,
+      className: config.className
+    };
+  }
+
+  function pageSyncStatusPillHtml() {
+    var info = pageSyncStatusInfo();
+    return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+  }
+
+  function renderSyncStatusPill() {
+    var actionsHost = document.getElementById('nip23-page-title-actions');
+    if (!actionsHost) {
+      return;
+    }
+    actionsHost.innerHTML = pageSyncStatusPillHtml();
+  }
+
   function markHydrationPageReady() {
     var gate = window.__wizardryHydration;
     if (gate && typeof gate.markPageReady === 'function') {
@@ -612,6 +696,9 @@
         els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
       }
     }
+    if (!isAdmin()) {
+      renderSyncStatusPill();
+    }
     renderNavbarTitleRow(s);
   }
 
@@ -650,6 +737,7 @@
     if (showRevert) {
       html += '<button type="button" data-nip23-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
+    html += pageSyncStatusPillHtml();
     if (showPublish) {
       html += '<button type="button" class="list-admin-primary-btn" data-nip23-action="publish">Publish to Nostr...</button>';
     }
@@ -668,21 +756,26 @@
     var priceValue = parseMoney(priceText);
     var discountValue = normalizeDiscount(s.crypto_discount_percent || 0);
     var cryptoValue = priceValue * ((100 - discountValue) / 100);
-    var hasPrice = priceValue > 0;
+    var hasPrice = hasProductPrice(s);
     var productType = normalizeProductType(s.product_type || 'software');
     var enabled = !!s.product_enabled || hasPrice;
     if (!enabled) {
       return '';
     }
+    var displayPrice = productPriceDisplayText(s);
+    var cryptoPrice = priceValue === 0 ? 'Free' : '$' + moneyText(cryptoValue);
     var html = '';
     html += '<section class="nip23-product-card" aria-label="Product checkout">';
     html += '<div class="nip23-product-card-head">';
     html += '<strong>Checkout</strong>';
     html += '<span class="nip23-product-type-pill">' + escapeHtml(productType) + '</span>';
     html += '</div>';
+    if (displayPrice) {
+      html += '<div class="nip23-product-page-price"><span>Price</span><strong>' + escapeHtml(displayPrice) + '</strong></div>';
+    }
     html += '<div class="nip23-product-prices">';
-    html += '<div><span>Card price</span><strong>$' + moneyText(priceValue) + ' ' + escapeHtml(normalizeCurrency(s.currency || 'USD')) + '</strong></div>';
-    html += '<div><span>Crypto price</span><strong>$' + moneyText(cryptoValue) + '</strong></div>';
+    html += '<div><span>Card price</span><strong>' + escapeHtml(productCheckoutPriceText(s)) + '</strong></div>';
+    html += '<div><span>Crypto price</span><strong>' + escapeHtml(cryptoPrice) + '</strong></div>';
     if (discountValue > 0) {
       html += '<div><span>Crypto discount</span><strong>' + escapeHtml(String(discountValue.toFixed(2)).replace(/\.00$/, '')) + '%</strong></div>';
     }
@@ -817,6 +910,9 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
+      if (typeof data.sync_status !== 'undefined') {
+        state.payload.sync_status = data.sync_status;
+      }
       state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
       state.payload.draft_exists = true;
       var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
@@ -884,6 +980,9 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
+      if (typeof data.sync_status !== 'undefined') {
+        state.payload.sync_status = data.sync_status;
+      }
       state.payload.state = data.state;
       state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
       state.payload.draft_exists = true;

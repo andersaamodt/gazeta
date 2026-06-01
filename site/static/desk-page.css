@@ -1470,6 +1470,12 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-linecap: round;
 }
 
+.desk-map-room-shape.is-contained-parent,
+.desk-map-room.is-current .desk-map-room-shape.is-contained-subdivision {
+  stroke-dasharray: none;
+  stroke-linecap: round;
+}
+
 .desk-map-room-perimeter {
   fill: none;
   stroke: rgba(43, 27, 12, 0.76);
@@ -1751,7 +1757,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 }
 
 .desk-map-doorway-gap {
-  stroke: #9fac63;
+  stroke: color-mix(in srgb, var(--desk-greenbelt-color, #9fac63) 78%, #4f5f2b 22%);
   stroke-width: 8.2;
 }
 
@@ -1986,12 +1992,18 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
   stroke-linejoin: round;
 }
 
-.desk-blueprint-grid {
-  opacity: 0.72;
+.desk-set-square-body {
+  fill: color-mix(in srgb, var(--desk-gold-soft, #f0d58a) 34%, transparent);
 }
 
-.desk-blueprint-mark {
-  stroke-width: 2;
+.desk-set-square-cutout {
+  fill: color-mix(in srgb, #d7b46f 88%, transparent);
+  stroke-width: 1.45;
+}
+
+.desk-set-square-rules {
+  opacity: 0.82;
+  stroke-width: 1.35;
 }
 
 .desk-map-zoom-btn {

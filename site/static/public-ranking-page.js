@@ -238,6 +238,66 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Local newer than Nostr',
+          message: 'Local source is newer than latest published Nostr state.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer than local',
+          message: 'Published Nostr state is newer than local source.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'In sync',
+          message: 'Local source and published state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Unpublished local changes',
+          message: 'No published Nostr state yet for this page.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync status unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function pageSyncStatusInfo() {
+    var sync = state.payload && state.payload.sync_status && typeof state.payload.sync_status === 'object' ? state.payload.sync_status : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusConfig(status);
+    var message = String(sync.message || config.message).trim();
+    return {
+      label: config.label,
+      message: message,
+      className: config.className
+    };
+  }
+
+  function pageSyncStatusPillHtml() {
+    var info = pageSyncStatusInfo();
+    return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+  }
+
+  function renderSyncStatusPill() {
+    var actionsHost = document.getElementById('public-ranking-page-title-actions');
+    if (!actionsHost) {
+      return;
+    }
+    actionsHost.innerHTML = pageSyncStatusPillHtml();
+  }
+
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')
@@ -324,7 +384,10 @@
       extras_after: String(src.extras_after || ''),
       extras_after_format: String(src.extras_after_format || 'markdown').toLowerCase() === 'html' ? 'html' : 'markdown',
       vote_cooldown_seconds: Math.max(60, Math.floor(Number(src.vote_cooldown_seconds || 86400) || 86400)),
-      submission_mode: normalizeSubmissionMode(src.submission_mode || 'owner_only'),
+      submission_mode: normalizeSubmissionMode(
+        src.submission_mode
+        || (((src.allow_signed_in_submissions === true) || String(src.allow_signed_in_submissions || '').toLowerCase() === 'true') ? 'open' : (slug === 'projects' ? 'open' : 'owner_only'))
+      ),
       show_marker_filters: !!src.show_marker_filters,
       default_metric: normalizeMetric(src.default_metric || src.metric || 'momentum'),
       blacklist_pubkeys: blacklist.map(function (pk) { return String(pk || '').trim().toLowerCase(); }).filter(Boolean),
@@ -606,8 +669,11 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
         }
       } else {
-        els.title.textContent = s.title || 'Public Ranking';
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
       }
+    }
+    if (!isAdmin()) {
+      renderSyncStatusPill();
     }
     renderNavbarTitleRow(s);
     if (els.description) {
@@ -669,7 +735,7 @@
       }
       var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
       if (nonAdminActionsHost) {
-        nonAdminActionsHost.innerHTML = '';
+        nonAdminActionsHost.innerHTML = pageSyncStatusPillHtml();
       }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
@@ -698,6 +764,7 @@
     if (showRevert) {
       html += '<button type="button" data-ranking-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
+    html += pageSyncStatusPillHtml();
     if (showPublish) {
       html += '<button type="button" data-ranking-action="publish" class="list-admin-primary-btn">Publish to Nostr...</button>';
     }
@@ -1243,6 +1310,9 @@
     }
     if (data.state && typeof data.state === 'object') {
       state.payload.state = data.state;
+    }
+    if (typeof data.sync_status !== 'undefined') {
+      state.payload.sync_status = data.sync_status;
     }
     if (data.validation && typeof data.validation === 'object') {
       state.payload.validation = data.validation;

@@ -142,6 +142,29 @@ def safe_task_slug(text: str) -> str:
     return slugify(first)[:48] or "task"
 
 
+def yaml_scalar(value: str) -> str:
+    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    return text.replace('"', '\\"')
+
+
+def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
+    raw = str(text or "")
+    if not raw.startswith("---\n"):
+        return {}, raw
+    marker = raw.find("\n---\n", 4)
+    if marker < 0:
+        return {}, raw
+    front = raw[4:marker]
+    body = raw[marker + 5:]
+    meta: dict[str, str] = {}
+    for line in front.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        meta[str(key).strip().lower()] = str(value).strip().strip('"')
+    return meta, body
+
+
 def atomic_write_text(path: Path, text: str, mode: int = 0o600) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
@@ -252,6 +275,177 @@ class DeskStore:
         if "/" in name or "\\" in name or name.startswith("."):
             raise DeskError("bad_task", "Task id is not valid.")
         return name
+
+    def docs_dir(self, room_rel: str | None) -> Path:
+        return self.room_dir(room_rel) / ".docs"
+
+    def doc_name(self, doc_id: str) -> str:
+        name = str(doc_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\.md", name):
+            raise DeskError("bad_doc", "Document id is not valid.")
+        if "/" in name or "\\" in name or name.startswith("."):
+            raise DeskError("bad_doc", "Document id is not valid.")
+        return name
+
+    def doc_path(self, room_rel: str | None, doc_id: str) -> Path:
+        return self.docs_dir(room_rel) / self.doc_name(doc_id)
+
+    def safe_doc_slug(self, title: str, body: str) -> str:
+        clean_title = str(title or "").strip()
+        if clean_title:
+            return slugify(clean_title)[:72] or "document"
+        words = re.sub(r"\s+", " ", str(body or "").strip()).split(" ")
+        excerpt = " ".join([w for w in words if w][:5]).strip()
+        if not excerpt:
+            raise DeskError("empty_document", "Start typing before Desk saves the document.")
+        return slugify(excerpt)[:72] or "document"
+
+    def unique_doc_path(self, room_rel: str, title: str, body: str) -> Path:
+        docs = self.docs_dir(room_rel)
+        docs.mkdir(parents=True, exist_ok=True)
+        base = self.safe_doc_slug(title, body)
+        candidate = docs / f"{base}.md"
+        if not candidate.exists():
+            return candidate
+        for suffix in range(2, 1000):
+            candidate = docs / f"{base}-{suffix}.md"
+            if not candidate.exists():
+                return candidate
+        raise DeskError("doc_exists", "Could not choose a unique document file.")
+
+    def read_document(self, room_rel: str, path: Path) -> dict[str, object]:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        meta, body = parse_frontmatter(text)
+        title = str(meta.get("title") or "").strip()
+        doc_type = str(meta.get("type") or "shortform").strip().lower()
+        if doc_type not in ("shortform", "article"):
+            doc_type = "shortform"
+        if not title:
+            first_line = next((line.strip() for line in body.splitlines() if line.strip()), "")
+            title = " ".join(first_line.split()[:8]).strip() if first_line else path.stem.replace("-", " ")
+        return {
+            "id": path.name,
+            "room": self.normalize_room_rel(room_rel),
+            "title": title,
+            "type": doc_type,
+            "body": body,
+            "updated_at": _dt.datetime.fromtimestamp(path.stat().st_mtime, tz=_dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "size": path.stat().st_size,
+        }
+
+    def documents(self, room_rel: str | None) -> list[dict[str, object]]:
+        rel = self.normalize_room_rel(room_rel)
+        docs = self.docs_dir(rel)
+        if not docs.is_dir():
+            return []
+        items: list[dict[str, object]] = []
+        for path in sorted(docs.iterdir(), key=lambda p: p.name.lower()):
+            if not path.is_file() or path.name.startswith(".") or path.suffix.lower() != ".md":
+                continue
+            try:
+                items.append(self.read_document(rel, path))
+            except OSError:
+                continue
+        items.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+        return items
+
+    def write_document_content(self, title: str, doc_type: str, body: str) -> str:
+        clean_type = str(doc_type or "shortform").strip().lower()
+        if clean_type not in ("shortform", "article"):
+            clean_type = "shortform"
+        clean_title = str(title or "").strip()
+        clean_body = str(body or "").replace("\r\n", "\n")
+        front = [
+            "---",
+            f'type: "{yaml_scalar(clean_type)}"',
+            f'title: "{yaml_scalar(clean_title)}"',
+            f'updated_at: "{yaml_scalar(iso_now())}"',
+            "---",
+            "",
+        ]
+        return "\n".join(front) + clean_body
+
+    def save_document(self, room_rel: str, doc_id: str, title: str, doc_type: str, body: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        self.ensure_room(room, self.room_title(room))
+        clean_body = str(body or "")
+        if len(clean_body) > 300000:
+            raise DeskError("doc_too_large", "Document is too large.")
+        clean_title = str(title or "").strip()
+        if not clean_title and not re.search(r"\S+", clean_body):
+            raise DeskError("empty_document", "Start typing before Desk saves the document.")
+        if doc_id:
+            target = self.doc_path(room, doc_id)
+            if not target.is_file():
+                raise DeskError("missing_doc", "Document was not found.")
+            if not clean_title:
+                auto_target = self.unique_doc_path_for_slug(room, self.safe_doc_slug("", clean_body), target.name)
+                if auto_target.name != target.name:
+                    os.replace(target, auto_target)
+                    target = auto_target
+        else:
+            target = self.unique_doc_path(room, clean_title, clean_body)
+        atomic_write_text(target, self.write_document_content(clean_title, doc_type, clean_body))
+        self.append_log("save-document", {"room": room, "doc": target.name})
+        payload = self.state(room, threshold)
+        payload["saved_document"] = self.read_document(room, target)
+        return payload
+
+    def unique_doc_path_for_slug(self, room_rel: str, slug: str, current_name: str = "") -> Path:
+        docs = self.docs_dir(room_rel)
+        docs.mkdir(parents=True, exist_ok=True)
+        base = slugify(slug)[:72] or "document"
+        candidate = docs / f"{base}.md"
+        if candidate.name == current_name or not candidate.exists():
+            return candidate
+        for suffix in range(2, 1000):
+            candidate = docs / f"{base}-{suffix}.md"
+            if candidate.name == current_name or not candidate.exists():
+                return candidate
+        raise DeskError("doc_exists", "Could not choose a unique document file.")
+
+    def rename_document(self, room_rel: str, doc_id: str, title: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        source = self.doc_path(room, doc_id)
+        if not source.is_file():
+            raise DeskError("missing_doc", "Document was not found.")
+        clean_title = str(title or "").strip()
+        if not clean_title:
+            raise DeskError("bad_title", "Document name is required.")
+        current = self.read_document(room, source)
+        target = self.unique_doc_path_for_slug(room, clean_title, source.name)
+        atomic_write_text(target, self.write_document_content(clean_title, str(current.get("type") or "shortform"), str(current.get("body") or "")))
+        if target != source:
+            source.unlink()
+        self.append_log("rename-document", {"room": room, "from": source.name, "to": target.name})
+        payload = self.state(room, threshold)
+        payload["renamed_document"] = self.read_document(room, target)
+        return payload
+
+    def move_document(self, room_rel: str, doc_id: str, target_room_rel: str, threshold: int) -> dict[str, object]:
+        source = self.normalize_room_rel(room_rel)
+        target_room = self.normalize_room_rel(target_room_rel)
+        if source == target_room:
+            raise DeskError("bad_move", "Choose a different room.")
+        source_path = self.doc_path(source, doc_id)
+        if not source_path.is_file():
+            raise DeskError("missing_doc", "Document was not found.")
+        self.ensure_room(target_room, self.room_title(target_room))
+        target_dir = self.docs_dir(target_room)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        name = source_path.name
+        destination = target_dir / name
+        if destination.exists():
+            stem = source_path.stem
+            for suffix in range(2, 1000):
+                destination = target_dir / f"{stem}-{suffix}.md"
+                if not destination.exists():
+                    break
+        os.replace(source_path, destination)
+        self.append_log("move-document", {"from_room": source, "to_room": target_room, "doc": destination.name})
+        payload = self.state(target_room, threshold)
+        payload["moved_document"] = {"from_room": source, "to_room": target_room, "doc": destination.name}
+        return payload
 
     def legacy_open_tasks_dir(self, room_rel: str | None) -> Path:
         return self.room_dir(room_rel) / ".tasks"
@@ -365,6 +559,7 @@ class DeskStore:
                 "created_at": iso_now(),
             })
         (room / ".tasks").mkdir(exist_ok=True)
+        (room / ".docs").mkdir(exist_ok=True)
         with contextlib.suppress(OSError):
             os.chmod(room / ".tasks", 0o700)
         return room_rel
@@ -694,13 +889,11 @@ class DeskStore:
             return self.room_url_base()
         from urllib.parse import quote
         base = self.room_url_base().rstrip("/")
-        return (base + "/" if base else "/") + quote(room_rel, safe="")
+        path = "/".join(quote(part, safe="") for part in room_rel.split("/") if part)
+        return (base + "/" if base else "/") + path
 
     def room_url_base(self) -> str:
-        host = os.environ.get("HTTP_HOST", "").split(":", 1)[0].lower()
-        if host.startswith("desk."):
-            return "/"
-        return "/desk"
+        return "/"
 
     def overworld_url(self, rel: str | None) -> str:
         from urllib.parse import quote
@@ -750,9 +943,13 @@ class DeskStore:
         if current_rel:
             payload["tasks"] = self.sorted_tasks(current_rel)
             payload["done_tasks"] = self.sorted_tasks(current_rel, "done")
+            payload["forgotten_tasks"] = self.sorted_tasks(current_rel, "forgotten")
+            payload["documents"] = self.documents(current_rel)
         else:
             payload["tasks"] = []
             payload["done_tasks"] = []
+            payload["forgotten_tasks"] = []
+            payload["documents"] = []
         return payload
 
     def unique_room_rel(self, parent_rel: str, title: str) -> str:
@@ -828,6 +1025,49 @@ class DeskStore:
         self.append_log("set-room-title", {"room": room, "title": clean})
         payload = self.state(room, threshold)
         payload["updated_room"] = self.room_summary(room, threshold)
+        return payload
+
+    def unique_room_slug_rel(self, source_rel: str, clean_title: str) -> str:
+        source = self.normalize_room_rel(source_rel)
+        parent = "" if "/" not in source else source.rsplit("/", 1)[0]
+        leaf = slugify(clean_title)
+        candidate = f"{parent}/{leaf}" if parent else leaf
+        if candidate == source:
+            return source
+        if not self.room_dir(candidate).exists():
+            return candidate
+        for index in range(2, 1000):
+            next_candidate = f"{candidate}-{index}"
+            if not self.room_dir(next_candidate).exists():
+                return next_candidate
+        raise DeskError("room_exists", "Could not choose a unique room slug.")
+
+    def rename_room(self, room_rel: str, title: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        clean = str(title or "").strip()
+        if not clean:
+            raise DeskError("missing_title", "Room title is required.")
+        if len(clean) > 96:
+            raise DeskError("title_too_long", "Room title must be 96 characters or fewer.")
+        if not room:
+            self.update_room_metadata("", {"title": clean})
+            self.append_log("rename-room", {"from_room": "", "to_room": "", "title": clean, "office_only": True})
+            payload = self.state("", threshold)
+            payload["renamed_room"] = {"from": "", "to": "", "title": clean}
+            return payload
+        source_path = self.room_dir(room)
+        if not source_path.is_dir():
+            raise DeskError("missing_room", "That Desk room does not exist.")
+        target_rel = self.unique_room_slug_rel(room, clean)
+        if target_rel != room:
+            target_path = self.room_dir(target_rel)
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            os.rename(source_path, target_path)
+            self.rewrite_passages_after_room_move(room, target_rel)
+        self.update_room_metadata(target_rel, {"title": clean})
+        self.append_log("rename-room", {"from_room": room, "to_room": target_rel, "title": clean})
+        payload = self.state(target_rel, threshold)
+        payload["renamed_room"] = {"from": room, "to": target_rel, "title": clean}
         return payload
 
     def unique_room_move_rel(self, source_rel: str, target_parent_rel: str) -> str:
@@ -1024,6 +1264,25 @@ class DeskStore:
         payload["voted_task"] = self.read_task(room, task_path)
         return payload
 
+    def edit_task(self, room_rel: str, task_id: str, text: str, threshold: int, status: str = "open") -> dict[str, object]:
+        source_status = status if status in ("open", "done", "forgotten") else "open"
+        task_path = self.task_path(room_rel, task_id, source_status)
+        if not task_path.is_file():
+            raise DeskError("missing_task", "Task file was not found.")
+        clean_text = str(text or "").strip()
+        if not clean_text:
+            raise DeskError("missing_task", "Task text is required.")
+        current = self.read_task(room_rel, task_path, source_status)
+        body = str(current.get("body") or "").strip()
+        next_text = clean_text + ("\n" + body if body else "") + "\n"
+        atomic_write_text(task_path, next_text)
+        self.set_metadata(task_path, {"updated_at": iso_now()})
+        room = self.normalize_room_rel(room_rel)
+        self.append_log("edit-task", {"room": room, "task": task_path.name, "status": source_status})
+        payload = self.state(room, threshold)
+        payload["edited_task"] = self.read_task(room, task_path, source_status)
+        return payload
+
     def move_sidecar(self, old_path: Path, new_path: Path) -> None:
         old_meta = self.meta_path(old_path)
         if old_meta.exists():
@@ -1031,13 +1290,13 @@ class DeskStore:
             new_meta.parent.mkdir(parents=True, exist_ok=True)
             os.replace(old_meta, new_meta)
 
-    def move_task_file(self, from_room: str, task_id: str, to_room: str, status: str = "open") -> Path:
+    def move_task_file(self, from_room: str, task_id: str, to_room: str, status: str = "open", target_status: str | None = None) -> Path:
         old_path = self.task_path(from_room, task_id, status)
         if not old_path.is_file():
             raise DeskError("missing_task", "Task file was not found.")
         metadata = self.metadata(old_path)
         target_rel = self.ensure_room(to_room)
-        target_dir = self.tasks_dir(target_rel, status)
+        target_dir = self.tasks_dir(target_rel, target_status or status)
         target_dir.mkdir(parents=True, exist_ok=True)
         target_path = target_dir / old_path.name
         if target_path.exists():
@@ -1073,24 +1332,70 @@ class DeskStore:
         return payload
 
     def complete_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
-        old_path = self.task_path(room_rel, task_id)
-        if not old_path.is_file():
+        task_path = self.task_path(room_rel, task_id)
+        if not task_path.is_file():
             raise DeskError("missing_task", "Task file was not found.")
         room = self.normalize_room_rel(room_rel)
-        done_dir = self.tasks_dir(room, "done")
-        done_dir.mkdir(parents=True, exist_ok=True)
-        target = done_dir / old_path.name
-        if target.exists():
-            target = done_dir / f"{old_path.stem}-{now_epoch()}{old_path.suffix}"
-        metadata = self.metadata(old_path)
-        os.rename(old_path, target)
-        self.move_sidecar(old_path, target)
-        metadata["completed_at"] = iso_now()
+        metadata = self.metadata(task_path)
+        completed_at = str(metadata.get("completed_at") or "")
+        metadata["completed_at"] = "" if completed_at else iso_now()
+        metadata["updated_at"] = iso_now()
+        self.set_metadata(task_path, metadata)
+        self.append_log("complete-task", {"room": room, "task": task_path.name, "completed": bool(metadata["completed_at"])})
+        payload = self.state(room, threshold)
+        payload["completed_task"] = self.read_task(room, task_path)
+        return payload
+
+    def archive_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        target = self.move_task_file(room, task_id, room, "open", "done")
+        metadata = self.metadata(target)
+        metadata["completed_at"] = metadata.get("completed_at") or iso_now()
         metadata["updated_at"] = iso_now()
         self.set_metadata(target, metadata)
-        self.append_log("complete-task", {"room": room, "task": target.name})
+        self.append_log("archive-task", {"room": room, "task": target.name})
         payload = self.state(room, threshold)
-        payload["completed_task"] = self.read_task(room, target, "done")
+        payload["archived_task"] = self.read_task(room, target, "done")
+        return payload
+
+    def trash_task(self, room_rel: str, task_id: str, threshold: int, status: str = "open") -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        source_status = status if status in ("open", "done", "forgotten") else "open"
+        target = self.move_task_file(room, task_id, room, source_status, "trash")
+        self.set_metadata(target, {"updated_at": iso_now()})
+        self.append_log("trash-task", {"room": room, "task": target.name, "from_status": source_status})
+        payload = self.state(room, threshold)
+        payload["trashed_task"] = self.read_task(room, target, "trash")
+        return payload
+
+    def forget_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        target = self.move_task_file(room, task_id, room, "open", "forgotten")
+        self.set_metadata(target, {"updated_at": iso_now()})
+        self.append_log("forget-task", {"room": room, "task": target.name})
+        payload = self.state(room, threshold)
+        payload["forgotten_task"] = self.read_task(room, target, "forgotten")
+        return payload
+
+    def remember_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        target = self.move_task_file(room, task_id, room, "forgotten", "open")
+        self.set_metadata(target, {"updated_at": iso_now()})
+        self.append_log("remember-task", {"room": room, "task": target.name})
+        payload = self.state(room, threshold)
+        payload["remembered_task"] = self.read_task(room, target)
+        return payload
+
+    def clear_task_upvotes(self, room_rel: str, task_id: str, threshold: int, status: str = "open") -> dict[str, object]:
+        room = self.normalize_room_rel(room_rel)
+        source_status = status if status in ("open", "done", "forgotten") else "open"
+        task_path = self.task_path(room, task_id, source_status)
+        if not task_path.is_file():
+            raise DeskError("missing_task", "Task file was not found.")
+        self.set_metadata(task_path, {"upvotes": 0, "last_vote_at": 0, "updated_at": iso_now()})
+        self.append_log("clear-task-upvotes", {"room": room, "task": task_path.name, "status": source_status})
+        payload = self.state(room, threshold)
+        payload["updated_task"] = self.read_task(room, task_path, source_status)
         return payload
 
     def restore_task(self, room_rel: str, task_id: str, threshold: int) -> dict[str, object]:
@@ -1269,7 +1574,13 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "create-room",
         "add-task",
         "vote-task",
+        "edit-task",
         "complete-task",
+        "archive-task",
+        "trash-task",
+        "forget-task",
+        "remember-task",
+        "clear-task-upvotes",
         "restore-task",
         "move-task",
         "move-room",
@@ -1281,9 +1592,13 @@ def dispatch(store: DeskStore) -> dict[str, object]:
         "set-room-kind",
         "set-room-topology",
         "set-room-title",
+        "rename-room",
         "delete-room",
         "rebuild-indexes",
         "migrate-metadata",
+        "save-document",
+        "move-document",
+        "rename-document",
     }
     context = store.locked() if mutating or action in {"state", "search", "audit", "list-orphans"} else contextlib.nullcontext()
     with context:
@@ -1297,8 +1612,20 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.add_task(target, env("BLOG_DESK_TASK_TEXT"), threshold)
         if action == "vote-task":
             return store.vote_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "edit-task":
+            return store.edit_task(room, env("BLOG_DESK_TASK_ID"), env("BLOG_DESK_TASK_TEXT"), threshold, env("BLOG_DESK_TASK_STATUS", "open"))
         if action == "complete-task":
             return store.complete_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "archive-task":
+            return store.archive_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "trash-task":
+            return store.trash_task(room, env("BLOG_DESK_TASK_ID"), threshold, env("BLOG_DESK_TASK_STATUS", "open"))
+        if action == "forget-task":
+            return store.forget_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "remember-task":
+            return store.remember_task(room, env("BLOG_DESK_TASK_ID"), threshold)
+        if action == "clear-task-upvotes":
+            return store.clear_task_upvotes(room, env("BLOG_DESK_TASK_ID"), threshold, env("BLOG_DESK_TASK_STATUS", "open"))
         if action == "restore-task":
             return store.restore_task(room, env("BLOG_DESK_TASK_ID"), threshold)
         if action == "move-task":
@@ -1321,8 +1648,23 @@ def dispatch(store: DeskStore) -> dict[str, object]:
             return store.set_room_topology(room, env("BLOG_DESK_ROOM_TOPOLOGY"), threshold)
         if action == "set-room-title":
             return store.rename_room(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
+        if action == "rename-room":
+            return store.rename_room(room, env("BLOG_DESK_ROOM_TITLE"), threshold)
         if action == "delete-room":
             return store.delete_room(room, threshold)
+        if action == "save-document":
+            return store.save_document(
+                room,
+                env("BLOG_DESK_DOC_ID"),
+                env("BLOG_DESK_DOC_TITLE"),
+                env("BLOG_DESK_DOC_TYPE"),
+                env("BLOG_DESK_DOC_BODY"),
+                threshold
+            )
+        if action == "move-document":
+            return store.move_document(room, env("BLOG_DESK_DOC_ID"), env("BLOG_DESK_TARGET_ROOM"), threshold)
+        if action == "rename-document":
+            return store.rename_document(room, env("BLOG_DESK_DOC_ID"), env("BLOG_DESK_DOC_TITLE"), threshold)
         if action == "search":
             return store.search(env("BLOG_DESK_QUERY"), threshold)
         if action == "audit":

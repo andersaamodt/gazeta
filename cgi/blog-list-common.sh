@@ -608,10 +608,15 @@ blog_list_load_canonical_state_json() {
 blog_list_load_draft_state_json() {
   slug=$(blog_list_normalize_slug "${1-}")
   path=$(blog_list_draft_path "$slug")
-  if [ ! -f "$path" ]; then
-    return 1
+  if [ -f "$path" ]; then
+    raw=$(blog_state_markdown_to_json "$path" content 2>/dev/null || printf '')
+  else
+    path=$(blog_list_legacy_draft_path "$slug")
+    if [ ! -f "$path" ]; then
+      return 1
+    fi
+    raw=$(cat "$path" 2>/dev/null || printf '')
   fi
-  raw=$(cat "$path" 2>/dev/null || printf '')
   [ -n "$raw" ] || return 1
   blog_list_normalize_state_json "$slug" "$raw"
 }
@@ -621,10 +626,9 @@ blog_list_save_draft_state_json() {
   state_json=${2-}
   [ -n "$state_json" ] || return 1
   path=$(blog_list_draft_path "$slug")
-  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-draft.XXXXXX")
-  printf '%s\n' "$state_json" > "$tmp"
-  mv "$tmp" "$path"
-  chmod 644 "$path" 2>/dev/null || true
+  normalized=$(blog_list_normalize_state_json "$slug" "$state_json")
+  markdown_state=$(printf '%s\n' "$normalized" | jq -c 'del(.entries, .tags)')
+  blog_state_markdown_write_json "$path" "$markdown_state" content
 }
 
 blog_list_year_from_created_at() {

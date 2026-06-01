@@ -105,7 +105,7 @@
 <div class="nav-user-menu" id="nav-user-menu" style="display:none;">
   <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="User menu"><svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg></button>
   <div class="nav-menu-panel" id="nav-menu-panel" role="menu" hidden>
-    <a id="nav-menu-desk-link" class="nav-menu-item" href="/desk" role="menuitem">Desk</a>
+    <a id="nav-menu-desk-link" class="nav-menu-item" href="https://desk.andersaamodt.com/" role="menuitem">Desk</a>
     <a id="nav-menu-primary-link" class="nav-menu-item" href="/admin" role="menuitem">Admin</a>
     <div class="nav-menu-logout-row" id="nav-menu-logout-row">
       <button id="nav-menu-logout" class="nav-menu-item nav-menu-item-danger" type="button" role="menuitem">Logout</button>
@@ -374,8 +374,8 @@
         link.classList.toggle('active', active);
         if (active) {
           link.setAttribute('aria-current', 'page');
-          link.setAttribute('aria-disabled', 'true');
-          link.setAttribute('tabindex', '-1');
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
         } else {
           link.removeAttribute('aria-current');
           link.removeAttribute('aria-disabled');

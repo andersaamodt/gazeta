@@ -53,6 +53,7 @@ blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"
 blog_posts_dir="$blog_site_root/site/pages/posts"
 blog_posts_store_dir="$blog_content_root/posts"
+blog_page_states_dir="$blog_content_root/page-states"
 blog_auth_dir="$blog_site_data/ssh-auth"
 blog_users_dir="$blog_auth_dir/users"
 blog_sessions_dir="$blog_auth_dir/sessions"
@@ -250,6 +251,65 @@ blog_draft_file_path() {
   printf '%s/%s.md\n' "$blog_drafts_dir" "$1"
 }
 
+blog_content_snapshot_timestamp() {
+  date -u +%Y%m%dT%H%M%SZ
+}
+
+blog_content_snapshot_path() {
+  target_path=${1-}
+  [ -n "$target_path" ] || return 1
+  case "$target_path" in
+    "$blog_site_data"/*) rel_path=${target_path#"$blog_site_data"/} ;;
+    "$blog_site_root"/site/*) rel_path="site/${target_path#"$blog_site_root"/site/}" ;;
+    *) rel_path=$(basename "$target_path") ;;
+  esac
+  printf '%s/.snapshots/%s\n' "$blog_state_dir" "$rel_path"
+}
+
+blog_prune_content_snapshots_for_file() {
+  snapshot_path=${1-}
+  [ -n "$snapshot_path" ] || return 0
+  snapshot_dir=$(dirname "$snapshot_path")
+  snapshot_base=$(basename "$snapshot_path")
+  [ -d "$snapshot_dir" ] || return 0
+  keep_count=${BLOG_CONTENT_SNAPSHOT_KEEP_PER_FILE:-240}
+  case "$keep_count" in
+    ''|*[!0-9]*) keep_count=240 ;;
+  esac
+  [ "$keep_count" -gt 0 ] || keep_count=240
+  find "$snapshot_dir" -maxdepth 1 -type f -name "$snapshot_base~*" 2>/dev/null \
+    | sort -r \
+    | awk -v keep="$keep_count" 'NR > keep { print }' \
+    | while IFS= read -r old_snapshot || [ -n "$old_snapshot" ]; do
+      [ -n "$old_snapshot" ] || continue
+      rm -f "$old_snapshot" 2>/dev/null || true
+    done
+}
+
+blog_snapshot_file_before_replace() {
+  target_path=${1-}
+  replacement_path=${2-}
+  [ -n "$target_path" ] || return 0
+  [ -f "$target_path" ] || return 0
+  if [ -n "$replacement_path" ] && [ -f "$replacement_path" ] && cmp -s "$target_path" "$replacement_path" 2>/dev/null; then
+    return 0
+  fi
+  snapshot_path=$(blog_content_snapshot_path "$target_path") || return 0
+  snapshot_dir=$(dirname "$snapshot_path")
+  snapshot_base=$(basename "$snapshot_path")
+  mkdir -p "$snapshot_dir" 2>/dev/null || return 0
+  timestamp=$(blog_content_snapshot_timestamp)
+  candidate="$snapshot_dir/$snapshot_base~$timestamp"
+  n=2
+  while [ -e "$candidate" ]; do
+    candidate="$snapshot_dir/$snapshot_base~$timestamp-$n"
+    n=$((n + 1))
+  done
+  cp -p "$target_path" "$candidate" 2>/dev/null || cp "$target_path" "$candidate" 2>/dev/null || true
+  chmod 600 "$candidate" 2>/dev/null || true
+  blog_prune_content_snapshots_for_file "$snapshot_path"
+}
+
 blog_write_draft_markdown() {
   draft_file=$1
   draft_id=$2
@@ -295,12 +355,13 @@ blog_write_draft_markdown() {
     printf '%s\n\n' '---'
     printf '%s' "$content"
   } > "$tmp_file"
+  blog_snapshot_file_before_replace "$draft_file" "$tmp_file"
   mv "$tmp_file" "$draft_file"
   chmod 644 "$draft_file" 2>/dev/null || true
 }
 
 blog_init() {
-  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_files_dir" "$blog_files_meta_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir" "$blog_origin_dir" "$blog_origin_posts_dir" "$blog_origin_state_store_dir"
+  mkdir -p "$blog_auth_dir" "$blog_users_dir" "$blog_sessions_dir" "$blog_nostr_login_requests_dir" "$blog_nostr_delegations_dir" "$blog_nostr_rate_limits_dir" "$blog_state_dir" "$blog_content_root" "$blog_drafts_dir" "$blog_lists_dir" "$blog_files_dir" "$blog_files_meta_dir" "$blog_file_records_dir" "$blog_posts_store_dir" "$blog_pages_store_dir" "$blog_page_states_dir" "$blog_origin_dir" "$blog_origin_posts_dir" "$blog_origin_state_store_dir"
   blog_ensure_posts_mount
   mkdir -p "$blog_nostr_state_dir" "$blog_nostr_events_dir" "$blog_nostr_derived_dir"
   [ -f "$blog_nostr_delegation_revocations_file" ] || : > "$blog_nostr_delegation_revocations_file"
@@ -3585,6 +3646,66 @@ blog_read_markdown_body() {
   ' "$file"
 }
 
+blog_read_front_matter_json() {
+  file=$1
+  [ -f "$file" ] || return 1
+  awk '
+    BEGIN { in_fm = 0; }
+    /^---$/ {
+      if (in_fm == 0) { in_fm = 1; next; }
+      exit;
+    }
+    in_fm == 1 { print; }
+  ' "$file" | jq -Rn '
+    def parse_value($v):
+      try ($v | fromjson) catch $v;
+    reduce inputs as $line ({};
+      if ($line | test("^[A-Za-z_][A-Za-z0-9_]*:[[:space:]]*")) then
+        ($line | capture("^(?<key>[A-Za-z_][A-Za-z0-9_]*):[[:space:]]*(?<value>.*)$")) as $m
+        | .[$m.key] = parse_value($m.value)
+      else
+        .
+      end
+    )
+  '
+}
+
+blog_state_markdown_to_json() {
+  file=$1
+  body_key=${2-content}
+  [ -f "$file" ] || return 1
+  fm_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-state-fm.XXXXXX")
+  body_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-state-body.XXXXXX")
+  blog_read_front_matter_json "$file" > "$fm_tmp"
+  blog_read_markdown_body "$file" > "$body_tmp"
+  jq -c --arg body_key "$body_key" --rawfile body "$body_tmp" '. + {($body_key): $body}' "$fm_tmp"
+  rm -f "$fm_tmp" "$body_tmp"
+}
+
+blog_state_markdown_write_json() {
+  path=${1-}
+  state_json=${2-}
+  body_key=${3-content}
+  [ -n "$path" ] || return 1
+  [ -n "$state_json" ] || return 1
+  mkdir -p "$(dirname "$path")"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-state-md.XXXXXX")
+  {
+    printf '%s\n' '---'
+    printf '%s\n' "$state_json" | jq -r --arg body_key "$body_key" '
+      to_entries
+      | map(select(.key != $body_key))
+      | .[]
+      | "\(.key): \(.value | tojson)"
+    '
+    printf '%s\n' '---'
+    printf '%s\n' "$state_json" | jq -r --arg body_key "$body_key" '.[$body_key] // ""'
+  } > "$tmp"
+  blog_snapshot_file_before_replace "$path" "$tmp"
+  mv "$tmp" "$path"
+  chmod 644 "$path" 2>/dev/null || true
+}
+
 blog_normalize_tags() {
   tags=${1-}
   printf '%s' "$tags" | tr '\n' ',' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | awk '
@@ -5073,6 +5194,11 @@ blog_list_normalize_slug() {
 
 blog_list_draft_path() {
   slug=$(blog_list_normalize_slug "${1-}")
+  printf '%s/%s.md\n' "$blog_page_states_dir" "$slug"
+}
+
+blog_list_legacy_draft_path() {
+  slug=$(blog_list_normalize_slug "${1-}")
   printf '%s/%s.json\n' "$blog_lists_dir" "$slug"
 }
 
@@ -5507,6 +5633,7 @@ blog_publish_content_markdown() {
   content_hash=$(printf '%s' "$content" | blog_sha256)
   mkdir -p "$(dirname "$post_path")"
 
+  blog_snapshot_file_before_replace "$post_path"
   {
     printf '%s\n' '---'
     printf 'title: "%s"\n' "$(blog_yaml_escape "$title")"
@@ -5530,6 +5657,7 @@ blog_publish_content_markdown() {
   } > "$post_path"
 
   if [ -n "$old_post_path" ] && [ "$old_post_path" != "$post_path" ] && [ -f "$old_post_path" ]; then
+    blog_snapshot_file_before_replace "$old_post_path"
     rm -f "$old_post_path"
     if [ -n "$old_rel_html" ]; then
       rm -f "$blog_site_root/build/pages/$old_rel_html" 2>/dev/null || true

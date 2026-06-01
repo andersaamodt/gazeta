@@ -1063,6 +1063,9 @@
     if (!this.state.featureDisabled && this.options.autoStart && this.state.roomId) {
       this._setCallMode(this.options.callMode || 'video');
       this._setStatus(this.state.callMode === 'voice' ? 'Ready. Microphone access starts from the voice button.' : 'Ready. Camera access starts from the video button.', 'info');
+      this.startCall(this.state.callMode).catch(function () {
+        // Error/status handling is already managed by startCall/_startJoinFlow.
+      });
     }
   }
 
@@ -2228,7 +2231,11 @@
       }));
     }
 
-    function appendWaveform(wrap) {
+    function ensureWaveform(wrap) {
+      var existing = wrap.querySelector('.vcw-waveform');
+      if (existing) {
+        return existing;
+      }
       var wave = document.createElement('div');
       wave.className = 'vcw-waveform';
       wave.setAttribute('aria-hidden', 'true');
@@ -2238,40 +2245,51 @@
         wave.appendChild(bar);
       }
       wrap.appendChild(wave);
+      return wave;
     }
 
-    function replaceExistingTile(key) {
-      var existing = key ? existingTiles[key] : null;
-      if (existing && existing.parentNode) {
-        existing.parentNode.removeChild(existing);
-      }
-    }
-
-    function appendAudioTile(key, stream, label, muted, isLocal) {
-      replaceExistingTile(key);
-      var wrap = document.createElement('article');
-      wrap.setAttribute('data-vcw-tile-key', key);
+    function updateAudioTile(wrap, stream, label, muted, isLocal) {
       wrap.className = 'vcw-tile vcw-audio-tile' + (stream && stream.getAudioTracks && stream.getAudioTracks().length ? ' vcw-audio-live' : '');
-      if (stream) {
-        var audio = document.createElement('audio');
+      var audio = wrap.querySelector('audio.vcw-audio-media');
+      if (!audio && stream) {
+        audio = document.createElement('audio');
         audio.className = 'vcw-audio-media';
         audio.autoplay = true;
-        audio.muted = !!muted;
-        audio.srcObject = stream;
         wrap.appendChild(audio);
       }
-      var icon = document.createElement('div');
-      icon.className = 'vcw-audio-icon';
-      icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg>';
-      wrap.appendChild(icon);
-      appendWaveform(wrap);
-      var meta = document.createElement('div');
-      meta.className = 'vcw-audio-meta';
+      if (audio) {
+        audio.muted = !!muted;
+        if (stream) {
+          if (audio.srcObject !== stream) {
+            audio.srcObject = stream;
+          }
+        } else if (audio.srcObject) {
+          audio.srcObject = null;
+        }
+      }
+      var icon = wrap.querySelector('.vcw-audio-icon');
+      if (!icon) {
+        icon = document.createElement('div');
+        icon.className = 'vcw-audio-icon';
+        icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg>';
+        wrap.appendChild(icon);
+      }
+      ensureWaveform(wrap);
+      var meta = wrap.querySelector('.vcw-audio-meta');
+      if (!meta) {
+        meta = document.createElement('div');
+        meta.className = 'vcw-audio-meta';
+        wrap.appendChild(meta);
+      }
       meta.textContent = muted ? 'Your microphone audio' : 'Audio participant';
-      wrap.appendChild(meta);
+      var actions = wrap.querySelector('.vcw-audio-actions');
       if (isLocal) {
-        var actions = document.createElement('div');
-        actions.className = 'vcw-audio-actions';
+        if (!actions) {
+          actions = document.createElement('div');
+          actions.className = 'vcw-audio-actions';
+          wrap.appendChild(actions);
+        }
+        actions.innerHTML = '';
         var recordButton = document.createElement('button');
         recordButton.type = 'button';
         recordButton.className = 'vcw-audio-action' + (self.state.isRecording ? ' vcw-recording' : '');
@@ -2287,26 +2305,40 @@
           link.textContent = 'Save recording';
           actions.appendChild(link);
         }
-        wrap.appendChild(actions);
+      } else if (actions && actions.parentNode) {
+        actions.parentNode.removeChild(actions);
       }
-      var badge = document.createElement('span');
-      badge.className = 'vcw-tile-label';
+      var badge = wrap.querySelector('.vcw-tile-label');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'vcw-tile-label';
+        wrap.appendChild(badge);
+      }
       badge.textContent = label;
-      wrap.appendChild(badge);
-      grid.appendChild(wrap);
-      added += 1;
+      return wrap;
     }
 
-    function appendTile(key, stream, label, muted, isLocal) {
+    function buildTile(key, stream, label, muted, isLocal) {
       seenTileKeys[key] = true;
       if (!streamHasVideo(stream)) {
-        appendAudioTile(key, stream, label, muted, !!isLocal);
-        return;
+        var audioWrap = existingTiles[key];
+        if (!audioWrap || !audioWrap.classList || !audioWrap.classList.contains('vcw-audio-tile')) {
+          if (audioWrap && audioWrap.parentNode) {
+            audioWrap.parentNode.removeChild(audioWrap);
+          }
+          audioWrap = document.createElement('article');
+          audioWrap.setAttribute('data-vcw-tile-key', key);
+        }
+        updateAudioTile(audioWrap, stream, label, muted, !!isLocal);
+        added += 1;
+        return audioWrap;
       }
       var wrap = existingTiles[key];
       var video;
       if (!wrap || !wrap.classList || !wrap.classList.contains('vcw-video-tile')) {
-        replaceExistingTile(key);
+        if (wrap && wrap.parentNode) {
+          wrap.parentNode.removeChild(wrap);
+        }
         wrap = document.createElement('article');
         wrap.setAttribute('data-vcw-tile-key', key);
         wrap.className = 'vcw-tile vcw-video-tile';
@@ -2338,12 +2370,13 @@
         wrap.appendChild(badge);
       }
       badge.textContent = label;
-      grid.appendChild(wrap);
       added += 1;
+      return wrap;
     }
 
+    var desiredTiles = [];
     if (this.state.localStream && added < maxTiles) {
-      appendTile('local', this.state.localStream, this.options.displayName + ' (You)', true, true);
+      desiredTiles.push(buildTile('local', this.state.localStream, this.options.displayName + ' (You)', true, true));
     }
 
     Object.keys(this.state.subscribersByFeed).sort(function (a, b) {
@@ -2353,7 +2386,17 @@
         return;
       }
       var sub = self.state.subscribersByFeed[feedKey];
-      appendTile('feed-' + String(feedKey), sub && sub.stream ? sub.stream : null, (sub && sub.displayName) ? sub.displayName : ('Participant ' + String(feedKey)), false, false);
+      desiredTiles.push(buildTile('feed-' + String(feedKey), sub && sub.stream ? sub.stream : null, (sub && sub.displayName) ? sub.displayName : ('Participant ' + String(feedKey)), false, false));
+    });
+
+    desiredTiles.forEach(function (tile, index) {
+      if (!tile) {
+        return;
+      }
+      var currentAtIndex = grid.children[index] || null;
+      if (currentAtIndex !== tile) {
+        grid.insertBefore(tile, currentAtIndex);
+      }
     });
 
     Array.prototype.slice.call(grid.children).forEach(function (child) {

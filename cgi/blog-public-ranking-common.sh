@@ -6,7 +6,11 @@ set -eu
 blog_public_ranking_default_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   title=$(blog_nostr_page_titleize_slug "$slug")
-  jq -cn --arg slug "$slug" --arg title "$title" '{
+  submission_mode='owner_only'
+  if [ "$slug" = "projects" ]; then
+    submission_mode='open'
+  fi
+  jq -cn --arg slug "$slug" --arg title "$title" --arg submission_mode "$submission_mode" '{
     slug: $slug,
     type: "public-ranking",
     title: $title,
@@ -15,7 +19,7 @@ blog_public_ranking_default_state_json() {
     extras_after: "",
     extras_after_format: "markdown",
     vote_cooldown_seconds: 86400,
-    submission_mode: "owner_only",
+    submission_mode: $submission_mode,
     show_marker_filters: false,
     default_metric: "momentum",
     blacklist_pubkeys: [],
@@ -54,7 +58,16 @@ blog_public_ranking_normalize_state_json() {
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
       extras_after_format: "markdown",
       vote_cooldown_seconds: ((.vote_cooldown_seconds // .vote_cooldown // 86400) | tonumber? // 86400),
-      submission_mode: norm_mode(.submission_mode // .permission_mode // .entry_mode // "owner_only"),
+      submission_mode: norm_mode(
+        .submission_mode
+        // .permission_mode
+        // .entry_mode
+        // (if (
+          (.allow_signed_in_submissions == true)
+          or (((.allow_signed_in_submissions // "") | tostring | ascii_downcase) == "true")
+          or (((.signed_in_submissions // "") | tostring | ascii_downcase) == "true")
+        ) then "open" else (if $slug == "projects" then "open" else "owner_only" end) end)
+      ),
       show_marker_filters: (
         if (.show_marker_filters // null) == null then
           (((.tags // []) | map(select(type=="array" and length>=2 and .[0]=="show_marker_filters") | .[1]) | first // "") | tostring | ascii_downcase) == "true"
@@ -103,7 +116,15 @@ blog_public_ranking_state_from_event_json() {
       description: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="summary" or .[0]=="description")) | .[1]] | first) // ""),
       content: (.content // ""),
       vote_cooldown_seconds: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="vote_cooldown" or .[0]=="vote_cooldown_seconds")) | .[1]] | first) // "86400"),
-      submission_mode: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="submission_mode" or .[0]=="permission_mode")) | .[1]] | first) // "owner_only"),
+      submission_mode: (
+        ([.tags[]? | select(type=="array" and length>=2 and (. [0]=="submission_mode" or .[0]=="permission_mode")) | .[1]] | first)
+        // (
+          ([.tags[]? | select(type=="array" and length>=2 and (. [0]=="allow_signed_in_submissions" or .[0]=="signed_in_submissions")) | .[1]] | first // "")
+          | tostring
+          | ascii_downcase
+          | if . == "true" then "open" else "owner_only" end
+        )
+      ),
       show_marker_filters: (([.tags[]? | select(type=="array" and length>=2 and .[0]=="show_marker_filters") | .[1]] | first) // "false"),
       default_metric: (([.tags[]? | select(type=="array" and length>=2 and (. [0]=="sort_metric" or .[0]=="default_metric")) | .[1]] | first) // "momentum"),
       blacklist_pubkeys: ([.tags[]? | select(type=="array" and length>=2 and .[0]=="blacklist") | .[1]]),

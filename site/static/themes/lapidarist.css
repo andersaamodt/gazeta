@@ -11,11 +11,11 @@
   --purple: #6a4fa3;
   --violet: #bda7de;
   --danger: #a73b2f;
-  --list-vote-up-color: #d4a41d;
+  --list-vote-up-color: #2f8a5c;
   --list-vote-up-stale-color: color-mix(in srgb, var(--list-vote-up-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
   --list-vote-down-color: var(--lapis, #3b70d0);
   --list-vote-down-stale-color: color-mix(in srgb, var(--list-vote-down-color) 32%, var(--list-vote-idle-color, #b9ad90) 68%);
-  --list-vote-idle-color: color-mix(in srgb, var(--muted-text, #78644b) 38%, var(--bg, #f1e2c8) 62%);
+  --list-vote-idle-color: #c9ced8;
 
   --text: #2f2517;
   --light-text: #62533f;
@@ -172,9 +172,9 @@
   --action-soft-shadow: var(--lapidarist-control-shadow);
   --action-soft-hover-shadow: var(--lapidarist-control-shadow);
   --page-canvas-bg:
-    radial-gradient(1300px 540px at 18% -16%, rgba(178, 113, 54, 0.17) 0%, rgba(178, 113, 54, 0) 56%),
-    radial-gradient(900px 400px at 87% -7%, rgba(114, 64, 52, 0.07) 0%, rgba(114, 64, 52, 0) 60%),
-    linear-gradient(180deg, rgba(242, 220, 198, 0.93) 0%, rgba(231, 199, 170, 0.94) 100%),
+    radial-gradient(1320px 560px at 16% -18%, rgba(153, 188, 235, 0.32) 0%, rgba(153, 188, 235, 0) 58%),
+    radial-gradient(980px 420px at 88% -10%, rgba(189, 212, 242, 0.30) 0%, rgba(189, 212, 242, 0) 62%),
+    linear-gradient(180deg, rgba(236, 244, 255, 0.95) 0%, rgba(214, 228, 247, 0.95) 100%),
     var(--lapidarist-parchment-page-texture);
   --page-canvas-bg-size: auto, auto, auto, var(--lapidarist-page-parchment-size);
   --page-canvas-bg-position: center, center, center, center;
@@ -184,7 +184,7 @@ html {
   background: var(--page-canvas-bg);
   background-size: var(--page-canvas-bg-size, auto);
   background-position: var(--page-canvas-bg-position, center);
-  background-attachment: fixed;
+  background-attachment: scroll;
 }
 
 body {
@@ -315,17 +315,33 @@ strong {
 
 .nav-center a.active:hover,
 .nav-center a.active:focus-visible,
+.nav-center a[aria-current="page"]:hover,
+.nav-center a[aria-current="page"]:focus-visible,
 .nav-username.active:hover,
 .nav-username.active:focus-visible {
+  background:
+    var(--button-primary-overlay),
+    linear-gradient(
+      128deg,
+      color-mix(in srgb, var(--lapis) 76%, white 24%) 0%,
+      color-mix(in srgb, var(--lapis) 88%, white 12%) 42%,
+      #2f60b7 100%
+    ) !important;
   background-image:
     var(--button-primary-overlay),
     linear-gradient(
       128deg,
-      #6498ee 0%,
-      var(--lapis) 42%,
-      #2854a4 100%
-    );
-  color: var(--button-primary-text);
+      color-mix(in srgb, var(--lapis) 76%, white 24%) 0%,
+      color-mix(in srgb, var(--lapis) 88%, white 12%) 42%,
+      #2f60b7 100%
+    ) !important;
+  background-color: color-mix(in srgb, var(--lapis) 88%, white 12%) !important;
+  color: var(--button-primary-text) !important;
+  -webkit-text-fill-color: var(--button-primary-text) !important;
+  text-decoration: none !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--button-primary-border) 56%, white 18%) inset,
+    0 1px 0 rgba(182, 139, 53, 0.26);
 }
 
 .nav-center a.active.allow-active-click,

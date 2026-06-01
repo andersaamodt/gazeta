@@ -3270,11 +3270,16 @@
   }
 
   function composeTagsEditorReadDraftText(editor) {
-    const draftNode = composeTagsEditorDraftNode(editor);
-    if (!(draftNode instanceof HTMLElement)) {
+    if (!(editor instanceof HTMLElement)) {
       return '';
     }
-    return String(draftNode.textContent || '');
+    const clone = editor.cloneNode(true);
+    Array.from(clone.querySelectorAll('[data-post-tags-token]')).forEach(function (node) {
+      if (node && node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    });
+    return String(clone.textContent || '').replace(/\u00a0/g, ' ');
   }
 
   function composeTagsEditorSyncDraft(editor) {
@@ -8868,10 +8873,9 @@
 
       composeTagsEditor.addEventListener('input', function () {
         composeTagsEditorClearSelection(composeTagsEditor);
-        const changed = composeTagsEditorCommit(composeTagsEditor, false);
         composeTagsEditorSyncDraft(composeTagsEditor);
         syncComposeTagsField();
-        if (changed || String(state.composeTagsDraftText || '').trim()) {
+        if (String(state.composeTagsDraftText || '').trim()) {
           queueAutosave('saving');
         }
       });
@@ -8918,6 +8922,10 @@
             queueAutosave('saving');
           }
           return;
+        }
+        if (selectedToken && event.key && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          composeTagsEditorClearSelection(composeTagsEditor);
+          composeTagsEditorFocusDraft(composeTagsEditor);
         }
         if (event.key === 'Backspace' || event.key === 'Delete') {
           if (selectedToken) {

@@ -201,8 +201,28 @@ blog_nostr_page_save_draft_state_json projects public-ranking "$(jq -cn --arg co
   title: "Projects",
   description: "Ranked public work",
   content: "Project intro",
+  allow_signed_in_submissions: true,
   root_refs: [$coord]
 }')"
+
+assert_file_contains "$blog_page_states_dir/values.md" 'title: "Values"' 'NIP-23 page state saves as YAML front matter'
+assert_file_contains "$blog_page_states_dir/values.md" 'Values body' 'NIP-23 page markdown body saves outside front matter'
+assert_file_contains "$blog_page_states_dir/software.md" 'elements: [{' 'list/gallery page structured fields save in YAML-compatible flow style'
+if [ ! -e "$blog_lists_dir/values.json" ]; then
+  pass
+else
+  fail 'NIP-23 page state no longer writes canonical JSON drafts'
+fi
+
+mkdir -p "$blog_lists_dir"
+printf '%s\n' '{"title":"Legacy Page","content":"Legacy body","elements":[]}' > "$blog_lists_dir/legacy-json.json"
+legacy_json=$(blog_nostr_page_load_draft_state_json legacy-json list)
+legacy_title=$(printf '%s\n' "$legacy_json" | jq -r '.title // ""')
+if [ "$legacy_title" = "Legacy Page" ]; then
+  pass
+else
+  fail 'legacy JSON page state remains readable as a migration fallback'
+fi
 
 mkdir -p "$blog_posts_store_dir"
 cat > "$blog_posts_store_dir/fixture-post.md" <<'EOFPOST'
@@ -253,10 +273,13 @@ assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'essay' 'blog prerender inc
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
+assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-login-gate' 'contact prerender includes the final Secure Chat login gate'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-widget-video-chat' 'contact prerender includes video chat shell when the plugin is enabled'
-assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'Calling unavailable' 'contact prerender includes a visible fallback while the video call widget loads'
+assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-shell vcw-shell-no-heading vcw-shell-center-precall' 'contact prerender includes the final call widget shell while the video widget loads'
+assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-call-owner-btn' 'contact prerender includes final icon call controls while the video widget loads'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-archived-group' 'contact prerender includes archived contact rows'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'Project Alpha' 'public ranking prerender includes ranking node row'
+assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" '.allow_signed_in_submissions == true' 'public ranking normalization maps legacy signed-in submissions flag to open mode'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'Download (6.8 MB)' 'Overworld prerender includes splash controls'
 

@@ -1482,6 +1482,18 @@
     }
   }
 
+  function refreshComposeShortformMeterFromFields() {
+    if (!els.composeSlot || composePostType() !== 'shortform') {
+      return;
+    }
+    var contentField = els.composeSlot.querySelector('[data-compose-field="content"]');
+    var meterButton = els.composeSlot.querySelector('[data-compose-action="shortform-limit-toggle"]');
+    if (!(contentField instanceof HTMLTextAreaElement) || !(meterButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    meterButton.textContent = String(contentField.value || '').length + '/' + String(currentComposeShortformLimit());
+  }
+
   function composeTextareaRows(postType) {
     var type = normalizeComposePostType(postType);
     if (type === 'shortform') {
@@ -1775,11 +1787,16 @@
   }
 
   function composeTagsEditorReadDraftText(editor) {
-    var draftNode = composeTagsEditorDraftNode(editor);
-    if (!(draftNode instanceof HTMLElement)) {
+    if (!(editor instanceof HTMLElement)) {
       return '';
     }
-    return String(draftNode.textContent || '');
+    var clone = editor.cloneNode(true);
+    Array.from(clone.querySelectorAll('[data-compose-tag-token]')).forEach(function (node) {
+      if (node && node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    });
+    return String(clone.textContent || '').replace(/\u00a0/g, ' ');
   }
 
   function composeTagsEditorSyncDraft(editor) {
@@ -3602,6 +3619,7 @@
         if (scheduleInput instanceof HTMLInputElement) {
           scheduleInput.value = composeNormalizeScheduledDate(String(draft.scheduled_at_local || ''));
         }
+        refreshComposeShortformMeterFromFields();
       }
       if (els.composeSlot && typeof els.composeSlot.scrollIntoView === 'function') {
         try {
@@ -5049,10 +5067,9 @@
     var tagEditorTarget = target.closest('[data-compose-field="tags-editor"]');
     if (tagEditorTarget instanceof HTMLElement) {
       composeTagsEditorClearSelection(tagEditorTarget);
-      var changed = composeTagsEditorCommit(tagEditorTarget, false);
       composeTagsEditorSyncDraft(tagEditorTarget);
       syncComposeTagsField();
-      if (changed || String(state.compose.tagsDraftText || '').trim()) {
+      if (String(state.compose.tagsDraftText || '').trim()) {
         queueComposeAutosave();
       } else {
         renderComposeStatusOnly();
@@ -5149,7 +5166,7 @@
     var tagEditor = target.closest('[data-compose-field="tags-editor"]');
     if (tagEditor instanceof HTMLElement) {
       var selectedToken = composeTagsEditorSelectedToken(tagEditor);
-      if (event.key === 'Enter' || event.key === ',' || event.code === 'Comma') {
+      if (event.key === ',' || event.code === 'Comma' || event.key === 'Tab') {
         event.preventDefault();
         if (composeTagsEditorCommit(tagEditor, true)) {
           queueComposeAutosave();
@@ -5157,6 +5174,10 @@
           renderComposeStatusOnly();
         }
         return;
+      }
+      if (selectedToken && event.key && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        composeTagsEditorClearSelection(tagEditor);
+        composeTagsEditorFocusDraft(tagEditor);
       }
       if (event.key === 'Backspace' || event.key === 'Delete') {
         if (selectedToken) {
@@ -5194,12 +5215,8 @@
     }
     var tagEditorTarget = target.closest('[data-compose-field="tags-editor"]');
     if (tagEditorTarget instanceof HTMLElement) {
-      if (composeTagsEditorCommit(tagEditorTarget, true)) {
-        queueComposeAutosave();
-      } else {
-        composeTagsEditorSyncDraft(tagEditorTarget);
-        renderComposeStatusOnly();
-      }
+      composeTagsEditorSyncDraft(tagEditorTarget);
+      renderComposeStatusOnly();
       return;
     }
     if (!(target instanceof HTMLInputElement)) {

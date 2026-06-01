@@ -5,10 +5,10 @@ set -eu
 
 blog_nostr_list_page_js_version='20260525-list-stability1'
 blog_nostr_blog_page_js_version='20260525-post-type-labels1'
-blog_nostr_contact_page_js_version='20260525-call-loading-mockup1'
+blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
-blog_nostr_nip23_page_js_version='20260521-login-sync1'
+blog_nostr_nip23_page_js_version='20260526-product-price1'
 blog_nostr_public_ranking_page_js_version='20260404-rankingv1'
 blog_nostr_overworld_game_js_version='20260522-overworld-textures'
 
@@ -429,6 +429,11 @@ blog_nostr_page_type_for_slug() {
 }
 
 blog_nostr_page_draft_path() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  printf '%s/%s.md\n' "$blog_page_states_dir" "$slug"
+}
+
+blog_nostr_page_legacy_draft_path() {
   slug=$(blog_nostr_page_slug "${1-}")
   printf '%s/%s.json\n' "$blog_lists_dir" "$slug"
 }
@@ -1062,6 +1067,25 @@ blog_nostr_prerender_nip23_html() {
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
+    def norm_price:
+      tostring
+      | gsub("^\\s+|\\s+$"; "")
+      | if test("^[0-9]+([.][0-9]{1,2})?$") then . else "" end;
+    def money:
+      (tonumber? // 0) as $n
+      | ($n * 100 | round / 100 | tostring) as $raw
+      | if ($raw | test("[.]")) then
+          ($raw | split(".") | .[0] + "." + (.[1] + "00")[0:2])
+        else
+          $raw + ".00"
+        end;
+    def price_label($price; $currency):
+      ($price | norm_price) as $p
+      | if ($p | length) == 0 then ""
+        elif (($p | tonumber? // 0) == 0) then "Free"
+        elif (($currency // "USD") | tostring | ascii_upcase) == "USD" then "$" + ($p | money)
+        else ($p | money) + " " + (($currency // "USD") | tostring | ascii_upcase)
+        end;
     def md_block:
       tostring as $raw
       | if ($raw | gsub("\\s"; "") | length) == 0 then ""
@@ -1073,8 +1097,9 @@ blog_nostr_prerender_nip23_html() {
     (.state // {}) as $s
     | (($s.content // "") | content_block) as $main
     | (($s.extras_after // "") | md_block) as $after
+    | (price_label(($s.price // ""); ($s.currency // "USD"))) as $display_price
     | (if (($s.product_enabled // false) == true or (($s.price // "") | tostring | length) > 0) then
-        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div></section>"
+        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div>" + (if ($display_price | length) > 0 then "<div class=\"nip23-product-page-price\"><span>Price</span><strong>" + ($display_price | h) + "</strong></div>" else "" end) + "</section>"
       else "" end) as $product
     | $product + (if ($main | length) > 0 then "<article class=\"list-entry-markdown\">" + $main + "</article>" else "<p class=\"list-page-empty-state\">No content yet.</p>" end) +
       (if ($after | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\">" + $after + "</section>" else "" end)
@@ -1154,7 +1179,7 @@ blog_nostr_prerender_contact_video_chat_html() {
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
 
   cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><div class="video-chat-loading-mockup" role="status" aria-label="Loading call controls"><p class="video-chat-loading-copy">Ready. Choose voice or video.</p><div class="video-chat-loading-actions"><button type="button" disabled aria-disabled="true">Voice</button><button type="button" disabled aria-disabled="true">Video</button></div><button type="button" disabled aria-disabled="true">Invite Link...</button></div></div></section>
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><section class="video-chat-loading-mockup vcw-shell vcw-shell-no-heading vcw-shell-center-precall" role="status" aria-label="Loading call controls"><div class="vcw-head"><h2 class="vcw-heading">Call</h2></div><p class="vcw-status" data-tone="info">Ready. Choose voice or video.</p><section class="vcw-precall"><div class="vcw-precall-actions"><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Voice Call" title="Voice Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg></button><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Video Call" title="Video Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path><path d="m16 10 6-3v10l-6-3"></path></svg></button></div><div class="vcw-join-row"><button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="false" disabled aria-disabled="true">Invite Link...</button></div></section></section></div></section>
 EOF
 }
 
@@ -1406,6 +1431,7 @@ blog_nostr_page_write_prerendered_source() {
       ;;
   esac
 
+  blog_snapshot_file_before_replace "$page_file" "$tmp"
   mv "$tmp" "$page_file"
   rm -f "$payload_tmp"
   if [ -n "$prev_prerender_payload_file" ]; then
@@ -1422,8 +1448,13 @@ blog_nostr_page_load_draft_state_json() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   path=$(blog_nostr_page_draft_path "$slug")
-  [ -f "$path" ] || return 1
-  raw=$(cat "$path" 2>/dev/null || printf '')
+  if [ -f "$path" ]; then
+    raw=$(blog_state_markdown_to_json "$path" content 2>/dev/null || printf '')
+  else
+    path=$(blog_nostr_page_legacy_draft_path "$slug")
+    [ -f "$path" ] || return 1
+    raw=$(cat "$path" 2>/dev/null || printf '')
+  fi
   [ -n "$raw" ] || return 1
   raw_type=$(printf '%s\n' "$raw" | jq -r '.type // ""' 2>/dev/null || printf '')
   case "$page_type:$raw_type" in
@@ -1450,11 +1481,12 @@ blog_nostr_page_save_draft_state_json() {
     nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json" "$page_type") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
+  case "$page_type" in
+    nip23|blog|contact|public-ranking) markdown_state=$normalized ;;
+    *) markdown_state=$(printf '%s\n' "$normalized" | jq -c 'del(.entries, .tags)') ;;
+  esac
   path=$(blog_nostr_page_draft_path "$slug")
-  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-draft.XXXXXX")
-  printf '%s\n' "$normalized" > "$tmp"
-  mv "$tmp" "$path"
-  chmod 644 "$path" 2>/dev/null || true
+  blog_state_markdown_write_json "$path" "$markdown_state" content
 }
 
 blog_nostr_kind_latest_event_json() {
@@ -1772,8 +1804,8 @@ blog_nip23_validate_and_enrich_state_json() {
         + (if ($strict == "true" and ($title | length) == 0) then ["Title is required"] else [] end)
         + nostr_portability_errors($content)
         + (if $is_product and (($price | length) == 0) then ["Product price is required"] else [] end)
-        + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a positive USD amount with up to 2 decimals"] else [] end)
-        + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) <= 0)) then ["Price must be greater than zero"] else [] end)
+        + (if (($price | length) > 0 and (is_price($price) | not)) then ["Price must be a USD amount with up to 2 decimals"] else [] end)
+        + (if (($price | length) > 0 and (is_price($price)) and (($price | tonumber) < 0)) then ["Price must be zero or greater"] else [] end)
         + (if $is_product and (($currency | test("^[A-Z]{3}$")) | not) then ["Currency must be a 3-letter code"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) == 0) then ["Purchase endpoint is required"] else [] end)
         + (if $is_product and (($purchase_endpoint | length) > 0) and ((($purchase_endpoint | startswith("/")) or ($purchase_endpoint | startswith("https://")) or ($purchase_endpoint | startswith("http://"))) | not) then ["Purchase endpoint must be an absolute path or URL"] else [] end)
@@ -2704,12 +2736,14 @@ blog_nostr_page_sync_mount() {
       return 0
     fi
     if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } || ! blog_nostr_page_template_is_current "$mount_path" "$page_type"; then
+      blog_snapshot_file_before_replace "$mount_path"
       rm -f "$mount_path"
     fi
   fi
 
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-page-mount.XXXXXX")
   cp "$source_path" "$tmp"
+  blog_snapshot_file_before_replace "$mount_path" "$tmp"
   mv "$tmp" "$mount_path"
   chmod 644 "$mount_path" 2>/dev/null || true
 }
@@ -2751,6 +2785,7 @@ blog_nostr_page_ensure_source_page() {
     esac
   fi
 
+  blog_snapshot_file_before_replace "$page_file"
   page_title=$(blog_nostr_page_default_title "$slug" "$page_type")
 
   case "$page_type" in

@@ -1414,7 +1414,7 @@
     try {
       var host = String(window.location.hostname || '').toLowerCase();
       var path = String(window.location.pathname || '').replace(/\/+$/, '');
-      return !!document.getElementById('desk-page-root') || host.indexOf('desk.') === 0 || path === '/desk' || path.indexOf('/desk/') === 0;
+      return !!document.getElementById('desk-page-root') || host.indexOf('desk.') === 0;
     } catch (_err) {
       return false;
     }
@@ -3936,8 +3936,8 @@
       link.classList.remove('allow-active-click');
       if (active) {
         link.setAttribute('aria-current', 'page');
-        link.setAttribute('aria-disabled', 'true');
-        link.setAttribute('tabindex', '-1');
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
       } else {
         link.removeAttribute('aria-current');
         link.removeAttribute('aria-disabled');

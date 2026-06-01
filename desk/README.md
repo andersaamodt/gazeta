@@ -1,8 +1,8 @@
 # Desk
 
-Desk is the private interior for `andersaamodt.com`, intended for `desk.andersaamodt.com` and temporarily mounted at `/desk`.
+Desk is the private interior for `andersaamodt.com`, mounted at `desk.andersaamodt.com`.
 
-Project placement note: Desk is intentionally separate in this `desk/` folder. Separate is preferred unless integration is plainly cleaner; the temporary `/desk` mount lives in `nostr-blog` only because the current site already owns Nostr sessions, CGI routing, and private `.sitedata` storage.
+Project placement note: Desk is intentionally separate in this `desk/` folder. Separate is preferred unless integration is plainly cleaner; it currently lives in `nostr-blog` only because the current site already owns Nostr sessions, CGI routing, and private `.sitedata` storage.
 
 ## Storage
 

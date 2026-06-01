@@ -207,7 +207,7 @@
 
   function reconcileThemeLink() {
     var theme = themeFromConfig();
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260525-heading-nav-fix1';
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260526-title-action-edge1';
     var link = document.getElementById('theme-stylesheet');
     if (!link) {
       link = document.createElement('link');
@@ -215,7 +215,8 @@
       link.rel = 'stylesheet';
       (document.head || document.documentElement).appendChild(link);
     }
-    if (link.getAttribute('href') !== href) {
+    var currentHref = String(link.getAttribute('data-theme-href') || link.getAttribute('href') || '').trim();
+    if (currentHref !== href) {
       link.setAttribute('href', href);
     }
     link.setAttribute('data-theme-href', href);

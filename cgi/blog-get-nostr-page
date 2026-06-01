@@ -1,5 +1,5 @@
 #!/bin/sh
-# Get Nostr-backed page state (canonical for visitors, draft for admins).
+# Get Nostr-backed page state, preferring the current local site state for public readers.
 
 set -eu
 
@@ -56,49 +56,6 @@ if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
   viewer_pubkey=$(blog_validate_nostr_pubkey "${BLOG_SESSION_USER_PUBKEY-}" 2>/dev/null || printf '')
 fi
 
-canonical_event_json=''
-canonical_state_json=''
-canonical_exists=false
-
-case "$page_type" in
-  contact)
-    canonical_event_json=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
-    if [ -n "$canonical_event_json" ]; then
-      canonical_exists=true
-      canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$canonical_event_json")
-    else
-      canonical_state_json=$(blog_contact_default_state_json "$page_slug")
-    fi
-    ;;
-  public-ranking)
-    canonical_event_json=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
-    if [ -n "$canonical_event_json" ]; then
-      canonical_exists=true
-      canonical_state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event_json")
-    else
-      canonical_state_json=$(blog_public_ranking_default_state_json "$page_slug")
-    fi
-    ;;
-  nip23|blog)
-    canonical_event_json=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
-    if [ -n "$canonical_event_json" ]; then
-      canonical_exists=true
-      canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event_json" "$page_type")
-    else
-      canonical_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
-    fi
-    ;;
-  *)
-    canonical_event_json=$(blog_nostr_list_latest_event_json "$page_slug" 2>/dev/null || printf '')
-    if [ -n "$canonical_event_json" ]; then
-      canonical_exists=true
-      canonical_state_json=$(blog_list_state_from_event_json "$page_slug" "$canonical_event_json")
-    else
-      canonical_state_json=$(blog_list_default_state_json "$page_slug")
-    fi
-    ;;
-esac
-
 draft_state_json=''
 if draft_candidate=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null || printf ''); then
   draft_state_json=$draft_candidate
@@ -108,6 +65,110 @@ draft_exists=false
 if [ -n "$draft_state_json" ]; then
   draft_exists=true
 fi
+
+local_source_path=$(blog_nostr_page_source_path "$page_slug" "$page_type")
+local_state_json=''
+local_has_source=false
+if [ -n "$local_source_path" ] && [ -f "$local_source_path" ]; then
+  local_has_source=true
+  local_raw=$(blog_state_markdown_to_json "$local_source_path" content 2>/dev/null || printf '')
+  case "$page_type" in
+    contact)
+      local_state_json=$(blog_contact_normalize_state_json "$page_slug" "$local_raw")
+      ;;
+    public-ranking)
+      local_state_json=$(blog_public_ranking_normalize_state_json "$page_slug" "$local_raw")
+      ;;
+    nip23|blog)
+      local_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$local_raw" "$page_type")
+      ;;
+    *)
+      local_state_json=$(blog_list_normalize_state_json "$page_slug" "$local_raw")
+      ;;
+  esac
+fi
+if [ -z "$local_state_json" ]; then
+  case "$page_type" in
+    contact)
+      local_state_json=$(blog_contact_default_state_json "$page_slug")
+      ;;
+    public-ranking)
+      local_state_json=$(blog_public_ranking_default_state_json "$page_slug")
+      ;;
+    nip23|blog)
+      local_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
+      ;;
+    *)
+      local_state_json=$(blog_list_default_state_json "$page_slug")
+      ;;
+  esac
+fi
+
+canonical_mtime=0
+if [ "$local_has_source" = "true" ]; then
+  canonical_mtime=$(stat -c %Y "$local_source_path" 2>/dev/null || stat -f %m "$local_source_path" 2>/dev/null || printf '0')
+fi
+case "$canonical_mtime" in
+  ''|*[!0-9]*) canonical_mtime=0 ;;
+esac
+
+canonical_event_json=''
+canonical_state_json=''
+canonical_exists=false
+case "$page_type" in
+  contact)
+    canonical_event_json=$(blog_nostr_contact_latest_event_json 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$canonical_event_json")
+    else
+      canonical_state_json=$local_state_json
+    fi
+    ;;
+  public-ranking)
+    canonical_event_json=$(blog_nostr_public_ranking_latest_event_json "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$canonical_event_json")
+    else
+      canonical_state_json=$local_state_json
+    fi
+    ;;
+  nip23|blog)
+    canonical_event_json=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$canonical_event_json" "$page_type")
+    else
+      canonical_state_json=$local_state_json
+    fi
+    ;;
+  *)
+    canonical_event_json=$(blog_nostr_list_latest_event_json "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_list_state_from_event_json "$page_slug" "$canonical_event_json")
+    else
+      canonical_state_json=$local_state_json
+    fi
+    ;;
+esac
+if [ -z "$canonical_state_json" ]; then
+  canonical_state_json=$local_state_json
+fi
+canonical_created_at=$(printf '%s\n' "$canonical_event_json" | jq -r '.created_at // 0' 2>/dev/null || printf '0')
+case "$canonical_created_at" in
+  ''|*[!0-9]*) canonical_created_at=0 ;;
+esac
+
+case "$page_type" in
+  nip23|blog)
+    canonical_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$canonical_state_json" "$page_type")
+    ;;
+  *)
+    : # other page types are already normalized by source parsing
+    ;;
+esac
 
 # Treat an empty legacy Home/index page as non-existent.
 if [ "$page_slug" = "index" ] && [ "$page_type" = "nip23" ] && [ "$canonical_exists" != "true" ] && [ "$draft_exists" != "true" ]; then
@@ -125,6 +186,15 @@ fi
 
 view_mode="canonical"
 view_state_json=$canonical_state_json
+local_state_preferred=false
+if [ "$local_has_source" = "true" ]; then
+  if [ "$canonical_exists" != "true" ]; then
+    local_state_preferred=true
+  elif [ "$canonical_mtime" -gt "$canonical_created_at" ]; then
+    local_state_preferred=true
+  fi
+fi
+
 if [ "$is_admin" = "true" ]; then
   view_mode="draft"
   if [ -n "$draft_state_json" ]; then
@@ -132,6 +202,9 @@ if [ "$is_admin" = "true" ]; then
   else
     view_state_json=$canonical_state_json
   fi
+elif [ "$local_state_preferred" = "true" ]; then
+  view_mode="local"
+  view_state_json=$local_state_json
 else
   if [ "$canonical_exists" != "true" ] && [ -n "$draft_state_json" ]; then
     view_mode="draft_readonly"
@@ -158,6 +231,42 @@ if [ "$page_type" = "nip23" ] || [ "$page_type" = "blog" ]; then
   canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$canonical_state_json")
   view_state_json=$(printf '%s\n' "$view_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$view_state_json")
 fi
+
+sync_status='unknown'
+if [ "$local_has_source" = "true" ] && [ "$canonical_exists" = "true" ]; then
+  if [ "$canonical_mtime" -gt "$canonical_created_at" ]; then
+    sync_status='local_newer_than_nostr'
+  elif [ "$canonical_created_at" -gt "$canonical_mtime" ]; then
+    sync_status='nostr_newer_than_local'
+  else
+    sync_status='in_sync'
+  fi
+elif [ "$local_has_source" = "true" ]; then
+  sync_status='unpublished_local_changes'
+elif [ "$canonical_exists" = "true" ]; then
+  sync_status='nostr_newer_than_local'
+fi
+
+sync_status_message="Local source and published state are in sync."
+if [ "$sync_status" = "local_newer_than_nostr" ]; then
+  sync_status_message='Local source is newer than latest published Nostr state.'
+elif [ "$sync_status" = "nostr_newer_than_local" ]; then
+  sync_status_message='Published Nostr state is newer than local source.'
+elif [ "$sync_status" = "unpublished_local_changes" ]; then
+  sync_status_message='No published Nostr state yet for this page.'
+elif [ "$sync_status" = "unknown" ]; then
+  sync_status_message='Cannot determine local-vs-Nostr sync status yet.'
+fi
+
+sync_status_json=$(jq -cn \
+  --arg status "$sync_status" \
+  --arg message "$sync_status_message" \
+  --argjson local_mtime "$( [ -n "$canonical_mtime" ] && printf '%s\n' "$canonical_mtime" || printf 0 )" \
+  --argjson nostr_created_at "$( [ -n "$canonical_created_at" ] && printf '%s\n' "$canonical_created_at" || printf 0 )" \
+  --argjson has_canonical_event "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
+  --argjson local_has_source "$( [ "$local_has_source" = "true" ] && printf true || printf false )" \
+  '{status:$status,message:$message,local_mtime:$local_mtime,nostr_created_at:$nostr_created_at,has_canonical_event:$has_canonical_event,local_has_source:$local_has_source}'
+)
 
 draft_differs=false
 if [ "$draft_exists" = "true" ]; then
@@ -238,6 +347,7 @@ esac
 state_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-state.XXXXXX")
 canonical_state_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-state.XXXXXX")
 canonical_event_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-event.XXXXXX")
+sync_status_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-sync-status.XXXXXX")
 zap_config_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-zap.XXXXXX")
 validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-validation.XXXXXX")
 printf '%s\n' "$view_state_json" > "$state_tmp"
@@ -247,6 +357,7 @@ if [ -n "$canonical_event_json" ]; then
 else
   printf 'null\n' > "$canonical_event_tmp"
 fi
+printf '%s\n' "$sync_status_json" > "$sync_status_tmp"
 blog_zaps_config_json > "$zap_config_tmp"
 printf '%s\n' "$validation_json" > "$validation_tmp"
 
@@ -263,6 +374,7 @@ jq -cn \
   --slurpfile state "$state_tmp" \
   --slurpfile canonical_state "$canonical_state_tmp" \
   --slurpfile canonical_event "$canonical_event_tmp" \
+  --slurpfile sync_status "$sync_status_tmp" \
   --slurpfile zap_config "$zap_config_tmp" \
   --slurpfile validation "$validation_tmp" \
   '{
@@ -276,6 +388,7 @@ jq -cn \
     canonical_exists: $canonical_exists,
     draft_exists: $draft_exists,
     draft_differs: $draft_differs,
+    sync_status: $sync_status[0],
     state: $state[0],
     canonical_state: $canonical_state[0],
     canonical_event: $canonical_event[0],
@@ -286,5 +399,5 @@ jq -cn \
       can_publish: ($validation[0].can_publish // true)
     }
   }'
-rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$zap_config_tmp" "$validation_tmp"
+rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$sync_status_tmp" "$zap_config_tmp" "$validation_tmp"
 printf '\n'

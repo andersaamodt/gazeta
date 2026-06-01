@@ -1664,8 +1664,95 @@
       };
     }
 
+    function containedShareBoxesGrid(rect, items) {
+      var total = items.reduce(function (sum, item) {
+        return sum + Math.max(1, item.shares || 1);
+      }, 0);
+      if (!items.length || rect.w * rect.h < total) return null;
+      var free = {};
+      for (var yy = rect.y; yy < rect.y + rect.h; yy += 1) {
+        for (var xx = rect.x; xx < rect.x + rect.w; xx += 1) {
+          free[xx + ',' + yy] = true;
+        }
+      }
+      var centerX = rect.x + (rect.w - 1) / 2;
+      var centerY = rect.y + (rect.h - 1) / 2;
+      var boxes = [];
+      function rectIsFree(candidate) {
+        for (var cy = candidate.y; cy < candidate.y + candidate.h; cy += 1) {
+          for (var cx = candidate.x; cx < candidate.x + candidate.w; cx += 1) {
+            if (!free[cx + ',' + cy]) return false;
+          }
+        }
+        return true;
+      }
+      function claim(candidate) {
+        for (var cy = candidate.y; cy < candidate.y + candidate.h; cy += 1) {
+          for (var cx = candidate.x; cx < candidate.x + candidate.w; cx += 1) {
+            delete free[cx + ',' + cy];
+          }
+        }
+      }
+      function candidateRects(shares) {
+        var candidates = [];
+        for (var h = 1; h <= Math.min(rect.h, shares); h += 1) {
+          var w = Math.ceil(shares / h);
+          if (w > rect.w) continue;
+          if (w * h !== shares) continue;
+          for (var y = rect.y; y <= rect.y + rect.h - h; y += 1) {
+            for (var x = rect.x; x <= rect.x + rect.w - w; x += 1) {
+              candidates.push({ x: x, y: y, w: w, h: h });
+            }
+          }
+        }
+        return candidates;
+      }
+      function chooseBox(item, index) {
+        var shares = Math.max(1, item.shares || 1);
+        var candidates = candidateRects(shares).filter(rectIsFree);
+        if (!candidates.length) return null;
+        candidates.sort(function (left, right) {
+          function score(candidate) {
+            var candidateCenterX = candidate.x + (candidate.w - 1) / 2;
+            var candidateCenterY = candidate.y + (candidate.h - 1) / 2;
+            var centerDistance = Math.abs(candidateCenterX - centerX) + Math.abs(candidateCenterY - centerY);
+            var edgeDistance = Math.min(
+              candidate.x - rect.x,
+              candidate.y - rect.y,
+              rect.x + rect.w - (candidate.x + candidate.w),
+              rect.y + rect.h - (candidate.y + candidate.h)
+            );
+            var verticalPreference = shares > 1 && candidate.h >= candidate.w ? -34 : 0;
+            if (index === 0 && items.length > 4) {
+              return centerDistance * 120 + edgeDistance * -12 + Math.abs(candidate.w - candidate.h) * 8;
+            }
+            return edgeDistance * 84 + centerDistance * 6 + verticalPreference + index * 0.2;
+          }
+          return score(left) - score(right);
+        });
+        return Object.assign({ path: item.path }, candidates[0]);
+      }
+      var ordered = items.slice();
+      if (ordered.length > 1) {
+        ordered = [ordered[0]].concat(ordered.slice(1).sort(function (left, right) {
+          var shareDiff = Math.max(1, right.shares || 1) - Math.max(1, left.shares || 1);
+          if (shareDiff) return shareDiff;
+          return String(left.path || '').localeCompare(String(right.path || ''));
+        }));
+      }
+      for (var i = 0; i < ordered.length; i += 1) {
+        var box = chooseBox(ordered[i], i);
+        if (!box) return null;
+        claim(box);
+        boxes.push(box);
+      }
+      return boxes;
+    }
+
     function containedShareBoxes(rect, items) {
       if (!items.length) return [];
+      var gridBoxes = containedShareBoxesGrid(rect, items);
+      if (gridBoxes) return gridBoxes;
       if (items.length === 1) {
         return [Object.assign({ path: items[0].path }, rect)];
       }
@@ -1997,7 +2084,7 @@
           var child = { x: cell.x + direction.dx, y: cell.y + direction.dy };
           if (!cellFree(child.x, child.y)) return;
           var directionPreferencePenalty = layout[parentPath] && layout[parentPath].containedSelf ? orderIndex * 240 : orderIndex * 0.7;
-          if (layout[parentPath] && layout[parentPath].containedSelf && hasDisallowedWallContact([child], [parentPath])) return;
+          if (hasDisallowedWallContact([child], [parentPath])) return;
           candidates.push({
             parentCell: { x: cell.x, y: cell.y },
             child: child,
@@ -2041,6 +2128,7 @@
           var symmetricOpen = canClaimCorridorCells(symmetricCorridor, parentPath, child);
           var corridor = symmetricOpen ? symmetricCorridor : attach.corridor;
           if (!canClaimCorridorCells(corridor, parentPath, child)) continue;
+          if (hasDisallowedWallContact(corridor.concat([child]), [parentPath])) continue;
           var directionPenalty = direction.name === preferred.direction.name ? -96 : 420 + orderIndex * 18;
           var sidePenalty = attach.side === preferred.side ? 0 : 120;
           candidates.push({
@@ -2082,6 +2170,7 @@
         directions.forEach(function (direction, orderIndex) {
           var child = { x: parentCell.x + direction.dx, y: parentCell.y + direction.dy };
           if (!cellFree(child.x, child.y)) return;
+          if (hasDisallowedWallContact([child], [owner])) return;
           candidates.push({
             owner: owner,
             parentCell: parentCell,
@@ -2290,9 +2379,9 @@
     var corners = {};
     var bandRadius = 30;
     var gradientWidth = 84;
-    var gradientOverlap = 3;
+    var gradientOverlap = 2;
     var gradientOuter = bandRadius + gradientWidth;
-    var gradientCapOverlap = gradientOverlap;
+    var gradientCapOverlap = 0;
     function addEdge(side, x1, y1, x2, y2) {
       edges.push({ side: side, a: { x: x1, y: y1 }, b: { x: x2, y: y2 } });
     }
@@ -2572,6 +2661,19 @@
 
   function footprintContourPath(cells, unitW, unitH, seed, ornate, occupied, doorSegments) {
     if (!cells.length) return '';
+    cells = cells.reduce(function (expanded, cell) {
+      var cellW = Math.max(1, Math.ceil(Number(cell && cell.w) || 1));
+      var cellH = Math.max(1, Math.ceil(Number(cell && cell.h) || 1));
+      for (var dy = 0; dy < cellH; dy += 1) {
+        for (var dx = 0; dx < cellW; dx += 1) {
+          expanded.push({
+            x: Number(cell.x) + dx,
+            y: Number(cell.y) + dy
+          });
+        }
+      }
+      return expanded;
+    }, []);
     var local = {};
     cells.forEach(function (cell) {
       local[cell.x + ',' + cell.y] = true;
@@ -3123,7 +3225,7 @@
       }
       var isContainedParent = Boolean(roomCell && roomCell.containedSelf);
       var isContainedSubdivision = Boolean(roomCell && Object.prototype.hasOwnProperty.call(roomCell, 'containedIn'));
-      var containedRoomClass = isContainedSubdivision ? ' is-contained-subdivision' : '';
+      var containedRoomClass = (isContainedSubdivision ? ' is-contained-subdivision' : '') + (isContainedParent ? ' is-contained-parent' : '');
       var backgroundShape = isOutdoor
         ? '<path class="desk-map-greenbelt-strip desk-map-greenbelt-band" d="' + roomPathShape + '"></path><g class="desk-map-room-grass-area"><path class="desk-map-room-grass" d="' + roomPathShape + '"></path></g>'
         : '';
@@ -3146,7 +3248,7 @@
           '<text x="' + labelX + '" y="' + (labelY + 5) + '" text-anchor="middle">' + escapeHtml(title) + '</text>' +
           '</g>';
       var foregroundShape = '<a href="' + escapeHtml(room.url || roomUrl(path)) + '" data-desk-room-link="' + escapeHtml(path) + '" data-desk-room-viewbox="' + escapeHtml(formatViewBox(closeupViewBoxForRoom(path, 0, 0))) + '" data-desk-room-drop="' + escapeHtml(path) + '"' + (path ? ' draggable="false"' : '') + ' class="desk-map-room-link' + (isCurrent ? ' is-current' : '') + '">' +
-        '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
+        '<g class="desk-map-room' + (isOutdoor ? ' is-outdoor' : '') + (isCurrent ? ' is-current' : '') + (isContainedParent ? ' is-contained-parent' : '') + (isPassageSource ? ' is-passage-source' : '') + '" style="--room-color:' + escapeHtml(roomColor(room)) + '">' +
         roomShape +
         dimLayer +
         hoverTint +
@@ -3194,7 +3296,7 @@
       '</svg>' +
       '<button type="button" class="desk-map-close" data-desk-close-map aria-label="Close map" title="Close map">×</button>' +
       '<button type="button" class="desk-map-zoom-btn' + (state.mapZoomMode === 'room' ? ' is-active' : '') + '" data-desk-map-zoom aria-label="' + escapeHtml(zoomLabel) + '" title="' + escapeHtml(zoomLabel) + '">' + renderMapZoomIcon() + '</button>' +
-      '<button type="button" class="desk-map-props-btn' + (state.mapPropsOpen ? ' is-active' : '') + '" data-desk-map-props aria-label="Room properties" title="Room properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-blueprint-sheet" d="M5 3.8h10.3L19 7.5v12.7H5z"></path><path class="desk-blueprint-fold" d="M15.3 3.8v4h3.9"></path><path class="desk-blueprint-grid" d="M8 9.2h8M8 13h8M8 16.8h4M9.7 7v12M14.4 9.2v9.8"></path><path class="desk-blueprint-mark" d="M13.1 16.8l1.4 1.4 2.8-3.2"></path></svg></button>' +
+      '<button type="button" class="desk-map-props-btn' + (state.mapPropsOpen ? ' is-active' : '') + '" data-desk-map-props aria-label="Room properties" title="Room properties"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="desk-set-square-body" d="M4.5 19.5h15L4.5 4.5z"></path><path class="desk-set-square-cutout" d="M8.2 16.4h4.6L8.2 11.8z"></path><path class="desk-set-square-rules" d="M7.1 19.5v-2.1M10.1 19.5v-1.35M13.1 19.5v-2.1M16.1 19.5v-1.35"></path></svg></button>' +
       propsPanel +
       '<button type="button" class="desk-map-passage-btn' + (state.secretPassageSource !== null ? ' is-active' : '') + '" data-desk-secret-passage aria-label="Create secret passage" title="Create secret passage"><svg viewBox="0 0 32 32" aria-hidden="true"><g class="desk-passage-books"><path class="desk-passage-book side left" d="M7 8h5v16H7z"></path><path class="desk-passage-book-cover desk-passage-book middle" d="M13.5 6.5h5v18.5h-5z"></path><path class="desk-passage-book side right" d="M20 8h5v16h-5z"></path><path class="desk-passage-book-line" d="M9.5 11.5h0M16 10.5h0M22.5 11.5h0M9.5 20.5h0M16 21.5h0M22.5 20.5h0"></path></g></svg></button>' +
       renderFlashlightControl() +

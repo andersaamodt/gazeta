@@ -108,6 +108,66 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Local newer than Nostr',
+          message: 'Local source is newer than latest published Nostr state.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer than local',
+          message: 'Published Nostr state is newer than local source.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'In sync',
+          message: 'Local source and published state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Unpublished local changes',
+          message: 'No published Nostr state yet for this page.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync status unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function pageSyncStatusInfo() {
+    var sync = state.payload && state.payload.sync_status && typeof state.payload.sync_status === 'object' ? state.payload.sync_status : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusConfig(status);
+    var message = String(sync.message || config.message).trim();
+    return {
+      label: config.label,
+      message: message,
+      className: config.className
+    };
+  }
+
+  function pageSyncStatusPillHtml() {
+    var info = pageSyncStatusInfo();
+    return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+  }
+
+  function renderSyncStatusPill() {
+    var actionsHost = document.getElementById('list-page-title-actions');
+    if (!actionsHost) {
+      return;
+    }
+    actionsHost.innerHTML = pageSyncStatusPillHtml();
+  }
+
   function markHydrationPageReady() {
     var gate = window.__wizardryHydration;
     if (gate && typeof gate.markPageReady === 'function') {
@@ -352,13 +412,14 @@
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
-	    state.renderSignature = JSON.stringify({
+	      state.renderSignature = JSON.stringify({
 	      slug: String(cachedPayload && cachedPayload.slug || ''),
 	      page_type: String(cachedPayload && cachedPayload.page_type || ''),
       nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
       is_admin: !!(cachedPayload && cachedPayload.is_admin),
       canonical_exists: !!(cachedPayload && cachedPayload.canonical_exists),
 	      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
+	      sync_status: cachedPayload && cachedPayload.sync_status ? cachedPayload.sync_status : null,
 	      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
 	    });
 	    if (canPreserveStaticPrerender(cachedPayload) && hasMatchingStaticPrerender(cachedPayload, els.content)) {
@@ -604,6 +665,10 @@
 
   function isPlainListPage() {
     return currentPageType() === 'list';
+  }
+
+  function shouldShowInlineAddEnd() {
+    return !isProductGalleryPage();
   }
 
   function normalizeViewModeForPage(value) {
@@ -1100,7 +1165,7 @@
       return firstLetter(entry && entry.markdown || '');
     }
     if (mode === 'marker') {
-      var marker = String(entry && entry.marker || '').trim();
+      var marker = normalizeMarkerListText(entry && entry.marker || '');
       return marker || 'Unmarked';
     }
     return '';
@@ -1733,6 +1798,35 @@
     }
   }
 
+  function syncVisibleInlineInputsToDraft() {
+    if (!isAdmin() || !els.content || !Array.isArray(state.draft.elements)) {
+      return;
+    }
+    var fields = els.content.querySelectorAll('[data-inline-field][data-element-uid]');
+    fields.forEach(function (fieldNode) {
+      if (!(fieldNode instanceof HTMLInputElement || fieldNode instanceof HTMLTextAreaElement || fieldNode instanceof HTMLSelectElement)) {
+        return;
+      }
+      var uid = String(fieldNode.getAttribute('data-element-uid') || '');
+      var field = String(fieldNode.getAttribute('data-inline-field') || '');
+      if (!uid || !field) {
+        return;
+      }
+      var idx = findElementIndex(uid);
+      if (idx < 0) {
+        return;
+      }
+      var value = String(fieldNode.value || '');
+      if (field === 'marker') {
+        value = normalizeMarkerListForDisplay(value, !!state.draft.alphabetize_markers);
+        if (fieldNode.value !== value) {
+          fieldNode.value = value;
+        }
+      }
+      state.draft.elements[idx][field] = value;
+    });
+  }
+
   async function refreshValidation() {
     if (!isAdmin()) {
       return;
@@ -1752,6 +1846,9 @@
       state.payload.canonical_event = latest.canonical_event;
       state.payload.draft_exists = latest.draft_exists;
       state.payload.draft_differs = latest.draft_differs;
+      if (typeof latest.sync_status !== 'undefined') {
+        state.payload.sync_status = latest.sync_status;
+      }
       renderValidation();
       renderAdmin();
     } catch (_err) {
@@ -1804,6 +1901,9 @@
       }
       if (savedPayload && savedPayload.validation) {
         state.payload.validation = savedPayload.validation;
+      }
+      if (typeof savedPayload.sync_status !== 'undefined') {
+        state.payload.sync_status = savedPayload.sync_status;
       }
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
@@ -2825,6 +2925,9 @@
     if (insertAt > elements.length) {
       insertAt = elements.length;
     }
+    if (insertAt === 0 && Math.max(0, Number(item && item.depth || 0) || 0) > 0) {
+      return false;
+    }
     elements.splice(insertAt, 0, item);
     var afterOrder = elements.map(function (el) { return String(el && el._uid || ''); }).join('|');
     return beforeOrder !== afterOrder;
@@ -2849,9 +2952,10 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
       } else {
-        els.title.textContent = s.title || 'List';
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
       }
     }
+    renderSyncStatusPill();
     renderNavbarTitleRow(s);
 
     if (!els.description) {
@@ -3549,7 +3653,9 @@
 
     if (!entryElements.length) {
       html += '<div class="list-inline-empty">No entries yet.</div>';
-      html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
+      if (shouldShowInlineAddEnd()) {
+        html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
+      }
       html += renderAfterContentEditor();
       return html;
     }
@@ -3608,7 +3714,9 @@
       });
       html += '</ul>';
     }
-    html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
+    if (shouldShowInlineAddEnd()) {
+      html += '<div class="list-inline-add-end-row"><button type="button" class="list-inline-add-end" data-list-action="add-end" title="' + escapeHtml(addTitle) + '">Add entry...</button></div>';
+    }
     html += renderAfterContentEditor();
     return html;
   }
@@ -3726,17 +3834,18 @@
     var actionsHost = document.getElementById('list-page-title-actions');
     var html = '';
     html += '<span class="list-page-admin-bar">';
-    if (state.saveIndicatorVisible) {
-      html += '<span id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
-      if (state.saveStatus === 'saving') {
-        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      if (state.saveIndicatorVisible) {
+        html += '<span id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
+        if (state.saveStatus === 'saving') {
+          html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
       } else if (state.saveStatus === 'error') {
         html += 'Save failed';
       } else {
         html += 'Saved';
       }
       html += '</span>';
-    }
+      }
+    html += pageSyncStatusPillHtml();
     if (showRevert) {
       html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
@@ -5061,6 +5170,7 @@
       if (!(row instanceof HTMLElement)) {
         return;
       }
+      syncVisibleInlineInputsToDraft();
       state.dragUid = String(row.getAttribute('data-element-uid') || '');
       state.dragStartElements = cloneEditableElements(state.draft.elements || []);
       state.dragMoved = false;
@@ -5178,6 +5288,7 @@
             is_admin: !!(payload && payload.is_admin),
             canonical_exists: !!(payload && payload.canonical_exists),
             draft_differs: !!(payload && payload.draft_differs),
+            sync_status: payload && payload.sync_status ? payload.sync_status : null,
             state: (payload && payload.state) ? payload.state : null
           });
           var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
