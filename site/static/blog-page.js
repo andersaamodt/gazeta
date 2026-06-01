@@ -4623,6 +4623,9 @@
     var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
     var requestedSlug = expectedSlug || slug;
+    if (slugsEquivalent(expectedSlug, slug) && normalizeSlug(expectedSlug) === 'index' && normalizeSlug(slug) === 'blog') {
+      requestedSlug = slug;
+    }
     if (expectedSlug && !slugsEquivalent(expectedSlug, slug)) {
       maybeRepairRoute('blog-root-slug-mismatch');
       return Promise.resolve();
