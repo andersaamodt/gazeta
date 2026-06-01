@@ -217,7 +217,26 @@
     }
     var currentHref = String(link.getAttribute('data-theme-href') || link.getAttribute('href') || '').trim();
     if (currentHref !== href) {
-      link.setAttribute('href', href);
+      var preloader = document.createElement('link');
+      preloader.rel = 'stylesheet';
+      preloader.href = href;
+      preloader.media = 'not all';
+      preloader.setAttribute('data-theme-preload', 'true');
+      var committed = false;
+      function commit() {
+        if (committed) {
+          return;
+        }
+        committed = true;
+        link.setAttribute('href', href);
+        if (preloader.parentNode) {
+          preloader.parentNode.removeChild(preloader);
+        }
+      }
+      preloader.addEventListener('load', commit, { once: true });
+      preloader.addEventListener('error', commit, { once: true });
+      (link.parentNode || document.head || document.documentElement).appendChild(preloader);
+      window.setTimeout(commit, 1500);
     }
     link.setAttribute('data-theme-href', href);
   }
