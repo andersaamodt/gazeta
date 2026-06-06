@@ -496,6 +496,14 @@ title: ""
 <td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay Checkout</strong><span class="plugin-setting-help">Shopping-cart checkout, BTCPay invoices, webhooks, and software-purchase delivery.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label></td>
 </tr>
+<tr data-plugin-row="ramp">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Ramp card onramp</strong><span class="plugin-setting-help">Credit-card checkout handoff through Ramp Network, with signed webhooks and BTC receiver checks.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-ramp"><input type="checkbox" id="plugin-ramp"><span>Enabled</span></label></td>
+</tr>
+<tr data-plugin-row="merch_store">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Merch store</strong><span class="plugin-setting-help">External print-on-demand merch fulfillment; Printful is the first provider.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-merch-store"><input type="checkbox" id="plugin-merch-store"><span>Enabled</span></label></td>
+</tr>
 <tr data-plugin-row="video_chat">
 <td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Video calling</strong><span class="plugin-setting-help">Embeddable WebRTC/Janus video chat widget and iframe endpoint.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-video-chat"><input type="checkbox" id="plugin-video-chat"><span>Enabled</span></label></td>

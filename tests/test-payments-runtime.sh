@@ -142,6 +142,53 @@ case "$url" in
   https://pay.blog.example.com/btcpay/api/v1/stores/test-store/invoices/btcpay-invoice-1)
     printf '{"id":"btcpay-invoice-1","status":"Settled"}\n'
     ;;
+  https://api.printful.com/stores)
+    body='{"code":200,"result":[{"id":12345,"name":"Gazeta API Store","type":"manual_order"}]}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '200'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://api.printful.com/sync/products?limit=100)
+    body='{"code":200,"result":[{"id":777,"name":"Printful Shirt","thumbnail_url":"https://img.example/shirt.png","variants":2,"synced":2}]}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '200'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://api.printful.com/sync/products/777|https://api.printful.com/sync/products/printful-shirt)
+    body='{"code":200,"result":{"sync_product":{"id":777,"name":"Printful Shirt","thumbnail_url":"https://img.example/shirt.png"},"sync_variants":[{"id":111,"external_id":"shirt-small","name":"Small","retail_price":"30.00","variant_id":4011},{"id":112,"external_id":"shirt-large","name":"Large","retail_price":"32.00","variant_id":4012}]}}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '200'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://api.printful.com/shipping/rates)
+    [ "$method" = "POST" ] || exit 22
+    body='{"code":200,"result":[{"id":"STANDARD","name":"Standard","rate":"4.99","currency":"USD","minDeliveryDays":3,"maxDeliveryDays":7}]}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '200'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://api.printful.com/orders)
+    [ "$method" = "POST" ] || exit 22
+    body='{"code":200,"result":{"id":98765,"external_id":"gazeta-order","status":"draft"}}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '201'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
   *)
     exit 22
     ;;
@@ -184,6 +231,13 @@ pages_cfg=$(jq -cn '{pages:[{
   show_in_nav:false,
   placeholder_title:"Sample Product",
   path:"/sample-product"
+},{
+  slug:"merch-shirt",
+  type:"nip23",
+  kind:30023,
+  show_in_nav:false,
+  placeholder_title:"Merch Shirt",
+  path:"/merch-shirt"
 }]}')
 blog_nostr_pages_sync_source_pages "$pages_cfg"
 blog_nostr_pages_save_json "$pages_cfg"
@@ -206,6 +260,46 @@ product_state=$(jq -cn '{
 }')
 blog_nostr_page_save_draft_state_json "sample-product" "nip23" "$product_state"
 
+merch_state=$(jq -cn '{
+  slug:"merch-shirt",
+  type:"nip23",
+  title:"Merch Shirt",
+  content:"Merch product body",
+  product_enabled:true,
+  product_type:"merch",
+  price:"30.00",
+  currency:"USD",
+  crypto_discount_percent:0,
+  purchase_endpoint:"/checkout?product=merch-shirt",
+  image_url:"https://img.example/shirt.png",
+  fulfillment_provider:"printful",
+  printful_product_id:"777",
+  variants:[{
+    id:"111",
+    name:"Small",
+    price:"30.00",
+    currency:"USD",
+    image_url:"https://img.example/shirt-small.png",
+    fulfillment_provider:"printful",
+    printful_sync_variant_id:"111",
+    printful_external_variant_id:"shirt-small",
+    printful_variant_id:"4011"
+  },{
+    id:"112",
+    name:"Large",
+    price:"32.00",
+    currency:"USD",
+    image_url:"https://img.example/shirt-large.png",
+    fulfillment_provider:"printful",
+    printful_sync_variant_id:"112",
+    printful_external_variant_id:"shirt-large",
+    printful_variant_id:"4012"
+  }],
+  extras_after:"",
+  extras_after_format:"markdown"
+}')
+blog_nostr_page_save_draft_state_json "merch-shirt" "nip23" "$merch_state"
+
 admin_profile=$(blog_user_profile admin)
 config-set "$admin_profile" username admin
 config-set "$admin_profile" fingerprint test-fingerprint
@@ -221,6 +315,14 @@ run_payments_cgi() {
   method=${2-GET}
   host=${3-blog.example.com}
   REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-payments" 2>&1
+}
+
+run_payments_cgi_body() {
+  query=$1
+  body=$2
+  host=${3-blog.example.com}
+  len=$(printf '%s' "$body" | wc -c | tr -d '[:space:]')
+  printf '%s' "$body" | REQUEST_METHOD=POST QUERY_STRING="$query" HTTP_HOST="$host" CONTENT_TYPE="application/json" CONTENT_LENGTH="$len" "$ROOT_DIR/cgi/blog-payments" 2>&1
 }
 
 run_product_cgi() {
@@ -247,6 +349,12 @@ run_delivery_cgi() {
   REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-delivery" 2>&1
 }
 
+run_manage_merch_cgi() {
+  query=$1
+  method=${2-GET}
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-manage-merch" 2>&1
+}
+
 # 1) Public runtime status keys.
 status_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_out" '"success":true' 'payments status succeeds'
@@ -258,25 +366,78 @@ config-set "$blog_site_conf" btcpay_rootpath /btcpay
 status_rootpath_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_rootpath_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'payments status includes btcpay root path'
 
+config-set "$blog_site_conf" plugin_ramp true
+config-set "$blog_site_conf" ramp_host_api_key test-ramp-key
+config-set "$blog_site_conf" ramp_btc_address bc1qmerchant
+config-set "$blog_site_conf" ramp_webhook_signature_required false
+config-set "$blog_site_conf" payments_webhook_secret webhook-secret
+config-set "$blog_site_conf" plugin_merch_store true
+config-set "$blog_site_conf" printful_api_token test-printful-token
+config-set "$blog_site_conf" printful_store_id test-printful-store
+config-set "$blog_site_conf" printful_confirm_orders false
+status_connected_out=$(run_payments_cgi 'action=status')
+assert_contains "$status_connected_out" '"ramp_configured":true' 'payments status reports configured Ramp plugin'
+assert_contains "$status_connected_out" '"printful_configured":true' 'payments status reports configured Printful plugin'
+
 # 2) Product lookup works for cart bootstrap.
 product_out=$(run_product_cgi 'slug=sample-product')
 assert_contains "$product_out" '"success":true' 'product lookup succeeds'
 assert_contains "$product_out" '"slug":"sample-product"' 'product lookup includes slug'
 assert_contains "$product_out" '"price":"' 'product lookup includes price field'
+merch_product_out=$(run_product_cgi 'slug=merch-shirt')
+assert_contains "$merch_product_out" '"product_type":"merch"' 'merch product lookup includes merch type'
+assert_contains "$merch_product_out" '"fulfillment_provider":"printful"' 'merch product lookup includes Printful provider'
+assert_contains "$merch_product_out" '"variants":' 'merch product lookup includes variants'
+
+merch_items_json=$(printf '%s' '[{"slug":"merch-shirt","variant_id":"111","qty":1}]')
+merch_no_shipping=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$merch_items_json")")
+assert_contains "$merch_no_shipping" '"code":"shipping_required"' 'merch create_order requires shipping recipient'
+
+recipient_json=$(printf '%s' '{"name":"Ada Buyer","email":"ada@example.com","phone":"555-0100","address1":"1 Main St","city":"New York","state_code":"NY","country_code":"US","zip":"10001"}')
+merch_create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$merch_items_json")&recipient_json=$(blog_url_encode "$recipient_json")")
+assert_contains "$merch_create_out" '"success":true' 'merch create_order succeeds with shipping'
+assert_contains "$merch_create_out" '"shipping":"4.99"' 'merch order stores Printful shipping'
+assert_contains "$merch_create_out" '"total":"34.99"' 'merch order total includes shipping'
+assert_contains "$merch_create_out" '"provider_url":"https://app.rampnetwork.com/' 'merch order uses Ramp app URL'
+assert_contains "$merch_create_out" 'inAssetValue=3499' 'Ramp URL uses total in minor fiat units'
+assert_contains "$merch_create_out" 'userAddress=bc1qmerchant' 'Ramp URL sends BTC to configured merchant address'
+assert_contains "$merch_create_out" 'webhookStatusUrl=' 'Ramp URL includes webhook status URL'
+merch_order_id=$(printf '%s\n' "$merch_create_out" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
+assert_nonempty "$merch_order_id" 'merch create_order returns order_id'
+
+ramp_wrong_receiver=$(run_payments_cgi_body "action=webhook&provider=ramp&order_id=$merch_order_id&webhook_secret=webhook-secret" '{"type":"RELEASED","purchase":{"userAddress":"bc1qwrong"}}')
+assert_contains "$ramp_wrong_receiver" '"code":"ramp_receiver_mismatch"' 'Ramp webhook rejects wrong BTC receiver address'
+ramp_webhook_body='{"type":"RELEASED","purchase":{"userAddress":"bc1qmerchant"}}'
+ramp_webhook_out=$(run_payments_cgi_body "action=webhook&provider=ramp&order_id=$merch_order_id&webhook_secret=webhook-secret" "$ramp_webhook_body")
+assert_contains "$ramp_webhook_out" '"success":true' 'Ramp webhook succeeds for released purchase'
+assert_contains "$ramp_webhook_out" '"status":"paid"' 'Ramp webhook marks merch order paid'
+assert_contains "$ramp_webhook_out" '"fulfillment_status":"draft"' 'paid merch order creates Printful draft fulfillment'
+assert_contains "$ramp_webhook_out" '"printful_order_id":"98765"' 'paid merch order stores Printful order id'
+
+manage_merch_status=$(run_manage_merch_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token")
+assert_contains "$manage_merch_status" '"printful_api_ready":true' 'merch manager status validates Printful API'
+manage_merch_import=$(run_manage_merch_cgi "action=import_printful_product&printful_product_id=777&session_token=$session_token&csrf_token=$csrf_token" POST)
+assert_contains "$manage_merch_import" '"success":true' 'merch manager imports Printful product'
+assert_contains "$manage_merch_import" '"slug":"printful-shirt"' 'merch import slugifies Printful product name'
+imported_product_out=$(run_product_cgi 'slug=printful-shirt')
+assert_contains "$imported_product_out" '"product_type":"merch"' 'imported Printful product is a merch product'
+pages_after_import=$(blog_nostr_pages_load_json)
+assert_contains "$pages_after_import" '"slug":"printful-shirt"' 'imported Printful product is added to page registry'
+assert_contains "$pages_after_import" '"show_in_nav":false' 'imported Printful product stays unlisted from navbar'
 
 # 3) Order create -> status flow.
 items_json=$(printf '%s' '[{"slug":"sample-product","qty":2}]')
 create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$items_json")")
 assert_contains "$create_out" '"success":true' 'create_order succeeds'
 assert_contains "$create_out" '"provider":"ramp"' 'create_order keeps selected credit provider'
-assert_contains "$create_out" '"provider_url":"https://buy.ramp.network/' 'create_order emits provider_url for ramp'
+assert_contains "$create_out" '"provider_url":"https://app.rampnetwork.com/' 'create_order emits provider_url for ramp'
 order_id=$(printf '%s\n' "$create_out" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id" 'create_order returns order_id'
 
 status_order_out=$(run_payments_cgi "action=order_status&order_id=$order_id")
 assert_contains "$status_order_out" "\"order_id\":\"$order_id\"" 'order_status returns requested order'
 assert_contains "$status_order_out" '"status":"pending"' 'order_status starts as pending'
-assert_contains "$status_order_out" '"provider_url":"https://buy.ramp.network/' 'order_status preserves provider_url'
+assert_contains "$status_order_out" '"provider_url":"https://app.rampnetwork.com/' 'order_status preserves provider_url'
 
 # 4) Simulate paid requires auth and then produces download links.
 simulate_unauth=$(run_payments_cgi "action=simulate_paid&order_id=$order_id" POST)
@@ -300,7 +461,7 @@ order_id_2=$(printf '%s\n' "$create_out_2" | sed -n 's/.*"order_id":"\([^"]*\)".
 assert_nonempty "$order_id_2" 'second create_order returns order_id'
 assert_contains "$create_out_2" '"provider_url":"https://pay.blog.example.com/btcpay/i/btcpay-invoice-1"' 'btcpay provider URL uses Greenfield checkout link'
 assert_contains "$create_out_2" '"btcpay_invoice_id":"btcpay-invoice-1"' 'btcpay order stores invoice id'
-webhook_out=$(run_payments_cgi "action=webhook&order_id=$order_id_2&provider=btcpay&payment_status=paid" POST)
+webhook_out=$(run_payments_cgi "action=webhook&order_id=$order_id_2&provider=btcpay&payment_status=paid&webhook_secret=webhook-secret" POST)
 assert_contains "$webhook_out" '"success":true' 'webhook paid succeeds'
 assert_contains "$webhook_out" "\"order_id\":\"$order_id_2\"" 'webhook updates targeted order'
 assert_contains "$webhook_out" '"status":"paid"' 'webhook marks order as paid'

@@ -1554,7 +1554,7 @@ printf '%s\n' 'wss://relay.example.com' > "$blog_nostr_relays_file"
 blog_get_config_out=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-get-config")
 assert_contains "$blog_get_config_out" '"site_title":"Fixture Site"' 'blog-get-config returns parsed site title'
 assert_contains "$blog_get_config_out" '"theme":"lapidarist"' 'blog-get-config returns parsed theme'
-assert_contains "$blog_get_config_out" '"plugins":{"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"video_chat":false,"overworld":false}' 'blog-get-config returns normalized plugins json'
+assert_contains "$blog_get_config_out" '"plugins":{"nostr_support":true,"nostr_login":true,"nostr_bridge":true,"nostr_posts":true,"zaps":true,"btcpay":true,"ramp":false,"merch_store":false,"video_chat":false,"overworld":false}' 'blog-get-config returns normalized plugins json'
 assert_contains "$blog_get_config_out" '"video_chat":{"participant_limit":8,"token_ttl_seconds":7200,"janus_wss":"wss://janus.example.com/janus","signaling_wss":"wss://signal.example.com/ws","public_rooms":true,"rooms":["Lobby","Office Hours"],"active_rooms":["Lobby","Office Hours"],"room_settings":"Lobby\nOffice Hours","scheduled_rooms":"","room_theme_images":{},"include_syntax":"{{video-chat}}"}' 'blog-get-config returns video calling settings and include syntax'
 assert_contains "$blog_get_config_out" '"nostr_relays":["wss://relay.example.com"]' 'blog-get-config returns relay list json'
 login_begin_empty_out=$(REQUEST_METHOD=POST CONTENT_LENGTH=0 HTTP_HOST=fixture.example "$ROOT_DIR/cgi/nostr-auth-login-begin")
@@ -1807,6 +1807,7 @@ assert_file_contains "$ROOT_DIR/.headquarters/software/btcpay-checkout.conf" 'su
 assert_file_contains "$ROOT_DIR/.headquarters/software/watchtower.conf" 'submenu_label=Safety' 'site software catalog groups watchtower under Payments > Safety'
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-lightning"
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
+assert_success test -x "$ROOT_DIR/cgi/blog-manage-merch"
 assert_success test -x "$ROOT_DIR/cgi/blog-payments"
 assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
 assert_success test -x "$ROOT_DIR/cgi/blog-purchase"
@@ -1820,8 +1821,22 @@ assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'webhook' 'payments cgi suppo
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_host_api_key:' 'payments status emits ramp runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_ramp_provider_url' 'payments cgi builds Ramp checkout URLs through shared helper'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_receiver_mismatch' 'payments cgi rejects Ramp webhooks for the wrong BTC receiver'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_sync_product_json' 'merch common can load Printful sync products'
+assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_create_order_json' 'merch common can create Printful orders'
+assert_file_contains "$ROOT_DIR/cgi/blog-manage-merch" 'show_in_nav: false' 'merch importer creates unlisted product pages'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'or $t == "merch"' 'NIP-23 product state supports merch product type'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'merch_store' 'plugin registry includes merch store plugin'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'ramp' 'plugin registry includes Ramp plugin'
+assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'data-plugin-row="merch_store"' 'admin plugin table exposes merch store plugin'
+assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'data-plugin-row="ramp"' 'admin plugin table exposes Ramp plugin'
+assert_file_contains "$SITE_SOURCE_ROOT/static/shop-cart.js" 'variant_id: item.variant_id' 'cart API submits selected product variant ids'
+assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'data-shipping-field="address1"' 'checkout page renders shipping address fields'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'data-nip23-product-variant="true"' 'NIP-23 product page renders variant selector'
 assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_verify_token "$token" download' 'download cgi verifies signed download token'
 assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_verify_token "$token" delivery' 'delivery cgi verifies durable buyer delivery token'
 assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_issue_download_token "$order_id" "$slug"' 'delivery cgi mints short-lived product download tokens'

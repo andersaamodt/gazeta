@@ -47,6 +47,16 @@
       .replace(/^-+|-+$/g, '');
   }
 
+  function normalizeVariantId(raw) {
+    return String(raw || '').trim().replace(/[\r\n]/g, '');
+  }
+
+  function itemKey(slug, variantId) {
+    var key = normalizeSlug(slug);
+    var variant = normalizeVariantId(variantId);
+    return variant ? (key + ':' + variant) : key;
+  }
+
   function clampQty(raw) {
     var qty = Math.floor(parseNumber(raw, 1));
     if (qty < 1) {
@@ -65,15 +75,28 @@
     }
     var unitPrice = parseNumber(src && src.unit_price, 0);
     var unitCryptoPrice = parseNumber(src && src.unit_crypto_price, unitPrice);
+    var variantId = normalizeVariantId(src && src.variant_id);
+    if (!variantId && src && src.item_key && String(src.item_key).indexOf(':') >= 0) {
+      variantId = normalizeVariantId(String(src.item_key).split(':').slice(1).join(':'));
+    }
     return {
       slug: slug,
+      item_key: itemKey(slug, variantId),
       title: String(src && src.title || slug),
+      variant_id: variantId,
+      variant_name: String(src && src.variant_name || ''),
       qty: clampQty(src && src.qty),
       unit_price: unitPrice,
       unit_crypto_price: unitCryptoPrice,
       currency: String(src && src.currency || 'USD').toUpperCase(),
       path: String(src && src.path || ('/' + slug)),
-      image_url: String(src && src.image_url || '')
+      image_url: String(src && src.image_url || ''),
+      product_type: String(src && src.product_type || 'software').toLowerCase(),
+      physical: !!(src && src.physical),
+      fulfillment_provider: String(src && src.fulfillment_provider || ''),
+      printful_sync_variant_id: String(src && src.printful_sync_variant_id || ''),
+      printful_external_variant_id: String(src && src.printful_external_variant_id || ''),
+      printful_variant_id: String(src && src.printful_variant_id || '')
     };
   }
 
@@ -85,14 +108,14 @@
       if (!normalized) {
         return;
       }
-      if (!Object.prototype.hasOwnProperty.call(seen, normalized.slug)) {
-        seen[normalized.slug] = normalized;
+      if (!Object.prototype.hasOwnProperty.call(seen, normalized.item_key)) {
+        seen[normalized.item_key] = normalized;
         out.push(normalized);
         return;
       }
-      seen[normalized.slug].qty = clampQty(seen[normalized.slug].qty + normalized.qty);
-      if (!seen[normalized.slug].title && normalized.title) {
-        seen[normalized.slug].title = normalized.title;
+      seen[normalized.item_key].qty = clampQty(seen[normalized.item_key].qty + normalized.qty);
+      if (!seen[normalized.item_key].title && normalized.title) {
+        seen[normalized.item_key].title = normalized.title;
       }
     });
     return out;
@@ -179,17 +202,22 @@
       ? ('<img class="nav-cart-item-image" src="' + escapeHtml(item.image_url) + '" alt="" loading="lazy" decoding="async">')
       : '';
     var path = String(item.path || ('/' + item.slug));
+    var key = String(item.item_key || itemKey(item.slug, item.variant_id));
+    var variant = item.variant_name
+      ? '<div class="nav-cart-item-variant">' + escapeHtml(item.variant_name) + '</div>'
+      : '';
     return ''
-      + '<li class="nav-cart-item" data-cart-slug="' + escapeHtml(item.slug) + '">'
+      + '<li class="nav-cart-item" data-cart-key="' + escapeHtml(key) + '">'
       + '<div class="nav-cart-item-media">' + img + '</div>'
       + '<div class="nav-cart-item-main">'
       + '<a class="nav-cart-item-title" href="' + escapeHtml(path) + '">' + escapeHtml(item.title || item.slug) + '</a>'
+      + variant
       + '<div class="nav-cart-item-price">$' + fmtMoney(lineTotal) + ' <span class="nav-cart-item-crypto">(~$' + fmtMoney(lineCrypto) + ' crypto)</span></div>'
       + '<div class="nav-cart-item-actions">'
-      + '<button type="button" data-cart-action="decrement" data-cart-slug="' + escapeHtml(item.slug) + '" aria-label="Decrease quantity">-</button>'
+      + '<button type="button" data-cart-action="decrement" data-cart-key="' + escapeHtml(key) + '" aria-label="Decrease quantity">-</button>'
       + '<span class="nav-cart-item-qty">Qty ' + String(qty) + '</span>'
-      + '<button type="button" data-cart-action="increment" data-cart-slug="' + escapeHtml(item.slug) + '" aria-label="Increase quantity">+</button>'
-      + '<button type="button" data-cart-action="remove" data-cart-slug="' + escapeHtml(item.slug) + '">Remove</button>'
+      + '<button type="button" data-cart-action="increment" data-cart-key="' + escapeHtml(key) + '" aria-label="Increase quantity">+</button>'
+      + '<button type="button" data-cart-action="remove" data-cart-key="' + escapeHtml(key) + '">Remove</button>'
       + '</div>'
       + '</div>'
       + '</li>';
@@ -226,7 +254,7 @@
     }
     var i;
     for (i = 0; i < state.items.length; i += 1) {
-      if (state.items[i].slug !== normalized.slug) {
+      if (state.items[i].item_key !== normalized.item_key) {
         continue;
       }
       state.items[i].qty = clampQty(state.items[i].qty + normalized.qty);
@@ -239,6 +267,14 @@
       if (normalized.image_url) {
         state.items[i].image_url = normalized.image_url;
       }
+      state.items[i].variant_id = normalized.variant_id;
+      state.items[i].variant_name = normalized.variant_name;
+      state.items[i].product_type = normalized.product_type;
+      state.items[i].physical = normalized.physical;
+      state.items[i].fulfillment_provider = normalized.fulfillment_provider;
+      state.items[i].printful_sync_variant_id = normalized.printful_sync_variant_id;
+      state.items[i].printful_external_variant_id = normalized.printful_external_variant_id;
+      state.items[i].printful_variant_id = normalized.printful_variant_id;
       if (normalized.unit_price > 0) {
         state.items[i].unit_price = normalized.unit_price;
       }
@@ -255,14 +291,18 @@
     return true;
   }
 
-  function setItemQty(slug, qty) {
-    var target = normalizeSlug(slug);
+  function setItemQty(keyOrSlug, qty) {
+    var target = String(keyOrSlug || '').trim();
+    if (target.indexOf(':') < 0) {
+      target = normalizeSlug(target);
+    }
     if (!target) {
       return;
     }
     var i;
     for (i = 0; i < state.items.length; i += 1) {
-      if (state.items[i].slug !== target) {
+      var key = String(state.items[i].item_key || itemKey(state.items[i].slug, state.items[i].variant_id));
+      if (key !== target && state.items[i].slug !== target) {
         continue;
       }
       if (qty <= 0) {
@@ -312,7 +352,33 @@
     }
   }
 
-  function toApiProduct(raw) {
+  function pickVariant(product, requestedVariantId) {
+    var variants = Array.isArray(product && product.variants) ? product.variants : [];
+    if (!variants.length) {
+      return null;
+    }
+    var requested = normalizeVariantId(requestedVariantId);
+    if (requested) {
+      var found = null;
+      variants.forEach(function (variant) {
+        if (found) {
+          return;
+        }
+        if (String(variant.id || '') === requested ||
+            String(variant.printful_sync_variant_id || '') === requested ||
+            String(variant.printful_external_variant_id || '') === requested ||
+            String(variant.printful_variant_id || '') === requested) {
+          found = variant;
+        }
+      });
+      if (found) {
+        return found;
+      }
+    }
+    return variants[0] || null;
+  }
+
+  function toApiProduct(raw, options) {
     var product = raw && raw.product ? raw.product : raw;
     if (!product || typeof product !== 'object') {
       return null;
@@ -322,16 +388,35 @@
       return null;
     }
     var price = parseNumber(product.price, 0);
-    var cryptoPrice = parseNumber(product.crypto_price, price);
+    var variant = pickVariant(product, options && options.variant_id);
+    var variantPrice = variant ? parseNumber(variant.price, price) : price;
+    var discount = parseNumber(product.crypto_discount_percent, 0);
+    if (discount < 0) {
+      discount = 0;
+    }
+    if (discount > 95) {
+      discount = 95;
+    }
+    var cryptoPrice = variant ? (variantPrice * (100 - discount) / 100) : parseNumber(product.crypto_price, price);
+    var variantId = variant ? normalizeVariantId(variant.id || variant.printful_sync_variant_id || variant.printful_external_variant_id) : '';
     return {
       slug: slug,
+      item_key: itemKey(slug, variantId),
       title: String(product.title || slug),
+      variant_id: variantId,
+      variant_name: String(variant && variant.name || ''),
       qty: 1,
-      unit_price: price,
+      unit_price: variant ? variantPrice : price,
       unit_crypto_price: cryptoPrice,
-      currency: String(product.currency || 'USD').toUpperCase(),
+      currency: String((variant && variant.currency) || product.currency || 'USD').toUpperCase(),
       path: '/' + slug,
-      image_url: String(product.image_url || '')
+      image_url: String((variant && variant.image_url) || product.image_url || ''),
+      product_type: String(product.product_type || 'software').toLowerCase(),
+      physical: !!product.physical,
+      fulfillment_provider: String((variant && variant.fulfillment_provider) || product.fulfillment_provider || ''),
+      printful_sync_variant_id: String((variant && variant.printful_sync_variant_id) || product.printful_sync_variant_id || ''),
+      printful_external_variant_id: String((variant && variant.printful_external_variant_id) || product.printful_external_variant_id || ''),
+      printful_variant_id: String((variant && variant.printful_variant_id) || '')
     };
   }
 
@@ -357,7 +442,7 @@
         return data;
       });
     }).then(function (data) {
-      var item = toApiProduct(data);
+      var item = toApiProduct(data, options || {});
       if (!item) {
         throw new Error('Product could not be loaded');
       }
@@ -398,21 +483,22 @@
           return;
         }
         var action = String(button.getAttribute('data-cart-action') || '');
-        var slug = normalizeSlug(button.getAttribute('data-cart-slug') || '');
-        if (!slug) {
+        var key = String(button.getAttribute('data-cart-key') || '').trim();
+        if (!key) {
           return;
         }
         var i;
         for (i = 0; i < state.items.length; i += 1) {
-          if (state.items[i].slug !== slug) {
+          var itemKeyValue = String(state.items[i].item_key || itemKey(state.items[i].slug, state.items[i].variant_id));
+          if (itemKeyValue !== key) {
             continue;
           }
           if (action === 'increment') {
-            setItemQty(slug, state.items[i].qty + 1);
+            setItemQty(key, state.items[i].qty + 1);
           } else if (action === 'decrement') {
-            setItemQty(slug, state.items[i].qty - 1);
+            setItemQty(key, state.items[i].qty - 1);
           } else if (action === 'remove') {
-            setItemQty(slug, 0);
+            setItemQty(key, 0);
           }
           return;
         }
@@ -468,6 +554,7 @@
       return state.items.map(function (item) {
         return {
           slug: item.slug,
+          variant_id: item.variant_id || '',
           qty: clampQty(item.qty)
         };
       });

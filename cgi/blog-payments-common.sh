@@ -233,6 +233,115 @@ blog_btcpay_webhook_url() {
   printf '%s/cgi/blog-payments?action=webhook&provider=btcpay\n' "$public_url"
 }
 
+blog_ramp_config_value() {
+  key=${1-}
+  [ -n "$key" ] || return 1
+  printf '%s\n' "$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
+}
+
+blog_ramp_widget_url() {
+  url=$(blog_ramp_config_value ramp_widget_url | tr -d '\n[:space:]')
+  [ -n "$url" ] || url='https://app.rampnetwork.com'
+  printf '%s\n' "${url%/}"
+}
+
+blog_ramp_host_api_key() {
+  blog_ramp_config_value ramp_host_api_key | tr -d '\n[:space:]'
+}
+
+blog_ramp_btc_address() {
+  blog_ramp_config_value ramp_btc_address | tr -d '\n[:space:]'
+}
+
+blog_ramp_host_app_name() {
+  name=$(blog_ramp_config_value ramp_host_app_name | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+  [ -n "$name" ] || name='gazeta checkout'
+  printf '%s\n' "$name"
+}
+
+blog_ramp_host_logo_url() {
+  blog_ramp_config_value ramp_host_logo_url | tr -d '\n'
+}
+
+blog_ramp_webhook_signature_required() {
+  value=$(blog_ramp_config_value ramp_webhook_signature_required | tr '[:upper:]' '[:lower:]' | tr -d '\n[:space:]')
+  case "$value" in
+    true|1|yes|on) printf 'true\n' ;;
+    *) printf 'false\n' ;;
+  esac
+}
+
+blog_ramp_configured() {
+  blog_plugin_enabled ramp || return 1
+  [ -n "$(blog_ramp_host_api_key)" ] || return 1
+  [ -n "$(blog_ramp_btc_address)" ] || return 1
+}
+
+blog_money_to_minor_units() {
+  amount=${1-0}
+  awk 'BEGIN { v = ARGV[1] + 0; if (v < 0) v = 0; printf "%.0f\n", v * 100 }' "$amount"
+}
+
+blog_ramp_webhook_url() {
+  order_id=${1-}
+  public_url=$(blog_payments_public_site_url)
+  secret=$(blog_btcpay_webhook_secret)
+  [ -n "$public_url" ] || return 1
+  [ -n "$order_id" ] || return 1
+  if [ -n "$secret" ]; then
+    printf '%s/cgi/blog-payments?action=webhook&provider=ramp&order_id=%s&webhook_secret=%s\n' "$public_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$secret")"
+    return 0
+  fi
+  printf '%s/cgi/blog-payments?action=webhook&provider=ramp&order_id=%s\n' "$public_url" "$(blog_url_encode "$order_id")"
+}
+
+blog_ramp_provider_url() {
+  order_id=${1-}
+  quote_json=${2-}
+  buyer_email=${3-}
+  [ -n "$order_id" ] || return 1
+  [ -n "$quote_json" ] || return 1
+  blog_ramp_configured || return 1
+  base=$(blog_ramp_widget_url)
+  host_api_key=$(blog_ramp_host_api_key)
+  btc_address=$(blog_ramp_btc_address)
+  host_app_name=$(blog_ramp_host_app_name)
+  host_logo_url=$(blog_ramp_host_logo_url)
+  total=$(printf '%s\n' "$quote_json" | jq -r '.total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
+  total_units=$(blog_money_to_minor_units "$total")
+  checkout_url="/checkout?order_id=$order_id"
+  public_url=$(blog_payments_public_site_url)
+  success_url=$checkout_url
+  failure_url=$checkout_url
+  final_url=$checkout_url
+  if [ -n "$public_url" ]; then
+    success_url="$public_url$checkout_url"
+    failure_url="$public_url$checkout_url"
+    final_url="$public_url$checkout_url"
+  fi
+  webhook_url=$(blog_ramp_webhook_url "$order_id" 2>/dev/null || printf '')
+
+  url="$base/?hostApiKey=$(blog_url_encode "$host_api_key")"
+  url="$url&hostAppName=$(blog_url_encode "$host_app_name")"
+  if [ -n "$host_logo_url" ]; then
+    url="$url&hostLogoUrl=$(blog_url_encode "$host_logo_url")"
+  fi
+  url="$url&enabledFlows=ONRAMP&defaultFlow=ONRAMP"
+  url="$url&enabledCryptoAssets=BTC_BTC&outAsset=BTC_BTC"
+  url="$url&inAsset=USD&inAssetValue=$(blog_url_encode "$total_units")"
+  url="$url&userAddress=$(blog_url_encode "$btc_address")"
+  url="$url&successUrl=$(blog_url_encode "$success_url")"
+  url="$url&failureUrl=$(blog_url_encode "$failure_url")"
+  url="$url&finalUrl=$(blog_url_encode "$final_url")"
+  if [ -n "$webhook_url" ]; then
+    url="$url&webhookStatusUrl=$(blog_url_encode "$webhook_url")"
+  fi
+  if [ -n "$buyer_email" ]; then
+    url="$url&userEmailAddress=$(blog_url_encode "$buyer_email")"
+  fi
+  printf '%s\n' "$url"
+}
+
 blog_btcpay_create_invoice_json() {
   order_id=${1-}
   amount=${2-}
@@ -340,7 +449,13 @@ blog_payments_product_state_json() {
       product_type: (.product_type // "software"),
       crypto_discount_percent: (.crypto_discount_percent // 0),
       repo: (.repo // ""),
-      tag: (.tag // "latest")
+      tag: (.tag // "latest"),
+      image_url: (.image_url // ""),
+      fulfillment_provider: (.fulfillment_provider // ""),
+      printful_product_id: (.printful_product_id // ""),
+      printful_sync_variant_id: (.printful_sync_variant_id // ""),
+      printful_external_variant_id: (.printful_external_variant_id // ""),
+      variants: (if ((.variants // null) | type) == "array" then .variants else [] end)
     }' 2>/dev/null || printf '{}')
     state_json=$(printf '%s\n' "$state_json" | jq -c --argjson local "$local_json" '. + {
       product_enabled: (if (($local.product_enabled | type) == "boolean") then ($local.product_enabled) else .product_enabled end),
@@ -350,7 +465,13 @@ blog_payments_product_state_json() {
       product_type: ($local.product_type // .product_type),
       crypto_discount_percent: ($local.crypto_discount_percent // .crypto_discount_percent),
       repo: ($local.repo // .repo),
-      tag: ($local.tag // .tag)
+      tag: ($local.tag // .tag),
+      image_url: ($local.image_url // .image_url // ""),
+      fulfillment_provider: ($local.fulfillment_provider // .fulfillment_provider // ""),
+      printful_product_id: ($local.printful_product_id // .printful_product_id // ""),
+      printful_sync_variant_id: ($local.printful_sync_variant_id // .printful_sync_variant_id // ""),
+      printful_external_variant_id: ($local.printful_external_variant_id // .printful_external_variant_id // ""),
+      variants: ($local.variants // .variants // [])
     }' 2>/dev/null || printf '%s\n' "$state_json")
   fi
 
@@ -369,11 +490,70 @@ blog_payments_public_product_json() {
   currency=$(printf '%s\n' "$state_json" | jq -r '.currency // "USD"' 2>/dev/null || printf 'USD')
   discount=$(printf '%s\n' "$state_json" | jq -r '.crypto_discount_percent // 0' 2>/dev/null || printf '0')
   purchase_endpoint=$(printf '%s\n' "$state_json" | jq -r '.purchase_endpoint // ""' 2>/dev/null || printf '')
+  product_type=$(printf '%s\n' "$state_json" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')
+  image_url=$(printf '%s\n' "$state_json" | jq -r '.image_url // ""' 2>/dev/null || printf '')
+  fulfillment_provider=$(printf '%s\n' "$state_json" | jq -r '.fulfillment_provider // ""' 2>/dev/null || printf '')
+  printful_product_id=$(printf '%s\n' "$state_json" | jq -r '.printful_product_id // ""' 2>/dev/null || printf '')
+  printful_sync_variant_id=$(printf '%s\n' "$state_json" | jq -r '.printful_sync_variant_id // ""' 2>/dev/null || printf '')
+  printful_external_variant_id=$(printf '%s\n' "$state_json" | jq -r '.printful_external_variant_id // ""' 2>/dev/null || printf '')
   if [ -z "$purchase_endpoint" ]; then
     purchase_endpoint=$(blog_payments_default_purchase_endpoint "$slug" 2>/dev/null || printf '')
   fi
+  if [ "$product_type" = "merch" ] && [ "$purchase_endpoint" = "$(blog_payments_default_purchase_endpoint "$slug" 2>/dev/null || printf '')" ]; then
+    purchase_endpoint="/checkout?product=$slug"
+  fi
 
   price_num=$(blog_payments_parse_amount "$price")
+  variants_json=$(printf '%s\n' "$state_json" | jq -c \
+    --arg default_price "$(blog_payments_format_money "$price_num")" \
+    --arg default_currency "$currency" \
+    --arg default_image_url "$image_url" \
+    --arg default_fulfillment_provider "$fulfillment_provider" \
+    --arg root_printful_sync_variant_id "$printful_sync_variant_id" \
+    --arg root_printful_external_variant_id "$printful_external_variant_id" \
+    'def clean_price($v; $fallback):
+       (($v // $fallback // "") | tostring | gsub("[[:space:]]"; "")) as $raw
+       | if ($raw | test("^[0-9]+([.][0-9]{1,2})?$")) then $raw else "" end;
+     def clean_currency($v):
+       (($v // $default_currency // "USD") | tostring | ascii_upcase | gsub("[^A-Z]"; "")) as $c
+       | if ($c | length) == 3 then $c else "USD" end;
+     def clean_provider($v):
+       (($v // $default_fulfillment_provider // "") | tostring | ascii_downcase) as $p
+       | if $p == "printful" then "printful" else "" end;
+     def clean_variant:
+       {
+         id: ((.id // .variant_id // .sync_variant_id // .external_variant_id // "") | tostring),
+         name: ((.name // .title // .variant_name // "") | tostring),
+         price: clean_price(.price // .retail_price // ""; $default_price),
+         currency: clean_currency(.currency // $default_currency),
+         image_url: ((.image_url // .thumbnail_url // $default_image_url // "") | tostring),
+         fulfillment_provider: clean_provider(.fulfillment_provider // $default_fulfillment_provider),
+         printful_sync_variant_id: ((.printful_sync_variant_id // .sync_variant_id // "") | tostring),
+         printful_external_variant_id: ((.printful_external_variant_id // .external_variant_id // "") | tostring),
+         printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring)
+       }
+       | .id = (if ((.id // "") | length) > 0 then .id elif ((.printful_sync_variant_id // "") | length) > 0 then .printful_sync_variant_id elif ((.printful_external_variant_id // "") | length) > 0 then .printful_external_variant_id else "" end)
+       | select((.id | length) > 0);
+     ([.variants[]? | clean_variant]) as $variants
+     | if (($variants | length) > 0) then $variants
+       elif (($root_printful_sync_variant_id | length) > 0 or ($root_printful_external_variant_id | length) > 0) then
+         [{
+           id: (if ($root_printful_sync_variant_id | length) > 0 then $root_printful_sync_variant_id else $root_printful_external_variant_id end),
+           name: "",
+           price: $default_price,
+           currency: $default_currency,
+           image_url: $default_image_url,
+           fulfillment_provider: $default_fulfillment_provider,
+           printful_sync_variant_id: $root_printful_sync_variant_id,
+           printful_external_variant_id: $root_printful_external_variant_id,
+           printful_variant_id: ""
+         }]
+       else [] end' 2>/dev/null || printf '[]')
+  first_variant_price=$(printf '%s\n' "$variants_json" | jq -r '.[0].price // ""' 2>/dev/null || printf '')
+  first_variant_price_num=$(blog_payments_parse_amount "$first_variant_price")
+  if [ "$(awk 'BEGIN { print ((ARGV[1] + 0) > 0) ? "1" : "0" }' "$price_num")" != '1' ] && [ "$(awk 'BEGIN { print ((ARGV[1] + 0) > 0) ? "1" : "0" }' "$first_variant_price_num")" = '1' ]; then
+    price_num=$first_variant_price_num
+  fi
   if [ "$product_enabled" != "true" ]; then
     return 1
   fi
@@ -392,7 +572,13 @@ blog_payments_public_product_json() {
     --arg crypto_discount_percent "$(blog_payments_format_money "$discount_num")" \
     --arg crypto_price "$(blog_payments_format_money "$crypto_num")" \
     --arg purchase_endpoint "$purchase_endpoint" \
-    --arg product_type "$(printf '%s\n' "$state_json" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')" \
+    --arg product_type "$product_type" \
+    --arg image_url "$image_url" \
+    --arg fulfillment_provider "$fulfillment_provider" \
+    --arg printful_product_id "$printful_product_id" \
+    --arg printful_sync_variant_id "$printful_sync_variant_id" \
+    --arg printful_external_variant_id "$printful_external_variant_id" \
+    --argjson variants "$variants_json" \
     '{
       slug: $slug,
       title: $title,
@@ -402,7 +588,14 @@ blog_payments_public_product_json() {
       crypto_discount_percent: $crypto_discount_percent,
       crypto_price: $crypto_price,
       purchase_endpoint: $purchase_endpoint,
-      product_type: $product_type
+      product_type: $product_type,
+      physical: ($product_type == "merch"),
+      image_url: $image_url,
+      fulfillment_provider: $fulfillment_provider,
+      printful_product_id: $printful_product_id,
+      printful_sync_variant_id: $printful_sync_variant_id,
+      printful_external_variant_id: $printful_external_variant_id,
+      variants: $variants
     }'
 }
 

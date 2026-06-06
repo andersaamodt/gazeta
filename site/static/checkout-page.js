@@ -15,11 +15,23 @@
     runtime: null,
     paymentMethod: 'crypto',
     provider: 'btcpay',
+    methodTouched: false,
     busy: false,
     order: null,
     orderPollTimer: 0,
     message: '',
-    messageTone: 'info'
+    messageTone: 'info',
+    shipping: {
+      name: '',
+      email: '',
+      phone: '',
+      address1: '',
+      address2: '',
+      city: '',
+      state_code: '',
+      country_code: 'US',
+      zip: ''
+    }
   };
 
   function escapeHtml(text) {
@@ -118,6 +130,55 @@
     return api.quoteItemsPayload();
   }
 
+  function cartHasShippingItems(items) {
+    return (Array.isArray(items) ? items : cartItems()).some(function (item) {
+      return !!(item && (item.physical || item.product_type === 'merch' || item.fulfillment_provider));
+    });
+  }
+
+  function cleanShippingValue(value) {
+    return String(value || '').replace(/[\r\n]/g, ' ').trim();
+  }
+
+  function shippingPayload() {
+    return {
+      name: cleanShippingValue(state.shipping.name),
+      email: cleanShippingValue(state.shipping.email),
+      phone: cleanShippingValue(state.shipping.phone),
+      address1: cleanShippingValue(state.shipping.address1),
+      address2: cleanShippingValue(state.shipping.address2),
+      city: cleanShippingValue(state.shipping.city),
+      state_code: cleanShippingValue(state.shipping.state_code).toUpperCase(),
+      country_code: cleanShippingValue(state.shipping.country_code || 'US').toUpperCase(),
+      zip: cleanShippingValue(state.shipping.zip)
+    };
+  }
+
+  function shippingIsValid() {
+    var s = shippingPayload();
+    var requiresState = s.country_code === 'US' || s.country_code === 'CA' || s.country_code === 'AU';
+    return !!(s.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email) && s.address1 && s.city && s.country_code.length === 2 && s.zip && (!requiresState || s.state_code));
+  }
+
+  function shippingFormHtml() {
+    var s = state.shipping;
+    return ''
+      + '<fieldset class="checkout-shipping-form">'
+      + '<legend>Shipping</legend>'
+      + '<div class="checkout-shipping-grid">'
+      + '<label><span>Name</span><input type="text" autocomplete="name" data-shipping-field="name" value="' + escapeHtml(s.name) + '"></label>'
+      + '<label><span>Email</span><input type="email" autocomplete="email" data-shipping-field="email" value="' + escapeHtml(s.email) + '"></label>'
+      + '<label><span>Phone</span><input type="tel" autocomplete="tel" data-shipping-field="phone" value="' + escapeHtml(s.phone) + '"></label>'
+      + '<label class="checkout-shipping-wide"><span>Address</span><input type="text" autocomplete="address-line1" data-shipping-field="address1" value="' + escapeHtml(s.address1) + '"></label>'
+      + '<label class="checkout-shipping-wide"><span>Address 2</span><input type="text" autocomplete="address-line2" data-shipping-field="address2" value="' + escapeHtml(s.address2) + '"></label>'
+      + '<label><span>City</span><input type="text" autocomplete="address-level2" data-shipping-field="city" value="' + escapeHtml(s.city) + '"></label>'
+      + '<label><span>State</span><input type="text" autocomplete="address-level1" data-shipping-field="state_code" value="' + escapeHtml(s.state_code) + '"></label>'
+      + '<label><span>Country</span><input type="text" autocomplete="country" maxlength="2" data-shipping-field="country_code" value="' + escapeHtml(s.country_code || 'US') + '"></label>'
+      + '<label><span>Postal code</span><input type="text" autocomplete="postal-code" data-shipping-field="zip" value="' + escapeHtml(s.zip) + '"></label>'
+      + '</div>'
+      + '</fieldset>';
+  }
+
   function setMessage(text, tone) {
     state.message = String(text || '');
     state.messageTone = tone || 'info';
@@ -172,7 +233,8 @@
       return 'https://widget.paybis.com/?partnerId=' + encodeURIComponent(partner);
     }
     var key = runtime.ramp_host_api_key || '';
-    return 'https://buy.ramp.network/?hostApiKey=' + encodeURIComponent(key);
+    var base = runtime.ramp_widget_url || 'https://app.rampnetwork.com';
+    return String(base).replace(/\/+$/, '') + '/?hostApiKey=' + encodeURIComponent(key);
   }
 
   function renderOrderPanel() {
@@ -203,6 +265,9 @@
       + '<div class="checkout-order-row"><span>Status</span><strong class="is-' + escapeHtml(statusTone) + '">' + escapeHtml(status || 'pending') + '</strong></div>'
       + '<div class="checkout-order-row"><span>Provider</span><strong>' + escapeHtml(order.provider || '') + '</strong></div>'
       + '<div class="checkout-order-row"><span>Subtotal</span><strong>$' + escapeHtml(String(order.totals && order.totals.subtotal || '0.00')) + '</strong></div>'
+      + (order.totals && order.totals.shipping ? '<div class="checkout-order-row"><span>Shipping</span><strong>$' + escapeHtml(String(order.totals.shipping || '0.00')) + '</strong></div>' : '')
+      + (order.totals && order.totals.total ? '<div class="checkout-order-row"><span>Total</span><strong>$' + escapeHtml(String(order.totals.total || '0.00')) + '</strong></div>' : '')
+      + (order.fulfillment_status ? '<div class="checkout-order-row"><span>Fulfillment</span><strong>' + escapeHtml(order.fulfillment_status) + '</strong></div>' : '')
       + (order.provider_url ? '<div class="checkout-order-link"><a href="' + escapeHtml(order.provider_url) + '" target="_blank" rel="noopener noreferrer">Open provider flow</a></div>' : '')
       + linksHtml
       + (status !== 'paid' ? '<button type="button" class="checkout-simulate-btn" data-checkout-action="simulate-paid">Simulate webhook paid</button>' : '')
@@ -237,14 +302,22 @@
       var cryptoLine = unitCrypto * qty;
       subtotal += line;
       cryptoTotal += cryptoLine;
+      var variant = item.variant_name
+        ? '<small class="checkout-item-variant">' + escapeHtml(item.variant_name) + '</small>'
+        : '';
       return ''
         + '<li class="checkout-item-row">'
-        + '<span class="checkout-item-title">' + escapeHtml(item.title || item.slug || 'Item') + ' x' + String(qty) + '</span>'
+        + '<span class="checkout-item-title">' + escapeHtml(item.title || item.slug || 'Item') + ' x' + String(qty) + variant + '</span>'
         + '<span class="checkout-item-price">$' + fmtMoney(line) + ' <small>(~$' + fmtMoney(cryptoLine) + ' crypto)</small></span>'
         + '</li>';
     }).join('');
 
     var hasItems = !!rows;
+    var hasShippingItems = cartHasShippingItems(items);
+    if (hasShippingItems && !state.methodTouched && !state.order) {
+      state.paymentMethod = 'credit';
+      state.provider = 'ramp';
+    }
     var provider = currentProvider();
     var embedUrl = providerEmbedUrl(provider);
 
@@ -256,6 +329,8 @@
         + '</div>';
     } else if (provider === 'btcpay') {
       embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a BTCPay invoice. The secure BTCPay checkout will open from this page after the order is created.</p>';
+    } else if (provider === 'ramp' && !(state.order && state.order.provider_url)) {
+      embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a Ramp order with the final total.</p>';
     } else if (embedUrl) {
       embedHtml = '<iframe class="checkout-provider-embed" src="' + escapeHtml(embedUrl) + '" title="' + escapeHtml(provider) + ' checkout panel"></iframe>';
     } else if (provider === 'paybis') {
@@ -269,6 +344,7 @@
       + '<div class="checkout-column checkout-column-summary">'
       + '<h2>Order Summary</h2>'
       + (hasItems ? '<ul class="checkout-item-list">' + rows + '</ul>' : '<p class="checkout-empty">Your cart is empty.</p>')
+      + (hasShippingItems ? shippingFormHtml() : '')
       + '<div class="checkout-totals">'
       + '<div><span>Card subtotal</span><strong>$' + fmtMoney(subtotal) + '</strong></div>'
       + '<div><span>Crypto total</span><strong>$' + fmtMoney(cryptoTotal) + '</strong></div>'
@@ -315,6 +391,7 @@
         btcpay_url: String(data.btcpay_url || ''),
         btcpay_host: String(data.btcpay_host || ''),
         ramp_host_api_key: rampHostApiKey,
+        ramp_widget_url: String(data.ramp_widget_url || 'https://app.rampnetwork.com'),
         paybis_partner_id: paybisPartnerId,
         ramp_configured: !!data.ramp_configured,
         paybis_configured: !!data.paybis_configured
@@ -336,7 +413,7 @@
       state.order = data.order || null;
       if (state.order && String(state.order.status || '').toLowerCase() === 'paid') {
         stopOrderPolling();
-        setMessage('Payment confirmed. Download links are now active below.', 'ok');
+        setMessage('Payment confirmed. Order status is updated below.', 'ok');
         var api = cartApi();
         if (api && typeof api.clear === 'function') {
           api.clear();
@@ -352,20 +429,31 @@
       return;
     }
     var payloadItems = cartItemsPayload();
+    var items = cartItems();
     if (!payloadItems.length) {
       setMessage('Add at least one product before starting checkout.', 'warn');
+      render();
+      return;
+    }
+    var needsShipping = cartHasShippingItems(items);
+    if (needsShipping && !shippingIsValid()) {
+      setMessage('Complete the shipping fields before starting payment.', 'warn');
       render();
       return;
     }
     state.busy = true;
     setMessage('Creating order...', 'info');
     render();
-    apiPost('/cgi/blog-payments', {
+    var payload = {
       action: 'create_order',
       payment_method: state.paymentMethod,
       provider: currentProvider(),
       items_json: JSON.stringify(payloadItems)
-    }, false).then(function (data) {
+    };
+    if (needsShipping) {
+      payload.recipient_json = JSON.stringify(shippingPayload());
+    }
+    apiPost('/cgi/blog-payments', payload, false).then(function (data) {
       var nextOrder = data.order || null;
       if (nextOrder && !nextOrder.provider_url && data.provider_url) {
         nextOrder.provider_url = String(data.provider_url || '');
@@ -406,6 +494,18 @@
     });
   }
 
+  function updateShippingFromTarget(target) {
+    if (!(target instanceof HTMLInputElement)) {
+      return false;
+    }
+    var shippingField = target.getAttribute('data-shipping-field');
+    if (!shippingField || !Object.prototype.hasOwnProperty.call(state.shipping, shippingField)) {
+      return false;
+    }
+    state.shipping[shippingField] = String(target.value || '');
+    return true;
+  }
+
   content.addEventListener('change', function (event) {
     var target = event.target;
     if (!(target instanceof HTMLInputElement)) {
@@ -413,6 +513,7 @@
     }
     if (target.name === 'checkout-method') {
       state.paymentMethod = target.value === 'credit' ? 'credit' : 'crypto';
+      state.methodTouched = true;
       if (state.paymentMethod === 'crypto') {
         state.provider = 'btcpay';
       } else if (state.provider !== 'ramp' && state.provider !== 'paybis') {
@@ -423,7 +524,19 @@
     }
     if (target.name === 'checkout-provider') {
       state.provider = String(target.value || '').trim().toLowerCase();
+      state.methodTouched = true;
       render();
+      return;
+    }
+    if (updateShippingFromTarget(target)) {
+      render();
+    }
+  });
+
+  content.addEventListener('input', function (event) {
+    var target = event.target;
+    if (updateShippingFromTarget(target)) {
+      return;
     }
   });
 

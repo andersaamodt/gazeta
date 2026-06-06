@@ -107,7 +107,7 @@
 
   function normalizeProductType(value) {
     var next = String(value || '').trim().toLowerCase();
-    if (next === 'service' || next === 'membership') {
+    if (next === 'service' || next === 'membership' || next === 'merch') {
       return next;
     }
     return 'software';
@@ -143,6 +143,25 @@
     return n;
   }
 
+  function normalizeVariant(raw) {
+    var src = raw || {};
+    var id = String(src.id || src.variant_id || src.printful_sync_variant_id || src.printful_external_variant_id || '').trim();
+    if (!id) {
+      return null;
+    }
+    return {
+      id: id,
+      name: String(src.name || src.title || src.variant_name || '').trim(),
+      price: normalizePrice(src.price || src.retail_price || ''),
+      currency: normalizeCurrency(src.currency || 'USD'),
+      image_url: String(src.image_url || src.thumbnail_url || '').trim(),
+      fulfillment_provider: String(src.fulfillment_provider || '').trim().toLowerCase(),
+      printful_sync_variant_id: String(src.printful_sync_variant_id || src.sync_variant_id || '').trim(),
+      printful_external_variant_id: String(src.printful_external_variant_id || src.external_variant_id || '').trim(),
+      printful_variant_id: String(src.printful_variant_id || src.variant_id || '').trim()
+    };
+  }
+
   function defaultPurchaseEndpoint() {
     return '/purchase/' + slug;
   }
@@ -172,6 +191,12 @@
       purchase_endpoint: parsedPurchaseEndpoint,
       repo: String(src.repo || ''),
       tag: String(src.tag || 'latest'),
+      image_url: String(src.image_url || src.thumbnail_url || ''),
+      fulfillment_provider: String(src.fulfillment_provider || ''),
+      printful_product_id: String(src.printful_product_id || ''),
+      printful_sync_variant_id: String(src.printful_sync_variant_id || ''),
+      printful_external_variant_id: String(src.printful_external_variant_id || ''),
+      variants: (Array.isArray(src.variants) ? src.variants : []).map(normalizeVariant).filter(Boolean),
       extras_after: String(src.extras_after || ''),
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown')
     };
@@ -764,6 +789,20 @@
     }
     var displayPrice = productPriceDisplayText(s);
     var cryptoPrice = priceValue === 0 ? 'Free' : '$' + moneyText(cryptoValue);
+    var variants = Array.isArray(s.variants) ? s.variants : [];
+    var variantsHtml = '';
+    if (variants.length > 1) {
+      variantsHtml += '<label class="nip23-product-variant-row"><span>Variant</span><select data-nip23-product-variant="true">';
+      variants.forEach(function (variant) {
+        var label = variant.name || variant.id;
+        var price = normalizePrice(variant.price || '');
+        if (price) {
+          label += ' - $' + moneyText(price);
+        }
+        variantsHtml += '<option value="' + escapeHtml(variant.id) + '">' + escapeHtml(label) + '</option>';
+      });
+      variantsHtml += '</select></label>';
+    }
     var html = '';
     html += '<section class="nip23-product-card" aria-label="Product checkout">';
     html += '<div class="nip23-product-card-head">';
@@ -780,9 +819,10 @@
       html += '<div><span>Crypto discount</span><strong>' + escapeHtml(String(discountValue.toFixed(2)).replace(/\.00$/, '')) + '%</strong></div>';
     }
     html += '</div>';
+    html += variantsHtml;
     html += '<div class="nip23-product-actions">';
     html += '<button type="button" class="nip23-product-btn" data-nip23-action="add-to-cart">Add to Cart</button>';
-    html += '<a class="nip23-product-btn nip23-product-btn-primary" href="/checkout?product=' + encodeURIComponent(slug) + '">Checkout Now</a>';
+    html += '<button type="button" class="nip23-product-btn nip23-product-btn-primary" data-nip23-action="checkout-now">Checkout Now</button>';
     html += '</div>';
     html += '</section>';
     return html;
@@ -816,7 +856,7 @@
       html += '<h4>Product settings</h4>';
       html += '<label class="nip23-product-enable-row"><span>Enable product checkout</span><input type="checkbox" id="nip23-product-enabled"' + (s.product_enabled ? ' checked' : '') + '></label>';
       html += '<div class="nip23-product-grid">';
-      html += '<label><span>Type</span><select id="nip23-product-type"><option value="software"' + (normalizeProductType(s.product_type || '') === 'software' ? ' selected' : '') + '>Software</option><option value="service"' + (normalizeProductType(s.product_type || '') === 'service' ? ' selected' : '') + '>Service</option><option value="membership"' + (normalizeProductType(s.product_type || '') === 'membership' ? ' selected' : '') + '>Membership</option></select></label>';
+      html += '<label><span>Type</span><select id="nip23-product-type"><option value="software"' + (normalizeProductType(s.product_type || '') === 'software' ? ' selected' : '') + '>Software</option><option value="service"' + (normalizeProductType(s.product_type || '') === 'service' ? ' selected' : '') + '>Service</option><option value="membership"' + (normalizeProductType(s.product_type || '') === 'membership' ? ' selected' : '') + '>Membership</option><option value="merch"' + (normalizeProductType(s.product_type || '') === 'merch' ? ' selected' : '') + '>Merch</option></select></label>';
       html += '<label><span>Price (USD)</span><input type="text" id="nip23-price-input" inputmode="decimal" placeholder="19.00" value="' + escapeHtml(normalizePrice(s.price || '')) + '"></label>';
       html += '<label><span>Crypto discount %</span><input type="number" id="nip23-discount-input" min="0" max="95" step="1" value="' + escapeHtml(String(normalizeDiscount(s.crypto_discount_percent || 0))) + '"></label>';
       html += '<label><span>Purchase endpoint</span><input type="text" id="nip23-purchase-endpoint" value="' + escapeHtml(String(s.purchase_endpoint || defaultPurchaseEndpoint())) + '"></label>';
@@ -843,12 +883,31 @@
     renderValidation();
   }
 
-  function addCurrentProductToCart() {
+  function selectedVariantId() {
+    var select = root.querySelector('[data-nip23-product-variant="true"]');
+    if (select instanceof HTMLSelectElement) {
+      return String(select.value || '').trim();
+    }
+    var s = getRenderState();
+    var variants = Array.isArray(s && s.variants) ? s.variants : [];
+    return variants.length ? String(variants[0].id || '').trim() : '';
+  }
+
+  function addCurrentProductToCart(opts) {
     if (!window.blogShopCart || typeof window.blogShopCart.addProductBySlug !== 'function') {
       window.alert('Cart is still loading. Try again in a moment.');
       return;
     }
-    window.blogShopCart.addProductBySlug(slug).catch(function (err) {
+    var options = Object.assign({}, opts || {});
+    var variantId = selectedVariantId();
+    if (variantId) {
+      options.variant_id = variantId;
+    }
+    window.blogShopCart.addProductBySlug(slug, options).then(function () {
+      if (options.checkout) {
+        window.location.href = '/checkout';
+      }
+    }).catch(function (err) {
       window.alert(err && err.message ? err.message : 'Could not add product to cart');
     });
   }
@@ -1010,6 +1069,11 @@
         if (action === 'add-to-cart') {
           event.preventDefault();
           addCurrentProductToCart();
+          return;
+        }
+        if (action === 'checkout-now') {
+          event.preventDefault();
+          addCurrentProductToCart({ checkout: true });
           return;
         }
       }

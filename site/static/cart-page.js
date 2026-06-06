@@ -68,17 +68,22 @@
       var lineCrypto = unitCrypto * qty;
       subtotal += line;
       cryptoSubtotal += lineCrypto;
+      var key = String(item.item_key || item.slug || '');
+      var variant = item.variant_name
+        ? '<div class="cart-page-item-variant">' + escapeHtml(item.variant_name) + '</div>'
+        : '';
       return ''
-        + '<li class="cart-page-row" data-cart-slug="' + escapeHtml(item.slug || '') + '">'
+        + '<li class="cart-page-row" data-cart-key="' + escapeHtml(key) + '">'
         + '<div class="cart-page-row-main">'
         + '<a class="cart-page-item-title" href="' + escapeHtml(item.path || ('/' + (item.slug || ''))) + '">' + escapeHtml(item.title || item.slug || 'Item') + '</a>'
+        + variant
         + '<div class="cart-page-item-price">$' + fmtMoney(line) + ' <span>(~$' + fmtMoney(lineCrypto) + ' crypto)</span></div>'
         + '</div>'
         + '<div class="cart-page-row-actions">'
-        + '<button type="button" data-cart-page-action="decrement" data-cart-slug="' + escapeHtml(item.slug || '') + '">-</button>'
+        + '<button type="button" data-cart-page-action="decrement" data-cart-key="' + escapeHtml(key) + '">-</button>'
         + '<span>Qty ' + String(qty) + '</span>'
-        + '<button type="button" data-cart-page-action="increment" data-cart-slug="' + escapeHtml(item.slug || '') + '">+</button>'
-        + '<button type="button" data-cart-page-action="remove" data-cart-slug="' + escapeHtml(item.slug || '') + '">Remove</button>'
+        + '<button type="button" data-cart-page-action="increment" data-cart-key="' + escapeHtml(key) + '">+</button>'
+        + '<button type="button" data-cart-page-action="remove" data-cart-key="' + escapeHtml(key) + '">Remove</button>'
         + '</div>'
         + '</li>';
     }).join('');
@@ -120,11 +125,11 @@
       return;
     }
     var action = String(button.getAttribute('data-cart-page-action') || '');
-    var slug = String(button.getAttribute('data-cart-slug') || '');
+    var key = String(button.getAttribute('data-cart-key') || '');
     var items = (typeof api.getItems === 'function') ? api.getItems() : [];
     var row = null;
     items.forEach(function (item) {
-      if (row || String(item.slug || '') !== slug) {
+      if (row || String(item.item_key || item.slug || '') !== key) {
         return;
       }
       row = item;
@@ -133,11 +138,11 @@
       return;
     }
     if (action === 'increment') {
-      api.setItemQty(slug, Number(row.qty || 1) + 1);
+      api.setItemQty(key, Number(row.qty || 1) + 1);
     } else if (action === 'decrement') {
-      api.setItemQty(slug, Number(row.qty || 1) - 1);
+      api.setItemQty(key, Number(row.qty || 1) - 1);
     } else if (action === 'remove') {
-      api.setItemQty(slug, 0);
+      api.setItemQty(key, 0);
     }
     render();
   });

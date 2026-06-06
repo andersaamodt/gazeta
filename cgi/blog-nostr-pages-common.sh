@@ -1099,7 +1099,7 @@ blog_nostr_prerender_nip23_html() {
     | (($s.extras_after // "") | md_block) as $after
     | (price_label(($s.price // ""); ($s.currency // "USD"))) as $display_price
     | (if (($s.product_enabled // false) == true or (($s.price // "") | tostring | length) > 0) then
-        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div>" + (if ($display_price | length) > 0 then "<div class=\"nip23-product-page-price\"><span>Price</span><strong>" + ($display_price | h) + "</strong></div>" else "" end) + "</section>"
+        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div>" + (if ($display_price | length) > 0 then "<div class=\"nip23-product-page-price\"><span>Price</span><strong>" + ($display_price | h) + "</strong></div>" else "" end) + "<div class=\"nip23-product-actions\"><button type=\"button\" class=\"nip23-product-btn\" data-nip23-action=\"add-to-cart\">Add to Cart</button><a class=\"nip23-product-btn nip23-product-btn-primary\" href=\"/checkout?product=" + (($s.slug // "") | h) + "\">Checkout Now</a></div></section>"
       else "" end) as $product
     | $product + (if ($main | length) > 0 then "<article class=\"list-entry-markdown\">" + $main + "</article>" else "<p class=\"list-page-empty-state\">No content yet.</p>" end) +
       (if ($after | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\">" + $after + "</section>" else "" end)
@@ -1715,7 +1715,23 @@ blog_nip23_normalize_state_json() {
       | if ($p | length) > 0 then $p else $default_purchase_endpoint end;
     def norm_product_type($v):
       (($v // "software") | tostring | ascii_downcase) as $t
-      | if ($t == "software" or $t == "service" or $t == "membership") then $t else "software" end;
+      | if ($t == "software" or $t == "service" or $t == "membership" or $t == "merch") then $t else "software" end;
+    def norm_fulfillment_provider($v):
+      (($v // "") | tostring | ascii_downcase) as $p
+      | if ($p == "printful") then $p else "" end;
+    def norm_variant:
+      {
+        id: ((.id // .variant_id // .sync_variant_id // .external_variant_id // "") | tostring | gsub("[\r\n]"; "")),
+        name: ((.name // .title // .variant_name // "") | tostring | gsub("[\r\n]"; " ") | gsub("^\\s+|\\s+$"; "")),
+        price: norm_price(.price // .retail_price // ""),
+        currency: norm_currency(.currency // "USD"),
+        image_url: ((.image_url // .thumbnail_url // "") | tostring | gsub("[\r\n]"; "")),
+        fulfillment_provider: norm_fulfillment_provider(.fulfillment_provider // "printful"),
+        printful_sync_variant_id: ((.printful_sync_variant_id // .sync_variant_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; "")),
+        printful_external_variant_id: ((.printful_external_variant_id // .external_variant_id // "") | tostring | gsub("[\r\n]"; "")),
+        printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; ""))
+      }
+      | select((.id | length) > 0 or (.printful_sync_variant_id | length) > 0 or (.printful_external_variant_id | length) > 0);
     def norm_discount($v):
       (($v // 0) | tonumber? // 0) as $n
       | if $n < 0 then 0 elif $n > 95 then 95 else $n end;
@@ -1744,6 +1760,12 @@ blog_nip23_normalize_state_json() {
       purchase_endpoint: $purchase_endpoint,
       repo: norm_trim(.repo // ""),
       tag: (norm_trim(.tag // "latest") | if length > 0 then . else "latest" end),
+      image_url: norm_trim(.image_url // .thumbnail_url // ""),
+      fulfillment_provider: norm_fulfillment_provider(.fulfillment_provider // ""),
+      printful_product_id: norm_trim(.printful_product_id // .sync_product_id // ""),
+      printful_sync_variant_id: norm_trim(.printful_sync_variant_id // .sync_variant_id // ""),
+      printful_external_variant_id: norm_trim(.printful_external_variant_id // .external_variant_id // ""),
+      variants: (if ((.variants // null) | type) == "array" then [.variants[]? | norm_variant] else [] end),
       extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
       extras_after_format: "markdown"
     }

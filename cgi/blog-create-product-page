@@ -37,7 +37,7 @@ fi
 
 product_type=$(printf '%s' "$(blog_param product_type)" | tr '[:upper:]' '[:lower:]')
 case "$product_type" in
-  software|service|membership) ;;
+  software|service|membership|merch) ;;
   *) product_type='software' ;;
 esac
 

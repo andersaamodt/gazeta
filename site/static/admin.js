@@ -213,6 +213,8 @@
     pluginNostrPosts: document.getElementById('plugin-nostr-posts'),
     pluginZaps: document.getElementById('plugin-zaps'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
+    pluginRamp: document.getElementById('plugin-ramp'),
+    pluginMerchStore: document.getElementById('plugin-merch-store'),
     pluginVideoChat: document.getElementById('plugin-video-chat'),
     pluginOverworld: document.getElementById('plugin-overworld'),
     videoChatParticipantLimit: document.getElementById('video-chat-participant-limit'),
@@ -3823,6 +3825,8 @@
       nostr_posts: src.nostr_posts !== false,
       zaps: src.zaps !== false,
       btcpay: src.btcpay !== false,
+      ramp: src.ramp === true,
+      merch_store: src.merch_store === true,
       video_chat: src.video_chat === true,
       overworld: src.overworld === true
     };
@@ -3954,6 +3958,8 @@
     if (els.pluginNostrPosts) els.pluginNostrPosts.checked = !!p.nostr_posts;
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
+    if (els.pluginRamp) els.pluginRamp.checked = !!p.ramp;
+    if (els.pluginMerchStore) els.pluginMerchStore.checked = !!p.merch_store;
     if (els.pluginVideoChat) els.pluginVideoChat.checked = !!p.video_chat;
     if (els.pluginOverworld) els.pluginOverworld.checked = !!p.overworld;
     if (els.pluginNostrSupport) els.pluginNostrSupport.disabled = true;
@@ -4016,6 +4022,8 @@
       nostr_posts: !!(els.pluginNostrPosts && els.pluginNostrPosts.checked),
       zaps: !!(els.pluginZaps && els.pluginZaps.checked),
       btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
+      ramp: !!(els.pluginRamp && els.pluginRamp.checked),
+      merch_store: !!(els.pluginMerchStore && els.pluginMerchStore.checked),
       video_chat: !!(els.pluginVideoChat && els.pluginVideoChat.checked),
       overworld: !!(els.pluginOverworld && els.pluginOverworld.checked)
     });
@@ -4034,6 +4042,8 @@
         plugin_nostr_posts: plugins.nostr_posts ? 'true' : 'false',
         plugin_zaps: plugins.zaps ? 'true' : 'false',
         plugin_btcpay: plugins.btcpay ? 'true' : 'false',
+        plugin_ramp: plugins.ramp ? 'true' : 'false',
+        plugin_merch_store: plugins.merch_store ? 'true' : 'false',
         plugin_video_chat: plugins.video_chat ? 'true' : 'false',
         plugin_overworld: plugins.overworld ? 'true' : 'false'
       }, true);
@@ -8693,6 +8703,8 @@
       els.pluginNostrPosts,
       els.pluginZaps,
       els.pluginBtcpay,
+      els.pluginRamp,
+      els.pluginMerchStore,
       els.pluginVideoChat,
       els.pluginOverworld
     ].filter(Boolean);

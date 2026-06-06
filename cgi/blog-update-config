@@ -45,6 +45,8 @@ plugin_nostr_bridge=$(blog_param plugin_nostr_bridge)
 plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
 plugin_btcpay=$(blog_param plugin_btcpay)
+plugin_ramp=$(blog_param plugin_ramp)
+plugin_merch_store=$(blog_param plugin_merch_store)
 plugin_video_chat=$(blog_param plugin_video_chat)
 plugin_overworld=$(blog_param plugin_overworld)
 video_chat_participant_limit=$(blog_param video_chat_participant_limit)
@@ -206,6 +208,8 @@ set_plugin_flag "nostr_bridge" "$plugin_nostr_bridge"
 set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
 set_plugin_flag "btcpay" "$plugin_btcpay"
+set_plugin_flag "ramp" "$plugin_ramp"
+set_plugin_flag "merch_store" "$plugin_merch_store"
 set_plugin_flag "video_chat" "$plugin_video_chat"
 set_plugin_flag "overworld" "$plugin_overworld"
 

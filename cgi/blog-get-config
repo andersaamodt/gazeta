@@ -33,6 +33,8 @@ plugin_nostr_bridge_raw=''
 plugin_nostr_posts_raw=''
 plugin_zaps_raw=''
 plugin_btcpay_raw=''
+plugin_ramp_raw=''
+plugin_merch_store_raw=''
 plugin_video_chat_raw=''
 plugin_overworld_raw=''
 video_chat_participant_limit_raw='6'
@@ -82,6 +84,8 @@ load_site_conf_values() {
           plugin_nostr_posts) plugin_nostr_posts_raw=$conf_value ;;
           plugin_zaps) plugin_zaps_raw=$conf_value ;;
           plugin_btcpay) plugin_btcpay_raw=$conf_value ;;
+          plugin_ramp) plugin_ramp_raw=$conf_value ;;
+          plugin_merch_store) plugin_merch_store_raw=$conf_value ;;
           plugin_video_chat) plugin_video_chat_raw=$conf_value ;;
           plugin_overworld) plugin_overworld_raw=$conf_value ;;
           video_chat_participant_limit) video_chat_participant_limit_raw=$conf_value ;;
@@ -169,10 +173,12 @@ plugin_nostr_bridge=$(plugin_enabled_json "nostr_bridge" "$plugin_nostr_bridge_r
 plugin_nostr_posts=$(plugin_enabled_json "nostr_posts" "$plugin_nostr_posts_raw" 'true' "$plugin_nostr_support")
 plugin_zaps=$(plugin_enabled_json "zaps" "$plugin_zaps_raw" 'true' "$plugin_nostr_support")
 plugin_btcpay=$(plugin_enabled_json "btcpay" "$plugin_btcpay_raw" 'true' "$plugin_nostr_support")
+plugin_ramp=$(plugin_enabled_json "ramp" "$plugin_ramp_raw" 'false' "$plugin_nostr_support")
+plugin_merch_store=$(plugin_enabled_json "merch_store" "$plugin_merch_store_raw" 'false' "$plugin_nostr_support")
 plugin_video_chat=$(plugin_enabled_json "video_chat" "$plugin_video_chat_raw" 'false' "$plugin_nostr_support")
 plugin_overworld=$(plugin_enabled_json "overworld" "$plugin_overworld_raw" 'false' "$plugin_nostr_support")
-plugins_json=$(printf '{"nostr_support":%s,"nostr_login":%s,"nostr_bridge":%s,"nostr_posts":%s,"zaps":%s,"btcpay":%s,"video_chat":%s,"overworld":%s}\n' \
-  "$plugin_nostr_support" "$plugin_nostr_login" "$plugin_nostr_bridge" "$plugin_nostr_posts" "$plugin_zaps" "$plugin_btcpay" "$plugin_video_chat" "$plugin_overworld")
+plugins_json=$(printf '{"nostr_support":%s,"nostr_login":%s,"nostr_bridge":%s,"nostr_posts":%s,"zaps":%s,"btcpay":%s,"ramp":%s,"merch_store":%s,"video_chat":%s,"overworld":%s}\n' \
+  "$plugin_nostr_support" "$plugin_nostr_login" "$plugin_nostr_bridge" "$plugin_nostr_posts" "$plugin_zaps" "$plugin_btcpay" "$plugin_ramp" "$plugin_merch_store" "$plugin_video_chat" "$plugin_overworld")
 if [ "$plugin_zaps" = 'true' ]; then
   zaps_enabled=$(normalize_bool_with_default "$zaps_enabled_raw" 'false')
 else

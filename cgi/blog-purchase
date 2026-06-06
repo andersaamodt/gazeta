@@ -66,8 +66,8 @@ provider_url_for_order() {
       printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
       ;;
     ramp|*)
-      host_api_key=$(config-get "$blog_site_conf" ramp_host_api_key 2>/dev/null || printf '')
-      printf 'https://buy.ramp.network/?hostApiKey=%s&fiatCurrency=USD&fiatValue=%s&orderId=%s\n' "$(blog_url_encode "$host_api_key")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
+      quote_json=$(jq -cn --arg total "$(blog_payments_format_money "$fiat_total")" --arg subtotal "$(blog_payments_format_money "$fiat_total")" '{total:$total, subtotal:$subtotal}')
+      blog_ramp_provider_url "$order_id" "$quote_json" ""
       ;;
   esac
 }
@@ -117,6 +117,24 @@ if [ -z "$product" ]; then
   exit 0
 fi
 
+product_type=$(printf '%s\n' "$product" | jq -r '.product_type // "software"' 2>/dev/null || printf 'software')
+if [ "$product_type" = "merch" ]; then
+  checkout_url="/checkout?product=$slug"
+  format=$(printf '%s' "$(blog_param format)" | tr '[:upper:]' '[:lower:]')
+  accept=${HTTP_ACCEPT-}
+  if [ "$format" = 'json' ] || printf '%s' "$accept" | grep -qi 'application/json'; then
+    blog_send_json_headers
+    jq -cn --arg checkout_url "$checkout_url" '{success:true, checkout_url:$checkout_url, provider_url:$checkout_url, requires_shipping:true}'
+    printf '\n'
+    exit 0
+  fi
+  printf 'Status: 302 Found\r\n'
+  printf 'Location: %s\r\n' "$checkout_url"
+  printf 'Cache-Control: no-store\r\n'
+  printf '\r\n'
+  exit 0
+fi
+
 title=$(printf '%s\n' "$product" | jq -r '.title // ""' 2>/dev/null || printf '')
 unit_price=$(printf '%s\n' "$product" | jq -r '.price // "0.00"' 2>/dev/null || printf '0.00')
 unit_crypto_price=$(printf '%s\n' "$product" | jq -r '.crypto_price // .price // "0.00"' 2>/dev/null || printf '0.00')
@@ -157,7 +175,15 @@ fi
 
 purchase_payload=$(jq -cn --arg order_id "$order_id" --arg provider "$provider" --arg slug "$slug" '{order_id:$order_id, provider:$provider, product:$slug}')
 purchase_token=$(blog_payments_issue_token purchase "$purchase_payload" 7200 2>/dev/null || printf '')
+if [ "$provider" = "ramp" ] && ! blog_ramp_configured; then
+  emit_json_error "Ramp checkout is not connected yet" "ramp_not_configured"
+  exit 0
+fi
 provider_url=$(provider_url_for_order "$order_id" "$provider" "$(blog_payments_format_money "$subtotal_num")" "$(blog_payments_format_money "$crypto_total_num")")
+if [ -z "$provider_url" ]; then
+  emit_json_error "Could not create provider checkout URL" "provider_url_failed"
+  exit 0
+fi
 btcpay_invoice_id=''
 btcpay_checkout_link=''
 if [ "$provider" = "btcpay" ]; then
