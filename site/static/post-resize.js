@@ -5,6 +5,7 @@
   var WIDTH_KEY = 'nostrBlog.postWidthPx';
   var EDGE_PX = 14;
   var MIN_WIDTH = 320;
+  var DESKTOP_MIN_WIDTH = 736;
   var state = null;
 
   function storageGet() {
@@ -41,12 +42,19 @@
     return Math.max(MIN_WIDTH, available);
   }
 
+  function minWidth() {
+    if (window.innerWidth >= 820) {
+      return Math.min(DESKTOP_MIN_WIDTH, maxWidth());
+    }
+    return MIN_WIDTH;
+  }
+
   function clampWidth(width) {
     var n = Number(width);
     if (!Number.isFinite(n)) {
       return 0;
     }
-    return Math.max(MIN_WIDTH, Math.min(maxWidth(), Math.round(n)));
+    return Math.max(minWidth(), Math.min(maxWidth(), Math.round(n)));
   }
 
   function allTargets() {

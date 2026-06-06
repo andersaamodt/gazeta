@@ -3,8 +3,8 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260525-list-stability1'
-blog_nostr_blog_page_js_version='20260525-post-type-labels1'
+blog_nostr_list_page_js_version='20260602-list-syncstatus2'
+blog_nostr_blog_page_js_version='20260602-blog-syncstatus1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
@@ -1188,8 +1188,22 @@ blog_nostr_prerender_blog_posts_html() {
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
-    def clean:
-      tostring | gsub("#+"; "") | gsub("\\*"; "") | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "\(.label)");
+    def summary_html:
+      tostring as $s
+      | "\\[(?<label>[^\\]]+)\\]\\((?<href>https?://[^)\\s]+|mailto:[^)\\s]+|/[^)\\s]*|#[^)\\s]*)\\)" as $link_re
+      | [match($link_re; "g")] as $matches
+      | if ($matches | length) == 0 then ($s | h)
+        else
+          (reduce $matches[] as $m
+            ({out: "", pos: 0};
+              ($m.captures[] | select(.name == "label") | .string) as $label
+              | ($m.captures[] | select(.name == "href") | .string) as $href
+              | .out = (.out + ($s[.pos:$m.offset] | h) + "<a href=\"" + ($href | h) + "\">" + ($label | h) + "</a>")
+              | .pos = ($m.offset + $m.length)
+            )
+          ) as $built
+          | $built.out + ($s[$built.pos:] | h)
+        end;
     def fmt_type:
       tostring
       | if . == "longform" or . == "post" then "post"
@@ -1215,15 +1229,22 @@ blog_nostr_prerender_blog_posts_html() {
     def tag_strip($p):
       ($p.tags | norm_tags) as $tags
       | "<div class=\"post-card-footer\"><div class=\"tags post-card-meta-tags\">" + meta_chips($p) + ($tags | map(tag_chip(.)) | join("")) + "</div><span class=\"post-card-comments-count\">" + (((($p.comment_count // 0) | tonumber? // 0) | tostring) + " comments" | h) + "</span></div>";
+    def offsite_note($p; $author):
+      (($p.link_url // "") | tostring) as $link_url
+      | if (($p.type // "") | tostring) == "link-share" then
+          "<div class=\"post-offsite-link-note\"><span class=\"post-offsite-link-kind\">Off-site link</span><span>Linked by " + ($author | h) + "</span>" +
+          (if ($link_url | length) > 0 then "<a class=\"post-offsite-url\" href=\"" + ($link_url | h) + "\" title=\"" + ($link_url | h) + "\">" + ($link_url | h) + "</a>" else "" end) +
+          "</div>"
+        else "" end;
     def post_html($p):
       (($p.title // "") | tostring) as $title
-      | (($p.summary // "") | clean) as $summary
+      | (($p.summary // "") | summary_html) as $summary
       | (($p.url // $p.path // "#") | tostring) as $url
       | (($p.author // "Blog Author") | tostring) as $author
       | (($p.published_date // $p.pub_date // $p.date // "Unknown date") | tostring) as $date
       | (($p.reading_minutes // 1) | tonumber? // 1) as $mins
-      | "<article class=\"post-item blog-post-item\"><div class=\"post-head\"><div class=\"post-head-main\"><h2 class=\"post-title\"><a href=\"" + ($url | h) + "\">" + ((if ($title | length) > 0 then $title else "Untitled" end) | h) + "</a></h2><div class=\"post-head-divider\" aria-hidden=\"true\"></div><div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">" + ($author | h) + "</span><span class=\"post-reading-inline\">" + ($mins | tostring | h) + " min read</span><span class=\"post-date\">" + ($date | h) + "</span></div></div></div>" +
-        (if ($summary | length) > 0 then "<div class=\"post-summary\"><p>" + ($summary | h) + "</p></div>" else "" end) +
+      | "<article class=\"post-item blog-post-item" + (if (($p.type // "") | tostring) == "link-share" then " is-link-share" else "" end) + "\"><div class=\"post-head\"><div class=\"post-head-main\"><h2 class=\"post-title\"><a href=\"" + ($url | h) + "\">" + ((if ($title | length) > 0 then $title else "Untitled" end) | h) + "</a></h2>" + offsite_note($p; $author) + "<div class=\"post-head-divider\" aria-hidden=\"true\"></div><div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">" + ($author | h) + "</span><span class=\"post-reading-inline\">" + ($mins | tostring | h) + " min read</span><span class=\"post-date\">" + ($date | h) + "</span></div></div></div>" +
+        (if ($summary | length) > 0 then "<div class=\"post-summary\"><p>" + $summary + "</p></div>" else "" end) +
         tag_strip($p) + "</article>";
     (.bootstrap_posts // []) as $posts
     | if ($posts | length) == 0 then "<p class=\"placeholder\">No posts to show yet.</p>"

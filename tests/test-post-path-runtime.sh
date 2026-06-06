@@ -52,6 +52,20 @@ visibility: "public"
 Body.
 EOS
 
+cat > "$POSTS_STORE/link-post.md" <<'EOS'
+---
+title: "Useful Linked Page"
+visibility: "public"
+post_type: "link-share"
+author: "Link Curator"
+published_at: "2026-06-04T12:00:00Z"
+---
+
+[Useful linked page](https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section)
+
+This is context around the linked page.
+EOS
+
 # shellcheck disable=SC1091
 . "$ROOT_DIR/cgi/blog-lib.sh"
 
@@ -68,8 +82,29 @@ post_context_json=$(printf '%s\n' "$post_context_output" | tail -n 1)
 assert_eq 'posts/example-post.md' "$(printf '%s\n' "$post_context_json" | jq -r '.current.source_path // ""')" 'post context exposes mounted source path for admin edits'
 assert_eq 'posts/example-post' "$(printf '%s\n' "$post_context_json" | jq -r '.current.path // ""')" 'post context keeps public path extensionless'
 
-catalog_source_path=$(blog_public_posts_catalog_build_json | jq -r '.posts[0].source_path // ""')
+catalog_source_path=$(blog_public_posts_catalog_build_json | jq -r '.posts[] | select(.source_path == "posts/example-post.md") | .source_path')
 assert_eq 'posts/example-post.md' "$catalog_source_path" 'public posts catalog exposes mounted source path for admin edits'
+
+catalog_json=$(blog_public_posts_catalog_build_json)
+link_catalog_row=$(printf '%s\n' "$catalog_json" | jq -c '.posts[] | select(.source_path == "posts/link-post.md")')
+assert_eq 'link-share' "$(printf '%s\n' "$link_catalog_row" | jq -r '.type // ""')" 'public posts catalog keeps link-share post type'
+assert_eq 'https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section' "$(printf '%s\n' "$link_catalog_row" | jq -r '.link_url // ""')" 'public posts catalog exposes link-share off-site URL'
+assert_eq '[Useful linked page](https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section)' "$(printf '%s\n' "$link_catalog_row" | jq -r '.summary | split("\n")[0]')" 'public posts catalog preserves markdown link syntax in condensed previews'
+
+index_output=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-index")
+case "$index_output" in
+  *'<span class="post-offsite-link-kind">Off-site link</span><span>Linked by Link Curator</span>'*) pass ;;
+  *) fail 'CGI blog index distinguishes link-share cards as off-site links linked by the post author' ;;
+esac
+case "$index_output" in
+  *'<a href="https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section">Useful linked page</a>'*) pass ;;
+  *) fail 'CGI blog index preserves markdown summary links as anchors' ;;
+esac
+case "$(blog_markdown_block_html '[unsafe](javascript:alert)')" in
+  *'href="javascript:'*) fail 'markdown summary renderer rejects unsafe javascript hrefs' ;;
+  *'<p>unsafe</p>'*) pass ;;
+  *) fail 'markdown summary renderer degrades unsafe links to label text' ;;
+esac
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
   printf 'post path runtime tests failed: %s failure(s), %s pass(es)\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

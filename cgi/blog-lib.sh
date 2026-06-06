@@ -506,6 +506,55 @@ blog_html_escape() {
   printf '%s' "${1-}" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&#39;/g"
 }
 
+blog_markdown_inline_html() {
+  printf '%s\n' "${1-}" | awk '
+    function esc(s) {
+      gsub(/&/, "\\&amp;", s)
+      gsub(/</, "\\&lt;", s)
+      gsub(/>/, "\\&gt;", s)
+      gsub(/"/, "\\&quot;", s)
+      gsub(/\047/, "\\&#39;", s)
+      return s
+    }
+    function safe_href(h) {
+      gsub(/^<|>$/, "", h)
+      if (h == "") return ""
+      if (h ~ /^(https?:|mailto:|\/|#)/) return h
+      if (h ~ /^[A-Za-z][A-Za-z0-9+.-]*:/) return ""
+      return h
+    }
+    {
+      line = $0
+      out = ""
+      while (match(line, /\[[^][]+\]\([^)[:space:]]+\)/)) {
+        token = substr(line, RSTART, RLENGTH)
+        label = token
+        sub(/^\[/, "", label)
+        sub(/\]\([^)[:space:]]+\)$/, "", label)
+        href = token
+        sub(/^\[[^][]+\]\(/, "", href)
+        sub(/\)$/, "", href)
+        clean_href = safe_href(href)
+        out = out esc(substr(line, 1, RSTART - 1))
+        if (clean_href != "") {
+          out = out "<a href=\"" esc(clean_href) "\">" esc(label) "</a>"
+        } else {
+          out = out esc(label)
+        }
+        line = substr(line, RSTART + RLENGTH)
+      }
+      out = out esc(line)
+      if (NR > 1) printf "<br>"
+      printf "%s", out
+    }'
+}
+
+blog_markdown_block_html() {
+  text=${1-}
+  [ -n "$text" ] || return 0
+  printf '<p>%s</p>' "$(blog_markdown_inline_html "$text")"
+}
+
 blog_post_header_meta_html() {
   author=${1:-Blog Author}
   reading_minutes=${2:-1}
@@ -6087,6 +6136,7 @@ blog_public_posts_catalog_build_json() {
       body=$(blog_read_markdown_body "$file" 2>/dev/null || printf '')
       summary=$(blog_condensed_preview_from_content "$body")
       summary_truncated=$(blog_condensed_preview_truncated "$body")
+      link_url=$(blog_nostr_first_http_url "$body" 2>/dev/null || printf '')
       word_count=$(blog_word_count "$body")
       reading_minutes=$(blog_estimated_read_minutes "$word_count")
       post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
@@ -6140,6 +6190,7 @@ blog_public_posts_catalog_build_json() {
         --arg published_timestamp "$published_timestamp" \
         --arg pub_date "$pub_date" \
         --arg summary "$summary" \
+        --arg link_url "$link_url" \
         --argjson summary_truncated "$summary_truncated" \
         --arg post_type "$post_type" \
         --arg year "$year" \
@@ -6159,6 +6210,7 @@ blog_public_posts_catalog_build_json() {
           published_timestamp: $published_timestamp,
           pub_date: $pub_date,
           summary: $summary,
+          link_url: $link_url,
           summary_truncated: $summary_truncated,
           type: $post_type,
           year: $year,

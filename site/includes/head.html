@@ -48,6 +48,7 @@ html.desk-host-route #title-block-header {
 <script src="/static/site-bootstrap.js"></script>
 <script>
 (function () {
+  window.__wizardryThemeStylesheetVersion = '20260526-title-action-edge1';
   var theme = 'archmage';
   try {
     var bootstrap = window.__wizardrySiteBootstrap || {};
@@ -60,7 +61,7 @@ html.desk-host-route #title-block-header {
   } catch (_err) {
     // Ignore storage failures.
   }
-  var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260529-blog-tags-final2';
+  var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=' + encodeURIComponent(window.__wizardryThemeStylesheetVersion);
   var markup = '<link id="theme-stylesheet" rel="stylesheet" href="' + href + '" data-theme-href="' + href + '">';
   if (document.readyState === 'loading' && typeof document.write === 'function') {
     document.write(markup);
@@ -74,7 +75,7 @@ html.desk-host-route #title-block-header {
   (document.head || document.documentElement).appendChild(link);
 })();
 </script>
-<noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=20260529-blog-tags-final2" data-theme-href="/static/themes/archmage.css?v=20260529-blog-tags-final2" /></noscript>
+<noscript><link id="theme-stylesheet" rel="stylesheet" href="/static/themes/archmage.css?v=20260526-title-action-edge1" data-theme-href="/static/themes/archmage.css?v=20260526-title-action-edge1" /></noscript>
 <style id="blog-tag-recovery-style">
 html body .blog-post-item .tag,
 html body .blog-post-item .tag:hover,
@@ -98,7 +99,7 @@ html body .blog-post-item .blog-year-pill:focus-visible {
 <script defer src="/static/page-head.js?v=20260525-prerender1"></script>
 <script defer src="/static/zap-ui.js?v=20260524-zap-panel1"></script>
 <script defer src="/static/post-context.js?v=20260525-post-type-labels1"></script>
-  <script defer src="/static/post-resize.js?v=20260529-blog-index-cleanup1"></script>
+  <script defer src="/static/post-resize.js?v=20260604-post-width-tags1"></script>
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
 <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />

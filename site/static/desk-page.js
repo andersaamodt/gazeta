@@ -885,6 +885,17 @@
     return state.mode === 'todo' || state.mode === 'compose';
   }
 
+  function isSmallScreenSinglePanelMode() {
+    return Boolean(window.matchMedia && window.matchMedia('(max-width: 520px)').matches);
+  }
+
+  function shouldKeepPaperMapVisible(nextMode, keepPaperMap) {
+    if (nextMode !== 'map' && isSmallScreenSinglePanelMode()) {
+      return false;
+    }
+    return nextMode === 'map' || ((nextMode === 'todo' || nextMode === 'compose') && keepPaperMap);
+  }
+
   function preserveOpenPaperMode() {
     if (!paperModeOpen()) {
       return null;
@@ -3566,7 +3577,7 @@
     if (state.mode !== 'todo' && state.mode !== 'compose') {
       state.mode = 'map';
     }
-    state.paperMapVisible = true;
+    state.paperMapVisible = !isSmallScreenSinglePanelMode();
     state.suppressTodoAnimation = state.mode === 'todo';
     state.suppressComposeAnimation = state.mode === 'compose';
     state.lastEnteredDoor = {
@@ -3599,7 +3610,7 @@
       return;
     }
     state.mode = nextMode;
-    state.paperMapVisible = nextMode === 'map' || ((nextMode === 'todo' || nextMode === 'compose') && keepPaperMap);
+    state.paperMapVisible = shouldKeepPaperMapVisible(nextMode, keepPaperMap);
     state.closingMode = '';
     state.closingMap = false;
     state.paperSwitchFrom = '';
@@ -3624,7 +3635,7 @@
     playSound(deskSounds.book);
     var keepPaperMap = state.paperMapVisible;
     state.mode = nextMode;
-    state.paperMapVisible = keepPaperMap;
+    state.paperMapVisible = shouldKeepPaperMapVisible(nextMode, keepPaperMap);
     state.closingMode = previousMode;
     state.paperSwitchFrom = previousMode;
     state.search = null;
@@ -5167,7 +5178,7 @@
     var wasTodoOpen = state.mode === 'todo';
     if (roomPath === state.currentRoom && !doubleClickedAfterTravel) {
       state.mode = 'todo';
-      state.paperMapVisible = true;
+      state.paperMapVisible = !isSmallScreenSinglePanelMode();
       state.closingMode = '';
       state.closingMap = false;
       if (!wasTodoOpen) {
@@ -5181,7 +5192,7 @@
     if (!keepOpenPaper) {
       state.mode = 'todo';
     }
-    state.paperMapVisible = true;
+    state.paperMapVisible = !isSmallScreenSinglePanelMode();
     state.closingMode = '';
     state.closingMap = false;
     if (roomPath !== state.currentRoom) {

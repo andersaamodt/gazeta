@@ -186,14 +186,6 @@ fi
 
 view_mode="canonical"
 view_state_json=$canonical_state_json
-local_state_preferred=false
-if [ "$local_has_source" = "true" ]; then
-  if [ "$canonical_exists" != "true" ]; then
-    local_state_preferred=true
-  elif [ "$canonical_mtime" -gt "$canonical_created_at" ]; then
-    local_state_preferred=true
-  fi
-fi
 
 if [ "$is_admin" = "true" ]; then
   view_mode="draft"
@@ -202,7 +194,7 @@ if [ "$is_admin" = "true" ]; then
   else
     view_state_json=$canonical_state_json
   fi
-elif [ "$local_state_preferred" = "true" ]; then
+elif [ "$local_has_source" = "true" ]; then
   view_mode="local"
   view_state_json=$local_state_json
 else
@@ -247,13 +239,13 @@ elif [ "$canonical_exists" = "true" ]; then
   sync_status='nostr_newer_than_local'
 fi
 
-sync_status_message="Local source and published state are in sync."
+sync_status_message="Server copy and published Nostr state are in sync."
 if [ "$sync_status" = "local_newer_than_nostr" ]; then
-  sync_status_message='Local source is newer than latest published Nostr state.'
+  sync_status_message='Server copy is newer than the latest published Nostr state. Visitors see the server copy.'
 elif [ "$sync_status" = "nostr_newer_than_local" ]; then
-  sync_status_message='Published Nostr state is newer than local source.'
+  sync_status_message='Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.'
 elif [ "$sync_status" = "unpublished_local_changes" ]; then
-  sync_status_message='No published Nostr state yet for this page.'
+  sync_status_message='This page exists only on the server so far. Visitors see the server copy.'
 elif [ "$sync_status" = "unknown" ]; then
   sync_status_message='Cannot determine local-vs-Nostr sync status yet.'
 fi

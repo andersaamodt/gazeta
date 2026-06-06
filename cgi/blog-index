@@ -62,7 +62,9 @@ else
     pub_date=$(printf '%s\n' "$post_json" | jq -r '.pub_date // ""')
     comment_count=$(printf '%s\n' "$post_json" | jq -r '(.comment_count // 0) | tostring')
     summary=$(printf '%s\n' "$post_json" | jq -r '.summary // ""')
+    link_url=$(printf '%s\n' "$post_json" | jq -r '.link_url // ""')
     summary_truncated=$(printf '%s\n' "$post_json" | jq -r '(.summary_truncated // false) | tostring')
+    post_type=$(printf '%s\n' "$post_json" | jq -r '.type // "post"')
     tags_csv=$(printf '%s\n' "$post_json" | jq -r '(.tags // []) | join(",")')
     if [ -z "$pub_date" ]; then
       pub_date="Unknown date"
@@ -77,6 +79,13 @@ else
     printf '    <div class="post-head-main">\n'
     printf '      <h2 class="post-title"><a href="%s">%s</a></h2>\n' \
       "$(blog_html_escape "$url")" "$(blog_html_escape "$title")"
+    if [ "$post_type" = "link-share" ]; then
+      printf '      <div class="post-offsite-link-note"><span class="post-offsite-link-kind">Off-site link</span><span>Linked by %s</span>' "$(blog_html_escape "$author")"
+      if [ -n "$link_url" ]; then
+        printf '<a class="post-offsite-url" href="%s" title="%s">%s</a>' "$(blog_html_escape "$link_url")" "$(blog_html_escape "$link_url")" "$(blog_html_escape "$link_url")"
+      fi
+      printf '</div>\n'
+    fi
     printf '      %s' "$post_header_meta_html"
     printf '    </div>\n'
     printf '    <div class="post-meta">'
@@ -89,7 +98,7 @@ else
     printf '  </div>\n'
 
     if [ -n "$summary" ]; then
-      printf '  <div class="post-summary">%s' "$(blog_html_escape "$summary")"
+      printf '  <div class="post-summary">%s' "$(blog_markdown_block_html "$summary")"
       if [ "$summary_truncated" = "true" ]; then
         printf ' <a class="post-summary-read-more" href="%s">Read more...</a>' "$(blog_html_escape "$url")"
       fi

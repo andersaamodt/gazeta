@@ -112,26 +112,26 @@
     switch (status) {
       case 'local_newer_than_nostr':
         return {
-          label: 'Local newer than Nostr',
-          message: 'Local source is newer than latest published Nostr state.',
+          label: 'Server newer than Nostr',
+          message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
           className: 'status-local-newer-than-nostr'
         };
       case 'nostr_newer_than_local':
         return {
-          label: 'Nostr newer than local',
-          message: 'Published Nostr state is newer than local source.',
+          label: 'Nostr newer than server',
+          message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
           className: 'status-nostr-newer-than-local'
         };
       case 'in_sync':
         return {
           label: 'In sync',
-          message: 'Local source and published state are in sync.',
+          message: 'Server copy and published Nostr state are in sync.',
           className: 'status-in-sync'
         };
       case 'unpublished_local_changes':
         return {
-          label: 'Unpublished local changes',
-          message: 'No published Nostr state yet for this page.',
+          label: 'Only on server',
+          message: 'This page exists only on the server so far. Visitors see the server copy.',
           className: 'status-unpublished-local-changes'
         };
       default:
@@ -1863,6 +1863,7 @@
     }
     var opts = options || {};
     var shouldRetryAuth = false;
+    var serializedBeforeSave = JSON.stringify(state.draft || {});
     state.busy = true;
     pruneTransientEntries();
     syncMetaFromInputs();
@@ -1906,7 +1907,14 @@
         state.payload.sync_status = savedPayload.sync_status;
       }
       state.payload.draft_exists = true;
-      state.payload.draft_differs = false;
+      var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
+      state.payload.draft_differs = localChangedDuringSave;
+      if (!localChangedDuringSave) {
+        state.payload.state = savedPayload.state || state.payload.state;
+        state.draft = readEditableStateFromPayload();
+      } else if (savedPayload && savedPayload.state) {
+        state.payload.state = savedPayload.state;
+      }
       writeBootstrapCache(state.payload);
       setSaveStatus('saved');
       refreshValidation();
@@ -2078,6 +2086,18 @@
     state.payload.state = data.state;
     if (data.validation) {
       state.payload.validation = data.validation;
+    }
+    if (typeof data.sync_status !== 'undefined') {
+      state.payload.sync_status = data.sync_status;
+    }
+    if (typeof data.canonical_exists !== 'undefined') {
+      state.payload.canonical_exists = !!data.canonical_exists;
+    }
+    if (typeof data.draft_exists !== 'undefined') {
+      state.payload.draft_exists = !!data.draft_exists;
+    }
+    if (typeof data.draft_differs !== 'undefined') {
+      state.payload.draft_differs = !!data.draft_differs;
     }
     state.draft = readEditableStateFromPayload();
     writeBootstrapCache(state.payload);
@@ -2578,6 +2598,47 @@
     } catch (err) {
       setSaveStatus('error', err && err.message ? err.message : 'Could not update entry');
       window.alert(err && err.message ? err.message : 'Could not update entry');
+    }
+    return true;
+  }
+
+  async function deletePublicListEntry(uid) {
+    var entry = publicEntryForUid(uid);
+    if (!entry) {
+      return false;
+    }
+    var auth = getAuthPayload();
+    if (!auth.session_token || !auth.csrf_token) {
+      window.alert('Sign in first to delete entries.');
+      return true;
+    }
+    var beforeRects = captureEntryRects();
+    var entryId = String(entry._public_entry_id || '');
+    state.rowMenuOpenUid = '';
+    state.readRowMenuOpenUid = '';
+    if (state.activeEntryUid === uid) {
+      state.activeEntryUid = '';
+      state.activeCellField = '';
+    }
+    if (state.readInlineEditUid === uid) {
+      state.readInlineEditUid = '';
+      state.readInlineEditField = '';
+    }
+    setSaveStatus('saving');
+    renderList();
+    renderAdmin();
+    try {
+      var data = await apiPost('/cgi/blog-delete-list-entry', {
+        page_slug: slug,
+        entry_id: entryId,
+        session_token: auth.session_token,
+        csrf_token: auth.csrf_token
+      });
+      refreshListPayloadFromResponse(data, beforeRects);
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error', err && err.message ? err.message : 'Could not delete entry');
+      window.alert(err && err.message ? err.message : 'Could not delete entry');
     }
     return true;
   }
@@ -4308,6 +4369,10 @@
             return;
           }
           if (readInlineActionType === 'remove') {
+            if (publicEntryForUid(readInlineUid)) {
+              await deletePublicListEntry(readInlineUid);
+              return;
+            }
             var readRemoveIdx = findElementIndex(readInlineUid);
             if (readRemoveIdx < 0) {
               return;
@@ -4384,6 +4449,10 @@
             return;
           }
           if (readActionType === 'remove-row') {
+            if (publicEntryForUid(readUid)) {
+              await deletePublicListEntry(readUid);
+              return;
+            }
             var removeIdx = findElementIndex(readUid);
             if (removeIdx < 0) {
               return;
@@ -4472,6 +4541,10 @@
           return;
         }
         if (actionType === 'remove') {
+          if (publicEntryForUid(uid)) {
+            await deletePublicListEntry(uid);
+            return;
+          }
           var idx = findElementIndex(uid);
           if (idx < 0) {
             return;
@@ -5345,6 +5418,27 @@
   }
 
   bindAdminEvents();
+  document.addEventListener('mousedown', function (event) {
+    if (!isAdmin()) {
+      return;
+    }
+    var target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    var shouldRender = false;
+    if (state.readRowMenuOpenUid && !target.closest('.list-entry-read-menu')) {
+      state.readRowMenuOpenUid = '';
+      shouldRender = true;
+    }
+    if ((state.editMode || isReadInlineEditing()) && state.rowMenuOpenUid && !target.closest('.list-inline-row-menu-wrap')) {
+      state.rowMenuOpenUid = '';
+      shouldRender = true;
+    }
+    if (shouldRender) {
+      renderList();
+    }
+  });
   document.addEventListener('mousedown', function (event) {
     if ((!state.editMode && !isReadInlineEditing()) || !isAdmin()) {
       return;

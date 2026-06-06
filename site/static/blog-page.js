@@ -484,6 +484,33 @@
     return '<div class="post-summary">' + markdownBlock(text) + readMore + '</div>';
   }
 
+  function firstMarkdownHref(value) {
+    var text = String(value || '');
+    var match = text.match(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/i);
+    if (match && match[1]) {
+      return String(match[1]).trim();
+    }
+    match = text.match(/https?:\/\/[^\s)<>"']+/i);
+    return match && match[0] ? String(match[0]).trim() : '';
+  }
+
+  function postLinkUrl(post) {
+    return String((post && post.link_url) || firstMarkdownHref(post && post.summary) || '').trim();
+  }
+
+  function postOffsiteLinkNoteHtml(post, author) {
+    if (String(post && post.type || '').trim() !== 'link-share') {
+      return '';
+    }
+    var linkUrl = postLinkUrl(post);
+    return '' +
+      '<div class="post-offsite-link-note">' +
+        '<span class="post-offsite-link-kind">Off-site link</span>' +
+        '<span>Linked by ' + escapeHtml(author || 'Blog Author') + '</span>' +
+        (linkUrl ? '<a class="post-offsite-url" href="' + escapeHtml(linkUrl) + '" title="' + escapeHtml(linkUrl) + '">' + escapeHtml(linkUrl) + '</a>' : '') +
+      '</div>';
+  }
+
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -574,6 +601,9 @@
     if (els.title) {
       els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
       els.title.hidden = false;
+    }
+    if (!isAdmin()) {
+      renderSyncStatusPill();
     }
     if (!els.description) {
       return;
@@ -1047,6 +1077,7 @@
       if (els.toggle) {
         controls.appendChild(els.toggle);
       }
+      controls.insertAdjacentHTML('beforeend', pageSyncStatusPillHtml());
       controls.insertAdjacentHTML('beforeend', '<button type="button" class="list-admin-primary-btn" data-blog-action="toggle-page-settings" aria-expanded="' + (state.pageSettingsOpen ? 'true' : 'false') + '" aria-controls="blog-page-settings-panel">Edit</button>');
       actionsHost.appendChild(controls);
     }
@@ -1067,6 +1098,66 @@
       els.admin.hidden = true;
       els.admin.classList.remove('is-open');
     }
+  }
+
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Server newer than Nostr',
+          message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer than server',
+          message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'In sync',
+          message: 'Server copy and published Nostr state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Only on server',
+          message: 'This page exists only on the server so far. Visitors see the server copy.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync status unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function pageSyncStatusInfo() {
+    var sync = state.payload && state.payload.sync_status && typeof state.payload.sync_status === 'object' ? state.payload.sync_status : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusConfig(status);
+    var message = String(sync.message || config.message).trim();
+    return {
+      label: config.label,
+      message: message,
+      className: config.className
+    };
+  }
+
+  function pageSyncStatusPillHtml() {
+    var info = pageSyncStatusInfo();
+    return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+  }
+
+  function renderSyncStatusPill() {
+    var actionsHost = document.getElementById('blog-page-title-actions');
+    if (!actionsHost) {
+      return;
+    }
+    actionsHost.innerHTML = pageSyncStatusPillHtml();
   }
 
   function resolveComposeListHost() {
@@ -4317,10 +4408,11 @@
       }
 
       return '' +
-        '<article class="post-item blog-post-item">' +
+        '<article class="post-item blog-post-item' + (postType === 'link-share' ? ' is-link-share' : '') + '">' +
           '<div class="post-head">' +
             '<div class="post-head-main">' +
               '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
+              postOffsiteLinkNoteHtml(post, author) +
               postHeaderMetaHtml(post, author, readMinutes, post.published_date || post.pub_date || 'Unknown date') +
             '</div>' +
             adminMenuHtml +

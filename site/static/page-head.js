@@ -205,9 +205,13 @@
     return theme;
   }
 
+  function themeStylesheetVersion() {
+    return String(window.__wizardryThemeStylesheetVersion || '20260526-title-action-edge1');
+  }
+
   function reconcileThemeLink() {
     var theme = themeFromConfig();
-    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=20260529-blog-tags-final2';
+    var href = '/static/themes/' + encodeURIComponent(theme) + '.css?v=' + encodeURIComponent(themeStylesheetVersion());
     var link = document.getElementById('theme-stylesheet');
     if (!link) {
       link = document.createElement('link');

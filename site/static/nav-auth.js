@@ -2469,7 +2469,8 @@
     return preferredAuthInitialSelection();
   }
 
-  function startPrimaryLogin(options) {
+  function startPrimaryLogin() {
+    var options = arguments[0];
     var showFallbackModal = !(options && options.fallbackModal === false);
     closeLoginMenu();
     return waitForDesktopSigner(1200).then(function (available) {
@@ -4057,7 +4058,8 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=20260529-blog-tags-final2';
+    var themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260526-title-action-edge1');
+    var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=' + encodeURIComponent(themeVersion);
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
       return Promise.resolve();
@@ -4391,12 +4393,18 @@
           });
           return;
         }
-        rotateUnpairedNip46StateNow();
         var uri = String(els.authNip46Open.getAttribute('data-nip46-uri') || els.authNip46Open.getAttribute('href') || '');
-        if (uri.indexOf('nostrconnect://') !== 0) {
-          uri = currentNip46Uri();
+        if (uri.indexOf('nostrconnect://') === 0) {
+          openNativeDeepLink(uri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
+          return;
         }
-        openNativeDeepLink(uri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
+        rotateUnpairedNip46StateNow();
+        refreshUnpairedNip46Link().then(function () {
+          var freshUri = currentNip46Uri();
+          openNativeDeepLink(freshUri, 'Nostr Connect link is not ready yet. The QR setup is still loading.');
+        }).catch(function (err) {
+          setAuthMessage(err && err.message ? err.message : 'Could not prepare a Nostr Connect link.', 'error');
+        });
       });
     }
 
