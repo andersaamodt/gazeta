@@ -367,12 +367,19 @@ status_rootpath_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_rootpath_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'payments status includes btcpay root path'
 
 config-set "$blog_site_conf" plugin_ramp true
-config-set "$blog_site_conf" ramp_host_api_key test-ramp-key
+SECRET_DIR="$SITE_DATA/secrets"
+mkdir -p "$SECRET_DIR"
+RAMP_SECRET_FILE="$SECRET_DIR/ramp-host-api-key"
+PRINTFUL_SECRET_FILE="$SECRET_DIR/printful-api-token"
+printf '%s\n' test-ramp-key > "$RAMP_SECRET_FILE"
+printf '%s\n' test-printful-token > "$PRINTFUL_SECRET_FILE"
+chmod 600 "$RAMP_SECRET_FILE" "$PRINTFUL_SECRET_FILE" 2>/dev/null || true
+config-set "$blog_site_conf" ramp_host_api_key_file "$RAMP_SECRET_FILE"
 config-set "$blog_site_conf" ramp_btc_address bc1qmerchant
 config-set "$blog_site_conf" ramp_webhook_signature_required false
 config-set "$blog_site_conf" payments_webhook_secret webhook-secret
 config-set "$blog_site_conf" plugin_merch_store true
-config-set "$blog_site_conf" printful_api_token test-printful-token
+config-set "$blog_site_conf" printful_api_token_file "$PRINTFUL_SECRET_FILE"
 config-set "$blog_site_conf" printful_store_id test-printful-store
 config-set "$blog_site_conf" printful_confirm_orders false
 status_connected_out=$(run_payments_cgi 'action=status')
@@ -416,6 +423,9 @@ assert_contains "$ramp_webhook_out" '"printful_order_id":"98765"' 'paid merch or
 
 manage_merch_status=$(run_manage_merch_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token")
 assert_contains "$manage_merch_status" '"printful_api_ready":true' 'merch manager status validates Printful API'
+manage_merch_save=$(run_manage_merch_cgi "action=save_config&printful_api_token=saved-printful-token&session_token=$session_token&csrf_token=$csrf_token" POST)
+assert_contains "$manage_merch_save" '"success":true' 'merch manager saves Printful token'
+assert_contains "$(cat "$PRINTFUL_SECRET_FILE")" 'saved-printful-token' 'merch manager writes Printful token to configured secret file'
 manage_merch_import=$(run_manage_merch_cgi "action=import_printful_product&printful_product_id=777&session_token=$session_token&csrf_token=$csrf_token" POST)
 assert_contains "$manage_merch_import" '"success":true' 'merch manager imports Printful product'
 assert_contains "$manage_merch_import" '"slug":"printful-shirt"' 'merch import slugifies Printful product name'

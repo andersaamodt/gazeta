@@ -191,7 +191,7 @@ case "$action" in
     printful_store_id=$(printf '%s' "$(blog_param printful_store_id)" | tr -d '\r\n[:space:]')
     confirm_orders=$(printf '%s' "$(blog_param printful_confirm_orders)" | tr '[:upper:]' '[:lower:]' | tr -d '\r\n[:space:]')
     [ -n "$printful_api_base" ] && write_conf_value printful_api_base "$printful_api_base"
-    [ -n "$printful_api_token" ] && write_conf_value printful_api_token "$printful_api_token"
+    [ -n "$printful_api_token" ] && blog_merch_write_secret_value printful_api_token "$printful_api_token"
     [ -n "$printful_store_id" ] && write_conf_value printful_store_id "$printful_store_id"
     case "$confirm_orders" in
       true|1|yes|on) write_conf_value printful_confirm_orders true ;;

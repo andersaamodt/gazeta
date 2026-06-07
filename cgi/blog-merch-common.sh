@@ -9,6 +9,37 @@ blog_merch_config_value() {
   printf '%s\n' "$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
+blog_merch_config_secret_value() {
+  blog_merch_config_secret_key=${1-}
+  [ -n "$blog_merch_config_secret_key" ] || return 1
+  blog_merch_config_secret_file=$(blog_merch_config_value "${blog_merch_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$blog_merch_config_secret_file" ] && [ -f "$blog_merch_config_secret_file" ]; then
+    sed -n '1p' "$blog_merch_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
+    return 0
+  fi
+  blog_merch_config_value "$blog_merch_config_secret_key" | tr -d '\n[:space:]'
+}
+
+blog_merch_write_secret_value() {
+  blog_merch_write_secret_key=${1-}
+  blog_merch_write_secret_value=${2-}
+  [ -n "$blog_merch_write_secret_key" ] || return 1
+  [ -n "$blog_merch_write_secret_value" ] || return 1
+  blog_merch_write_secret_file=$(blog_merch_config_value "${blog_merch_write_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$blog_merch_write_secret_file" ]; then
+    blog_merch_write_secret_dir=${blog_merch_write_secret_file%/*}
+    [ "$blog_merch_write_secret_dir" != "$blog_merch_write_secret_file" ] || blog_merch_write_secret_dir=.
+    mkdir -p "$blog_merch_write_secret_dir"
+    blog_merch_write_secret_tmp=$(mktemp "$blog_merch_write_secret_dir/.${blog_merch_write_secret_key}.XXXXXX")
+    printf '%s\n' "$blog_merch_write_secret_value" > "$blog_merch_write_secret_tmp"
+    chmod 600 "$blog_merch_write_secret_tmp" 2>/dev/null || true
+    mv "$blog_merch_write_secret_tmp" "$blog_merch_write_secret_file"
+    chmod 600 "$blog_merch_write_secret_file" 2>/dev/null || true
+    return 0
+  fi
+  config-set "$blog_site_conf" "$blog_merch_write_secret_key" "$blog_merch_write_secret_value"
+}
+
 blog_printful_api_base() {
   base=$(blog_merch_config_value printful_api_base | tr -d '\n[:space:]')
   [ -n "$base" ] || base='https://api.printful.com'
@@ -16,7 +47,7 @@ blog_printful_api_base() {
 }
 
 blog_printful_api_token() {
-  blog_merch_config_value printful_api_token | tr -d '\n[:space:]'
+  blog_merch_config_secret_value printful_api_token
 }
 
 blog_printful_store_id() {

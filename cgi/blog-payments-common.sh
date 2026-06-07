@@ -239,6 +239,17 @@ blog_ramp_config_value() {
   printf '%s\n' "$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
+blog_ramp_config_secret_value() {
+  blog_ramp_config_secret_key=${1-}
+  [ -n "$blog_ramp_config_secret_key" ] || return 1
+  blog_ramp_config_secret_file=$(blog_ramp_config_value "${blog_ramp_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$blog_ramp_config_secret_file" ] && [ -f "$blog_ramp_config_secret_file" ]; then
+    sed -n '1p' "$blog_ramp_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
+    return 0
+  fi
+  blog_ramp_config_value "$blog_ramp_config_secret_key" | tr -d '\n[:space:]'
+}
+
 blog_ramp_widget_url() {
   url=$(blog_ramp_config_value ramp_widget_url | tr -d '\n[:space:]')
   [ -n "$url" ] || url='https://app.rampnetwork.com'
@@ -246,7 +257,7 @@ blog_ramp_widget_url() {
 }
 
 blog_ramp_host_api_key() {
-  blog_ramp_config_value ramp_host_api_key | tr -d '\n[:space:]'
+  blog_ramp_config_secret_value ramp_host_api_key
 }
 
 blog_ramp_btc_address() {
