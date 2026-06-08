@@ -1729,7 +1729,8 @@ blog_nip23_normalize_state_json() {
         fulfillment_provider: norm_fulfillment_provider(.fulfillment_provider // "printful"),
         printful_sync_variant_id: ((.printful_sync_variant_id // .sync_variant_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; "")),
         printful_external_variant_id: ((.printful_external_variant_id // .external_variant_id // "") | tostring | gsub("[\r\n]"; "")),
-        printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; ""))
+        printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; "")),
+        printful_product_template_id: ((.printful_product_template_id // .product_template_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; ""))
       }
       | select((.id | length) > 0 or (.printful_sync_variant_id | length) > 0 or (.printful_external_variant_id | length) > 0);
     def norm_discount($v):
@@ -1763,6 +1764,7 @@ blog_nip23_normalize_state_json() {
       image_url: norm_trim(.image_url // .thumbnail_url // ""),
       fulfillment_provider: norm_fulfillment_provider(.fulfillment_provider // ""),
       printful_product_id: norm_trim(.printful_product_id // .sync_product_id // ""),
+      printful_product_template_id: norm_trim(.printful_product_template_id // .product_template_id // ""),
       printful_sync_variant_id: norm_trim(.printful_sync_variant_id // .sync_variant_id // ""),
       printful_external_variant_id: norm_trim(.printful_external_variant_id // .external_variant_id // ""),
       variants: (if ((.variants // null) | type) == "array" then [.variants[]? | norm_variant] else [] end),
