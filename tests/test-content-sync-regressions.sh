@@ -1584,6 +1584,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nip23-product-landin
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nip23-product-benefit-grid {' 'nip23 product pages can render scannable benefit grids'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nip23-product-placeholder-image {' 'nip23 product pages support screenshot and benefit image placeholders'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.nip23-product-icon {' 'nip23 product pages can center a macOS-style app icon'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.merch-product-page .nip23-product-icon {' 'merch product pages can show full-width product images without changing app icons'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '#nip23-page-root:has(.nip23-product-landing) .list-page-head' 'nip23 product landing hides the generic page heading in capable browsers'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" "cache: 'no-store'" 'public-ranking-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "cache: 'no-store'" 'list has no-store directives'
