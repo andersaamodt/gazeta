@@ -823,8 +823,7 @@
     html += '</div>';
     html += variantsHtml;
     html += '<div class="nip23-product-actions">';
-    html += '<button type="button" class="nip23-product-btn" data-nip23-action="add-to-cart">Add to Cart</button>';
-    html += '<button type="button" class="nip23-product-btn nip23-product-btn-primary" data-nip23-action="checkout-now">Checkout Now</button>';
+    html += '<button type="button" class="nip23-product-btn nip23-product-btn-primary" data-nip23-action="add-to-cart">Add to Cart</button>';
     html += '</div>';
     html += '</section>';
     return html;
