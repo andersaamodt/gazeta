@@ -4237,6 +4237,10 @@ body.nav-cart-open {
   padding: clamp(1.6rem, 5vw, 3.2rem) 0 0.6rem;
 }
 
+.merch-page .nip23-product-more {
+  padding-top: 0;
+}
+
 .nip23-product-more-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
