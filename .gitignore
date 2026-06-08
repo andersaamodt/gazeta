@@ -11,3 +11,4 @@ site.conf
 site.conf.bak.*
 site/site/
 cgi/secure-chat-native-driver/.log
+site/static/legacy-assets/oeuvre/ultramemes.mkv
