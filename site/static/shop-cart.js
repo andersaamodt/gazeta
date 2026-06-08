@@ -96,7 +96,8 @@
       fulfillment_provider: String(src && src.fulfillment_provider || ''),
       printful_sync_variant_id: String(src && src.printful_sync_variant_id || ''),
       printful_external_variant_id: String(src && src.printful_external_variant_id || ''),
-      printful_variant_id: String(src && src.printful_variant_id || '')
+      printful_variant_id: String(src && src.printful_variant_id || ''),
+      printful_product_template_id: String(src && src.printful_product_template_id || '')
     };
   }
 
@@ -416,7 +417,8 @@
       fulfillment_provider: String((variant && variant.fulfillment_provider) || product.fulfillment_provider || ''),
       printful_sync_variant_id: String((variant && variant.printful_sync_variant_id) || product.printful_sync_variant_id || ''),
       printful_external_variant_id: String((variant && variant.printful_external_variant_id) || product.printful_external_variant_id || ''),
-      printful_variant_id: String((variant && variant.printful_variant_id) || '')
+      printful_variant_id: String((variant && variant.printful_variant_id) || ''),
+      printful_product_template_id: String((variant && variant.printful_product_template_id) || product.printful_product_template_id || '')
     };
   }
 

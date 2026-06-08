@@ -171,14 +171,16 @@ quote_items_json() {
     printful_external_variant_id=$(printf '%s\n' "$variant" | jq -r '.printful_external_variant_id // empty' 2>/dev/null || printf '')
     [ -n "$printful_external_variant_id" ] || printful_external_variant_id=$(printf '%s\n' "$product" | jq -r '.printful_external_variant_id // ""' 2>/dev/null || printf '')
     printful_variant_id=$(printf '%s\n' "$variant" | jq -r '.printful_variant_id // ""' 2>/dev/null || printf '')
+    printful_product_template_id=$(printf '%s\n' "$variant" | jq -r '.printful_product_template_id // empty' 2>/dev/null || printf '')
+    [ -n "$printful_product_template_id" ] || printful_product_template_id=$(printf '%s\n' "$product" | jq -r '.printful_product_template_id // ""' 2>/dev/null || printf '')
     fulfillment_provider=$(printf '%s\n' "$variant" | jq -r '.fulfillment_provider // empty' 2>/dev/null || printf '')
     [ -n "$fulfillment_provider" ] || fulfillment_provider=$(printf '%s\n' "$product" | jq -r '.fulfillment_provider // ""' 2>/dev/null || printf '')
     if [ "$product_type" = "merch" ] && [ -z "$fulfillment_provider" ]; then
-      if [ -n "$printful_sync_variant_id" ] || [ -n "$printful_external_variant_id" ]; then
+      if [ -n "$printful_sync_variant_id" ] || [ -n "$printful_external_variant_id" ] || { [ -n "$printful_product_template_id" ] && [ -n "$printful_variant_id" ]; }; then
         fulfillment_provider='printful'
       fi
     fi
-    if [ "$fulfillment_provider" = "printful" ] && [ -z "$printful_sync_variant_id" ] && [ -z "$printful_external_variant_id" ]; then
+    if [ "$fulfillment_provider" = "printful" ] && [ -z "$printful_sync_variant_id" ] && [ -z "$printful_external_variant_id" ] && { [ -z "$printful_product_template_id" ] || [ -z "$printful_variant_id" ]; }; then
       continue
     fi
 
@@ -208,6 +210,7 @@ quote_items_json() {
       --arg printful_sync_variant_id "$printful_sync_variant_id" \
       --arg printful_external_variant_id "$printful_external_variant_id" \
       --arg printful_variant_id "$printful_variant_id" \
+      --arg printful_product_template_id "$printful_product_template_id" \
       --argjson physical "$physical" \
       --argjson qty "$qty" \
       --arg unit_price "$(blog_payments_format_money "$unit_price")" \
@@ -232,6 +235,7 @@ quote_items_json() {
         printful_sync_variant_id: $printful_sync_variant_id,
         printful_external_variant_id: $printful_external_variant_id,
         printful_variant_id: $printful_variant_id,
+        printful_product_template_id: $printful_product_template_id,
         qty: $qty,
         unit_price: $unit_price,
         unit_crypto_price: $unit_crypto_price,

@@ -158,7 +158,8 @@
       fulfillment_provider: String(src.fulfillment_provider || '').trim().toLowerCase(),
       printful_sync_variant_id: String(src.printful_sync_variant_id || src.sync_variant_id || '').trim(),
       printful_external_variant_id: String(src.printful_external_variant_id || src.external_variant_id || '').trim(),
-      printful_variant_id: String(src.printful_variant_id || src.variant_id || '').trim()
+      printful_variant_id: String(src.printful_variant_id || src.variant_id || '').trim(),
+      printful_product_template_id: String(src.printful_product_template_id || src.product_template_id || '').trim()
     };
   }
 
@@ -194,6 +195,7 @@
       image_url: String(src.image_url || src.thumbnail_url || ''),
       fulfillment_provider: String(src.fulfillment_provider || ''),
       printful_product_id: String(src.printful_product_id || ''),
+      printful_product_template_id: String(src.printful_product_template_id || src.product_template_id || ''),
       printful_sync_variant_id: String(src.printful_sync_variant_id || ''),
       printful_external_variant_id: String(src.printful_external_variant_id || ''),
       variants: (Array.isArray(src.variants) ? src.variants : []).map(normalizeVariant).filter(Boolean),

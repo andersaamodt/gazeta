@@ -179,8 +179,12 @@ blog_printful_items_from_order_json() {
         }
         + (if ((.printful_sync_variant_id // "") | tostring | length) > 0 then {sync_variant_id: ((.printful_sync_variant_id // "") | tonumber? // (.printful_sync_variant_id // ""))}
            elif ((.printful_external_variant_id // "") | tostring | length) > 0 then {external_variant_id: (.printful_external_variant_id // "")}
+           elif (((.printful_product_template_id // "") | tostring | length) > 0 and ((.printful_variant_id // "") | tostring | length) > 0) then {
+             product_template_id: ((.printful_product_template_id // "") | tonumber? // (.printful_product_template_id // "")),
+             variant_id: ((.printful_variant_id // "") | tonumber? // (.printful_variant_id // ""))
+           }
            else {} end)
-      | select((.sync_variant_id? != null) or ((.external_variant_id? // "") | length > 0))
+      | select((.sync_variant_id? != null) or ((.external_variant_id? // "") | length > 0) or ((.product_template_id? != null) and (.variant_id? != null)))
     ]
   ' 2>/dev/null
 }
