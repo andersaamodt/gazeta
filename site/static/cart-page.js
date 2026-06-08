@@ -11,6 +11,8 @@
     return;
   }
 
+  var apiWaitAttempts = 0;
+
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')
@@ -36,8 +38,13 @@
     var api = cartApi();
     if (!api || typeof api.getItems !== 'function') {
       content.innerHTML = '<p class="placeholder">Cart is loading...</p>';
+      if (apiWaitAttempts < 20) {
+        apiWaitAttempts += 1;
+        window.setTimeout(render, 100);
+      }
       return;
     }
+    apiWaitAttempts = 0;
 
     var items = api.getItems();
     if (!Array.isArray(items) || !items.length) {
