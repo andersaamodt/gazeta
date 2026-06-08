@@ -92,7 +92,7 @@ blog_printful_api_json() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-printful-api.XXXXXX")
   headers_file=$(mktemp "${TMPDIR:-/tmp}/blog-printful-headers.XXXXXX")
   blog_printful_headers_args > "$headers_file"
-  set -- curl -sS --max-time 25 -o "$tmp" -w '%{http_code}' -X "$method" -H "Accept: application/json"
+  set -- curl -sS --connect-timeout 5 --max-time 12 -o "$tmp" -w '%{http_code}' -X "$method" -H "Accept: application/json"
   if [ "$method" = "POST" ] || [ "$method" = "PUT" ]; then
     set -- "$@" -H "Content-Type: application/json" --data "$payload"
   fi

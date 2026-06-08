@@ -4155,6 +4155,10 @@
       state.merchProducts = Array.isArray(data.merch_products) ? data.merch_products : [];
       renderMerchProducts();
       setMerchStatus(data);
+      if (data.warning) {
+        setOutput(els.outputMerch, String(data.warning), 'warn');
+        return;
+      }
       if (!(options && options.background)) {
         setOutput(els.outputMerch, 'Printful products refreshed.', 'ok');
       }

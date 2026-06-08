@@ -48,7 +48,11 @@ runtime_json() {
   blog_plugin_enabled merch_store && plugin_enabled=true
   printful_configured=false
   blog_printful_configured && printful_configured=true
-  printful_api_ready && api_ready=true
+  case "$action" in
+    status|save_config)
+      printful_api_ready && api_ready=true
+      ;;
+  esac
   jq -cn \
     --arg api_base "$(blog_printful_api_base)" \
     --arg store_id "$(blog_printful_store_id)" \
@@ -348,16 +352,22 @@ case "$action" in
     emit_success_runtime "Printful merch settings saved."
     ;;
   list_printful_products|list_products)
+    selection=$(blog_merch_selection_load_json)
     if ! blog_plugin_enabled merch_store; then
-      emit_failure "Merch store plugin is disabled." "merch_store_disabled"
+      rows=$(merch_list_products_json '{"result":[]}' "$selection")
+      jq -cn --argjson runtime "$(runtime_json)" --argjson products '{"result":[]}' --argjson rows "$rows" --argjson selection "$selection" \
+        '{success:true, warning:"Merch store plugin is disabled.", code:"merch_store_disabled", runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
+      printf '\n'
       exit 0
     fi
     products=$(blog_printful_sync_products_json 2>/dev/null || printf '')
     if [ -z "$products" ]; then
-      emit_failure "Could not load Printful sync products." "printful_products_failed"
+      rows=$(merch_list_products_json '{"result":[]}' "$selection")
+      jq -cn --argjson runtime "$(runtime_json)" --argjson products '{"result":[]}' --argjson rows "$rows" --argjson selection "$selection" \
+        '{success:true, warning:"Could not load Printful sync products. Check the Printful API token, store id, and network connection.", code:"printful_products_failed", runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
+      printf '\n'
       exit 0
     fi
-    selection=$(blog_merch_selection_load_json)
     rows=$(merch_list_products_json "$products" "$selection")
     jq -cn --argjson runtime "$(runtime_json)" --argjson products "$products" --argjson rows "$rows" --argjson selection "$selection" '{success:true, runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
     printf '\n'
