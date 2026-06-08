@@ -358,6 +358,7 @@ run_manage_merch_cgi() {
 # 1) Public runtime status keys.
 status_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_out" '"success":true' 'payments status succeeds'
+assert_contains "$status_out" '"commerce_enabled":true' 'payments status reports commerce plugin enabled by default'
 assert_contains "$status_out" '"btcpay_host":"pay.blog.example.com"' 'payments status derives btcpay host from request host'
 assert_contains "$status_out" '"btcpay_url":"https://pay.blog.example.com"' 'payments status emits btcpay url'
 assert_contains "$status_out" '"ramp_host_api_key":' 'payments status includes ramp runtime key'
@@ -434,6 +435,23 @@ assert_contains "$imported_product_out" '"product_type":"merch"' 'imported Print
 pages_after_import=$(blog_nostr_pages_load_json)
 assert_contains "$pages_after_import" '"slug":"printful-shirt"' 'imported Printful product is added to page registry'
 assert_contains "$pages_after_import" '"show_in_nav":false' 'imported Printful product stays unlisted from navbar'
+manage_merch_list=$(run_manage_merch_cgi "action=list_products&session_token=$session_token&csrf_token=$csrf_token")
+assert_contains "$manage_merch_list" '"merch_products":' 'merch manager lists curation rows'
+assert_contains "$manage_merch_list" '"source_id":"777"' 'merch manager list includes Printful product source id'
+merch_selection_json=$(jq -cn '{items:[{provider:"printful",source_type:"sync_product",source_id:"777",sync_enabled:true,show_on_merch_page:true,sort_order:0}]}')
+manage_merch_selection=$(run_manage_merch_cgi "action=save_selection&selection_json=$(blog_url_encode "$merch_selection_json")&session_token=$session_token&csrf_token=$csrf_token" POST)
+assert_contains "$manage_merch_selection" '"success":true' 'merch manager saves selected Printful products'
+assert_contains "$manage_merch_selection" '"show_on_merch_page":true' 'merch manager preserves show-on-merch flag'
+manage_merch_sync=$(run_manage_merch_cgi "action=sync_selected&session_token=$session_token&csrf_token=$csrf_token" POST)
+assert_contains "$manage_merch_sync" '"success":true' 'merch manager syncs selected Printful products'
+assert_contains "$manage_merch_sync" '"path":"/merch"' 'merch manager updates merch landing page'
+merch_page_state=$(blog_nostr_page_load_draft_state_json "merch" "nip23")
+assert_contains "$merch_page_state" '"title":"Merchandise"' 'merch landing page is a Nostr-backed draft'
+assert_contains "$merch_page_state" 'data-merch-add' 'merch landing page includes add-to-cart button'
+assert_contains "$merch_page_state" 'printful-shirt' 'merch landing page includes selected product slug'
+pages_after_merch_sync=$(blog_nostr_pages_load_json)
+assert_contains "$pages_after_merch_sync" '"slug":"merch"' 'merch landing page is added to page registry'
+assert_contains "$pages_after_merch_sync" '"show_in_nav":false' 'merch landing page remains unlisted from navbar'
 
 # 3) Order create -> status flow.
 items_json=$(printf '%s' '[{"slug":"sample-product","qty":2}]')

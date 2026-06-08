@@ -44,6 +44,7 @@ plugin_nostr_login=$(blog_param plugin_nostr_login)
 plugin_nostr_bridge=$(blog_param plugin_nostr_bridge)
 plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
+plugin_commerce=$(blog_param plugin_commerce)
 plugin_btcpay=$(blog_param plugin_btcpay)
 plugin_ramp=$(blog_param plugin_ramp)
 plugin_merch_store=$(blog_param plugin_merch_store)
@@ -207,6 +208,7 @@ set_plugin_flag "nostr_login" "$plugin_nostr_login"
 set_plugin_flag "nostr_bridge" "$plugin_nostr_bridge"
 set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
+set_plugin_flag "commerce" "$plugin_commerce"
 set_plugin_flag "btcpay" "$plugin_btcpay"
 set_plugin_flag "ramp" "$plugin_ramp"
 set_plugin_flag "merch_store" "$plugin_merch_store"

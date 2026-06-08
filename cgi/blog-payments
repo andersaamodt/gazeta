@@ -42,7 +42,9 @@ emit_runtime_status() {
   ramp_webhook_url=$(blog_ramp_webhook_url "ORDER_ID" 2>/dev/null || printf '')
   ramp_webhook_signature_required=$(blog_ramp_webhook_signature_required)
   ramp_plugin_enabled=false
+  commerce_enabled=false
   ramp_configured=false
+  blog_plugin_enabled commerce && commerce_enabled=true
   blog_plugin_enabled ramp && ramp_plugin_enabled=true
   blog_ramp_configured && ramp_configured=true
   merch_store_enabled=false
@@ -64,6 +66,7 @@ emit_runtime_status() {
     --arg ramp_widget_url "$ramp_widget_url" \
     --arg ramp_webhook_url "$ramp_webhook_url" \
     --argjson ramp_plugin_enabled "$ramp_plugin_enabled" \
+    --argjson commerce_enabled "$commerce_enabled" \
     --argjson ramp_configured "$ramp_configured" \
     --argjson ramp_webhook_signature_required "$ramp_webhook_signature_required" \
     --argjson merch_store_enabled "$merch_store_enabled" \
@@ -84,6 +87,7 @@ emit_runtime_status() {
       ramp_widget_url: $ramp_widget_url,
       ramp_webhook_url: $ramp_webhook_url,
       ramp_plugin_enabled: $ramp_plugin_enabled,
+      commerce_enabled: $commerce_enabled,
       ramp_webhook_signature_required: $ramp_webhook_signature_required,
       merch_store_enabled: $merch_store_enabled,
       printful_configured: $printful_configured,
@@ -568,6 +572,10 @@ case "$action" in
     emit_runtime_status
     ;;
   quote)
+    if ! blog_plugin_enabled commerce; then
+      blog_json_error "Shopping cart is disabled" "commerce_disabled"
+      exit 0
+    fi
     items_json=$(blog_param items_json)
     recipient_json=$(blog_param recipient_json)
     shipping_id=$(blog_param shipping_id)
@@ -580,6 +588,10 @@ case "$action" in
     printf '\n'
     ;;
   create_order)
+    if ! blog_plugin_enabled commerce; then
+      blog_json_error "Shopping cart is disabled" "commerce_disabled"
+      exit 0
+    fi
     items_json=$(blog_param items_json)
     recipient_json_raw=$(blog_param recipient_json)
     shipping_id=$(blog_param shipping_id)

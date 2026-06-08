@@ -16,6 +16,31 @@
     drawerClose: document.getElementById('nav-cart-close')
   };
 
+  function commerceEnabled() {
+    var plugins = window.__wizardryPlugins || {};
+    return plugins.commerce !== false;
+  }
+
+  if (!commerceEnabled()) {
+    if (els.toggle) {
+      els.toggle.hidden = true;
+    }
+    if (els.drawer) {
+      els.drawer.hidden = true;
+    }
+    window.blogShopCart = {
+      addProductBySlug: function () { return Promise.reject(new Error('Shopping cart is disabled.')); },
+      addItem: function () {},
+      setItemQty: function () {},
+      clear: function () {},
+      openDrawer: function () {},
+      closeDrawer: function () {},
+      getItems: function () { return []; },
+      quoteItemsPayload: function () { return []; }
+    };
+    return;
+  }
+
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')

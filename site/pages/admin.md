@@ -32,6 +32,7 @@ title: ""
 <button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-checkout-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="merch" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Merch</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="video-calling" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Video Calling <span id="admin-nav-video-calling-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="overworld" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Overworld</span></button>
 <button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
@@ -492,6 +493,10 @@ title: ""
 <td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Zaps</strong><span class="plugin-setting-help">Nostr Lightning tips and zap metadata across posts/pages.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-zaps"><input type="checkbox" id="plugin-zaps"><span>Enabled</span></label></td>
 </tr>
+<tr data-plugin-row="commerce">
+<td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">Shopping cart</strong><span class="plugin-setting-help">Cart drawer, product checkout pages, order state, and buyer purchase flow.</span></div></td>
+<td><label class="checkbox-control plugin-enabled-control" for="plugin-commerce"><input type="checkbox" id="plugin-commerce"><span>Enabled</span></label></td>
+</tr>
 <tr data-plugin-row="btcpay">
 <td><div class="setting-label plugin-setting-main"><strong class="plugin-setting-name">BTCPay Checkout</strong><span class="plugin-setting-help">Shopping-cart checkout, BTCPay invoices, webhooks, and software-purchase delivery.</span></div></td>
 <td><label class="checkbox-control plugin-enabled-control" for="plugin-btcpay"><input type="checkbox" id="plugin-btcpay"><span>Enabled</span></label></td>
@@ -518,6 +523,27 @@ title: ""
 </div>
 
 <div id="output-plugins" class="output"></div>
+</div>
+</section>
+
+<section class="admin-section" data-admin-section="merch" hidden>
+<div class="demo-box admin-card">
+<div class="row-head">
+<div>
+<h3>Merch</h3>
+<p class="muted">Choose which Printful sync products Gazeta imports and which imported products appear on the unlisted merch page.</p>
+</div>
+<div class="runtime-setting-actions">
+<button id="btn-merch-refresh" type="button">Refresh</button>
+<button id="btn-merch-sync" type="button">Sync selected</button>
+</div>
+</div>
+
+<div id="merch-admin-status" class="runtime-settings-list">
+<div class="placeholder">Loading Printful products...</div>
+</div>
+<div id="merch-products-list" class="merch-products-list"></div>
+<div id="output-merch" class="output"></div>
 </div>
 </section>
 
@@ -1841,6 +1867,80 @@ body {
 
 [data-admin-section="plugins"] .plugin-enabled-control input[disabled] + span {
   opacity: 0.72;
+}
+
+.merch-products-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.merch-products-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--admin-border, #cdbd95);
+  background: #fff;
+}
+
+.merch-products-table th,
+.merch-products-table td {
+  padding: 0.5rem 0.58rem;
+  border: 0;
+  vertical-align: middle;
+}
+
+.merch-products-table thead th {
+  color: var(--admin-muted, var(--light-text));
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--admin-border, #cdbd95);
+}
+
+.merch-products-table tbody tr:nth-child(odd) {
+  background: #f5f8ff;
+}
+
+.merch-products-table tbody tr:nth-child(even) {
+  background: #fff;
+}
+
+.merch-product-summary {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  gap: 0.58rem;
+  align-items: center;
+}
+
+.merch-product-summary img,
+.merch-product-thumb-placeholder {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: contain;
+  background: #eef2fb;
+  border: 1px solid #d8e1f3;
+}
+
+.merch-product-summary strong {
+  display: block;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.merch-product-summary span {
+  color: var(--admin-muted, var(--light-text));
+  display: block;
+  font-size: 0.73rem;
+  line-height: 1.2;
+  margin-top: 0.14rem;
+}
+
+.merch-products-table .checkbox-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .inline-tip {

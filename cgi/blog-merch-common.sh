@@ -132,6 +132,68 @@ blog_printful_sync_product_json() {
   blog_printful_api_json GET "/sync/products/$safe_id" ''
 }
 
+blog_merch_selection_path() {
+  printf '%s/merch/selection.json\n' "$blog_site_data"
+}
+
+blog_merch_selection_normalize_json() {
+  raw_json=${1-}
+  [ -n "$raw_json" ] || raw_json='{}'
+  printf '%s\n' "$raw_json" | jq -c '
+    def clean_id:
+      tostring | gsub("[\r\n[:space:]]"; "") | gsub("[^A-Za-z0-9_@-]"; "");
+    def clean_slug:
+      tostring
+      | ascii_downcase
+      | gsub("[^a-z0-9-]+"; "-")
+      | gsub("-+"; "-")
+      | gsub("^-+|-+$"; "");
+    def clean_bool: . == true or . == "true" or . == "1" or . == 1 or . == "yes" or . == "on";
+    def clean_item:
+      {
+        provider: ((.provider // "printful") | tostring | ascii_downcase),
+        source_type: ((.source_type // .type // "sync_product") | tostring | ascii_downcase),
+        source_id: ((.source_id // .printful_product_id // .id // "") | clean_id),
+        slug: ((.slug // "") | clean_slug),
+        sync_enabled: (.sync_enabled | clean_bool),
+        show_on_merch_page: (.show_on_merch_page | clean_bool),
+        sort_order: ((.sort_order // 0) | tonumber? // 0)
+      }
+      | select(.provider == "printful")
+      | select(.source_type == "sync_product")
+      | select((.source_id | length) > 0);
+    (.items // .products // [] | if type == "array" then . else [] end) as $items
+    | {
+        version: 1,
+        provider: "printful",
+        items: ($items | map(clean_item) | unique_by(.provider + ":" + .source_type + ":" + .source_id) | sort_by(.sort_order, .source_id))
+      }
+  ' 2>/dev/null
+}
+
+blog_merch_selection_load_json() {
+  path=$(blog_merch_selection_path)
+  if [ -f "$path" ]; then
+    raw=$(cat "$path" 2>/dev/null || printf '{}')
+  else
+    raw='{}'
+  fi
+  blog_merch_selection_normalize_json "$raw"
+}
+
+blog_merch_selection_save_json() {
+  raw_json=${1-}
+  normalized=$(blog_merch_selection_normalize_json "$raw_json") || return 1
+  path=$(blog_merch_selection_path)
+  dir=${path%/*}
+  mkdir -p "$dir"
+  tmp=$(mktemp "$dir/.selection.XXXXXX")
+  printf '%s\n' "$normalized" > "$tmp"
+  mv "$tmp" "$path"
+  chmod 644 "$path" 2>/dev/null || true
+  printf '%s\n' "$normalized"
+}
+
 blog_merch_recipient_from_json() {
   raw_json=${1-}
   [ -n "$raw_json" ] || return 1

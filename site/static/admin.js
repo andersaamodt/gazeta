@@ -46,7 +46,10 @@
       nostr_bridge: true,
       nostr_posts: true,
       zaps: true,
+      commerce: true,
       btcpay: true,
+      ramp: false,
+      merch_store: false,
       video_chat: false,
       overworld: false
     },
@@ -159,6 +162,9 @@
     btcpayCheckoutRuntimeInfo: null,
     btcpayActionInFlight: false,
     btcpayActionPending: '',
+    merchProducts: [],
+    merchSelectionSaveTimer: null,
+    merchSyncBusy: false,
     composeSubmitInFlight: false,
     composeSubmitAction: '',
     initialContentPainted: false,
@@ -183,6 +189,7 @@
     outputModeration: document.getElementById('output-moderation'),
     outputAccount: document.getElementById('output-account'),
     outputPlugins: document.getElementById('output-plugins'),
+    outputMerch: document.getElementById('output-merch'),
     outputVideoCalling: document.getElementById('output-video-calling'),
     outputOverworld: document.getElementById('output-overworld'),
     outputZaps: document.getElementById('output-zaps'),
@@ -212,6 +219,7 @@
     pluginNostrBridge: document.getElementById('plugin-nostr-bridge'),
     pluginNostrPosts: document.getElementById('plugin-nostr-posts'),
     pluginZaps: document.getElementById('plugin-zaps'),
+    pluginCommerce: document.getElementById('plugin-commerce'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
     pluginRamp: document.getElementById('plugin-ramp'),
     pluginMerchStore: document.getElementById('plugin-merch-store'),
@@ -245,6 +253,10 @@
     zapsReceivedList: document.getElementById('zaps-received-list'),
     btcpayRuntime: document.getElementById('btcpay-runtime'),
     btcpayCheckoutRuntime: document.getElementById('btcpay-checkout-runtime'),
+    merchAdminStatus: document.getElementById('merch-admin-status'),
+    merchProductsList: document.getElementById('merch-products-list'),
+    merchRefreshButton: document.getElementById('btn-merch-refresh'),
+    merchSyncButton: document.getElementById('btn-merch-sync'),
     nostrAuthorsSaveStatus: document.getElementById('nostr-authors-save-status'),
     nostrRelaysSaveStatus: document.getElementById('nostr-relays-save-status'),
     nostrBlocklistSaveStatus: document.getElementById('nostr-blocklist-save-status'),
@@ -969,6 +981,12 @@
     if (key === 'btcpay') {
       return 'Lightning';
     }
+    if (key === 'btcpay-checkout') {
+      return 'BTCPay';
+    }
+    if (key === 'merch') {
+      return 'Merch';
+    }
     if (key === 'overworld') {
       return 'Overworld';
     }
@@ -998,6 +1016,7 @@
       'zaps',
       'btcpay',
       'btcpay-checkout',
+      'merch',
       'overworld',
       'users',
       'drafts',
@@ -1149,6 +1168,12 @@
         state.loadedAdminSections[section] = true;
         return;
       }
+      if (section === 'merch') {
+        await loadConfig();
+        await loadMerchProducts({ background: !!silent });
+        state.loadedAdminSections[section] = true;
+        return;
+      }
       if (section === 'users') {
         await loadUsers(false);
         state.loadedAdminSections[section] = true;
@@ -1218,6 +1243,10 @@
       }
       if (section === 'btcpay-checkout') {
         setOutput(els.outputBtcpayCheckout, 'Error: ' + err.message, 'error');
+        return;
+      }
+      if (section === 'merch') {
+        setOutput(els.outputMerch, 'Error: ' + err.message, 'error');
         return;
       }
       if (section === 'users') {
@@ -3824,6 +3853,7 @@
       nostr_bridge: src.nostr_bridge !== false,
       nostr_posts: src.nostr_posts !== false,
       zaps: src.zaps !== false,
+      commerce: src.commerce !== false,
       btcpay: src.btcpay !== false,
       ramp: src.ramp === true,
       merch_store: src.merch_store === true,
@@ -3957,6 +3987,7 @@
     if (els.pluginNostrBridge) els.pluginNostrBridge.checked = !!p.nostr_bridge;
     if (els.pluginNostrPosts) els.pluginNostrPosts.checked = !!p.nostr_posts;
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
+    if (els.pluginCommerce) els.pluginCommerce.checked = !!p.commerce;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
     if (els.pluginRamp) els.pluginRamp.checked = !!p.ramp;
     if (els.pluginMerchStore) els.pluginMerchStore.checked = !!p.merch_store;
@@ -3992,6 +4023,7 @@
     const sectionByPlugin = {
       'nostr-bridge': !!plugins.nostr_bridge,
       'zaps': !!plugins.zaps,
+      'merch': !!plugins.merch_store,
       'btcpay-checkout': !!plugins.btcpay,
       'video-calling': !!plugins.video_chat,
       'overworld': !!plugins.overworld,
@@ -4021,6 +4053,7 @@
       nostr_bridge: !!(els.pluginNostrBridge && els.pluginNostrBridge.checked),
       nostr_posts: !!(els.pluginNostrPosts && els.pluginNostrPosts.checked),
       zaps: !!(els.pluginZaps && els.pluginZaps.checked),
+      commerce: !!(els.pluginCommerce && els.pluginCommerce.checked),
       btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
       ramp: !!(els.pluginRamp && els.pluginRamp.checked),
       merch_store: !!(els.pluginMerchStore && els.pluginMerchStore.checked),
@@ -4041,6 +4074,7 @@
         plugin_nostr_bridge: plugins.nostr_bridge ? 'true' : 'false',
         plugin_nostr_posts: plugins.nostr_posts ? 'true' : 'false',
         plugin_zaps: plugins.zaps ? 'true' : 'false',
+        plugin_commerce: plugins.commerce ? 'true' : 'false',
         plugin_btcpay: plugins.btcpay ? 'true' : 'false',
         plugin_ramp: plugins.ramp ? 'true' : 'false',
         plugin_merch_store: plugins.merch_store ? 'true' : 'false',
@@ -4064,6 +4098,163 @@
     state.pluginsSaveTimer = setTimeout(function () {
       savePluginsConfig().catch(function () {});
     }, Math.max(120, Number(delayMs || 220)));
+  }
+
+  function normalizeMerchProduct(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    return {
+      provider: String(src.provider || 'printful'),
+      source_type: String(src.source_type || 'sync_product'),
+      source_id: String(src.source_id || ''),
+      name: String(src.name || src.title || 'Printful product'),
+      thumbnail_url: String(src.thumbnail_url || ''),
+      variant_count: clampInt(src.variant_count, 0, 0, 9999),
+      slug: normalizeNostrPageSlug(src.slug || ''),
+      sync_enabled: src.sync_enabled === true,
+      show_on_merch_page: src.show_on_merch_page === true,
+      sort_order: clampInt(src.sort_order, 0, -999999, 999999)
+    };
+  }
+
+  function currentMerchSelection() {
+    const rows = Array.isArray(state.merchProducts) ? state.merchProducts : [];
+    return {
+      version: 1,
+      provider: 'printful',
+      items: rows.map(function (row, index) {
+        const product = normalizeMerchProduct(row);
+        return {
+          provider: 'printful',
+          source_type: 'sync_product',
+          source_id: product.source_id,
+          slug: product.slug,
+          sync_enabled: !!product.sync_enabled,
+          show_on_merch_page: !!product.show_on_merch_page,
+          sort_order: index
+        };
+      }).filter(function (item) {
+        return item.source_id && (item.sync_enabled || item.show_on_merch_page || item.slug);
+      })
+    };
+  }
+
+  function renderMerchProducts() {
+    if (!els.merchProductsList) {
+      return;
+    }
+    const rows = (Array.isArray(state.merchProducts) ? state.merchProducts : []).map(normalizeMerchProduct);
+    state.merchProducts = rows;
+    if (!rows.length) {
+      els.merchProductsList.innerHTML = '<div class="placeholder">No Printful sync products were returned.</div>';
+      return;
+    }
+    let html = '<table class="merch-products-table" aria-label="Printful merch products"><thead><tr><th scope="col">Product</th><th scope="col">Sync</th><th scope="col">Show on /merch</th></tr></thead><tbody>';
+    rows.forEach(function (product) {
+      const thumb = product.thumbnail_url
+        ? '<img src="' + escapeAttr(product.thumbnail_url) + '" alt="" loading="lazy">'
+        : '<span class="merch-product-thumb-placeholder" aria-hidden="true"></span>';
+      const meta = [
+        product.source_id ? 'Printful ' + product.source_id : '',
+        product.variant_count ? String(product.variant_count) + ' variants' : '',
+        product.slug ? '/' + product.slug : 'not synced yet'
+      ].filter(Boolean).join(' · ');
+      html += '<tr data-merch-product-row="' + escapeAttr(product.source_id) + '">';
+      html += '<td><div class="merch-product-summary">' + thumb + '<div><strong>' + escapeHtml(product.name) + '</strong><span>' + escapeHtml(meta) + '</span></div></div></td>';
+      html += '<td><label class="checkbox-control"><input type="checkbox" data-merch-sync-id="' + escapeAttr(product.source_id) + '"' + (product.sync_enabled ? ' checked' : '') + '><span>Sync</span></label></td>';
+      html += '<td><label class="checkbox-control"><input type="checkbox" data-merch-show-id="' + escapeAttr(product.source_id) + '"' + (product.show_on_merch_page ? ' checked' : '') + '><span>Show</span></label></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    els.merchProductsList.innerHTML = html;
+  }
+
+  function setMerchStatus(data) {
+    if (!els.merchAdminStatus) {
+      return;
+    }
+    const runtime = data && data.runtime ? data.runtime : {};
+    const configured = runtime.printful_configured === true;
+    const apiReady = runtime.printful_api_ready === true;
+    const selected = currentMerchSelection().items.filter(function (item) { return item.sync_enabled; }).length;
+    const shown = currentMerchSelection().items.filter(function (item) { return item.show_on_merch_page; }).length;
+    let html = '';
+    html += '<div class="runtime-setting-item"><div><strong>Printful API</strong><span class="runtime-setting-help">' + escapeHtml(apiReady ? 'Connected' : (configured ? 'Configured, waiting for API response' : 'Not configured')) + '</span></div></div>';
+    html += '<div class="runtime-setting-item"><div><strong>Selected</strong><span class="runtime-setting-help">' + String(selected) + ' selected for sync · ' + String(shown) + ' shown on /merch</span></div></div>';
+    els.merchAdminStatus.innerHTML = html;
+  }
+
+  async function loadMerchProducts(options) {
+    if (!state.isAdmin || !(state.plugins && state.plugins.merch_store)) {
+      return;
+    }
+    try {
+      const data = await apiPost('/cgi/blog-manage-merch', { action: 'list_products' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load Printful products');
+      }
+      state.merchProducts = Array.isArray(data.merch_products) ? data.merch_products : [];
+      renderMerchProducts();
+      setMerchStatus(data);
+      if (!(options && options.background)) {
+        setOutput(els.outputMerch, 'Printful products refreshed.', 'ok');
+      }
+    } catch (err) {
+      if (els.merchProductsList) {
+        els.merchProductsList.innerHTML = '<div class="placeholder">Could not load Printful products.</div>';
+      }
+      setOutput(els.outputMerch, 'Error: ' + err.message, 'error');
+    }
+  }
+
+  async function saveMerchSelection() {
+    const selection = currentMerchSelection();
+    const data = await apiPost('/cgi/blog-manage-merch', {
+      action: 'save_selection',
+      selection_json: JSON.stringify(selection)
+    }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to save merch selection');
+    }
+    setMerchStatus(data);
+    setOutput(els.outputMerch, 'Merch selection saved.', 'ok');
+  }
+
+  function queueMerchSelectionSave(delayMs) {
+    if (state.merchSelectionSaveTimer) {
+      clearTimeout(state.merchSelectionSaveTimer);
+    }
+    state.merchSelectionSaveTimer = setTimeout(function () {
+      saveMerchSelection().catch(function (err) {
+        setOutput(els.outputMerch, 'Error: ' + err.message, 'error');
+      });
+    }, Math.max(120, Number(delayMs || 260)));
+  }
+
+  async function syncSelectedMerchProducts() {
+    if (state.merchSyncBusy) {
+      return;
+    }
+    state.merchSyncBusy = true;
+    if (els.merchSyncButton) {
+      els.merchSyncButton.disabled = true;
+    }
+    try {
+      await saveMerchSelection();
+      const data = await apiPost('/cgi/blog-manage-merch', { action: 'sync_selected' }, true);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to sync selected merch products');
+      }
+      const count = Array.isArray(data.imported) ? data.imported.length : 0;
+      setOutput(els.outputMerch, 'Synced ' + String(count) + ' merch product' + (count === 1 ? '' : 's') + ' and updated /merch.', 'ok');
+      await loadMerchProducts({ background: true });
+    } catch (err) {
+      setOutput(els.outputMerch, 'Error: ' + err.message, 'error');
+    } finally {
+      state.merchSyncBusy = false;
+      if (els.merchSyncButton) {
+        els.merchSyncButton.disabled = false;
+      }
+    }
   }
 
   function readVideoChatConfigFromUi() {
@@ -8702,6 +8893,7 @@
       els.pluginNostrBridge,
       els.pluginNostrPosts,
       els.pluginZaps,
+      els.pluginCommerce,
       els.pluginBtcpay,
       els.pluginRamp,
       els.pluginMerchStore,
@@ -8718,6 +8910,52 @@
         queuePluginsSave(140);
       });
     });
+    if (els.merchProductsList) {
+      els.merchProductsList.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+        const syncId = target.getAttribute('data-merch-sync-id');
+        const showId = target.getAttribute('data-merch-show-id');
+        const sourceId = syncId || showId || '';
+        if (!sourceId) {
+          return;
+        }
+        state.merchProducts = (Array.isArray(state.merchProducts) ? state.merchProducts : []).map(function (row) {
+          const product = normalizeMerchProduct(row);
+          if (product.source_id !== sourceId) {
+            return product;
+          }
+          if (syncId) {
+            product.sync_enabled = !!target.checked;
+            if (!product.sync_enabled) {
+              product.show_on_merch_page = false;
+            }
+          }
+          if (showId) {
+            product.show_on_merch_page = !!target.checked;
+            if (product.show_on_merch_page) {
+              product.sync_enabled = true;
+            }
+          }
+          return product;
+        });
+        renderMerchProducts();
+        setMerchStatus({});
+        queueMerchSelectionSave(160);
+      });
+    }
+    if (els.merchRefreshButton) {
+      els.merchRefreshButton.addEventListener('click', function () {
+        loadMerchProducts().catch(function () {});
+      });
+    }
+    if (els.merchSyncButton) {
+      els.merchSyncButton.addEventListener('click', function () {
+        syncSelectedMerchProducts().catch(function () {});
+      });
+    }
     [
       els.videoChatParticipantLimit,
       els.videoChatTokenTtlSeconds,

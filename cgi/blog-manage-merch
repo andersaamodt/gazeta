@@ -85,14 +85,16 @@ emit_success_runtime() {
 
 sync_product_slug() {
   product_json=${1-}
-  requested=$(blog_nostr_page_slug "$(blog_param product_slug)")
+  requested_raw=${2-}
+  [ -n "$requested_raw" ] || requested_raw=$(blog_param product_slug)
+  requested=$(blog_nostr_page_slug "$requested_raw")
   if [ -n "$requested" ]; then
     printf '%s\n' "$requested"
     return 0
   fi
   name=$(printf '%s\n' "$product_json" | jq -r '.result.sync_product.name // .sync_product.name // .name // ""' 2>/dev/null || printf '')
   slug=$(blog_nostr_page_slug "$name")
-  [ -n "$slug" ] || slug="printful-product-$(printf '%s' "$(blog_param printful_product_id)" | tr -cd 'A-Za-z0-9_-')"
+  [ -n "$slug" ] || slug="printful-product-$(printf '%s' "${3-$(blog_param printful_product_id)}" | tr -cd 'A-Za-z0-9_-')"
   blog_nostr_page_slug "$slug"
 }
 
@@ -181,6 +183,151 @@ ensure_unlisted_nip23_page() {
   blog_nostr_pages_save_json "$next_cfg"
 }
 
+merch_list_products_json() {
+  products=${1-}
+  selection=${2-}
+  jq -cn --argjson products "$products" --argjson selection "$selection" '
+    def source_id($p): (($p.id // $p.sync_product_id // "") | tostring);
+    def selected_for($id):
+      ($selection.items // [] | map(select(.provider == "printful" and .source_type == "sync_product" and .source_id == $id)) | first) // {};
+    def product_row($p):
+      (source_id($p)) as $id
+      | (selected_for($id)) as $sel
+      | {
+          provider: "printful",
+          source_type: "sync_product",
+          source_id: $id,
+          name: (($p.name // $p.title // ("Printful product " + $id)) | tostring),
+          thumbnail_url: (($p.thumbnail_url // "") | tostring),
+          variant_count: (($p.variants // $p.sync_variants // []) | if type == "array" then length else 0 end),
+          synced: ((($sel.slug // "") | length) > 0),
+          slug: (($sel.slug // "") | tostring),
+          sync_enabled: ($sel.sync_enabled == true),
+          show_on_merch_page: ($sel.show_on_merch_page == true),
+          sort_order: (($sel.sort_order // 0) | tonumber? // 0)
+        }
+      | select((.source_id | length) > 0);
+    (($products.result // $products) as $root
+      | if ($root | type) == "array" then $root
+        elif ($root | type) == "object" then (($root.sync_products // $root.products // []) | if type == "array" then . else [] end)
+        else [] end) as $printful_rows
+    | ($printful_rows | map(product_row(.))) as $rows
+    | ($rows | map(.source_id)) as $seen
+    | ($selection.items // []
+      | map(select(.provider == "printful" and .source_type == "sync_product" and ((.source_id as $id | $seen | index($id)) | not)))
+      | map({
+          provider: "printful",
+          source_type: "sync_product",
+          source_id: .source_id,
+          name: ("Printful product " + .source_id),
+          thumbnail_url: "",
+          variant_count: 0,
+          synced: ((.slug // "") | length > 0),
+          slug: (.slug // ""),
+          sync_enabled: .sync_enabled,
+          show_on_merch_page: .show_on_merch_page,
+          sort_order: .sort_order
+        })) as $missing
+    | ($rows + $missing | sort_by(.sort_order, .name, .source_id))
+  '
+}
+
+sync_printful_product_to_page_json() {
+  printful_product_id=${1-}
+  requested_slug=${2-}
+  safe_id=$(printf '%s' "$printful_product_id" | tr -cd 'A-Za-z0-9_@-')
+  [ -n "$safe_id" ] || return 1
+  product_json=$(blog_printful_sync_product_json "$safe_id" 2>/dev/null || printf '')
+  [ -n "$product_json" ] || return 1
+  slug=$(sync_product_slug "$product_json" "$requested_slug" "$safe_id")
+  state_json=$(sync_product_state_json "$slug" "$product_json" 2>/dev/null || printf '')
+  [ -n "$state_json" ] || return 1
+  title=$(printf '%s\n' "$state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
+  ensure_unlisted_nip23_page "$slug" "$title" || return 2
+  blog_nostr_page_save_draft_state_json "$slug" nip23 "$state_json"
+  jq -cn --arg slug "$slug" --arg path "/$slug" --arg source_id "$safe_id" --argjson state "$state_json" \
+    '{source_id:$source_id, slug:$slug, path:$path, state:$state}'
+}
+
+merch_page_content_json() {
+  products_json=${1-}
+  printf '%s\n' "$products_json" | jq -r '
+    def html:
+      tostring
+      | gsub("&"; "&amp;")
+      | gsub("<"; "&lt;")
+      | gsub(">"; "&gt;")
+      | gsub("\""; "&quot;");
+    def card:
+      "<article class=\"nip23-product-info-card merch-product-card\">" +
+      (if ((.image_url // "") | length) > 0 then "<a class=\"merch-product-card-media\" href=\"/" + (.slug | html) + "\"><img src=\"" + (.image_url | html) + "\" alt=\"\" loading=\"lazy\"></a>" else "" end) +
+      "<div class=\"merch-product-card-body\">" +
+      "<h3><a href=\"/" + (.slug | html) + "\">" + (.title | html) + "</a></h3>" +
+      (if ((.price // "") | tostring | length) > 0 then "<p class=\"nip23-product-card-price\">$" + ((.price // "") | tostring | html) + " " + ((.currency // "USD") | html) + "</p>" else "" end) +
+      "<div class=\"nip23-product-card-actions\"><button type=\"button\" data-merch-add=\"" + (.slug | html) + "\">Add to cart</button><a class=\"secondary\" href=\"/" + (.slug | html) + "\">Details</a></div>" +
+      "</div></article>";
+    "<section class=\"nip23-product-landing merch-page\"><section class=\"nip23-product-more\" aria-labelledby=\"merch-products-heading\"><h2 id=\"merch-products-heading\">Merchandise</h2><div class=\"nip23-product-more-grid merch-product-grid\">" +
+    (map(card) | join("")) +
+    "</div></section></section>"
+  '
+}
+
+rebuild_merch_landing_page() {
+  selection=$(blog_merch_selection_load_json)
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-merch-selected.XXXXXX")
+  printf '%s\n' "$selection" | jq -r '.items[]? | select(.show_on_merch_page == true) | .slug' > "$tmp"
+  products_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-merch-products.XXXXXX")
+  printf '[' > "$products_tmp"
+  first=true
+  while IFS= read -r slug || [ -n "$slug" ]; do
+    safe_slug=$(blog_nostr_page_slug "$slug")
+    [ -n "$safe_slug" ] || continue
+    state_json=$(blog_nostr_page_load_draft_state_json "$safe_slug" nip23 2>/dev/null || printf '')
+    [ -n "$state_json" ] || continue
+    if ! printf '%s\n' "$state_json" | jq -e '.product_enabled == true and (.product_type == "merch")' >/dev/null 2>&1; then
+      continue
+    fi
+    if [ "$first" = "true" ]; then
+      first=false
+    else
+      printf ',' >> "$products_tmp"
+    fi
+    printf '%s\n' "$state_json" | jq -c --arg slug "$safe_slug" '{
+      slug:$slug,
+      title:(.title // $slug),
+      price:(.price // ""),
+      currency:(.currency // "USD"),
+      image_url:(.image_url // "")
+    }' >> "$products_tmp"
+  done < "$tmp"
+  rm -f "$tmp"
+  printf ']\n' >> "$products_tmp"
+  products_json=$(cat "$products_tmp" 2>/dev/null || printf '[]')
+  rm -f "$products_tmp"
+  content=$(merch_page_content_json "$products_json")
+  state_json=$(jq -cn --arg content "$content" '{
+    slug:"merch",
+    type:"nip23",
+    title:"Merchandise",
+    content:$content,
+    product_enabled:false,
+    product_type:"software",
+    price:"",
+    currency:"USD",
+    crypto_discount_percent:0,
+    purchase_endpoint:"",
+    repo:"",
+    tag:"",
+    image_url:"",
+    variants:[],
+    extras_after:"",
+    extras_after_format:"markdown"
+  }')
+  ensure_unlisted_nip23_page "merch" "Merchandise" || return 1
+  blog_nostr_page_save_draft_state_json "merch" nip23 "$state_json"
+  jq -cn --argjson products "$products_json" '{slug:"merch", path:"/merch", products:$products}'
+}
+
 case "$action" in
   status)
     emit_success_runtime "Merch runtime loaded."
@@ -210,7 +357,72 @@ case "$action" in
       emit_failure "Could not load Printful sync products." "printful_products_failed"
       exit 0
     fi
-    jq -cn --argjson runtime "$(runtime_json)" --argjson products "$products" '{success:true, runtime:$runtime, products:$products}'
+    selection=$(blog_merch_selection_load_json)
+    rows=$(merch_list_products_json "$products" "$selection")
+    jq -cn --argjson runtime "$(runtime_json)" --argjson products "$products" --argjson rows "$rows" --argjson selection "$selection" '{success:true, runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
+    printf '\n'
+    ;;
+  save_selection)
+    if ! blog_plugin_enabled merch_store; then
+      emit_failure "Merch store plugin is disabled." "merch_store_disabled"
+      exit 0
+    fi
+    selection_json=$(blog_param selection_json)
+    [ -n "$selection_json" ] || selection_json='{}'
+    saved=$(blog_merch_selection_save_json "$selection_json" 2>/dev/null || printf '')
+    if [ -z "$saved" ]; then
+      emit_failure "Could not save merch product selection." "selection_save_failed"
+      exit 0
+    fi
+    jq -cn --argjson runtime "$(runtime_json)" --argjson selection "$saved" '{success:true, message:"Merch selection saved.", runtime:$runtime, selection:$selection}'
+    printf '\n'
+    ;;
+  sync_selected)
+    if ! blog_plugin_enabled merch_store; then
+      emit_failure "Merch store plugin is disabled." "merch_store_disabled"
+      exit 0
+    fi
+    selection=$(blog_merch_selection_load_json)
+    selected_count=$(printf '%s\n' "$selection" | jq -r '[.items[]? | select(.sync_enabled == true)] | length' 2>/dev/null || printf 0)
+    if [ "$selected_count" -lt 1 ]; then
+      emit_failure "No Printful products are selected for sync." "no_selected_products"
+      exit 0
+    fi
+    rows_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-merch-sync.XXXXXX")
+    printf '%s\n' "$selection" | jq -c '.items[]? | select(.sync_enabled == true)' > "$rows_tmp"
+    imported_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-merch-imported.XXXXXX")
+    printf '[' > "$imported_tmp"
+    first=true
+    while IFS= read -r row || [ -n "$row" ]; do
+      source_id=$(printf '%s\n' "$row" | jq -r '.source_id // ""' 2>/dev/null || printf '')
+      requested_slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+      imported=$(sync_printful_product_to_page_json "$source_id" "$requested_slug" 2>/dev/null || printf '')
+      [ -n "$imported" ] || continue
+      if [ "$first" = "true" ]; then
+        first=false
+      else
+        printf ',' >> "$imported_tmp"
+      fi
+      printf '%s\n' "$imported" >> "$imported_tmp"
+    done < "$rows_tmp"
+    rm -f "$rows_tmp"
+    printf ']\n' >> "$imported_tmp"
+    imported_json=$(cat "$imported_tmp" 2>/dev/null || printf '[]')
+    rm -f "$imported_tmp"
+    imported_count=$(printf '%s\n' "$imported_json" | jq -r 'length' 2>/dev/null || printf 0)
+    if [ "$imported_count" -lt 1 ]; then
+      emit_failure "Selected Printful products could not be synced." "sync_failed"
+      exit 0
+    fi
+    updated_selection=$(jq -cn --argjson selection "$selection" --argjson imported "$imported_json" '
+      def imported_slug($id): ($imported[]? | select(.source_id == $id) | .slug) // "";
+      $selection | .items = [.items[]? | . as $item | (imported_slug($item.source_id)) as $slug | if ($slug | length) > 0 then (.slug = $slug) else . end]
+    ')
+    saved=$(blog_merch_selection_save_json "$updated_selection")
+    landing=$(rebuild_merch_landing_page)
+    blog_run_build_async
+    jq -cn --argjson runtime "$(runtime_json)" --argjson selection "$saved" --argjson imported "$imported_json" --argjson landing "$landing" \
+      '{success:true, message:"Selected merch products synced.", runtime:$runtime, selection:$selection, imported:$imported, landing:$landing}'
     printf '\n'
     ;;
   import_printful_product|import_product)
@@ -223,23 +435,13 @@ case "$action" in
       emit_failure "printful_product_id is required." "missing_printful_product_id"
       exit 0
     fi
-    product_json=$(blog_printful_sync_product_json "$printful_product_id" 2>/dev/null || printf '')
-    if [ -z "$product_json" ]; then
-      emit_failure "Could not load Printful sync product." "printful_product_failed"
-      exit 0
-    fi
-    slug=$(sync_product_slug "$product_json")
-    state_json=$(sync_product_state_json "$slug" "$product_json" 2>/dev/null || printf '')
-    if [ -z "$state_json" ]; then
+    imported=$(sync_printful_product_to_page_json "$printful_product_id" "$(blog_param product_slug)" 2>/dev/null || printf '')
+    if [ -z "$imported" ]; then
       emit_failure "Could not normalize Printful product." "printful_product_invalid"
       exit 0
     fi
-    title=$(printf '%s\n' "$state_json" | jq -r '.title // ""' 2>/dev/null || printf '')
-    if ! ensure_unlisted_nip23_page "$slug" "$title"; then
-      emit_failure "A page with this slug already exists with a different type." "slug_conflict"
-      exit 0
-    fi
-    blog_nostr_page_save_draft_state_json "$slug" nip23 "$state_json"
+    slug=$(printf '%s\n' "$imported" | jq -r '.slug // ""')
+    state_json=$(printf '%s\n' "$imported" | jq -c '.state')
     blog_run_build_async
     jq -cn \
       --arg slug "$slug" \
