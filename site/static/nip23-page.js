@@ -1072,11 +1072,6 @@
           addCurrentProductToCart();
           return;
         }
-        if (action === 'checkout-now') {
-          event.preventDefault();
-          addCurrentProductToCart({ checkout: true });
-          return;
-        }
       }
       if (!isAdmin()) {
         return;

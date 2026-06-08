@@ -521,7 +521,6 @@
       if (!slug) {
         return;
       }
-      var checkoutNow = String(merchButton.getAttribute('data-merch-checkout') || '').toLowerCase() === 'true';
       var options = {
         variant_id: merchButton.getAttribute('data-merch-variant') || '',
         image_url: merchButton.getAttribute('data-merch-image') || ''
@@ -530,10 +529,6 @@
         merchButton.disabled = true;
       }
       addProductBySlug(slug, options).then(function () {
-        if (checkoutNow) {
-          window.location.href = '/checkout';
-          return;
-        }
         openDrawer();
       }).catch(function (err) {
         if (window.console && typeof window.console.warn === 'function') {
