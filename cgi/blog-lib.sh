@@ -100,10 +100,6 @@ BLOG_SESSION_AUTH_METHOD=${BLOG_SESSION_AUTH_METHOD-}
 BLOG_SESSION_FORCE_INTERACTIVE=${BLOG_SESSION_FORCE_INTERACTIVE-}
 
 blog_ensure_support_bin_path() {
-  if command -v config-get >/dev/null 2>&1 && command -v config-set >/dev/null 2>&1; then
-    return 0
-  fi
-
   for candidate_dir in \
     "$blog_sites_dir/app/cgi-bin" \
     "$blog_sites_dir/site/cgi-bin" \
@@ -120,6 +116,10 @@ blog_ensure_support_bin_path() {
       return 0
     fi
   done
+
+  if command -v config-get >/dev/null 2>&1 && command -v config-set >/dev/null 2>&1; then
+    return 0
+  fi
 }
 
 blog_ensure_support_bin_path
@@ -1240,10 +1240,11 @@ blog_origin_emit_file_json() {
 }
 
 blog_origin_crossposting_config_json() {
-  available=false
-  if blog_origin_available; then
-    available=true
+  if ! blog_origin_available; then
+    printf '{"available":false,"public_base_url":"","platforms":[]}\n'
+    return 0
   fi
+  available=true
   meta_json=$(blog_origin_platform_meta_json)
   enabled_json=$(blog_origin_enabled_platforms_json)
   default_json=$(blog_origin_default_platforms_json)
@@ -4031,6 +4032,29 @@ blog_nostr_site_npub() {
   printf '%s\n' "$encoded" > "$cache_file"
   chmod 600 "$cache_file" 2>/dev/null || true
   printf '%s\n' "$encoded"
+}
+
+blog_nostr_cached_site_npub() {
+  cache_file="$blog_nostr_state_dir/site_npub"
+  if [ -f "$cache_file" ]; then
+    cached=$(sed -n '1p' "$cache_file" 2>/dev/null | tr -d '\r\n[:space:]')
+    cached=$(blog_validate_nostr_npub "$cached" 2>/dev/null || printf '')
+    if [ -n "$cached" ]; then
+      printf '%s\n' "$cached"
+      return 0
+    fi
+  fi
+
+  if [ -f "$blog_nostr_state_dir/site_pubkey" ]; then
+    cached_pubkey=$(sed -n '1p' "$blog_nostr_state_dir/site_pubkey" 2>/dev/null | tr -d '\r\n[:space:]')
+    cached_pubkey=$(blog_validate_nostr_pubkey "$cached_pubkey" 2>/dev/null || printf '')
+    if [ -n "$cached_pubkey" ]; then
+      blog_nostr_pubkey_to_npub "$cached_pubkey" 2>/dev/null || return 1
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 blog_nostr_relays_args() {

@@ -9,7 +9,6 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-video-chat-schedule-common.sh"
 
 blog_init
-blog_overworld_setup
 blog_send_json_headers
 
 registration_enabled='true'
@@ -188,9 +187,17 @@ else
   zaps_enabled='false'
 fi
 zap_lud16=$(printf '%s' "$zap_lud16" | tr -d '\r\n[:space:]')
-zap_effective_lud16=$(blog_zap_effective_lud16 2>/dev/null || printf '')
-zap_lud16_source=$(blog_zap_lud16_source 2>/dev/null || printf 'unavailable')
-zap_demo_wallet_npub=$(blog_nostr_site_npub 2>/dev/null || printf '')
+zap_demo_wallet_npub=$(blog_nostr_cached_site_npub 2>/dev/null || printf '')
+if [ -n "$zap_lud16" ]; then
+  zap_effective_lud16=$(printf '%s\n' "$zap_lud16" | tr '[:upper:]' '[:lower:]')
+  zap_lud16_source='configured'
+elif [ -n "$zap_demo_wallet_npub" ]; then
+  zap_effective_lud16=$(printf '%s@npub.cash\n' "$zap_demo_wallet_npub")
+  zap_lud16_source='demo'
+else
+  zap_effective_lud16=''
+  zap_lud16_source='unavailable'
+fi
 if [ -n "$zap_demo_wallet_npub" ]; then
   zap_demo_wallet_available=true
 else
@@ -233,9 +240,19 @@ if [ "$video_chat_token_ttl_seconds_raw" -gt 86400 ]; then
 fi
 case "$video_chat_public_rooms" in true|false) ;; *) video_chat_public_rooms=false ;; esac
 video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch)
-video_chat_rooms_json=$(blog_video_chat_manual_rooms_json "$video_chat_rooms" "$video_chat_schedule_now")
-video_chat_active_rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
-video_chat_room_theme_images_json=$(blog_video_chat_room_theme_images_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
+if [ "$plugin_video_chat" = 'true' ] || [ -n "$video_chat_rooms" ] || [ -n "$video_chat_scheduled_rooms" ] || [ "$video_chat_public_rooms" = 'true' ]; then
+  video_chat_rooms_json=$(blog_video_chat_manual_rooms_json "$video_chat_rooms" "$video_chat_schedule_now")
+  video_chat_active_rooms_json=$(blog_video_chat_public_rooms_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
+  video_chat_room_theme_images_json=$(blog_video_chat_room_theme_images_json "$video_chat_rooms" "$video_chat_scheduled_rooms" "$video_chat_schedule_now")
+  video_chat_room_settings_text=$(printf '%s\n' "$video_chat_rooms" | tr ';,' '\n\n')
+  video_chat_scheduled_rooms_text=$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')
+else
+  video_chat_rooms_json='[]'
+  video_chat_active_rooms_json='[]'
+  video_chat_room_theme_images_json='{}'
+  video_chat_room_settings_text=''
+  video_chat_scheduled_rooms_text=''
+fi
 overworld_anonymous_enabled=$(normalize_bool_with_default "$overworld_anonymous_enabled_raw" 'true')
 overworld_show_hidden=$(normalize_bool_with_default "$overworld_show_hidden_raw" 'false')
 case "$overworld_anonymous_time_limit_seconds_raw" in ''|*[!0-9]*) overworld_anonymous_time_limit_seconds_raw=900 ;; esac
@@ -253,7 +270,16 @@ if [ "$overworld_max_entries_raw" -gt 300 ]; then
   overworld_max_entries_raw=300
 fi
 case "$overworld_access_mode_raw" in web) overworld_access_mode=web ;; *) overworld_access_mode=player ;; esac
-overworld_effective_start_path=$(blog_overworld_start_path 2>/dev/null || printf '')
+overworld_effective_start_path=''
+if [ -n "$overworld_start_path" ]; then
+  overworld_effective_start_path=$(blog_overworld_canonical_path "$overworld_start_path" 2>/dev/null || printf '')
+  if [ -n "$overworld_effective_start_path" ] && [ ! -d "$overworld_effective_start_path" ]; then
+    overworld_effective_start_path=''
+  fi
+fi
+if [ -z "$overworld_effective_start_path" ]; then
+  overworld_effective_start_path=$(blog_overworld_canonical_path "$(blog_overworld_sandbox_dir)" 2>/dev/null || printf '')
+fi
 
 printf '{"success":true,'
 printf '"registration_enabled":%s,' "$registration_enabled"
@@ -285,8 +311,8 @@ printf '"video_chat":{"participant_limit":%s,"token_ttl_seconds":%s,"janus_wss":
   "$video_chat_public_rooms" \
   "$video_chat_rooms_json" \
   "$video_chat_active_rooms_json" \
-  "$(blog_json_escape "$(printf '%s\n' "$video_chat_rooms" | tr ';,' '\n\n')")" \
-  "$(blog_json_escape "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')")" \
+  "$(blog_json_escape "$video_chat_room_settings_text")" \
+  "$(blog_json_escape "$video_chat_scheduled_rooms_text")" \
   "$video_chat_room_theme_images_json"
 printf '"overworld":{"anonymous_enabled":%s,"anonymous_time_limit_seconds":%s,"show_hidden":%s,"start_path":"%s","effective_start_path":"%s","access_mode":"%s","max_entries":%s,"include_syntax":"{{overworld-game}}"},' \
   "$overworld_anonymous_enabled" \
