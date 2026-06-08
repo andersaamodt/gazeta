@@ -54,6 +54,7 @@
       overworld: false
     },
     pluginsSaveTimer: null,
+    configLoadPromise: null,
     videoChatConfig: {
       participant_limit: 6,
       token_ttl_seconds: 3600,
@@ -1289,51 +1290,10 @@
     }
     state.preloadAdminStarted = true;
 
-    const configTask = loadConfig();
-    const jobs = [
-      {
-        sections: ['settings'],
-        task: configTask
-      },
-      {
-        sections: ['plugins'],
-        task: configTask
-      },
-      {
-        sections: ['nostr-bridge'],
-        task: loadNosterRuntime()
-      },
-      {
-        sections: ['zaps'],
-        task: configTask.then(function () { return loadZapsRuntime(); })
-      },
-      {
-        sections: ['btcpay'],
-        task: loadBtcpayRuntime()
-      },
-      {
-        sections: ['btcpay-checkout'],
-        task: loadBtcpayCheckoutRuntime()
-      }
-    ].filter(function (job) {
-      return !job.sections.every(function (section) {
-        return !!state.loadedAdminSections[section];
-      });
-    });
-
     try {
-      await Promise.all(jobs.map(async function (job) {
-        try {
-          await job.task;
-          job.sections.forEach(function (section) {
-            state.loadedAdminSections[section] = true;
-          });
-        } catch (_err) {
-          job.sections.forEach(function (section) {
-            state.loadedAdminSections[section] = false;
-          });
-        }
-      }));
+      await loadConfig();
+      state.loadedAdminSections.settings = true;
+      state.loadedAdminSections.plugins = true;
       state.preloadAdminDone = true;
     } finally {
       state.preloadAdminStarted = false;
@@ -4688,6 +4648,10 @@
   }
 
   async function loadConfig() {
+    if (state.configLoadPromise) {
+      return state.configLoadPromise;
+    }
+    state.configLoadPromise = (async function () {
     state.isLoadingConfig = true;
     try {
       const data = await fetchJson('/cgi/blog-get-config');
@@ -4767,7 +4731,10 @@
       }
     } finally {
       state.isLoadingConfig = false;
+      state.configLoadPromise = null;
     }
+    })();
+    return state.configLoadPromise;
   }
 
   async function saveConfig() {
