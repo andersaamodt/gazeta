@@ -282,6 +282,10 @@ body:has(.post-single-item.post-single-has-wide-content) {
   max-width: var(--blog-post-resizable-width, 72rem);
 }
 
+body:has(.merch-page) {
+  max-width: 72rem;
+}
+
 body.blog-post-resize-enabled {
   max-width: min(1820px, calc(100vw - 0.75rem));
 }
@@ -15090,6 +15094,10 @@ body:not(.blog-post-resize-enabled):not(.list-page-wide):not(:has(.post-single-i
   width: min(100%, var(--site-content-width));
   margin-left: auto;
   margin-right: auto;
+}
+
+body:has(.merch-page):not(.blog-post-resize-enabled):not(.list-page-wide):not(:has(.post-single-item)) #main-content {
+  width: min(100%, 72rem);
 }
 
 nav.site-nav {
