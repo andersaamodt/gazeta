@@ -4229,6 +4229,10 @@ body.nav-cart-open {
   gap: 1rem;
 }
 
+.merch-page .nip23-product-more-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .nip23-product-info-card {
   border: 1px solid color-mix(in srgb, var(--border, #c8d4f3) 78%, white 22%);
   border-radius: 12px;
