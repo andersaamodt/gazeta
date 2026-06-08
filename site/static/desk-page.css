@@ -1004,8 +1004,8 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 .desk-map-zoom-btn:focus-visible,
 .desk-map-close:hover,
 .desk-map-close:focus-visible {
-  background: rgba(93, 69, 39, 0.14) !important;
-  background-color: rgba(93, 69, 39, 0.14) !important;
+  background: #e8cf8b;
+  background-color: #e8cf8b;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
   filter: none !important;
@@ -1554,7 +1554,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-dim.is-outdoor {
   fill: rgba(44, 51, 31, 0.46);
-  opacity: calc(0.42 - var(--presence) * 0.32);
+  opacity: 0;
 }
 
 .desk-map-room-presence {
@@ -1567,7 +1567,7 @@ body:has(#desk-page-root) nav.site-nav .nav-login-menu :where(a, button, .nav-me
 
 .desk-map-room-presence.is-outdoor {
   fill: url(#desk-map-presence-glow-outdoor);
-  opacity: calc(var(--presence) * 0.28);
+  opacity: 0;
 }
 
 .desk-map-room-light-gradients {

@@ -178,6 +178,7 @@ fallback_payload_json() {
   slug=$(blog_nostr_page_slug "$slug_in")
   [ -n "$slug" ] || return 1
   state_json=''
+  validation_json='{"errors":[],"warnings":[],"can_publish":true}'
   case "$page_type" in
     public-ranking)
       canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
@@ -190,21 +191,37 @@ fallback_payload_json() {
       [ -n "$state_json" ] || state_json=$(blog_public_ranking_default_state_json "$slug")
       nodes_json=$(public_ranking_prerender_nodes_json "$state_json")
       state_json=$(printf '%s\n' "$state_json" | jq -c --argjson nodes "$nodes_json" '. + {nodes: $nodes}' 2>/dev/null || printf '%s\n' "$state_json")
+      validation_json=$(blog_public_ranking_validate_and_enrich_state_json "$state_json" false 2>/dev/null || printf '%s\n' "$validation_json")
       ;;
     contact)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_contact_default_state_json "$slug")
+      validation_json=$(blog_contact_validate_and_enrich_state_json "$state_json" false 2>/dev/null || printf '%s\n' "$validation_json")
+      state_json=$(printf '%s\n' "$state_json" | jq -c --argjson validation "$validation_json" '. + {rows: ($validation.rows // .rows // []), content_json: ($validation.content_json // .content_json)}' 2>/dev/null || printf '%s\n' "$state_json")
       ;;
     nip23|blog)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type")
+      validation_json=$(blog_nip23_validate_and_enrich_state_json "$state_json" false 2>/dev/null || printf '%s\n' "$validation_json")
       ;;
     list|icon-gallery|software-gallery)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_list_default_state_json "$slug")
+      validation_json=$(jq -cn --argjson state "$state_json" '{
+        elements: ($state.elements // []),
+        entries: ($state.entries // []),
+        errors: [],
+        warnings: [],
+        can_publish: true
+      }')
+      validation_json=$(blog_list_merge_public_activity_json "$state_json" "$validation_json" "" 2>/dev/null || printf '%s\n' "$validation_json")
+      validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-prerender-validation.XXXXXX")
+      printf '%s\n' "$validation_json" > "$validation_tmp"
+      state_json=$(printf '%s\n' "$state_json" | jq -c --slurpfile validation "$validation_tmp" '. + {elements: ($validation[0].elements // []), entries: ($validation[0].entries // [])}' 2>/dev/null || printf '%s\n' "$state_json")
+      rm -f "$validation_tmp"
       ;;
     *)
       return 1
       ;;
   esac
-  jq -cn --arg slug "$slug" --arg page_type "$page_type" --argjson state "$state_json" '{
+  jq -cn --arg slug "$slug" --arg page_type "$page_type" --argjson state "$state_json" --argjson validation "$validation_json" '{
     success: true,
     slug: $slug,
     page_type: $page_type,
@@ -215,7 +232,11 @@ fallback_payload_json() {
     draft_differs: false,
     state: $state,
     canonical_state: $state,
-    validation: { errors: [], warnings: [], can_publish: true }
+    validation: {
+      errors: ($validation.errors // []),
+      warnings: ($validation.warnings // []),
+      can_publish: ($validation.can_publish // true)
+    }
   }'
 }
 
@@ -296,7 +317,13 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
     continue
   fi
   is_prerender_type "$page_type" || continue
-  payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
+  payload_json=''
+  if blog_nostr_page_load_draft_state_json "$slug" "$page_type" >/dev/null 2>&1; then
+    payload_json=$(fallback_payload_json "$slug" "$page_type" 2>/dev/null || printf '')
+  fi
+  if [ -z "$payload_json" ]; then
+    payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
+  fi
   if [ -z "$payload_json" ]; then
     payload_json=$(fallback_payload_json "$slug" "$page_type" 2>/dev/null || printf '')
   fi
