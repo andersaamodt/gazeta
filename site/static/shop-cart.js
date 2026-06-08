@@ -508,6 +508,43 @@
     }
 
     document.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var merchButton = target.closest('[data-merch-add]');
+      if (!(merchButton instanceof HTMLElement)) {
+        return;
+      }
+      event.preventDefault();
+      var slug = String(merchButton.getAttribute('data-merch-add') || '').trim();
+      if (!slug) {
+        return;
+      }
+      var checkoutNow = String(merchButton.getAttribute('data-merch-checkout') || '').toLowerCase() === 'true';
+      var options = {
+        variant_id: merchButton.getAttribute('data-merch-variant') || '',
+        image_url: merchButton.getAttribute('data-merch-image') || ''
+      };
+      if (merchButton instanceof HTMLButtonElement) {
+        merchButton.disabled = true;
+      }
+      addProductBySlug(slug, options).then(function () {
+        if (checkoutNow) {
+          window.location.href = '/checkout';
+          return;
+        }
+        openDrawer();
+      }).catch(function () {
+        openDrawer();
+      }).then(function () {
+        if (merchButton instanceof HTMLButtonElement) {
+          merchButton.disabled = false;
+        }
+      });
+    });
+
+    document.addEventListener('click', function (event) {
       if (!els.drawer || els.drawer.hidden) {
         return;
       }
