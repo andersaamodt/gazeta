@@ -4258,6 +4258,22 @@ body.nav-cart-open {
   background: color-mix(in srgb, var(--post-card-bg-single, #fff) 88%, var(--bg, #f7efe2) 12%);
 }
 
+.merch-product-card h2 {
+  margin: 0.58rem 0 0.34rem;
+  font-size: 0.98rem;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.merch-product-card h2 a {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
 .nip23-product-info-card h3 {
   margin: 0 0 0.42rem;
   font-size: 1rem;
