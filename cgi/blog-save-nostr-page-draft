@@ -168,6 +168,7 @@ if [ -z "$state_json" ]; then
         image_url: (.image_url // ""),
         fulfillment_provider: (.fulfillment_provider // ""),
         printful_product_id: (.printful_product_id // ""),
+        printful_product_template_id: (.printful_product_template_id // ""),
         printful_sync_variant_id: (.printful_sync_variant_id // ""),
         printful_external_variant_id: (.printful_external_variant_id // ""),
         variants: (if ((.variants // null) | type) == "array" then .variants else [] end)
@@ -176,6 +177,7 @@ if [ -z "$state_json" ]; then
         image_url: ($local.image_url // ""),
         fulfillment_provider: ($local.fulfillment_provider // ""),
         printful_product_id: ($local.printful_product_id // ""),
+        printful_product_template_id: ($local.printful_product_template_id // ""),
         printful_sync_variant_id: ($local.printful_sync_variant_id // ""),
         printful_external_variant_id: ($local.printful_external_variant_id // ""),
         variants: ($local.variants // [])

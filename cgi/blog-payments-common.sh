@@ -464,6 +464,7 @@ blog_payments_product_state_json() {
       image_url: (.image_url // ""),
       fulfillment_provider: (.fulfillment_provider // ""),
       printful_product_id: (.printful_product_id // ""),
+      printful_product_template_id: (.printful_product_template_id // ""),
       printful_sync_variant_id: (.printful_sync_variant_id // ""),
       printful_external_variant_id: (.printful_external_variant_id // ""),
       variants: (if ((.variants // null) | type) == "array" then .variants else [] end)
@@ -480,6 +481,7 @@ blog_payments_product_state_json() {
       image_url: ($local.image_url // .image_url // ""),
       fulfillment_provider: ($local.fulfillment_provider // .fulfillment_provider // ""),
       printful_product_id: ($local.printful_product_id // .printful_product_id // ""),
+      printful_product_template_id: ($local.printful_product_template_id // .printful_product_template_id // ""),
       printful_sync_variant_id: ($local.printful_sync_variant_id // .printful_sync_variant_id // ""),
       printful_external_variant_id: ($local.printful_external_variant_id // .printful_external_variant_id // ""),
       variants: ($local.variants // .variants // [])
@@ -505,6 +507,7 @@ blog_payments_public_product_json() {
   image_url=$(printf '%s\n' "$state_json" | jq -r '.image_url // ""' 2>/dev/null || printf '')
   fulfillment_provider=$(printf '%s\n' "$state_json" | jq -r '.fulfillment_provider // ""' 2>/dev/null || printf '')
   printful_product_id=$(printf '%s\n' "$state_json" | jq -r '.printful_product_id // ""' 2>/dev/null || printf '')
+  printful_product_template_id=$(printf '%s\n' "$state_json" | jq -r '.printful_product_template_id // ""' 2>/dev/null || printf '')
   printful_sync_variant_id=$(printf '%s\n' "$state_json" | jq -r '.printful_sync_variant_id // ""' 2>/dev/null || printf '')
   printful_external_variant_id=$(printf '%s\n' "$state_json" | jq -r '.printful_external_variant_id // ""' 2>/dev/null || printf '')
   if [ -z "$purchase_endpoint" ]; then
@@ -520,6 +523,7 @@ blog_payments_public_product_json() {
     --arg default_currency "$currency" \
     --arg default_image_url "$image_url" \
     --arg default_fulfillment_provider "$fulfillment_provider" \
+    --arg root_printful_product_template_id "$printful_product_template_id" \
     --arg root_printful_sync_variant_id "$printful_sync_variant_id" \
     --arg root_printful_external_variant_id "$printful_external_variant_id" \
     'def clean_price($v; $fallback):
@@ -541,7 +545,8 @@ blog_payments_public_product_json() {
          fulfillment_provider: clean_provider(.fulfillment_provider // $default_fulfillment_provider),
          printful_sync_variant_id: ((.printful_sync_variant_id // .sync_variant_id // "") | tostring),
          printful_external_variant_id: ((.printful_external_variant_id // .external_variant_id // "") | tostring),
-         printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring)
+         printful_variant_id: ((.printful_variant_id // .variant_id // "") | tostring),
+         printful_product_template_id: ((.printful_product_template_id // .product_template_id // $root_printful_product_template_id // "") | tostring)
        }
        | .id = (if ((.id // "") | length) > 0 then .id elif ((.printful_sync_variant_id // "") | length) > 0 then .printful_sync_variant_id elif ((.printful_external_variant_id // "") | length) > 0 then .printful_external_variant_id else "" end)
        | select((.id | length) > 0);
@@ -557,7 +562,8 @@ blog_payments_public_product_json() {
            fulfillment_provider: $default_fulfillment_provider,
            printful_sync_variant_id: $root_printful_sync_variant_id,
            printful_external_variant_id: $root_printful_external_variant_id,
-           printful_variant_id: ""
+           printful_variant_id: "",
+           printful_product_template_id: $root_printful_product_template_id
          }]
        else [] end' 2>/dev/null || printf '[]')
   first_variant_price=$(printf '%s\n' "$variants_json" | jq -r '.[0].price // ""' 2>/dev/null || printf '')
@@ -587,6 +593,7 @@ blog_payments_public_product_json() {
     --arg image_url "$image_url" \
     --arg fulfillment_provider "$fulfillment_provider" \
     --arg printful_product_id "$printful_product_id" \
+    --arg printful_product_template_id "$printful_product_template_id" \
     --arg printful_sync_variant_id "$printful_sync_variant_id" \
     --arg printful_external_variant_id "$printful_external_variant_id" \
     --argjson variants "$variants_json" \
@@ -604,6 +611,7 @@ blog_payments_public_product_json() {
       image_url: $image_url,
       fulfillment_provider: $fulfillment_provider,
       printful_product_id: $printful_product_id,
+      printful_product_template_id: $printful_product_template_id,
       printful_sync_variant_id: $printful_sync_variant_id,
       printful_external_variant_id: $printful_external_variant_id,
       variants: $variants
