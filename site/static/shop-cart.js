@@ -535,7 +535,10 @@
           return;
         }
         openDrawer();
-      }).catch(function () {
+      }).catch(function (err) {
+        if (window.console && typeof window.console.warn === 'function') {
+          window.console.warn('Could not add merch product to cart:', err && err.message ? err.message : err);
+        }
         openDrawer();
       }).then(function () {
         if (merchButton instanceof HTMLButtonElement) {
