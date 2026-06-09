@@ -1051,6 +1051,24 @@
     }
   }
 
+  function resetAdminSectionArtifacts(sectionName) {
+    const section = sectionNodeForName(sectionName);
+    if (!section) {
+      return;
+    }
+    Array.from(section.querySelectorAll('.output')).forEach(function (node) {
+      node.innerHTML = '';
+    });
+    Array.from(section.querySelectorAll('.runtime-setting-item')).forEach(function (node) {
+      if (node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    });
+    section.setAttribute('aria-hidden', 'true');
+    section.classList.remove('is-loading');
+    section.removeAttribute('aria-busy');
+  }
+
   function activateSection(name, updateHash) {
     let sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
     if (state.isAdmin) {
@@ -1065,6 +1083,9 @@
       } else {
         resetPostCrosspostDialogState();
       }
+    }
+    if (state.activeSection && state.activeSection !== sectionName) {
+      resetAdminSectionArtifacts(state.activeSection);
     }
     state.activeSection = sectionName;
     syncAdminDocumentTitle(sectionName);
@@ -1090,6 +1111,7 @@
       const active = section.getAttribute('data-admin-section') === sectionName;
       section.classList.toggle('is-active', active);
       section.hidden = !active;
+      section.setAttribute('aria-hidden', active ? 'false' : 'true');
     });
     if (adminSectionNeedsLazyLoad(sectionName)) {
       setAdminSectionLoading(sectionName, true);
@@ -3999,6 +4021,14 @@
       }
       if (section) {
         section.hidden = !visible || section.getAttribute('data-admin-section') !== state.activeSection;
+        section.classList.toggle(
+          'is-active',
+          visible && section.getAttribute('data-admin-section') === state.activeSection
+        );
+        section.setAttribute(
+          'aria-hidden',
+          String(!visible || section.getAttribute('data-admin-section') !== state.activeSection)
+        );
       }
     });
     if (state.isAdmin && state.activeSection && Object.prototype.hasOwnProperty.call(sectionByPlugin, state.activeSection) && !sectionByPlugin[state.activeSection]) {
