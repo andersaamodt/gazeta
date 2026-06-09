@@ -151,14 +151,39 @@ blog_printful_status_json() {
   jq -cn '{api_ready:false, stores:null}'
 }
 
+blog_printful_extract_products_json() {
+  raw_json=${1-}
+  [ -n "$raw_json" ] || return 1
+  printf '%s\n' "$raw_json" | jq -ec '
+    if type == "array" then
+      .
+    elif type == "object" then
+      if (.result | type) == "array" then .result
+      elif (.data | type) == "array" then .data
+      elif (.products | type) == "array" then .products
+      elif (.sync_products | type) == "array" then .sync_products
+      elif (.items | type) == "array" then .items
+      elif (.sync_variants | type) == "array" then .sync_variants
+      else empty
+      end
+    else
+      empty
+    end
+  ' 2>/dev/null
+}
+
 blog_printful_sync_products_json() {
   for path in \
     '/sync/products?limit=100&offset=0' \
     '/sync/products?limit=100' \
     '/store/products?limit=100&offset=0' \
-    '/store/products?limit=100'; do
+    '/store/products?limit=100' \
+    '/v2/sync/products?limit=100&offset=0' \
+    '/v2/sync/products?limit=100' \
+    '/products?limit=100&offset=0' \
+    '/products?limit=100'; do
     products=$(blog_printful_api_json GET "$path" '' 2>/dev/null || printf '')
-    if [ -n "$products" ]; then
+    if [ -n "$products" ] && blog_printful_extract_products_json "$products" >/dev/null 2>&1; then
       printf '%s\n' "$products"
       return 0
     fi

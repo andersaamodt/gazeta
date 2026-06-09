@@ -191,7 +191,14 @@ merch_list_products_json() {
   products=${1-}
   selection=${2-}
   jq -cn --argjson products "$products" --argjson selection "$selection" '
-    def source_id($p): (($p.id // $p.sync_product_id // "") | tostring);
+    def source_id($p):
+      (($p.id // $p.sync_product_id // $p.sync_product.id // $p.product_id // $p.external_id // "") | tostring);
+    def rows($root):
+      if ($root | type) == "array" then $root
+      elif ($root | type) == "object" then
+        (($root.sync_products // $root.products // $root.data // $root.result // $root.items // []) | if type == "array" then . else [] end)
+      else []
+      end;
     def selected_for($id):
       ($selection.items // [] | map(select(.provider == "printful" and .source_type == "sync_product" and .source_id == $id)) | first) // {};
     def product_row($p):
@@ -202,7 +209,7 @@ merch_list_products_json() {
           source_type: "sync_product",
           source_id: $id,
           name: (($p.name // $p.title // ("Printful product " + $id)) | tostring),
-          thumbnail_url: (($p.thumbnail_url // "") | tostring),
+          thumbnail_url: (($p.thumbnail_url // $p.image_url // $p.image // $p.image_urls[0] // "") | tostring),
           variant_count: (($p.variants // $p.sync_variants // []) | if type == "array" then length else 0 end),
           synced: ((($sel.slug // "") | length) > 0),
           slug: (($sel.slug // "") | tostring),
@@ -211,10 +218,7 @@ merch_list_products_json() {
           sort_order: (($sel.sort_order // 0) | tonumber? // 0)
         }
       | select((.source_id | length) > 0);
-    (($products.result // $products) as $root
-      | if ($root | type) == "array" then $root
-        elif ($root | type) == "object" then (($root.sync_products // $root.products // []) | if type == "array" then . else [] end)
-        else [] end) as $printful_rows
+    (rows($products) as $printful_rows
     | ($printful_rows | map(product_row(.))) as $rows
     | ($rows | map(.source_id)) as $seen
     | ($selection.items // []
