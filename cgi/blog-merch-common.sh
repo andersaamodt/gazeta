@@ -79,6 +79,18 @@ blog_printful_headers_args() {
   fi
 }
 
+blog_printful_set_error() {
+  blog_printful_api_error=${1-}
+}
+
+blog_printful_clear_error() {
+  blog_printful_api_error=
+}
+
+blog_printful_api_last_error() {
+  printf '%s\n' "$blog_printful_api_error"
+}
+
 blog_printful_api_json() {
   method=${1-GET}
   path=${2-}
@@ -102,12 +114,31 @@ blog_printful_api_json() {
   done < "$headers_file"
   rm -f "$headers_file"
   set -- "$@" "$url"
+  blog_printful_clear_error
   http_code=$("$@" 2>/dev/null || printf '000')
   body=$(cat "$tmp" 2>/dev/null || printf '')
   rm -f "$tmp"
   case "$http_code" in
-    200|201) printf '%s\n' "$body" | jq -c '.' 2>/dev/null ;;
-    *) return 1 ;;
+    200|201)
+      if printf '%s' "$body" | jq -e '.' >/dev/null 2>&1; then
+        printf '%s\n' "$body" | jq -c '.' 2>/dev/null
+        return 0
+      fi
+      blog_printful_set_error "Printful API returned non-JSON payload (HTTP ${http_code}) for ${url}."
+      return 1
+      ;;
+    *)
+      preview=''
+      if [ -n "$body" ]; then
+        preview=$(printf '%s' "$body" | tr '\n' ' ' | cut -c 1-220)
+      fi
+      if [ -n "$preview" ]; then
+        blog_printful_set_error "Printful API request to ${path} returned HTTP ${http_code}: ${preview}"
+      else
+        blog_printful_set_error "Printful API request to ${path} returned HTTP ${http_code}."
+      fi
+      return 1
+      ;;
   esac
 }
 
@@ -121,7 +152,18 @@ blog_printful_status_json() {
 }
 
 blog_printful_sync_products_json() {
-  blog_printful_api_json GET '/sync/products?limit=100' ''
+  for path in \
+    '/sync/products?limit=100&offset=0' \
+    '/sync/products?limit=100' \
+    '/store/products?limit=100&offset=0' \
+    '/store/products?limit=100'; do
+    products=$(blog_printful_api_json GET "$path" '' 2>/dev/null || printf '')
+    if [ -n "$products" ]; then
+      printf '%s\n' "$products"
+      return 0
+    fi
+  done
+  return 1
 }
 
 blog_printful_sync_product_json() {

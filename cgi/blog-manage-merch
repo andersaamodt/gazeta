@@ -362,9 +362,16 @@ case "$action" in
     fi
     products=$(blog_printful_sync_products_json 2>/dev/null || printf '')
     if [ -z "$products" ]; then
+      printful_error=$(blog_printful_api_last_error)
+      if [ -n "$printful_error" ]; then
+        warning="Could not load Printful sync products. ${printful_error}"
+      else
+        warning="Could not load Printful sync products. Check the Printful API token, store id, and network connection."
+      fi
       rows=$(merch_list_products_json '{"result":[]}' "$selection")
       jq -cn --argjson runtime "$(runtime_json)" --argjson products '{"result":[]}' --argjson rows "$rows" --argjson selection "$selection" \
-        '{success:true, warning:"Could not load Printful sync products. Check the Printful API token, store id, and network connection.", code:"printful_products_failed", runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
+        --arg warning "$warning" \
+        '{success:true, warning:$warning, code:"printful_products_failed", runtime:$runtime, products:$products, selection:$selection, merch_products:$rows}'
       printf '\n'
       exit 0
     fi
