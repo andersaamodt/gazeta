@@ -18,8 +18,8 @@
 
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
-  - public archive/tag indexes once they have stable artifact files
 - public search after a Tantivy/file-index contract exists
+- `blog-comments`, `blog-post-context`, and `blog-get-product` need explicit Nostr/payments-safe fixture contracts before migration.
 - Add replay fixtures before each endpoint switch.
 
 ## Runtime Boundaries
