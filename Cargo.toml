@@ -1,0 +1,20 @@
+[package]
+name = "gazeta-theurgy"
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-OWL-3.1"
+description = "Theurgy read runtime for Gazeta."
+
+[[bin]]
+name = "gazeta-read"
+path = "src/bin/gazeta-read.rs"
+
+[dependencies]
+serde_json = "1"
+
+[package.metadata.theurgy.web_runtime]
+track = "enterprise-web"
+runtime = "theurgy-web"
+truth = "file-first"
+adapter = "cgi-compat"
+phase = "gazeta-read-endpoints"

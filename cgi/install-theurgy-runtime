@@ -1,0 +1,12 @@
+#!/bin/sh
+# Build Gazeta Theurgy runtime binaries for CGI adapters.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+
+cd "$REPO_ROOT"
+cargo build --release --bin gazeta-read
+
+printf '%s\n' "$REPO_ROOT/target/release/gazeta-read"

@@ -5,6 +5,7 @@
 *.swp
 .sitedata/
 .web-libs/
+target/
 build/
 nginx/
 site.conf

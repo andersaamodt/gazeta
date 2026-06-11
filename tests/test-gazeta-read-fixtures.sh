@@ -33,7 +33,7 @@ Replay body.
 POST
 
 fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/list-public-posts"
-payload=$("$THEURGY_REPLAY" "$fixture" -- "$ROOT_DIR/cgi/blog-list-public-posts")
+payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$fixture" -- "$ROOT_DIR/cgi/blog-list-public-posts")
 json_payload=$(printf '%s\n' "$payload" | sed -n '/^{/,$p')
 
 printf '%s\n' "$json_payload" | jq -e '.success == true' >/dev/null

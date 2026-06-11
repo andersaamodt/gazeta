@@ -158,6 +158,21 @@ cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/
 - Comments are read from locally mirrored events only.
 - “Refresh comments” runs an explicit mirror action; render paths never perform live relay fetches.
 
+## Theurgy Runtime
+
+Gazeta is migrating hot read paths to the Theurgy web runtime while keeping CGI front doors compatible with Wizardry hosting.
+
+- `gazeta-read` handles migrated read endpoints.
+- `cgi/blog-list-public-posts` is now a small CGI adapter that execs `gazeta-read list-public-posts`.
+- `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
+- Build runtime binaries with:
+
+```sh
+cgi/install-theurgy-runtime
+```
+
+The CGI adapter runs `GAZETA_READ_RUNTIME` when set, then `target/release/gazeta-read`, then `target/debug/gazeta-read`. It only uses `cargo run` when `GAZETA_THEURGY_ALLOW_CARGO=1` is set for local replay tests.
+
 ## Nostr Bridge (Phase 2)
 
 - Posts publish as kind `30023` events with slug-only `d` identity.
