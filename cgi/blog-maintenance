@@ -1,0 +1,38 @@
+#!/bin/sh
+# Local maintenance entrypoint for Gazeta-derived indexes and caches.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
+  script_site_root=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+  : "${WIZARDRY_SITES_DIR:=$(dirname "$script_site_root")}"
+  : "${WIZARDRY_SITE_NAME:=$(basename "$script_site_root")}"
+  export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
+fi
+
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+
+action=${1:-rebuild-indexes}
+
+case "$action" in
+  rebuild-indexes | rebuild-caches | rebuild-public-posts)
+    blog_public_posts_catalog_write_artifacts
+    static_path=$(blog_public_posts_catalog_static_path)
+    cache_path=$(blog_public_posts_catalog_cache_path)
+    post_count=$(jq -r '(.posts // []) | length' "$static_path" 2>/dev/null || printf '0')
+    jq -cn \
+      --arg action "$action" \
+      --arg static_path "$static_path" \
+      --arg cache_path "$cache_path" \
+      --argjson post_count "$post_count" \
+      '{success:true,action:$action,rebuilt:["public-posts"],static_path:$static_path,cache_path:$cache_path,post_count:$post_count}'
+    ;;
+  *)
+    jq -cn \
+      --arg action "$action" \
+      '{success:false,code:"bad_action",error:("Unknown Gazeta maintenance action: " + $action)}'
+    ;;
+esac
