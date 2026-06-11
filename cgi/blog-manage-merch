@@ -210,7 +210,14 @@ merch_list_products_json() {
           source_id: $id,
           name: (($p.name // $p.title // ("Printful product " + $id)) | tostring),
           thumbnail_url: (($p.thumbnail_url // $p.image_url // $p.image // $p.image_urls[0] // "") | tostring),
-          variant_count: (($p.variants // $p.sync_variants // []) | if type == "array" then length else 0 end),
+          variant_count: (
+            ($p.variants // $p.sync_variants // [])
+            | if type == "array" then length
+              elif type == "number" then .
+              elif type == "string" then (tonumber? // 0)
+              else 0
+              end
+          ),
           synced: ((($sel.slug // "") | length) > 0),
           slug: (($sel.slug // "") | tostring),
           sync_enabled: ($sel.sync_enabled == true),
