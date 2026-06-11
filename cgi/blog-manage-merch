@@ -33,7 +33,7 @@ bool_json() {
 write_conf_value() {
   key=$1
   value=$2
-  config-set "$blog_site_conf" "$key" "$value"
+  blog_config_set "$blog_site_conf" "$key" "$value"
 }
 
 printful_api_ready() {

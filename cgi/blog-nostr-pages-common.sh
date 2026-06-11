@@ -1166,14 +1166,14 @@ blog_nostr_prerender_contact_video_chat_html() {
     return 0
   fi
 
-  contact_video_chat_public_rooms=$(config-get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
+  contact_video_chat_public_rooms=$(blog_config_get "$blog_site_conf" video_chat_public_rooms 2>/dev/null || printf 'false')
   case "$contact_video_chat_public_rooms" in
     true) ;;
     *) contact_video_chat_public_rooms=false ;;
   esac
-  contact_video_chat_rooms=$(config-get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
+  contact_video_chat_rooms=$(blog_config_get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
   contact_video_chat_rooms_attr=$(printf '%s' "$contact_video_chat_rooms" | tr ';' ',' | jq -Rr '@html' 2>/dev/null || printf '')
-  contact_video_chat_max=$(config-get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
+  contact_video_chat_max=$(blog_config_get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
   case "$contact_video_chat_max" in ''|*[!0-9]*) contact_video_chat_max=6 ;; esac
   if [ "$contact_video_chat_max" -lt 2 ]; then contact_video_chat_max=2; fi
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
@@ -1911,7 +1911,7 @@ blog_nostr_sign_nip23_event() {
 }
 
 blog_nostr_reverse_domain_prefix() {
-  host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+  host=$(blog_normalize_public_host "$(blog_config_get "$blog_site_conf" domain 2>/dev/null || printf '')")
   if ! blog_valid_public_host "$host"; then
     host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
   fi

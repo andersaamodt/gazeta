@@ -301,9 +301,9 @@ merch_state=$(jq -cn '{
 blog_nostr_page_save_draft_state_json "merch-shirt" "nip23" "$merch_state"
 
 admin_profile=$(blog_user_profile admin)
-config-set "$admin_profile" username admin
-config-set "$admin_profile" fingerprint test-fingerprint
-config-set "$admin_profile" is_admin true
+blog_config_set "$admin_profile" username admin
+blog_config_set "$admin_profile" fingerprint test-fingerprint
+blog_config_set "$admin_profile" is_admin true
 
 session_parts=$(blog_create_session admin test-fingerprint)
 session_token=${session_parts%%;*}
@@ -314,7 +314,7 @@ run_payments_cgi() {
   query=$1
   method=${2-GET}
   host=${3-blog.example.com}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="$host" "$ROOT_DIR/cgi/blog-payments" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="$host" /bin/sh "$ROOT_DIR/cgi/blog-payments" 2>&1
 }
 
 run_payments_cgi_body() {
@@ -322,37 +322,37 @@ run_payments_cgi_body() {
   body=$2
   host=${3-blog.example.com}
   len=$(printf '%s' "$body" | wc -c | tr -d '[:space:]')
-  printf '%s' "$body" | REQUEST_METHOD=POST QUERY_STRING="$query" HTTP_HOST="$host" CONTENT_TYPE="application/json" CONTENT_LENGTH="$len" "$ROOT_DIR/cgi/blog-payments" 2>&1
+  printf '%s' "$body" | REQUEST_METHOD=POST QUERY_STRING="$query" HTTP_HOST="$host" CONTENT_TYPE="application/json" CONTENT_LENGTH="$len" /bin/sh "$ROOT_DIR/cgi/blog-payments" 2>&1
 }
 
 run_product_cgi() {
   query=$1
   method=${2-GET}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-get-product" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-get-product" 2>&1
 }
 
 run_purchase_cgi() {
   query=$1
   method=${2-GET}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-purchase" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-purchase" 2>&1
 }
 
 run_download_cgi() {
   query=$1
   method=${2-GET}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-download" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-download" 2>&1
 }
 
 run_delivery_cgi() {
   query=$1
   method=${2-GET}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-delivery" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-delivery" 2>&1
 }
 
 run_manage_merch_cgi() {
   query=$1
   method=${2-GET}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/blog-manage-merch" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-manage-merch" 2>&1
 }
 
 # 1) Public runtime status keys.
@@ -363,11 +363,11 @@ assert_contains "$status_out" '"btcpay_host":"pay.blog.example.com"' 'payments s
 assert_contains "$status_out" '"btcpay_url":"https://pay.blog.example.com"' 'payments status emits btcpay url'
 assert_contains "$status_out" '"ramp_host_api_key":' 'payments status includes ramp runtime key'
 assert_contains "$status_out" '"paybis_partner_id":' 'payments status includes paybis runtime key'
-config-set "$blog_site_conf" btcpay_rootpath /btcpay
+blog_config_set "$blog_site_conf" btcpay_rootpath /btcpay
 status_rootpath_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_rootpath_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'payments status includes btcpay root path'
 
-config-set "$blog_site_conf" plugin_ramp true
+blog_config_set "$blog_site_conf" plugin_ramp true
 SECRET_DIR="$SITE_DATA/secrets"
 mkdir -p "$SECRET_DIR"
 RAMP_SECRET_FILE="$SECRET_DIR/ramp-host-api-key"
@@ -375,14 +375,14 @@ PRINTFUL_SECRET_FILE="$SECRET_DIR/printful-api-token"
 printf '%s\n' test-ramp-key > "$RAMP_SECRET_FILE"
 printf '%s\n' test-printful-token > "$PRINTFUL_SECRET_FILE"
 chmod 600 "$RAMP_SECRET_FILE" "$PRINTFUL_SECRET_FILE" 2>/dev/null || true
-config-set "$blog_site_conf" ramp_host_api_key_file "$RAMP_SECRET_FILE"
-config-set "$blog_site_conf" ramp_btc_address bc1qmerchant
-config-set "$blog_site_conf" ramp_webhook_signature_required false
-config-set "$blog_site_conf" payments_webhook_secret webhook-secret
-config-set "$blog_site_conf" plugin_merch_store true
-config-set "$blog_site_conf" printful_api_token_file "$PRINTFUL_SECRET_FILE"
-config-set "$blog_site_conf" printful_store_id test-printful-store
-config-set "$blog_site_conf" printful_confirm_orders false
+blog_config_set "$blog_site_conf" ramp_host_api_key_file "$RAMP_SECRET_FILE"
+blog_config_set "$blog_site_conf" ramp_btc_address bc1qmerchant
+blog_config_set "$blog_site_conf" ramp_webhook_signature_required false
+blog_config_set "$blog_site_conf" payments_webhook_secret webhook-secret
+blog_config_set "$blog_site_conf" plugin_merch_store true
+blog_config_set "$blog_site_conf" printful_api_token_file "$PRINTFUL_SECRET_FILE"
+blog_config_set "$blog_site_conf" printful_store_id test-printful-store
+blog_config_set "$blog_site_conf" printful_confirm_orders false
 status_connected_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_connected_out" '"ramp_configured":true' 'payments status reports configured Ramp plugin'
 assert_contains "$status_connected_out" '"printful_configured":true' 'payments status reports configured Printful plugin'
@@ -482,8 +482,8 @@ assert_contains "$delivery_out" '"success":true' 'delivery page json succeeds fo
 assert_contains "$delivery_out" '"/download/sample-product?token=' 'delivery page mints short-lived download token'
 
 # 5) Webhook paid path updates order.
-config-set "$blog_site_conf" btcpay_store_id test-store
-config-set "$blog_site_conf" btcpay_api_key test-api-key
+blog_config_set "$blog_site_conf" btcpay_store_id test-store
+blog_config_set "$blog_site_conf" btcpay_api_key test-api-key
 create_out_2=$(run_payments_cgi "action=create_order&payment_method=crypto&provider=btcpay&items_json=$(blog_url_encode "$items_json")")
 order_id_2=$(printf '%s\n' "$create_out_2" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id_2" 'second create_order returns order_id'

@@ -41,6 +41,20 @@ printf '%s\n' "$search_payload" | jq -e '.success == true and .rebuilt == ["sear
 jq -e '.entries[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/search-index.json" >/dev/null
 jq -e '.entries[0].search_text | contains("Maintenance body.")' "$SITE_ROOT/site/static/search-index.json" >/dev/null
 
+mkdir -p "$SITE_DATA/lists"
+cat > "$SITE_DATA/nostr-pages.json" <<'JSON'
+{"pages":[{"slug":"maintenance-product","type":"nip23","kind":30023,"show_in_nav":false,"placeholder_title":"Maintenance Product","path":"/maintenance-product"}]}
+JSON
+cat > "$SITE_DATA/lists/maintenance-product.json" <<'JSON'
+{"slug":"maintenance-product","type":"nip23","title":"Maintenance Product","content":"Product body","product_enabled":true,"product_type":"software","price":"12.50","currency":"USD","purchase_endpoint":"/purchase/maintenance-product","crypto_discount_percent":0}
+JSON
+product_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-product-index)
+printf '%s\n' "$product_payload" | jq -e '.success == true and .rebuilt == ["product-index"] and .product_count == 1' >/dev/null
+[ -f "$SITE_ROOT/site/static/product-index.json" ]
+[ -f "$SITE_DATA/product-index-cache.json" ]
+jq -e '.products[0].slug == "maintenance-product"' "$SITE_ROOT/site/static/product-index.json" >/dev/null
+jq -e '.products[0].price == "12.50"' "$SITE_ROOT/site/static/product-index.json" >/dev/null
+
 navbar_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-navbar-pages)
 printf '%s\n' "$navbar_payload" | jq -e '.success == true and .rebuilt == ["navbar-pages"]' >/dev/null
 [ -f "$SITE_ROOT/site/static/navbar-pages.json" ]

@@ -177,7 +177,7 @@ blog_payments_format_money() {
 blog_payments_public_site_url() {
   host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
   if ! blog_valid_public_host "$host"; then
-    host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+    host=$(blog_normalize_public_host "$(blog_config_get "$blog_site_conf" domain 2>/dev/null || printf '')")
   fi
   if blog_valid_public_host "$host"; then
     printf 'https://%s\n' "$host"
@@ -187,15 +187,15 @@ blog_payments_public_site_url() {
 }
 
 blog_btcpay_store_id() {
-  printf '%s\n' "$(config-get "$blog_site_conf" btcpay_store_id 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+  printf '%s\n' "$(blog_config_get "$blog_site_conf" btcpay_store_id 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
 }
 
 blog_btcpay_api_key() {
-  printf '%s\n' "$(config-get "$blog_site_conf" btcpay_api_key 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+  printf '%s\n' "$(blog_config_get "$blog_site_conf" btcpay_api_key 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
 }
 
 blog_btcpay_webhook_secret() {
-  printf '%s\n' "$(config-get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
+  printf '%s\n' "$(blog_config_get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')" | tr -d '\r\n[:space:]'
 }
 
 blog_btcpay_api_configured() {
@@ -236,7 +236,7 @@ blog_btcpay_webhook_url() {
 blog_ramp_config_value() {
   key=${1-}
   [ -n "$key" ] || return 1
-  printf '%s\n' "$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
+  printf '%s\n' "$(blog_config_get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
 blog_ramp_config_secret_value() {
@@ -642,7 +642,7 @@ blog_payments_detect_os_arch() {
 }
 
 blog_payments_github_token() {
-  token=$(config-get "$blog_site_conf" github_token 2>/dev/null || printf '')
+  token=$(blog_config_get "$blog_site_conf" github_token 2>/dev/null || printf '')
   if [ -n "$token" ]; then
     printf '%s\n' "$token"
     return 0

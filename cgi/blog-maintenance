@@ -117,6 +117,42 @@ case "$action" in
       --argjson page_count "$page_count" \
       '{success:true,action:$action,rebuilt:["navbar-pages"],static_path:$static_path,cache_path:$cache_path,page_count:$page_count}'
     ;;
+  rebuild-product-index)
+    . "$SCRIPT_DIR/blog-list-common.sh"
+    . "$SCRIPT_DIR/blog-public-ranking-common.sh"
+    . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+    . "$SCRIPT_DIR/blog-payments-common.sh"
+    blog_payments_init
+    products_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-product-index-products.XXXXXX")
+    : > "$products_tmp"
+    pages_json=$(blog_nostr_pages_load_json_fast)
+    printf '%s\n' "$pages_json" | jq -r '.pages[]? | select((.type // "") == "nip23" or (.type // "") == "blog") | .slug // empty' 2>/dev/null |
+      while IFS= read -r slug || [ -n "$slug" ]; do
+        [ -n "$slug" ] || continue
+        product_json=$(blog_payments_public_product_json "$slug" 2>/dev/null || printf '')
+        [ -n "$product_json" ] || continue
+        printf '%s\n' "$product_json" >> "$products_tmp"
+      done
+    index_json=$(jq -sc '{success:true,products:.}' "$products_tmp")
+    static_path="$blog_site_root/site/static/product-index.json"
+    cache_path="$blog_state_dir/product-index-cache.json"
+    mkdir -p "$(dirname "$static_path")" "$(dirname "$cache_path")"
+    static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-product-index-static.XXXXXX")
+    cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-product-index-cache.XXXXXX")
+    printf '%s\n' "$index_json" > "$static_tmp"
+    printf '%s\n' "$index_json" > "$cache_tmp"
+    mv "$static_tmp" "$static_path"
+    mv "$cache_tmp" "$cache_path"
+    chmod 644 "$static_path" "$cache_path" 2>/dev/null || true
+    product_count=$(printf '%s\n' "$index_json" | jq -r '(.products // []) | length' 2>/dev/null || printf '0')
+    rm -f "$products_tmp"
+    jq -cn \
+      --arg action "$action" \
+      --arg static_path "$static_path" \
+      --arg cache_path "$cache_path" \
+      --argjson product_count "$product_count" \
+      '{success:true,action:$action,rebuilt:["product-index"],static_path:$static_path,cache_path:$cache_path,product_count:$product_count}'
+    ;;
   *)
     jq -cn \
       --arg action "$action" \

@@ -52,7 +52,7 @@ emit_runtime_status() {
   printful_confirm_orders=$(blog_printful_confirm_orders)
   blog_plugin_enabled merch_store && merch_store_enabled=true
   blog_printful_configured && printful_configured=true
-  paybis_partner_id=$(config-get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
+  paybis_partner_id=$(blog_config_get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
   jq -cn \
     --arg btcpay_host "$btcpay_host" \
     --arg btcpay_url "$btcpay_url" \
@@ -372,7 +372,7 @@ provider_url_for_order() {
       fi
       ;;
     paybis)
-      partner=$(config-get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
+      partner=$(blog_config_get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
       printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$total")" "$(blog_url_encode "$order_id")"
       ;;
     ramp|*)
@@ -467,12 +467,12 @@ refresh_btcpay_order_json() {
 ramp_public_key_to_file() {
   out=${1-}
   [ -n "$out" ] || return 1
-  configured=$(config-get "$blog_site_conf" ramp_public_key_pem_path 2>/dev/null || printf '')
+  configured=$(blog_config_get "$blog_site_conf" ramp_public_key_pem_path 2>/dev/null || printf '')
   if [ -n "$configured" ] && [ -f "$configured" ]; then
     cp "$configured" "$out"
     return $?
   fi
-  env_name=$(config-get "$blog_site_conf" ramp_environment 2>/dev/null || printf '')
+  env_name=$(blog_config_get "$blog_site_conf" ramp_environment 2>/dev/null || printf '')
   env_name=$(printf '%s' "$env_name" | tr '[:upper:]' '[:lower:]')
   if [ "$env_name" = "demo" ] || [ "$env_name" = "test" ] || [ "$env_name" = "sandbox" ]; then
     cat > "$out" <<'EOF'
@@ -780,7 +780,7 @@ case "$action" in
       [ -n "$payment_status" ] || payment_status=$(printf '%s' "$body_status" | tr '[:upper:]' '[:lower:]')
       [ "$provider" != "unknown" ] || [ -z "$body_provider" ] || provider=$body_provider
     fi
-    webhook_secret_expected=$(config-get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')
+    webhook_secret_expected=$(blog_config_get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')
     if [ -n "$webhook_secret_expected" ]; then
       webhook_secret=$(blog_param webhook_secret)
       if [ -z "$webhook_secret" ] || [ "$webhook_secret" != "$webhook_secret_expected" ]; then

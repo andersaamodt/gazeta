@@ -62,7 +62,7 @@ provider_url_for_order() {
       fi
       ;;
     paybis)
-      partner=$(config-get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
+      partner=$(blog_config_get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
       printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
       ;;
     ramp|*)
