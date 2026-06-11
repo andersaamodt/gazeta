@@ -377,7 +377,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-update-nostr-page-nav-title" 'blog_run_
 assert_file_contains "$ROOT_DIR/cgi/blog-update-config" 'blog_run_build_async >/dev/null 2>&1 || true' 'config update queues rebuild for static bootstrap refresh'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-config" 'load_site_conf_values "$blog_site_conf"' 'blog-get-config parses site.conf in one pass'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-get-config" 'config-get "$blog_site_conf"' 'blog-get-config avoids repeated config-get subprocesses'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-public-posts" 'blog_public_posts_catalog_static_path' 'public posts endpoint reads prebuilt catalog first'
+assert_file_contains "$ROOT_DIR/src/gazeta_read/public_posts.rs" 'site/static/public-posts.json' 'public posts endpoint reads prebuilt catalog first'
 assert_file_contains "$ROOT_DIR/cgi/blog-index" 'blog_public_posts_catalog_static_path' 'blog index reads prebuilt catalog first'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-index" 'blog_collect_public_posts "$posts_tmp"' 'blog index no longer rescans posts on each request'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elements: ($state.elements // [])' 'list page reads use state elements without synchronous Nostr enrichment'
@@ -441,7 +441,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "blog-inline-tag' +
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "aria-pressed=\"' + (isActive ? 'true' : 'false')" 'blog list inline filters expose pressed state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-card-meta-tags > button.tag.is-active' 'blog list inline active filter chips get a visible active style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.post-card-meta-tags > button.tag.is-active' 'Lapidarist inline active filter chips preserve a visible active style'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-public-posts" 'blog_public_posts_catalog_has_posts "$static_catalog"' 'public post JSON endpoint rebuilds instead of trusting an empty stale static catalog'
+assert_file_contains "$ROOT_DIR/src/gazeta_read/public_posts.rs" 'read_catalog_with_posts(&static_catalog)' 'public post JSON endpoint rebuilds instead of trusting an empty stale static catalog'
 assert_file_contains "$ROOT_DIR/cgi/blog-index" 'blog_public_posts_catalog_has_posts "$catalog_file"' 'fallback blog index rebuilds instead of trusting an empty stale static catalog'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-end-tags .blog-type-pill,' 'single post type tag keeps colored pill styling'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-end-tags .blog-year-pill,' 'single post year tag keeps colored pill styling'
@@ -685,21 +685,13 @@ whole_link_preview_fixture=$(printf '%s [read the guide](https://example.com/rea
 actual_whole_link_preview_truncated=$(sh -c '. "$1/cgi/blog-lib.sh"; blog_condensed_preview_truncated "$2"' sh "$ROOT_DIR" "$whole_link_preview_fixture")
 assert_eq 'false' "$actual_whole_link_preview_truncated" 'condensed blog previews do not mark whole-link previews truncated when no text remains'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '*/releases/*' 'blog lib detects managed releases path when resolving shared site data'
-assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_ensure_source_page "$slug" "$page_type"' 'navbar endpoint avoids source sync in hot path'
-assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
-assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
-assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-build-trigger.epoch' 'navbar endpoint no longer manages rebuild throttle state'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'navbar-pages-cache.json' 'navbar endpoint uses short-lived response cache'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'site/static/navbar-pages.json' 'navbar endpoint serves prebuilt static navbar payload first'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'cache_ttl_seconds=600' 'navbar endpoint uses longer cache ttl after moving rebuilds out of hot path'
-assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'exit 0' 'navbar endpoint exits immediately on fresh cache'
-cfg_line=$(grep -n 'cfg=$(blog_nostr_pages_load_json_fast)' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
-cache_cat_line=$(grep -n 'cat "$cache_file"' "$ROOT_DIR/cgi/blog-list-navbar-pages" | head -n 1 | cut -d: -f1 || printf '0')
-if [ "${cfg_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -gt 0 ] && [ "${cache_cat_line:-0}" -lt "${cfg_line:-0}" ]; then
-  pass
-else
-  fail 'navbar cache response must happen before config load on fresh-cache hits'
-fi
+assert_file_not_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'blog_nostr_page_ensure_source_page' 'navbar endpoint avoids source sync in hot path'
+assert_file_not_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'blog_nostr_page_canonical_title' 'navbar endpoint avoids event scans for title lookup'
+assert_file_not_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'blog_run_build_async' 'navbar endpoint no longer triggers builds from public traffic'
+assert_file_not_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'navbar-build-trigger.epoch' 'navbar endpoint no longer manages rebuild throttle state'
+assert_file_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'navbar-pages-cache.json' 'navbar endpoint uses a prebuilt response cache'
+assert_file_contains "$ROOT_DIR/src/gazeta_read/navbar_pages.rs" 'site/static/navbar-pages.json' 'navbar endpoint serves prebuilt static navbar payload'
+assert_file_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" 'exec /bin/sh "$SCRIPT_DIR/gazeta-read-runtime-adapter" list-navbar-pages' 'navbar CGI wrapper immediately delegates to the Theurgy runtime adapter'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/site-bootstrap.js' 'document head loads static site bootstrap before app code'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" '/cgi/blog-theme.css' 'document head no longer depends on CGI theme css for startup'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'document.write(markup);' 'document head emits theme stylesheet during parsing to avoid unthemed first paint'
