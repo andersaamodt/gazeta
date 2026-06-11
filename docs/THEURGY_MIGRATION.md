@@ -12,6 +12,7 @@
 - Move `blog-btc-usd-rate` to `gazeta-read btc-usd-rate`.
 - Add `cgi/blog-maintenance` for Deployments-safe cache/index rebuilds.
 - Add replay fixtures for migrated read endpoints.
+- Move `blog-archive` and `blog-tags` to catalog-backed `gazeta-read` HTML actions.
 
 ## Remaining Read Work
 

@@ -1,4 +1,6 @@
+mod blog_archive;
 mod blog_index;
+mod blog_tags;
 mod btc_rate;
 mod error;
 mod html;
@@ -22,7 +24,9 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
         "list-public-posts" => public_posts::list_public_posts().map(CgiResponse::json),
         "list-navbar-pages" => navbar_pages::list_navbar_pages().map(CgiResponse::json),
         "btc-usd-rate" => btc_rate::btc_usd_rate().map(CgiResponse::json),
+        "blog-archive" => blog_archive::blog_archive(),
         "blog-index" => blog_index::blog_index(),
+        "blog-tags" => blog_tags::blog_tags(),
         _ => Err(ReadError::new("bad_action", "Unknown Gazeta read action.")),
     }
 }

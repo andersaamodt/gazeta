@@ -77,4 +77,19 @@ printf '%s\n' "$index_payload" | grep '<span class="post-offsite-link-kind">Off-
 printf '%s\n' "$index_payload" | grep '<a href="https://links.example.com/articles/2026/06/path?with=query#final-section">Useful linked page</a>' >/dev/null
 printf '%s\n' "$index_payload" | grep '>Read more...</a>' >/dev/null
 
+archive_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-archive"
+archive_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$archive_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-archive")
+
+printf '%s\n' "$archive_payload" | grep '<div class="archive-list">' >/dev/null
+printf '%s\n' "$archive_payload" | grep '<section class="archive-month" id="archive-2026-06">' >/dev/null
+printf '%s\n' "$archive_payload" | grep '<a href="/posts/replay-post">Replay Post</a>' >/dev/null
+printf '%s\n' "$archive_payload" | grep '<span class="post-comments-count">(3 comments)</span>' >/dev/null
+
+tags_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-tags"
+tags_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$tags_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-tags")
+
+printf '%s\n' "$tags_payload" | grep '<div class="tag-cloud">' >/dev/null
+printf '%s\n' "$tags_payload" | grep 'data-tag="replay"' >/dev/null
+printf '%s\n' "$tags_payload" | grep '<li class="tag-result-item" data-post-url="/posts/link-post" data-post-tags="links">' >/dev/null
+
 printf '%s\n' 'gazeta read fixture tests passed'

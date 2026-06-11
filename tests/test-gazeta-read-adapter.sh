@@ -16,7 +16,9 @@ for endpoint in \
   "blog-list-public-posts list-public-posts" \
   "blog-list-navbar-pages list-navbar-pages" \
   "blog-btc-usd-rate btc-usd-rate" \
-  "blog-index blog-index"
+  "blog-archive blog-archive" \
+  "blog-index blog-index" \
+  "blog-tags blog-tags"
 do
   set -- $endpoint
   output=$(/bin/sh "$ROOT_DIR/cgi/$1")
