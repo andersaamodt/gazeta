@@ -6,6 +6,7 @@
 - Add `gazeta-read` as the compiled read runtime.
 - Move `blog-list-public-posts` to `gazeta-read list-public-posts`.
 - Move `blog-list-navbar-pages` to `gazeta-read list-navbar-pages`.
+- Move `blog-btc-usd-rate` to `gazeta-read btc-usd-rate`.
 - Add `cgi/blog-maintenance` for Deployments-safe cache/index rebuilds.
 - Add replay fixtures for migrated read endpoints.
 

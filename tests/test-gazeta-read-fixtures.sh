@@ -53,4 +53,16 @@ navbar_json=$(printf '%s\n' "$navbar_payload" | sed -n '/^{/,$p')
 printf '%s\n' "$navbar_json" | jq -e '.success == true' >/dev/null
 printf '%s\n' "$navbar_json" | jq -e '.pages[0].slug == "replay" and .pages[0].title == "Replay"' >/dev/null
 
+now=$(date +%s)
+cat > "$SITE_DATA/btc-usd-rate.json" <<JSON
+{"success":true,"btc_usd":64000.25,"currency":"USD","source":"coinbase","stale":false,"fetched_at":$now}
+JSON
+
+btc_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/btc-usd-rate"
+btc_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$btc_fixture" -- "$ROOT_DIR/cgi/blog-btc-usd-rate")
+btc_json=$(printf '%s\n' "$btc_payload" | sed -n '/^{/,$p')
+
+printf '%s\n' "$btc_json" | jq -e '.success == true' >/dev/null
+printf '%s\n' "$btc_json" | jq -e '.btc_usd == 64000.25 and .currency == "USD" and .stale == false' >/dev/null
+
 printf '%s\n' 'gazeta read fixture tests passed'

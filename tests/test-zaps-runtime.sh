@@ -196,7 +196,7 @@ assert_contains "$(cat "$ROOT_DIR/.headquarters/scripts/ensure-site-zap-endpoint
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-secondary-grid' 'zap modal groups custom amount and comment as secondary controls'
 assert_contains "$(cat "$ROOT_DIR/site/static/style.css")" '.zap-dialog-head h3' 'zap modal uses one primary heading'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/zap-ui.js")" 'Lightning Zap' 'zap modal does not render a redundant kicker heading'
-assert_contains "$(cat "$ROOT_DIR/cgi/blog-btc-usd-rate")" 'api.exchange.coinbase.com/products/BTC-USD/ticker' 'BTC/USD endpoint uses Coinbase ticker data'
+assert_contains "$(cat "$ROOT_DIR/src/bin/gazeta-read.rs")" 'api.exchange.coinbase.com/products/BTC-USD/ticker' 'BTC/USD endpoint uses Coinbase ticker data'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/nip23-page.js")" 'nip23-zap-host' 'nip23 pages do not render zap UI'
 assert_not_contains "$(cat "$ROOT_DIR/site/static/contact-page.js")" 'Lightning zaps use' 'contact page copy calls this Zap, not Lightning contact info'
 

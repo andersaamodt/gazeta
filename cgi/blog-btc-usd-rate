@@ -1,65 +1,38 @@
 #!/bin/sh
-# Return a short-cache BTC/USD rate for public zap amount display.
+# Return a short-cache BTC/USD rate through the Gazeta Theurgy read runtime.
 
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-. "$SCRIPT_DIR/blog-lib.sh"
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 
-blog_init
-blog_send_json_headers
+if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
+  : "${WIZARDRY_SITES_DIR:=$(dirname "$REPO_ROOT")}"
+  : "${WIZARDRY_SITE_NAME:=$(basename "$REPO_ROOT")}"
+  export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
+fi
+export GAZETA_REPO_ROOT=${GAZETA_REPO_ROOT:-$REPO_ROOT}
 
-cache_file="$blog_state_dir/btc-usd-rate.json"
-cache_ttl_seconds=60
-now=$(date +%s)
-
-json_number() {
-  printf '%s' "${1-}" | awk '
-    /^[0-9]+([.][0-9]+)?$/ && $1 > 0 {
-      printf "%.2f\n", $1
-      ok = 1
-    }
-    END { exit ok ? 0 : 1 }
-  '
+run_candidate() {
+  candidate=$1
+  [ -x "$candidate" ] || return 1
+  exec "$candidate" btc-usd-rate
 }
 
-emit_cached_if_fresh() {
-  [ -r "$cache_file" ] || return 1
-  fetched_at=$(jq -r '.fetched_at // 0' "$cache_file" 2>/dev/null || printf '0')
-  case "$fetched_at" in
-    ''|*[!0-9]*) return 1 ;;
-  esac
-  age=$((now - fetched_at))
-  [ "$age" -ge 0 ] && [ "$age" -le "$cache_ttl_seconds" ] || return 1
-  cat "$cache_file"
-}
-
-if emit_cached_if_fresh; then
-  exit 0
+if [ -n "${GAZETA_READ_RUNTIME-}" ]; then
+  run_candidate "$GAZETA_READ_RUNTIME" || {
+    printf '%s\n\n' 'Content-Type: application/json'
+    printf '{"success":false,"code":"runtime_missing","error":"Configured Gazeta read runtime is not executable."}\n'
+    exit 0
+  }
 fi
 
-rate=''
-if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-  ticker=$(curl -fsS --max-time 8 'https://api.exchange.coinbase.com/products/BTC-USD/ticker' 2>/dev/null || printf '')
-  rate=$(printf '%s\n' "$ticker" | jq -r '.price // empty' 2>/dev/null | sed -n '1p')
-  rate=$(json_number "$rate" 2>/dev/null || printf '')
+if [ "${GAZETA_THEURGY_ALLOW_CARGO-}" = 1 ] && command -v cargo >/dev/null 2>&1; then
+  exec cargo run --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin gazeta-read -- btc-usd-rate
 fi
 
-if [ -z "$rate" ]; then
-  if [ -r "$cache_file" ]; then
-    stale_rate=$(jq -r '.btc_usd // empty' "$cache_file" 2>/dev/null || printf '')
-    stale_rate=$(json_number "$stale_rate" 2>/dev/null || printf '')
-    if [ -n "$stale_rate" ]; then
-      printf '{"success":true,"btc_usd":%s,"currency":"USD","source":"coinbase","stale":true,"fetched_at":%s}\n' "$stale_rate" "$now"
-      exit 0
-    fi
-  fi
-  printf '{"success":false,"error":"BTC/USD rate unavailable"}\n'
-  exit 0
-fi
+run_candidate "$REPO_ROOT/target/release/gazeta-read" || true
+run_candidate "$REPO_ROOT/target/debug/gazeta-read" || true
 
-tmp=$(mktemp "${TMPDIR:-/tmp}/blog-btc-usd-rate.XXXXXX")
-printf '{"success":true,"btc_usd":%s,"currency":"USD","source":"coinbase","stale":false,"fetched_at":%s}\n' "$rate" "$now" > "$tmp"
-install -m 0644 "$tmp" "$cache_file"
-rm -f "$tmp"
-cat "$cache_file"
+printf '%s\n\n' 'Content-Type: application/json'
+printf '{"success":false,"code":"runtime_missing","error":"Gazeta read runtime is not built. Build target/release/gazeta-read or set GAZETA_READ_RUNTIME."}\n'
