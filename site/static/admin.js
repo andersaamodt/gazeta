@@ -122,6 +122,7 @@
     nostrBridgeSaveTimer: null,
     nosterSettingsSaveTimer: null,
     isLoadingConfig: false,
+    configHydrated: false,
     queueItemCount: 0,
     localDripWorkerTimer: null,
     localDripWorkerBusy: false,
@@ -897,13 +898,30 @@
     if (!state.isAdmin && name !== 'account') {
       return 'account';
     }
-    if (state.isAdmin) {
-      const button = sectionButtonForName(name);
-      if (button && button.hidden) {
-        return 'plugins';
-      }
+    if (state.isAdmin && !adminSectionIsAvailable(name)) {
+      return 'plugins';
     }
     return name;
+  }
+
+  function adminSectionIsAvailable(sectionName) {
+    const section = String(sectionName || '').trim();
+    const pluginRequirements = {
+      'nostr-bridge': 'nostr_bridge',
+      'zaps': 'zaps',
+      'merch': 'merch_store',
+      'btcpay-checkout': 'btcpay',
+      'video-calling': 'video_chat',
+      'overworld': 'overworld',
+      'nostr-pages': 'nostr_posts'
+    };
+    if (!Object.prototype.hasOwnProperty.call(pluginRequirements, section)) {
+      return true;
+    }
+    if (!state.configHydrated) {
+      return true;
+    }
+    return !!(state.plugins && state.plugins[pluginRequirements[section]]);
   }
 
   function readComposeLaunchParams() {
@@ -1071,11 +1089,8 @@
 
   function activateSection(name, updateHash) {
     let sectionName = (!state.isAdmin ? 'account' : (name || 'settings'));
-    if (state.isAdmin) {
-      const targetButton = sectionButtonForName(sectionName);
-      if (targetButton && targetButton.hidden) {
-        sectionName = 'plugins';
-      }
+    if (state.isAdmin && !adminSectionIsAvailable(sectionName)) {
+      sectionName = 'plugins';
     }
     if (sectionName !== 'posts') {
       if (els.postCrosspostDialog instanceof HTMLDialogElement && els.postCrosspostDialog.open) {
@@ -4000,6 +4015,9 @@
   }
 
   function syncPluginControlledSections() {
+    if (!state.configHydrated) {
+      return;
+    }
     const plugins = normalizePlugins(state.plugins || {});
     state.plugins = plugins;
     const sectionByPlugin = {
@@ -4693,6 +4711,7 @@
         throw new Error(data.error || 'Failed to load configuration');
       }
       state.plugins = normalizePlugins(data.plugins || {});
+      state.configHydrated = true;
       state.videoChatConfig = normalizeVideoChatConfig(data.video_chat || {});
       state.overworldConfig = normalizeOverworldConfig(data.overworld || {});
       state.originConfig = normalizeOriginConfig(data.origin || {});

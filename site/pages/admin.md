@@ -47,7 +47,7 @@ title: ""
 </button>
 
 <div class="admin-content">
-<section class="admin-section is-active" data-admin-section="settings">
+<section class="admin-section" data-admin-section="settings" hidden>
 <div class="demo-box admin-card">
 <div class="section-head">
 <h3>Site Settings</h3>
