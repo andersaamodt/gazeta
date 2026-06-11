@@ -5,7 +5,6 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
-. "$SCRIPT_DIR/blog-desk-common.sh"
 
 blog_init
 blog_read_request_body

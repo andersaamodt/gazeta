@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-BASE_URL=${ARTIFICER_WEB_DEPLOY_URL:-https://desk.andersaamodt.com/artificer}
+BASE_URL=${ARTIFICER_WEB_DEPLOY_URL:-https://andersaamodt.com/artificer}
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/artificer-web-live-deploy.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
 

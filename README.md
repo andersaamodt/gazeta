@@ -1,6 +1,6 @@
 # gazeta
 
-gazeta is a single-author Nostr blog and self-hosted publishing desk for wizardry web, with optional bridge support for post authorship, version selection, and local-first mirrored comments.
+gazeta is a single-author Nostr blog and self-hosted publishing console for wizardry web, with optional bridge support for post authorship, version selection, and local-first mirrored comments.
 
 ## Features
 

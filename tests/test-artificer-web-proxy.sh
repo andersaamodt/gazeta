@@ -64,7 +64,6 @@ assert_file_not_contains "$CSS" 'border-left: 3px solid' "artificer auth/error s
 assert_file_contains "$NAV" 'options && options.fallbackModal === false' "site auth supports suppressing the helper modal"
 assert_file_contains "$NAV" "No Nostr browser signer was found." "site auth reports missing signer without helper modal when requested"
 
-assert_file_contains "$CGI" '. "$SCRIPT_DIR/blog-desk-common.sh"' "proxy reuses Desk owner helpers"
 assert_file_contains "$CGI" 'artificer_web_session_is_allowed_nostr_key' "proxy requires an allowed Nostr identity"
 assert_file_contains "$CGI" 'BLOG_SESSION_AUTH_METHOD' "proxy requires Nostr-backed auth"
 assert_file_contains "$CGI" 'artificer_web_allowed_nostr_pubkeys' "proxy reads the allowed Nostr pubkey list"
@@ -82,8 +81,6 @@ assert_file_contains "$CGI" '*/../*|*/..|/..|*%0a*|*%0A*|*%0d*|*%0D*) return 1' 
 assert_file_contains "$CGI" 's#"/cgi/artificer-api#"/cgi/blog-artificer-web?path=/cgi/artificer-api#g' "proxy rewrites API calls"
 assert_file_contains "$CGI" 'fetch(moduleUrl, { cache: "default" })' "proxy restores browser caching for boot modules"
 assert_file_contains "$CGI" 'encodeURIComponent(launchKey)#?v=' "proxy removes per-launch module cache busting"
-assert_file_not_contains "$PAGE" 'desk-page' "artificer page is not a Desk link/embed"
-
 strip_cgi_headers() {
   awk '
     BEGIN { body = 0 }

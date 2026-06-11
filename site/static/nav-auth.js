@@ -1410,16 +1410,6 @@
     return next;
   }
 
-  function isDeskSurface() {
-    try {
-      var host = String(window.location.hostname || '').toLowerCase();
-      var path = String(window.location.pathname || '').replace(/\/+$/, '');
-      return !!document.getElementById('desk-page-root') || host.indexOf('desk.') === 0;
-    } catch (_err) {
-      return false;
-    }
-  }
-
   function siteNotificationCursorKey(kind) {
     var host = 'site';
     try {
@@ -1464,23 +1454,6 @@
       + '.site-notification-card button,.site-notification-card a{appearance:none;border:1px solid rgba(98,75,42,.36);background:#f5ead7;color:#241b12;border-radius:999px;padding:7px 12px;font:inherit;font-size:.92rem;line-height:1;text-decoration:none;cursor:pointer;}'
       + '.site-notification-card .primary{background:#2f63be;border-color:#2b56a4;color:white;}';
     document.head.appendChild(style);
-  }
-
-  function maybeRequestSiteNotificationPermission() {
-    if (!isDeskSurface() || state.requestedNotificationPermission || !('Notification' in window)) {
-      return;
-    }
-    if (window.Notification.permission !== 'default' || typeof window.Notification.requestPermission !== 'function') {
-      return;
-    }
-    state.requestedNotificationPermission = true;
-    var requestOnce = function () {
-      document.removeEventListener('pointerdown', requestOnce, true);
-      document.removeEventListener('keydown', requestOnce, true);
-      window.Notification.requestPermission().catch(function () {});
-    };
-    document.addEventListener('pointerdown', requestOnce, true);
-    document.addEventListener('keydown', requestOnce, true);
   }
 
   function showBrowserNotification(title, body, tag, url) {
@@ -1755,11 +1728,10 @@
     if (!state.isAuthenticated || !state.isAdmin || !hasStoredSessionToken()) {
       return;
     }
-    maybeRequestSiteNotificationPermission();
     pollSecureChatAdminNotifications();
     state.siteNotificationTimer = window.setInterval(function () {
       pollSecureChatAdminNotifications();
-    }, isDeskSurface() ? 15000 : 30000);
+    }, 30000);
   }
 
   function encodeBase64Utf8(text) {

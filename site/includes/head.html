@@ -3,9 +3,6 @@
   try {
     var host = window.location.hostname || '';
     var path = window.location.pathname || '';
-    if (host === 'desk.andersaamodt.com') {
-      document.documentElement.classList.add('desk-host-route');
-    }
     if (path === '/artificer' || path.indexOf('/artificer/') === 0) {
       document.documentElement.classList.add('artificer-web-route');
     }
@@ -35,15 +32,6 @@ html.artificer-web-route .content {
   padding: 0 !important;
 }
 
-html.desk-host-route,
-html.desk-host-route body {
-  background: #f7f5ef;
-}
-
-html.desk-host-route footer.site-footer,
-html.desk-host-route #title-block-header {
-  display: none !important;
-}
 </style>
 <script src="/static/site-bootstrap.js"></script>
 <script>
