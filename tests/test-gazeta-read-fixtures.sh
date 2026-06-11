@@ -32,10 +32,10 @@ published_at: "2026-06-11T12:00:00Z"
 Replay body.
 POST
 
-"$ROOT_DIR/cgi/blog-maintenance" rebuild-public-posts >/dev/null
+/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-public-posts >/dev/null
 
 fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/list-public-posts"
-payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$fixture" -- "$ROOT_DIR/cgi/blog-list-public-posts")
+payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-list-public-posts")
 json_payload=$(printf '%s\n' "$payload" | sed -n '/^{/,$p')
 
 printf '%s\n' "$json_payload" | jq -e '.success == true' >/dev/null
@@ -47,7 +47,7 @@ cat > "$SITE_ROOT/site/static/navbar-pages.json" <<'JSON'
 JSON
 
 navbar_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/list-navbar-pages"
-navbar_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$navbar_fixture" -- "$ROOT_DIR/cgi/blog-list-navbar-pages")
+navbar_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$navbar_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-list-navbar-pages")
 navbar_json=$(printf '%s\n' "$navbar_payload" | sed -n '/^{/,$p')
 
 printf '%s\n' "$navbar_json" | jq -e '.success == true' >/dev/null
@@ -59,7 +59,7 @@ cat > "$SITE_DATA/btc-usd-rate.json" <<JSON
 JSON
 
 btc_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/btc-usd-rate"
-btc_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$btc_fixture" -- "$ROOT_DIR/cgi/blog-btc-usd-rate")
+btc_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$btc_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-btc-usd-rate")
 btc_json=$(printf '%s\n' "$btc_payload" | sed -n '/^{/,$p')
 
 printf '%s\n' "$btc_json" | jq -e '.success == true' >/dev/null
@@ -91,5 +91,16 @@ tags_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$tags_fixture" --
 printf '%s\n' "$tags_payload" | grep '<div class="tag-cloud">' >/dev/null
 printf '%s\n' "$tags_payload" | grep 'data-tag="replay"' >/dev/null
 printf '%s\n' "$tags_payload" | grep '<li class="tag-result-item" data-post-url="/posts/link-post" data-post-tags="links">' >/dev/null
+
+cat > "$SITE_ROOT/site/static/search-index.json" <<'JSON'
+{"success":true,"entries":[{"url":"/posts/replay-post","title":"Replay Post","pub_date":"2026-06-11","summary":"Replay summary","tags":["test","replay"],"comment_count":3,"search_text":"Replay Post\ntest,replay\nReplay summary\nReplay body with fixture keyword"},{"url":"/posts/link-post","title":"Useful linked page","pub_date":"2026-06-10","summary":"Useful link summary","tags":["links"],"comment_count":0,"search_text":"Useful linked page\nlinks\nUseful link summary\nOff-site article"}]}
+JSON
+
+search_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-search"
+search_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$search_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-search")
+
+printf '%s\n' "$search_payload" | grep '<div class="search-form">' >/dev/null
+printf '%s\n' "$search_payload" | grep 'Found 1 result(s) for <strong>fixture</strong>' >/dev/null
+printf '%s\n' "$search_payload" | grep '<h3 class="post-title"><a href="/posts/replay-post">Replay Post</a></h3>' >/dev/null
 
 printf '%s\n' 'gazeta read fixture tests passed'

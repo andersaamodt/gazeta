@@ -31,6 +31,71 @@ case "$action" in
       --argjson post_count "$post_count" \
       '{success:true,action:$action,rebuilt:["public-posts"],static_path:$static_path,cache_path:$cache_path,post_count:$post_count}'
     ;;
+  rebuild-search-index)
+    posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-posts.XXXXXX")
+    entries_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-entries.XXXXXX")
+    comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-comment-counts.XXXXXX")
+    trap 'rm -f "$posts_tmp" "$entries_tmp" "$comment_counts_tmp"' EXIT HUP INT TERM
+    blog_collect_public_posts "$posts_tmp"
+    blog_nostr_comment_counts_build "$comment_counts_tmp"
+    while IFS= read -r post_file || [ -n "$post_file" ]; do
+      [ -f "$post_file" ] || continue
+      title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf '')
+      published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
+      summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
+      tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
+      tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
+      tags=$(blog_normalize_tags "$tags_csv")
+      post_type=$(blog_read_front_matter_value "$post_file" post_type 2>/dev/null || printf '')
+      if [ -z "$post_type" ]; then
+        post_type=$(blog_read_front_matter_value "$post_file" type 2>/dev/null || printf '')
+      fi
+      post_type=$(blog_normalize_post_type "$post_type")
+      body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
+      title=$(blog_effective_post_title "$title" "$body" "$post_type")
+      url=$(blog_rel_post_html_url "$post_file")
+      post_address=$(blog_post_nostr_address_for_file "$post_file")
+      comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
+      pub_date=${published_at%%T*}
+      jq -cn \
+        --arg url "$url" \
+        --arg title "$title" \
+        --arg pub_date "$pub_date" \
+        --arg summary "$summary" \
+        --arg tags_csv "$tags" \
+        --arg body "$body" \
+        --argjson comment_count "${comment_count:-0}" \
+        '{
+          url: $url,
+          title: $title,
+          pub_date: $pub_date,
+          summary: $summary,
+          tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),
+          comment_count: $comment_count,
+          search_text: ([$title, $tags_csv, $summary, $body] | join("\n"))
+        }' >> "$entries_tmp"
+    done < "$posts_tmp"
+    index_json=$(jq -sc '{success:true,entries:.}' "$entries_tmp")
+    static_path="$blog_site_root/site/static/search-index.json"
+    cache_path="$blog_state_dir/search-index-cache.json"
+    mkdir -p "$(dirname "$static_path")" "$(dirname "$cache_path")"
+    static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-static.XXXXXX")
+    cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-cache.XXXXXX")
+    printf '%s\n' "$index_json" > "$static_tmp"
+    printf '%s\n' "$index_json" > "$cache_tmp"
+    mv "$static_tmp" "$static_path"
+    mv "$cache_tmp" "$cache_path"
+    chmod 644 "$static_path" "$cache_path" 2>/dev/null || true
+    entry_count=$(printf '%s\n' "$index_json" | jq -r '(.entries // []) | length' 2>/dev/null || printf '0')
+    rm -f "$posts_tmp" "$entries_tmp" "$comment_counts_tmp"
+    trap - EXIT HUP INT TERM
+    jq -cn \
+      --arg action "$action" \
+      --arg static_path "$static_path" \
+      --arg cache_path "$cache_path" \
+      --argjson entry_count "$entry_count" \
+      '{success:true,action:$action,rebuilt:["search-index"],static_path:$static_path,cache_path:$cache_path,entry_count:$entry_count}'
+    ;;
   rebuild-navbar-pages)
     pages_json=$(blog_nostr_pages_load_json_fast)
     navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")

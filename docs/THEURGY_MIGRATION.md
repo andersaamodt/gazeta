@@ -13,12 +13,12 @@
 - Add `cgi/blog-maintenance` for Deployments-safe cache/index rebuilds.
 - Add replay fixtures for migrated read endpoints.
 - Move `blog-archive` and `blog-tags` to catalog-backed `gazeta-read` HTML actions.
+- Add `rebuild-search-index` and move `blog-search` to the file-backed `gazeta-read blog-search` action.
 
 ## Remaining Read Work
 
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
-- public search after a Tantivy/file-index contract exists
 - `blog-comments`, `blog-post-context`, and `blog-get-product` need explicit Nostr/payments-safe fixture contracts before migration.
 - Add replay fixtures before each endpoint switch.
 

@@ -1,5 +1,6 @@
 mod blog_archive;
 mod blog_index;
+mod blog_search;
 mod blog_tags;
 mod btc_rate;
 mod error;
@@ -26,6 +27,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
         "btc-usd-rate" => btc_rate::btc_usd_rate().map(CgiResponse::json),
         "blog-archive" => blog_archive::blog_archive(),
         "blog-index" => blog_index::blog_index(),
+        "blog-search" => blog_search::blog_search(),
         "blog-tags" => blog_tags::blog_tags(),
         _ => Err(ReadError::new("bad_action", "Unknown Gazeta read action.")),
     }

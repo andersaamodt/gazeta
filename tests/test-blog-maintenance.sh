@@ -26,7 +26,7 @@ published_at: "2026-06-11T12:00:00Z"
 Maintenance body.
 POST
 
-payload=$("$ROOT_DIR/cgi/blog-maintenance" rebuild-indexes)
+payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-indexes)
 
 printf '%s\n' "$payload" | jq -e '.success == true and .post_count == 1' >/dev/null
 printf '%s\n' "$payload" | jq -e '.rebuilt == ["public-posts"]' >/dev/null
@@ -34,13 +34,20 @@ printf '%s\n' "$payload" | jq -e '.rebuilt == ["public-posts"]' >/dev/null
 [ -f "$SITE_DATA/public-posts-cache.json" ]
 jq -e '.posts[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/public-posts.json" >/dev/null
 
-navbar_payload=$("$ROOT_DIR/cgi/blog-maintenance" rebuild-navbar-pages)
+search_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-search-index)
+printf '%s\n' "$search_payload" | jq -e '.success == true and .rebuilt == ["search-index"] and .entry_count == 1' >/dev/null
+[ -f "$SITE_ROOT/site/static/search-index.json" ]
+[ -f "$SITE_DATA/search-index-cache.json" ]
+jq -e '.entries[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/search-index.json" >/dev/null
+jq -e '.entries[0].search_text | contains("Maintenance body.")' "$SITE_ROOT/site/static/search-index.json" >/dev/null
+
+navbar_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-navbar-pages)
 printf '%s\n' "$navbar_payload" | jq -e '.success == true and .rebuilt == ["navbar-pages"]' >/dev/null
 [ -f "$SITE_ROOT/site/static/navbar-pages.json" ]
 [ -f "$SITE_DATA/navbar-pages-cache.json" ]
 printf '%s\n' "$navbar_payload" | jq -e 'has("page_count")' >/dev/null
 
-bad=$("$ROOT_DIR/cgi/blog-maintenance" unknown-action)
+bad=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" unknown-action)
 printf '%s\n' "$bad" | jq -e '.success == false and .code == "bad_action"' >/dev/null
 
 printf '%s\n' 'blog maintenance tests passed'

@@ -3,7 +3,8 @@ use std::process::Command;
 
 pub(crate) fn rebuild(paths: &SitePaths, action: &str) -> Result<()> {
     let maintenance = paths.repo_root.join("cgi/blog-maintenance");
-    let output = Command::new(&maintenance)
+    let output = Command::new("/bin/sh")
+        .arg(&maintenance)
         .arg(action)
         .current_dir(&paths.repo_root)
         .output()

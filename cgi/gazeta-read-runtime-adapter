@@ -5,7 +5,7 @@ set -eu
 
 action=${1-}
 case "$action" in
-  list-public-posts|list-navbar-pages|btc-usd-rate|blog-archive|blog-index|blog-tags) ;;
+  list-public-posts|list-navbar-pages|btc-usd-rate|blog-archive|blog-index|blog-search|blog-tags) ;;
   *)
     printf '%s\n\n' 'Content-Type: application/json'
     printf '{"success":false,"code":"bad_action","error":"Unknown Gazeta read action."}\n'

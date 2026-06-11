@@ -18,6 +18,7 @@ for endpoint in \
   "blog-btc-usd-rate btc-usd-rate" \
   "blog-archive blog-archive" \
   "blog-index blog-index" \
+  "blog-search blog-search" \
   "blog-tags blog-tags"
 do
   set -- $endpoint

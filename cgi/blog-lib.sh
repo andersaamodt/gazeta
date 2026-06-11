@@ -124,6 +124,18 @@ blog_ensure_support_bin_path() {
 
 blog_ensure_support_bin_path
 
+blog_config_get() {
+  config_get_path=$(command -v config-get 2>/dev/null || printf '')
+  [ -n "$config_get_path" ] || return 127
+  /bin/sh "$config_get_path" "$@"
+}
+
+blog_config_set() {
+  config_set_path=$(command -v config-set 2>/dev/null || printf '')
+  [ -n "$config_set_path" ] || return 127
+  /bin/sh "$config_set_path" "$@"
+}
+
 blog_normalize_public_host() {
   raw=${1-}
   raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
@@ -167,7 +179,7 @@ blog_normalize_btcpay_rootpath() {
 }
 
 blog_configured_btcpay_host() {
-  configured=$(config-get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
+  configured=$(blog_config_get "$blog_site_conf" btcpay_host 2>/dev/null || printf '')
   configured=$(blog_normalize_public_host "$configured")
   if blog_valid_public_host "$configured"; then
     printf '%s\n' "$configured"
@@ -179,7 +191,7 @@ blog_configured_btcpay_host() {
 blog_derived_btcpay_host() {
   source_host=$(blog_normalize_public_host "${HTTP_HOST:-${SERVER_NAME:-}}")
   if ! blog_valid_public_host "$source_host"; then
-    source_host=$(blog_normalize_public_host "$(config-get "$blog_site_conf" domain 2>/dev/null || printf '')")
+    source_host=$(blog_normalize_public_host "$(blog_config_get "$blog_site_conf" domain 2>/dev/null || printf '')")
   fi
   if ! blog_valid_public_host "$source_host"; then
     printf '\n'
@@ -203,7 +215,7 @@ blog_resolve_btcpay_host() {
 }
 
 blog_resolve_btcpay_rootpath() {
-  configured=$(config-get "$blog_site_conf" btcpay_rootpath 2>/dev/null || printf '')
+  configured=$(blog_config_get "$blog_site_conf" btcpay_rootpath 2>/dev/null || printf '')
   printf '%s\n' "$(blog_normalize_btcpay_rootpath "$configured")"
 }
 
@@ -875,7 +887,7 @@ blog_origin_enabled_platforms_json() {
     printf '[]\n'
     return 0
   fi
-  raw_value=$(config-get "$blog_site_conf" origin_enabled_platforms 2>/dev/null || printf '__missing__')
+  raw_value=$(blog_config_get "$blog_site_conf" origin_enabled_platforms 2>/dev/null || printf '__missing__')
   if [ "$raw_value" = '__missing__' ]; then
     printf '%s\n' "$available_json"
     return 0
@@ -889,7 +901,7 @@ blog_origin_default_platforms_json() {
     printf '[]\n'
     return 0
   fi
-  raw_value=$(config-get "$blog_site_conf" origin_default_platforms 2>/dev/null || printf '__missing__')
+  raw_value=$(blog_config_get "$blog_site_conf" origin_default_platforms 2>/dev/null || printf '__missing__')
   if [ "$raw_value" = '__missing__' ]; then
     printf '%s\n' "$enabled_json"
     return 0
@@ -903,7 +915,7 @@ blog_origin_platforms_csv_from_json() {
 }
 
 blog_origin_public_base_url() {
-  configured=$(config-get "$blog_site_conf" origin_public_base_url 2>/dev/null || printf '')
+  configured=$(blog_config_get "$blog_site_conf" origin_public_base_url 2>/dev/null || printf '')
   configured=$(blog_trim_whitespace "$configured" | sed -e 's#/$##')
   case "$configured" in
     http://*|https://*)
@@ -1638,11 +1650,11 @@ blog_file_is_public_effective() {
   file_id=${1-}
   record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
   [ -f "$record_path" ] || return 1
-  explicit_public=$(config-get "$record_path" explicit_public 2>/dev/null || printf 'false')
+  explicit_public=$(blog_config_get "$record_path" explicit_public 2>/dev/null || printf 'false')
   case "$explicit_public" in
     true|1|yes|on) return 0 ;;
   esac
-  post_path=$(config-get "$record_path" post_path 2>/dev/null || printf '')
+  post_path=$(blog_config_get "$record_path" post_path 2>/dev/null || printf '')
   if [ -n "$post_path" ] && [ -f "$blog_site_root/site/pages/$post_path" ]; then
     return 0
   fi
@@ -1663,17 +1675,17 @@ blog_file_write_record() {
   record_path=$(blog_file_record_path "$file_id")
   [ -n "$created_at" ] || created_at=$(blog_now_iso)
   updated_at=$(blog_now_iso)
-  config-set "$record_path" file_id "$file_id"
-  config-set "$record_path" storage_rel "$storage_rel"
-  config-set "$record_path" original_name "$original_name"
-  config-set "$record_path" safe_name "$safe_name"
-  config-set "$record_path" mime_type "$mime_type"
-  config-set "$record_path" size_bytes "$size_bytes"
-  config-set "$record_path" created_at "$created_at"
-  config-set "$record_path" updated_at "$updated_at"
-  config-set "$record_path" draft_id "$draft_id"
-  config-set "$record_path" post_path "$post_path"
-  config-set "$record_path" explicit_public "$explicit_public"
+  blog_config_set "$record_path" file_id "$file_id"
+  blog_config_set "$record_path" storage_rel "$storage_rel"
+  blog_config_set "$record_path" original_name "$original_name"
+  blog_config_set "$record_path" safe_name "$safe_name"
+  blog_config_set "$record_path" mime_type "$mime_type"
+  blog_config_set "$record_path" size_bytes "$size_bytes"
+  blog_config_set "$record_path" created_at "$created_at"
+  blog_config_set "$record_path" updated_at "$updated_at"
+  blog_config_set "$record_path" draft_id "$draft_id"
+  blog_config_set "$record_path" post_path "$post_path"
+  blog_config_set "$record_path" explicit_public "$explicit_public"
 }
 
 blog_file_find_record_by_storage_rel() {
@@ -1681,7 +1693,7 @@ blog_file_find_record_by_storage_rel() {
   [ -n "$storage_rel" ] || return 1
   for record_path in "$blog_file_records_dir"/*.conf; do
     [ -f "$record_path" ] || continue
-    current_storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
+    current_storage_rel=$(blog_config_get "$record_path" storage_rel 2>/dev/null || printf '')
     if [ "$current_storage_rel" = "$storage_rel" ]; then
       printf '%s\n' "$record_path"
       return 0
@@ -1747,18 +1759,18 @@ blog_file_sync_draft_refs() {
   [ -n "$draft_id" ] || return 0
   for record_path in "$blog_file_records_dir"/*.conf; do
     [ -f "$record_path" ] || continue
-    current_draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
+    current_draft_id=$(blog_config_get "$record_path" draft_id 2>/dev/null || printf '')
     if [ "$current_draft_id" = "$draft_id" ]; then
-      config-set "$record_path" draft_id ""
-      config-set "$record_path" updated_at "$(blog_now_iso)"
+      blog_config_set "$record_path" draft_id ""
+      blog_config_set "$record_path" updated_at "$(blog_now_iso)"
     fi
   done
   blog_file_ids_from_text "$content" | while IFS= read -r file_id || [ -n "$file_id" ]; do
     [ -n "$file_id" ] || continue
     record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
     [ -f "$record_path" ] || continue
-    config-set "$record_path" draft_id "$draft_id"
-    config-set "$record_path" updated_at "$(blog_now_iso)"
+    blog_config_set "$record_path" draft_id "$draft_id"
+    blog_config_set "$record_path" updated_at "$(blog_now_iso)"
   done
 }
 
@@ -1767,10 +1779,10 @@ blog_file_clear_draft_refs() {
   [ -n "$draft_id" ] || return 0
   for record_path in "$blog_file_records_dir"/*.conf; do
     [ -f "$record_path" ] || continue
-    current_draft_id=$(config-get "$record_path" draft_id 2>/dev/null || printf '')
+    current_draft_id=$(blog_config_get "$record_path" draft_id 2>/dev/null || printf '')
     if [ "$current_draft_id" = "$draft_id" ]; then
-      config-set "$record_path" draft_id ""
-      config-set "$record_path" updated_at "$(blog_now_iso)"
+      blog_config_set "$record_path" draft_id ""
+      blog_config_set "$record_path" updated_at "$(blog_now_iso)"
     fi
   done
 }
@@ -1784,11 +1796,11 @@ blog_file_promote_refs_to_post() {
     [ -n "$file_id" ] || continue
     record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
     [ -f "$record_path" ] || continue
-    config-set "$record_path" post_path "$post_path"
+    blog_config_set "$record_path" post_path "$post_path"
     if [ -n "$draft_id" ]; then
-      config-set "$record_path" draft_id ""
+      blog_config_set "$record_path" draft_id ""
     fi
-    config-set "$record_path" updated_at "$(blog_now_iso)"
+    blog_config_set "$record_path" updated_at "$(blog_now_iso)"
   done
 }
 
@@ -1796,7 +1808,7 @@ blog_file_resolve_disk_path() {
   file_id=${1-}
   record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
   [ -f "$record_path" ] || return 1
-  storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
+  storage_rel=$(blog_config_get "$record_path" storage_rel 2>/dev/null || printf '')
   [ -n "$storage_rel" ] || return 1
   blog_file_storage_path "$storage_rel"
 }
@@ -1806,7 +1818,7 @@ blog_file_delete() {
   [ -n "$file_id" ] || return 1
   record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
   [ -f "$record_path" ] || return 1
-  storage_rel=$(config-get "$record_path" storage_rel 2>/dev/null || printf '')
+  storage_rel=$(blog_config_get "$record_path" storage_rel 2>/dev/null || printf '')
   if [ -n "$storage_rel" ]; then
     disk_path=$(blog_file_storage_path "$storage_rel" 2>/dev/null || printf '')
     if [ -n "$disk_path" ] && [ -f "$disk_path" ]; then
@@ -1872,8 +1884,8 @@ blog_rate_limit_check() {
   started=0
   count=0
   if [ -f "$path" ]; then
-    started=$(config-get "$path" started_at 2>/dev/null || printf '0')
-    count=$(config-get "$path" count 2>/dev/null || printf '0')
+    started=$(blog_config_get "$path" started_at 2>/dev/null || printf '0')
+    count=$(blog_config_get "$path" count 2>/dev/null || printf '0')
   fi
   case "$started" in ''|*[!0-9]*) started=0 ;; esac
   case "$count" in ''|*[!0-9]*) count=0 ;; esac
@@ -1888,9 +1900,9 @@ blog_rate_limit_check() {
   fi
 
   count=$((count + 1))
-  config-set "$path" started_at "$started"
-  config-set "$path" count "$count"
-  config-set "$path" updated_at "$now"
+  blog_config_set "$path" started_at "$started"
+  blog_config_set "$path" count "$count"
+  blog_config_set "$path" updated_at "$now"
   return 0
 }
 
@@ -2069,7 +2081,7 @@ blog_plugin_raw_enabled() {
     return 0
   fi
   cfg_key="plugin_$key"
-  value=$(config-get "$blog_site_conf" "$cfg_key" 2>/dev/null || printf '')
+  value=$(blog_config_get "$blog_site_conf" "$cfg_key" 2>/dev/null || printf '')
   if [ -z "$value" ]; then
     blog_plugin_default_enabled "$key"
     return 0
@@ -2140,7 +2152,7 @@ blog_zaps_enabled() {
     printf 'false\n'
     return 0
   fi
-  enabled=$(config-get "$blog_site_conf" zaps_enabled 2>/dev/null || printf 'false')
+  enabled=$(blog_config_get "$blog_site_conf" zaps_enabled 2>/dev/null || printf 'false')
   case "$enabled" in
     true|false) printf '%s\n' "$enabled" ;;
     *) printf 'false\n' ;;
@@ -2148,7 +2160,7 @@ blog_zaps_enabled() {
 }
 
 blog_zap_lud16() {
-  lud16=$(config-get "$blog_site_conf" zap_lud16 2>/dev/null || printf '')
+  lud16=$(blog_config_get "$blog_site_conf" zap_lud16 2>/dev/null || printf '')
   lud16=$(printf '%s' "$lud16" | tr -d '\r\n[:space:]')
   printf '%s\n' "$lud16"
 }
@@ -2188,7 +2200,7 @@ blog_zap_lud16_source() {
 }
 
 blog_zap_default_amount_sats() {
-  sats=$(config-get "$blog_site_conf" zap_default_amount_sats 2>/dev/null || printf "$blog_zaps_default_amount_sats")
+  sats=$(blog_config_get "$blog_site_conf" zap_default_amount_sats 2>/dev/null || printf "$blog_zaps_default_amount_sats")
   case "$sats" in
     ''|*[!0-9]*) sats=$blog_zaps_default_amount_sats ;;
   esac
@@ -2236,7 +2248,7 @@ blog_nostr_bridge_enabled() {
   if ! blog_plugin_enabled "nostr_bridge"; then
     return 1
   fi
-  enabled=$(config-get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
+  enabled=$(blog_config_get "$blog_site_conf" nostr_bridge_enabled 2>/dev/null || printf 'false')
   case "$enabled" in
     true|1|yes|on) return 0 ;;
   esac
@@ -2557,7 +2569,7 @@ blog_validate_nostr_pubkey() {
 }
 
 blog_new_users_are_admins_enabled() {
-  enabled=$(config-get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
+  enabled=$(blog_config_get "$blog_site_conf" new_users_are_admins 2>/dev/null || printf 'true')
   [ "$enabled" = "true" ]
 }
 
@@ -2580,7 +2592,7 @@ blog_user_rank_value() {
     printf '0\n'
     return 0
   fi
-  rank=$(config-get "$rank_profile" user_rank 2>/dev/null || printf '0')
+  rank=$(blog_config_get "$rank_profile" user_rank 2>/dev/null || printf '0')
   case "$rank" in
     ''|*[!0-9]*) rank=0 ;;
   esac
@@ -2591,7 +2603,7 @@ blog_next_user_rank() {
   max=0
   for next_profile in "$blog_users_dir"/*/profile.conf; do
     [ -f "$next_profile" ] || continue
-    rank=$(config-get "$next_profile" user_rank 2>/dev/null || printf '0')
+    rank=$(blog_config_get "$next_profile" user_rank 2>/dev/null || printf '0')
     case "$rank" in ''|*[!0-9]*) rank=0 ;; esac
     if [ "$rank" -gt "$max" ]; then
       max=$rank
@@ -2605,7 +2617,7 @@ blog_ensure_user_rank() {
   [ -n "$ensure_user" ] || return 1
   ensure_profile=$(blog_user_profile "$ensure_user")
   [ -f "$ensure_profile" ] || return 1
-  rank=$(config-get "$ensure_profile" user_rank 2>/dev/null || printf '0')
+  rank=$(blog_config_get "$ensure_profile" user_rank 2>/dev/null || printf '0')
   case "$rank" in
     ''|*[!0-9]*) rank=0 ;;
   esac
@@ -2614,7 +2626,7 @@ blog_ensure_user_rank() {
     return 0
   fi
   ensure_rank=$(blog_next_user_rank)
-  config-set "$ensure_profile" user_rank "$ensure_rank"
+  blog_config_set "$ensure_profile" user_rank "$ensure_rank"
   printf '%s\n' "$ensure_rank"
 }
 
@@ -2624,12 +2636,12 @@ blog_users_reindex() {
   for re_profile in "$blog_users_dir"/*/profile.conf; do
     [ -f "$re_profile" ] || continue
     [ -r "$re_profile" ] || continue
-    re_username=$(config-get "$re_profile" username 2>/dev/null || printf '')
+    re_username=$(blog_config_get "$re_profile" username 2>/dev/null || printf '')
     if [ -z "$re_username" ]; then
       re_username=$(basename "$(dirname "$re_profile")")
-      config-set "$re_profile" username "$re_username"
+      blog_config_set "$re_profile" username "$re_username"
     fi
-    re_rank=$(config-get "$re_profile" user_rank 2>/dev/null || printf '0')
+    re_rank=$(blog_config_get "$re_profile" user_rank 2>/dev/null || printf '0')
     case "$re_rank" in ''|*[!0-9]*) re_rank=0 ;; esac
     if [ "$re_rank" -le 0 ]; then
       re_rank=999999999
@@ -2643,7 +2655,7 @@ blog_users_reindex() {
     seq=1
     while IFS="$(printf '\t')" read -r _rank _username re_sorted_profile || [ -n "$re_sorted_profile" ]; do
       [ -n "$re_sorted_profile" ] || continue
-      config-set "$re_sorted_profile" user_rank "$seq"
+      blog_config_set "$re_sorted_profile" user_rank "$seq"
       seq=$((seq + 1))
     done < "$sorted"
     rm -f "$sorted"
@@ -2658,9 +2670,9 @@ blog_users_sorted_usernames() {
   for sorted_profile in "$blog_users_dir"/*/profile.conf; do
     [ -f "$sorted_profile" ] || continue
     [ -r "$sorted_profile" ] || continue
-    sorted_username=$(config-get "$sorted_profile" username 2>/dev/null || printf '')
+    sorted_username=$(blog_config_get "$sorted_profile" username 2>/dev/null || printf '')
     [ -n "$sorted_username" ] || sorted_username=$(basename "$(dirname "$sorted_profile")")
-    sorted_rank=$(config-get "$sorted_profile" user_rank 2>/dev/null || printf '0')
+    sorted_rank=$(blog_config_get "$sorted_profile" user_rank 2>/dev/null || printf '0')
     case "$sorted_rank" in ''|*[!0-9]*) sorted_rank=0 ;; esac
     printf '%s\t%s\n' "$sorted_rank" "$sorted_username" >> "$tmp"
   done
@@ -2677,7 +2689,7 @@ blog_users_apply_order_file() {
     [ -n "$order_username" ] || continue
     order_profile=$(blog_user_profile "$order_username")
     [ -f "$order_profile" ] || continue
-    config-set "$order_profile" user_rank "$seq"
+    blog_config_set "$order_profile" user_rank "$seq"
     seq=$((seq + 1))
   done < "$order_file"
 }
@@ -2797,7 +2809,7 @@ blog_get_nostr_pubkey() {
   [ -n "$username" ] || return 1
   profile=$(blog_user_profile "$username")
   [ -f "$profile" ] || return 1
-  pubkey=$(config-get "$profile" nostr_pubkey 2>/dev/null || printf '')
+  pubkey=$(blog_config_get "$profile" nostr_pubkey 2>/dev/null || printf '')
   pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
   [ -n "$pubkey" ] || return 1
   printf '%s\n' "$pubkey"
@@ -2811,10 +2823,10 @@ blog_find_username_by_nostr_pubkey() {
   find "$blog_users_dir" -mindepth 2 -maxdepth 2 -type f -name profile.conf 2>/dev/null | while IFS= read -r profile; do
     [ -n "$profile" ] || continue
     [ -r "$profile" ] || continue
-    saved_pubkey=$(config-get "$profile" nostr_pubkey 2>/dev/null || printf '')
+    saved_pubkey=$(blog_config_get "$profile" nostr_pubkey 2>/dev/null || printf '')
     saved_pubkey=$(blog_validate_nostr_pubkey "$saved_pubkey" 2>/dev/null || printf '')
     if [ "$saved_pubkey" = "$pubkey" ]; then
-      saved_user=$(config-get "$profile" username 2>/dev/null || printf '')
+      saved_user=$(blog_config_get "$profile" username 2>/dev/null || printf '')
       if [ -n "$saved_user" ]; then
         printf '%s\n' "$saved_user"
         exit 0
@@ -2864,9 +2876,9 @@ blog_set_nostr_pubkey() {
   dir=$(blog_user_dir "$username")
   profile="$dir/profile.conf"
   mkdir -p "$dir/delegates"
-  config-set "$profile" username "$username"
-  config-set "$profile" nostr_pubkey "$pubkey"
-  config-set "$profile" updated_at "$(blog_now_iso)"
+  blog_config_set "$profile" username "$username"
+  blog_config_set "$profile" nostr_pubkey "$pubkey"
+  blog_config_set "$profile" updated_at "$(blog_now_iso)"
 }
 
 blog_set_user_ssh_key() {
@@ -2878,10 +2890,10 @@ blog_set_user_ssh_key() {
   dir=$(blog_user_dir "$username")
   profile="$dir/profile.conf"
   mkdir -p "$dir/delegates"
-  config-set "$profile" username "$username"
-  config-set "$profile" ssh_public_key "$ssh_public_key"
-  config-set "$profile" ssh_fingerprint "$ssh_fingerprint"
-  config-set "$profile" updated_at "$(blog_now_iso)"
+  blog_config_set "$profile" username "$username"
+  blog_config_set "$profile" ssh_public_key "$ssh_public_key"
+  blog_config_set "$profile" ssh_fingerprint "$ssh_fingerprint"
+  blog_config_set "$profile" updated_at "$(blog_now_iso)"
 }
 
 blog_get_player_name() {
@@ -2892,7 +2904,7 @@ blog_get_player_name() {
   profile=$(blog_user_profile "$username")
   player_name=""
   if [ -f "$profile" ]; then
-    player_name=$(config-get "$profile" player_name 2>/dev/null || printf '')
+    player_name=$(blog_config_get "$profile" player_name 2>/dev/null || printf '')
   fi
   if [ -z "$player_name" ]; then
     player_name=$username
@@ -2908,7 +2920,7 @@ blog_get_publish_name() {
   profile=$(blog_user_profile "$username")
   publish_name=""
   if [ -f "$profile" ]; then
-    publish_name=$(config-get "$profile" publish_name 2>/dev/null || printf '')
+    publish_name=$(blog_config_get "$profile" publish_name 2>/dev/null || printf '')
   fi
   if [ -z "$publish_name" ]; then
     publish_name=$(blog_get_player_name "$username" 2>/dev/null || printf '%s' "$username")
@@ -2927,12 +2939,12 @@ blog_set_player_name() {
   mkdir -p "$dir/delegates"
   previous_name="$username"
   if [ -f "$profile" ]; then
-    previous_name=$(config-get "$profile" player_name 2>/dev/null || printf '')
+    previous_name=$(blog_config_get "$profile" player_name 2>/dev/null || printf '')
     if [ -z "$previous_name" ]; then
       previous_name="$username"
     fi
   fi
-  history_csv=$(config-get "$profile" player_name_history 2>/dev/null || printf '')
+  history_csv=$(blog_config_get "$profile" player_name_history 2>/dev/null || printf '')
   if [ -n "$previous_name" ] && [ "$previous_name" != "$player_name" ]; then
     found=0
     old_ifs=$IFS
@@ -2952,12 +2964,12 @@ blog_set_player_name() {
       fi
     fi
   fi
-  config-set "$profile" username "$username"
-  config-set "$profile" player_name "$player_name"
+  blog_config_set "$profile" username "$username"
+  blog_config_set "$profile" player_name "$player_name"
   if [ -n "$history_csv" ]; then
-    config-set "$profile" player_name_history "$history_csv"
+    blog_config_set "$profile" player_name_history "$history_csv"
   fi
-  config-set "$profile" updated_at "$(blog_now_iso)"
+  blog_config_set "$profile" updated_at "$(blog_now_iso)"
 }
 
 blog_set_publish_name() {
@@ -2970,7 +2982,7 @@ blog_set_publish_name() {
   profile=$(blog_user_profile "$username")
   mkdir -p "$dir/delegates"
   previous_name=$(blog_get_publish_name "$username" 2>/dev/null || printf '%s' "$username")
-  history_csv=$(config-get "$profile" publish_name_history 2>/dev/null || printf '')
+  history_csv=$(blog_config_get "$profile" publish_name_history 2>/dev/null || printf '')
   if [ -n "$previous_name" ] && [ "$previous_name" != "$publish_name" ]; then
     found=0
     old_ifs=$IFS
@@ -2990,12 +3002,12 @@ blog_set_publish_name() {
       fi
     fi
   fi
-  config-set "$profile" username "$username"
-  config-set "$profile" publish_name "$publish_name"
+  blog_config_set "$profile" username "$username"
+  blog_config_set "$profile" publish_name "$publish_name"
   if [ -n "$history_csv" ]; then
-    config-set "$profile" publish_name_history "$history_csv"
+    blog_config_set "$profile" publish_name_history "$history_csv"
   fi
-  config-set "$profile" updated_at "$(blog_now_iso)"
+  blog_config_set "$profile" updated_at "$(blog_now_iso)"
 }
 
 blog_player_name_aliases() {
@@ -3005,7 +3017,7 @@ blog_player_name_aliases() {
   fi
   profile=$(blog_user_profile "$username")
   current_name=$(blog_get_player_name "$username" 2>/dev/null || printf '%s' "$username")
-  history_csv=$(config-get "$profile" player_name_history 2>/dev/null || printf '')
+  history_csv=$(blog_config_get "$profile" player_name_history 2>/dev/null || printf '')
   unique_list=""
   add_alias() {
     val=${1-}
@@ -3044,7 +3056,7 @@ blog_publish_name_aliases() {
   fi
   profile=$(blog_user_profile "$username")
   current_name=$(blog_get_publish_name "$username" 2>/dev/null || printf '%s' "$username")
-  history_csv=$(config-get "$profile" publish_name_history 2>/dev/null || printf '')
+  history_csv=$(blog_config_get "$profile" publish_name_history 2>/dev/null || printf '')
   unique_list=""
   add_alias() {
     val=${1-}
@@ -3185,9 +3197,9 @@ blog_find_username_by_fingerprint() {
 
   find "$blog_users_dir" -mindepth 2 -maxdepth 2 -type f -name profile.conf 2>/dev/null | while IFS= read -r profile; do
     [ -n "$profile" ] || continue
-    saved_fp=$(config-get "$profile" fingerprint 2>/dev/null || printf '')
+    saved_fp=$(blog_config_get "$profile" fingerprint 2>/dev/null || printf '')
     if [ "$saved_fp" = "$fingerprint" ]; then
-      saved_user=$(config-get "$profile" username 2>/dev/null || printf '')
+      saved_user=$(blog_config_get "$profile" username 2>/dev/null || printf '')
       if [ -n "$saved_user" ]; then
         printf '%s\n' "$saved_user"
         exit 0
@@ -3204,7 +3216,7 @@ blog_user_is_admin_direct() {
 
   profile=$(blog_user_profile "$username")
   if [ -f "$profile" ]; then
-    is_admin=$(config-get "$profile" is_admin 2>/dev/null || printf '')
+    is_admin=$(blog_config_get "$profile" is_admin 2>/dev/null || printf '')
     if [ "$is_admin" = "true" ]; then
       return 0
     fi
@@ -3231,16 +3243,16 @@ blog_user_is_admin() {
 
   profile=$(blog_user_profile "$username")
   if [ -f "$profile" ]; then
-    fingerprint=$(config-get "$profile" fingerprint 2>/dev/null || printf '')
+    fingerprint=$(blog_config_get "$profile" fingerprint 2>/dev/null || printf '')
     if [ -n "$fingerprint" ] && [ -d "$blog_users_dir" ]; then
       for alt_profile in "$blog_users_dir"/*/profile.conf; do
         [ -f "$alt_profile" ] || continue
-        alt_user=$(config-get "$alt_profile" username 2>/dev/null || printf '')
+        alt_user=$(blog_config_get "$alt_profile" username 2>/dev/null || printf '')
         [ -n "$alt_user" ] || continue
         if [ "$alt_user" = "$username" ]; then
           continue
         fi
-        alt_fingerprint=$(config-get "$alt_profile" fingerprint 2>/dev/null || printf '')
+        alt_fingerprint=$(blog_config_get "$alt_profile" fingerprint 2>/dev/null || printf '')
         if [ "$alt_fingerprint" = "$fingerprint" ] && blog_user_is_admin_direct "$alt_user"; then
           return 0
         fi
@@ -3259,20 +3271,20 @@ blog_save_user_profile() {
   dir=$(blog_user_dir "$username")
   profile="$dir/profile.conf"
   mkdir -p "$dir/delegates"
-  config-set "$profile" username "$username"
-  config-set "$profile" fingerprint "$fingerprint"
-  config-set "$profile" ssh_public_key "$ssh_public_key"
-  config-set "$profile" updated_at "$(blog_now_iso)"
-  current_admin=$(config-get "$profile" is_admin 2>/dev/null || printf '')
+  blog_config_set "$profile" username "$username"
+  blog_config_set "$profile" fingerprint "$fingerprint"
+  blog_config_set "$profile" ssh_public_key "$ssh_public_key"
+  blog_config_set "$profile" updated_at "$(blog_now_iso)"
+  current_admin=$(blog_config_get "$profile" is_admin 2>/dev/null || printf '')
   case "$current_admin" in
     true|false)
-      config-set "$profile" is_admin "$current_admin"
+      blog_config_set "$profile" is_admin "$current_admin"
       ;;
     *)
       if blog_user_is_admin "$username"; then
-        config-set "$profile" is_admin true
+        blog_config_set "$profile" is_admin true
       else
-        config-set "$profile" is_admin false
+        blog_config_set "$profile" is_admin false
       fi
       ;;
   esac
@@ -3323,12 +3335,12 @@ blog_create_nostr_login_request() {
   now=$(blog_now_epoch)
   expires_at=$((now + 120))
   request_path=$(blog_nostr_login_request_path "$request_id")
-  config-set "$request_path" pubkey_hint "$pubkey"
-  config-set "$request_path" domain "$domain"
-  config-set "$request_path" request_type "$request_type"
-  config-set "$request_path" challenge "$challenge"
-  config-set "$request_path" created_at "$now"
-  config-set "$request_path" expires_at "$expires_at"
+  blog_config_set "$request_path" pubkey_hint "$pubkey"
+  blog_config_set "$request_path" domain "$domain"
+  blog_config_set "$request_path" request_type "$request_type"
+  blog_config_set "$request_path" challenge "$challenge"
+  blog_config_set "$request_path" created_at "$now"
+  blog_config_set "$request_path" expires_at "$expires_at"
   printf '%s;%s;%s\n' "$request_id" "$challenge" "$expires_at"
 }
 
@@ -3337,12 +3349,12 @@ blog_get_nostr_login_request() {
   blog_validate_nostr_login_request_id "$request_id" || return 1
   request_path=$(blog_nostr_login_request_path "$request_id")
   [ -f "$request_path" ] || return 1
-  pubkey=$(config-get "$request_path" pubkey_hint 2>/dev/null || printf '')
-  domain=$(config-get "$request_path" domain 2>/dev/null || printf '')
-  request_type=$(config-get "$request_path" request_type 2>/dev/null || printf 'login')
-  challenge=$(config-get "$request_path" challenge 2>/dev/null || printf '')
-  created_at=$(config-get "$request_path" created_at 2>/dev/null || printf '0')
-  expires_at=$(config-get "$request_path" expires_at 2>/dev/null || printf '0')
+  pubkey=$(blog_config_get "$request_path" pubkey_hint 2>/dev/null || printf '')
+  domain=$(blog_config_get "$request_path" domain 2>/dev/null || printf '')
+  request_type=$(blog_config_get "$request_path" request_type 2>/dev/null || printf 'login')
+  challenge=$(blog_config_get "$request_path" challenge 2>/dev/null || printf '')
+  created_at=$(blog_config_get "$request_path" created_at 2>/dev/null || printf '0')
+  expires_at=$(blog_config_get "$request_path" expires_at 2>/dev/null || printf '0')
   pubkey=$(blog_validate_nostr_pubkey "$pubkey" 2>/dev/null || printf '')
   case "$created_at" in ''|*[!0-9]*) created_at=0 ;; esac
   case "$expires_at" in ''|*[!0-9]*) expires_at=0 ;; esac
@@ -3440,14 +3452,14 @@ blog_nostr_delegation_activate() {
     delegation_id=$(printf '%s:%s:%s:%s' "$delegator" "$session_pubkey" "$domain" "$expires_at" | blog_sha256)
   fi
   path=$(blog_nostr_delegation_path "$delegation_id")
-  config-set "$path" delegation_id "$delegation_id"
-  config-set "$path" user_pubkey "$delegator"
-  config-set "$path" session_pubkey "$session_pubkey"
-  config-set "$path" domain "$domain"
-  config-set "$path" expires_at "$expires_at"
-  config-set "$path" created_at "$now"
-  config-set "$path" delegation_event_id "$event_id"
-  config-set "$path" revoked false
+  blog_config_set "$path" delegation_id "$delegation_id"
+  blog_config_set "$path" user_pubkey "$delegator"
+  blog_config_set "$path" session_pubkey "$session_pubkey"
+  blog_config_set "$path" domain "$domain"
+  blog_config_set "$path" expires_at "$expires_at"
+  blog_config_set "$path" created_at "$now"
+  blog_config_set "$path" delegation_event_id "$event_id"
+  blog_config_set "$path" revoked false
   printf '%s;%s;%s\n' "$delegation_id" "$session_pubkey" "$expires_at"
 }
 
@@ -3460,12 +3472,12 @@ blog_nostr_active_delegation_for_session() {
   now=$(blog_now_epoch)
   for file in "$blog_nostr_delegations_dir"/*.conf; do
     [ -f "$file" ] || continue
-    delegation_id=$(config-get "$file" delegation_id 2>/dev/null || printf '')
-    user_pubkey=$(config-get "$file" user_pubkey 2>/dev/null || printf '')
-    deleg_session=$(config-get "$file" session_pubkey 2>/dev/null || printf '')
-    domain=$(config-get "$file" domain 2>/dev/null || printf '')
-    expires_at=$(config-get "$file" expires_at 2>/dev/null || printf '0')
-    revoked=$(config-get "$file" revoked 2>/dev/null || printf 'false')
+    delegation_id=$(blog_config_get "$file" delegation_id 2>/dev/null || printf '')
+    user_pubkey=$(blog_config_get "$file" user_pubkey 2>/dev/null || printf '')
+    deleg_session=$(blog_config_get "$file" session_pubkey 2>/dev/null || printf '')
+    domain=$(blog_config_get "$file" domain 2>/dev/null || printf '')
+    expires_at=$(blog_config_get "$file" expires_at 2>/dev/null || printf '0')
+    revoked=$(blog_config_get "$file" revoked 2>/dev/null || printf 'false')
     user_pubkey=$(blog_validate_nostr_pubkey "$user_pubkey" 2>/dev/null || printf '')
     deleg_session=$(blog_validate_nostr_pubkey "$deleg_session" 2>/dev/null || printf '')
     case "$expires_at" in ''|*[!0-9]*) expires_at=0 ;; esac
@@ -3493,13 +3505,13 @@ blog_nostr_revoke_user_delegations() {
   count=0
   for file in "$blog_nostr_delegations_dir"/*.conf; do
     [ -f "$file" ] || continue
-    d_user=$(config-get "$file" user_pubkey 2>/dev/null || printf '')
+    d_user=$(blog_config_get "$file" user_pubkey 2>/dev/null || printf '')
     d_user=$(blog_validate_nostr_pubkey "$d_user" 2>/dev/null || printf '')
     if [ "$d_user" != "$user_pubkey" ]; then
       continue
     fi
-    delegation_id=$(config-get "$file" delegation_id 2>/dev/null || printf '')
-    session_pubkey=$(config-get "$file" session_pubkey 2>/dev/null || printf '')
+    delegation_id=$(blog_config_get "$file" delegation_id 2>/dev/null || printf '')
+    session_pubkey=$(blog_config_get "$file" session_pubkey 2>/dev/null || printf '')
     [ -n "$delegation_id" ] || delegation_id=$(basename "$file" .conf)
     blog_nostr_revoke_marker "$delegation_id"
     session_pubkey=$(blog_validate_nostr_pubkey "$session_pubkey" 2>/dev/null || printf '')
@@ -3518,7 +3530,7 @@ blog_invalidate_user_sessions() {
   count=0
   for file in "$blog_sessions_dir"/*.conf; do
     [ -f "$file" ] || continue
-    session_user=$(config-get "$file" username 2>/dev/null || printf '')
+    session_user=$(blog_config_get "$file" username 2>/dev/null || printf '')
     if [ "$session_user" = "$username" ]; then
       rm -f "$file"
       count=$((count + 1))
@@ -3550,17 +3562,17 @@ blog_create_session() {
   fi
 
   path=$(blog_session_path "$token")
-  config-set "$path" username "$username"
-  config-set "$path" fingerprint "$fingerprint"
-  config-set "$path" csrf_token "$csrf"
-  config-set "$path" created_at "$now"
-  config-set "$path" expires_at "$expires"
-  config-set "$path" is_admin "$is_admin"
-  config-set "$path" user_pubkey "$user_pubkey"
-  config-set "$path" signer_pubkey "$signer_pubkey"
-  config-set "$path" delegation_id "$delegation_id"
-  config-set "$path" auth_method "$auth_method"
-  config-set "$path" force_interactive "$force_interactive"
+  blog_config_set "$path" username "$username"
+  blog_config_set "$path" fingerprint "$fingerprint"
+  blog_config_set "$path" csrf_token "$csrf"
+  blog_config_set "$path" created_at "$now"
+  blog_config_set "$path" expires_at "$expires"
+  blog_config_set "$path" is_admin "$is_admin"
+  blog_config_set "$path" user_pubkey "$user_pubkey"
+  blog_config_set "$path" signer_pubkey "$signer_pubkey"
+  blog_config_set "$path" delegation_id "$delegation_id"
+  blog_config_set "$path" auth_method "$auth_method"
+  blog_config_set "$path" force_interactive "$force_interactive"
 
   printf '%s;%s;%s\n' "$token" "$csrf" "$is_admin"
 }
@@ -3576,16 +3588,16 @@ blog_load_session() {
     return 1
   fi
 
-  load_username=$(config-get "$load_path" username 2>/dev/null || printf '')
-  load_fingerprint=$(config-get "$load_path" fingerprint 2>/dev/null || printf '')
-  load_csrf=$(config-get "$load_path" csrf_token 2>/dev/null || printf '')
-  load_expires=$(config-get "$load_path" expires_at 2>/dev/null || printf '0')
-  load_is_admin=$(config-get "$load_path" is_admin 2>/dev/null || printf 'false')
-  load_user_pubkey=$(config-get "$load_path" user_pubkey 2>/dev/null || printf '')
-  load_signer_pubkey=$(config-get "$load_path" signer_pubkey 2>/dev/null || printf '')
-  load_delegation_id=$(config-get "$load_path" delegation_id 2>/dev/null || printf '')
-  load_auth_method=$(config-get "$load_path" auth_method 2>/dev/null || printf 'nostr')
-  load_force_interactive=$(config-get "$load_path" force_interactive 2>/dev/null || printf 'false')
+  load_username=$(blog_config_get "$load_path" username 2>/dev/null || printf '')
+  load_fingerprint=$(blog_config_get "$load_path" fingerprint 2>/dev/null || printf '')
+  load_csrf=$(blog_config_get "$load_path" csrf_token 2>/dev/null || printf '')
+  load_expires=$(blog_config_get "$load_path" expires_at 2>/dev/null || printf '0')
+  load_is_admin=$(blog_config_get "$load_path" is_admin 2>/dev/null || printf 'false')
+  load_user_pubkey=$(blog_config_get "$load_path" user_pubkey 2>/dev/null || printf '')
+  load_signer_pubkey=$(blog_config_get "$load_path" signer_pubkey 2>/dev/null || printf '')
+  load_delegation_id=$(blog_config_get "$load_path" delegation_id 2>/dev/null || printf '')
+  load_auth_method=$(blog_config_get "$load_path" auth_method 2>/dev/null || printf 'nostr')
+  load_force_interactive=$(blog_config_get "$load_path" force_interactive 2>/dev/null || printf 'false')
   case "$load_force_interactive" in
     true|1|yes|on) load_force_interactive=true ;;
     *) load_force_interactive=false ;;
@@ -3627,7 +3639,7 @@ blog_extend_session() {
   path=$(blog_session_path "$BLOG_SESSION_TOKEN")
   now=$(blog_now_epoch)
   expires=$((now + 43200))
-  config-set "$path" expires_at "$expires"
+  blog_config_set "$path" expires_at "$expires"
 }
 
 blog_require_session() {
@@ -4458,11 +4470,11 @@ blog_nostr_primary_file_metadata() {
   record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
   [ -f "$record_path" ] || return 1
 
-  safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf '')
+  safe_name=$(blog_config_get "$record_path" safe_name 2>/dev/null || printf '')
   rel_url=$(blog_file_public_url_encoded "$file_id" "$safe_name" 2>/dev/null || printf '')
   abs_url=$(blog_nostr_absolute_url "$rel_url" 2>/dev/null || printf '')
-  mime_type=$(config-get "$record_path" mime_type 2>/dev/null || printf '')
-  size_bytes=$(config-get "$record_path" size_bytes 2>/dev/null || printf '')
+  mime_type=$(blog_config_get "$record_path" mime_type 2>/dev/null || printf '')
+  size_bytes=$(blog_config_get "$record_path" size_bytes 2>/dev/null || printf '')
   disk_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
 
   ox=''
@@ -4879,11 +4891,11 @@ blog_nostr_mark_content_files_public() {
     [ -n "$file_id" ] || continue
     record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
     [ -f "$record_path" ] || continue
-    config-set "$record_path" explicit_public true
+    blog_config_set "$record_path" explicit_public true
     if [ -n "$draft_id" ]; then
-      config-set "$record_path" draft_id ""
+      blog_config_set "$record_path" draft_id ""
     fi
-    config-set "$record_path" updated_at "$now_iso"
+    blog_config_set "$record_path" updated_at "$now_iso"
   done
 }
 
@@ -5922,9 +5934,9 @@ blog_is_positive_decimal() {
 }
 
 blog_drip_interval_hours() {
-  interval_hours=$(config-get "$blog_site_conf" drip_interval_hours 2>/dev/null || printf '')
+  interval_hours=$(blog_config_get "$blog_site_conf" drip_interval_hours 2>/dev/null || printf '')
   if ! blog_is_positive_decimal "$interval_hours"; then
-    legacy_minutes=$(config-get "$blog_site_conf" drip_interval_minutes 2>/dev/null || printf '240')
+    legacy_minutes=$(blog_config_get "$blog_site_conf" drip_interval_minutes 2>/dev/null || printf '240')
     case "$legacy_minutes" in ''|*[!0-9]*) legacy_minutes=240 ;; esac
     if [ "$legacy_minutes" -lt 1 ]; then
       legacy_minutes=1
@@ -5946,9 +5958,9 @@ blog_drip_interval_seconds() {
 }
 
 blog_drip_randomness_minutes() {
-  randomness=$(config-get "$blog_site_conf" drip_randomness_minutes 2>/dev/null || printf '')
+  randomness=$(blog_config_get "$blog_site_conf" drip_randomness_minutes 2>/dev/null || printf '')
   if [ -z "$randomness" ]; then
-    randomness=$(config-get "$blog_site_conf" drip_jitter_minutes 2>/dev/null || printf '0')
+    randomness=$(blog_config_get "$blog_site_conf" drip_jitter_minutes 2>/dev/null || printf '0')
   fi
   case "$randomness" in ''|*[!0-9]*) randomness=0 ;; esac
   if [ "$randomness" -lt 0 ]; then
@@ -5976,7 +5988,7 @@ blog_run_scheduler() {
   interval_seconds=$(blog_drip_interval_seconds)
   randomness=$(blog_drip_randomness_minutes)
 
-  last_drip=$(config-get "$state" last_drip_epoch 2>/dev/null || printf '0')
+  last_drip=$(blog_config_get "$state" last_drip_epoch 2>/dev/null || printf '0')
   case "$last_drip" in ''|*[!0-9]*) last_drip=0 ;; esac
 
   scheduled_published=0
@@ -6068,7 +6080,7 @@ blog_run_scheduler() {
           blog_delete_draft "$draft_id"
           drip_published=1
           randomness_minutes=$(blog_random_int "$randomness")
-          config-set "$state" last_drip_epoch "$((now_epoch + randomness_minutes * 60))"
+          blog_config_set "$state" last_drip_epoch "$((now_epoch + randomness_minutes * 60))"
         fi
       fi
     fi
@@ -6278,8 +6290,8 @@ blog_public_posts_catalog_write_artifacts() {
 }
 
 blog_base_url() {
-  domain=$(config-get "$blog_site_conf" domain 2>/dev/null || printf 'localhost')
-  use_https=$(config-get "$blog_site_conf" https 2>/dev/null || printf 'false')
+  domain=$(blog_config_get "$blog_site_conf" domain 2>/dev/null || printf 'localhost')
+  use_https=$(blog_config_get "$blog_site_conf" https 2>/dev/null || printf 'false')
   scheme=http
   if [ "$use_https" = "true" ]; then
     scheme=https
