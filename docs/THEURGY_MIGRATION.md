@@ -14,12 +14,13 @@
 - Add replay fixtures for migrated read endpoints.
 - Move `blog-archive` and `blog-tags` to catalog-backed `gazeta-read` HTML actions.
 - Add `rebuild-search-index` and move `blog-search` to the file-backed `gazeta-read blog-search` action.
+- Add separate `gazeta-nostr-read` runtime and move `blog-comments` to the Nostr read adapter.
 
 ## Remaining Read Work
 
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
-- `blog-comments`, `blog-post-context`, and `blog-get-product` need explicit Nostr/payments-safe fixture contracts before migration.
+- `blog-post-context` and `blog-get-product` need explicit Nostr/payments-safe fixture contracts before migration.
 - Add replay fixtures before each endpoint switch.
 
 ## Runtime Boundaries
@@ -28,6 +29,7 @@
 - Keep each `gazeta-read` action in its own Rust module; do not grow a single cross-domain action file.
 - Future admin reads should use a separate `gazeta-admin-read` binary or an explicitly separate admin module with its own adapter allowlist.
 - Payments, purchases, BTCPay, Lightning, zaps, Nostr publishing, secure chat, video chat controls, and merch mutations must not be added to `gazeta-read`.
+- Nostr-derived public reads belong in `gazeta-nostr-read`; Nostr publishing, mirroring, rebuilds, and crossposting still need separate mutation surfaces.
 - High-risk domains should get separate binaries/adapters once their replay fixtures and file-state assertions exist:
   - `gazeta-payments`
   - `gazeta-nostr`

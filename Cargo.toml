@@ -9,6 +9,10 @@ description = "Theurgy read runtime for Gazeta."
 name = "gazeta-read"
 path = "src/bin/gazeta-read.rs"
 
+[[bin]]
+name = "gazeta-nostr-read"
+path = "src/bin/gazeta-nostr-read.rs"
+
 [dependencies]
 serde_json = "1"
 
