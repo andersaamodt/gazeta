@@ -163,7 +163,8 @@ cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/
 Gazeta is migrating hot read paths to the Theurgy web runtime while keeping CGI front doors compatible with Wizardry hosting.
 
 - `gazeta-read` handles migrated read endpoints.
-- `cgi/blog-list-public-posts` is now a small CGI adapter that execs `gazeta-read list-public-posts`.
+- `cgi/blog-list-public-posts` execs `gazeta-read list-public-posts`.
+- `cgi/blog-list-navbar-pages` execs `gazeta-read list-navbar-pages`.
 - `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
 - Build runtime binaries with:
 

@@ -1,57 +1,38 @@
 #!/bin/sh
-# Public list of Nostr-backed pages shown in navbar.
+# Public navbar page list through the Gazeta Theurgy read runtime.
 
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-. "$SCRIPT_DIR/blog-lib.sh"
-. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 
-blog_init
-blog_send_json_headers
+if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
+  : "${WIZARDRY_SITES_DIR:=$(dirname "$REPO_ROOT")}"
+  : "${WIZARDRY_SITE_NAME:=$(basename "$REPO_ROOT")}"
+  export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
+fi
+export GAZETA_REPO_ROOT=${GAZETA_REPO_ROOT:-$REPO_ROOT}
 
-static_file="$blog_site_root/site/static/navbar-pages.json"
-cache_file="$blog_state_dir/navbar-pages-cache.json"
-cache_ttl_seconds=600
-now_epoch=$(date +%s 2>/dev/null || printf '0')
-cache_mtime=0
-cache_is_fresh=false
-
-file_mtime_epoch() {
-  file_path=$1
-  mtime=$(stat -c '%Y' "$file_path" 2>/dev/null || printf '')
-  case "$mtime" in
-    ''|*[!0-9]*) mtime=$(stat -f '%m' "$file_path" 2>/dev/null || printf '') ;;
-  esac
-  mtime=$(printf '%s\n' "$mtime" | sed -n '1p')
-  case "$mtime" in
-    ''|*[!0-9]*) mtime=0 ;;
-  esac
-  printf '%s\n' "$mtime"
+run_candidate() {
+  candidate=$1
+  [ -x "$candidate" ] || return 1
+  exec "$candidate" list-navbar-pages
 }
 
-if [ -f "$cache_file" ]; then
-  cache_mtime=$(file_mtime_epoch "$cache_file")
-fi
-if [ -f "$cache_file" ] && [ -n "$cache_mtime" ] && [ "$cache_mtime" -gt 0 ] && [ $((now_epoch - cache_mtime)) -le "$cache_ttl_seconds" ]; then
-  cache_is_fresh=true
-fi
-
-if [ "$cache_is_fresh" = "true" ]; then
-  cat "$cache_file"
-  exit 0
+if [ -n "${GAZETA_READ_RUNTIME-}" ]; then
+  run_candidate "$GAZETA_READ_RUNTIME" || {
+    printf '%s\n\n' 'Content-Type: application/json'
+    printf '{"success":false,"code":"runtime_missing","error":"Configured Gazeta read runtime is not executable."}\n'
+    exit 0
+  }
 fi
 
-if [ -f "$static_file" ]; then
-  cat "$static_file"
-  exit 0
+if [ "${GAZETA_THEURGY_ALLOW_CARGO-}" = 1 ] && command -v cargo >/dev/null 2>&1; then
+  exec cargo run --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin gazeta-read -- list-navbar-pages
 fi
 
-cfg=$(blog_nostr_pages_load_json_fast)
-nav_json=$(blog_nostr_navbar_pages_json "$cfg")
-printf '%s\n' "$nav_json"
+run_candidate "$REPO_ROOT/target/release/gazeta-read" || true
+run_candidate "$REPO_ROOT/target/debug/gazeta-read" || true
 
-cache_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-cache.XXXXXX")
-printf '%s\n' "$nav_json" > "$cache_tmp"
-mv "$cache_tmp" "$cache_file"
-chmod 644 "$cache_file" 2>/dev/null || true
+printf '%s\n\n' 'Content-Type: application/json'
+printf '{"success":false,"code":"runtime_missing","error":"Gazeta read runtime is not built. Build target/release/gazeta-read or set GAZETA_READ_RUNTIME."}\n'

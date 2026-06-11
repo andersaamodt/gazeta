@@ -34,6 +34,12 @@ printf '%s\n' "$payload" | jq -e '.rebuilt == ["public-posts"]' >/dev/null
 [ -f "$SITE_DATA/public-posts-cache.json" ]
 jq -e '.posts[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/public-posts.json" >/dev/null
 
+navbar_payload=$("$ROOT_DIR/cgi/blog-maintenance" rebuild-navbar-pages)
+printf '%s\n' "$navbar_payload" | jq -e '.success == true and .rebuilt == ["navbar-pages"]' >/dev/null
+[ -f "$SITE_ROOT/site/static/navbar-pages.json" ]
+[ -f "$SITE_DATA/navbar-pages-cache.json" ]
+printf '%s\n' "$navbar_payload" | jq -e 'has("page_count")' >/dev/null
+
 bad=$("$ROOT_DIR/cgi/blog-maintenance" unknown-action)
 printf '%s\n' "$bad" | jq -e '.success == false and .code == "bad_action"' >/dev/null
 

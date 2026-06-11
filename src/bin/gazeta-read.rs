@@ -40,6 +40,7 @@ fn run() -> Result<Value> {
         .as_str()
     {
         "list-public-posts" => list_public_posts(),
+        "list-navbar-pages" => list_navbar_pages(),
         _ => Err(ReadError::new("bad_action", "Unknown Gazeta read action.")),
     }
 }
@@ -64,6 +65,30 @@ fn list_public_posts() -> Result<Value> {
             ReadError::new(
                 "catalog_missing",
                 "Gazeta public posts catalog was not available after rebuild.",
+            )
+        })
+}
+
+fn list_navbar_pages() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let static_navbar = paths.site_root.join("site/static/navbar-pages.json");
+    let cache_navbar = paths.state_dir.join("navbar-pages-cache.json");
+
+    if let Some(value) = read_pages_payload(&cache_navbar) {
+        return Ok(value);
+    }
+    if let Some(value) = read_pages_payload(&static_navbar) {
+        return Ok(value);
+    }
+
+    rebuild(&paths, "rebuild-navbar-pages")?;
+
+    read_pages_payload(&static_navbar)
+        .or_else(|| read_pages_payload(&cache_navbar))
+        .ok_or_else(|| {
+            ReadError::new(
+                "navbar_missing",
+                "Gazeta navbar pages were not available after rebuild.",
             )
         })
 }
@@ -98,9 +123,13 @@ impl SitePaths {
 }
 
 fn rebuild_public_posts(paths: &SitePaths) -> Result<()> {
+    rebuild(paths, "rebuild-public-posts")
+}
+
+fn rebuild(paths: &SitePaths, action: &str) -> Result<()> {
     let maintenance = paths.repo_root.join("cgi/blog-maintenance");
     let output = Command::new(&maintenance)
-        .arg("rebuild-public-posts")
+        .arg(action)
         .current_dir(&paths.repo_root)
         .output()
         .map_err(|error| ReadError::new("rebuild_failed", error.to_string()))?;
@@ -130,6 +159,18 @@ fn read_catalog(path: &Path) -> Option<Value> {
     let value: Value = serde_json::from_str(&text).ok()?;
     if value.get("success").and_then(Value::as_bool) == Some(true)
         && value.get("posts").and_then(Value::as_array).is_some()
+    {
+        Some(value)
+    } else {
+        None
+    }
+}
+
+fn read_pages_payload(path: &Path) -> Option<Value> {
+    let text = fs::read_to_string(path).ok()?;
+    let value: Value = serde_json::from_str(&text).ok()?;
+    if value.get("success").and_then(Value::as_bool) == Some(true)
+        && value.get("pages").and_then(Value::as_array).is_some()
     {
         Some(value)
     } else {
