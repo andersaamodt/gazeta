@@ -5,7 +5,7 @@ set -eu
 
 action=${1-}
 case "$action" in
-  blog-comments) ;;
+  blog-comments|blog-post-context) ;;
   *)
     printf '%s\n\n' 'Content-Type: application/json'
     printf '{"success":false,"code":"bad_action","error":"Unknown Gazeta Nostr read action."}\n'

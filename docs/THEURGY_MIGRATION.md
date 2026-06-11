@@ -15,12 +15,13 @@
 - Move `blog-archive` and `blog-tags` to catalog-backed `gazeta-read` HTML actions.
 - Add `rebuild-search-index` and move `blog-search` to the file-backed `gazeta-read blog-search` action.
 - Add separate `gazeta-nostr-read` runtime and move `blog-comments` to the Nostr read adapter.
+- Move `blog-post-context` to the Nostr read adapter using the public post catalog plus derived Nostr indexes.
 
 ## Remaining Read Work
 
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
-- `blog-post-context` and `blog-get-product` need explicit Nostr/payments-safe fixture contracts before migration.
+- `blog-get-product` needs an explicit commerce/payments-safe fixture contract before migration.
 - Add replay fixtures before each endpoint switch.
 
 ## Runtime Boundaries

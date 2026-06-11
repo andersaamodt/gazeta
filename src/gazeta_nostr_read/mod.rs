@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -66,11 +66,32 @@ impl SitePaths {
     fn nostr_comments_index(&self) -> PathBuf {
         self.state_dir.join("nostr/derived/comments.json")
     }
+
+    fn public_posts_catalog_static(&self) -> PathBuf {
+        self.site_root.join("site/static/public-posts.json")
+    }
+
+    fn public_posts_catalog_cache(&self) -> PathBuf {
+        self.state_dir.join("public-posts-cache.json")
+    }
+
+    fn nostr_relays_file(&self) -> PathBuf {
+        self.state_dir.join("nostr/state/relays")
+    }
+
+    fn site_npub_file(&self) -> PathBuf {
+        self.state_dir.join("nostr/state/site_npub")
+    }
+
+    fn site_pubkey_file(&self) -> PathBuf {
+        self.state_dir.join("nostr/state/site_pubkey")
+    }
 }
 
 pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-comments" => blog_comments().map(CgiResponse::json),
+        "blog-post-context" => blog_post_context().map(CgiResponse::json),
         _ => Err(ReadError::new("bad_action", "Unknown Gazeta Nostr read action.")),
     }
 }
@@ -96,6 +117,51 @@ fn blog_comments() -> Result<Value> {
     };
     let comments = comments_for_address(&paths, &address);
     Ok(json!({"success":true,"bridge_enabled":true,"comments":comments}))
+}
+
+fn blog_post_context() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let requested_path = query_param("path").or_else(|| query_param("slug"));
+    let Some(requested_path) = requested_path.filter(|path| !path.is_empty()) else {
+        return Ok(json!({
+            "success": false,
+            "code": "invalid_request",
+            "error": "path is required"
+        }));
+    };
+    let Some(slug) = extract_path_slug(&requested_path).filter(|slug| !slug.is_empty()) else {
+        return Ok(json!({
+            "success": false,
+            "code": "invalid_path",
+            "error": "Invalid path"
+        }));
+    };
+    let posts = public_posts(&paths)?;
+    let Some(index) = posts.iter().position(|post| post_path_slug(post) == Some(slug.as_str())) else {
+        return Ok(json!({
+            "success": false,
+            "code": "not_found",
+            "error": "Post not found"
+        }));
+    };
+
+    let current = context_post_json(&paths, &posts[index]);
+    let newer = index
+        .checked_sub(1)
+        .map(|newer_index| context_post_json(&paths, &posts[newer_index]))
+        .unwrap_or(Value::Null);
+    let older = posts
+        .get(index + 1)
+        .map(|post| context_post_json(&paths, post))
+        .unwrap_or(Value::Null);
+
+    Ok(json!({
+        "success": true,
+        "current": current,
+        "zap_config": zap_config_json(&paths),
+        "newer": newer,
+        "older": older
+    }))
 }
 
 fn nostr_bridge_enabled(paths: &SitePaths) -> bool {
@@ -145,6 +211,194 @@ fn comments_for_address(paths: &SitePaths, address: &str) -> Vec<Value> {
         .collect()
 }
 
+fn public_posts(paths: &SitePaths) -> Result<Vec<Value>> {
+    let catalog = read_json_object(&paths.public_posts_catalog_static())
+        .or_else(|| read_json_object(&paths.public_posts_catalog_cache()))
+        .ok_or_else(|| {
+            ReadError::new(
+                "catalog_missing",
+                "Gazeta public posts catalog is not available.",
+            )
+        })?;
+    catalog
+        .get("posts")
+        .and_then(Value::as_array)
+        .cloned()
+        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))
+}
+
+fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
+    let slug = post_path_slug(post).unwrap_or_default();
+    let mut object = Map::new();
+    object.insert("title".to_string(), Value::String(string_field(post, "title")));
+    object.insert(
+        "author".to_string(),
+        Value::String(string_field_or(post, "author", "Blog Author")),
+    );
+    object.insert("url".to_string(), Value::String(string_field(post, "url")));
+    object.insert(
+        "path".to_string(),
+        Value::String(string_field_or(post, "path", &format!("posts/{slug}"))),
+    );
+    object.insert(
+        "source_path".to_string(),
+        Value::String(string_field(post, "source_path")),
+    );
+    object.insert("type".to_string(), Value::String(string_field_or(post, "type", "post")));
+    object.insert(
+        "published_at".to_string(),
+        Value::String(string_field(post, "published_at")),
+    );
+    object.insert(
+        "published_date".to_string(),
+        Value::String(string_field(post, "published_date")),
+    );
+    object.insert(
+        "published_timestamp".to_string(),
+        Value::String(string_field(post, "published_timestamp")),
+    );
+    object.insert("year".to_string(), Value::String(string_field_or(post, "year", "")));
+    object.insert("summary".to_string(), Value::String(string_field(post, "summary")));
+    object.insert("word_count".to_string(), integer_json(post, "word_count"));
+    object.insert("reading_minutes".to_string(), integer_json(post, "reading_minutes"));
+    object.insert(
+        "tags".to_string(),
+        post.get("tags").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
+    );
+    object.insert(
+        "nostr".to_string(),
+        nostr_context_for_post(paths, post, &slug).unwrap_or(Value::Null),
+    );
+    Value::Object(object)
+}
+
+fn nostr_context_for_post(paths: &SitePaths, post: &Value, slug: &str) -> Option<Value> {
+    let mut id = string_field(post, "nostr_event_id");
+    let mut pubkey = string_field(post, "nostr_pubkey");
+    let mut kind = string_field(post, "nostr_kind");
+    let mut d = string_field(post, "nostr_d");
+    let mut address = string_field(post, "nostr_address");
+    let mut uri = string_field(post, "nostr_uri");
+
+    if id.is_empty() && pubkey.is_empty() && kind.is_empty() && d.is_empty() && uri.is_empty() {
+        if let Some(record) = post_record_for_slug(paths, slug) {
+            id = string_field(&record, "id");
+            pubkey = string_field(&record, "pubkey");
+            kind = number_or_string_field(&record, "kind");
+            d = string_field(&record, "d");
+            address = string_field(&record, "address");
+            if d.is_empty() {
+                d = d_tag_from_record(&record).unwrap_or_default();
+            }
+        }
+    }
+    if address.is_empty() && !pubkey.is_empty() && !kind.is_empty() && !d.is_empty() {
+        address = format!("{kind}:{pubkey}:{d}");
+    }
+    if uri.is_empty() && !address.is_empty() {
+        uri = format!("nostr:{address}");
+    }
+    if id.is_empty() && pubkey.is_empty() && kind.is_empty() && d.is_empty() && uri.is_empty() {
+        return None;
+    }
+    Some(json!({
+        "id": id,
+        "pubkey": pubkey,
+        "kind": kind,
+        "d": d,
+        "address": address,
+        "uri": uri,
+        "relays": relays_json(paths)
+    }))
+}
+
+fn zap_config_json(paths: &SitePaths) -> Value {
+    let site_npub = first_line(&paths.site_npub_file()).unwrap_or_default();
+    let site_pubkey = first_line(&paths.site_pubkey_file()).unwrap_or_default();
+    let configured_lud16 = config_value(&paths.site_conf(), "zap_lud16")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    let demo_lud16 = (!site_npub.is_empty()).then(|| format!("{site_npub}@npub.cash"));
+    let lud16 = if configured_lud16.is_empty() {
+        demo_lud16.clone().unwrap_or_default()
+    } else {
+        configured_lud16
+    };
+    let lud16_source = if !config_value(&paths.site_conf(), "zap_lud16")
+        .unwrap_or_default()
+        .trim()
+        .is_empty()
+    {
+        "configured"
+    } else if demo_lud16.is_some() {
+        "demo"
+    } else {
+        "unavailable"
+    };
+    let mut enabled = zaps_enabled(paths);
+    if lud16.is_empty() {
+        enabled = false;
+    }
+    let amount_sats = config_value(&paths.site_conf(), "zap_default_amount_sats")
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value >= 1)
+        .unwrap_or(1_000);
+
+    let mut object = Map::new();
+    object.insert("enabled".to_string(), Value::Bool(enabled));
+    object.insert("lud16".to_string(), Value::String(lud16));
+    object.insert("lud16_source".to_string(), Value::String(lud16_source.to_string()));
+    object.insert("default_amount_sats".to_string(), json!(amount_sats));
+    object.insert("demo_wallet_available".to_string(), Value::Bool(!site_npub.is_empty()));
+    if !site_npub.is_empty() {
+        object.insert("demo_wallet_npub".to_string(), Value::String(site_npub));
+    }
+    if !site_pubkey.is_empty() {
+        object.insert("recipient_pubkey".to_string(), Value::String(site_pubkey));
+    }
+    object.insert("relays".to_string(), Value::Array(relays_json(paths)));
+    Value::Object(object)
+}
+
+fn zaps_enabled(paths: &SitePaths) -> bool {
+    config_bool(&paths.site_conf(), "plugin_nostr_support")
+        && config_bool(&paths.site_conf(), "plugin_zaps")
+        && config_bool(&paths.site_conf(), "zaps_enabled")
+}
+
+fn relays_json(paths: &SitePaths) -> Vec<Value> {
+    let Some(text) = fs::read_to_string(paths.nostr_relays_file()).ok() else {
+        return Vec::new();
+    };
+    text.lines()
+        .filter_map(|line| line.split('#').next())
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|line| Value::String(line.to_string()))
+        .collect()
+}
+
+fn post_record_for_slug(paths: &SitePaths, slug: &str) -> Option<Value> {
+    read_json_array(&paths.nostr_posts_index())?
+        .into_iter()
+        .find(|record| record.get("slug").and_then(Value::as_str) == Some(slug))
+}
+
+fn d_tag_from_record(record: &Value) -> Option<String> {
+    record.get("tags").and_then(Value::as_array)?.iter().find_map(|tag| {
+        let parts = tag.as_array()?;
+        (parts.first().and_then(Value::as_str) == Some("d"))
+            .then(|| parts.get(1).and_then(Value::as_str).map(ToString::to_string))
+            .flatten()
+    })
+}
+
+fn post_path_slug(post: &Value) -> Option<&str> {
+    let path = post.get("path").and_then(Value::as_str)?;
+    path.strip_prefix("posts/").or(Some(path))
+}
+
 fn add_created_at_iso(mut comment: Value) -> Value {
     let created_at_iso = comment
         .get("created_at")
@@ -161,6 +415,11 @@ fn add_created_at_iso(mut comment: Value) -> Value {
 fn read_json_array(path: &Path) -> Option<Vec<Value>> {
     let text = fs::read_to_string(path).ok()?;
     serde_json::from_str::<Value>(&text).ok()?.as_array().cloned()
+}
+
+fn read_json_object(path: &Path) -> Option<Value> {
+    let text = fs::read_to_string(path).ok()?;
+    serde_json::from_str::<Value>(&text).ok()
 }
 
 fn extract_path_slug(path: &str) -> Option<String> {
@@ -243,6 +502,43 @@ fn string_field(value: &Value, field: &str) -> String {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string()
+}
+
+fn string_field_or(value: &Value, field: &str, fallback: &str) -> String {
+    let raw = string_field(value, field);
+    if raw.is_empty() {
+        fallback.to_string()
+    } else {
+        raw
+    }
+}
+
+fn number_or_string_field(value: &Value, field: &str) -> String {
+    match value.get(field) {
+        Some(Value::Number(number)) => number.to_string(),
+        Some(Value::String(text)) => text.to_string(),
+        _ => String::new(),
+    }
+}
+
+fn integer_json(value: &Value, field: &str) -> Value {
+    match value.get(field) {
+        Some(Value::Number(number)) => Value::Number(number.clone()),
+        Some(Value::String(text)) => text
+            .parse::<i64>()
+            .map_or_else(|_| json!(0), |number| json!(number)),
+        _ => json!(0),
+    }
+}
+
+fn first_line(path: &Path) -> Option<String> {
+    fs::read_to_string(path)
+        .ok()?
+        .lines()
+        .next()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(ToString::to_string)
 }
 
 fn unix_timestamp_to_iso(timestamp: i64) -> Option<String> {

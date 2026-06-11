@@ -12,8 +12,14 @@ export WIZARDRY_SITE_NAME="example.test"
 
 mkdir -p "$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
 
-output=$(/bin/sh "$ROOT_DIR/cgi/blog-comments")
-[ "$output" = "blog-comments" ]
+for endpoint in \
+  "blog-comments blog-comments" \
+  "blog-post-context blog-post-context"
+do
+  set -- $endpoint
+  output=$(/bin/sh "$ROOT_DIR/cgi/$1")
+  [ "$output" = "$2" ]
+done
 
 bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-nostr-read-runtime-adapter" invalid-action)
 printf '%s\n' "$bad_output" | grep '"success":false' >/dev/null
