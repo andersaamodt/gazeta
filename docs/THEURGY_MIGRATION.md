@@ -4,6 +4,7 @@
 
 - Keep CGI front doors as compatibility wrappers.
 - Add `gazeta-read` as the compiled read runtime.
+- Split `gazeta-read` into action modules so public reads, maintenance-backed reads, and future admin domains do not share one large implementation file.
 - Move `blog-list-public-posts` to `gazeta-read list-public-posts`.
 - Move `blog-list-navbar-pages` to `gazeta-read list-navbar-pages`.
 - Move `blog-btc-usd-rate` to `gazeta-read btc-usd-rate`.
