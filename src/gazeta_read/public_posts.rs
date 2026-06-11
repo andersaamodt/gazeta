@@ -3,6 +3,10 @@ use serde_json::Value;
 use std::path::Path;
 
 pub(crate) fn list_public_posts() -> Result<Value> {
+    public_posts_catalog_value()
+}
+
+pub(crate) fn public_posts_catalog_value() -> Result<Value> {
     let paths = SitePaths::from_env()?;
     let static_catalog = paths.site_root.join("site/static/public-posts.json");
     let cache_catalog = paths.state_dir.join("public-posts-cache.json");

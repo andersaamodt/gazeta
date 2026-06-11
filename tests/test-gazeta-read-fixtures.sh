@@ -65,4 +65,16 @@ btc_json=$(printf '%s\n' "$btc_payload" | sed -n '/^{/,$p')
 printf '%s\n' "$btc_json" | jq -e '.success == true' >/dev/null
 printf '%s\n' "$btc_json" | jq -e '.btc_usd == 64000.25 and .currency == "USD" and .stale == false' >/dev/null
 
+cat > "$SITE_ROOT/site/static/public-posts.json" <<'JSON'
+{"success":true,"posts":[{"url":"/posts/replay-post","title":"Replay Post","author":"Replay Author","reading_minutes":2,"published_timestamp":"June 11, 2026 at 12:00 PM UTC","pub_date":"2026-06-11","comment_count":3,"summary":"Read [the replay](https://example.com/replay).","summary_truncated":true,"type":"post","tags":["test","replay"]},{"url":"/posts/link-post","title":"Useful linked page","author":"Link Curator","reading_minutes":1,"published_timestamp":"June 10, 2026 at 9:00 AM UTC","pub_date":"2026-06-10","comment_count":0,"summary":"[Useful linked page](https://links.example.com/articles/2026/06/path?with=query#final-section)","link_url":"https://links.example.com/articles/2026/06/path?with=query#final-section","summary_truncated":false,"type":"link-share","tags":["links"]}]}
+JSON
+
+index_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-index"
+index_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$index_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-index")
+
+printf '%s\n' "$index_payload" | grep '<div class="post-list">' >/dev/null
+printf '%s\n' "$index_payload" | grep '<span class="post-offsite-link-kind">Off-site link</span><span>Linked by Link Curator</span>' >/dev/null
+printf '%s\n' "$index_payload" | grep '<a href="https://links.example.com/articles/2026/06/path?with=query#final-section">Useful linked page</a>' >/dev/null
+printf '%s\n' "$index_payload" | grep '>Read more...</a>' >/dev/null
+
 printf '%s\n' 'gazeta read fixture tests passed'

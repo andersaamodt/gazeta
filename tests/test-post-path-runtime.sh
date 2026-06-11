@@ -91,7 +91,7 @@ assert_eq 'link-share' "$(printf '%s\n' "$link_catalog_row" | jq -r '.type // ""
 assert_eq 'https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section' "$(printf '%s\n' "$link_catalog_row" | jq -r '.link_url // ""')" 'public posts catalog exposes link-share off-site URL'
 assert_eq '[Useful linked page](https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section)' "$(printf '%s\n' "$link_catalog_row" | jq -r '.summary | split("\n")[0]')" 'public posts catalog preserves markdown link syntax in condensed previews'
 
-index_output=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-index")
+index_output=$(REQUEST_METHOD=GET CONTENT_LENGTH=0 /bin/sh "$ROOT_DIR/cgi/blog-index")
 case "$index_output" in
   *'<span class="post-offsite-link-kind">Off-site link</span><span>Linked by Link Curator</span>'*) pass ;;
   *) fail 'CGI blog index distinguishes link-share cards as off-site links linked by the post author' ;;

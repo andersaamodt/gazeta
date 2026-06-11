@@ -15,7 +15,8 @@ mkdir -p "$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
 for endpoint in \
   "blog-list-public-posts list-public-posts" \
   "blog-list-navbar-pages list-navbar-pages" \
-  "blog-btc-usd-rate btc-usd-rate"
+  "blog-btc-usd-rate btc-usd-rate" \
+  "blog-index blog-index"
 do
   set -- $endpoint
   output=$(/bin/sh "$ROOT_DIR/cgi/$1")

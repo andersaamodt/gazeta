@@ -7,6 +7,7 @@
 - Split `gazeta-read` into action modules so public reads, maintenance-backed reads, and future admin domains do not share one large implementation file.
 - Add a shared `cgi/gazeta-read-runtime-adapter` so migrated CGI front doors stay tiny and use one runtime selection path.
 - Move `blog-list-public-posts` to `gazeta-read list-public-posts`.
+- Move `blog-index` to `gazeta-read blog-index`.
 - Move `blog-list-navbar-pages` to `gazeta-read list-navbar-pages`.
 - Move `blog-btc-usd-rate` to `gazeta-read btc-usd-rate`.
 - Add `cgi/blog-maintenance` for Deployments-safe cache/index rebuilds.
@@ -17,8 +18,20 @@
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
   - public archive/tag indexes once they have stable artifact files
-  - public search after a Tantivy/file-index contract exists
+- public search after a Tantivy/file-index contract exists
 - Add replay fixtures before each endpoint switch.
+
+## Runtime Boundaries
+
+- `gazeta-read` is only for low-risk public reads and maintenance-backed read caches.
+- Keep each `gazeta-read` action in its own Rust module; do not grow a single cross-domain action file.
+- Future admin reads should use a separate `gazeta-admin-read` binary or an explicitly separate admin module with its own adapter allowlist.
+- Payments, purchases, BTCPay, Lightning, zaps, Nostr publishing, secure chat, video chat controls, and merch mutations must not be added to `gazeta-read`.
+- High-risk domains should get separate binaries/adapters once their replay fixtures and file-state assertions exist:
+  - `gazeta-payments`
+  - `gazeta-nostr`
+  - `gazeta-secure-chat`
+  - `gazeta-admin-mutate`
 
 ## Deferred Mutation Domains
 
