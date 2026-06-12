@@ -149,21 +149,18 @@ if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   case "$prerender_timeout" in ''|*[!0-9]*) prerender_timeout=25 ;; esac
   if [ "$prerender_timeout" -lt 1 ]; then prerender_timeout=1; fi
   if [ "$prerender_timeout" -gt 300 ]; then prerender_timeout=300; fi
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - "$prerender_timeout" "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" <<'PY' || true
-import subprocess
-import sys
-
-timeout = int(sys.argv[1])
-cmd = sys.argv[2:]
-try:
-    subprocess.run(cmd, timeout=timeout, check=False)
-except subprocess.TimeoutExpired:
-    pass
-PY
-  else
-    "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" || true
-  fi
+  (
+    "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" &
+    prerender_pid=$!
+    (
+      sleep "$prerender_timeout"
+      kill "$prerender_pid" 2>/dev/null || true
+    ) &
+    prerender_timer_pid=$!
+    wait "$prerender_pid" 2>/dev/null || true
+    kill "$prerender_timer_pid" 2>/dev/null || true
+    wait "$prerender_timer_pid" 2>/dev/null || true
+  )
   if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
     rm -rf "$build_bootstrap_dir/nostr-page-bootstrap"
     mkdir -p "$build_bootstrap_dir"
