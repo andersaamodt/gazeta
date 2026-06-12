@@ -8568,7 +8568,7 @@ body.blog-post-resizing {
   width: 100%;
   max-width: 100%;
   min-height: 22rem;
-  padding: 1.75rem 3.25rem 1.55rem;
+  padding: 1.35rem 1.45rem 1.2rem;
   background: var(--post-body-bg, var(--post-card-bg-single, #fdfdfb));
   border-color: color-mix(in srgb, var(--border, #c7d2fe) 78%, var(--bg, #ffffff) 22%);
   box-shadow:
