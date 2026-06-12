@@ -533,6 +533,25 @@
     };
   }
 
+  function filteredPostsForPageDefaults(posts, payload) {
+    var list = Array.isArray(posts) ? posts.slice() : [];
+    var page = payload && payload.state ? normalizePageState(payload.state) : null;
+    var defaultTag = String(page && page.default_tag || '').trim().toLowerCase();
+    if (!defaultTag) {
+      return list;
+    }
+    return list.filter(function (post) {
+      return normalizePostTags(post && post.tags).some(function (tag) {
+        return String(tag || '').trim().toLowerCase() === defaultTag;
+      });
+    });
+  }
+
+  function payloadHasDefaultPostTag(payload) {
+    var page = payload && payload.state ? normalizePageState(payload.state) : null;
+    return !!String(page && page.default_tag || '').trim();
+  }
+
   function getRenderState() {
     if (state.payload && state.payload.state) {
       return normalizePageState(state.payload.state);
@@ -4680,7 +4699,7 @@
     if (!Array.isArray(payload.bootstrap_posts)) {
       return null;
     }
-	    return payload.bootstrap_posts.slice();
+	    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
 	  }
 
 	  function hasMatchingStaticPrerender(payload, node) {
@@ -4787,9 +4806,10 @@
         if (!data || !data.success || !Array.isArray(data.posts)) {
           return;
         }
+        var allPosts = data.posts.slice();
         postsCatalogReady = true;
-        state.posts = data.posts;
-        writeCache(state.posts);
+        state.posts = filteredPostsForPageDefaults(allPosts, state.payload);
+        writeCache(allPosts);
         if (!opts.deferRender) {
           renderFilters();
           renderList();
@@ -5415,13 +5435,15 @@
     if (prerenderedPosts) {
       postsCatalogReady = true;
       state.posts = prerenderedPosts;
-      writeCache(prerenderedPosts);
+      if (!payloadHasDefaultPostTag(prerenderedPayload)) {
+        writeCache(prerenderedPosts);
+      }
       hasWarmPosts = true;
     } else {
       var cached = readCache();
       if (cached) {
         postsCatalogReady = true;
-        state.posts = cached;
+        state.posts = filteredPostsForPageDefaults(cached, prerenderedPayload);
         hasWarmPosts = true;
       }
     }

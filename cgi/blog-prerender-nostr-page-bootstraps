@@ -136,6 +136,26 @@ render_blog_posts_json() {
   printf '%s\n' "$payload"
 }
 
+filter_blog_posts_json_for_default_tag() {
+  posts_json=${1-}
+  default_tag=${2-}
+  if [ -z "$posts_json" ] || [ -z "$default_tag" ]; then
+    printf '%s\n' "$posts_json"
+    return 0
+  fi
+  printf '%s\n' "$posts_json" | jq -c --arg default_tag "$default_tag" '
+    .posts |= map(
+      select(
+        (
+          ((.tags // []) | if type == "array" then . else (tostring | split(",")) end)
+          | map(tostring | gsub("^\\s+|\\s+$"; ""))
+          | index($default_tag)
+        ) != null
+      )
+    )
+  ' 2>/dev/null || printf '%s\n' "$posts_json"
+}
+
 public_ranking_prerender_nodes_json() {
   state_json=${1-}
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-ranking-prerender-nodes.XXXXXX")
@@ -331,6 +351,10 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
   if [ "$page_type" = "blog" ]; then
     posts_json=$(render_blog_posts_json 2>/dev/null || printf '')
     if [ -n "$posts_json" ]; then
+      default_tag=$(printf '%s\n' "$payload_json" | jq -r '.state.default_tag // ""' 2>/dev/null || printf '')
+      if [ -n "$default_tag" ]; then
+        posts_json=$(filter_blog_posts_json_for_default_tag "$posts_json" "$default_tag")
+      fi
       payload_json=$(printf '%s\n' "$payload_json" | jq -c --argjson posts "$posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$payload_json")
     fi
   fi

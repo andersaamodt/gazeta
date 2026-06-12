@@ -4,7 +4,7 @@
 set -eu
 
 blog_nostr_list_page_js_version='20260602-list-syncstatus2'
-blog_nostr_blog_page_js_version='20260602-blog-syncstatus1'
+blog_nostr_blog_page_js_version='20260611-blog-defaulttag-prerender1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'

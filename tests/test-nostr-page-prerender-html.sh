@@ -124,7 +124,7 @@ blog_nostr_pages_save_json '{
     {"slug":"oeuvre","type":"list","show_in_nav":true,"placeholder_title":"Oeuvre"},
     {"slug":"reading-list","type":"list","show_in_nav":true,"placeholder_title":"Reading List"},
     {"slug":"software","type":"icon-gallery","show_in_nav":true,"placeholder_title":"Software"},
-    {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog"},
+    {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog","default_tag":"writing"},
     {"slug":"values","type":"nip23","show_in_nav":true,"placeholder_title":"Values"},
     {"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"},
     {"slug":"projects","type":"public-ranking","show_in_nav":true,"placeholder_title":"Projects"},
@@ -229,13 +229,26 @@ cat > "$blog_posts_store_dir/fixture-post.md" <<'EOFPOST'
 ---
 title: "Fixture Blog Post"
 published_at: "2026-05-24T12:00:00Z"
-tags: ["essay"]
+tags: ["writing","essay"]
 author: "author"
 visibility: "public"
 license: "CC BY 4.0"
 ---
 
 This post should be present in prerendered blog HTML.
+EOFPOST
+
+cat > "$blog_posts_store_dir/non-writing-post.md" <<'EOFPOST'
+---
+title: "Filtered Out Post"
+published_at: "2026-05-25T12:00:00Z"
+tags: ["projects"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+This post should not be present in prerendered blog HTML.
 EOFPOST
 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=30 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
@@ -269,7 +282,9 @@ assert_file_contains "$SITE_ROOT/site/pages/software.md" 'class="list-page-shell
 assert_file_not_contains "$SITE_ROOT/site/pages/software.md" "printf ' icon-gallery-shell" 'icon-gallery prerender does not leak shell fragments into HTML'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
-assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'essay' 'blog prerender includes post tag text'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender includes the default-tag text'
+assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
+assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
