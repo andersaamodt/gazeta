@@ -148,12 +148,12 @@
   --post-tag-standard-bg: #f3e4bf;
   --post-tag-standard-border: #ddc486;
   --post-tag-standard-text: #6b4b12;
-  --post-tag-type-bg: #dcecff;
-  --post-tag-type-border: #a8c8f0;
-  --post-tag-type-text: #245a93;
-  --post-tag-year-bg: #dff4d7;
-  --post-tag-year-border: #a9d89b;
-  --post-tag-year-text: #285f28;
+  --post-tag-type-bg: #dff4d7;
+  --post-tag-type-border: #a9d89b;
+  --post-tag-type-text: #285f28;
+  --post-tag-year-bg: #dcecff;
+  --post-tag-year-border: #a8c8f0;
+  --post-tag-year-text: #245a93;
   --action-soft-bg: #f5e4d7;
   --action-soft-border: #c58f6f;
   --action-soft-text: #6d3a20;
@@ -13319,8 +13319,8 @@ html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .z
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-type-border) !important;
-  background: #dcecff !important;
-  background-color: #dcecff !important;
+  background: var(--post-tag-type-bg) !important;
+  background-color: var(--post-tag-type-bg) !important;
   color: var(--post-tag-type-text) !important;
   -webkit-text-fill-color: var(--post-tag-type-text) !important;
 }
@@ -13331,8 +13331,8 @@ html body .zap-inline-host.is-compact .zap-compact-btn.zap-action-btn-primary .z
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-year-border) !important;
-  background: #dff4d7 !important;
-  background-color: #dff4d7 !important;
+  background: var(--post-tag-year-bg) !important;
+  background-color: var(--post-tag-year-bg) !important;
   color: var(--post-tag-year-text) !important;
   -webkit-text-fill-color: var(--post-tag-year-text) !important;
 }
@@ -13343,8 +13343,8 @@ button.blog-type-pill:focus-visible:not(:disabled) {
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-type-border) !important;
-  background: #dcecff !important;
-  background-color: #dcecff !important;
+  background: var(--post-tag-type-bg) !important;
+  background-color: var(--post-tag-type-bg) !important;
   color: var(--post-tag-type-text) !important;
   -webkit-text-fill-color: var(--post-tag-type-text) !important;
 }
@@ -13355,8 +13355,8 @@ button.blog-year-pill:focus-visible:not(:disabled) {
   -webkit-appearance: none !important;
   appearance: none !important;
   border-color: var(--post-tag-year-border) !important;
-  background: #dff4d7 !important;
-  background-color: #dff4d7 !important;
+  background: var(--post-tag-year-bg) !important;
+  background-color: var(--post-tag-year-bg) !important;
   color: var(--post-tag-year-text) !important;
   -webkit-text-fill-color: var(--post-tag-year-text) !important;
 }
