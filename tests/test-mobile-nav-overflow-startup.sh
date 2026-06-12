@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd -P)
+NAV_FILE="$ROOT_DIR/site/includes/nav.md"
+AUTH_FILE="$ROOT_DIR/site/static/nav-auth.js"
+STYLE_FILE="$ROOT_DIR/site/static/style.css"
+
+fail() {
+  printf '%s\n' "not ok - $1" >&2
+  exit 1
+}
+
+assert_file_contains() {
+  file=$1
+  pattern=$2
+  description=$3
+  if ! grep -Fq -- "$pattern" "$file"; then
+    fail "$description"
+  fi
+}
+
+assert_file_contains "$NAV_FILE" "function seedInitialMobileOverflowMenu()" 'nav include seeds mobile overflow menu before nav hydration finishes'
+assert_file_contains "$NAV_FILE" "window.matchMedia('(max-width: 780px)').matches" 'mobile overflow seeding only applies on narrow viewports'
+assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'mobile overflow seeding clones current navbar links into the overflow panel'
+assert_file_contains "$NAV_FILE" "menu.hidden = false;" 'mobile overflow seeding reveals the overflow trigger immediately'
+
+assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-center > a[data-page]" 'hydrating mobile nav hides inline page links before overflow sync'
+assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-overflow-menu[hidden]" 'hydrating mobile nav forces the overflow trigger visible'
+
+assert_file_contains "$AUTH_FILE" "navOverflowReady: false" 'nav auth tracks whether the first overflow layout pass has completed'
+assert_file_contains "$AUTH_FILE" "function markNavOverflowReady()" 'nav auth exposes a one-time nav overflow readiness gate'
+assert_file_contains "$AUTH_FILE" "markHydrationNavReady();" 'nav hydration readiness is driven by the overflow readiness gate'
+assert_file_contains "$AUTH_FILE" "state.navOverflowReady = true;" 'nav overflow gate flips after the first sync'
+
+printf '%s\n' 'ok'

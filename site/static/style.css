@@ -235,6 +235,16 @@ html.app-hydrating nav.site-nav .nav-center {
   min-width: 0;
 }
 
+@media (max-width: 780px) {
+  html.app-hydrating nav.site-nav .nav-center > a[data-page] {
+    display: none;
+  }
+
+  html.app-hydrating nav.site-nav .nav-overflow-menu[hidden] {
+    display: inline-flex !important;
+  }
+}
+
 .route-load-failure {
   margin: 1.1rem 0 0.95rem;
   padding: 0.8rem 0.9rem;

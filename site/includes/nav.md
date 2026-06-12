@@ -128,6 +128,46 @@
 </nav>
 <script type="module">
 (function () {
+  function seedInitialMobileOverflowMenu() {
+    var docEl = document.documentElement;
+    if (!docEl || !docEl.classList.contains('app-hydrating')) {
+      return;
+    }
+    if (window.matchMedia && !window.matchMedia('(max-width: 780px)').matches) {
+      return;
+    }
+    var navCenter = document.querySelector('nav.site-nav .nav-center');
+    var menu = document.getElementById('nav-overflow-menu');
+    var button = document.getElementById('nav-overflow-btn');
+    var count = document.getElementById('nav-overflow-count');
+    var panel = document.getElementById('nav-overflow-panel');
+    if (!navCenter || !menu || !button || !count || !panel) {
+      return;
+    }
+    var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page][href]'));
+    if (!links.length) {
+      return;
+    }
+    panel.innerHTML = '';
+    links.forEach(function (link) {
+      var item = document.createElement('a');
+      item.className = 'nav-menu-item';
+      item.setAttribute('role', 'menuitem');
+      item.href = link.getAttribute('href') || '/';
+      item.textContent = String(link.textContent || '').trim() || 'Page';
+      panel.appendChild(item);
+    });
+    count.textContent = String(links.length);
+    count.hidden = false;
+    button.setAttribute('aria-label', 'More pages (' + String(links.length) + ' hidden)');
+    menu.hidden = false;
+  }
+
+  seedInitialMobileOverflowMenu();
+})();
+</script>
+<script type="module">
+(function () {
   function setupExpandableSearch() {
     var forms = document.querySelectorAll('form.nav-search');
     for (var i = 0; i < forms.length; i += 1) {

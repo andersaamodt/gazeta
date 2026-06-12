@@ -82,7 +82,8 @@
     seenSiteNotifications: {},
     requestedNotificationPermission: false,
     activeAuthTab: 'register',
-    activeAuthFlavor: 'desktop'
+    activeAuthFlavor: 'desktop',
+    navOverflowReady: false
   };
 
   var els = {
@@ -3525,10 +3526,19 @@
     }
   }
 
+  function markNavOverflowReady() {
+    if (state.navOverflowReady) {
+      return;
+    }
+    state.navOverflowReady = true;
+    markHydrationNavReady();
+  }
+
   function syncNavOverflowMenuNow() {
     var navCenter = document.querySelector('.nav-center');
     var navRight = document.querySelector('.nav-right');
     if (!navCenter || !navRight || !els.navOverflowMenu || !els.navOverflowBtn || !els.navOverflowPanel) {
+      markNavOverflowReady();
       return;
     }
 
@@ -3541,6 +3551,7 @@
       });
       els.navOverflowMenu.hidden = true;
       setNavOverflowButtonCount(0);
+      markNavOverflowReady();
       return;
     }
 
@@ -3641,6 +3652,7 @@
     if (!hiddenLinks.length) {
       els.navOverflowMenu.hidden = true;
       setNavOverflowButtonCount(0);
+      markNavOverflowReady();
       return;
     }
 
@@ -3658,6 +3670,7 @@
 
     setNavOverflowButtonCount(hiddenLinks.length);
     els.navOverflowMenu.hidden = false;
+    markNavOverflowReady();
     if (changed) {
       scheduleNavOverflowMenuSync();
     }
@@ -3716,7 +3729,6 @@
 
   function applyInitialHighlightInSyncWithContent() {
     highlightCurrentPage();
-    markHydrationNavReady();
   }
 
   function renderNavbarNostrPages(pageRows) {
@@ -4479,10 +4491,7 @@
       })
       .catch(function () {
         // Keep startup resilient; cached nav remains usable.
-      })
-      .finally(function () {
-        markHydrationNavReady();
-    });
+      });
     checkAuth();
     loadTheme();
     window.addEventListener('hashchange', highlightCurrentPage);
