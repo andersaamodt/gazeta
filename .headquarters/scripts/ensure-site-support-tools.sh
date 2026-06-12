@@ -68,7 +68,15 @@ have_tools() {
   command -v jq >/dev/null 2>&1 &&
     command -v pandoc >/dev/null 2>&1 &&
     command -v nostril >/dev/null 2>&1 &&
-    command -v nak >/dev/null 2>&1
+    command -v nak >/dev/null 2>&1 &&
+    command -v cargo >/dev/null 2>&1 &&
+    command -v rustc >/dev/null 2>&1
+}
+
+install_apt_tools() {
+  command -v apt-get >/dev/null 2>&1 || return 1
+  run_root apt-get update
+  DEBIAN_FRONTEND=noninteractive run_root apt-get install -y --no-install-recommends "$@"
 }
 
 check_status() {
@@ -89,7 +97,15 @@ check_status() {
     status_bad "nak is not installed on this server."
     return 0
   }
-  status_ok "jq, pandoc, nostril, and nak are installed for $site_user."
+  command -v cargo >/dev/null 2>&1 || {
+    status_bad "cargo is not installed on this server."
+    return 0
+  }
+  command -v rustc >/dev/null 2>&1 || {
+    status_bad "rustc is not installed on this server."
+    return 0
+  }
+  status_ok "jq, pandoc, nostril, nak, cargo, and rustc are installed for $site_user."
 }
 
 case "${1-}" in
@@ -122,9 +138,16 @@ if ! command -v nostril >/dev/null 2>&1 || ! command -v nak >/dev/null 2>&1; the
   }
 fi
 
+if ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; then
+  install_apt_tools cargo rustc build-essential || {
+    status_bad "Rust build tooling is missing and could not be installed."
+    exit 1
+  }
+fi
+
 if ! have_tools; then
-  status_bad "Support tool installation finished but jq, pandoc, nostril, and nak are not all available."
+  status_bad "Support tool installation finished but jq, pandoc, nostril, nak, cargo, and rustc are not all available."
   exit 1
 fi
 
-status_ok "jq, pandoc, nostril, and nak are installed for $site_user."
+status_ok "jq, pandoc, nostril, nak, cargo, and rustc are installed for $site_user."
