@@ -56,3 +56,4 @@ These stay on the shell runtime until replay fixtures and rollback-safe state ch
 - Deployments should call source-controlled maintenance commands; it must not patch live server files.
 - Managed server builds run `cgi/install-theurgy-runtime` when present so Linux Theurgy binaries are part of the normal release.
 - The deploy hook must run the runtime installer from the checked-out release, after accepting the prebuilt HTML payload and before flipping the live symlink.
+- Runtime installer failures should fail the deploy hook rather than leaving read CGIs pointed at a missing binary.
