@@ -2,7 +2,6 @@ use serde_json::{json, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 pub struct CgiResponse {
     pub content_type: &'static str,
@@ -38,16 +37,12 @@ impl ReadError {
 type Result<T> = std::result::Result<T, ReadError>;
 
 struct SitePaths {
-    repo_root: PathBuf,
     site_root: PathBuf,
     state_dir: PathBuf,
 }
 
 impl SitePaths {
     fn from_env() -> Result<Self> {
-        let repo_root = env_path("GAZETA_REPO_ROOT")
-            .or_else(|| env::current_dir().ok())
-            .ok_or_else(|| ReadError::new("config_missing", "Gazeta repo root is not configured."))?;
         let sites_dir = env_path("WIZARDRY_SITES_DIR").ok_or_else(|| {
             ReadError::new("config_missing", "WIZARDRY_SITES_DIR is not configured.")
         })?;
@@ -55,7 +50,6 @@ impl SitePaths {
             ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
         })?;
         Ok(Self {
-            repo_root,
             site_root: sites_dir.join(&site_name),
             state_dir: sites_dir.join(".sitedata").join(&site_name),
         })
@@ -131,33 +125,9 @@ fn product_index(paths: &SitePaths) -> Result<Vec<Value>> {
     {
         return Ok(products);
     }
-    rebuild(paths)?;
-    read_products(&paths.static_product_index())
-        .or_else(|| read_products(&paths.cache_product_index()))
-        .ok_or_else(|| {
-            ReadError::new(
-                "product_index_missing",
-                "Gazeta product index was not available after rebuild.",
-            )
-        })
-}
-
-fn rebuild(paths: &SitePaths) -> Result<()> {
-    let maintenance = paths.repo_root.join("cgi/blog-maintenance");
-    let output = Command::new("/bin/sh")
-        .arg(&maintenance)
-        .arg("rebuild-product-index")
-        .current_dir(&paths.repo_root)
-        .output()
-        .map_err(|error| ReadError::new("rebuild_failed", error.to_string()))?;
-    if output.status.success() {
-        return Ok(());
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     Err(ReadError::new(
-        "rebuild_failed",
-        if stderr.is_empty() { stdout } else { stderr },
+        "product_index_missing",
+        "Gazeta product index is not available. Run blog-maintenance rebuild-product-index.",
     ))
 }
 
