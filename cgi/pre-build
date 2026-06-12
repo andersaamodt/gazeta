@@ -168,3 +168,14 @@ if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
     find "$build_bootstrap_dir/nostr-page-bootstrap" -type f -exec chmod 644 {} \; 2>/dev/null || true
   fi
 fi
+
+if [ "${GAZETA_SKIP_THEURGY_RUNTIME_BUILD:-0}" != "1" ] &&
+   [ -x "$SCRIPT_DIR/install-theurgy-runtime" ]; then
+  case "$(uname -s 2>/dev/null || printf '')" in
+    Darwin)
+      ;;
+    *)
+      "$SCRIPT_DIR/install-theurgy-runtime" >/dev/null
+      ;;
+  esac
+fi
