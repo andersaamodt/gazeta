@@ -26,15 +26,21 @@ fn markdown_inline_html(raw: &str) -> String {
     while let Some(label_start) = rest.find('[') {
         out.push_str(&html_escape(&rest[..label_start]));
         let after_label_start = &rest[label_start + 1..];
-        let Some(label_end) = after_label_start.find("](") else {
-            out.push_str(&html_escape(&rest[label_start..]));
-            return out;
+        let label_end = match after_label_start.find("](") {
+            Some(label_end) => label_end,
+            None => {
+                out.push_str(&html_escape(&rest[label_start..]));
+                return out;
+            }
         };
         let label = &after_label_start[..label_end];
         let after_href_start = &after_label_start[label_end + 2..];
-        let Some(href_end) = after_href_start.find(')') else {
-            out.push_str(&html_escape(&rest[label_start..]));
-            return out;
+        let href_end = match after_href_start.find(')') {
+            Some(href_end) => href_end,
+            None => {
+                out.push_str(&html_escape(&rest[label_start..]));
+                return out;
+            }
         };
         let href = &after_href_start[..href_end];
         if is_safe_href(href) {

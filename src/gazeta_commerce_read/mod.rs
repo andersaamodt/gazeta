@@ -83,12 +83,15 @@ fn blog_get_product() -> Result<Value> {
         let slugs = serde_json::from_str::<Value>(&slugs_json)
             .ok()
             .and_then(|value| value.as_array().cloned());
-        let Some(slugs) = slugs else {
-            return Ok(json!({
-                "success": false,
-                "code": "invalid_slugs",
-                "error": "slugs_json must be a JSON array"
-            }));
+        let slugs = match slugs {
+            Some(slugs) => slugs,
+            None => {
+                return Ok(json!({
+                    "success": false,
+                    "code": "invalid_slugs",
+                    "error": "slugs_json must be a JSON array"
+                }));
+            }
         };
         let products = product_index(&paths)?;
         let selected: Vec<Value> = slugs

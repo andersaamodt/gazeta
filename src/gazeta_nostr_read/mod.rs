@@ -102,18 +102,23 @@ fn blog_comments() -> Result<Value> {
     if !nostr_bridge_enabled(&paths) {
         return Ok(json!({"success":true,"bridge_enabled":false,"comments":[]}));
     }
-    let Some(requested_path) = requested_path.filter(|path| !path.is_empty()) else {
-        return Ok(json!({
-            "success": false,
-            "code": "invalid_request",
-            "error": "path is required"
-        }));
+    let requested_path = match requested_path.filter(|path| !path.is_empty()) {
+        Some(requested_path) => requested_path,
+        None => {
+            return Ok(json!({
+                "success": false,
+                "code": "invalid_request",
+                "error": "path is required"
+            }));
+        }
     };
-    let Some(slug) = extract_path_slug(&requested_path).filter(|slug| !slug.is_empty()) else {
-        return Ok(json!({"success":true,"bridge_enabled":true,"comments":[]}));
+    let slug = match extract_path_slug(&requested_path).filter(|slug| !slug.is_empty()) {
+        Some(slug) => slug,
+        None => return Ok(json!({"success":true,"bridge_enabled":true,"comments":[]})),
     };
-    let Some(address) = post_address_for_slug(&paths, &slug) else {
-        return Ok(json!({"success":true,"bridge_enabled":true,"comments":[]}));
+    let address = match post_address_for_slug(&paths, &slug) {
+        Some(address) => address,
+        None => return Ok(json!({"success":true,"bridge_enabled":true,"comments":[]})),
     };
     let comments = comments_for_address(&paths, &address);
     Ok(json!({"success":true,"bridge_enabled":true,"comments":comments}))
@@ -122,27 +127,36 @@ fn blog_comments() -> Result<Value> {
 fn blog_post_context() -> Result<Value> {
     let paths = SitePaths::from_env()?;
     let requested_path = query_param("path").or_else(|| query_param("slug"));
-    let Some(requested_path) = requested_path.filter(|path| !path.is_empty()) else {
-        return Ok(json!({
-            "success": false,
-            "code": "invalid_request",
-            "error": "path is required"
-        }));
+    let requested_path = match requested_path.filter(|path| !path.is_empty()) {
+        Some(requested_path) => requested_path,
+        None => {
+            return Ok(json!({
+                "success": false,
+                "code": "invalid_request",
+                "error": "path is required"
+            }));
+        }
     };
-    let Some(slug) = extract_path_slug(&requested_path).filter(|slug| !slug.is_empty()) else {
-        return Ok(json!({
-            "success": false,
-            "code": "invalid_path",
-            "error": "Invalid path"
-        }));
+    let slug = match extract_path_slug(&requested_path).filter(|slug| !slug.is_empty()) {
+        Some(slug) => slug,
+        None => {
+            return Ok(json!({
+                "success": false,
+                "code": "invalid_path",
+                "error": "Invalid path"
+            }));
+        }
     };
     let posts = public_posts(&paths)?;
-    let Some(index) = posts.iter().position(|post| post_path_slug(post) == Some(slug.as_str())) else {
-        return Ok(json!({
-            "success": false,
-            "code": "not_found",
-            "error": "Post not found"
-        }));
+    let index = match posts.iter().position(|post| post_path_slug(post) == Some(slug.as_str())) {
+        Some(index) => index,
+        None => {
+            return Ok(json!({
+                "success": false,
+                "code": "not_found",
+                "error": "Post not found"
+            }));
+        }
     };
 
     let current = context_post_json(&paths, &posts[index]);
@@ -171,8 +185,9 @@ fn nostr_bridge_enabled(paths: &SitePaths) -> bool {
 }
 
 fn config_bool(path: &Path, key: &str) -> bool {
-    let Some(value) = config_value(path, key) else {
-        return false;
+    let value = match config_value(path, key) {
+        Some(value) => value,
+        None => return false,
     };
     matches!(value.as_str(), "true" | "1" | "yes" | "on")
 }
@@ -195,8 +210,9 @@ fn post_address_for_slug(paths: &SitePaths, slug: &str) -> Option<String> {
 }
 
 fn comments_for_address(paths: &SitePaths, address: &str) -> Vec<Value> {
-    let Some(comments) = read_json_array(&paths.nostr_comments_index()) else {
-        return Vec::new();
+    let comments = match read_json_array(&paths.nostr_comments_index()) {
+        Some(comments) => comments,
+        None => return Vec::new(),
     };
     comments
         .into_iter()
@@ -368,8 +384,9 @@ fn zaps_enabled(paths: &SitePaths) -> bool {
 }
 
 fn relays_json(paths: &SitePaths) -> Vec<Value> {
-    let Some(text) = fs::read_to_string(paths.nostr_relays_file()).ok() else {
-        return Vec::new();
+    let text = match fs::read_to_string(paths.nostr_relays_file()).ok() {
+        Some(text) => text,
+        None => return Vec::new(),
     };
     text.lines()
         .filter_map(|line| line.split('#').next())
