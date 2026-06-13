@@ -1,0 +1,14 @@
+#!/bin/sh
+# Wrapper that keeps Gazeta Cargo outputs out of the repo.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/gazeta-paths.sh"
+
+target_dir=${CARGO_TARGET_DIR:-$(gazeta_cargo_target_dir)}
+mkdir -p "$target_dir"
+
+export CARGO_TARGET_DIR="$target_dir"
+exec cargo "$@"

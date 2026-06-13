@@ -172,7 +172,9 @@ Gazeta is migrating hot read paths to the Theurgy web runtime while keeping CGI 
 cgi/install-theurgy-runtime
 ```
 
-The CGI adapter runs `GAZETA_READ_RUNTIME` when set, then `target/release/gazeta-read`, then `target/debug/gazeta-read`. It only uses `cargo run` when `GAZETA_THEURGY_ALLOW_CARGO=1` is set for local replay tests.
+The CGI adapter runs `GAZETA_READ_RUNTIME` when set, then `~/.local/state/gazeta/cargo-target/release/gazeta-read`, then `~/.local/state/gazeta/cargo-target/debug/gazeta-read`. It only uses `cargo run` when `GAZETA_THEURGY_ALLOW_CARGO=1` is set for local replay tests.
+
+Repo-local cargo output is forbidden. Use `cgi/install-theurgy-runtime` or `cgi/gazeta-cargo ...`; by default they build under `~/.local/state/gazeta/cargo-target` unless `GAZETA_STATE_DIR` or `CARGO_TARGET_DIR` overrides that location.
 
 ## Nostr Bridge (Phase 2)
 

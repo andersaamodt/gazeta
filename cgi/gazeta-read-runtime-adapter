@@ -15,6 +15,10 @@ esac
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/gazeta-paths.sh"
+RELEASE_RUNTIME=$(gazeta_runtime_path release gazeta-read)
+DEBUG_RUNTIME=$(gazeta_runtime_path debug gazeta-read)
 
 if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
   : "${WIZARDRY_SITES_DIR:=$(dirname "$REPO_ROOT")}"
@@ -38,11 +42,11 @@ if [ -n "${GAZETA_READ_RUNTIME-}" ]; then
 fi
 
 if [ "${GAZETA_THEURGY_ALLOW_CARGO-}" = 1 ] && command -v cargo >/dev/null 2>&1; then
-  exec cargo run --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin gazeta-read -- "$action"
+  exec "$SCRIPT_DIR/gazeta-cargo" run --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin gazeta-read -- "$action"
 fi
 
-run_candidate "$REPO_ROOT/target/release/gazeta-read" || true
-run_candidate "$REPO_ROOT/target/debug/gazeta-read" || true
+run_candidate "$RELEASE_RUNTIME" || true
+run_candidate "$DEBUG_RUNTIME" || true
 
 printf '%s\n\n' 'Content-Type: application/json'
-printf '{"success":false,"code":"runtime_missing","error":"Gazeta read runtime is not built. Build target/release/gazeta-read or set GAZETA_READ_RUNTIME."}\n'
+printf '{"success":false,"code":"runtime_missing","error":"Gazeta read runtime is not built. Build ~/.local/state/gazeta/cargo-target/release/gazeta-read or set GAZETA_READ_RUNTIME."}\n'

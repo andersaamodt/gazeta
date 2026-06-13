@@ -5,17 +5,19 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/gazeta-paths.sh"
 
 cd "$REPO_ROOT"
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 export CARGO_BUILD_JOBS
-cargo build --release \
+"$SCRIPT_DIR/gazeta-cargo" build --release \
   --bin gazeta-admin-read \
   --bin gazeta-read \
   --bin gazeta-nostr-read \
   --bin gazeta-commerce-read
 
-printf '%s\n' "$REPO_ROOT/target/release/gazeta-admin-read"
-printf '%s\n' "$REPO_ROOT/target/release/gazeta-read"
-printf '%s\n' "$REPO_ROOT/target/release/gazeta-nostr-read"
-printf '%s\n' "$REPO_ROOT/target/release/gazeta-commerce-read"
+printf '%s\n' "$(gazeta_runtime_path release gazeta-admin-read)"
+printf '%s\n' "$(gazeta_runtime_path release gazeta-read)"
+printf '%s\n' "$(gazeta_runtime_path release gazeta-nostr-read)"
+printf '%s\n' "$(gazeta_runtime_path release gazeta-commerce-read)"
