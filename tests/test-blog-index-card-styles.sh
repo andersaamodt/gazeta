@@ -44,8 +44,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-post-item butto
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body .blog-post-item button.tag,' 'post tag chip recovery wins after the global soft-button rule'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body .blog-post-item .tag,' 'post tag chip recovery wins after theme-specific button rules'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-color: var(--post-tag-standard-border) !important;' 'standard post tag chips keep the recovered yellow treatment'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: #dcecff !important;' 'type post tag chips keep the light blue treatment'
-assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: #dff4d7 !important;' 'year post tag chips keep the light green treatment'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--post-tag-type-bg: #dff4d7;' 'type post tag chips use the green treatment'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--post-tag-year-bg: #dcecff;' 'year post tag chips use the blue treatment'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: var(--post-tag-type-bg) !important;' 'type post tag chip recovery keeps the green treatment'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: var(--post-tag-year-bg) !important;' 'year post tag chip recovery keeps the blue treatment'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'filter: none !important;' 'post tag chips do not blur'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'box-shadow: none !important;' 'post tag chips do not use the old hazy shadow'
 

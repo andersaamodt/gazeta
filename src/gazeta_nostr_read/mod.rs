@@ -94,7 +94,10 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-comments" => blog_comments().map(CgiResponse::json),
         "blog-post-context" => blog_post_context().map(CgiResponse::json),
-        _ => Err(ReadError::new("bad_action", "Unknown Gazeta Nostr read action.")),
+        _ => Err(ReadError::new(
+            "bad_action",
+            "Unknown Gazeta Nostr read action.",
+        )),
     }
 }
 
@@ -150,7 +153,10 @@ fn blog_post_context() -> Result<Value> {
         }
     };
     let posts = public_posts(&paths)?;
-    let index = match posts.iter().position(|post| post_path_slug(post) == Some(slug.as_str())) {
+    let index = match posts
+        .iter()
+        .position(|post| post_path_slug(post) == Some(slug.as_str()))
+    {
         Some(index) => index,
         None => {
             return Ok(json!({
@@ -248,7 +254,10 @@ fn public_posts(paths: &SitePaths) -> Result<Vec<Value>> {
 fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
     let slug = post_path_slug(post).unwrap_or_default();
     let mut object = Map::new();
-    object.insert("title".to_string(), Value::String(string_field(post, "title")));
+    object.insert(
+        "title".to_string(),
+        Value::String(string_field(post, "title")),
+    );
     object.insert(
         "author".to_string(),
         Value::String(string_field_or(post, "author", "Blog Author")),
@@ -262,7 +271,10 @@ fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
         "source_path".to_string(),
         Value::String(string_field(post, "source_path")),
     );
-    object.insert("type".to_string(), Value::String(string_field_or(post, "type", "post")));
+    object.insert(
+        "type".to_string(),
+        Value::String(string_field_or(post, "type", "post")),
+    );
     object.insert(
         "published_at".to_string(),
         Value::String(string_field(post, "published_at")),
@@ -275,13 +287,24 @@ fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
         "published_timestamp".to_string(),
         Value::String(string_field(post, "published_timestamp")),
     );
-    object.insert("year".to_string(), Value::String(string_field_or(post, "year", "")));
-    object.insert("summary".to_string(), Value::String(string_field(post, "summary")));
+    object.insert(
+        "year".to_string(),
+        Value::String(string_field_or(post, "year", "")),
+    );
+    object.insert(
+        "summary".to_string(),
+        Value::String(string_field(post, "summary")),
+    );
     object.insert("word_count".to_string(), integer_json(post, "word_count"));
-    object.insert("reading_minutes".to_string(), integer_json(post, "reading_minutes"));
+    object.insert(
+        "reading_minutes".to_string(),
+        integer_json(post, "reading_minutes"),
+    );
     object.insert(
         "tags".to_string(),
-        post.get("tags").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
+        post.get("tags")
+            .cloned()
+            .unwrap_or_else(|| Value::Array(Vec::new())),
     );
     object.insert(
         "nostr".to_string(),
@@ -366,9 +389,15 @@ fn zap_config_json(paths: &SitePaths) -> Value {
     let mut object = Map::new();
     object.insert("enabled".to_string(), Value::Bool(enabled));
     object.insert("lud16".to_string(), Value::String(lud16));
-    object.insert("lud16_source".to_string(), Value::String(lud16_source.to_string()));
+    object.insert(
+        "lud16_source".to_string(),
+        Value::String(lud16_source.to_string()),
+    );
     object.insert("default_amount_sats".to_string(), json!(amount_sats));
-    object.insert("demo_wallet_available".to_string(), Value::Bool(!site_npub.is_empty()));
+    object.insert(
+        "demo_wallet_available".to_string(),
+        Value::Bool(!site_npub.is_empty()),
+    );
     if !site_npub.is_empty() {
         object.insert("demo_wallet_npub".to_string(), Value::String(site_npub));
     }
@@ -405,12 +434,21 @@ fn post_record_for_slug(paths: &SitePaths, slug: &str) -> Option<Value> {
 }
 
 fn d_tag_from_record(record: &Value) -> Option<String> {
-    record.get("tags").and_then(Value::as_array)?.iter().find_map(|tag| {
-        let parts = tag.as_array()?;
-        (parts.first().and_then(Value::as_str) == Some("d"))
-            .then(|| parts.get(1).and_then(Value::as_str).map(ToString::to_string))
-            .flatten()
-    })
+    record
+        .get("tags")
+        .and_then(Value::as_array)?
+        .iter()
+        .find_map(|tag| {
+            let parts = tag.as_array()?;
+            (parts.first().and_then(Value::as_str) == Some("d"))
+                .then(|| {
+                    parts
+                        .get(1)
+                        .and_then(Value::as_str)
+                        .map(ToString::to_string)
+                })
+                .flatten()
+        })
 }
 
 fn post_path_slug(post: &Value) -> Option<&str> {
@@ -433,7 +471,10 @@ fn add_created_at_iso(mut comment: Value) -> Value {
 
 fn read_json_array(path: &Path) -> Option<Vec<Value>> {
     let text = fs::read_to_string(path).ok()?;
-    serde_json::from_str::<Value>(&text).ok()?.as_array().cloned()
+    serde_json::from_str::<Value>(&text)
+        .ok()?
+        .as_array()
+        .cloned()
 }
 
 fn read_json_object(path: &Path) -> Option<Value> {
@@ -443,8 +484,15 @@ fn read_json_object(path: &Path) -> Option<Value> {
 
 fn extract_path_slug(path: &str) -> Option<String> {
     let mut value = path.trim().to_string();
-    if let Some(rest) = value.strip_prefix("http://").or_else(|| value.strip_prefix("https://")) {
-        value = rest.split_once('/').map(|(_, path)| path).unwrap_or_default().to_string();
+    if let Some(rest) = value
+        .strip_prefix("http://")
+        .or_else(|| value.strip_prefix("https://"))
+    {
+        value = rest
+            .split_once('/')
+            .map(|(_, path)| path)
+            .unwrap_or_default()
+            .to_string();
     }
     let stripped = value.trim_start_matches('/');
     value = stripped

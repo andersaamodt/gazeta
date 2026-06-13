@@ -69,7 +69,10 @@ impl SitePaths {
 pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-get-product" => blog_get_product().map(CgiResponse::json),
-        _ => Err(ReadError::new("bad_action", "Unknown Gazeta commerce read action.")),
+        _ => Err(ReadError::new(
+            "bad_action",
+            "Unknown Gazeta commerce read action.",
+        )),
     }
 }
 

@@ -122,7 +122,11 @@ fn render_result(html: &mut String, entry: &Value) {
     if let Some(tags) = entry.get("tags").and_then(Value::as_array) {
         if !tags.is_empty() {
             html.push_str("      <div class=\"tags\">\n");
-            for tag in tags.iter().filter_map(Value::as_str).filter(|tag| !tag.trim().is_empty()) {
+            for tag in tags
+                .iter()
+                .filter_map(Value::as_str)
+                .filter(|tag| !tag.trim().is_empty())
+            {
                 let clean = tag.trim();
                 html.push_str("        <a href=\"/tags#");
                 html.push_str(&html_escape(clean));

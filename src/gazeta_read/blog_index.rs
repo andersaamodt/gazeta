@@ -12,7 +12,9 @@ pub(crate) fn blog_index() -> Result<CgiResponse> {
     let posts = catalog
         .get("posts")
         .and_then(Value::as_array)
-        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))?;
+        .ok_or_else(|| {
+            ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
+        })?;
     Ok(CgiResponse::html(render_index(posts, requested_page())))
 }
 
@@ -124,7 +126,11 @@ fn render_post(html: &mut String, post: &Value) {
     if let Some(tags) = post.get("tags").and_then(Value::as_array) {
         if !tags.is_empty() {
             html.push_str("  <div class=\"tags\">\n");
-            for tag in tags.iter().filter_map(Value::as_str).filter(|tag| !tag.trim().is_empty()) {
+            for tag in tags
+                .iter()
+                .filter_map(Value::as_str)
+                .filter(|tag| !tag.trim().is_empty())
+            {
                 let clean = tag.trim();
                 html.push_str("    <a href=\"/tags#");
                 html.push_str(&html_escape(clean));

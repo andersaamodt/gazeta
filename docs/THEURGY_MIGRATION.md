@@ -17,18 +17,21 @@
 - Add separate `gazeta-nostr-read` runtime and move `blog-comments` to the Nostr read adapter.
 - Move `blog-post-context` to the Nostr read adapter using the public post catalog plus derived Nostr indexes.
 - Add `rebuild-product-index`, separate `gazeta-commerce-read`, and move `blog-get-product` to the commerce read adapter.
+- Add separate `gazeta-admin-read` runtime for authenticated read-only admin surfaces.
+- Move `blog-list-pages` to `gazeta-admin-read` with Rust session/CSRF/admin checks and behavioral coverage.
 
 ## Remaining Read Work
 
 - Move additional public cache-backed reads before admin reads:
   - footer page list, if exposed as a CGI route later
 - Add replay fixtures before each endpoint switch.
+- Keep large session-aware Nostr page reads in shell until the page-state normalization, draft/canonical selection, and validation helpers can be ported with captured fixtures and no read-time write side effects.
 
 ## Runtime Boundaries
 
 - `gazeta-read` is only for low-risk public reads and maintenance-backed read caches.
 - Keep each `gazeta-read` action in its own Rust module; do not grow a single cross-domain action file.
-- Future admin reads should use a separate `gazeta-admin-read` binary or an explicitly separate admin module with its own adapter allowlist.
+- Authenticated read-only admin endpoints belong in `gazeta-admin-read`; each action must enforce session token, CSRF token, and admin authorization in Rust or stay on the shell path.
 - Payments, purchases, BTCPay, Lightning, zaps, Nostr publishing, secure chat, video chat controls, and merch mutations must not be added to `gazeta-read`.
 - Nostr-derived public reads belong in `gazeta-nostr-read`; Nostr publishing, mirroring, rebuilds, and crossposting still need separate mutation surfaces.
 - Commerce-derived public reads belong in `gazeta-commerce-read`; order creation, payments, purchases, BTCPay, Ramp, Printful writes, and merch mutations stay out.

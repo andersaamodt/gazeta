@@ -8,7 +8,9 @@ pub(crate) fn blog_archive() -> Result<CgiResponse> {
     let posts = catalog
         .get("posts")
         .and_then(Value::as_array)
-        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))?;
+        .ok_or_else(|| {
+            ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
+        })?;
     Ok(CgiResponse::html(render_archive(posts)))
 }
 

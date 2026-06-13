@@ -83,8 +83,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'safe_date_title_attr=" title=\
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '<div class="post-head-divider" aria-hidden="true"></div>' 'shared post header metadata template keeps byline below divider'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'post_header_meta_html(' 'fallback blog feed uses shared post header metadata template'
 assert_file_contains "$ROOT_DIR/cgi/blog-open-post" 'post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$published_date" "$published_timestamp")' 'single post fallback uses shared post header metadata template'
-assert_file_contains "$ROOT_DIR/cgi/blog-post-context" 'printf '\''"published_timestamp":"%s",'\'' "$(blog_json_escape "$published_timestamp")"' 'post context endpoint exposes long hover timestamp'
-assert_file_contains "$ROOT_DIR/cgi/blog-post-context" 'source_path=$(blog_managed_post_rel_path_for_file "$file"' 'post context exposes managed source paths for admin actions'
+assert_file_contains "$ROOT_DIR/src/gazeta_nostr_read/mod.rs" '"published_timestamp".to_string(),' 'post context endpoint exposes long hover timestamp'
+assert_file_contains "$ROOT_DIR/src/gazeta_nostr_read/mod.rs" '"source_path".to_string(),' 'post context exposes managed source paths for admin actions'
 
 # Backend endpoints: save/get/move preserve post_type.
 assert_file_contains "$ROOT_DIR/cgi/blog-save-post" 'post_type=$(blog_param post_type)' 'save endpoint reads post_type param'

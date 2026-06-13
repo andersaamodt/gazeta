@@ -17,6 +17,10 @@ path = "src/bin/gazeta-nostr-read.rs"
 name = "gazeta-commerce-read"
 path = "src/bin/gazeta-commerce-read.rs"
 
+[[bin]]
+name = "gazeta-admin-read"
+path = "src/bin/gazeta-admin-read.rs"
+
 [dependencies]
 itoa = "=1.0.14"
 ryu = "=1.0.20"

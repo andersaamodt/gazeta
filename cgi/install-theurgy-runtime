@@ -10,10 +10,12 @@ cd "$REPO_ROOT"
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 export CARGO_BUILD_JOBS
 cargo build --release \
+  --bin gazeta-admin-read \
   --bin gazeta-read \
   --bin gazeta-nostr-read \
   --bin gazeta-commerce-read
 
+printf '%s\n' "$REPO_ROOT/target/release/gazeta-admin-read"
 printf '%s\n' "$REPO_ROOT/target/release/gazeta-read"
 printf '%s\n' "$REPO_ROOT/target/release/gazeta-nostr-read"
 printf '%s\n' "$REPO_ROOT/target/release/gazeta-commerce-read"
