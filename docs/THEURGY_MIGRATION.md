@@ -26,6 +26,7 @@
   - footer page list, if exposed as a CGI route later
 - Add replay fixtures before each endpoint switch.
 - Keep large session-aware Nostr page reads in shell until the page-state normalization, draft/canonical selection, and validation helpers can be ported with captured fixtures and no read-time write side effects.
+- Keep admin config, draft, queue, post-management, user-list, and uploaded-file reads on shell until their shared markdown/config/scheduler helper semantics have behavioral fixtures. They are read-only candidates for `gazeta-admin-read`, but not safe to port by source-shape matching alone.
 
 ## Runtime Boundaries
 
