@@ -4,6 +4,7 @@
 set -eu
 
 blog_sites_dir=${WIZARDRY_SITES_DIR:-$HOME/sites}
+blog_sites_data_dir=${WIZARDRY_SITES_DATA_DIR:-$blog_sites_dir/.sitedata}
 blog_site_name=${WIZARDRY_SITE_NAME-}
 
 # Recover the site context from host/path when launcher env is missing.
@@ -18,7 +19,7 @@ case "$blog_request_host" in
     ;;
 esac
 if [ -z "$blog_site_name" ] && [ -n "$blog_request_host" ]; then
-  if [ -d "$blog_sites_dir/$blog_request_host" ] || [ -d "$blog_sites_dir/.sitedata/$blog_request_host" ]; then
+  if [ -d "$blog_sites_dir/$blog_request_host" ] || [ -d "$blog_sites_data_dir/$blog_request_host" ]; then
     blog_site_name=$blog_request_host
   fi
 fi
@@ -39,15 +40,15 @@ if [ -z "$blog_site_name" ]; then
 fi
 
 blog_site_root="$blog_sites_dir/$blog_site_name"
-blog_site_data="$blog_sites_dir/.sitedata/$blog_site_name"
+blog_site_data="$blog_sites_data_dir/$blog_site_name"
 blog_site_root_parent=$blog_site_root
 case "$blog_site_root" in
   */releases/*)
     blog_site_root_parent=${blog_site_root%/releases/*}
     ;;
 esac
-if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_site_root_parent/.sitedata/site" ]; then
-  blog_site_data="$blog_site_root_parent/.sitedata/site"
+if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_sites_data_dir/site" ]; then
+  blog_site_data="$blog_sites_data_dir/site"
 fi
 blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"

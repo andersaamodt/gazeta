@@ -46,12 +46,14 @@ impl SitePaths {
         let sites_dir = env_path("WIZARDRY_SITES_DIR").ok_or_else(|| {
             ReadError::new("config_missing", "WIZARDRY_SITES_DIR is not configured.")
         })?;
+        let sites_data_dir =
+            env_path("WIZARDRY_SITES_DATA_DIR").unwrap_or_else(|| sites_dir.join(".sitedata"));
         let site_name = env::var("WIZARDRY_SITE_NAME").map_err(|_| {
             ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
         })?;
         Ok(Self {
             site_root: sites_dir.join(&site_name),
-            state_dir: sites_dir.join(".sitedata").join(&site_name),
+            state_dir: sites_data_dir.join(&site_name),
         })
     }
 
