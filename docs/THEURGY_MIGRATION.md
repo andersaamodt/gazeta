@@ -54,7 +54,7 @@ These stay on the shell runtime until replay fixtures and rollback-safe state ch
 
 ## Safety Rules
 
-- Gazeta must not contain Desk routes or Desk runtime remnants.
+- Gazeta must not contain split-off app routes or runtime remnants from other projects.
 - Read endpoints may use Theurgy once they can serve existing static/cache artifacts.
 - Mutation endpoints need captured env/body fixtures plus file-state before/after assertions.
 - Deployments should call source-controlled maintenance commands; it must not patch live server files.

@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'nostr_blog_cart_v1';
+  var STORAGE_KEY = 'gazeta_cart_v1';
+  var LEGACY_STORAGE_KEYS = ['nostr_blog_cart_v1'];
   var state = {
     items: []
   };
@@ -150,6 +151,22 @@
   function loadCart() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        LEGACY_STORAGE_KEYS.some(function (legacyKey) {
+          var legacyRaw = localStorage.getItem(legacyKey);
+          if (!legacyRaw) {
+            return false;
+          }
+          raw = legacyRaw;
+          try {
+            localStorage.setItem(STORAGE_KEY, legacyRaw);
+            localStorage.removeItem(legacyKey);
+          } catch (_migrateErr) {
+            // Ignore storage migration failures and keep using the loaded payload.
+          }
+          return true;
+        });
+      }
       if (!raw) {
         state.items = [];
         return;

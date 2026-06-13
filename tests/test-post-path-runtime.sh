@@ -27,7 +27,7 @@ assert_eq() {
   fi
 }
 
-TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/nostr-blog-post-path.XXXXXX")
+TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-post-path.XXXXXX")
 cleanup() {
   rm -rf "$TMP_ROOT"
 }

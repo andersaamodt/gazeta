@@ -4,7 +4,7 @@
 set -eu
 
 blog_nostr_list_page_js_version='20260602-list-syncstatus2'
-blog_nostr_blog_page_js_version='20260611-blog-defaulttag-prerender1'
+blog_page_js_version='20260611-blog-defaulttag-prerender1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
@@ -1403,7 +1403,7 @@ blog_nostr_page_write_prerendered_source() {
         printf '<div id="blog-post-list" class="post-list"%s>\n%s\n</div><p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>\n' "$attrs" "$posts_html"
         printf '%s\n' '</div></div></section>'
         printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_nostr_blog_page_js_version"
+        printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_page_js_version"
       } >> "$tmp"
       ;;
     public-ranking)
@@ -2653,7 +2653,7 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
-      grep -q "/static/blog-page.js?v=$blog_nostr_blog_page_js_version" "$file" 2>/dev/null
+      grep -q "/static/blog-page.js?v=$blog_page_js_version" "$file" 2>/dev/null
       ;;
     nip23)
       grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
@@ -2964,7 +2964,7 @@ license: "CC BY 4.0"
 </section>
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/blog-page.js?v=$blog_nostr_blog_page_js_version"></script>
+<script src="/static/blog-page.js?v=$blog_page_js_version"></script>
 EOBLOG
       ;;
     public-ranking)
