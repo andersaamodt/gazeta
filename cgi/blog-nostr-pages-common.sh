@@ -442,9 +442,9 @@ blog_nostr_page_mount_path() {
   slug=$(blog_nostr_page_slug "${1-}")
   [ -n "$slug" ] || return 1
   if [ "$slug" = "index" ]; then
-    printf '%s/site/pages/index.md\n' "$blog_site_root"
+    printf '%s/index.md\n' "$(blog_managed_pages_dir)"
   else
-    printf '%s/site/pages/%s.md\n' "$blog_site_root" "$slug"
+    printf '%s/%s.md\n' "$(blog_managed_pages_dir)" "$slug"
   fi
 }
 
@@ -2709,7 +2709,7 @@ blog_nostr_page_template_is_current() {
 
 blog_nostr_pages_prune_stale_source_pages() {
   cfg_json=${1-}
-  pages_dir=$blog_site_root/site/pages
+  pages_dir=$(blog_managed_pages_dir)
   [ -d "$pages_dir" ] || return 0
 
   find "$pages_dir" -maxdepth 1 \( -type f -o -type l \) -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
@@ -2754,7 +2754,7 @@ blog_nostr_pages_prune_clean_url_build_dirs() {
         ;;
     esac
 
-    prune_clean_url_source_page=$blog_site_root/site/pages/$prune_clean_url_slug.md
+    prune_clean_url_source_page=$(blog_nostr_page_mount_path "$prune_clean_url_slug" 2>/dev/null || printf '')
     prune_clean_url_build_path=$prune_clean_url_build_dir/$prune_clean_url_slug
     [ -f "$prune_clean_url_source_page" ] || continue
     [ -d "$prune_clean_url_build_path" ] || continue

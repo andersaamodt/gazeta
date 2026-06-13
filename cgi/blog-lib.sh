@@ -4,7 +4,22 @@
 set -eu
 
 blog_sites_dir=${WIZARDRY_SITES_DIR:-$HOME/sites}
-blog_sites_data_dir=${WIZARDRY_SITES_DATA_DIR:-$blog_sites_dir/.sitedata}
+blog_default_sites_data_dir="$blog_sites_dir/.sitedata"
+case "${WIZARDRY_SITES_DATA_DIR:-}" in
+  '')
+    case "$blog_sites_dir" in
+      "$HOME/git"|"$HOME/git/"*|/Users/andersaamodt/git|/Users/andersaamodt/git/*)
+        blog_sites_data_dir="${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/sites-data"
+        ;;
+      *)
+        blog_sites_data_dir="$blog_default_sites_data_dir"
+        ;;
+    esac
+    ;;
+  *)
+    blog_sites_data_dir=$WIZARDRY_SITES_DATA_DIR
+    ;;
+esac
 blog_site_name=${WIZARDRY_SITE_NAME-}
 
 # Recover the site context from host/path when launcher env is missing.
@@ -41,6 +56,87 @@ fi
 
 blog_site_root="$blog_sites_dir/$blog_site_name"
 blog_site_data="$blog_sites_data_dir/$blog_site_name"
+blog_legacy_site_data="$blog_default_sites_data_dir/$blog_site_name"
+if [ "$blog_site_data" != "$blog_legacy_site_data" ] && [ -d "$blog_legacy_site_data" ]; then
+  if [ ! -e "$blog_site_data" ] || [ -z "$(find "$blog_site_data" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
+    mkdir -p "$(dirname "$blog_site_data")"
+    rm -rf "$blog_site_data"
+    mv "$blog_legacy_site_data" "$blog_site_data"
+  fi
+fi
+blog_source_pages_dir="$blog_site_root/site/pages"
+blog_source_static_dir="$blog_site_root/site/static"
+
+blog_site_root_is_git_checkout() {
+  case "$blog_site_root" in
+    "$HOME/git"/*|/Users/andersaamodt/git/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+blog_generated_repo_root() {
+  if [ -n "${BLOG_GENERATED_ROOT:-}" ]; then
+    printf '%s\n' "$BLOG_GENERATED_ROOT"
+    return 0
+  fi
+  if blog_site_root_is_git_checkout; then
+    xdg_state_home=${XDG_STATE_HOME:-$HOME/.local/state}
+    printf '%s/gazeta/generated/%s\n' "$xdg_state_home" "$blog_site_name"
+    return 0
+  fi
+  printf '%s/site\n' "$blog_site_root"
+}
+
+blog_managed_pages_dir() {
+  if blog_site_root_is_git_checkout; then
+    printf '%s/pages\n' "$(blog_generated_repo_root)"
+    return 0
+  fi
+  printf '%s\n' "$blog_source_pages_dir"
+}
+
+blog_generated_static_dir() {
+  if blog_site_root_is_git_checkout; then
+    printf '%s/static\n' "$(blog_generated_repo_root)"
+    return 0
+  fi
+  printf '%s\n' "$blog_source_static_dir"
+}
+
+blog_generated_build_static_dir() {
+  if blog_site_root_is_git_checkout; then
+    printf '%s/build-static\n' "$(blog_generated_repo_root)"
+    return 0
+  fi
+  printf '%s/build/static\n' "$blog_site_root"
+}
+
+blog_managed_page_path_for_rel() {
+  rel=${1-}
+  [ -n "$rel" ] || return 1
+  printf '%s/%s\n' "$(blog_managed_pages_dir)" "$rel"
+}
+
+blog_generated_pages_rel_for_file() {
+  file=${1-}
+  case "$file" in
+    "$blog_source_pages_dir/"*)
+      printf '%s\n' "${file#"$blog_source_pages_dir/"}"
+      return 0
+      ;;
+  esac
+  managed_pages_dir=$(blog_managed_pages_dir)
+  case "$file" in
+    "$managed_pages_dir/"*)
+      printf '%s\n' "${file#"$managed_pages_dir/"}"
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 blog_site_root_parent=$blog_site_root
 case "$blog_site_root" in
   */releases/*)
@@ -52,7 +148,7 @@ if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_sites_data_d
 fi
 blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"
-blog_posts_dir="$blog_site_root/site/pages/posts"
+blog_posts_dir="$(blog_managed_pages_dir)/posts"
 blog_posts_store_dir="$blog_content_root/posts"
 blog_page_states_dir="$blog_content_root/page-states"
 blog_auth_dir="$blog_site_data/ssh-auth"
@@ -718,13 +814,20 @@ blog_normalize_post_source_path() {
 blog_post_rel_path_for_file() {
   file=${1-}
   case "$file" in
-    "$blog_site_root/site/pages/"*)
-      printf '%s\n' "${file#"$blog_site_root/site/pages/"}"
+    "$blog_source_pages_dir/"*)
+      printf '%s\n' "${file#"$blog_source_pages_dir/"}"
       ;;
     "$blog_posts_store_dir/"*)
       printf 'posts/%s\n' "${file#"$blog_posts_store_dir/"}"
       ;;
     *)
+      managed_pages_dir=$(blog_managed_pages_dir)
+      case "$file" in
+        "$managed_pages_dir/"*)
+          printf '%s\n' "${file#"$managed_pages_dir/"}"
+          return 0
+          ;;
+      esac
       if [ -f "$file" ]; then
         posts_real_dir=$(CDPATH= cd -- "$blog_posts_dir" 2>/dev/null && pwd -P || printf '')
         case "$posts_real_dir" in
@@ -1656,7 +1759,8 @@ blog_file_is_public_effective() {
     true|1|yes|on) return 0 ;;
   esac
   post_path=$(blog_config_get "$record_path" post_path 2>/dev/null || printf '')
-  if [ -n "$post_path" ] && [ -f "$blog_site_root/site/pages/$post_path" ]; then
+  resolved_post_path=$(blog_managed_page_path_for_rel "$post_path" 2>/dev/null || printf '')
+  if [ -n "$resolved_post_path" ] && [ -f "$resolved_post_path" ]; then
     return 0
   fi
   return 1
@@ -5199,7 +5303,7 @@ blog_nostr_build_post_event_json_for_file() {
   tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
   content=$(blog_read_markdown_body "$file")
   title=$(blog_effective_post_title "$title" "$content" "$post_type")
-  source_post_path=${file#"$blog_site_root/site/pages/"}
+  source_post_path=$(blog_generated_pages_rel_for_file "$file" 2>/dev/null || printf '')
   post_filename=$(blog_canonical_post_slug_from_source "$source_post_path" 2>/dev/null || printf '')
 
   blog_nostr_sign_post_event "$title" "$tags_csv" "$summary" "$content" "$published_iso" "$post_type" "$source_post_path" "$post_filename"
@@ -5705,12 +5809,12 @@ blog_publish_content_markdown() {
   old_post_path=""
   old_rel_html=""
   if [ -n "$current_rel_path" ] && [ -n "$target_rel_path" ] && [ "$current_rel_path" != "$target_rel_path" ]; then
-    old_post_path="$blog_site_root/site/pages/$current_rel_path"
+    old_post_path=$(blog_managed_page_path_for_rel "$current_rel_path")
     old_rel_html=${current_rel_path%.md}.html
   fi
 
   if [ -n "$target_rel_path" ]; then
-    post_path="$blog_site_root/site/pages/$target_rel_path"
+    post_path=$(blog_managed_page_path_for_rel "$target_rel_path")
     filename=${target_rel_path##*/}
     if [ -f "$post_path" ] && { [ -z "$current_rel_path" ] || [ "$target_rel_path" != "$current_rel_path" ]; }; then
       return 1
@@ -5756,7 +5860,7 @@ blog_publish_content_markdown() {
     fi
   fi
 
-  rel_post_path=${post_path#"$blog_site_root/site/pages/"}
+  rel_post_path=$(blog_generated_pages_rel_for_file "$post_path" 2>/dev/null || printf '')
   blog_file_promote_refs_to_post "$draft_id" "$content" "$rel_post_path"
 
   printf '%s\n' "$filename"
@@ -6111,6 +6215,9 @@ blog_collect_public_posts() {
       jq -r '.[]?.md_path // empty' "$blog_nostr_posts_index" 2>/dev/null | while IFS= read -r rel_md || [ -n "$rel_md" ]; do
         [ -n "$rel_md" ] || continue
         file="$blog_site_root/site/pages/$rel_md"
+        if [ ! -f "$file" ]; then
+          file=$(blog_managed_page_path_for_rel "$rel_md" 2>/dev/null || printf '')
+        fi
         if [ -f "$file" ]; then
           printf '%s\n' "$file"
         fi
@@ -6143,7 +6250,7 @@ blog_collect_public_posts() {
 }
 
 blog_public_posts_catalog_static_path() {
-  printf '%s/site/static/public-posts.json\n' "$blog_site_root"
+  printf '%s/public-posts.json\n' "$(blog_generated_static_dir)"
 }
 
 blog_public_posts_catalog_cache_path() {
@@ -6165,7 +6272,7 @@ blog_public_posts_catalog_build_json() {
       [ -n "$file" ] || continue
       [ -f "$file" ] || continue
 
-      rel=${file#"$blog_site_root/site/pages/"}
+      rel=$(blog_generated_pages_rel_for_file "$file" 2>/dev/null || printf '')
       case "$rel" in
         posts/*.md) ;;
         *) continue ;;

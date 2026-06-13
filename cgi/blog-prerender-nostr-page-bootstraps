@@ -17,7 +17,7 @@ fi
 
 blog_init
 
-bootstrap_dir="$blog_site_root/site/static/nostr-page-bootstrap"
+bootstrap_dir=$(blog_generated_static_dir)/nostr-page-bootstrap
 mkdir -p "$bootstrap_dir"
 
 sites_dir=${WIZARDRY_SITES_DIR:-$blog_sites_dir}

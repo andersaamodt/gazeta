@@ -751,7 +751,7 @@ blog_list_validate_and_enrich_state_json() {
         md_path=$(printf '%s\n' "$record" | jq -r '.md_path // ""' 2>/dev/null || printf '')
         post_created_at=$(printf '%s\n' "$record" | jq -r '.created_at // ""' 2>/dev/null || printf '')
         if [ -n "$md_path" ]; then
-          file="$blog_site_root/site/pages/$md_path"
+          file=$(blog_managed_page_path_for_rel "$md_path" 2>/dev/null || printf '')
           if [ -f "$file" ]; then
             post_list_date=$(blog_read_front_matter_value "$file" list_date 2>/dev/null || printf '')
             if [ -z "$explicit_post_url" ]; then
