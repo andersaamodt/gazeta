@@ -1,37 +1,7 @@
 #!/bin/sh
-# Admin-only Secure Chat contact mapping controls.
+# Handle Secure Chat admin actions through the Gazeta Theurgy admin runtime.
 
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-. "$SCRIPT_DIR/blog-lib.sh"
-. "$SCRIPT_DIR/blog-secure-chat-common.sh"
-
-blog_init
-blog_read_request_body
-blog_send_json_headers
-
-if ! blog_require_session true false; then
-  exit 0
-fi
-
-action=$(blog_param action)
-npub=$(blog_param npub)
-since_seq=$(blog_param since_seq)
-case "$since_seq" in ''|*[!0-9]*) since_seq=0 ;; esac
-
-payload_file=$(mktemp "${TMPDIR:-/tmp}/secure-chat-admin.XXXXXX")
-trap 'rm -f "$payload_file"' EXIT HUP INT TERM
-jq -cn \
-  --arg action "$action" \
-  --arg npub "$npub" \
-  --argjson sinceSeq "$since_seq" \
-  '{action:(if ($action | length) > 0 then $action else "status" end),npub:$npub,sinceSeq:$sinceSeq}' > "$payload_file"
-
-response=$(blog_secure_chat_service_request_json POST /admin "$payload_file" application/json 2>/dev/null || printf '')
-if [ -z "$response" ]; then
-  blog_json_error "Secure Chat admin service is unavailable" "service_unavailable"
-  exit 0
-fi
-
-printf '%s\n' "$response"
+exec /bin/sh "$SCRIPT_DIR/gazeta-admin-runtime-adapter" blog-secure-chat-admin

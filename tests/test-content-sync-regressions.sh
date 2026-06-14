@@ -350,10 +350,10 @@ assert_contains "$headers_out" 'HEADER:Expires=0' 'json headers expires'
 assert_contains "$headers_out" 'END-HEADERS' 'json headers terminator'
 
 # 2) Publish endpoints must trigger sync and rebuild.
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish nostr page sync hook present'
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish nostr page build hook present'
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" 'blog_nostr_sign_product_backing_events_json' 'manual product page publish signs app and marketplace backing events'
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page" "software-gallery) expected_kind='30267'" 'manual software-gallery publish validates kind 30267'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish nostr page sync hook present'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish nostr page build hook present'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_sign_product_backing_events_json' 'manual product page publish signs app and marketplace backing events'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" "software-gallery) expected_kind='30267'" 'manual software-gallery publish validates kind 30267'
 assert_file_contains "$ROOT_DIR/cgi/blog-audit-nostr-backing" 'blog_nostr_backing_audit_json' 'nostr backing audit endpoint is read-only'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_software_app_event()' 'software products can emit kind 32267 app metadata'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_marketplace_product_event()' 'software products can emit kind 30018 marketplace product records'
@@ -761,7 +761,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'video_chat_participant
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'video_chat_public_rooms' 'Admin saves the video calling public room toggle'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'video-chat-operator-status' 'Video Calling admin exposes the operator console'
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'account-video-chat-allow-admin-calls' 'Account settings expose background admin-call opt-in'
-assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-control" 'admin_call_user' 'Video call control endpoint can start admin-initiated calls'
+assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-control-legacy" 'admin_call_user' 'Video call control endpoint can start admin-initiated calls'
 assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-token" 'owner_call' 'Video call token endpoint can create public owner-call requests'
 assert_file_contains "$ROOT_DIR/cgi/blog-video-chat-token" 'room_password_required' 'Video call token endpoint enforces private room passwords'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'loadVideoChatOperatorStatus' 'Admin polls video call presence for the operator console'
@@ -1602,11 +1602,13 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-get-config"
 assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
+assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy"
 assert_success sh -n "$ROOT_DIR/cgi/blog-audit-nostr-backing"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments"
+assert_success sh -n "$ROOT_DIR/cgi/blog-payments-legacy"
 assert_success sh -n "$ROOT_DIR/cgi/blog-get-product"
 assert_success sh -n "$ROOT_DIR/cgi/blog-purchase"
 assert_success sh -n "$ROOT_DIR/cgi/blog-download"
@@ -1809,25 +1811,26 @@ assert_success test -x "$ROOT_DIR/cgi/blog-manage-lightning"
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-btcpay"
 assert_success test -x "$ROOT_DIR/cgi/blog-manage-merch"
 assert_success test -x "$ROOT_DIR/cgi/blog-payments"
+assert_success test -x "$ROOT_DIR/cgi/blog-payments-legacy"
 assert_success test -x "$ROOT_DIR/cgi/blog-get-product"
 assert_success test -x "$ROOT_DIR/cgi/blog-purchase"
 assert_success test -x "$ROOT_DIR/cgi/blog-download"
 assert_success test -x "$ROOT_DIR/cgi/blog-delivery"
 assert_success test -x "$ROOT_DIR/cgi/blog-create-product-page"
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'create_order' 'payments cgi supports create_order action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'order_status' 'payments cgi supports order_status action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'simulate_paid' 'payments cgi supports simulated paid transition'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'webhook' 'payments cgi supports provider webhook action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_host_api_key:' 'payments status emits ramp runtime key for checkout embeds'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'commerce_enabled:' 'payments status emits commerce plugin runtime key'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'commerce_disabled' 'payments cgi blocks quote/create when commerce plugin is disabled'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_ramp_provider_url' 'payments cgi builds Ramp checkout URLs through shared helper'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'ramp_receiver_mismatch' 'payments cgi rejects Ramp webhooks for the wrong BTC receiver'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'create_order' 'payments cgi supports create_order action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'order_status' 'payments cgi supports order_status action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'simulate_paid' 'payments cgi supports simulated paid transition'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'webhook' 'payments cgi supports provider webhook action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'ramp_host_api_key:' 'payments status emits ramp runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_enabled:' 'payments status emits commerce plugin runtime key'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_disabled' 'payments cgi blocks quote/create when commerce plugin is disabled'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_ramp_provider_url' 'payments cgi builds Ramp checkout URLs through shared helper'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'ramp_receiver_mismatch' 'payments cgi rejects Ramp webhooks for the wrong BTC receiver'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_sync_product_json' 'merch common can load Printful sync products'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_merch_selection_save_json' 'merch common persists Printful product curation selection'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_create_order_json' 'merch common can create Printful orders'

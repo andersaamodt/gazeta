@@ -1,0 +1,5 @@
+name = "gazeta"
+kind = "website"
+source_root = "src"
+truth = "file-first"
+license = "LicenseRef-OWL-3.1"

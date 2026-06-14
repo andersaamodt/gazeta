@@ -1,0 +1,13 @@
+name = "gazeta"
+track = "enterprise-web"
+runtime = "theurgy-web"
+truth = "file-first"
+canonical_state = ".sitedata/<site>"
+front_doors = ["nginx", "lighttpd"]
+adapters = ["cgi-compat", "fastcgi", "http"]
+router = "gazeta-admin"
+serialization = "serde"
+templates = "static-assets"
+search = "file-index"
+zola_core_runtime = false
+phase = "gazeta-admin-mutation-runtime"

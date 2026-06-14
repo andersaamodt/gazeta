@@ -21,14 +21,22 @@ path = "src/bin/gazeta-commerce-read.rs"
 name = "gazeta-admin-read"
 path = "src/bin/gazeta-admin-read.rs"
 
+[[bin]]
+name = "gazeta-admin"
+path = "src/bin/gazeta-admin.rs"
+
 [dependencies]
+base64 = "=0.22.1"
+getrandom = "=0.3.4"
 itoa = "=1.0.14"
+mime_guess = "=2.0.5"
 ryu = "=1.0.20"
 serde_json = "=1.0.140"
+time = { version = "=0.3.41", features = ["formatting", "macros"] }
 
 [package.metadata.theurgy.web_runtime]
 track = "enterprise-web"
 runtime = "theurgy-web"
 truth = "file-first"
 adapter = "cgi-compat"
-phase = "gazeta-read-endpoints"
+phase = "gazeta-admin-mutation-runtime"

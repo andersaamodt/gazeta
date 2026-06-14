@@ -161,11 +161,15 @@ cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/
 
 ## Theurgy Runtime
 
-Gazeta is migrating hot read paths to the Theurgy web runtime while keeping CGI front doors compatible with Wizardry hosting.
+Gazeta is migrating high-value read and admin mutation paths to the Theurgy web runtime while keeping CGI front doors compatible with Wizardry hosting.
 
-- `gazeta-read` handles migrated read endpoints.
+- `gazeta-read` handles migrated public read endpoints.
+- `gazeta-admin-read` handles authenticated admin read endpoints.
+- `gazeta-admin` now owns the admin mutation/runtime boundary.
 - `cgi/blog-list-public-posts` execs `gazeta-read list-public-posts`.
 - `cgi/blog-list-navbar-pages` execs `gazeta-read list-navbar-pages`.
+- `cgi/blog-manage-post` and `cgi/blog-upload-media` run directly in `gazeta-admin`.
+- `cgi/blog-save-post`, `cgi/blog-publish-nostr-page`, `cgi/blog-video-chat-control`, `cgi/blog-secure-chat-admin`, and `cgi/blog-payments` now enter through `gazeta-admin` and bridge to explicit `*-legacy` handlers while those deeper subsystems are still being peeled out of shell.
 - `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
 - Build runtime binaries with:
 
@@ -173,7 +177,7 @@ Gazeta is migrating hot read paths to the Theurgy web runtime while keeping CGI 
 cgi/install-theurgy-runtime
 ```
 
-The CGI adapter runs `GAZETA_READ_RUNTIME` when set, then `~/.local/state/gazeta/cargo-target/release/gazeta-read`, then `~/.local/state/gazeta/cargo-target/debug/gazeta-read`. It only uses `cargo run` when `GAZETA_THEURGY_ALLOW_CARGO=1` is set for local replay tests.
+The CGI adapters run `GAZETA_READ_RUNTIME`, `GAZETA_ADMIN_READ_RUNTIME`, or `GAZETA_ADMIN_RUNTIME` when set, then the corresponding `~/.local/state/gazeta/cargo-target/release/*` binary, then the debug binary. They only use `cargo run` when `GAZETA_THEURGY_ALLOW_CARGO=1` is set for local replay tests.
 
 Repo-local cargo output is forbidden. Use `cgi/install-theurgy-runtime` or `cgi/gazeta-cargo ...`; by default they build under `~/.local/state/gazeta/cargo-target` unless `GAZETA_STATE_DIR` or `CARGO_TARGET_DIR` overrides that location.
 

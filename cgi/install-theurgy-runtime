@@ -12,11 +12,13 @@ cd "$REPO_ROOT"
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 export CARGO_BUILD_JOBS
 "$SCRIPT_DIR/gazeta-cargo" build --release \
+  --bin gazeta-admin \
   --bin gazeta-admin-read \
   --bin gazeta-read \
   --bin gazeta-nostr-read \
   --bin gazeta-commerce-read
 
+printf '%s\n' "$(gazeta_runtime_path release gazeta-admin)"
 printf '%s\n' "$(gazeta_runtime_path release gazeta-admin-read)"
 printf '%s\n' "$(gazeta_runtime_path release gazeta-read)"
 printf '%s\n' "$(gazeta_runtime_path release gazeta-nostr-read)"
