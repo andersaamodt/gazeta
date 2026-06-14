@@ -52,4 +52,16 @@ stored_name=$(printf '%s\n' "$json" | jq -r '.filename')
 test -f "$SITE_DATA/files/$stored_name"
 grep -q '^Hello$' "$SITE_DATA/files/$stored_name"
 
+serve_query="fileid=$file_id&session_token=$token&csrf_token=$csrf"
+serve_output=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="$serve_query" \
+  REQUEST_URI="/cgi/blog-file?$serve_query" \
+  /bin/sh "$ROOT_DIR/cgi/blog-file"
+)
+serve_headers=$(printf '%s\n' "$serve_output" | tr -d '\r')
+printf '%s\n' "$serve_headers" | grep -q '^Status: 200 OK$'
+printf '%s\n' "$serve_headers" | grep -q '^Content-Type: text/plain$'
+printf '%s\n' "$serve_headers" | grep -q '^X-Accel-Redirect: /__site-files/hello.txt$'
+
 printf '%s\n' 'gazeta upload media runtime tests passed'

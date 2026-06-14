@@ -15,6 +15,11 @@ resolve_file_id() {
     printf '%s\n' "$from_query"
     return 0
   fi
+  from_query=$(blog_param fileid)
+  if [ -n "$from_query" ]; then
+    printf '%s\n' "$from_query"
+    return 0
+  fi
 
   path_info=${PATH_INFO-}
   if [ -n "$path_info" ]; then
