@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_read_request_body
@@ -54,7 +55,13 @@ if [ -z "$entry_markdown" ]; then
   entry_markdown=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf '')
 fi
 
-state_json=$(blog_list_load_draft_state_json "$list_slug" 2>/dev/null || printf '')
+page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf 'list')
+case "$page_type" in
+  list|icon-gallery|software-gallery) ;;
+  *) page_type='list' ;;
+esac
+
+state_json=$(blog_nostr_page_load_draft_state_json "$list_slug" "$page_type" 2>/dev/null || printf '')
 if [ -z "$state_json" ]; then
   state_json=$(blog_list_load_canonical_state_json "$list_slug")
 fi
@@ -79,7 +86,7 @@ next_state=$(printf '%s\n' "$state_json" | jq -c \
   | .entries = (.elements // [])
 ')
 next_state=$(blog_list_normalize_state_json "$list_slug" "$next_state")
-blog_list_save_draft_state_json "$list_slug" "$next_state"
+blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$next_state"
 validation_json=$(blog_list_validate_and_enrich_state_json "$next_state" false)
 
 jq -cn \

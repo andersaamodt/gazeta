@@ -22,7 +22,13 @@ if [ -z "$list_slug" ]; then
   exit 0
 fi
 
-state_json=$(blog_list_load_draft_state_json "$list_slug" 2>/dev/null || printf '')
+page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf 'list')
+case "$page_type" in
+  list|icon-gallery|software-gallery) ;;
+  *) page_type='list' ;;
+esac
+
+state_json=$(blog_nostr_page_load_draft_state_json "$list_slug" "$page_type" 2>/dev/null || printf '')
 if [ -z "$state_json" ]; then
   state_json=$(blog_list_load_canonical_state_json "$list_slug")
 fi
@@ -73,7 +79,7 @@ if ! blog_nostr_store_event_json "$event_json" >/dev/null 2>&1; then
 fi
 
 canonical_state_json=$(blog_list_state_from_event_json "$list_slug" "$event_json")
-blog_list_save_draft_state_json "$list_slug" "$canonical_state_json"
+blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$canonical_state_json"
 # Keep generated source mounts and build output aligned with canonical Nostr
 # state so remote deployments reflect newly published content.
 blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true

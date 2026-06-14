@@ -6,6 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
 
 blog_init
 blog_read_request_body
@@ -63,7 +64,12 @@ raw_state=$(jq -cn \
     entries: $entries
   }')
 state_json=$(blog_list_normalize_state_json "$list_slug" "$raw_state")
-blog_list_save_draft_state_json "$list_slug" "$state_json"
+page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf 'list')
+case "$page_type" in
+  list|icon-gallery|software-gallery) ;;
+  *) page_type='list' ;;
+esac
+blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$state_json"
 
 validation_json=$(blog_list_validate_and_enrich_state_json "$state_json" false)
 

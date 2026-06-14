@@ -733,6 +733,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'blog_list_legacy_draft
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_state_markdown_write_json "$path" "$markdown_state" content' 'Nostr page draft saves use YAML front matter plus markdown'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'del(.entries, .tags)' 'list-style Markdown page state omits derived Nostr tags and duplicate entries'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_legacy_draft_path "$slug"' 'Nostr page draft loading keeps legacy JSON as read-only fallback'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-list-page" 'blog_nostr_page_load_draft_state_json "$list_slug" "$page_type"' 'legacy list getter reads modern Nostr page-state drafts before stale list JSON'
+assert_file_contains "$ROOT_DIR/cgi/blog-save-list-draft" 'blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$state_json"' 'legacy list saver writes modern Nostr page-state drafts'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_page_load_draft_state_json "$list_slug" "$page_type"' 'legacy list publisher reads modern Nostr page-state drafts'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$canonical_state_json"' 'legacy list publisher writes modern Nostr page-state drafts'
+assert_file_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'blog_nostr_page_load_draft_state_json "$list_slug" "$page_type"' 'add-post-to-list reads modern Nostr page-state drafts before stale list JSON'
+assert_file_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$next_state"' 'add-post-to-list writes modern Nostr page-state drafts'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_snapshot_file_before_replace "$page_file" "$tmp"' 'page prerender writes snapshot the previous generated source before replacement'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_snapshot_file_before_replace "$mount_path" "$tmp"' 'page source mount sync snapshots the previous mounted page before replacement'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-page-draft" 'show_marker_filters=$(blog_param show_marker_filters)' 'save-draft endpoint accepts show_marker_filters setting'
@@ -748,6 +754,38 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'extras_after_fo
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'extras_after_format: "markdown"' 'list normalization forces after-content format to markdown'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" 'extras_after_format: "markdown"' 'public ranking normalization forces after-content format to markdown'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'extras_after_format: "markdown"' 'page payload projection forces after-content format to markdown'
+
+blog_nostr_pages_save_json '{"pages":[{"slug":"oeuvre","type":"list","show_in_nav":true,"placeholder_title":"Oeuvre"}]}'
+modern_oeuvre_state=$(jq -cn '{
+  slug: "oeuvre",
+  title: "Oeuvre",
+  group_by: "year",
+  elements: [{
+    type: "entry",
+    marker: "curated, music",
+    date: "2025",
+    markdown: "Libertywave music genre",
+    post_url: "https://suno.com/playlist/6a853492-6af4-4141-aae0-faa48715b1e1"
+  }]
+}')
+stale_oeuvre_state=$(jq -cn '{
+  slug: "oeuvre",
+  title: "Oeuvre",
+  group_by: "year",
+  elements: [{
+    type: "entry",
+    marker: "curated, music",
+    date: "2025",
+    markdown: "Libertywave music genre",
+    post_url: ""
+  }]
+}')
+blog_nostr_page_save_draft_state_json oeuvre list "$modern_oeuvre_state"
+mkdir -p "$blog_lists_dir"
+printf '%s\n' "$stale_oeuvre_state" > "$blog_lists_dir/oeuvre.json"
+legacy_list_payload=$(REQUEST_METHOD=GET QUERY_STRING='list_slug=oeuvre' CONTENT_LENGTH=0 "$ROOT_DIR/cgi/blog-get-list-page")
+assert_contains "$legacy_list_payload" '"post_url":"https://suno.com/playlist/6a853492-6af4-4141-aae0-faa48715b1e1"' 'legacy list getter preserves modern Oeuvre post_url despite stale legacy JSON'
+
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function renderMarkdownWithWidgetIncludes' 'contact page local markdown supports explicit widget includes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function normalizeWidgetIncludeName' 'contact page parses exact widget names from include tokens'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'data-video-chat-token-endpoint="/cgi/blog-video-chat-token"' 'video chat widget include uses the token endpoint'
