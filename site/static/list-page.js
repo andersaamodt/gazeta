@@ -3118,7 +3118,7 @@
     html += '<div class="list-entry-line list-entry-read-inline" data-element-uid="' + escapeHtml(uid) + '" data-depth="' + String(depth) + '" style="--list-depth:' + String(depth) + ';">';
     html += '<input type="text" class="list-entry-read-inline-input" data-inline-field="markdown" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markdownText) + '" placeholder="Entry text">';
     html += '<div class="list-entry-read-inline-meta" aria-label="Entry details">';
-    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="post_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(postUrl) + '" placeholder="Post URL">';
+    html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="post_url" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(postUrl) + '" placeholder="URL">';
     html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="description" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(description) + '" placeholder="Description">';
     html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="date" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(dateText) + '" placeholder="Date">';
     html += '<input type="text" class="list-entry-read-inline-detail" data-inline-field="marker" data-element-uid="' + escapeHtml(uid) + '" value="' + escapeHtml(markerText) + '" placeholder="Marker">';
