@@ -1,0 +1,123 @@
+#!/bin/sh
+# Update editable attachment metadata (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+file_id=$(blog_param file_id)
+record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
+  blog_json_error "File not found" "not_found"
+  exit 0
+fi
+
+current_safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf '')
+safe_name=$(blog_param safe_name)
+if [ -z "$safe_name" ]; then
+  safe_name=$current_safe_name
+fi
+safe_name=$(blog_basename_safe "$safe_name")
+case "$safe_name" in
+  ''|.|..)
+    blog_json_error "Filename is required" "invalid_filename"
+    exit 0
+    ;;
+esac
+
+original_name=$(blog_param original_name)
+if [ -z "$original_name" ]; then
+  original_name=$(config-get "$record_path" original_name 2>/dev/null || printf '%s' "$safe_name")
+fi
+original_name=$(blog_basename_safe "$original_name")
+case "$original_name" in
+  ''|.|..)
+    original_name=$safe_name
+    ;;
+esac
+
+mime_type=$(blog_param mime_type)
+if [ -z "$mime_type" ]; then
+  file_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
+  mime_type=$(blog_file_content_type "$file_path" application/octet-stream 2>/dev/null || printf 'application/octet-stream')
+fi
+case "$mime_type" in
+  */*|application/octet-stream) ;;
+  *)
+    blog_json_error "MIME type must look like type/subtype" "invalid_mime_type"
+    exit 0
+    ;;
+esac
+case "$mime_type" in
+  *[[:space:]]*|*\"*|*\'*)
+    blog_json_error "MIME type contains invalid characters" "invalid_mime_type"
+    exit 0
+    ;;
+esac
+
+public_path=$(blog_param public_path)
+if [ -n "$public_path" ]; then
+  public_path=$(blog_basename_safe "$public_path")
+  case "$public_path" in
+    ''|.|..|.*|*/*|cgi|cgi.*|files|files.*|static|static.*|pages|pages.*|build|build.*|admin.html|index.html|robots.txt|sitemap.xml|rss.xml|atom.xml)
+      blog_json_error "Public path is reserved or invalid" "invalid_public_path"
+      exit 0
+      ;;
+  esac
+fi
+
+candidate_public_path=$public_path
+if [ -z "$candidate_public_path" ]; then
+  candidate_public_path=$safe_name
+fi
+for other_record_path in "$blog_file_records_dir"/*.conf; do
+  [ -f "$other_record_path" ] || continue
+  [ "$other_record_path" != "$record_path" ] || continue
+  other_public_path=$(blog_file_public_path_for_record "$other_record_path" 2>/dev/null || printf '')
+  if [ "$other_public_path" = "$candidate_public_path" ]; then
+    blog_json_error "Another file already uses that public path" "public_path_conflict"
+    exit 0
+  fi
+done
+
+explicit_public_raw=$(blog_param explicit_public)
+case "$explicit_public_raw" in
+  true|1|yes|on) explicit_public=true ;;
+  false|0|no|off|'') explicit_public=false ;;
+  *)
+    blog_json_error "Invalid visibility value" "invalid_visibility"
+    exit 0
+    ;;
+esac
+
+config-set "$record_path" original_name "$original_name"
+config-set "$record_path" safe_name "$safe_name"
+config-set "$record_path" mime_type "$mime_type"
+config-set "$record_path" public_path "$public_path"
+config-set "$record_path" explicit_public "$explicit_public"
+config-set "$record_path" updated_at "$(blog_now_iso)"
+blog_file_sync_public_aliases >/dev/null 2>&1 || true
+blog_run_build_async >/dev/null 2>&1 || true
+
+effective_public=false
+if blog_file_is_public_effective "$file_id"; then
+  effective_public=true
+fi
+printf '{"success":true,"file_id":"%s","original_name":"%s","safe_name":"%s","mime_type":"%s","public_path":"%s","explicit_public":%s,"effective_public":%s,"url":"%s"}\n' \
+  "$(blog_json_escape "$file_id")" \
+  "$(blog_json_escape "$original_name")" \
+  "$(blog_json_escape "$safe_name")" \
+  "$(blog_json_escape "$mime_type")" \
+  "$(blog_json_escape "$public_path")" \
+  "$explicit_public" \
+  "$effective_public" \
+  "$(blog_json_escape "$(blog_file_public_url_encoded "$file_id" "$safe_name")")"

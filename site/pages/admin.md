@@ -4535,6 +4535,62 @@ body {
   line-height: 1.15;
 }
 
+.file-row-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  align-items: end;
+  gap: 0.42rem 0.55rem;
+  margin-top: 0.34rem;
+}
+
+.file-metadata-field {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+  color: var(--admin-muted, #6a7488);
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.file-metadata-field input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--admin-border, #d2def3);
+  border-radius: 6px;
+  background: var(--input-bg, #fff);
+  color: var(--admin-text, var(--text));
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.file-metadata-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-height: 2rem;
+  color: var(--admin-text, var(--text));
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.file-metadata-check input {
+  inline-size: 1rem;
+  block-size: 1rem;
+  margin: 0;
+}
+
+#admin-panel .file-metadata-save {
+  justify-self: start;
+  align-self: end;
+  width: fit-content;
+  min-width: 0;
+  padding: 0.42rem 0.68rem;
+  white-space: nowrap;
+}
+
 .file-pill {
   display: inline-flex;
   align-items: center;

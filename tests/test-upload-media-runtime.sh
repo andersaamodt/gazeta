@@ -55,6 +55,28 @@ grep -q '^Hello$' "$SITE_DATA/files/$stored_name"
 config-set "$record" explicit_public true
 config-set "$record" public_path "hello public.txt"
 
+update_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&original_name=Hello%20Display.txt&safe_name=hello-renamed.txt&mime_type=text%2Fmarkdown&public_path=hello-pretty.txt&explicit_public=true"
+update_output=$(
+  printf '%s' "$update_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#update_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-update-file"
+)
+update_json=$(printf '%s\n' "$update_output" | sed -n '/^{/,$p')
+printf '%s\n' "$update_json" | jq -e '.success == true and .original_name == "Hello Display.txt" and .safe_name == "hello-renamed.txt" and .mime_type == "text/markdown" and .public_path == "hello-pretty.txt" and .explicit_public == true and .effective_public == true' >/dev/null
+grep -q '^original_name=Hello Display.txt$' "$record"
+grep -q '^safe_name=hello-renamed.txt$' "$record"
+grep -q '^mime_type=text/markdown$' "$record"
+grep -q '^public_path=hello-pretty.txt$' "$record"
+grep -q '^explicit_public=true$' "$record"
+
+config-set "$record" mime_type text/plain
+config-set "$record" safe_name "$stored_name"
+config-set "$record" original_name "$stored_name"
+config-set "$record" public_path "hello public.txt"
+
 pretty_url=$(
   . "$ROOT_DIR/cgi/blog-lib.sh"
   blog_init

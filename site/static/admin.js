@@ -6595,7 +6595,9 @@
       const fileId = String(file.file_id || '');
       const deleting = !!state.filesDeleting[fileId];
       const title = String(file.original_name || file.safe_name || 'Attachment');
+      const safeName = String(file.safe_name || '');
       const mimeType = String(file.mime_type || 'application/octet-stream');
+      const publicPath = String(file.public_path || '');
       const createdAt = String(file.created_at || '');
       const draftId = String(file.draft_id || '');
       const postPath = String(file.post_path || '');
@@ -6617,6 +6619,14 @@
       } else if (draftId) {
         html += '<span class="file-row-submeta">Draft</span>';
       }
+      html += '<div class="file-row-metadata" data-file-metadata="' + escapeAttr(fileId) + '">';
+      html += '<label class="file-metadata-field"><span>Display Name</span><input type="text" data-file-field="original_name" value="' + escapeAttr(title) + '"' + (deleting ? ' disabled' : '') + '></label>';
+      html += '<label class="file-metadata-field"><span>Download Filename</span><input type="text" data-file-field="safe_name" value="' + escapeAttr(safeName) + '"' + (deleting ? ' disabled' : '') + '></label>';
+      html += '<label class="file-metadata-field"><span>URL Path</span><input type="text" data-file-field="public_path" value="' + escapeAttr(publicPath) + '" placeholder="' + escapeAttr(safeName) + '"' + (deleting ? ' disabled' : '') + '></label>';
+      html += '<label class="file-metadata-field"><span>MIME Type</span><input type="text" data-file-field="mime_type" value="' + escapeAttr(mimeType) + '"' + (deleting ? ' disabled' : '') + '></label>';
+      html += '<label class="file-metadata-check"><input type="checkbox" data-file-field="explicit_public"' + (explicitPublic ? ' checked' : '') + (deleting ? ' disabled' : '') + '><span>Public</span></label>';
+      html += '<button type="button" class="file-metadata-save" data-file-action="save-metadata" data-file-id="' + escapeAttr(fileId) + '"' + (deleting ? ' disabled' : '') + '>Save</button>';
+      html += '</div>';
       html += '</div>';
       html += '<div class="file-col file-col-size">';
       html += '<span class="file-pill">' + escapeHtml(formatBytes(file.size_bytes)) + '</span>';
@@ -6735,6 +6745,37 @@
     }
     await loadFiles();
     setOutput(els.outputFiles, makePublic ? 'File is now public.' : 'File is private unless exposed by a public post.', 'ok');
+  }
+
+  async function saveFileMetadata(fileId) {
+    const id = String(fileId || '').trim();
+    if (!id) {
+      throw new Error('Missing file id');
+    }
+    const row = els.filesList ? Array.from(els.filesList.querySelectorAll('[data-file-row-id]')).find(function (candidate) {
+      return candidate instanceof HTMLElement && String(candidate.getAttribute('data-file-row-id') || '') === id;
+    }) : null;
+    if (!(row instanceof HTMLElement)) {
+      throw new Error('File row not found');
+    }
+    const fieldValue = function (fieldName) {
+      const node = row.querySelector('[data-file-field="' + fieldName + '"]');
+      return node instanceof HTMLInputElement ? node.value : '';
+    };
+    const publicNode = row.querySelector('[data-file-field="explicit_public"]');
+    const data = await apiPost('/cgi/blog-update-file', {
+      file_id: id,
+      original_name: fieldValue('original_name'),
+      safe_name: fieldValue('safe_name'),
+      public_path: fieldValue('public_path'),
+      mime_type: fieldValue('mime_type'),
+      explicit_public: publicNode instanceof HTMLInputElement && publicNode.checked ? 'true' : 'false'
+    }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update file metadata');
+    }
+    await loadFiles();
+    setOutput(els.outputFiles, 'File metadata saved.', 'ok');
   }
 
   async function deleteFile(fileId) {
@@ -10129,6 +10170,16 @@
             return;
           }
           setFilePublicState(fileId, makePublic).catch(function (err) {
+            setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
+          });
+          return;
+        }
+        if (action === 'save-metadata') {
+          const fileId = String(actionNode.getAttribute('data-file-id') || '').trim();
+          if (!fileId) {
+            return;
+          }
+          saveFileMetadata(fileId).catch(function (err) {
             setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
           });
           return;
