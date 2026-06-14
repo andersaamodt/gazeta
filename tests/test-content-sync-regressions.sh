@@ -382,6 +382,7 @@ assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'public_posts_cat
 assert_file_not_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'blog_collect_public_posts' 'blog index no longer rescans posts on each request'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elements: ($state.elements // [])' 'list page reads use state elements without synchronous Nostr enrichment'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_list_validate_and_enrich_state_json "$view_state_json" false' 'list page reads do not block on per-entry post resolution'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_draft_path "$page_slug"' 'public Nostr-backed pages read the server page-state before generated page shells'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_source" = "true" ]; then' 'public Nostr-backed pages prefer the server copy whenever local source exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'

@@ -253,6 +253,17 @@ EOFPOST
 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=30 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
 
+oeuvre_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=oeuvre "$ROOT_DIR/cgi/blog-get-nostr-page")
+oeuvre_body=$(printf '%s\n' "$oeuvre_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$oeuvre_body" ]; then
+  oeuvre_body=$oeuvre_payload
+fi
+if printf '%s\n' "$oeuvre_body" | jq -e '.view_mode == "local" and (.sync_status.local_has_source == true) and (.sync_status.message | contains("Visitors see the server copy")) and any(.state.elements[]?; .markdown == "Oeuvre Entry")' >/dev/null; then
+  pass
+else
+  fail 'hydrated Nostr page payload keeps the server page-state as the visitor-visible source'
+fi
+
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading page content' "$page page does not ship page-loading copy"
