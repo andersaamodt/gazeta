@@ -1798,6 +1798,19 @@
     }
   }
 
+  function setInlineDraftField(idx, field, value) {
+    if (!state.draft || !Array.isArray(state.draft.elements) || idx < 0 || idx >= state.draft.elements.length) {
+      return;
+    }
+    var key = String(field || '');
+    state.draft.elements[idx][key] = String(value || '');
+    if (key === 'post_url' && String(state.draft.elements[idx].post_url || '').trim()) {
+      state.draft.elements[idx].event_id = '';
+    } else if (key === 'event_id' && String(state.draft.elements[idx].event_id || '').trim()) {
+      state.draft.elements[idx].post_url = '';
+    }
+  }
+
   function syncVisibleInlineInputsToDraft() {
     if (!isAdmin() || !els.content || !Array.isArray(state.draft.elements)) {
       return;
@@ -1823,7 +1836,7 @@
           fieldNode.value = value;
         }
       }
-      state.draft.elements[idx][field] = value;
+      setInlineDraftField(idx, field, value);
     });
   }
 
@@ -1857,16 +1870,21 @@
   }
 
   async function persistDraft(options) {
-    if (state.busy || !isAdmin()) {
+    if (!isAdmin()) {
+      return false;
+    }
+    syncVisibleInlineInputsToDraft();
+    if (state.busy) {
       state.autosaveQueued = true;
       return false;
     }
     var opts = options || {};
     var shouldRetryAuth = false;
-    var serializedBeforeSave = JSON.stringify(state.draft || {});
-    state.busy = true;
     pruneTransientEntries();
     syncMetaFromInputs();
+    syncVisibleInlineInputsToDraft();
+    var serializedBeforeSave = JSON.stringify(state.draft || {});
+    state.busy = true;
     setSaveStatus('saving');
     try {
       var auth = getAuthPayload();
@@ -1907,6 +1925,7 @@
         state.payload.sync_status = savedPayload.sync_status;
       }
       state.payload.draft_exists = true;
+      syncVisibleInlineInputsToDraft();
       var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
       state.payload.draft_differs = localChangedDuringSave;
       if (!localChangedDuringSave) {
@@ -3991,6 +4010,7 @@
     if (!activeUid && !activeField) {
       return false;
     }
+    syncVisibleInlineInputsToDraft();
     updatePendingNewEntryState();
     var shouldSave = !!opts.forceAutosave;
     if (activeUid && shouldAutosaveForUid(activeUid)) {
@@ -4758,10 +4778,7 @@
         pushUndoHistorySnapshot();
         state.historyCellEditKey = editKey;
       }
-      state.draft.elements[idx][field] = String(target.value || '');
-      if (field === 'post_url' && String(state.draft.elements[idx].post_url || '').trim()) {
-        state.draft.elements[idx].event_id = '';
-      }
+      setInlineDraftField(idx, field, target.value || '');
       updatePendingNewEntryState();
       if (shouldAutosaveForUid(uid)) {
         queueAutosave(500);
@@ -4858,7 +4875,7 @@
       if (idx < 0) {
         return;
       }
-      state.draft.elements[idx][field] = String(target.value || '');
+      setInlineDraftField(idx, field, target.value || '');
       if (field === 'marker') {
         state.draft.elements[idx][field] = normalizeMarkerListForDisplay(state.draft.elements[idx][field], !!state.draft.alphabetize_markers);
         if (target.value !== state.draft.elements[idx][field]) {
@@ -5164,6 +5181,7 @@
       }
 
       event.preventDefault();
+      syncVisibleInlineInputsToDraft();
       state.tabNavigationUntil = Date.now() + 320;
       if (readInline) {
         state.readInlineEditUid = nextUid;
@@ -5216,6 +5234,7 @@
         return;
       }
       event.preventDefault();
+      syncVisibleInlineInputsToDraft();
       if (readInline) {
         state.readInlineEditUid = nextUid;
         state.readInlineEditField = field;

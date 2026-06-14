@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260602-list-syncstatus2'
+blog_nostr_list_page_js_version='20260614-list-inline-flush1'
 blog_page_js_version='20260611-blog-defaulttag-prerender1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
