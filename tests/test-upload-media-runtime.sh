@@ -44,6 +44,7 @@ output=$(
 )
 json=$(printf '%s\n' "$output" | sed -n '/^{/,$p')
 printf '%s\n' "$json" | jq -e '.success == true and .filename == "hello.txt"' >/dev/null
+printf '%s\n' "$json" | jq -e '.url | startswith("/cgi/blog-file/")' >/dev/null
 file_id=$(printf '%s\n' "$json" | jq -r '.file_id')
 record="$SITE_DATA/.files/records/$file_id.conf"
 test -f "$record"
@@ -51,6 +52,30 @@ grep -q '^mime_type=text/plain$' "$record"
 stored_name=$(printf '%s\n' "$json" | jq -r '.filename')
 test -f "$SITE_DATA/files/$stored_name"
 grep -q '^Hello$' "$SITE_DATA/files/$stored_name"
+config-set "$record" explicit_public true
+config-set "$record" public_path "hello public.txt"
+
+pretty_url=$(
+  . "$ROOT_DIR/cgi/blog-lib.sh"
+  blog_init
+  blog_file_public_url_encoded "$file_id" "$stored_name"
+)
+test "$pretty_url" = "/hello%20public.txt"
+
+pretty_ids=$(
+  . "$ROOT_DIR/cgi/blog-lib.sh"
+  blog_init
+  blog_file_ids_from_text '[hello](https://example.test/hello%20public.txt)'
+)
+test "$pretty_ids" = "$file_id"
+
+(
+  . "$ROOT_DIR/cgi/blog-lib.sh"
+  blog_init
+  blog_file_sync_public_aliases
+)
+test -f "$SITE_ROOT/build/hello public.txt"
+grep -q '^Hello$' "$SITE_ROOT/build/hello public.txt"
 
 serve_query="fileid=$file_id&session_token=$token&csrf_token=$csrf"
 serve_output=$(

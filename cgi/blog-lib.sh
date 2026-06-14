@@ -733,6 +733,14 @@ blog_url_encode() {
     -e 's/,/%2C/g'
 }
 
+blog_url_decode_common() {
+  # Decode the characters blog_url_encode emits for single path components.
+  printf '%s' "${1-}" | sed \
+    -e 's/%20/ /g; s/%2[Bb]/+/g; s/%23/#/g; s/%3[Ff]/?/g' \
+    -e 's/%26/\&/g; s/%3[Dd]/=/g; s/%3[Aa]/:/g; s/%3[Bb]/;/g' \
+    -e 's/%40/@/g; s/%2[Cc]/,/g; s/%25/%/g'
+}
+
 blog_yaml_escape() {
   printf '%s' "${1-}" | sed 's/"/\\"/g'
 }
@@ -1730,10 +1738,18 @@ blog_file_public_url() {
   safe_name=${2-}
   [ -n "$file_id" ] || return 1
   safe_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]/-/g')
+  record_path=$(blog_file_record_path "$safe_id" 2>/dev/null || printf '')
+  if [ -n "$record_path" ] && [ -f "$record_path" ] && blog_file_is_public_effective "$safe_id"; then
+    public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
+    if [ -n "$public_path" ] && blog_file_public_path_is_unique_for_record "$record_path" "$public_path"; then
+      printf '/%s\n' "$(blog_url_encode "$public_path")"
+      return 0
+    fi
+  fi
   safe_part=$(printf '%s' "$safe_name" | sed 's/[^A-Za-z0-9._~-]/-/g')
-  printf '/files/%s' "$safe_id"
+  printf '/cgi/blog-file/%s' "$safe_id"
   if [ -n "$safe_part" ]; then
-    printf '/%s' "$safe_part"
+    printf '/%s' "$(blog_url_encode "$safe_part")"
   fi
   printf '\n'
 }
@@ -1748,6 +1764,47 @@ blog_file_public_url_encoded() {
 blog_file_record_exists() {
   record_path=$(blog_file_record_path "${1-}" 2>/dev/null || printf '')
   [ -n "$record_path" ] && [ -f "$record_path" ]
+}
+
+blog_file_public_path_for_record() {
+  record_path=${1-}
+  [ -f "$record_path" ] || return 1
+  public_path=$(blog_config_get "$record_path" public_path 2>/dev/null || printf '')
+  if [ -z "$public_path" ]; then
+    public_path=$(blog_config_get "$record_path" safe_name 2>/dev/null || printf '')
+  fi
+  public_path=$(blog_basename_safe "$public_path")
+  case "$public_path" in
+    ''|.|..|.*|*/*|cgi|cgi.*|files|files.*|static|static.*|pages|pages.*|build|build.*|admin.html|index.html|robots.txt|sitemap.xml|rss.xml|atom.xml)
+      return 1
+      ;;
+  esac
+  printf '%s\n' "$public_path"
+}
+
+blog_file_find_record_by_public_path() {
+  public_path=$(blog_basename_safe "${1-}")
+  [ -n "$public_path" ] || return 1
+  found_path=
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    current_public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
+    [ "$current_public_path" = "$public_path" ] || continue
+    if [ -n "$found_path" ]; then
+      return 1
+    fi
+    found_path=$record_path
+  done
+  [ -n "$found_path" ] || return 1
+  printf '%s\n' "$found_path"
+}
+
+blog_file_public_path_is_unique_for_record() {
+  record_path=${1-}
+  public_path=${2-}
+  [ -f "$record_path" ] || return 1
+  match_path=$(blog_file_find_record_by_public_path "$public_path" 2>/dev/null || printf '')
+  [ -n "$match_path" ] && [ "$match_path" = "$record_path" ]
 }
 
 blog_file_is_public_effective() {
@@ -1855,7 +1912,20 @@ blog_file_ids_from_text() {
   if [ -z "$content" ]; then
     return 0
   fi
-  printf '%s\n' "$content" | tr '&' '\n' | sed -n 's/.*file_id=\([A-Za-z0-9._~-][A-Za-z0-9._~-]*\).*/\1/p' | awk '!seen[$0]++'
+  {
+    printf '%s\n' "$content" | tr '&' '\n' | sed -n 's/.*file_id=\([A-Za-z0-9._~-][A-Za-z0-9._~-]*\).*/\1/p'
+    printf '%s\n' "$content" \
+      | grep -Eo '(/|https?://[^[:space:])>"'\'']+/)[A-Za-z0-9._~%+-]+[.][A-Za-z0-9][A-Za-z0-9._~-]*' 2>/dev/null \
+      | sed -E -e 's#^https?://[^/]*/#/#' -e 's#^/##' -e 's/[?#].*$//' \
+      | while IFS= read -r public_path || [ -n "$public_path" ]; do
+          [ -n "$public_path" ] || continue
+          public_path=$(blog_url_decode_common "$public_path")
+          case "$public_path" in */*) continue ;; esac
+          record_path=$(blog_file_find_record_by_public_path "$public_path" 2>/dev/null || printf '')
+          [ -f "$record_path" ] || continue
+          blog_config_get "$record_path" file_id 2>/dev/null || printf ''
+        done
+  } | awk 'NF && !seen[$0]++'
 }
 
 blog_file_sync_draft_refs() {
@@ -1931,6 +2001,48 @@ blog_file_delete() {
     fi
   fi
   rm -f "$record_path"
+}
+
+blog_file_sync_public_aliases() {
+  build_dir="$blog_site_root/build"
+  manifest_path="$build_dir/.file-aliases.manifest"
+  new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases.XXXXXX")
+  mkdir -p "$build_dir"
+
+  if [ -f "$manifest_path" ]; then
+    while IFS= read -r old_alias || [ -n "$old_alias" ]; do
+      case "$old_alias" in
+        ''|.*|*/*) continue ;;
+      esac
+      rm -f "$build_dir/$old_alias" 2>/dev/null || true
+    done < "$manifest_path"
+  fi
+
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    file_id=$(blog_config_get "$record_path" file_id 2>/dev/null || printf '')
+    [ -n "$file_id" ] || continue
+    blog_file_is_public_effective "$file_id" || continue
+    public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
+    [ -n "$public_path" ] || continue
+    blog_file_public_path_is_unique_for_record "$record_path" "$public_path" || continue
+    source_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
+    [ -f "$source_path" ] || continue
+    dest_path="$build_dir/$public_path"
+    case "$dest_path" in "$build_dir"/*) ;; *) continue ;; esac
+    tmp_path=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-copy.XXXXXX")
+    if cp "$source_path" "$tmp_path"; then
+      chmod 644 "$tmp_path" 2>/dev/null || true
+      mv "$tmp_path" "$dest_path"
+      printf '%s\n' "$public_path" >> "$new_manifest"
+    else
+      rm -f "$tmp_path"
+    fi
+  done
+
+  sort -u "$new_manifest" > "$manifest_path"
+  chmod 644 "$manifest_path" 2>/dev/null || true
+  rm -f "$new_manifest"
 }
 
 blog_to_base64url() {

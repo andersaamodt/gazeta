@@ -720,9 +720,9 @@ fn file_public_url(file_id: &str, safe_name: &str) -> String {
     let safe_id = sanitize_public_segment(file_id);
     let safe_part = sanitize_public_segment(safe_name);
     if safe_part.is_empty() {
-        format!("/files/{safe_id}")
+        format!("/cgi/blog-file/{safe_id}")
     } else {
-        format!("/files/{safe_id}/{safe_part}")
+        format!("/cgi/blog-file/{safe_id}/{safe_part}")
     }
 }
 
