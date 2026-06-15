@@ -156,6 +156,56 @@ settings_json() {
   printf '}'
 }
 
+stonr_local_cargo_target_dir() {
+  printf '%s\n' "${STONR_CARGO_TARGET_DIR:-${STONR_STATE_DIR:-${XDG_STATE_HOME:-$home_dir/.local/state}/stonr}/cargo-target}"
+}
+
+stonr_local_binary_candidates() {
+  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
+  cargo_target_dir=$(stonr_local_cargo_target_dir)
+  printf '%s\n' \
+    "$home_dir/.local/bin/stonr" \
+    "$cargo_target_dir/release/stonr" \
+    "$cargo_target_dir/debug/stonr" \
+    "$local_root/dist/stonr" \
+    "$local_root/stonr" \
+    "$local_root/bin/stonr" \
+    "$home_dir/.local/bin/stoner" \
+    "$cargo_target_dir/release/stoner" \
+    "$cargo_target_dir/debug/stoner" \
+    "$local_root/dist/stoner" \
+    "$local_root/stoner" \
+    "$local_root/bin/stoner"
+}
+
+stonr_local_app_bundle_candidates() {
+  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
+  cargo_target_dir=$(stonr_local_cargo_target_dir)
+  printf '%s\n' \
+    "$local_root/dist/Stonr.app" \
+    "$local_root/dist/Stonr & Relay.app" \
+    "$cargo_target_dir/release/bundle/macos/Stonr.app" \
+    "$cargo_target_dir/release/bundle/macos/Stonr & Relay.app"
+}
+
+stonr_first_local_binary() {
+  stonr_local_binary_candidates | while IFS= read -r candidate; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      break
+    fi
+  done
+}
+
+stonr_first_local_app_bundle() {
+  stonr_local_app_bundle_candidates | while IFS= read -r candidate; do
+    if [ -n "$candidate" ] && [ -d "$candidate/Contents/MacOS" ]; then
+      printf '%s\n' "$candidate"
+      break
+    fi
+  done
+}
+
 stonr_bin_path() {
   for name in stonr stoner; do
     bin=$(command -v "$name" 2>/dev/null || printf '')
@@ -165,26 +215,22 @@ stonr_bin_path() {
     fi
   done
 
-  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
   for candidate in \
     "/Applications/Stonr.app/Contents/MacOS/stonr" \
     "/Applications/Stonr & Relay.app/Contents/MacOS/stonr" \
     "$home_dir/Applications/Stonr.app/Contents/MacOS/stonr" \
-    "$home_dir/Applications/Stonr & Relay.app/Contents/MacOS/stonr" \
-    "$home_dir/.local/bin/stonr" \
-    "$local_root/stonr" \
-    "$local_root/bin/stonr" \
-    "$local_root/target/release/stonr" \
-    "$local_root/dist/stonr" \
-    "$local_root/stoner" \
-    "$local_root/bin/stoner" \
-    "$local_root/target/release/stoner" \
-    "$local_root/dist/stoner"; do
+    "$home_dir/Applications/Stonr & Relay.app/Contents/MacOS/stonr"; do
     if [ -n "$candidate" ] && [ -x "$candidate" ]; then
       printf '%s\n' "$candidate"
       return 0
     fi
   done
+
+  candidate=$(stonr_first_local_binary)
+  if [ -n "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
 
   printf '\n'
 }
@@ -593,27 +639,28 @@ install_stonr_from_local_copy() {
     return 1
   fi
 
-  for candidate in \
-    "$local_root/stonr" \
-    "$local_root/bin/stonr" \
-    "$local_root/target/release/stonr" \
-    "$local_root/dist/stonr" \
-    "$local_root/stoner" \
-    "$local_root/bin/stoner" \
-    "$local_root/target/release/stoner" \
-    "$local_root/dist/stoner"; do
-    if [ -x "$candidate" ]; then
-      if [ -n "$home_dir" ]; then
-        mkdir -p "$home_dir/.local/bin"
-        ln -sf "$candidate" "$home_dir/.local/bin/stonr"
-        chmod +x "$home_dir/.local/bin/stonr" 2>/dev/null || true
-        printf 'Installed Stonr from local copy: %s -> %s\n' "$candidate" "$home_dir/.local/bin/stonr" >> "$action_log"
-      else
-        printf 'Using local Stonr binary: %s\n' "$candidate" >> "$action_log"
+  if [ -x "$local_root/scripts/stonr-cargo" ] && [ -f "$local_root/stonr/Cargo.toml" ]; then
+    if [ -z "$(stonr_first_local_binary)" ]; then
+      printf 'Building Stonr from local copy with external cargo target: %s\n' "$local_root" >> "$action_log"
+      if ! sh "$local_root/scripts/stonr-cargo" build --release --manifest-path "$local_root/stonr/Cargo.toml" >> "$action_log" 2>&1; then
+        printf 'Local Stonr build failed.\n' >> "$action_log"
+        return 1
       fi
-      return 0
     fi
-  done
+  fi
+
+  candidate=$(stonr_first_local_binary)
+  if [ -n "$candidate" ]; then
+    if [ -n "$home_dir" ]; then
+      mkdir -p "$home_dir/.local/bin"
+      ln -sf "$candidate" "$home_dir/.local/bin/stonr"
+      chmod +x "$home_dir/.local/bin/stonr" 2>/dev/null || true
+      printf 'Installed Stonr from local copy: %s -> %s\n' "$candidate" "$home_dir/.local/bin/stonr" >> "$action_log"
+    else
+      printf 'Using local Stonr binary: %s\n' "$candidate" >> "$action_log"
+    fi
+    return 0
+  fi
 
   printf 'Local Stonr copy found at %s but no executable binary was detected.\n' "$local_root" >> "$action_log"
   return 1
@@ -647,18 +694,7 @@ install_macos_stonr_app() {
     return 1
   fi
 
-  local_root=${STONR_LOCAL_COPY:-${home_dir}/git/stonr}
-  app_source=''
-  for candidate in \
-    "$local_root/dist/Stonr.app" \
-    "$local_root/dist/Stonr & Relay.app" \
-    "$local_root/target/release/bundle/macos/Stonr.app" \
-    "$local_root/target/release/bundle/macos/Stonr & Relay.app"; do
-    if [ -d "$candidate/Contents/MacOS" ]; then
-      app_source=$candidate
-      break
-    fi
-  done
+  app_source=$(stonr_first_local_app_bundle)
 
   rm -rf "$app_target"
   if [ -n "$app_source" ]; then
@@ -764,27 +800,7 @@ install_stonr() {
     return $?
   fi
 
-  if command -v brew >/dev/null 2>&1; then
-    set +e
-    brew install stonr >> "$action_log" 2>&1
-    status=$?
-    set -e
-    if [ "$status" -eq 0 ]; then
-      finalize_stonr_install "$action_log"
-      return $?
-    fi
-
-    set +e
-    brew install stoner >> "$action_log" 2>&1
-    status=$?
-    set -e
-    if [ "$status" -eq 0 ]; then
-      finalize_stonr_install "$action_log"
-      return $?
-    fi
-  fi
-
-  printf 'No supported Stonr installer was found.\n' >> "$action_log"
+  printf 'No supported Stonr installer was found. Gazeta only uses Wizardry/Stonr-local install paths.\n' >> "$action_log"
   return 1
 }
 
