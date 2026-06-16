@@ -628,6 +628,9 @@
       return;
     }
     var text = String(page.content || '').trim();
+    if (/<(?:section|div)[^>]+id="(?:blog-page-root|blog-post-list)"/i.test(text)) {
+      text = '';
+    }
     if (text) {
       els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span>';
       els.description.hidden = false;

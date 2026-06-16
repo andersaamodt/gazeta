@@ -1738,6 +1738,16 @@ blog_nip23_normalize_state_json() {
       | if $n < 0 then 0 elif $n > 95 then 95 else $n end;
     def norm_trim($v):
       (($v // "") | tostring | gsub("^\\s+|\\s+$"; ""));
+    def norm_content($v; $type):
+      (($v // "") | tostring) as $raw
+      | if $type == "blog" and (
+          ($raw | test("<section[^>]*id=\\\"blog-page-root\\\""; "i"))
+          or ($raw | test("<div[^>]*id=\\\"blog-post-list\\\""; "i"))
+        ) then
+          ""
+        else
+          $raw
+        end;
 
     (.product_enabled // .is_product // null) as $product_flag
     | (norm_price(.price // .price_usd // "")) as $price
@@ -1746,7 +1756,7 @@ blog_nip23_normalize_state_json() {
       slug: $slug,
       type: $state_type,
       title: ((.title // $fallback_title) | tostring),
-      content: ((.content // "") | tostring),
+      content: norm_content(.content; $state_type),
       product_enabled: (
         if $product_flag == null then
           (($price | length) > 0)
