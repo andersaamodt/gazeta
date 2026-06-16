@@ -2,6 +2,7 @@ use serde_json::{json, Map, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 pub struct CgiResponse {
     pub content_type: &'static str,
@@ -180,6 +181,7 @@ fn blog_post_context() -> Result<Value> {
     Ok(json!({
         "success": true,
         "current": current,
+        "sync_status": post_sync_status_json(&paths, &posts[index], &slug),
         "zap_config": zap_config_json(&paths),
         "newer": newer,
         "older": older
@@ -333,6 +335,26 @@ fn nostr_context_for_post(paths: &SitePaths, post: &Value, slug: &str) -> Option
             }
         }
     }
+    if let Some(local_path) = local_post_source_path(paths, post, slug) {
+        if id.is_empty() {
+            id = front_matter_value(&local_path, "nostr_event_id");
+        }
+        if pubkey.is_empty() {
+            pubkey = front_matter_value(&local_path, "nostr_pubkey");
+        }
+        if kind.is_empty() {
+            kind = front_matter_value(&local_path, "nostr_kind");
+        }
+        if d.is_empty() {
+            d = front_matter_value(&local_path, "nostr_d");
+        }
+        if address.is_empty() {
+            address = front_matter_value(&local_path, "nostr_address");
+        }
+        if uri.is_empty() {
+            uri = front_matter_value(&local_path, "nostr_uri");
+        }
+    }
     if address.is_empty() && !pubkey.is_empty() && !kind.is_empty() && !d.is_empty() {
         address = format!("{kind}:{pubkey}:{d}");
     }
@@ -351,6 +373,75 @@ fn nostr_context_for_post(paths: &SitePaths, post: &Value, slug: &str) -> Option
         "uri": uri,
         "relays": relays_json(paths)
     }))
+}
+
+fn post_sync_status_json(paths: &SitePaths, post: &Value, slug: &str) -> Value {
+    let local_source_path = local_post_source_path(paths, post, slug);
+    let local_nostr_event_id = local_source_path
+        .as_deref()
+        .map(|path| front_matter_value(path, "nostr_event_id"))
+        .unwrap_or_default();
+    let local_mtime = local_source_path
+        .as_deref()
+        .and_then(file_mtime_unix)
+        .unwrap_or(0);
+    let local_has_source = local_mtime > 0;
+
+    let nostr_created_at = post_record_for_slug(paths, slug)
+        .and_then(|record| record.get("created_at").and_then(Value::as_i64))
+        .filter(|timestamp| *timestamp > 0)
+        .unwrap_or(0);
+    let has_canonical_event = nostr_created_at > 0 || !local_nostr_event_id.is_empty();
+    let effective_nostr_created_at = if nostr_created_at > 0 {
+        nostr_created_at
+    } else if has_canonical_event {
+        local_mtime
+    } else {
+        0
+    };
+
+    let (status, message) = if local_has_source && has_canonical_event {
+        if local_mtime > effective_nostr_created_at {
+            (
+                "local_newer_than_nostr",
+                "Server copy is newer than the latest published Nostr state. Visitors see the server copy.",
+            )
+        } else if effective_nostr_created_at > local_mtime {
+            (
+                "nostr_newer_than_local",
+                "Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.",
+            )
+        } else {
+            (
+                "in_sync",
+                "Server copy and published Nostr state are in sync.",
+            )
+        }
+    } else if local_has_source {
+        (
+            "unpublished_local_changes",
+            "This page exists only on the server so far. Visitors see the server copy.",
+        )
+    } else if has_canonical_event {
+        (
+            "nostr_newer_than_local",
+            "Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.",
+        )
+    } else {
+        (
+            "unknown",
+            "Cannot determine local-vs-Nostr sync status yet.",
+        )
+    };
+
+    json!({
+        "status": status,
+        "message": message,
+        "local_mtime": local_mtime,
+        "nostr_created_at": effective_nostr_created_at,
+        "has_canonical_event": has_canonical_event,
+        "local_has_source": local_has_source
+    })
 }
 
 fn zap_config_json(paths: &SitePaths) -> Value {
@@ -431,6 +522,52 @@ fn post_record_for_slug(paths: &SitePaths, slug: &str) -> Option<Value> {
     read_json_array(&paths.nostr_posts_index())?
         .into_iter()
         .find(|record| record.get("slug").and_then(Value::as_str) == Some(slug))
+}
+
+fn local_post_source_path(paths: &SitePaths, post: &Value, slug: &str) -> Option<PathBuf> {
+    let relative = string_field(post, "source_path");
+    let relative = if relative.is_empty() {
+        format!("posts/{slug}.md")
+    } else {
+        relative
+    };
+    let path = paths.site_root.join("site/pages").join(relative);
+    path.is_file().then_some(path)
+}
+
+fn file_mtime_unix(path: &Path) -> Option<i64> {
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let duration = modified.duration_since(UNIX_EPOCH).ok()?;
+    i64::try_from(duration.as_secs()).ok()
+}
+
+fn front_matter_value(path: &Path, key: &str) -> String {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(_) => return String::new(),
+    };
+    let mut lines = text.lines();
+    if lines.next().map(str::trim) != Some("---") {
+        return String::new();
+    }
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed == "---" {
+            break;
+        }
+        let Some((candidate, value)) = trimmed.split_once(':') else {
+            continue;
+        };
+        if candidate.trim() != key {
+            continue;
+        }
+        return value
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'')
+            .to_string();
+    }
+    String::new()
 }
 
 fn d_tag_from_record(record: &Value) -> Option<String> {

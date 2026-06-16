@@ -8834,6 +8834,14 @@ body.blog-post-resizing {
   margin: 0.4rem 0 0.34rem;
 }
 
+.post-sync-status-row {
+  margin-top: 0.42rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.1rem;
+}
+
 .blog-post-item .post-title {
   font-size: 1.58rem;
 }

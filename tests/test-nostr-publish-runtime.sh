@@ -337,10 +337,22 @@ else
   pass
 fi
 
-post_context_output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
-assert_contains "$post_context_output" '"nostr":{"id":"' 'post context falls back to stored authored nostr metadata'
+/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-public-posts >/dev/null
+
+post_context_output=$(GAZETA_THEURGY_ALLOW_CARGO=1 QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
+post_context_json=$(printf '%s\n' "$post_context_output" | tail -n 1)
+if printf '%s\n' "$post_context_json" | jq -e '(.current.nostr.id // "") != ""' >/dev/null 2>&1; then
+  pass
+else
+  fail 'post context falls back to stored authored nostr metadata'
+fi
 assert_contains "$post_context_output" '"address":"30023:1111111111111111111111111111111111111111111111111111111111111111:example-post"' 'post context exposes the authored address'
 assert_contains "$post_context_output" '"relays":["wss://example.com","wss://relay.one","wss://relay.two/","wss://relay.one"]' 'post context exposes configured relays for NIP-19 share codes'
+if printf '%s\n' "$post_context_json" | jq -e '.sync_status.local_has_source == true and .sync_status.has_canonical_event == true and .sync_status.status != "unknown" and .sync_status.status != "unpublished_local_changes"' >/dev/null 2>&1; then
+  pass
+else
+  fail 'post context exposes single-post sync status when published Nostr metadata exists'
+fi
 
 dated_post_record=$(blog_nostr_post_record_for_slug "dated-example-post" 2>/dev/null || printf '')
 assert_contains "$dated_post_record" '"slug":"dated-example-post"' 'dated authored sync uses the canonical public slug'
@@ -349,7 +361,7 @@ dated_event_json=$(blog_nostr_build_post_event_json_for_file "$SITE_ROOT/site/pa
 dated_d_tag=$(printf '%s\n' "$dated_event_json" | jq -r '[.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // ""' 2>/dev/null || printf '')
 assert_equals "$dated_d_tag" 'dated-example-post' 'dated authored events strip the filename date prefix from the d tag'
 
-dated_context_output=$(QUERY_STRING='path=posts/dated-example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
+dated_context_output=$(GAZETA_THEURGY_ALLOW_CARGO=1 QUERY_STRING='path=posts/dated-example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
 assert_contains "$dated_context_output" '"address":"30023:1111111111111111111111111111111111111111111111111111111111111111:dated-example-post"' 'dated post context resolves the canonical authored address'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then

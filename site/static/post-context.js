@@ -876,6 +876,49 @@
     return '<div class="tags post-context-tags">' + chips.join('') + '</div>';
   }
 
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Server newer than Nostr',
+          message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer than server',
+          message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'In sync',
+          message: 'Server copy and published Nostr state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Only on server',
+          message: 'This page exists only on the server so far. Visitors see the server copy.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync status unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function postSyncStatusPillHtml(payload) {
+    var sync = payload && payload.sync_status && typeof payload.sync_status === 'object' ? payload.sync_status : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusConfig(status);
+    var message = String(sync.message || config.message).trim();
+    return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
+  }
+
   function renderPostMeta(current) {
     var summary = current.summary ? '<p class="post-context-summary">' + escapeHtml(current.summary) + '</p>' : '';
     var author = current.author ? '<span class="post-context-author">' + escapeHtml(current.author) + '</span>' : '';
@@ -986,6 +1029,37 @@
     host.className = 'post-zap-host';
     head.appendChild(host);
     return host;
+  }
+
+  function ensurePostSyncStatusHost(layout) {
+    if (!layout || !layout.card) {
+      return null;
+    }
+    var main = layout.card.querySelector('.post-head-main');
+    if (!main) {
+      return null;
+    }
+    var existing = main.querySelector('.post-sync-status-row');
+    if (existing) {
+      return existing;
+    }
+    var host = document.createElement('div');
+    host.className = 'post-sync-status-row';
+    var byline = main.querySelector('.post-byline');
+    if (byline && byline.parentNode === main) {
+      byline.insertAdjacentElement('afterend', host);
+    } else {
+      main.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderPostSyncStatusPill(payload, layout) {
+    var host = ensurePostSyncStatusHost(layout);
+    if (!host) {
+      return;
+    }
+    host.innerHTML = postSyncStatusPillHtml(payload);
   }
 
   function renderPostZapUi(payload, layout) {
@@ -2071,6 +2145,7 @@
 
     ensurePostPageMenu(layout);
     refreshPostPageMenuVisibility();
+    renderPostSyncStatusPill(payload, layout);
     renderPostZapUi(payload, layout);
 
     if (payload.current.nostr) {

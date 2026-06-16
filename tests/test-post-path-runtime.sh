@@ -69,6 +69,8 @@ EOS
 # shellcheck disable=SC1091
 . "$ROOT_DIR/cgi/blog-lib.sh"
 
+/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-public-posts >/dev/null
+
 symlink_post="$SITE_ROOT/site/pages/posts/example-post.md"
 real_post=$(CDPATH= cd -- "$POSTS_STORE" && pwd -P)/example-post.md
 
@@ -77,10 +79,13 @@ assert_eq 'posts/example-post.md' "$(blog_post_rel_path_for_file "$real_post" 2>
 assert_eq 'posts/example-post.md' "$(blog_managed_post_rel_path_for_file "$symlink_post" 2>/dev/null || printf '')" 'managed post path accepts mounted symlink path'
 assert_eq 'posts/example-post.md' "$(blog_managed_post_rel_path_for_file "$real_post" 2>/dev/null || printf '')" 'managed post path accepts canonical mounted path'
 
-post_context_output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
+post_context_output=$(GAZETA_THEURGY_ALLOW_CARGO=1 QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
 post_context_json=$(printf '%s\n' "$post_context_output" | tail -n 1)
 assert_eq 'posts/example-post.md' "$(printf '%s\n' "$post_context_json" | jq -r '.current.source_path // ""')" 'post context exposes mounted source path for admin edits'
 assert_eq 'posts/example-post' "$(printf '%s\n' "$post_context_json" | jq -r '.current.path // ""')" 'post context keeps public path extensionless'
+assert_eq 'unpublished_local_changes' "$(printf '%s\n' "$post_context_json" | jq -r '.sync_status.status // ""')" 'post context marks local-only posts as unpublished server changes'
+assert_eq 'true' "$(printf '%s\n' "$post_context_json" | jq -r '.sync_status.local_has_source // false')" 'post context reports local source presence for single posts'
+assert_eq 'false' "$(printf '%s\n' "$post_context_json" | jq -r '.sync_status.has_canonical_event | tostring')" 'post context reports local-only single posts without a published Nostr event'
 
 catalog_source_path=$(blog_public_posts_catalog_build_json | jq -r '.posts[] | select(.source_path == "posts/example-post.md") | .source_path')
 assert_eq 'posts/example-post.md' "$catalog_source_path" 'public posts catalog exposes mounted source path for admin edits'

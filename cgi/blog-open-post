@@ -260,7 +260,7 @@ if command -v pandoc >/dev/null 2>&1; then
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260604-post-width-tags1">
+  <link rel="stylesheet" href="/static/style.css?v=20260615-post-sync-pill1">
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/idiomorph-ext.min.js"></script>
 HTML
@@ -327,7 +327,7 @@ cat <<HTML
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260604-post-width-tags1">
+  <link rel="stylesheet" href="/static/style.css?v=20260615-post-sync-pill1">
 </head>
 <body>
   <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
