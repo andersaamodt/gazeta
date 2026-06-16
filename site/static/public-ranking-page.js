@@ -1871,19 +1871,7 @@
         throw new Error('Unexpected page payload for public ranking page');
       }
       writeBootstrapCache(payload);
-      state.payload = payload;
-      state.draft = normalizeDraftState(payload.state || {});
-      state.navTitle = String(payload.nav_title || '').trim();
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      state.navTitleBusy = false;
-      state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
-      state.activeHeadField = '';
-      state.submitComposerOpen = false;
-      state.submitAdvancedOpen = false;
-      state.saveIndicatorVisible = false;
-      setSaveStatus('saved');
-      renderAll();
+      renderFromBootstrapPayload(payload);
     } catch (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
     } finally {

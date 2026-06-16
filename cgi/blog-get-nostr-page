@@ -370,6 +370,7 @@ canonical_event_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-event.XXXXXX")
 sync_status_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-sync-status.XXXXXX")
 zap_config_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-zap.XXXXXX")
 validation_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-validation.XXXXXX")
+response_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-page-response.XXXXXX")
 printf '%s\n' "$view_state_json" > "$state_tmp"
 printf '%s\n' "$canonical_state_json" > "$canonical_state_tmp"
 if [ -n "$canonical_event_json" ]; then
@@ -418,6 +419,9 @@ jq -cn \
       warnings: ($validation[0].warnings // []),
       can_publish: ($validation[0].can_publish // true)
     }
-  }'
-rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$sync_status_tmp" "$zap_config_tmp" "$validation_tmp"
+  }' > "$response_tmp"
+response_json=$(cat "$response_tmp")
+response_signature=$(blog_nostr_prerender_signature "$response_json")
+printf '%s\n' "$response_json" | jq -c --arg signature "$response_signature" '. + {prerender_signature: $signature}'
+rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$sync_status_tmp" "$zap_config_tmp" "$validation_tmp" "$response_tmp"
 printf '\n'

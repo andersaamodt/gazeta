@@ -1252,8 +1252,7 @@
       state.saveIndicatorVisible = false;
       setSaveStatus('saved');
       writeBootstrapCache(payload);
-      renderAll();
-      markInitialContentPainted();
+      renderFromBootstrapPayload(payload);
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
     }).finally(function () {

@@ -264,6 +264,12 @@ else
   fail 'hydrated Nostr page payload keeps the server page-state as the visitor-visible source'
 fi
 
+if printf '%s\n' "$oeuvre_body" | jq -e '(.prerender_signature // "") | type == "string" and length > 0' >/dev/null; then
+  pass
+else
+  fail 'hydrated Nostr page payload carries a prerender signature for DOM preservation'
+fi
+
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading page content' "$page page does not ship page-loading copy"

@@ -4545,6 +4545,7 @@
     renderFilters();
     renderList();
     renderComposeUi();
+    updateRenderSignature();
   }
 
   function toggleFilter(group, value, multi) {
@@ -4574,6 +4575,7 @@
     }
     renderFilters();
     renderList();
+    updateRenderSignature();
   }
 
   function clearFilters() {
@@ -4582,6 +4584,7 @@
     state.filters.types.clear();
     renderFilters();
     renderList();
+    updateRenderSignature();
   }
 
   function applyDefaultFilters() {
@@ -4717,23 +4720,71 @@
 	      node.getAttribute('data-prerender-signature') === signature;
 	  }
 
-	  function renderSignature() {
-    function sortedSet(setObj) {
-      return Array.from(setObj || []).sort();
-    }
-    return JSON.stringify({
-      payload: (state.payload && state.payload.state) ? state.payload.state : null,
-      isAdmin: isAdmin(),
-      posts: Array.isArray(state.posts) ? state.posts : [],
-      filters: {
-        tags: sortedSet(state.filters.tags),
-        years: sortedSet(state.filters.years),
-        types: sortedSet(state.filters.types)
-      }
-    });
-  }
+	  function normalizedPayloadForRenderSignature() {
+	    if (!state.payload) {
+	      return null;
+	    }
+	    return {
+	      slug: state.payload.slug || '',
+	      page_type: state.payload.page_type || '',
+	      nav_title: state.payload.nav_title || '',
+	      kind: state.payload.kind || '',
+	      is_admin: !!state.payload.is_admin,
+	      view_mode: state.payload.view_mode || '',
+	      canonical_exists: !!state.payload.canonical_exists,
+	      draft_exists: !!state.payload.draft_exists,
+	      draft_differs: !!state.payload.draft_differs,
+	      sync_status: state.payload.sync_status || null,
+	      state: state.payload.state || null,
+	      validation: state.payload.validation || null
+	    };
+	  }
 
-  function loadPageState(options) {
+	  function renderSignature() {
+	    function sortedSet(setObj) {
+	      return Array.from(setObj || []).sort();
+	    }
+	    return JSON.stringify({
+	      payload: normalizedPayloadForRenderSignature(),
+	      isAdmin: isAdmin(),
+	      posts: Array.isArray(state.posts) ? state.posts : [],
+	      filters: {
+	        tags: sortedSet(state.filters.tags),
+	        years: sortedSet(state.filters.years),
+	        types: sortedSet(state.filters.types)
+	      }
+	    });
+	  }
+
+	  function updateRenderSignature() {
+	    state.renderSignature = renderSignature();
+	    return state.renderSignature;
+	  }
+
+	  function renderFetchedPageStateIfChanged(previousSignature) {
+	    var nextSignature = renderSignature();
+	    if (previousSignature === nextSignature) {
+	      state.renderSignature = nextSignature;
+	      return false;
+	    }
+	    renderAll();
+	    state.renderSignature = nextSignature;
+	    return true;
+	  }
+
+	  function renderFetchedPostsIfChanged(previousSignature) {
+	    var nextSignature = renderSignature();
+	    if (previousSignature === nextSignature) {
+	      state.renderSignature = nextSignature;
+	      return false;
+	    }
+	    renderFilters();
+	    renderList();
+	    state.renderSignature = nextSignature;
+	    return true;
+	  }
+
+	  function loadPageState(options) {
     var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
     var requestedSlug = expectedSlug || slug;
@@ -4756,28 +4807,29 @@
         maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
         return;
       }
-      state.payload = data;
-      try {
-        if (typeof data.is_admin !== 'undefined') {
+	      var previousSignature = state.renderSignature;
+	      state.payload = data;
+	      try {
+	        if (typeof data.is_admin !== 'undefined') {
           localStorage.setItem('last_auth_is_admin', data.is_admin ? '1' : '0');
         }
       } catch (_storageErr) {
         // Ignore storage sync failures.
-      }
-      applyDefaultFilters();
-      if (!opts.deferRender) {
-        renderAll();
-      }
-      loadDraftNoticeData();
+	      }
+	      applyDefaultFilters();
+	      if (!opts.deferRender) {
+	        renderFetchedPageStateIfChanged(previousSignature);
+	      }
+	      loadDraftNoticeData();
     }).catch(function (err) {
       var message = String(err && err.message || '');
       if (/unknown nostr page slug/i.test(message) || /unknown_page/i.test(message)) {
         maybeRepairRoute('unknown-page-slug');
       }
       if (!opts.deferRender) {
-        renderAll();
-      }
-      loadDraftNoticeData();
+	        renderFetchedPageStateIfChanged(state.renderSignature);
+	      }
+	      loadDraftNoticeData();
     }).finally(function () {
       if (!opts.deferInitialFlags) {
         state.initialPageStateLoaded = true;
@@ -4786,11 +4838,13 @@
     });
   }
 
-  function loadPosts(options) {
-    var opts = options || {};
-    state.postsLoading = true;
-    if (!opts.deferRender) {
-      renderList();
+	  function loadPosts(options) {
+	    var opts = options || {};
+	    var previousSignature = state.renderSignature;
+	    var postsRenderedAfterFetch = false;
+	    state.postsLoading = true;
+	    if (!opts.deferRender) {
+	      renderList();
     }
     function fetchPostsJson(url) {
       return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
@@ -4811,13 +4865,13 @@
         }
         var allPosts = data.posts.slice();
         postsCatalogReady = true;
-        state.posts = filteredPostsForPageDefaults(allPosts, state.payload);
-        writeCache(allPosts);
-        if (!opts.deferRender) {
-          renderFilters();
-          renderList();
-        }
-      })
+	        state.posts = filteredPostsForPageDefaults(allPosts, state.payload);
+	        writeCache(allPosts);
+	        if (!opts.deferRender) {
+	          previousSignature = previousSignature || state.renderSignature;
+	          postsRenderedAfterFetch = renderFetchedPostsIfChanged(previousSignature);
+	        }
+	      })
       .catch(function () {
         // Keep cached posts if fetch fails.
       })
@@ -4827,11 +4881,14 @@
           state.initialPostsLoaded = true;
           maybeMarkInitialContentPainted();
         }
-        if (!opts.deferRender) {
-          renderList();
-        }
-      });
-  }
+	        if (!opts.deferRender) {
+	          if (!postsRenderedAfterFetch) {
+	            renderList();
+	            updateRenderSignature();
+	          }
+	        }
+	      });
+	  }
 
   root.addEventListener('click', function (event) {
     var target = eventTargetElement(event.target);

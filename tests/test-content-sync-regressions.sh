@@ -386,6 +386,7 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_list_validate
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_draft_path "$page_slug"' 'public Nostr-backed pages read the server page-state before generated page shells'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_source" = "true" ]; then' 'public Nostr-backed pages prefer the server copy whenever local source exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'prerender_signature: $signature' 'runtime Nostr page payloads carry the server prerender signature'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-list-common.sh"' 'navbar endpoint avoids unrelated list library parse cost'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-public-ranking-common.sh"' 'navbar endpoint avoids unrelated ranking library parse cost'
@@ -407,6 +408,11 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'initializePrerende
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'if (!hasLikelyAuthenticatedSession()) {' 'anonymous list hydration skips persisted browser bootstrap caches'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'if (!payload.is_admin || !hasLikelyAuthenticatedSession()) {' 'public list payloads are not written into persisted browser bootstrap caches'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'hasMatchingStaticPrerender' 'blog hydration preserves matching static prerendered DOM'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'renderFromBootstrapPayload(payload);' 'nip23 hydration reuses matching prerendered DOM after fetch'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'renderFromBootstrapPayload(payload);' 'contact hydration reuses matching prerendered DOM after fetch'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'renderFromBootstrapPayload(payload);' 'public ranking hydration reuses matching prerendered DOM after fetch'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function normalizedPayloadForRenderSignature() {' 'blog hydration compares fetched state against the currently rendered page state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderFetchedPostsIfChanged(previousSignature);' 'blog hydration skips post-list repaints when fetched posts match the prerendered list'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
 
 # 3) Frontend fetches must opt out of HTTP caches.
