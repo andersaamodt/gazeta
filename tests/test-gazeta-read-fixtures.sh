@@ -13,10 +13,14 @@ trap 'rm -rf "$TMP_ROOT"' EXIT HUP INT TERM
 }
 
 export WIZARDRY_SITES_DIR="$TMP_ROOT/sites"
+export HOME="$TMP_ROOT/home"
+export XDG_STATE_HOME="$TMP_ROOT/xdg-state"
+export WIZARDRY_SITES_DIR="$HOME/git/sites"
 export WIZARDRY_SITE_NAME="example.test"
 
 SITE_ROOT="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
-SITE_DATA="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
+SITE_DATA="$XDG_STATE_HOME/gazeta/sites-data/$WIZARDRY_SITE_NAME"
+GENERATED_ROOT="$XDG_STATE_HOME/gazeta/generated/$WIZARDRY_SITE_NAME"
 POSTS_STORE="$SITE_DATA/content/posts"
 
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_ROOT/site/static" "$POSTS_STORE"
@@ -42,7 +46,9 @@ printf '%s\n' "$json_payload" | jq -e '.success == true' >/dev/null
 printf '%s\n' "$json_payload" | jq -e '.posts[0].title == "Replay Post"' >/dev/null
 [ -f "$SITE_DATA/public-posts-cache.json" ]
 
-cat > "$SITE_ROOT/site/static/navbar-pages.json" <<'JSON'
+mkdir -p "$GENERATED_ROOT/static"
+
+cat > "$GENERATED_ROOT/static/navbar-pages.json" <<'JSON'
 {"success":true,"pages":[{"slug":"replay","title":"Replay","path":"/replay","type":"list","kind":30004}]}
 JSON
 
@@ -65,7 +71,7 @@ btc_json=$(printf '%s\n' "$btc_payload" | sed -n '/^{/,$p')
 printf '%s\n' "$btc_json" | jq -e '.success == true' >/dev/null
 printf '%s\n' "$btc_json" | jq -e '.btc_usd == 64000.25 and .currency == "USD" and .stale == false' >/dev/null
 
-cat > "$SITE_ROOT/site/static/public-posts.json" <<'JSON'
+cat > "$GENERATED_ROOT/static/public-posts.json" <<'JSON'
 {"success":true,"posts":[{"url":"/posts/replay-post","title":"Replay Post","author":"Replay Author","reading_minutes":2,"published_timestamp":"June 11, 2026 at 12:00 PM UTC","pub_date":"2026-06-11","comment_count":3,"summary":"Read [the replay](https://example.com/replay).","summary_truncated":true,"type":"post","tags":["test","replay"]},{"url":"/posts/link-post","title":"Useful linked page","author":"Link Curator","reading_minutes":1,"published_timestamp":"June 10, 2026 at 9:00 AM UTC","pub_date":"2026-06-10","comment_count":0,"summary":"[Useful linked page](https://links.example.com/articles/2026/06/path?with=query#final-section)","link_url":"https://links.example.com/articles/2026/06/path?with=query#final-section","summary_truncated":false,"type":"link-share","tags":["links"]}]}
 JSON
 
@@ -92,7 +98,7 @@ printf '%s\n' "$tags_payload" | grep '<div class="tag-cloud">' >/dev/null
 printf '%s\n' "$tags_payload" | grep 'data-tag="replay"' >/dev/null
 printf '%s\n' "$tags_payload" | grep '<li class="tag-result-item" data-post-url="/posts/link-post" data-post-tags="links">' >/dev/null
 
-cat > "$SITE_ROOT/site/static/search-index.json" <<'JSON'
+cat > "$GENERATED_ROOT/static/search-index.json" <<'JSON'
 {"success":true,"entries":[{"url":"/posts/replay-post","title":"Replay Post","pub_date":"2026-06-11","summary":"Replay summary","tags":["test","replay"],"comment_count":3,"search_text":"Replay Post\ntest,replay\nReplay summary\nReplay body with fixture keyword"},{"url":"/posts/link-post","title":"Useful linked page","pub_date":"2026-06-10","summary":"Useful link summary","tags":["links"],"comment_count":0,"search_text":"Useful linked page\nlinks\nUseful link summary\nOff-site article"}]}
 JSON
 

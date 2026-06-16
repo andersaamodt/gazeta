@@ -113,6 +113,28 @@ blog_generated_build_static_dir() {
   printf '%s/build/static\n' "$blog_site_root"
 }
 
+blog_generated_build_dir() {
+  if blog_site_root_is_git_checkout; then
+    printf '%s/build\n' "$(blog_generated_repo_root)"
+    return 0
+  fi
+  printf '%s/build\n' "$blog_site_root"
+}
+
+blog_generated_build_pages_dir() {
+  printf '%s/pages\n' "$(blog_generated_build_dir)"
+}
+
+blog_generated_post_html_path_for_file() {
+  file=${1-}
+  [ -n "$file" ] || return 1
+  rel=$(blog_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+  [ -n "$rel" ] || return 1
+  rel=${rel#posts/}
+  rel_html=${rel%.md}.html
+  printf '%s/posts/%s\n' "$(blog_generated_build_pages_dir)" "$rel_html"
+}
+
 blog_managed_page_path_for_rel() {
   rel=${1-}
   [ -n "$rel" ] || return 1

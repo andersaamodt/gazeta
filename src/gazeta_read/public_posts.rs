@@ -8,7 +8,7 @@ pub(crate) fn list_public_posts() -> Result<Value> {
 
 pub(crate) fn public_posts_catalog_value() -> Result<Value> {
     let paths = SitePaths::from_env()?;
-    let static_catalog = paths.site_root.join("site/static/public-posts.json");
+    let static_catalog = paths.generated_static_dir().join("public-posts.json");
     let cache_catalog = paths.state_dir.join("public-posts-cache.json");
 
     if let Some(value) = read_catalog_with_posts(&static_catalog) {

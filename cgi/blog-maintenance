@@ -76,7 +76,7 @@ case "$action" in
         }' >> "$entries_tmp"
     done < "$posts_tmp"
     index_json=$(jq -sc '{success:true,entries:.}' "$entries_tmp")
-    static_path="$blog_site_root/site/static/search-index.json"
+    static_path="$(blog_generated_static_dir)/search-index.json"
     cache_path="$blog_state_dir/search-index-cache.json"
     mkdir -p "$(dirname "$static_path")" "$(dirname "$cache_path")"
     static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-static.XXXXXX")
@@ -99,7 +99,7 @@ case "$action" in
   rebuild-navbar-pages)
     pages_json=$(blog_nostr_pages_load_json_fast)
     navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
-    static_path="$blog_site_root/site/static/navbar-pages.json"
+    static_path="$(blog_generated_static_dir)/navbar-pages.json"
     cache_path="$blog_state_dir/navbar-pages-cache.json"
     mkdir -p "$(dirname "$static_path")" "$(dirname "$cache_path")"
     static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-static.XXXXXX")
@@ -134,7 +134,7 @@ case "$action" in
         printf '%s\n' "$product_json" >> "$products_tmp"
       done
     index_json=$(jq -sc '{success:true,products:.}' "$products_tmp")
-    static_path="$blog_site_root/site/static/product-index.json"
+    static_path="$(blog_generated_static_dir)/product-index.json"
     cache_path="$blog_state_dir/product-index-cache.json"
     mkdir -p "$(dirname "$static_path")" "$(dirname "$cache_path")"
     static_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-product-index-static.XXXXXX")

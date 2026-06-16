@@ -24,9 +24,9 @@ case "$theme" in
     ;;
 esac
 
-theme_file="$blog_site_root/build/static/themes/${theme}.css"
+theme_file="$(blog_generated_build_static_dir)/themes/${theme}.css"
 if [ ! -f "$theme_file" ]; then
-  theme_file="$blog_site_root/site/static/themes/${theme}.css"
+  theme_file="$blog_source_static_dir/themes/${theme}.css"
 fi
 
 if [ -f "$theme_file" ]; then

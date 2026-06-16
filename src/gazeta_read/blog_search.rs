@@ -28,7 +28,7 @@ pub(crate) fn blog_search() -> Result<CgiResponse> {
 
 fn search_index_entries() -> Result<Vec<Value>> {
     let paths = SitePaths::from_env()?;
-    let static_index = paths.site_root.join("site/static/search-index.json");
+    let static_index = paths.generated_static_dir().join("search-index.json");
     let cache_index = paths.state_dir.join("search-index-cache.json");
     if let Some(entries) = read_entries(&static_index).or_else(|| read_entries(&cache_index)) {
         return Ok(entries);

@@ -172,12 +172,9 @@ post_nav_html=$(blog_post_nav_html "$(post_nav_json "$newer_file" "Newer" "post-
 
 post_menu_html=$(blog_post_page_menu_html)
 
-rel=$(blog_post_rel_path_for_file "$md_file" 2>/dev/null || printf '')
-rel=${rel#posts/}
-rel_html=${rel%.md}.html
-html_file="$blog_site_root/build/pages/posts/$rel_html"
+html_file=$(blog_generated_post_html_path_for_file "$md_file" 2>/dev/null || printf '')
 
-if [ -f "$html_file" ]; then
+if [ -n "$html_file" ] && [ -f "$html_file" ]; then
   tmp_injected=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-html.XXXXXX")
   awk -v menu="$post_menu_html" -v extras="$post_end_tags_html$post_nav_html" '
     BEGIN { inserted_menu = 0; inserted_extras = 0 }

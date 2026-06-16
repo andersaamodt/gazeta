@@ -6,11 +6,14 @@ ROOT_DIR=$(dirname "$SCRIPT_DIR")
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-maintenance.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT HUP INT TERM
 
-export WIZARDRY_SITES_DIR="$TMP_ROOT/sites"
+export HOME="$TMP_ROOT/home"
+export XDG_STATE_HOME="$TMP_ROOT/xdg-state"
+export WIZARDRY_SITES_DIR="$HOME/git/sites"
 export WIZARDRY_SITE_NAME="example.test"
 
 SITE_ROOT="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
-SITE_DATA="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
+SITE_DATA="$XDG_STATE_HOME/gazeta/sites-data/$WIZARDRY_SITE_NAME"
+GENERATED_ROOT="$XDG_STATE_HOME/gazeta/generated/$WIZARDRY_SITE_NAME"
 POSTS_STORE="$SITE_DATA/content/posts"
 
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_ROOT/site/static" "$POSTS_STORE"
@@ -30,16 +33,16 @@ payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-indexes)
 
 printf '%s\n' "$payload" | jq -e '.success == true and .post_count == 1' >/dev/null
 printf '%s\n' "$payload" | jq -e '.rebuilt == ["public-posts"]' >/dev/null
-[ -f "$SITE_ROOT/site/static/public-posts.json" ]
+[ -f "$GENERATED_ROOT/static/public-posts.json" ]
 [ -f "$SITE_DATA/public-posts-cache.json" ]
-jq -e '.posts[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/public-posts.json" >/dev/null
+jq -e '.posts[0].title == "Maintenance Post"' "$GENERATED_ROOT/static/public-posts.json" >/dev/null
 
 search_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-search-index)
 printf '%s\n' "$search_payload" | jq -e '.success == true and .rebuilt == ["search-index"] and .entry_count == 1' >/dev/null
-[ -f "$SITE_ROOT/site/static/search-index.json" ]
+[ -f "$GENERATED_ROOT/static/search-index.json" ]
 [ -f "$SITE_DATA/search-index-cache.json" ]
-jq -e '.entries[0].title == "Maintenance Post"' "$SITE_ROOT/site/static/search-index.json" >/dev/null
-jq -e '.entries[0].search_text | contains("Maintenance body.")' "$SITE_ROOT/site/static/search-index.json" >/dev/null
+jq -e '.entries[0].title == "Maintenance Post"' "$GENERATED_ROOT/static/search-index.json" >/dev/null
+jq -e '.entries[0].search_text | contains("Maintenance body.")' "$GENERATED_ROOT/static/search-index.json" >/dev/null
 
 mkdir -p "$SITE_DATA/lists"
 cat > "$SITE_DATA/nostr-pages.json" <<'JSON'
@@ -50,14 +53,14 @@ cat > "$SITE_DATA/lists/maintenance-product.json" <<'JSON'
 JSON
 product_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-product-index)
 printf '%s\n' "$product_payload" | jq -e '.success == true and .rebuilt == ["product-index"] and .product_count == 1' >/dev/null
-[ -f "$SITE_ROOT/site/static/product-index.json" ]
+[ -f "$GENERATED_ROOT/static/product-index.json" ]
 [ -f "$SITE_DATA/product-index-cache.json" ]
-jq -e '.products[0].slug == "maintenance-product"' "$SITE_ROOT/site/static/product-index.json" >/dev/null
-jq -e '.products[0].price == "12.50"' "$SITE_ROOT/site/static/product-index.json" >/dev/null
+jq -e '.products[0].slug == "maintenance-product"' "$GENERATED_ROOT/static/product-index.json" >/dev/null
+jq -e '.products[0].price == "12.50"' "$GENERATED_ROOT/static/product-index.json" >/dev/null
 
 navbar_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-navbar-pages)
 printf '%s\n' "$navbar_payload" | jq -e '.success == true and .rebuilt == ["navbar-pages"]' >/dev/null
-[ -f "$SITE_ROOT/site/static/navbar-pages.json" ]
+[ -f "$GENERATED_ROOT/static/navbar-pages.json" ]
 [ -f "$SITE_DATA/navbar-pages-cache.json" ]
 printf '%s\n' "$navbar_payload" | jq -e 'has("page_count")' >/dev/null
 

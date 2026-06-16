@@ -113,8 +113,8 @@ fn blog_manage_post() -> Result<Value> {
             }
             let rel_post = managed_rel.strip_prefix("posts/").unwrap_or(&managed_rel);
             let html_file = paths
-                .site_root
-                .join("build/pages/posts")
+                .generated_build_pages_dir
+                .join("posts")
                 .join(rel_post.trim_end_matches(".md"))
                 .with_extension("html");
             let _ = fs::remove_file(&file);
@@ -234,10 +234,10 @@ fn blog_upload_media() -> Result<Value> {
 }
 
 struct SitePaths {
-    site_root: PathBuf,
     state_dir: PathBuf,
     posts_dir: PathBuf,
     posts_store_dir: PathBuf,
+    generated_build_pages_dir: PathBuf,
 }
 
 impl SitePaths {
@@ -282,11 +282,16 @@ impl SitePaths {
             site_root.join("site/pages/posts")
         };
         let posts_store_dir = state_dir.join("content/posts");
+        let generated_build_pages_dir = if looks_like_git_checkout(&site_root) {
+            generated_root.join("build/pages")
+        } else {
+            site_root.join("build/pages")
+        };
         Ok(Self {
-            site_root,
             state_dir,
             posts_dir,
             posts_store_dir,
+            generated_build_pages_dir,
         })
     }
 
