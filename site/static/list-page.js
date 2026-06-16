@@ -296,6 +296,10 @@
 
   function readBootstrapCache() {
     try {
+      if (!hasLikelyAuthenticatedSession()) {
+        localStorage.removeItem(bootstrapCacheKey());
+        return null;
+      }
       var raw = localStorage.getItem(bootstrapCacheKey());
       if (!raw) {
         return null;
@@ -328,6 +332,10 @@
   function writeBootstrapCache(payload) {
     try {
       if (!payload || typeof payload !== 'object') {
+        return;
+      }
+      if (!payload.is_admin || !hasLikelyAuthenticatedSession()) {
+        localStorage.removeItem(bootstrapCacheKey());
         return;
       }
       localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
