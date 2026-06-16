@@ -46,23 +46,62 @@ impl SitePaths {
         let sites_dir = env_path("WIZARDRY_SITES_DIR").ok_or_else(|| {
             ReadError::new("config_missing", "WIZARDRY_SITES_DIR is not configured.")
         })?;
-        let sites_data_dir =
-            env_path("WIZARDRY_SITES_DATA_DIR").unwrap_or_else(|| sites_dir.join(".sitedata"));
+        let default_sites_data_dir = sites_dir.join(".sitedata");
+        let sites_data_dir = env_path("WIZARDRY_SITES_DATA_DIR").unwrap_or_else(|| {
+            if looks_like_git_checkout(&sites_dir) {
+                env_path("XDG_STATE_HOME")
+                    .unwrap_or_else(|| home_dir().join(".local/state"))
+                    .join("gazeta/sites-data")
+            } else {
+                default_sites_data_dir.clone()
+            }
+        });
         let site_name = env::var("WIZARDRY_SITE_NAME").map_err(|_| {
             ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
         })?;
+        let site_root = sites_dir.join(&site_name);
+        let mut state_dir = sites_data_dir.join(&site_name);
+        let legacy_state_dir = default_sites_data_dir.join(&site_name);
+        if state_dir != legacy_state_dir
+            && legacy_state_dir.is_dir()
+            && (!state_dir.exists() || dir_is_empty(&state_dir))
+        {
+            state_dir = legacy_state_dir;
+        }
         Ok(Self {
-            site_root: sites_dir.join(&site_name),
-            state_dir: sites_data_dir.join(&site_name),
+            site_root,
+            state_dir,
         })
     }
 
     fn static_product_index(&self) -> PathBuf {
-        self.site_root.join("site/static/product-index.json")
+        self.generated_static_dir().join("product-index.json")
     }
 
     fn cache_product_index(&self) -> PathBuf {
         self.state_dir.join("product-index-cache.json")
+    }
+
+    fn generated_root(&self) -> PathBuf {
+        if looks_like_git_checkout(&self.site_root) {
+            env_path("BLOG_GENERATED_ROOT").unwrap_or_else(|| {
+                env_path("XDG_STATE_HOME")
+                    .unwrap_or_else(|| home_dir().join(".local/state"))
+                    .join("gazeta/generated")
+                    .join(
+                        self.site_root
+                            .file_name()
+                            .and_then(|value| value.to_str())
+                            .unwrap_or("default"),
+                    )
+            })
+        } else {
+            self.site_root.join("site")
+        }
+    }
+
+    fn generated_static_dir(&self) -> PathBuf {
+        self.generated_root().join("static")
     }
 }
 
@@ -221,4 +260,20 @@ fn env_path(name: &str) -> Option<PathBuf> {
     env::var_os(name)
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
+}
+
+fn home_dir() -> PathBuf {
+    env_path("HOME").unwrap_or_else(|| PathBuf::from("/"))
+}
+
+fn looks_like_git_checkout(path: &Path) -> bool {
+    let home = home_dir();
+    let home_git = home.join("git");
+    path.starts_with(&home_git) || path.starts_with("/Users/andersaamodt/git")
+}
+
+fn dir_is_empty(path: &Path) -> bool {
+    fs::read_dir(path)
+        .map(|mut entries| entries.next().is_none())
+        .unwrap_or(true)
 }

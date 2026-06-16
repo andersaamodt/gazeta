@@ -11,5 +11,11 @@ nginx/
 site.conf
 site.conf.bak.*
 site/site/
+site/static/site-bootstrap.js
+site/static/navbar-pages.json
+site/static/footer-pages.json
+site/static/public-posts.json
+site/static/search-index.json
+site/static/product-index.json
 cgi/secure-chat-native-driver/.log
 site/static/legacy-assets/oeuvre/ultramemes.mkv

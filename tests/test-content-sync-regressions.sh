@@ -378,6 +378,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-update-config" 'blog_run_build_async >/
 assert_file_contains "$ROOT_DIR/cgi/blog-get-config" 'load_site_conf_values "$blog_site_conf"' 'blog-get-config parses site.conf in one pass'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-get-config" 'config-get "$blog_site_conf"' 'blog-get-config avoids repeated config-get subprocesses'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/public_posts.rs" 'generated_static_dir().join("public-posts.json")' 'public posts endpoint reads prebuilt catalog first'
+assert_file_contains "$ROOT_DIR/src/gazeta_commerce_read/mod.rs" 'generated_static_dir().join("product-index.json")' 'commerce read endpoint serves generated static product index in git checkouts'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'public_posts_catalog_value()' 'blog index reads prebuilt catalog first'
 assert_file_not_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'blog_collect_public_posts' 'blog index no longer rescans posts on each request'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elements: ($state.elements // [])' 'list page reads use state elements without synchronous Nostr enrichment'
