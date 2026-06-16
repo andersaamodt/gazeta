@@ -289,19 +289,11 @@ body:has(.post-single-item) {
 }
 
 body:has(.post-single-item.post-single-has-wide-content) {
-  max-width: var(--blog-post-resizable-width, 72rem);
+  max-width: 72rem;
 }
 
 body:has(.merch-page) {
   max-width: 72rem;
-}
-
-body.blog-post-resize-enabled {
-  max-width: min(1820px, calc(100vw - 0.75rem));
-}
-
-body.blog-post-resize-enabled:has(#blog-page-root):not(:has(.post-single-item)) {
-  max-width: 800px;
 }
 
 /* Keep blog-listing canvas uniform without painting a second centered body panel. */
@@ -8558,21 +8550,6 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
 }
 
-.post-item.blog-post-resizable {
-  box-sizing: border-box;
-  width: var(--blog-post-resizable-width, auto);
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  justify-self: center;
-  touch-action: pan-y;
-}
-
-body.blog-post-resizing {
-  cursor: ew-resize;
-  user-select: none;
-}
-
 .post-single-item {
   margin: 1rem auto 0.95rem;
   width: 100%;
@@ -8588,14 +8565,6 @@ body.blog-post-resizing {
 
 .post-single-item.post-single-has-wide-content {
   width: clamp(26rem, 96vw, 72rem);
-}
-
-.post-single-item.blog-post-resizable {
-  width: var(--blog-post-resizable-width, 100%);
-}
-
-.post-single-item.post-single-has-wide-content.blog-post-resizable {
-  width: var(--blog-post-resizable-width, clamp(26rem, 96vw, 72rem));
 }
 
 .post-single-item .post-head {
@@ -9793,11 +9762,6 @@ footer {
   width: 100%;
   min-width: 0;
   justify-items: stretch;
-}
-
-.blog-main-column .post-list > .blog-post-item.blog-post-resizable {
-  width: 100%;
-  max-width: 100%;
 }
 
 #blog-empty.placeholder {
@@ -14189,17 +14153,6 @@ nav.site-nav > .nav-right .nav-search button {
   transform: none !important;
 }
 
-/* Final mobile containment: desktop-width content must never expand the phone viewport. */
-@media (max-width: 720px), (pointer: coarse) {
-  body.blog-post-resize-enabled {
-    max-width: 100%;
-  }
-
-  .post-item.blog-post-resizable {
-    width: 100%;
-  }
-}
-
 @media (max-width: 640px) {
   html,
   body {
@@ -15128,13 +15081,13 @@ html body nav.site-nav > .nav-right form.nav-search button[type="submit"]:focus-
 }
 
 /* Keep the navbar aligned to the same content column as the page below it. */
-body:not(.blog-post-resize-enabled):not(.list-page-wide):not(:has(.post-single-item)) #main-content {
+body:not(.list-page-wide):not(:has(.post-single-item)) #main-content {
   width: min(100%, var(--site-content-width));
   margin-left: auto;
   margin-right: auto;
 }
 
-body:has(.merch-page):not(.blog-post-resize-enabled):not(.list-page-wide):not(:has(.post-single-item)) #main-content {
+body:has(.merch-page):not(.list-page-wide):not(:has(.post-single-item)) #main-content {
   width: min(100%, 72rem);
 }
 
@@ -15155,7 +15108,7 @@ body:has(.post-single-item) nav.site-nav {
 }
 
 body:has(.post-single-item.post-single-has-wide-content) nav.site-nav {
-  width: var(--blog-post-resizable-width, clamp(26rem, 96vw, 72rem)) !important;
+  width: min(100%, 72rem) !important;
 }
 
 nav.site-nav > .nav-right form.nav-search button[type="submit"] {

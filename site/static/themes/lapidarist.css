@@ -1333,16 +1333,6 @@ textarea:focus {
   color: #1a140d;
 }
 
-.blog-main-column .post-list > .blog-post-item.blog-post-resizable,
-.blog-main-column .post-list > .blog-post-item.blog-post-resizable:hover,
-.blog-main-column .post-list > .blog-post-item.blog-post-resizable:focus,
-.blog-main-column .post-list > .blog-post-item.blog-post-resizable:focus-within {
-  width: 100% !important;
-  max-width: 100% !important;
-  transform: none !important;
-  box-shadow: var(--lapidarist-float-shadow-soft) !important;
-}
-
 #list-page-title .list-page-title-actions .list-admin-primary-btn,
 #list-page-title .list-page-title-actions .list-admin-primary-btn:hover:not(:disabled),
 #list-page-title .list-page-title-actions .list-admin-primary-btn:focus-visible:not(:disabled),
