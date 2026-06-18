@@ -1,3 +1,4 @@
+use crate::resolved_site_data_dir;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use mime_guess::MimeGuess;
@@ -258,14 +259,12 @@ impl SitePaths {
                 }
             }
         };
-        let mut state_dir = sites_data_dir.join(&site_name);
-        let legacy_state_dir = default_sites_data_dir.join(&site_name);
-        if state_dir != legacy_state_dir
-            && legacy_state_dir.is_dir()
-            && (!state_dir.exists() || dir_is_empty(&state_dir))
-        {
-            state_dir = legacy_state_dir;
-        }
+        let state_dir = resolved_site_data_dir(
+            &site_root,
+            &sites_data_dir,
+            &default_sites_data_dir,
+            &site_name,
+        );
         let generated_root = if looks_like_git_checkout(&site_root) {
             env_path("BLOG_GENERATED_ROOT").unwrap_or_else(|| {
                 env_path("XDG_STATE_HOME")
@@ -902,12 +901,6 @@ fn looks_like_git_checkout(path: &Path) -> bool {
         || path == format!("{}/git", home_dir().display())
         || path.starts_with("/Users/andersaamodt/git/")
         || path == "/Users/andersaamodt/git"
-}
-
-fn dir_is_empty(path: &Path) -> bool {
-    fs::read_dir(path)
-        .map(|mut entries| entries.next().is_none())
-        .unwrap_or(true)
 }
 
 fn io_error(code: &'static str, context: &'static str) -> impl FnOnce(io::Error) -> AdminError {

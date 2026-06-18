@@ -1,3 +1,4 @@
+use crate::resolved_site_data_dir;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -53,8 +54,15 @@ impl SitePaths {
         let site_name = env::var("WIZARDRY_SITE_NAME").map_err(|_| {
             ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
         })?;
+        let site_root = sites_dir.join(&site_name);
+        let default_sites_data_dir = sites_dir.join(".sitedata");
         Ok(Self {
-            state_dir: site_data_dir(&sites_data_dir, &site_name),
+            state_dir: resolved_site_data_dir(
+                &site_root,
+                &sites_data_dir,
+                &default_sites_data_dir,
+                &site_name,
+            ),
         })
     }
 
@@ -495,15 +503,6 @@ fn is_hex_len(value: &str, len: usize) -> bool {
 fn read_json(path: &Path) -> Option<Value> {
     let text = fs::read_to_string(path).ok()?;
     serde_json::from_str(&text).ok()
-}
-
-fn site_data_dir(sites_data_dir: &Path, site_name: &str) -> PathBuf {
-    let candidate = sites_data_dir.join(site_name);
-    if sites_data_dir.join("site").is_dir() {
-        sites_data_dir.join("site")
-    } else {
-        candidate
-    }
 }
 
 fn now_epoch() -> u64 {

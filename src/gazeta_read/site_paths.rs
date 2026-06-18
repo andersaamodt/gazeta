@@ -1,4 +1,5 @@
 use crate::gazeta_read::{ReadError, Result};
+use crate::resolved_site_data_dir;
 use std::env;
 use std::path::PathBuf;
 
@@ -32,14 +33,12 @@ impl SitePaths {
             ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
         })?;
         let site_root = sites_dir.join(&site_name);
-        let mut state_dir = sites_data_dir.join(&site_name);
-        let legacy_state_dir = default_sites_data_dir.join(&site_name);
-        if state_dir != legacy_state_dir
-            && legacy_state_dir.is_dir()
-            && (!state_dir.exists() || dir_is_empty(&state_dir))
-        {
-            state_dir = legacy_state_dir;
-        }
+        let state_dir = resolved_site_data_dir(
+            &site_root,
+            &sites_data_dir,
+            &default_sites_data_dir,
+            &site_name,
+        );
         Ok(Self {
             repo_root,
             site_root,
@@ -84,10 +83,4 @@ fn looks_like_git_checkout(path: &std::path::Path) -> bool {
     let home = home_dir();
     let home_git = home.join("git");
     path.starts_with(&home_git) || path.starts_with("/Users/andersaamodt/git")
-}
-
-fn dir_is_empty(path: &std::path::Path) -> bool {
-    std::fs::read_dir(path)
-        .map(|mut entries| entries.next().is_none())
-        .unwrap_or(true)
 }

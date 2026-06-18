@@ -148,12 +148,12 @@
   --post-tag-standard-bg: #f3e4bf;
   --post-tag-standard-border: #ddc486;
   --post-tag-standard-text: #6b4b12;
-  --post-tag-type-bg: #dff4d7;
-  --post-tag-type-border: #a9d89b;
-  --post-tag-type-text: #285f28;
-  --post-tag-year-bg: #dcecff;
-  --post-tag-year-border: #a8c8f0;
-  --post-tag-year-text: #245a93;
+  --post-tag-type-bg: #dcecff;
+  --post-tag-type-border: #a8c8f0;
+  --post-tag-type-text: #245a93;
+  --post-tag-year-bg: #dff4d7;
+  --post-tag-year-border: #a9d89b;
+  --post-tag-year-text: #285f28;
   --action-soft-bg: #f5e4d7;
   --action-soft-border: #c58f6f;
   --action-soft-text: #6d3a20;
@@ -8555,7 +8555,7 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   width: 100%;
   max-width: 100%;
   min-height: 22rem;
-  padding: 1.35rem 1.45rem 1.2rem;
+  padding: 1.75rem 3.25rem 1.55rem;
   background: var(--post-body-bg, var(--post-card-bg-single, #fdfdfb));
   border-color: color-mix(in srgb, var(--border, #c7d2fe) 78%, var(--bg, #ffffff) 22%);
   box-shadow:

@@ -160,13 +160,19 @@ blog_generated_pages_rel_for_file() {
 }
 
 blog_site_root_parent=$blog_site_root
+blog_managed_sites_data_dir=$blog_sites_data_dir
 case "$blog_site_root" in
   */releases/*)
     blog_site_root_parent=${blog_site_root%/releases/*}
+    case "${WIZARDRY_SITES_DATA_DIR:-}" in
+      '')
+        blog_managed_sites_data_dir="$blog_site_root_parent/.sitedata"
+        ;;
+    esac
     ;;
 esac
-if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_sites_data_dir/site" ]; then
-  blog_site_data="$blog_sites_data_dir/site"
+if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_managed_sites_data_dir/site" ]; then
+  blog_site_data="$blog_managed_sites_data_dir/site"
 fi
 blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"

@@ -71,14 +71,32 @@ esac
 
 site_bootstrap_dir=$(blog_generated_static_dir)
 build_bootstrap_dir=$(blog_generated_build_static_dir)
+sync_static_tree() {
+  sync_src=${1-}
+  sync_dest=${2-}
+  [ -n "$sync_dest" ] || return 1
+  rm -rf "$sync_dest"
+  mkdir -p "$(dirname "$sync_dest")"
+  if [ -d "$sync_src" ]; then
+    cp -R "$sync_src" "$sync_dest"
+  else
+    mkdir -p "$sync_dest"
+  fi
+  find "$sync_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
+  find "$sync_dest" -type f -exec chmod 644 {} \; 2>/dev/null || true
+}
+if [ "$site_bootstrap_dir" != "$blog_source_static_dir" ]; then
+  sync_static_tree "$blog_source_static_dir" "$site_bootstrap_dir"
+else
+  mkdir -p "$site_bootstrap_dir"
+fi
+sync_static_tree "$blog_source_static_dir" "$build_bootstrap_dir"
 navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
 footer_json_path="$site_bootstrap_dir/footer-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
 build_navbar_json_path="$build_bootstrap_dir/navbar-pages.json"
 build_footer_json_path="$build_bootstrap_dir/footer-pages.json"
 build_site_bootstrap_path="$build_bootstrap_dir/site-bootstrap.js"
-mkdir -p "$site_bootstrap_dir"
-mkdir -p "$build_bootstrap_dir"
 navbar_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-navbar-pages-json.XXXXXX")
 footer_json_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-footer-pages-json.XXXXXX")
 site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")

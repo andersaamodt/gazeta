@@ -880,31 +880,31 @@
     switch (status) {
       case 'local_newer_than_nostr':
         return {
-          label: 'Server newer than Nostr',
+          label: 'Server newer',
           message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
           className: 'status-local-newer-than-nostr'
         };
       case 'nostr_newer_than_local':
         return {
-          label: 'Nostr newer than server',
+          label: 'Nostr newer',
           message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
           className: 'status-nostr-newer-than-local'
         };
       case 'in_sync':
         return {
-          label: 'In sync',
+          label: 'Synced',
           message: 'Server copy and published Nostr state are in sync.',
           className: 'status-in-sync'
         };
       case 'unpublished_local_changes':
         return {
-          label: 'Only on server',
+          label: 'Server only',
           message: 'This page exists only on the server so far. Visitors see the server copy.',
           className: 'status-unpublished-local-changes'
         };
       default:
         return {
-          label: 'Sync status unknown',
+          label: 'Sync unknown',
           message: 'Cannot determine local-vs-Nostr sync status yet.',
           className: 'status-unknown'
         };
