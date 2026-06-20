@@ -4042,7 +4042,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260526-title-action-edge1');
+    var themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260620-parchment-textures1');
     var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=' + encodeURIComponent(themeVersion);
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {

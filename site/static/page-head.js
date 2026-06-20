@@ -206,7 +206,7 @@
   }
 
   function themeStylesheetVersion() {
-    return String(window.__wizardryThemeStylesheetVersion || '20260526-title-action-edge1');
+    return String(window.__wizardryThemeStylesheetVersion || '20260620-parchment-textures1');
   }
 
   function reconcileThemeLink() {

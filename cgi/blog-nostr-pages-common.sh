@@ -3,8 +3,8 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260615-list-public-cache1'
-blog_page_js_version='20260611-blog-defaulttag-prerender1'
+blog_nostr_list_page_js_version='20260620-list-marker-hydration1'
+blog_page_js_version='20260620-blog-prerender-ready1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'

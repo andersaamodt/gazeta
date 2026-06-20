@@ -1760,7 +1760,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260526-title-action-edge1');
+      const themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260620-parchment-textures1');
       const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=' + encodeURIComponent(themeVersion);
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');

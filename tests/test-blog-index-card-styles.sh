@@ -28,7 +28,7 @@ assert_file_not_contains() {
   fi
 }
 
-assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/archmage.css?v=20260526-title-action-edge1' 'theme cache buster fetches the current title-action theme build'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/archmage.css?v=20260620-parchment-textures1' 'theme cache buster fetches the current parchment texture theme build'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '__wizardryThemeStylesheetVersion' 'theme cache buster is published once for hydrated page code'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'blog-tag-recovery-style' 'head keeps final tag recovery styles after theme CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '--lapidarist-control-shadow: none;' 'head clears theme shadow variables on blog tags'
@@ -39,6 +39,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-post-item butto
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body .blog-post-item button.tag,' 'post tag chip recovery wins after the global soft-button rule'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body .blog-post-item .tag,' 'post tag chip recovery wins after theme-specific button rules'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.blog-main-column .post-list > .blog-post-item.blog-post-resizable' 'theme no longer ships post resize-specific selectors'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '--lapidarist-parchment-page-texture: url("/static/textures/lapidarist-parchment.webp");' 'Lapidarist theme publishes the page parchment texture URL'
+assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'var(--lapidarist-parchment-page-texture)' 'Lapidarist page canvas uses the parchment texture variable'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'border-color: var(--post-tag-standard-border) !important;' 'standard post tag chips keep the recovered yellow treatment'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--post-tag-type-bg: #dcecff;' 'type post tag chips use the blue treatment'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--post-tag-year-bg: #dff4d7;' 'year post tag chips use the green treatment'
