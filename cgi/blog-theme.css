@@ -15,12 +15,12 @@ http-header "Pragma" "no-cache"
 http-header "Expires" "0"
 http-end-headers
 
-theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf 'archmage')
+theme=$(config-get "$blog_site_conf" theme 2>/dev/null || printf 'lapidarist')
 case "$theme" in
   adept|alchemist|archmage|chronomancer|conjurer|druid|empath|enchanter|geomancer|hermeticist|hierophant|illusionist|lapidarist|lich|necromancer|pyromancer|seer|shaman|sorcerer|sorceress|technomancer|thaumaturge|thelemite|theurgist|wadjet|warlock|wizard)
     ;;
   *)
-    theme=archmage
+    theme=lapidarist
     ;;
 esac
 

@@ -31,7 +31,6 @@ mkdir -p \
 
 cat > "$site_root/site.conf" <<'EOFCONF'
 template=blog
-theme=lapidarist
 site_title=Generated Static Fixture
 append_site_title_to_page_title=false
 EOFCONF
@@ -129,6 +128,14 @@ blog_nostr_pages_save_json '{"pages":[]}'
   exit 1
 }
 
+grep -Fq 'theme: "lapidarist"' "$generated_root/static/site-bootstrap.js" || {
+  printf '%s\n' "generated bootstrap did not default to the Lapidarist theme" >&2
+  exit 1
+}
+grep -Fq 'theme: "lapidarist"' "$generated_root/build-static/site-bootstrap.js" || {
+  printf '%s\n' "build-static bootstrap did not default to the Lapidarist theme" >&2
+  exit 1
+}
 grep -Fq 'fixture-theme' "$generated_root/static/themes/lapidarist.css" || {
   printf '%s\n' "generated theme stylesheet content mismatch" >&2
   exit 1

@@ -63,7 +63,7 @@ navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/n
 footer_pages_json=$(printf '%s\n' "$footer_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
 
 [ -n "$site_title" ] || site_title='Site'
-[ -n "$theme" ] || theme='archmage'
+[ -n "$theme" ] || theme='lapidarist'
 case "$append_site_title_to_page_title" in
   true|false) ;;
   *) append_site_title_to_page_title=false ;;
@@ -127,7 +127,7 @@ cat > "$site_bootstrap_tmp" <<EOF
   try {
     localStorage.setItem('wizardry_blog_site_title_v1', bootstrap.config.site_title || 'Site');
     localStorage.setItem('wizardry_blog_append_site_title_to_page_title_v1', bootstrap.config.append_site_title_to_page_title ? '1' : '0');
-    localStorage.setItem('wizardry_blog_theme_v1', bootstrap.config.theme || 'archmage');
+    localStorage.setItem('wizardry_blog_theme_v1', bootstrap.config.theme || 'lapidarist');
     localStorage.setItem('wizardry_plugins_v1', JSON.stringify(bootstrap.config.plugins || {}));
     localStorage.setItem('cached_navbar_pages_v1', JSON.stringify(bootstrap.navbar_pages || []));
     localStorage.setItem('cached_footer_pages_v1', JSON.stringify(bootstrap.footer_pages || []));

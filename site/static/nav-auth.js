@@ -30,7 +30,7 @@
   };
 
   var state = {
-    currentTheme: 'archmage',
+    currentTheme: 'lapidarist',
     isAuthenticated: false,
     isAdmin: false,
     plugins: {
@@ -278,7 +278,7 @@
 
   function normalizeThemeName(value) {
     var text = compact(value);
-    return text || 'archmage';
+    return text || 'lapidarist';
   }
 
   function updateNavSiteSignature(title) {

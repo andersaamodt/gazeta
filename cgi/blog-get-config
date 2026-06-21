@@ -218,7 +218,7 @@ origin_crossposting_json=$(blog_origin_crossposting_config_json)
 
 case "$registration_enabled" in true|false) ;; *) registration_enabled=true ;; esac
 [ -n "$site_title" ] || site_title='Site'
-[ -n "$theme" ] || theme='archmage'
+[ -n "$theme" ] || theme='lapidarist'
 case "$feed_full_text" in true|false) ;; *) feed_full_text=true ;; esac
 case "$feed_items" in ''|*[!0-9]*) feed_items=50 ;; esac
 case "$append_site_title_to_page_title" in true|false) ;; *) append_site_title_to_page_title=false ;; esac

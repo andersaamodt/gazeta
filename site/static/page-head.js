@@ -190,7 +190,7 @@
   }
 
   function themeFromConfig() {
-    var theme = 'archmage';
+    var theme = 'lapidarist';
     try {
       var bootstrap = window.__wizardrySiteBootstrap || {};
       var config = bootstrap && bootstrap.config && typeof bootstrap.config === 'object' ? bootstrap.config : {};
