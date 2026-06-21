@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260620-list-marker-hydration1'
+blog_nostr_list_page_js_version='20260620-download-media-links1'
 blog_page_js_version='20260620-blog-prerender-ready1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
@@ -525,9 +525,23 @@ page_slug = text(payload.get("slug") if isinstance(payload, dict) else state.get
 
 def md_inline(value):
     escaped = html.escape(text(value), quote=True)
-    escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', escaped)
+    def link_repl(match):
+        label = match.group(1)
+        href = match.group(2)
+        attrs = ' href="%s"' % href
+        if is_download_only_media_url(href):
+            attrs += ' download'
+        return '<a%s>%s</a>' % (attrs, label)
+    escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link_repl, escaped)
     escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
     return escaped
+
+def is_download_only_media_url(url):
+    path = text(url).split("#", 1)[0].split("?", 1)[0].lower()
+    return path.endswith(".mkv")
+
+def download_attr(url):
+    return " download" if is_download_only_media_url(url) else ""
 
 def marker_hash32(value):
     hash_value = 2166136261
@@ -655,9 +669,10 @@ def entry_href_attr(entry):
 def linked_text(label, url, class_name):
     url = text(url)
     if url:
-        return '<a class="%s is-post-url-linked" href="%s">%s</a>' % (
+        return '<a class="%s is-post-url-linked" href="%s"%s>%s</a>' % (
             class_name,
             html.escape(url, quote=True),
+            download_attr(url),
             md_inline(label),
         )
     return '<span class="%s">%s</span>' % (class_name, md_inline(label))
@@ -957,9 +972,13 @@ PY
       | gsub(">"; "&gt;")
       | gsub("\""; "&quot;")
       | gsub("'"'"'"; "&#39;");
+    def is_download_only_media_url:
+      (tostring | split("#")[0] | split("?")[0] | ascii_downcase | endswith(".mkv"));
+    def download_attr:
+      if is_download_only_media_url then " download" else "" end;
     def md_inline:
       h
-      | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>")
+      | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\"\(.href | download_attr)>\(.label)</a>")
       | gsub("\\*(?<em>[^*\\n]+)\\*"; "<em>\(.em)</em>");
     def entry_key($e):
       (($e._list_entry_id // $e._public_entry_id // $e._uid // "") | tostring);
@@ -969,7 +988,7 @@ PY
     def linked_text($text; $url; $class):
       ($url // "" | tostring) as $u
       | if ($u | length) > 0 then
-          "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\">" + ($text | md_inline) + "</a>"
+          "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\"" + ($u | download_attr) + ">" + ($text | md_inline) + "</a>"
         else
           "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>"
         end;
