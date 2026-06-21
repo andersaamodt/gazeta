@@ -582,15 +582,34 @@
     return markdownInline(value);
   }
 
+  function hasMarkdownLink(md) {
+    return /\[[^\]]+\]\([^)]+\)/.test(String(md || ''));
+  }
+
+  function externalPostUrlLinkHtml(url, title) {
+    var href = String(url || '').trim();
+    if (!href) {
+      return '';
+    }
+    var label = String(title || 'Open linked post');
+    return '<a class="list-entry-post-url-link" href="' + escapeHtml(href) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' +
+      '<svg class="list-entry-post-url-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 5h5v5M19 5l-8 8M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</a>';
+  }
+
   function renderLinkedInlineText(md, postUrl, className, title) {
     var url = String(postUrl || '').trim();
     var text = String(md || '').trim();
-    var label = url ? (markdownInlineLinkLabel(text) || escapeHtml(url)) : markdownInline(text);
+    var linkTitle = String(title || 'Open linked post');
     var cssClass = String(className || '').trim();
     if (!url) {
-      return '<span class="' + escapeHtml(cssClass) + '">' + label + '</span>';
+      return '<span class="' + escapeHtml(cssClass) + '">' + markdownInline(text) + '</span>';
     }
-    return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '" title="' + escapeHtml(title || 'Open linked post') + '">' + label + '</a>';
+    if (hasMarkdownLink(text)) {
+      return '<span class="' + escapeHtml(cssClass) + '">' + markdownInline(text) + '</span>' + externalPostUrlLinkHtml(url, linkTitle);
+    }
+    var label = markdownInlineLinkLabel(text) || escapeHtml(url);
+    return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '" title="' + escapeHtml(linkTitle) + '">' + label + '</a>';
   }
 
   function listEntryHrefAttr(postUrl) {

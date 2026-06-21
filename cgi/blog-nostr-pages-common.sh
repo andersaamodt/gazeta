@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260621-list-file-link-parity1'
+blog_nostr_list_page_js_version='20260621-post-url-external-icon1'
 blog_page_js_version='20260620-blog-prerender-ready1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
@@ -536,6 +536,19 @@ def md_inline(value):
 def md_inline_link_label(value):
     return md_inline(re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text(value)))
 
+def has_markdown_link(value):
+    return re.search(r"\[[^\]]+\]\([^)]+\)", text(value)) is not None
+
+def external_post_url_link_html(url):
+    url = text(url)
+    if not url:
+        return ""
+    return (
+        '<a class="list-entry-post-url-link" href="%s" title="Open linked post" aria-label="Open linked post">'
+        '<svg class="list-entry-post-url-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 5h5v5M19 5l-8 8M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        '</a>'
+    ) % html.escape(url, quote=True)
+
 def marker_hash32(value):
     hash_value = 2166136261
     for char in text(value):
@@ -662,6 +675,12 @@ def entry_href_attr(entry):
 def linked_text(label, url, class_name):
     url = text(url)
     if url:
+        if has_markdown_link(label):
+            return '<span class="%s">%s</span>%s' % (
+                class_name,
+                md_inline(label),
+                external_post_url_link_html(url),
+            )
         return '<a class="%s is-post-url-linked" href="%s" title="Open linked post">%s</a>' % (
             class_name,
             html.escape(url, quote=True),
@@ -980,6 +999,15 @@ PY
       h
       | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>")
       | gsub("\\*(?<em>[^*\\n]+)\\*"; "<em>\(.em)</em>");
+    def md_inline_link_label:
+      gsub("\\[(?<label>[^\\]]+)\\]\\([^)]+\\)"; .label)
+      | md_inline;
+    def has_markdown_link:
+      test("\\[[^\\]]+\\]\\([^)]+\\)");
+    def external_post_url_link($url):
+      "<a class=\"list-entry-post-url-link\" href=\"" + ($url | h) + "\" title=\"Open linked post\" aria-label=\"Open linked post\">" +
+      "<svg class=\"list-entry-post-url-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M14 5h5v5M19 5l-8 8M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
+      "</a>";
     def entry_key($e):
       (($e._list_entry_id // $e._public_entry_id // $e._uid // "") | tostring);
     def entry_href_attr($e):
@@ -988,7 +1016,12 @@ PY
     def linked_text($text; $url; $class):
       ($url // "" | tostring) as $u
       | if ($u | length) > 0 then
-          "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\">" + ($text | md_inline) + "</a>"
+          if ($text | has_markdown_link) then
+            "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>" + external_post_url_link($u)
+          else
+            ($text | md_inline_link_label) as $label
+            | "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\" title=\"Open linked post\">" + (if ($label | length) > 0 then $label else ($u | h) end) + "</a>"
+          end
         else
           "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>"
         end;

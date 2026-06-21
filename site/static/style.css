@@ -3371,6 +3371,29 @@ body.nav-cart-open {
   text-decoration-thickness: 1px;
 }
 
+.list-page-shell .list-entry-post-url-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.14rem;
+  height: 1.14rem;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--accent, #3158a4) 76%, #2f3a52 24%);
+  -webkit-text-fill-color: color-mix(in srgb, var(--accent, #3158a4) 76%, #2f3a52 24%);
+  text-decoration: none;
+}
+
+.list-page-shell .list-entry-post-url-link:hover,
+.list-page-shell .list-entry-post-url-link:focus-visible {
+  background: color-mix(in srgb, var(--nav-link-hover, #e0e7ff) 74%, transparent);
+}
+
+.list-page-shell .list-entry-post-url-icon {
+  width: 0.86rem;
+  height: 0.86rem;
+}
+
 .list-page-shell .list-entry-line:not(.list-entry-inline) .list-entry-meta-right {
   align-items: start;
   gap: 0.24rem;
