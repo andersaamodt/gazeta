@@ -572,13 +572,7 @@
     if (!value) {
       return '';
     }
-    var html = '';
-    if (window.marked && typeof window.marked.parseInline === 'function') {
-      html = window.marked.parseInline(value);
-      return addDownloadAttrsToMediaLinks(html);
-    }
-    scheduleMarkedUpgrade();
-    html = escapeHtml(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_match, label, href) {
+    var html = escapeHtml(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_match, label, href) {
       var attrs = ' href="' + href + '"';
       if (isDownloadOnlyMediaUrl(href)) {
         attrs += ' download';
@@ -663,10 +657,6 @@
     if (!value) {
       return '';
     }
-    if (window.marked && typeof window.marked.parse === 'function') {
-      return window.marked.parse(value);
-    }
-    scheduleMarkedUpgrade();
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 

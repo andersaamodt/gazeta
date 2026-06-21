@@ -141,6 +141,7 @@ blog_nostr_page_save_draft_state_json oeuvre list '{
 	  "default_markers":"curated",
 	  "elements":[
 	    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"curated"},
+	    {"type":"entry","markdown":"[Post URL Label](https://wrong.example/ignored)","post_url":"https://right.example/final","date":"2026","marker":"curated"},
 	    {"type":"entry","markdown":"[Ultramemes](/oeuvre/ultramemes.mkv)","date":"2026","marker":"curated, video talk"},
 	    {"type":"entry","markdown":"Essay Work","date":"2025","marker":"essay"},
 	    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
@@ -288,6 +289,8 @@ assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-marker-filter-pill 
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'data-marker-filter-action="toggle"' 'list prerender includes marker filter controls'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '--marker-pill-h:' 'list prerender includes first-paint marker pill colors'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-entry-line list-depth-0 is-row-highlight' 'list prerender includes final read-only row striping'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a class="list-entry-markdown is-post-url-linked" href="https://right.example/final" title="Open linked post">Post URL Label</a>' 'list prerender uses post_url as the sole row link target'
+assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'https://wrong.example/ignored' 'list prerender does not keep stale inline Markdown hrefs when post_url is authoritative'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a href="/oeuvre/ultramemes.mkv" download>Ultramemes</a>' 'list prerender marks MKV links as downloads'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'video talk' 'list prerender includes multi-word marker filter labels'
 assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" '>curated</span>' 'list prerender hides selected default marker pills like the hydrated renderer'
@@ -304,6 +307,8 @@ assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-galler
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'class="list-page-shell icon-gallery-shell"' 'icon-gallery prerender emits a stable shell class'
 assert_file_not_contains "$SITE_ROOT/site/pages/software.md" "printf ' icon-gallery-shell" 'icon-gallery prerender does not leak shell fragments into HTML'
+assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'marked@11.0.0/marked.min.js' 'list prerender does not block hydration on the external Markdown renderer'
+assert_file_not_contains "$SITE_ROOT/site/pages/software.md" 'marked@11.0.0/marked.min.js' 'icon-gallery prerender does not block hydration on the external Markdown renderer'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender includes the default-tag text'

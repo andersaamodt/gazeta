@@ -3,7 +3,7 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260621-hash-marker-filters1'
+blog_nostr_list_page_js_version='20260621-list-prerender-parity1'
 blog_page_js_version='20260620-blog-prerender-ready1'
 blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
@@ -536,6 +536,9 @@ def md_inline(value):
     escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
     return escaped
 
+def md_inline_link_label(value):
+    return md_inline(re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text(value)))
+
 def is_download_only_media_url(url):
     path = text(url).split("#", 1)[0].split("?", 1)[0].lower()
     return path.endswith(".mkv")
@@ -669,11 +672,11 @@ def entry_href_attr(entry):
 def linked_text(label, url, class_name):
     url = text(url)
     if url:
-        return '<a class="%s is-post-url-linked" href="%s"%s>%s</a>' % (
+        return '<a class="%s is-post-url-linked" href="%s"%s title="Open linked post">%s</a>' % (
             class_name,
             html.escape(url, quote=True),
             download_attr(url),
-            md_inline(label),
+            md_inline_link_label(label) or html.escape(url, quote=True),
         )
     return '<span class="%s">%s</span>' % (class_name, md_inline(label))
 
@@ -1477,7 +1480,6 @@ blog_nostr_page_write_prerendered_source() {
         printf '<div id="list-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
         printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
         printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
-        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
         printf '<script src="/static/list-page.js?v=%s"></script>\n' "$blog_nostr_list_page_js_version"
       } >> "$tmp"
       ;;
@@ -3085,7 +3087,6 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
 EOICONGALLERY
       ;;
@@ -3113,7 +3114,6 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/$slug.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
 EOLIST
       ;;
