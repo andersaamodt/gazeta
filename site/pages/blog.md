@@ -2,7 +2,6 @@
 title: Blog
 ---
 
-
 <div data-lodestone-root="page" data-lodestone-render="universal">
 <section id="blog-page-root" class="blog-page" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
 <div class="blog-layout">

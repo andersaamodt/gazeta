@@ -50,6 +50,23 @@ JSON
 
 "$site_root/cgi/pre-build"
 
+for rel in \
+  admin.md \
+  artificer.md \
+  blog.md \
+  cart.md \
+  checkout.md \
+  embed/video-chat.md \
+  login-security.md \
+  search.md
+do
+  stone_file="$site_root/site/lodestone/pages/${rel%.md}.stone.html"
+  [ -f "$stone_file" ] || {
+    printf '%s\n' "missing lodestone source for $rel" >&2
+    exit 1
+  }
+done
+
 for page in blog contact values projects overworld reading-list software; do
   grep -Fq 'data-lodestone-root="page"' "$site_root/site/pages/$page.md" || {
     printf '%s\n' "$page page missing lodestone render root" >&2
@@ -72,7 +89,7 @@ grep -Fq 'gazeta-lodestone" render-md "$lodestone_template"' "$site_root/cgi/blo
   exit 1
 }
 
-grep -Fq 'v0.7.5' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.6' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

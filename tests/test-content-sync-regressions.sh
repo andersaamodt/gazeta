@@ -1237,7 +1237,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.5' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.6' 'footer exposes current site version before GitHub'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body a.blog-type-pill,' 'shared head recovery covers single-post anchor type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-type-bg, #dff4d7) !important;' 'shared head recovery forces type pills light green'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body a.blog-year-pill,' 'shared head recovery covers single-post anchor year pills'
