@@ -1,0 +1,24 @@
+#!/bin/sh
+# Resolve and run the Lodestone renderer for Gazeta build steps.
+
+set -eu
+
+if [ -n "${GAZETA_LODESTONE:-}" ]; then
+  exec "$GAZETA_LODESTONE" "$@"
+fi
+
+script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
+
+for candidate in \
+  "$repo_root/../lodestone/spells/lodestone" \
+  "$HOME/git/lodestone/spells/lodestone" \
+  "/Users/andersaamodt/git/lodestone/spells/lodestone"
+do
+  if [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+printf '%s\n' "gazeta-lodestone: lodestone renderer is not available" >&2
+exit 1

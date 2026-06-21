@@ -1446,17 +1446,30 @@ blog_nostr_page_write_prerendered_source() {
       ;;
     blog)
       posts_html=$(blog_nostr_prerender_blog_posts_html "$payload_json")
-      {
-        printf '<section id="blog-page-root" class="blog-page" data-blog-slug="%s" data-page-type="blog" aria-live="polite"%s>\n' "$slug" "$attrs"
-        printf '%s\n' '<div class="blog-layout"><div class="blog-filter-column"><button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts"><svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3"></line><circle cx="6" cy="3" r="1.25"></circle><line x1="2" y1="8" x2="14" y2="8"></line><circle cx="10.5" cy="8" r="1.25"></circle><line x1="2" y1="13" x2="14" y2="13"></line><circle cx="4.5" cy="13" r="1.25"></circle></svg></button></div><div class="blog-main-column">'
-        printf '<div class="list-page-head"><h1 id="blog-page-title">%s</h1><p id="blog-page-description" class="muted" hidden></p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
-        printf '%s\n' '<div id="blog-page-admin" class="list-admin" hidden></div><div id="blog-page-validation" class="list-validation" hidden></div><div id="blog-page-content" class="list-page-content" hidden></div>'
-        printf '%s\n' '<div id="blog-filter-panel" class="blog-filter-panel" hidden><div class="blog-filter-grid"><div class="blog-filter-group"><h3>Tags</h3><div id="blog-filter-tags" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Year</h3><div id="blog-filter-years" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Type</h3><div id="blog-filter-types" class="blog-filter-options"></div></div></div><div class="blog-filter-footer"><button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button></div></div>'
-        printf '<div id="blog-post-list" class="post-list"%s>\n%s\n</div><p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>\n' "$attrs" "$posts_html"
-        printf '%s\n' '</div></div></section>'
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_page_js_version"
-      } >> "$tmp"
+      lodestone_template="$blog_site_root/site/lodestone/pages/blog.stone.html"
+      if [ -x "$blog_site_root/cgi/gazeta-lodestone" ] && [ -f "$lodestone_template" ]; then
+        posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-posts.XXXXXX")
+        printf '%s\n' "$posts_html" > "$posts_tmp"
+        "$blog_site_root/cgi/gazeta-lodestone" render-md "$lodestone_template" \
+          --set "title=$page_title" \
+          --set "slug=$slug" \
+          --set "prerender_attrs=$attrs" \
+          --set "blog_page_js_version=$blog_page_js_version" \
+          --html-file "posts_html=$posts_tmp" > "$tmp"
+        rm -f "$posts_tmp"
+      else
+        {
+          printf '<section id="blog-page-root" class="blog-page" data-blog-slug="%s" data-page-type="blog" aria-live="polite"%s>\n' "$slug" "$attrs"
+          printf '%s\n' '<div class="blog-layout"><div class="blog-filter-column"><button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts"><svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3"></line><circle cx="6" cy="3" r="1.25"></circle><line x1="2" y1="8" x2="14" y2="8"></line><circle cx="10.5" cy="8" r="1.25"></circle><line x1="2" y1="13" x2="14" y2="13"></line><circle cx="4.5" cy="13" r="1.25"></circle></svg></button></div><div class="blog-main-column">'
+          printf '<div class="list-page-head"><h1 id="blog-page-title">%s</h1><p id="blog-page-description" class="muted" hidden></p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
+          printf '%s\n' '<div id="blog-page-admin" class="list-admin" hidden></div><div id="blog-page-validation" class="list-validation" hidden></div><div id="blog-page-content" class="list-page-content" hidden></div>'
+          printf '%s\n' '<div id="blog-filter-panel" class="blog-filter-panel" hidden><div class="blog-filter-grid"><div class="blog-filter-group"><h3>Tags</h3><div id="blog-filter-tags" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Year</h3><div id="blog-filter-years" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Type</h3><div id="blog-filter-types" class="blog-filter-options"></div></div></div><div class="blog-filter-footer"><button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button></div></div>'
+          printf '<div id="blog-post-list" class="post-list"%s>\n%s\n</div><p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>\n' "$attrs" "$posts_html"
+          printf '%s\n' '</div></div></section>'
+          printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
+          printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_page_js_version"
+        } >> "$tmp"
+      fi
       ;;
     public-ranking)
       content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json")

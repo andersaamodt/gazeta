@@ -188,6 +188,34 @@ legacy_assets_src=$(legacy_assets_dir)
 copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"
 copy_tree_overlay "$legacy_assets_src" "$build_bootstrap_dir/legacy-assets"
 sync_legacy_asset_aliases "$legacy_assets_src"
+
+sync_lodestone_pages() {
+  lodestone_pages_dir="$blog_site_root/site/lodestone/pages"
+  [ -d "$lodestone_pages_dir" ] || return 0
+  [ -x "$SCRIPT_DIR/gazeta-lodestone" ] || return 0
+  (
+    cd "$lodestone_pages_dir" || exit 1
+    find . -type f -name '*.stone.html' -print
+  ) | while IFS= read -r stone_rel || [ -n "$stone_rel" ]; do
+    stone_rel=${stone_rel#./}
+    [ -n "$stone_rel" ] || continue
+    case "$stone_rel" in
+      .*|../*|*/../*|/*)
+        continue
+        ;;
+    esac
+    page_rel=${stone_rel%.stone.html}.md
+    stone_source="$lodestone_pages_dir/$stone_rel"
+    page_dest="$blog_site_root/site/pages/$page_rel"
+    page_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-page.XXXXXX")
+    mkdir -p "$(dirname "$page_dest")"
+    "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"
+    mv "$page_tmp" "$page_dest"
+    chmod 644 "$page_dest" 2>/dev/null || true
+  done
+}
+
+sync_lodestone_pages
 navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
 footer_json_path="$site_bootstrap_dir/footer-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"

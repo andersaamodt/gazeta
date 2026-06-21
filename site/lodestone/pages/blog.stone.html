@@ -6,9 +6,8 @@ posts_html: ""
 blog_page_js_version: 20260620-blog-prerender-ready1
 ---
 
-
-<div data-lodestone-root="page" data-lodestone-render="universal">
-<section id="blog-page-root" class="blog-page" data-blog-slug="blog" data-page-type="blog" aria-live="polite">
+<lode-page>
+<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type="blog" aria-live="polite"{@html prerender_attrs}>
 <div class="blog-layout">
 <div class="blog-filter-column">
 <button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
@@ -50,13 +49,13 @@ blog_page_js_version: 20260620-blog-prerender-ready1
 </div>
 </div>
 
-<div id="blog-post-list" class="post-list"></div>
+<div id="blog-post-list" class="post-list"{@html prerender_attrs}>{@html posts_html}</div>
 <p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
 </div>
 </div>
 </section>
 
-<script src="/static/nostr-page-bootstrap/blog.js"></script>
+<script src="/static/nostr-page-bootstrap/{slug}.js"></script>
 <script src="/static/compose-shared.js?v=20260403-compose1"></script>
-<script defer src="/static/blog-page.js?v=20260620-blog-prerender-ready1" data-lodestone-hydrate="script"></script>
-</div>
+<lode-script src="/static/blog-page.js?v={blog_page_js_version}" />
+</lode-page>
