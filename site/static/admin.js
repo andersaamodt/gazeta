@@ -1760,7 +1760,7 @@
     const pickedTheme = (theme || '').trim() || 'adept';
     const themeLink = document.getElementById('theme-stylesheet');
     if (themeLink) {
-      const themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260621-theme-sync1');
+      const themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260621-parchment-restore2');
       const href = '/static/themes/' + encodeURIComponent(pickedTheme) + '.css?v=' + encodeURIComponent(themeVersion);
       const absoluteHref = new URL(href, window.location.href).href;
       const currentHref = String(themeLink.href || '');
@@ -6282,7 +6282,7 @@
     drafts.forEach(function (draft) {
       const sourcePath = normalizeComposeSourcePostPath((draft && draft.source_post_path) || '');
       if (sourcePath) {
-        unsavedPostDraftsByPath[sourcePath] = true;
+        unsavedPostDraftsByPath[sourcePath] = String((draft && draft.draft_id) || '').trim() || true;
         return;
       }
       visibleDrafts.push(draft);
@@ -6471,7 +6471,8 @@
       const sourceClass = source === 'nostr' ? ' is-nostr' : ' is-local';
       const openUrl = String(post.open_url || '');
       const dateLabel = formatPostPublishedAt(post.published_at);
-      const hasUnsavedChanges = !!state.unsavedPostDraftsByPath[String(path || '').trim()];
+      const editDraftId = state.unsavedPostDraftsByPath[String(path || '').trim()] || '';
+      const hasUnsavedChanges = !!editDraftId;
       const crossposting = normalizePostCrossposting(post && post.crossposting);
 
       html += '<div class="post-row">';
@@ -6505,7 +6506,7 @@
         html += postActionButton('Copy link', 'copy_link', path, '', 'data-post-url="' + escapeAttr(openUrl) + '"');
       }
       html += postActionButton('Add to list...', 'add_to_list', path, '');
-      html += postActionButton('Edit post...', 'edit_post', path, '');
+      html += postActionButton(hasUnsavedChanges ? 'Continue editing...' : 'Edit post...', 'edit_post', path, '');
       if (post.can_hide) {
         html += postActionButton('Hide from site...', 'hide', path, 'post-hide');
       }
@@ -7881,12 +7882,20 @@
       }
       state.postsActionInFlight = true;
       try {
+        const existingDraftId = String(state.unsavedPostDraftsByPath[String(path || '').trim()] || '').trim();
+        if (existingDraftId && existingDraftId !== 'true') {
+          state.postsMenuOpenFor = '';
+          await loadDraft(existingDraftId);
+          setOutput(els.outputCompose, 'Opened the existing unpublished edit for this post.', 'ok');
+          return;
+        }
         const data = await apiPost('/cgi/blog-create-draft-from-post', {
           post_path: path
         }, true);
         if (!data.success || !data.draft_id) {
           throw new Error(data.error || 'Could not create draft from post');
         }
+        state.unsavedPostDraftsByPath[String(path || '').trim()] = String(data.draft_id || '').trim() || true;
         state.postsMenuOpenFor = '';
         await loadDraft(data.draft_id);
         setOutput(els.outputCompose, data.message || 'Draft created from post.', 'ok');

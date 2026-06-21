@@ -40,8 +40,29 @@ SITE_ROOT="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
 SITE_DATA="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
 POSTS_STORE="$SITE_DATA/content/posts"
 
-mkdir -p "$SITE_ROOT/site/pages" "$POSTS_STORE"
+mkdir -p \
+  "$SITE_ROOT/site/pages" \
+  "$SITE_DATA/ssh-auth/sessions" \
+  "$SITE_DATA/ssh-auth/users/admin" \
+  "$POSTS_STORE"
 ln -s "$POSTS_STORE" "$SITE_ROOT/site/pages/posts"
+
+session_token=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+csrf_token=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+expires_at=$(( $(date +%s) + 3600 ))
+
+cat > "$SITE_DATA/ssh-auth/users/admin/profile.conf" <<EOF
+username=admin
+is_admin=true
+fingerprint=admin-fingerprint
+EOF
+
+cat > "$SITE_DATA/ssh-auth/sessions/$session_token.conf" <<EOF
+username=admin
+csrf_token=$csrf_token
+expires_at=$expires_at
+is_admin=true
+EOF
 
 cat > "$POSTS_STORE/example-post.md" <<'EOS'
 ---
@@ -89,6 +110,34 @@ assert_eq 'false' "$(printf '%s\n' "$post_context_json" | jq -r '.sync_status.ha
 
 catalog_source_path=$(blog_public_posts_catalog_build_json | jq -r '.posts[] | select(.source_path == "posts/example-post.md") | .source_path')
 assert_eq 'posts/example-post.md' "$catalog_source_path" 'public posts catalog exposes mounted source path for admin edits'
+
+edit_body="post_path=$(blog_url_encode 'posts/example-post.md')&session_token=$session_token&csrf_token=$csrf_token"
+edit_json=$(printf '%s' "$edit_body" |
+  REQUEST_METHOD=POST \
+  CONTENT_TYPE=application/x-www-form-urlencoded \
+  CONTENT_LENGTH=${#edit_body} \
+  /bin/sh "$ROOT_DIR/cgi/blog-create-draft-from-post" |
+  sed -n '/^{/,$p')
+edit_draft_id=$(printf '%s\n' "$edit_json" | jq -r '.draft_id // ""')
+case "$edit_json" in
+  *'"success":true'*) pass ;;
+  *) fail 'create draft from post succeeds for an existing published post' ;;
+esac
+case "$edit_draft_id" in
+  '') fail 'create draft from post returns a draft id' ;;
+  *) pass ;;
+esac
+assert_eq 'true' "$(test -f "$POSTS_STORE/example-post.md" && printf true || printf false)" 'creating an edit draft preserves the published markdown file'
+assert_eq 'posts/example-post.md' "$(blog_public_posts_catalog_build_json | jq -r '.posts[] | select(.source_path == "posts/example-post.md") | .source_path')" 'creating an edit draft keeps the post in the public catalog'
+assert_eq '0' "$(wc -l < "$SITE_DATA/nostr/state/hidden_posts.txt" | tr -d ' ')" 'creating an edit draft does not hide the post from Nostr projection state'
+draft_list_body="session_token=$session_token&csrf_token=$csrf_token"
+draft_list_json=$(printf '%s' "$draft_list_body" |
+  REQUEST_METHOD=POST \
+  CONTENT_TYPE=application/x-www-form-urlencoded \
+  CONTENT_LENGTH=${#draft_list_body} \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-drafts" |
+  sed -n '/^{/,$p')
+assert_eq "$edit_draft_id" "$(printf '%s\n' "$draft_list_json" | jq -r '.drafts[] | select(.source_post_path == "posts/example-post.md") | .draft_id')" 'draft list exposes source edit draft id for reopening'
 
 catalog_json=$(blog_public_posts_catalog_build_json)
 link_catalog_row=$(printf '%s\n' "$catalog_json" | jq -c '.posts[] | select(.source_path == "posts/link-post.md")')

@@ -206,7 +206,7 @@
   }
 
   function themeStylesheetVersion() {
-    return String(window.__wizardryThemeStylesheetVersion || '20260621-theme-sync1');
+    return String(window.__wizardryThemeStylesheetVersion || '20260621-parchment-restore2');
   }
 
   function reconcileThemeLink() {

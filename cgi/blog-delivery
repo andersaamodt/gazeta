@@ -94,6 +94,11 @@ done
 
 items_json=$(jq -sc '.' "$items_file" 2>/dev/null || printf '[]')
 rm -f "$items_file"
+style_css_version='20260621-parchment-restore2'
+includes_dir="$blog_site_root/site/includes"
+nav_file="$includes_dir/nav.md"
+footer_file="$includes_dir/footer.md"
+head_file="$includes_dir/head.html"
 
 if [ "$format" = 'json' ] || printf '%s' "$accept" | grep -qi 'application/json'; then
   blog_send_json_headers
@@ -105,16 +110,26 @@ fi
 printf 'Content-Type: text/html; charset=UTF-8\r\n'
 printf 'Cache-Control: no-store\r\n'
 printf '\r\n'
-cat <<'HTML_HEAD'
+cat <<HTML_HEAD
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Software Delivery</title>
-<link rel="stylesheet" href="/static/style.css?v=20260621-parchment-tags1">
+<link rel="stylesheet" href="/static/style.css?v=$style_css_version">
+HTML_HEAD
+if [ -f "$head_file" ]; then
+  cat "$head_file"
+fi
+cat <<'HTML_HEAD'
 </head>
 <body>
+HTML_HEAD
+if [ -f "$nav_file" ]; then
+  cat "$nav_file"
+fi
+cat <<'HTML_HEAD'
 <main class="checkout-shell delivery-shell">
 <div class="checkout-head">
 <h1>Software Delivery</h1>
@@ -150,6 +165,11 @@ cat <<'HTML_FOOT'
 </section>
 <p class="delivery-note">This page can be kept for future re-downloads. If a link is shared broadly, access can be rotated from the order record without changing the public product page.</p>
 </main>
+HTML_FOOT
+if [ -f "$footer_file" ]; then
+  cat "$footer_file"
+fi
+cat <<'HTML_FOOT'
 </body>
 </html>
 HTML_FOOT
