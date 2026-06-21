@@ -95,6 +95,7 @@ check_script_then_marked "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/pub
 check_script_present "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/list-page.js'
 check_script_present "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/nostr-page-bootstrap/$slug.js'
 check_script_present "$ROOT_DIR/cgi/pre-build" 'blog-prerender-nostr-page-bootstraps'
+check_script_present "$ROOT_DIR/cgi/pre-build" "printf '120'"
 check_generated_shell "assignments" "public-ranking" '/static/public-ranking-page.js' yes
 
 printf '%s\n' 'ok'

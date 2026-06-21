@@ -261,7 +261,7 @@ write_local_embed_bootstraps
 
 if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   prerender_timeout=${BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS-}
-  [ -n "$prerender_timeout" ] || prerender_timeout=$(config-get "$blog_site_conf" nostr_page_prerender_timeout_seconds 2>/dev/null || printf '25')
+  [ -n "$prerender_timeout" ] || prerender_timeout=$(config-get "$blog_site_conf" nostr_page_prerender_timeout_seconds 2>/dev/null || printf '120')
   case "$prerender_timeout" in ''|*[!0-9]*) prerender_timeout=25 ;; esac
   if [ "$prerender_timeout" -lt 1 ]; then prerender_timeout=1; fi
   if [ "$prerender_timeout" -gt 300 ]; then prerender_timeout=300; fi

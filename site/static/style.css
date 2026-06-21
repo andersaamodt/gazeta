@@ -9477,6 +9477,13 @@ footer {
   align-items: center;
 }
 
+.footer-version {
+  color: var(--light-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 .footer-feed-link {
   display: inline-flex;
   gap: 0.35rem;

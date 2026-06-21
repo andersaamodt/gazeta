@@ -248,6 +248,10 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
+grep -Fq 'v0.7.1' "$ROOT_DIR/site/includes/footer.md" || {
+  printf '%s\n' "footer missing current site version before GitHub" >&2
+  exit 1
+}
 if grep -Fq 'paintContactFirstFrame' "$canonical_root/static/nostr-page-bootstrap/contact.js" || grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/contact.js"; then
   printf '%s\n' "contact bootstrap still contains first-frame DOM replacement code" >&2
   exit 1
