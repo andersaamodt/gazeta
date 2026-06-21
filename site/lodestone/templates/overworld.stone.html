@@ -1,0 +1,19 @@
+---
+title: Overworld
+published_at: "2026-04-15T00:00:00Z"
+content_hash: ""
+tags: ["nostr", "overworld"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<lode-page>
+<section id="overworld-page-root" class="overworld-page-shell" data-page-slug={slug} data-page-type="overworld" data-page-title={title}{@html prerender_attrs}>
+<div class="list-page-head overworld-page-head"><h1 id="overworld-page-title">{title}</h1></div>
+<div class="overworld-game-mount" data-overworld-game{@html prerender_attrs}>{@html content_html}</div>
+</section>
+
+<script src="/static/nostr-page-bootstrap/{slug}.js"></script>
+<script src="/static/overworld-game.js?v={overworld_game_js_version}"></script>
+</lode-page>

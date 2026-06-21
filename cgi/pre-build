@@ -209,7 +209,19 @@ sync_lodestone_pages() {
     page_dest="$blog_site_root/site/pages/$page_rel"
     page_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-page.XXXXXX")
     mkdir -p "$(dirname "$page_dest")"
-    "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"
+    stone_slug=$(basename "$page_rel" .md)
+    case "$stone_slug" in
+      blog)
+        "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
+          --set "slug=blog" \
+          --set "prerender_attrs=" \
+          --set "posts_html=" \
+          --set "blog_page_js_version=$blog_page_js_version" > "$page_tmp"
+        ;;
+      *)
+        "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"
+        ;;
+    esac
     mv "$page_tmp" "$page_dest"
     chmod 644 "$page_dest" 2>/dev/null || true
   done

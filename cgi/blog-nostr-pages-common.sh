@@ -1378,6 +1378,57 @@ blog_nostr_page_front_matter_to_tmp() {
   } > "$tmp"
 }
 
+blog_nostr_page_lodestone_template_path() {
+  page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  case "$page_type" in
+    blog)
+      printf '%s/site/lodestone/pages/blog.stone.html\n' "$blog_site_root"
+      ;;
+    software-gallery)
+      printf '%s/site/lodestone/templates/icon-gallery.stone.html\n' "$blog_site_root"
+      ;;
+    icon-gallery|contact|nip23|public-ranking|overworld|list)
+      printf '%s/site/lodestone/templates/%s.stone.html\n' "$blog_site_root" "$page_type"
+      ;;
+    *)
+      printf '%s/site/lodestone/templates/list.stone.html\n' "$blog_site_root"
+      ;;
+  esac
+}
+
+blog_nostr_page_render_lodestone_source() {
+  render_slug=$(blog_nostr_page_slug "${1-}")
+  render_page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  render_title=${3-Untitled}
+  render_description=${4-}
+  render_attrs=${5-}
+  render_content_html=${6-}
+  render_out=${7-}
+  [ -n "$render_slug" ] && [ -n "$render_out" ] || return 1
+  [ -x "$blog_site_root/cgi/gazeta-lodestone" ] || return 1
+  render_template=$(blog_nostr_page_lodestone_template_path "$render_page_type")
+  [ -f "$render_template" ] || return 1
+  render_content_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-content.XXXXXX")
+  printf '%s\n' "$render_content_html" > "$render_content_tmp"
+  "$blog_site_root/cgi/gazeta-lodestone" render-md "$render_template" \
+    --set "title=$render_title" \
+    --set "slug=$render_slug" \
+    --set "page_type=$render_page_type" \
+    --set "description=$render_description" \
+    --set "prerender_attrs=$render_attrs" \
+    --set "list_page_js_version=$blog_nostr_list_page_js_version" \
+    --set "contact_page_js_version=$blog_nostr_contact_page_js_version" \
+    --set "simplex_web_default_chat_js_version=$blog_nostr_simplex_web_default_chat_js_version" \
+    --set "simplex_web_adapter_init_js_version=$blog_nostr_simplex_web_adapter_init_js_version" \
+    --set "nip23_page_js_version=$blog_nostr_nip23_page_js_version" \
+    --set "public_ranking_page_js_version=$blog_nostr_public_ranking_page_js_version" \
+    --set "overworld_game_js_version=$blog_nostr_overworld_game_js_version" \
+    --set "blog_page_js_version=$blog_page_js_version" \
+    --html-file "content_html=$render_content_tmp" \
+    --html-file "posts_html=$render_content_tmp" > "$render_out"
+  rm -f "$render_content_tmp"
+}
+
 blog_nostr_page_write_prerendered_source() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
@@ -1407,6 +1458,19 @@ blog_nostr_page_write_prerendered_source() {
   esac
   blog_nostr_page_front_matter_to_tmp "$page_file" "$page_title" "$tags" "$tmp"
 
+  lodestone_content_html=''
+  case "$page_type" in
+    contact) lodestone_content_html=$(blog_nostr_prerender_contact_html "$payload_json") ;;
+    nip23) lodestone_content_html=$(blog_nostr_prerender_nip23_html "$payload_json") ;;
+    blog) lodestone_content_html=$(blog_nostr_prerender_blog_posts_html "$payload_json") ;;
+    public-ranking) lodestone_content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json") ;;
+    overworld) lodestone_content_html=$(blog_nostr_prerender_overworld_html) ;;
+    *) lodestone_content_html=$(blog_nostr_prerender_list_html "$payload_json") ;;
+  esac
+
+  if blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "$lodestone_content_html" "$tmp"; then
+    :
+  else
   case "$page_type" in
     contact)
       content_html=$(blog_nostr_prerender_contact_html "$payload_json")
@@ -1515,6 +1579,7 @@ blog_nostr_page_write_prerendered_source() {
       } >> "$tmp"
       ;;
   esac
+  fi
 
   blog_snapshot_file_before_replace "$page_file" "$tmp"
   mv "$tmp" "$page_file"
@@ -2906,6 +2971,20 @@ blog_nostr_page_ensure_source_page() {
 
   blog_snapshot_file_before_replace "$page_file"
   page_title=$(blog_nostr_page_default_title "$slug" "$page_type")
+  initial_content_html=''
+  case "$page_type" in
+    blog)
+      initial_content_html='<p class="placeholder">No posts to show yet.</p>'
+      ;;
+    overworld)
+      initial_content_html=$(blog_nostr_prerender_overworld_html)
+      ;;
+  esac
+  if blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "" "" "$initial_content_html" "$page_file"; then
+    chmod 644 "$page_file" 2>/dev/null || true
+    blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
+    return 0
+  fi
 
   case "$page_type" in
     contact)

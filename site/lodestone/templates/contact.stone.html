@@ -1,0 +1,34 @@
+---
+title: Contact
+published_at: "2026-04-15T00:00:00Z"
+content_hash: ""
+tags: ["nostr", "contact"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<lode-page>
+<section id="contact-page-root" class="list-page-shell" data-page-slug={slug} data-page-type="contact" data-page-title={title}{@html prerender_attrs}>
+<div class="list-page-head">
+<h1 id="contact-page-title">{title}</h1>
+<p id="contact-page-description" class="muted">{description}</p>
+</div>
+<div id="contact-page-admin" class="list-admin" hidden></div>
+<div id="contact-page-validation" class="list-validation" hidden></div>
+<div id="contact-page-content" class="list-page-content"{@html prerender_attrs}>{@html content_html}</div>
+</section>
+
+<script src="/static/nostr-page-bootstrap/{slug}.js"></script>
+<script src="/static/nostr-publish-dialog.js"></script>
+<script src="/static/simplex-web-transport.js"></script>
+<script type="importmap">
+{"imports":{"@noble/ciphers/":"https://cdn.jsdelivr.net/npm/@noble/ciphers@2.2.0/","@noble/curves/":"https://cdn.jsdelivr.net/npm/@noble/curves@2.2.0/","@noble/hashes/":"https://cdn.jsdelivr.net/npm/@noble/hashes@2.2.0/"}}
+</script>
+<script type="module" src="/static/simplex-web-browser-adapter-init.mjs?v={simplex_web_adapter_init_js_version}"></script>
+<script src="/static/simplex-web-default-chat.js?v={simplex_web_default_chat_js_version}"></script>
+<script src="/static/simplex-web-session-store.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>
+<script src="/static/contact-page.js?v={contact_page_js_version}"></script>
+</lode-page>

@@ -34,12 +34,28 @@ chmod +x "$tmp_root/bin/config-get"
 PATH="$tmp_root/bin:$PATH"
 export PATH
 
+cat > "$state_root/nostr-pages.json" <<'JSON'
+{
+  "pages": [
+    {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog"},
+    {"slug":"contact","type":"contact","show_in_nav":true,"placeholder_title":"Contact"},
+    {"slug":"values","type":"nip23","show_in_nav":true,"placeholder_title":"Values"},
+    {"slug":"projects","type":"public-ranking","show_in_nav":true,"placeholder_title":"Projects"},
+    {"slug":"overworld","type":"overworld","show_in_nav":true,"placeholder_title":"Overworld"},
+    {"slug":"reading-list","type":"list","show_in_nav":true,"placeholder_title":"Reading List"},
+    {"slug":"software","type":"software-gallery","show_in_nav":true,"placeholder_title":"Software"}
+  ]
+}
+JSON
+
 "$site_root/cgi/pre-build"
 
-grep -Fq 'data-lodestone-root="page"' "$site_root/site/pages/blog.md" || {
-  printf '%s\n' "blog page missing lodestone render root" >&2
-  exit 1
-}
+for page in blog contact values projects overworld reading-list software; do
+  grep -Fq 'data-lodestone-root="page"' "$site_root/site/pages/$page.md" || {
+    printf '%s\n' "$page page missing lodestone render root" >&2
+    exit 1
+  }
+done
 
 grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing prerender data from lodestone render" >&2
@@ -56,7 +72,7 @@ grep -Fq 'gazeta-lodestone" render-md "$lodestone_template"' "$site_root/cgi/blo
   exit 1
 }
 
-grep -Fq 'v0.7.4' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.5' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

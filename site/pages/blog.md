@@ -1,9 +1,5 @@
 ---
 title: Blog
-slug: blog
-prerender_attrs: ""
-posts_html: ""
-blog_page_js_version: 20260620-blog-prerender-ready1
 ---
 
 
