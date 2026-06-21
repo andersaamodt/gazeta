@@ -138,10 +138,11 @@ blog_nostr_page_save_draft_state_json oeuvre list '{
 	  "group_by":"year",
 	  "show_marker_filters":true,
 	  "show_markers":true,
-	  "default_markers":"published",
+	  "default_markers":"curated",
 	  "elements":[
-	    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"published"},
-	    {"type":"entry","markdown":"[Ultramemes](/oeuvre/ultramemes.mkv)","date":"2026","marker":"published"},
+	    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"curated"},
+	    {"type":"entry","markdown":"[Ultramemes](/oeuvre/ultramemes.mkv)","date":"2026","marker":"curated, video talk"},
+	    {"type":"entry","markdown":"Essay Work","date":"2025","marker":"essay"},
 	    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
   ]
 }'
@@ -287,6 +288,8 @@ assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-marker-filter-pill 
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'data-marker-filter-action="toggle"' 'list prerender includes marker filter controls'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '--marker-pill-h:' 'list prerender includes first-paint marker pill colors'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a href="/oeuvre/ultramemes.mkv" download>Ultramemes</a>' 'list prerender marks MKV links as downloads'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'video talk' 'list prerender includes multi-word marker filter labels'
+assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'Essay Work' 'list prerender applies curated default marker filters before hydration'
 assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'Another Work' 'list prerender applies default marker filters before hydration'
 assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'Public Reading Fixture' 'list prerender includes public submitted list entries'
 assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-entry-id="public-fixture-entry"' 'list prerender keeps public entry identity for hydration'

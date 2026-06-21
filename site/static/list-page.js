@@ -432,6 +432,14 @@
 	    });
 	    if (canPreserveStaticPrerender(cachedPayload) && hasMatchingStaticPrerender(cachedPayload, els.content)) {
 	      initializePrerenderMarkerFiltersFromPayload();
+      if (hasMarkerFilterHashOverride()) {
+        renderList();
+        renderAdmin();
+        renderValidation();
+        markInitialContentPainted();
+        markHydrationPageReady();
+        return true;
+      }
 	      renderHead();
 	      renderAdmin();
 	      renderValidation();
@@ -1419,11 +1427,68 @@
     });
   }
 
+  function markerHashKey(text) {
+    return compact(String(text || '').replace(/_/g, ' ')).toLowerCase();
+  }
+
+  function markerFilterHashTokensFromLocation() {
+    var raw = '';
+    try {
+      raw = String(window.location && window.location.hash || '');
+    } catch (_err) {
+      raw = '';
+    }
+    if (!raw || raw === '#') {
+      return [];
+    }
+    return raw.split('#').map(function (part) {
+      var token = String(part || '').trim();
+      if (!token) {
+        return '';
+      }
+      try {
+        token = decodeURIComponent(token);
+      } catch (_decodeErr) {
+        token = token.replace(/%20/g, ' ');
+      }
+      return compact(token.replace(/_/g, ' '));
+    }).filter(function (token) {
+      return !!token;
+    });
+  }
+
+  function hasMarkerFilterHashOverride() {
+    return markerFilterHashTokensFromLocation().length > 0;
+  }
+
+  function markerFiltersFromHash(availableMarkers) {
+    var markers = Array.isArray(availableMarkers) ? availableMarkers : [];
+    var byKey = {};
+    markers.forEach(function (marker) {
+      byKey[markerHashKey(marker)] = marker;
+    });
+    var seen = {};
+    var selected = [];
+    markerFilterHashTokensFromLocation().forEach(function (token) {
+      var marker = byKey[markerHashKey(token)] || '';
+      if (marker && !seen[marker]) {
+        seen[marker] = true;
+        selected.push(marker);
+      }
+    });
+    return selected;
+  }
+
   function ensureDefaultMarkerFilters(availableMarkers, rawDefaultMarkers) {
     if (state.markerFilterInitialized) {
       return;
     }
     state.markerFilterInitialized = true;
+    if (hasMarkerFilterHashOverride()) {
+      state.markerFilterInclude = markerFiltersFromHash(availableMarkers);
+      state.markerFilterExclude = [];
+      return;
+    }
     var defaults = markerTokensFromText(rawDefaultMarkers || '');
     if (!defaults.length) {
       return;
@@ -5569,6 +5634,16 @@
     if (document.visibilityState === 'visible') {
       maybeReloadForAuthChange();
     }
+  });
+  window.addEventListener('hashchange', function () {
+    var s = getRenderState();
+    if (!s || !s.show_marker_filters) {
+      return;
+    }
+    state.markerFilterInclude = [];
+    state.markerFilterExclude = [];
+    state.markerFilterInitialized = false;
+    renderList();
   });
   if (!renderFromBootstrapCache()) {
     renderFromPrerenderBootstrap();
