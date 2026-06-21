@@ -572,14 +572,9 @@
     if (!value) {
       return '';
     }
-    var html = escapeHtml(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_match, label, href) {
-      var attrs = ' href="' + href + '"';
-      if (isDownloadOnlyMediaUrl(href)) {
-        attrs += ' download';
-      }
-      return '<a' + attrs + '>' + label + '</a>';
+    return escapeHtml(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_match, label, href) {
+      return '<a href="' + href + '">' + label + '</a>';
     });
-    return addDownloadAttrsToMediaLinks(html);
   }
 
   function markdownInlineLinkLabel(md) {
@@ -595,30 +590,12 @@
     if (!url) {
       return '<span class="' + escapeHtml(cssClass) + '">' + label + '</span>';
     }
-    return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '"' + downloadOnlyMediaAttr(url) + ' title="' + escapeHtml(title || 'Open linked post') + '">' + label + '</a>';
+    return '<a class="' + escapeHtml(cssClass + ' is-post-url-linked') + '" href="' + escapeHtml(url) + '" title="' + escapeHtml(title || 'Open linked post') + '">' + label + '</a>';
   }
 
   function listEntryHrefAttr(postUrl) {
     var url = String(postUrl || '').trim();
     return url ? ' data-list-entry-href="' + escapeHtml(url) + '"' : '';
-  }
-
-  function isDownloadOnlyMediaUrl(url) {
-    var path = String(url || '').split('#')[0].split('?')[0].toLowerCase();
-    return /\.mkv$/.test(path);
-  }
-
-  function downloadOnlyMediaAttr(url) {
-    return isDownloadOnlyMediaUrl(url) ? ' download' : '';
-  }
-
-  function addDownloadAttrsToMediaLinks(html) {
-    return String(html || '').replace(/<a\b([^>]*\bhref=(["'])([^"']+)\2[^>]*)>/gi, function (match, attrs, _quote, href) {
-      if (!isDownloadOnlyMediaUrl(href) || /\sdownload(\s|=|>|$)/i.test(attrs)) {
-        return match;
-      }
-      return '<a' + attrs + ' download>';
-    });
   }
 
   function shouldIgnoreListEntryNavigation(target) {
@@ -631,18 +608,6 @@
   function openListEntryHref(url, event) {
     var href = String(url || '').trim();
     if (!href) {
-      return;
-    }
-    if (isDownloadOnlyMediaUrl(href)) {
-      var link = document.createElement('a');
-      link.href = href;
-      link.download = '';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      if (link.parentNode) {
-        link.parentNode.removeChild(link);
-      }
       return;
     }
     if (event && (event.metaKey || event.ctrlKey)) {

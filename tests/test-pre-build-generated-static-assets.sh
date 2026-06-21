@@ -59,6 +59,9 @@ cat > "$canonical_root/static/themes/lapidarist.css" <<'EOFTHEME'
 EOFTHEME
 
 printf '%s\n' 'fixture-texture' > "$canonical_root/static/textures/lapidarist-parchment.webp"
+mkdir -p "$XDG_STATE_HOME/gazeta/legacy-assets/oeuvre" "$XDG_STATE_HOME/gazeta/legacy-assets/root"
+printf '%s\n' 'legacy-video-fixture' > "$XDG_STATE_HOME/gazeta/legacy-assets/oeuvre/ultramemes.mkv"
+printf '%s\n' 'legacy-root-fixture' > "$XDG_STATE_HOME/gazeta/legacy-assets/root/feed.xml"
 
 mkdir -p "$tmp_root/bin"
 cat > "$tmp_root/bin/config-get" <<'EOFCONFIG'
@@ -127,6 +130,22 @@ blog_nostr_pages_save_json '{"pages":[]}'
   printf '%s\n' "missing build-static site bootstrap artifact" >&2
   exit 1
 }
+[ -f "$generated_root/static/legacy-assets/oeuvre/ultramemes.mkv" ] || {
+  printf '%s\n' "missing generated legacy asset static mirror" >&2
+  exit 1
+}
+[ -f "$generated_root/build-static/legacy-assets/oeuvre/ultramemes.mkv" ] || {
+  printf '%s\n' "missing build-static legacy asset mirror" >&2
+  exit 1
+}
+[ -f "$generated_root/build/oeuvre/ultramemes.mkv" ] || {
+  printf '%s\n' "missing clean-url legacy asset alias" >&2
+  exit 1
+}
+[ -f "$generated_root/build/feed.xml" ] || {
+  printf '%s\n' "missing root legacy asset alias" >&2
+  exit 1
+}
 
 grep -Fq 'theme: "lapidarist"' "$generated_root/static/site-bootstrap.js" || {
   printf '%s\n' "generated bootstrap did not default to the Lapidarist theme" >&2
@@ -150,6 +169,18 @@ cmp -s "$canonical_root/static/style.css" "$generated_root/build-static/style.cs
 }
 grep -Fq 'fixture-texture' "$generated_root/static/textures/lapidarist-parchment.webp" || {
   printf '%s\n' "generated parchment texture content mismatch" >&2
+  exit 1
+}
+grep -Fq 'legacy-video-fixture' "$generated_root/build/oeuvre/ultramemes.mkv" || {
+  printf '%s\n' "clean-url legacy asset alias content mismatch" >&2
+  exit 1
+}
+grep -Fq 'oeuvre/ultramemes.mkv' "$generated_root/build/.legacy-asset-aliases.manifest" || {
+  printf '%s\n' "legacy asset alias manifest missing nested alias" >&2
+  exit 1
+}
+grep -Fq 'feed.xml' "$generated_root/build/.legacy-asset-aliases.manifest" || {
+  printf '%s\n' "legacy asset alias manifest missing root alias" >&2
   exit 1
 }
 

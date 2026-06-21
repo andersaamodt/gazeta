@@ -85,12 +85,109 @@ sync_static_tree() {
   find "$sync_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
   find "$sync_dest" -type f -exec chmod 644 {} \; 2>/dev/null || true
 }
+
+legacy_assets_dir() {
+  if [ -n "${BLOG_LEGACY_ASSETS_DIR:-}" ]; then
+    printf '%s\n' "$BLOG_LEGACY_ASSETS_DIR"
+    return 0
+  fi
+  printf '%s/gazeta/legacy-assets\n' "${XDG_STATE_HOME:-$HOME/.local/state}"
+}
+
+copy_tree_overlay() {
+  overlay_src=${1-}
+  overlay_dest=${2-}
+  [ -n "$overlay_src" ] && [ -n "$overlay_dest" ] || return 1
+  [ -d "$overlay_src" ] || return 0
+  mkdir -p "$overlay_dest"
+  (
+    cd "$overlay_src" || exit 1
+    find . -type d -print
+  ) | while IFS= read -r overlay_rel || [ -n "$overlay_rel" ]; do
+    overlay_rel=${overlay_rel#./}
+    [ -n "$overlay_rel" ] || continue
+    case "$overlay_rel" in
+      .*|../*|*/../*|/*) continue ;;
+    esac
+    mkdir -p "$overlay_dest/$overlay_rel"
+  done
+  (
+    cd "$overlay_src" || exit 1
+    find . -type f -print
+  ) | while IFS= read -r overlay_rel || [ -n "$overlay_rel" ]; do
+    overlay_rel=${overlay_rel#./}
+    [ -n "$overlay_rel" ] || continue
+    case "$overlay_rel" in
+      .*|../*|*/../*|/*) continue ;;
+    esac
+    mkdir -p "$(dirname "$overlay_dest/$overlay_rel")"
+    cp "$overlay_src/$overlay_rel" "$overlay_dest/$overlay_rel"
+    chmod 644 "$overlay_dest/$overlay_rel" 2>/dev/null || true
+  done
+  find "$overlay_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
+}
+
+sync_legacy_asset_aliases() {
+  aliases_src=${1-}
+  aliases_dest=$(blog_generated_build_dir)
+  aliases_manifest="$aliases_dest/.legacy-asset-aliases.manifest"
+  aliases_new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-legacy-asset-aliases.XXXXXX")
+  [ -n "$aliases_src" ] && [ -d "$aliases_src" ] || {
+    rm -f "$aliases_new_manifest"
+    return 0
+  }
+  mkdir -p "$aliases_dest"
+
+  if [ -f "$aliases_manifest" ]; then
+    while IFS= read -r old_alias || [ -n "$old_alias" ]; do
+      case "$old_alias" in
+        ''|.*|../*|*/../*|/*) continue ;;
+      esac
+      rm -f "$aliases_dest/$old_alias" 2>/dev/null || true
+    done < "$aliases_manifest"
+  fi
+
+  (
+    cd "$aliases_src" || exit 1
+    find . -type f -print
+  ) | while IFS= read -r asset_rel || [ -n "$asset_rel" ]; do
+    asset_rel=${asset_rel#./}
+    [ -n "$asset_rel" ] || continue
+    case "$asset_rel" in
+      .*|../*|*/../*|/*) continue ;;
+    esac
+    case "$asset_rel" in
+      root/*) alias_rel=${asset_rel#root/} ;;
+      *) alias_rel=$asset_rel ;;
+    esac
+    case "$alias_rel" in
+      ''|.*|../*|*/../*|/*|cgi|cgi/*|pages|pages/*|posts|posts/*|static|static/*|uploads|uploads/*)
+        continue
+        ;;
+    esac
+    alias_path="$aliases_dest/$alias_rel"
+    [ -d "$alias_path" ] && continue
+    mkdir -p "$(dirname "$alias_path")"
+    cp "$aliases_src/$asset_rel" "$alias_path"
+    chmod 644 "$alias_path" 2>/dev/null || true
+    printf '%s\n' "$alias_rel" >> "$aliases_new_manifest"
+  done
+
+  sort -u "$aliases_new_manifest" > "$aliases_manifest"
+  chmod 644 "$aliases_manifest" 2>/dev/null || true
+  rm -f "$aliases_new_manifest"
+}
+
 if [ "$site_bootstrap_dir" != "$blog_source_static_dir" ]; then
   sync_static_tree "$blog_source_static_dir" "$site_bootstrap_dir"
 else
   mkdir -p "$site_bootstrap_dir"
 fi
 sync_static_tree "$blog_source_static_dir" "$build_bootstrap_dir"
+legacy_assets_src=$(legacy_assets_dir)
+copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"
+copy_tree_overlay "$legacy_assets_src" "$build_bootstrap_dir/legacy-assets"
+sync_legacy_asset_aliases "$legacy_assets_src"
 navbar_json_path="$site_bootstrap_dir/navbar-pages.json"
 footer_json_path="$site_bootstrap_dir/footer-pages.json"
 site_bootstrap_path="$site_bootstrap_dir/site-bootstrap.js"
