@@ -3446,6 +3446,11 @@
       return stripeIndex % 2 === 0 ? ' is-row-highlight' : '';
     }
 
+    function rowOpenTag(el, depth) {
+      var safeDepth = Math.max(0, Number(depth || 0) || 0);
+      return '<li class="list-entry-line list-depth-' + String(safeDepth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '" style="--list-depth:' + String(safeDepth) + ';"' + listEntryHrefAttr(el && el.post_url) + '>';
+    }
+
     (Array.isArray(elements) ? elements : []).forEach(function (el, idx) {
       var depth = Math.max(0, Number(el && el.depth || 0) || 0);
       if (!started && depth > 0) {
@@ -3456,14 +3461,14 @@
       }
 
       if (!started) {
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += rowOpenTag(el, depth) + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         openDepth = depth;
         started = true;
         return;
       }
 
       if (depth === openDepth) {
-        html += '</li><li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += '</li>' + rowOpenTag(el, depth) + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -3472,7 +3477,7 @@
           html += '<ul class="list-sub-entries">';
           openDepth += 1;
         }
-        html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+        html += rowOpenTag(el, depth) + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
         return;
       }
 
@@ -3481,7 +3486,7 @@
         html += '</ul></li>';
         openDepth -= 1;
       }
-      html += '<li class="list-entry-line list-depth-' + String(depth) + rowStripeClass() + '" data-list-entry-id="' + escapeHtml(readOnlyEntryKey(el)) + '"' + listEntryHrefAttr(el && el.post_url) + '>' + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
+      html += rowOpenTag(el, depth) + renderEntryInner(el, groupBy, sectionLabel, showMarkers, alphabetizeMarkers);
     });
 
     if (started) {

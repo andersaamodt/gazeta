@@ -677,10 +677,12 @@ def linked_text(label, url, class_name):
         )
     return '<span class="%s">%s</span>' % (class_name, md_inline(label))
 
-def marker_pills(entry, show, color_map):
+def marker_pills(entry, show, color_map, hidden_markers=None):
     if not show:
         return ""
     markers = marker_tokens(entry.get("marker"))
+    if hidden_markers:
+        markers = [marker for marker in markers if marker not in hidden_markers]
     if not markers:
         return ""
     return '<span class="list-entry-marker-pills">%s</span>' % "".join(
@@ -750,6 +752,12 @@ def apply_default_marker_filters(entries, default_markers_raw):
                 keep[parent] = True
                 parent = parent_index_by_row[parent]
     return [entry for index, entry in enumerate(entries) if keep.get(index)]
+
+def selected_default_marker_set(entries, show_marker_filters, default_markers_raw):
+    if not show_marker_filters:
+        return set()
+    available = set(unique_marker_values(entries))
+    return set(marker for marker in marker_tokens(default_markers_raw) if marker in available)
 
 def date_pill(entry, group_by, section_label):
     date = text(entry.get("date"))
@@ -835,7 +843,7 @@ def sort_entries_for_votes(entries, allow_votes):
         return (-score, -vote_action_rank(latest_vote), -latest_at if latest_vote > 0 else latest_at if latest_vote < 0 else 0, index)
     return [entry for _index, entry in sorted(enumerate(entries), key=sort_key)]
 
-def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False, color_map=None, allow_votes=False):
+def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False, color_map=None, allow_votes=False, row_index=0, hidden_default_markers=None):
     line = text(entry.get("markdown"))
     description = text(entry.get("description"))
     image = text(entry.get("image_url"))
@@ -846,7 +854,7 @@ def row_html(entry, group_by="", section_label="", show_markers=False, gallery=F
         depth = 0
     if depth < 0:
         depth = 0
-    markers = marker_pills(entry, show_markers, color_map or {})
+    markers = marker_pills(entry, show_markers, color_map or {}, hidden_default_markers or set())
     date = date_pill(entry, group_by, section_label)
     meta = ""
     if markers or date:
@@ -860,10 +868,13 @@ def row_html(entry, group_by="", section_label="", show_markers=False, gallery=F
     key = html.escape(entry_key(entry), quote=True)
     votes = vote_controls(entry, allow_votes)
     first_line_class = "list-entry-first-line" + (" has-votes" if votes else "")
+    row_class = "list-entry-line list-depth-%d" % depth
+    if row_index % 2 == 1:
+        row_class += " is-row-highlight"
     return (
-        '<li class="list-entry-line list-depth-%d" data-list-entry-id="%s" style="--list-depth:%d;"%s>'
+        '<li class="%s" data-list-entry-id="%s" style="--list-depth:%d;"%s>'
         '<div class="%s">%s<span class="list-entry-main-inline">%s%s%s</span>%s</div></li>'
-    ) % (depth, key, depth, entry_href_attr(entry), first_line_class, votes, icon, linked_text(line, post_url, "list-entry-markdown"), desc, meta)
+    ) % (row_class, key, depth, entry_href_attr(entry), first_line_class, votes, icon, linked_text(line, post_url, "list-entry-markdown"), desc, meta)
 
 def tile_html(entry):
     line = text(entry.get("markdown"))
@@ -915,6 +926,7 @@ entries = [
 ]
 marker_color_by_token = build_marker_color_map(entries)
 display_entries = apply_default_marker_filters(entries, default_markers) if show_marker_filters else entries
+hidden_default_markers = selected_default_marker_set(entries, show_marker_filters, default_markers)
 
 parts = []
 if state.get("allow_signed_in_submissions") is True:
@@ -945,14 +957,14 @@ elif group_by in ("year", "first_letter", "month", "marker"):
             parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in bucket))
         else:
             parts.append('<ul class="list-entries">')
-            for entry in sort_entries_for_votes(bucket, allow_votes):
-                parts.append(row_html(entry, group_by, label, show_markers, gallery, marker_color_by_token, allow_votes))
+            for row_index, entry in enumerate(sort_entries_for_votes(bucket, allow_votes)):
+                parts.append(row_html(entry, group_by, label, show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers))
             parts.append("</ul>")
         parts.append("</section>")
 elif view == "tile":
     parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in display_entries))
 else:
-    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery, marker_color_by_token, allow_votes) for entry in sort_entries_for_votes(display_entries, allow_votes)))
+    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers) for row_index, entry in enumerate(sort_entries_for_votes(display_entries, allow_votes))))
 
 if after:
     parts.append(after)
