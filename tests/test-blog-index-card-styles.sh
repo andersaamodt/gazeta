@@ -33,6 +33,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/lapidarist.c
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '__wizardryThemeStylesheetVersion' 'theme cache buster is published once for hydrated page code'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'blog-tag-recovery-style' 'head keeps final tag recovery styles after theme CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '--lapidarist-control-shadow: none;' 'head clears theme shadow variables on blog tags'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body a.blog-type-pill,' 'head recovery covers single-post anchor type pills'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-type-bg, #dff4d7) !important;' 'head recovery forces type pills light green'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body a.blog-year-pill,' 'head recovery covers single-post anchor year pills'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-year-bg, #dcecff) !important;' 'head recovery forces year pills light blue'
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" '/static/post-resize.js' 'blog pages no longer load hidden persistent post resizing'
 
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-main-column .post-list > .blog-post-item.blog-post-resizable {' 'blog index cards no longer carry stale resize fallbacks'

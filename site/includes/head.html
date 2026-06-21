@@ -83,6 +83,32 @@ html body .blog-post-item .blog-year-pill:focus-visible {
   -webkit-filter: none !important;
   text-shadow: none !important;
 }
+
+html body a.blog-type-pill,
+html body button.blog-type-pill,
+html body a.blog-type-pill:hover,
+html body button.blog-type-pill:hover:not(:disabled),
+html body a.blog-type-pill:focus-visible,
+html body button.blog-type-pill:focus-visible:not(:disabled) {
+  border-color: var(--post-tag-type-border, #a9d89b) !important;
+  background: var(--post-tag-type-bg, #dff4d7) !important;
+  background-color: var(--post-tag-type-bg, #dff4d7) !important;
+  color: var(--post-tag-type-text, #285f28) !important;
+  -webkit-text-fill-color: var(--post-tag-type-text, #285f28) !important;
+}
+
+html body a.blog-year-pill,
+html body button.blog-year-pill,
+html body a.blog-year-pill:hover,
+html body button.blog-year-pill:hover:not(:disabled),
+html body a.blog-year-pill:focus-visible,
+html body button.blog-year-pill:focus-visible:not(:disabled) {
+  border-color: var(--post-tag-year-border, #a8c8f0) !important;
+  background: var(--post-tag-year-bg, #dcecff) !important;
+  background-color: var(--post-tag-year-bg, #dcecff) !important;
+  color: var(--post-tag-year-text, #245a93) !important;
+  -webkit-text-fill-color: var(--post-tag-year-text, #245a93) !important;
+}
 </style>
 <script defer src="/static/page-head.js?v=20260620-route-hydration1"></script>
 <script defer src="/static/zap-ui.js?v=20260524-zap-panel1"></script>
