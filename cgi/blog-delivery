@@ -112,7 +112,7 @@ cat <<'HTML_HEAD'
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Software Delivery</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=20260621-parchment-tags1">
 </head>
 <body>
 <main class="checkout-shell delivery-shell">

@@ -173,6 +173,11 @@ post_nav_html=$(blog_post_nav_html "$(post_nav_json "$newer_file" "Newer" "post-
 post_menu_html=$(blog_post_page_menu_html)
 
 html_file=$(blog_generated_post_html_path_for_file "$md_file" 2>/dev/null || printf '')
+style_css_version='20260621-parchment-tags1'
+includes_dir="$blog_site_root/site/includes"
+nav_file="$includes_dir/nav.md"
+footer_file="$includes_dir/footer.md"
+head_file="$includes_dir/head.html"
 
 if [ -n "$html_file" ] && [ -f "$html_file" ]; then
   tmp_injected=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-html.XXXXXX")
@@ -210,10 +215,6 @@ if command -v pandoc >/dev/null 2>&1; then
   tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/blog-open-post.XXXXXX")
   trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
-  includes_dir="$blog_site_root/site/includes"
-  nav_file="$includes_dir/nav.md"
-  footer_file="$includes_dir/footer.md"
-  head_file="$includes_dir/head.html"
   body_md="$tmp_dir/body.md"
   body_html_file="$tmp_dir/body.html"
   blog_read_markdown_body "$md_file" > "$body_md"
@@ -257,7 +258,7 @@ if command -v pandoc >/dev/null 2>&1; then
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260615-post-sync-pill1">
+  <link rel="stylesheet" href="/static/style.css?v=$style_css_version">
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/idiomorph-ext.min.js"></script>
 HTML
@@ -324,9 +325,19 @@ cat <<HTML
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>$safe_title</title>
   <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=20260615-post-sync-pill1">
+  <link rel="stylesheet" href="/static/style.css?v=$style_css_version">
+HTML
+if [ -f "$head_file" ]; then
+  cat "$head_file"
+fi
+cat <<HTML
 </head>
 <body>
+HTML
+if [ -f "$nav_file" ]; then
+  cat "$nav_file"
+fi
+cat <<HTML
   <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
     <article class="post-item post-single-item">
       <div class="post-head">$post_menu_html</div>
@@ -336,6 +347,11 @@ cat <<HTML
       $post_nav_html
     </article>
   </main>
+HTML
+if [ -f "$footer_file" ]; then
+  cat "$footer_file"
+fi
+cat <<HTML
 </body>
 </html>
 HTML
