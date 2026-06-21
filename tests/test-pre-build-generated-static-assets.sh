@@ -50,6 +50,8 @@ EOFFOOT
 
 cat > "$canonical_root/static/style.css" <<'EOFSTYLE'
 body { color: #123456; }
+--post-tag-type-bg: #dff4d7;
+--post-tag-year-bg: #dcecff;
 EOFSTYLE
 
 cat > "$canonical_root/static/themes/lapidarist.css" <<'EOFTHEME'
@@ -98,6 +100,14 @@ blog_nostr_pages_save_json '{"pages":[]}'
   printf '%s\n' "missing generated theme stylesheet mirror" >&2
   exit 1
 }
+[ -f "$generated_root/static/style.css" ] || {
+  printf '%s\n' "missing generated base stylesheet mirror" >&2
+  exit 1
+}
+[ -f "$generated_root/build-static/style.css" ] || {
+  printf '%s\n' "missing build-static base stylesheet mirror" >&2
+  exit 1
+}
 [ -f "$generated_root/build-static/themes/lapidarist.css" ] || {
   printf '%s\n' "missing build-static theme stylesheet mirror" >&2
   exit 1
@@ -121,6 +131,14 @@ blog_nostr_pages_save_json '{"pages":[]}'
 
 grep -Fq 'fixture-theme' "$generated_root/static/themes/lapidarist.css" || {
   printf '%s\n' "generated theme stylesheet content mismatch" >&2
+  exit 1
+}
+cmp -s "$canonical_root/static/style.css" "$generated_root/static/style.css" || {
+  printf '%s\n' "generated base stylesheet content mismatch" >&2
+  exit 1
+}
+cmp -s "$canonical_root/static/style.css" "$generated_root/build-static/style.css" || {
+  printf '%s\n' "build-static base stylesheet content mismatch" >&2
   exit 1
 }
 grep -Fq 'fixture-texture' "$generated_root/static/textures/lapidarist-parchment.webp" || {
