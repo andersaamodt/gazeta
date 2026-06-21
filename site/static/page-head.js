@@ -206,7 +206,7 @@
   }
 
   function themeStylesheetVersion() {
-    return String(window.__wizardryThemeStylesheetVersion || '20260620-parchment-textures1');
+    return String(window.__wizardryThemeStylesheetVersion || '20260621-theme-sync1');
   }
 
   function reconcileThemeLink() {

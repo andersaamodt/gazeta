@@ -29,7 +29,7 @@ assert_file_not_contains() {
 }
 
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" "var theme = 'lapidarist';" 'theme loader defaults Gazeta to the parchment Lapidarist theme'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/lapidarist.css?v=20260620-parchment-textures1' 'noscript theme fallback fetches the current parchment texture theme build'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'themes/lapidarist.css?v=20260621-theme-sync1' 'noscript theme fallback fetches the current parchment texture theme build'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '__wizardryThemeStylesheetVersion' 'theme cache buster is published once for hydrated page code'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'blog-tag-recovery-style' 'head keeps final tag recovery styles after theme CSS'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" '--lapidarist-control-shadow: none;' 'head clears theme shadow variables on blog tags'
