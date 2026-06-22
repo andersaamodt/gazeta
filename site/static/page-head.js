@@ -194,8 +194,9 @@
     try {
       var bootstrap = window.__wizardrySiteBootstrap || {};
       var config = bootstrap && bootstrap.config && typeof bootstrap.config === 'object' ? bootstrap.config : {};
-      var cachedTheme = localStorage.getItem('wizardry_blog_theme_v1') || '';
-      var nextTheme = String(config.theme || cachedTheme || '').trim();
+      var hasConfiguredTheme = Object.prototype.hasOwnProperty.call(config, 'theme');
+      var cachedTheme = hasConfiguredTheme ? '' : (localStorage.getItem('wizardry_blog_theme_v1') || '');
+      var nextTheme = String(hasConfiguredTheme ? config.theme : cachedTheme).trim();
       if (nextTheme) {
         theme = nextTheme;
       }

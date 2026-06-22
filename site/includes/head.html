@@ -41,8 +41,9 @@ html.artificer-web-route .content {
   try {
     var bootstrap = window.__wizardrySiteBootstrap || {};
     var config = bootstrap && bootstrap.config && typeof bootstrap.config === 'object' ? bootstrap.config : {};
-    var cachedTheme = localStorage.getItem('wizardry_blog_theme_v1') || '';
-    var nextTheme = String(config.theme || cachedTheme || '').trim();
+    var hasConfiguredTheme = Object.prototype.hasOwnProperty.call(config, 'theme');
+    var cachedTheme = hasConfiguredTheme ? '' : (localStorage.getItem('wizardry_blog_theme_v1') || '');
+    var nextTheme = String(hasConfiguredTheme ? config.theme : cachedTheme).trim();
     if (nextTheme) {
       theme = nextTheme;
     }
@@ -90,11 +91,14 @@ html body a.blog-type-pill:hover,
 html body button.blog-type-pill:hover:not(:disabled),
 html body a.blog-type-pill:focus-visible,
 html body button.blog-type-pill:focus-visible:not(:disabled) {
-  border-color: var(--post-tag-type-border, #a9d89b) !important;
-  background: var(--post-tag-type-bg, #dff4d7) !important;
-  background-color: var(--post-tag-type-bg, #dff4d7) !important;
-  color: var(--post-tag-type-text, #285f28) !important;
-  -webkit-text-fill-color: var(--post-tag-type-text, #285f28) !important;
+  border-color: #a8c8f0 !important;
+  border-color: var(--post-tag-type-border, #a8c8f0) !important;
+  background: #dcecff !important;
+  background: var(--post-tag-type-bg, #dcecff) !important;
+  background-color: #dcecff !important;
+  background-color: var(--post-tag-type-bg, #dcecff) !important;
+  color: var(--post-tag-type-text, #245a93) !important;
+  -webkit-text-fill-color: var(--post-tag-type-text, #245a93) !important;
 }
 
 html body a.blog-year-pill,
@@ -103,11 +107,14 @@ html body a.blog-year-pill:hover,
 html body button.blog-year-pill:hover:not(:disabled),
 html body a.blog-year-pill:focus-visible,
 html body button.blog-year-pill:focus-visible:not(:disabled) {
-  border-color: var(--post-tag-year-border, #a8c8f0) !important;
-  background: var(--post-tag-year-bg, #dcecff) !important;
-  background-color: var(--post-tag-year-bg, #dcecff) !important;
-  color: var(--post-tag-year-text, #245a93) !important;
-  -webkit-text-fill-color: var(--post-tag-year-text, #245a93) !important;
+  border-color: #a9d89b !important;
+  border-color: var(--post-tag-year-border, #a9d89b) !important;
+  background: #dff4d7 !important;
+  background: var(--post-tag-year-bg, #dff4d7) !important;
+  background-color: #dff4d7 !important;
+  background-color: var(--post-tag-year-bg, #dff4d7) !important;
+  color: var(--post-tag-year-text, #285f28) !important;
+  -webkit-text-fill-color: var(--post-tag-year-text, #285f28) !important;
 }
 </style>
 <script defer src="/static/page-head.js?v=20260620-route-hydration1"></script>

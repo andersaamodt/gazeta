@@ -148,12 +148,12 @@
   --post-tag-standard-bg: #f3e4bf;
   --post-tag-standard-border: #ddc486;
   --post-tag-standard-text: #6b4b12;
-  --post-tag-type-bg: #dff4d7;
-  --post-tag-type-border: #a9d89b;
-  --post-tag-type-text: #285f28;
-  --post-tag-year-bg: #dcecff;
-  --post-tag-year-border: #a8c8f0;
-  --post-tag-year-text: #245a93;
+  --post-tag-type-bg: #dcecff;
+  --post-tag-type-border: #a8c8f0;
+  --post-tag-type-text: #245a93;
+  --post-tag-year-bg: #dff4d7;
+  --post-tag-year-border: #a9d89b;
+  --post-tag-year-text: #285f28;
   --action-soft-bg: #f5e4d7;
   --action-soft-border: #c58f6f;
   --action-soft-text: #6d3a20;
@@ -15238,6 +15238,38 @@ html body .blog-post-item button.blog-year-pill:focus-visible:not(:disabled) {
   filter: none !important;
   -webkit-filter: none !important;
   text-shadow: none !important;
+}
+
+html body a.blog-type-pill,
+html body button.blog-type-pill,
+html body a.blog-type-pill:hover,
+html body button.blog-type-pill:hover:not(:disabled),
+html body a.blog-type-pill:focus-visible,
+html body button.blog-type-pill:focus-visible:not(:disabled) {
+  border-color: #a8c8f0 !important;
+  border-color: var(--post-tag-type-border, #a8c8f0) !important;
+  background: #dcecff !important;
+  background: var(--post-tag-type-bg, #dcecff) !important;
+  background-color: #dcecff !important;
+  background-color: var(--post-tag-type-bg, #dcecff) !important;
+  color: var(--post-tag-type-text, #245a93) !important;
+  -webkit-text-fill-color: var(--post-tag-type-text, #245a93) !important;
+}
+
+html body a.blog-year-pill,
+html body button.blog-year-pill,
+html body a.blog-year-pill:hover,
+html body button.blog-year-pill:hover:not(:disabled),
+html body a.blog-year-pill:focus-visible,
+html body button.blog-year-pill:focus-visible:not(:disabled) {
+  border-color: #a9d89b !important;
+  border-color: var(--post-tag-year-border, #a9d89b) !important;
+  background: #dff4d7 !important;
+  background: var(--post-tag-year-bg, #dff4d7) !important;
+  background-color: #dff4d7 !important;
+  background-color: var(--post-tag-year-bg, #dff4d7) !important;
+  color: var(--post-tag-year-text, #285f28) !important;
+  -webkit-text-fill-color: var(--post-tag-year-text, #285f28) !important;
 }
 
 .blog-compose-card .compose-post-type-toolbar {
