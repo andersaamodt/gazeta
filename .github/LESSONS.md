@@ -1,0 +1,1 @@
+- Keep Nostr Connect login flow copy signer-neutral while allowing app-specific recommendations.

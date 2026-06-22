@@ -895,7 +895,7 @@
     }
     if (paired && !hasPendingNip46Requests()) {
       setNip46Diagnostics('Signer connected. Continue sign-in.', 'ok');
-      setAuthMessage('Phone signer is already paired. Continue sign-in and approve the login request in Amber.', 'plain');
+      setAuthMessage('Phone signer is already paired. Continue sign-in and approve the login request in your signer.', 'plain');
     }
     if (!els.authPhoneBtn) {
       return;
