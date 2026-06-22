@@ -23,8 +23,10 @@ assert_file_contains() {
 assert_file_contains "$NAV_FILE" "function seedInitialOverflowMenu()" 'nav include seeds overflow menu before nav hydration finishes'
 assert_file_contains "$NAV_FILE" "nav-overflow-booting" 'nav include hides the pre-measurement row only while JS is booting overflow'
 assert_file_contains "$NAV_FILE" "docEl.classList.remove('nav-overflow-booting');" 'nav include reveals navbar after synchronous overflow seeding'
+assert_file_contains "$NAV_FILE" 'data-nav-rank="6"' 'nav include gives overflow-tier links stable prerender ranks'
 assert_file_contains "$NAV_FILE" "function renderInitialNavbarPages()" 'nav include renders bootstrap or cached navbar rows before measuring overflow'
 assert_file_contains "$NAV_FILE" "window.__wizardrySiteBootstrap" 'nav include can use generated bootstrap navbar rows for first layout'
+assert_file_contains "$NAV_FILE" "rank >= 6" 'nav include treats the CSS mobile overflow tier as overflow menu content'
 assert_file_contains "$NAV_FILE" "while (hasNavPressure() && guard < links.length)" 'nav include computes the initial overflow set in one layout pass'
 assert_file_contains "$NAV_FILE" "link.classList.remove('is-nav-overflow-hidden');" 'nav include starts overflow measurement from a clean link set'
 assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'nav include clones hidden navbar links into the overflow panel'
@@ -32,13 +34,25 @@ assert_file_contains "$NAV_FILE" "menu.hidden = false;" 'mobile overflow seeding
 
 assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-center > a[data-page].is-nav-overflow-hidden" 'hydrating mobile nav hides only measured overflow links'
 assert_file_contains "$STYLE_FILE" "html.nav-overflow-booting nav.site-nav .nav-center" 'booting nav hides the unmeasured row before first visible layout'
+assert_file_contains "$STYLE_FILE" 'nav.site-nav .nav-center > a[data-nav-rank="6"]' 'mobile nav can hide overflow tier without post-render JS classes'
 assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-overflow-menu[hidden]" 'hydrating mobile nav forces the overflow trigger visible'
 
 assert_file_contains "$AUTH_FILE" "navOverflowReady: false" 'nav auth tracks whether the first overflow layout pass has completed'
 assert_file_contains "$AUTH_FILE" "function markNavOverflowReady()" 'nav auth exposes a one-time nav overflow readiness gate'
 assert_file_contains "$AUTH_FILE" "markHydrationNavReady();" 'nav hydration readiness is driven by the overflow readiness gate'
 assert_file_contains "$AUTH_FILE" "state.navOverflowReady = true;" 'nav overflow gate flips after the first sync'
+assert_file_contains "$AUTH_FILE" "function navbarMatchesRows(pageRows)" 'nav auth adopts matching prerendered navbar rows instead of rerendering them'
+assert_file_contains "$AUTH_FILE" "if (state.navOverflowReady) {" 'nav auth freezes overflow after initial adoption'
+assert_file_contains "$AUTH_FILE" "if (!useMobileOverflowTier && !hasNavPressure())" 'nav auth does not reveal deterministic mobile overflow links after CSS removes pressure'
 assert_file_contains "$AUTH_FILE" "while (hasNavPressure() && guard < links.length)" 'nav auth resolves all overflow pressure in one sync'
 assert_file_contains "$AUTH_FILE" "syncNavOverflowMenuNow();" 'nav auth syncs overflow immediately after rendering bootstrap navbar rows'
+
+if grep -Fq "window.addEventListener('resize', scheduleNavOverflowMenuSync)" "$AUTH_FILE"; then
+  fail 'nav auth must not schedule overflow relayouts on resize during startup'
+fi
+
+if grep -Fq "setTimeout(scheduleNavOverflowMenuSync" "$AUTH_FILE"; then
+  fail 'nav auth must not schedule delayed overflow relayouts after startup'
+fi
 
 printf '%s\n' 'ok'

@@ -2126,7 +2126,6 @@
         els.userName.setAttribute('href', '/admin#account');
         updateUserNameActiveState();
       }
-      scheduleNavOverflowMenuSync();
       syncVideoCallPresencePolling();
       syncSiteNotificationPolling();
       return;
@@ -2144,7 +2143,6 @@
     }
     updateLogoutOtherSessionsUi(0);
     syncPluginAuthUi();
-    scheduleNavOverflowMenuSync();
     syncVideoCallPresencePolling();
     syncSiteNotificationPolling();
   }
@@ -3535,6 +3533,9 @@
   }
 
   function syncNavOverflowMenuNow() {
+    if (state.navOverflowReady) {
+      return;
+    }
     var navCenter = document.querySelector('.nav-center');
     var navRight = document.querySelector('.nav-right');
     if (!navCenter || !navRight || !els.navOverflowMenu || !els.navOverflowBtn || !els.navOverflowPanel) {
@@ -3545,6 +3546,15 @@
     var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page]'));
     closeNavOverflowMenu();
     els.navOverflowPanel.innerHTML = '';
+    var useMobileOverflowTier = !!(window.matchMedia && window.matchMedia('(max-width: 780px)').matches);
+    if (useMobileOverflowTier) {
+      links.forEach(function (link) {
+        var rank = Number(link.getAttribute('data-nav-rank') || 0);
+        if (rank >= 6) {
+          link.classList.add('is-nav-overflow-hidden');
+        }
+      });
+    }
     if (links.length < 2) {
       links.forEach(function (link) {
         link.classList.remove('is-nav-overflow-hidden');
@@ -3635,7 +3645,7 @@
       break;
     }
 
-    if (!hasNavPressure()) {
+    if (!useMobileOverflowTier && !hasNavPressure()) {
       var hiddenInOrder = links.filter(function (link) {
         return link.classList.contains('is-nav-overflow-hidden');
       });
@@ -3733,15 +3743,58 @@
     highlightCurrentPage();
   }
 
-  function renderNavbarNostrPages(pageRows) {
+  function navbarMatchesRows(pageRows) {
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter) {
+      return false;
+    }
+    var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page]'));
+    var rows = (Array.isArray(pageRows) ? pageRows : []).filter(function (page) {
+      return !!(page && String(page.slug || '').trim() && String(page.path || '').trim());
+    });
+    if (links.length !== rows.length) {
+      return false;
+    }
+    for (var i = 0; i < rows.length; i += 1) {
+      var link = links[i];
+      var row = rows[i];
+      if (String(link.getAttribute('data-page') || '') !== String(row.slug || '').trim()) {
+        return false;
+      }
+      if (normalizeNavPath(link.getAttribute('href') || '') !== normalizeNavPath(String(row.path || '').trim())) {
+        return false;
+      }
+      if (compact(link.textContent || '') !== compact(String(row.title || row.slug || ''))) {
+        return false;
+      }
+      if (String(link.getAttribute('data-nav-rank') || '') !== String(i + 1)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function renderNavbarNostrPages(pageRows, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var navCenter = document.querySelector('.nav-center');
+    if (!navCenter) {
+      return;
+    }
+    if (navbarMatchesRows(pageRows)) {
+      placeNavOverflowMenuWithPageLinks();
+      syncNavSiteSignatureDestination();
+      highlightCurrentPage();
+      markNavOverflowReady();
+      return;
+    }
+    if (state.navOverflowReady && opts.force !== true) {
+      markNavOverflowReady();
       return;
     }
     var normalizedCurrent = normalizeNavPath(window.location.pathname);
     var html = '';
     var seen = {};
-    (Array.isArray(pageRows) ? pageRows : []).forEach(function (page) {
+    (Array.isArray(pageRows) ? pageRows : []).forEach(function (page, index) {
       var slug = String(page && page.slug || '').trim();
       var title = String(page && page.title || '').trim();
       var path = String(page && page.path || '').trim();
@@ -3750,7 +3803,7 @@
       }
       seen[slug] = true;
       var isActive = normalizeNavPath(path) === normalizedCurrent;
-      html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
+      html += '<a href="' + escapeHtml(path) + '" data-page="' + escapeHtml(slug) + '" data-nav-rank="' + String(index + 1) + '"' + (isActive ? ' class="active" aria-current="page"' : '') + '>' + escapeHtml(title || slug) + '</a>';
     });
     if (html) {
       navCenter.innerHTML = html;
@@ -3826,7 +3879,7 @@
       } catch (_cacheErr) {
         // Ignore storage failures.
       }
-      renderNavbarNostrPages(detail.pages);
+      renderNavbarNostrPages(detail.pages, { force: true });
       if (detail.skipFetch === true) {
         return;
       }
@@ -3944,7 +3997,6 @@
       }
     }
     updateUserNameActiveState();
-    scheduleNavOverflowMenuSync();
   }
 
   function updateThemeSelect() {
@@ -4497,19 +4549,10 @@
     checkAuth();
     loadTheme();
     window.addEventListener('hashchange', highlightCurrentPage);
-    window.addEventListener('resize', scheduleNavOverflowMenuSync);
-    if (document.fonts && typeof document.fonts.ready === 'object' && typeof document.fonts.ready.then === 'function') {
-      document.fonts.ready.then(function () {
-        scheduleNavOverflowMenuSync();
-      }).catch(function () {
-        // Ignore font readiness errors.
-      });
-    }
+    markNavOverflowReady();
     bindThemeSelect();
     bindUiEvents();
     bindNavbarNostrPagePrefetch();
-    scheduleNavOverflowMenuSync();
-    setTimeout(scheduleNavOverflowMenuSync, 180);
     window.blogAuth = window.blogAuth || {};
     window.blogAuth.openLoginModal = showAuthModal;
     window.blogAuth.startLogin = function (options) {

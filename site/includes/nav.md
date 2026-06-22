@@ -63,13 +63,13 @@
 <nav class="site-nav">
 <a id="nav-site-signature" class="nav-site-signature" href="/">Site</a>
 <div class="nav-center">
-<a href="/" data-page="index">Writing</a>
-<a href="/blog" data-page="blog">Blog</a>
-<a href="/oeuvre" data-page="oeuvre">Oeuvre</a>
-<a href="/projects" data-page="projects">Projects</a>
-<a href="/reading-list" data-page="reading-list">Reading list</a>
-<a href="/contact" data-page="contact">Contact</a>
-<a href="/overworld" data-page="overworld">Overworld</a>
+<a href="/" data-page="index" data-nav-rank="1">Writing</a>
+<a href="/blog" data-page="blog" data-nav-rank="2">Blog</a>
+<a href="/oeuvre" data-page="oeuvre" data-nav-rank="3">Oeuvre</a>
+<a href="/projects" data-page="projects" data-nav-rank="4">Projects</a>
+<a href="/reading-list" data-page="reading-list" data-nav-rank="5">Reading list</a>
+<a href="/contact" data-page="contact" data-nav-rank="6">Contact</a>
+<a href="/overworld" data-page="overworld" data-nav-rank="7">Overworld</a>
 <div class="nav-overflow-menu" id="nav-overflow-menu" hidden>
   <button class="nav-menu-btn nav-overflow-btn" id="nav-overflow-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More pages">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -211,7 +211,7 @@
       var current = normalizeNavPath(window.location.pathname);
       var seen = {};
       var html = '';
-      pages.forEach(function (page) {
+      pages.forEach(function (page, index) {
         var slug = String(page && page.slug || '').trim();
         var title = String(page && page.title || '').trim();
         var path = String(page && page.path || '').trim();
@@ -220,7 +220,7 @@
         }
         seen[slug] = true;
         var active = normalizeNavPath(path) === current;
-        html += '<a href="' + esc(path) + '" data-page="' + esc(slug) + '"' + (active ? ' class="active" aria-current="page"' : '') + '>' + esc(title || slug) + '</a>';
+        html += '<a href="' + esc(path) + '" data-page="' + esc(slug) + '" data-nav-rank="' + String(index + 1) + '"' + (active ? ' class="active" aria-current="page"' : '') + '>' + esc(title || slug) + '</a>';
       });
       if (!html) {
         return;
@@ -294,6 +294,16 @@
     });
     menu.hidden = true;
     panel.innerHTML = '';
+
+    var useMobileOverflowTier = !!(window.matchMedia && window.matchMedia('(max-width: 780px)').matches);
+    if (useMobileOverflowTier) {
+      links.forEach(function (link) {
+        var rank = Number(link.getAttribute('data-nav-rank') || 0);
+        if (rank >= 6) {
+          link.classList.add('is-nav-overflow-hidden');
+        }
+      });
+    }
 
     var activeLink = links.find(function (link) {
       return link.classList.contains('active') || link.getAttribute('aria-current') === 'page';
