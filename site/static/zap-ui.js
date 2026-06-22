@@ -229,17 +229,17 @@
       return window.blogNostrSigner;
     }
     try {
-      return window.CitrineNostrWeb.getNip07Signer(window);
+      return window.citrine.nostr.getNip07Signer(window);
     } catch (_err) {}
     return null;
   }
 
   function signerUnavailableError(err) {
-    return window.CitrineNostrWeb.signerUnavailableError(err);
+    return window.citrine.nostr.signerUnavailableError(err);
   }
 
   function signerIsAvailable(api) {
-    return window.CitrineNostrWeb.signerIsAvailable(api);
+    return window.citrine.nostr.signerIsAvailable(api);
   }
 
   function promptPhoneSignerForZap() {
@@ -500,7 +500,7 @@
     if (lnurlCache[key]) {
       return lnurlCache[key];
     }
-    var request = window.CitrineNostrWeb.loadLnurlZapInfo(key, { fetch: fetch }).then(function (info) {
+    var request = window.citrine.zaps.loadLnurlZapInfo(key, { fetch: fetch }).then(function (info) {
       if (!isHex64(info.nostrPubkey)) {
         throw new Error('Lightning provider does not advertise Nostr zap support.');
       }
@@ -515,7 +515,7 @@
     if (!api) {
       return Promise.reject(new Error('A Nostr signer is required. Use a browser signer or pair a phone signer from Sign In.'));
     }
-    return window.CitrineNostrWeb.createSignedZapRequest({
+    return window.citrine.zaps.createSignedZapRequest({
       signer: api,
       lnurlInfo: lnurlInfo,
       zapConfig: options.zapConfig,
@@ -526,7 +526,7 @@
   }
 
   function requestInvoice(options, signedEvent, amountMsats, lnurlInfo, note) {
-    return window.CitrineNostrWeb.requestZapInvoice({
+    return window.citrine.zaps.requestZapInvoice({
       lnurlInfo: lnurlInfo,
       amountMsats: amountMsats,
       signedEvent: signedEvent,
@@ -629,7 +629,7 @@
       return;
     }
     var invoice = modalState.state.invoice;
-    window.CitrineNostrWeb.copyTextToClipboard(invoice, window).then(function () {
+    window.citrine.zaps.copyTextToClipboard(invoice, window).then(function () {
       setDialogStatus('Lightning invoice copied.', 'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'Could not copy invoice.', 'error');
@@ -642,7 +642,7 @@
     }
     modalState.state.paying = true;
     renderDialog();
-    window.CitrineNostrWeb.payLightningInvoiceWithWebLN(modalState.state.invoice, window).then(function () {
+    window.citrine.zaps.payLightningInvoiceWithWebLN(modalState.state.invoice, window).then(function () {
       setDialogStatus('Payment submitted through WebLN. The recipient server will publish the zap receipt after settlement.', 'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'WebLN payment failed.', 'error');

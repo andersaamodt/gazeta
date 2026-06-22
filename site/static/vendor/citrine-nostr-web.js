@@ -3,7 +3,10 @@
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.CitrineNostrWeb = factory();
+    var api = factory();
+    root.citrine = api;
+    root.Citrine = api;
+    root.CitrineNostrWeb = api;
   }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
@@ -1245,7 +1248,7 @@
     };
   }
 
-  return {
+  var flat = {
     NIP46_KIND: NIP46_KIND,
     DEFAULT_RETRY_DELAYS: DEFAULT_RETRY_DELAYS.slice(),
     normalizePubkeyHex: normalizePubkeyHex,
@@ -1292,4 +1295,68 @@
     copyTextToClipboard: copyTextToClipboard,
     createZapFlow: createZapFlow
   };
+
+  var nostr = {
+    NIP46_KIND: flat.NIP46_KIND,
+    DEFAULT_RETRY_DELAYS: flat.DEFAULT_RETRY_DELAYS.slice(),
+    normalizePubkeyHex: normalizePubkeyHex,
+    normalizeNostrPubkey: normalizeNostrPubkey,
+    bytesToHex: bytesToHex,
+    hexToBytes: hexToBytes,
+    randomHex: randomHex,
+    buildNostrConnectUri: buildNostrConnectUri,
+    extractConnectSecret: extractConnectSecret,
+    isConnectAck: isConnectAck,
+    createAuthEventTemplate: createAuthEventTemplate,
+    signAuthChallenge: signAuthChallenge,
+    withTimedOutRetry: withTimedOutRetry,
+    createSessionStorageAdapter: createSessionStorageAdapter,
+    createMemoryStorageAdapter: createMemoryStorageAdapter,
+    hasNostrTools: hasNostrTools,
+    waitForNostrTools: waitForNostrTools,
+    createNip46Client: createNip46Client,
+    getNip07Signer: getNip07Signer,
+    createSharedNostrSigner: createSharedNostrSigner,
+    classifySignerError: classifySignerError,
+    signerUnavailableError: signerUnavailableError,
+    signerIsAvailable: signerIsAvailable,
+    bindSignerReturnRefresh: bindSignerReturnRefresh,
+    cleanNip55CallbackUrl: cleanNip55CallbackUrl,
+    buildNip55CallbackUrl: buildNip55CallbackUrl,
+    buildNip55Uri: buildNip55Uri,
+    parseNip55Callback: parseNip55Callback
+  };
+
+  var zaps = {
+    lud16ToUrl: lud16ToUrl,
+    bech32Encode: bech32Encode,
+    loadLnurlZapInfo: loadLnurlZapInfo,
+    createZapRequestTemplate: createZapRequestTemplate,
+    createSignedZapRequest: createSignedZapRequest,
+    requestZapInvoice: requestZapInvoice,
+    createZapInvoice: createZapInvoice,
+    payLightningInvoiceWithWebLN: payLightningInvoiceWithWebLN,
+    copyTextToClipboard: copyTextToClipboard,
+    createZapFlow: createZapFlow,
+    nostrZapRecommendation: nostrZapRecommendation
+  };
+
+  var web = {
+    nostrLoginDialogHtml: nostrLoginDialogHtml,
+    ensureNostrLoginDialog: ensureNostrLoginDialog,
+    signInHelperMessage: signInHelperMessage,
+    recommendationPlatformLabel: recommendationPlatformLabel,
+    nostrLoginRecommendation: nostrLoginRecommendation,
+    nostrZapRecommendation: nostrZapRecommendation,
+    renderNostrRecommendations: renderNostrRecommendations,
+    payLightningInvoiceWithWebLN: payLightningInvoiceWithWebLN,
+    copyTextToClipboard: copyTextToClipboard
+  };
+
+  return Object.assign({}, flat, {
+    nostr: nostr,
+    zaps: zaps,
+    web: web,
+    legacy: flat
+  });
 }));

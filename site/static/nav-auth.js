@@ -87,10 +87,10 @@
     navOverflowReady: false
   };
 
-  if (!window.CitrineNostrWeb || typeof window.CitrineNostrWeb.ensureNostrLoginDialog !== 'function') {
-    throw new Error('CitrineNostrWeb.ensureNostrLoginDialog is required for Nostr login');
+  if (!window.citrine || typeof window.citrine.web.ensureNostrLoginDialog !== 'function') {
+    throw new Error('citrine.web.ensureNostrLoginDialog is required for Nostr login');
   }
-  window.CitrineNostrWeb.ensureNostrLoginDialog(document, { title: 'Sign in' });
+  window.citrine.web.ensureNostrLoginDialog(document, { title: 'Sign in' });
 
   var els = {
     loginBtn: document.getElementById('login-btn'),
@@ -602,7 +602,7 @@
   }
 
   function hasNostrTools() {
-    return window.CitrineNostrWeb.hasNostrTools(window);
+    return window.citrine.nostr.hasNostrTools(window);
   }
 
   function waitForNostrTools(timeoutMs) {
@@ -617,7 +617,7 @@
     if (!isFinite(timeout) || timeout < 1000) {
       timeout = 8000;
     }
-    state.nip46.toolsWaitPromise = window.CitrineNostrWeb.waitForNostrTools({
+    state.nip46.toolsWaitPromise = window.citrine.nostr.waitForNostrTools({
       target: window,
       document: document,
       timeoutMs: timeout,
@@ -633,7 +633,7 @@
 
   function getBrowserSigner() {
     try {
-      return window.CitrineNostrWeb.getNip07Signer(window);
+      return window.citrine.nostr.getNip07Signer(window);
     } catch (_err) {
       throw new Error('No browser signer detected. Install nos2x-fox or use phone/manual login.');
     }
@@ -919,7 +919,7 @@
   }
 
   function renderAuthOnboarding(tabName, flavor) {
-    window.CitrineNostrWeb.renderNostrRecommendations({
+    window.citrine.web.renderNostrRecommendations({
       tab: tabName,
       flavor: flavor,
       loginSummary: els.authLoginSummary,
@@ -983,7 +983,7 @@
 
     if (tab === 'phone') {
       updatePhoneContinueState();
-      setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
+      setAuthMessage(window.citrine.web.signInHelperMessage(tab), 'plain');
       initNip46Pairing().then(function () {
         updatePhoneContinueState();
       }).catch(function (err) {
@@ -992,10 +992,10 @@
       return;
     }
     if (tab === 'manual') {
-      setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
+      setAuthMessage(window.citrine.web.signInHelperMessage(tab), 'plain');
       return;
     }
-    setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
+    setAuthMessage(window.citrine.web.signInHelperMessage(tab), 'plain');
   }
 
   function showAuthModal(initialTab) {
@@ -1644,7 +1644,7 @@
   function authEventTemplate(challenge, action, pubkey) {
     var eventAction = action || 'login';
     var signerPubkey = String(pubkey || '').trim();
-    return window.CitrineNostrWeb.createAuthEventTemplate({
+    return window.citrine.nostr.createAuthEventTemplate({
       kind: AUTH_KIND,
       challenge: challenge,
       action: eventAction,
@@ -1695,7 +1695,7 @@
   }
 
   function normalizePubkeyHex(value) {
-    return window.CitrineNostrWeb.normalizeNostrPubkey(value, window.NostrTools);
+    return window.citrine.nostr.normalizeNostrPubkey(value, window.NostrTools);
   }
 
   function beginChallenge(pubkeyHint) {
@@ -2183,7 +2183,7 @@
       url: window.location.origin,
       description: 'Sign in, vote on lists, and sign zaps for this blog.'
     };
-    return window.CitrineNostrWeb.buildNostrConnectUri({
+    return window.citrine.nostr.buildNostrConnectUri({
       appPubkey: appPubkey,
       pairSecret: pairSecret,
       relays: relays,
@@ -2463,7 +2463,7 @@
   }
 
   function extractConnectSecret(msg) {
-    return window.CitrineNostrWeb.extractConnectSecret(msg);
+    return window.citrine.nostr.extractConnectSecret(msg);
   }
 
   function decryptNip46Content(event) {
@@ -2637,7 +2637,7 @@
       state.nip46.accountPubkey = '';
     }
 
-    return window.CitrineNostrWeb.withTimedOutRetry(getNip46AccountPubkey, {
+    return window.citrine.nostr.withTimedOutRetry(getNip46AccountPubkey, {
       delays: delays,
       wait: function (delayMs) {
         return new Promise(function (resolve) {
@@ -3003,7 +3003,7 @@
 
   function resolveSharedNostrSigner(opts) {
     var options = opts && typeof opts === 'object' ? opts : {};
-    return window.CitrineNostrWeb.createSharedNostrSigner({
+    return window.citrine.nostr.createSharedNostrSigner({
       target: window,
       unavailableMessage: sharedSignerUnavailableMessage(),
       getLastPubkey: function () {
@@ -3021,7 +3021,7 @@
   }
 
   function createBlogNostrSigner() {
-    return window.CitrineNostrWeb.createSharedNostrSigner({
+    return window.citrine.nostr.createSharedNostrSigner({
       target: window,
       unavailableMessage: sharedSignerUnavailableMessage(),
       getLastPubkey: function () {
