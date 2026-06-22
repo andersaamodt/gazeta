@@ -1,1 +1,2 @@
 - Keep Nostr Connect login flow copy signer-neutral while allowing app-specific recommendations.
+- After a NIP-46 connect ack, retry timed-out `get_public_key` requests because mobile signer relay listeners may need a short settle window.

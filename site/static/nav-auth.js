@@ -3006,6 +3006,33 @@
     });
   }
 
+  function getNip46AccountPubkeyWithRetry(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var delays = [1200, 2400, 4800];
+    var attempt = 0;
+
+    if (opts.forceRefresh) {
+      state.nip46.accountPubkey = '';
+    }
+
+    function run() {
+      return getNip46AccountPubkey().catch(function (err) {
+        var message = String((err && err.message) || '');
+        if (attempt >= delays.length || message.indexOf('timed out') < 0) {
+          throw err;
+        }
+        var delayMs = delays[attempt];
+        attempt += 1;
+        setNip46Diagnostics('Signer connected. Waiting for approval response.', 'waiting');
+        return new Promise(function (resolve) {
+          window.setTimeout(resolve, delayMs);
+        }).then(run);
+      });
+    }
+
+    return run();
+  }
+
   function signInWithSigner(signEventFn, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var getPubkeyFn = typeof opts.getPubkeyFn === 'function' ? opts.getPubkeyFn : null;
@@ -3231,7 +3258,7 @@
               },
               {
                 getPubkeyFn: function () {
-                  return getNip46AccountPubkey();
+                  return getNip46AccountPubkeyWithRetry({ forceRefresh: true });
                 },
                 pubkeyHint: '',
                 allowStoredPubkeyHint: false
@@ -4524,6 +4551,10 @@
       if (!document.hidden) {
         refreshPhoneSignerListenerAfterReturn('visibility');
       }
+    });
+
+    window.addEventListener('pageshow', function () {
+      refreshPhoneSignerListenerAfterReturn('pageshow');
     });
 
     window.addEventListener('focus', function () {
