@@ -301,6 +301,12 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-rig
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-row: 2;' 'mobile nav right controls pinned to second row'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'nav.site-nav .nav-search {' 'mobile nav safety styles search shell'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'flex: 1 1 12rem !important;' 'mobile nav search remains bounded in second row'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function syncAuthModalNavOffset() {' 'auth modal measures the live navbar offset'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.matchMedia('(max-width: 640px)')" 'auth modal only applies navbar offset on mobile'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "els.authModal.style.setProperty('--auth-modal-nav-offset'" 'auth modal publishes measured navbar offset to CSS'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--auth-modal-nav-offset: 0px;' 'auth modal has a desktop-safe navbar offset default'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: calc(var(--auth-modal-nav-offset, 0px) + var(--auth-modal-mobile-top-gap)) auto 0;' 'mobile auth modal starts below the measured navbar'
+assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-height: calc(100dvh - var(--auth-modal-nav-offset, 0px) - var(--auth-modal-mobile-top-gap) - var(--auth-modal-mobile-bottom-gap));' 'mobile auth modal scroll area fits remaining viewport height'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2
