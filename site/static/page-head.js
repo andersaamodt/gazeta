@@ -207,7 +207,7 @@
   }
 
   function themeStylesheetVersion() {
-    return String(window.__wizardryThemeStylesheetVersion || '20260621-parchment-restore2');
+    return String(window.__wizardryThemeStylesheetVersion || '20260622-lapidarist-restore1');
   }
 
   function reconcileThemeLink() {
