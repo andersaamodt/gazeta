@@ -640,6 +640,10 @@
   }
 
   function getBrowserSigner() {
+    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.getNip07Signer === 'function') {
+      var citrineSigner = window.CitrineNostrWeb.getNip07Signer(window);
+      if (citrineSigner) return citrineSigner;
+    }
     var signer = window.nostr || null;
     if (!signer) {
       throw new Error('No browser signer detected. Install nos2x-fox or use phone/manual login.');
@@ -1975,6 +1979,16 @@
   function authEventTemplate(challenge, action, pubkey) {
     var eventAction = action || 'login';
     var signerPubkey = String(pubkey || '').trim();
+    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.createAuthEventTemplate === 'function') {
+      return window.CitrineNostrWeb.createAuthEventTemplate({
+        kind: AUTH_KIND,
+        challenge: challenge,
+        action: eventAction,
+        pubkey: signerPubkey,
+        origin: currentOrigin(),
+        domain: currentHost()
+      });
+    }
     var tags = [
       ['challenge', String(challenge || '')],
       ['origin', currentOrigin()],
@@ -2534,12 +2548,22 @@
   }
 
   function buildNostrConnectUri(appPubkey, pairSecret, relays) {
-    var params = new URLSearchParams();
     var metadata = {
       name: 'gazeta',
       url: window.location.origin,
       description: 'Sign in, vote on lists, and sign zaps for this blog.'
     };
+    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.buildNostrConnectUri === 'function') {
+      return window.CitrineNostrWeb.buildNostrConnectUri({
+        appPubkey: appPubkey,
+        pairSecret: pairSecret,
+        relays: relays,
+        name: 'gazeta',
+        metadata: metadata,
+        perms: 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5'
+      });
+    }
+    var params = new URLSearchParams();
     relays.forEach(function (relay) {
       params.append('relay', relay);
     });
@@ -2820,6 +2844,9 @@
   }
 
   function extractConnectSecret(msg) {
+    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.extractConnectSecret === 'function') {
+      return window.CitrineNostrWeb.extractConnectSecret(msg);
+    }
     if (!msg) {
       return '';
     }
@@ -3009,11 +3036,26 @@
   function getNip46AccountPubkeyWithRetry(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var delays = [1200, 2400, 4800];
-    var attempt = 0;
 
     if (opts.forceRefresh) {
       state.nip46.accountPubkey = '';
     }
+
+    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.withTimedOutRetry === 'function') {
+      return window.CitrineNostrWeb.withTimedOutRetry(getNip46AccountPubkey, {
+        delays: delays,
+        wait: function (delayMs) {
+          return new Promise(function (resolve) {
+            window.setTimeout(resolve, delayMs);
+          });
+        },
+        onRetry: function () {
+          setNip46Diagnostics('Signer connected. Waiting for approval response.', 'waiting');
+        }
+      });
+    }
+
+    var attempt = 0;
 
     function run() {
       return getNip46AccountPubkey().catch(function (err) {

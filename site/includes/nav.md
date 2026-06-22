@@ -915,7 +915,8 @@
   </div>
 </div>
 
-<script defer src="/static/nav-auth.js?v=20260622-nip46-pubkey-retry1"></script>
+<script defer src="/static/vendor/citrine-nostr-web.js?v=20260622-citrine1"></script>
+<script defer src="/static/nav-auth.js?v=20260622-citrine1"></script>
 <script defer src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
