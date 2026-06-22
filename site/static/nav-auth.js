@@ -1695,25 +1695,7 @@
   }
 
   function normalizePubkeyHex(value) {
-    var raw = String(value || '').trim();
-    if (!raw) {
-      return '';
-    }
-    var lower = raw.toLowerCase();
-    if (/^[0-9a-f]{64}$/.test(lower)) {
-      return lower;
-    }
-    if (lower.indexOf('npub1') === 0 && window.NostrTools && window.NostrTools.nip19 && typeof window.NostrTools.nip19.decode === 'function') {
-      try {
-        var decoded = window.NostrTools.nip19.decode(lower);
-        if (decoded && decoded.type === 'npub' && typeof decoded.data === 'string' && /^[0-9a-f]{64}$/i.test(decoded.data)) {
-          return String(decoded.data).toLowerCase();
-        }
-      } catch (_err) {
-        return '';
-      }
-    }
-    return '';
+    return window.CitrineNostrWeb.normalizeNostrPubkey(value, window.NostrTools);
   }
 
   function beginChallenge(pubkeyHint) {

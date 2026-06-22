@@ -629,13 +629,7 @@
       return;
     }
     var invoice = modalState.state.invoice;
-    var copyPromise;
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      copyPromise = navigator.clipboard.writeText(invoice);
-    } else {
-      copyPromise = Promise.reject(new Error('Clipboard access is unavailable in this browser.'));
-    }
-    copyPromise.then(function () {
+    window.CitrineNostrWeb.copyTextToClipboard(invoice, window).then(function () {
       setDialogStatus('Lightning invoice copied.', 'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'Could not copy invoice.', 'error');
@@ -646,19 +640,9 @@
     if (!modalState.state || !modalState.state.invoice || modalState.state.paying) {
       return;
     }
-    if (!window.webln) {
-      setDialogStatus('WebLN is not available in this browser. Use Pay in wallet or copy the invoice instead.', 'error');
-      return;
-    }
     modalState.state.paying = true;
     renderDialog();
-    var provider = window.webln;
-    Promise.resolve(typeof provider.enable === 'function' ? provider.enable() : undefined).then(function () {
-      if (typeof provider.sendPayment !== 'function') {
-        throw new Error('This WebLN provider cannot pay invoices.');
-      }
-      return provider.sendPayment(modalState.state.invoice);
-    }).then(function () {
+    window.CitrineNostrWeb.payLightningInvoiceWithWebLN(modalState.state.invoice, window).then(function () {
       setDialogStatus('Payment submitted through WebLN. The recipient server will publish the zap receipt after settlement.', 'ok');
     }).catch(function (err) {
       setDialogStatus(err && err.message ? err.message : 'WebLN payment failed.', 'error');
