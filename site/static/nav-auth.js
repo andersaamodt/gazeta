@@ -602,14 +602,7 @@
   }
 
   function hasNostrTools() {
-    return !!(window.NostrTools &&
-      typeof window.NostrTools.generateSecretKey === 'function' &&
-      typeof window.NostrTools.getPublicKey === 'function' &&
-      typeof window.NostrTools.finalizeEvent === 'function' &&
-      window.NostrTools.nip04 &&
-      typeof window.NostrTools.nip04.encrypt === 'function' &&
-      typeof window.NostrTools.nip04.decrypt === 'function' &&
-      typeof window.NostrTools.SimplePool === 'function');
+    return window.CitrineNostrWeb.hasNostrTools(window);
   }
 
   function waitForNostrTools(timeoutMs) {
@@ -620,43 +613,30 @@
     if (state.nip46.toolsWaitPromise) {
       return state.nip46.toolsWaitPromise;
     }
-    var startedAt = Date.now();
     var timeout = Number(timeoutMs || 8000);
     if (!isFinite(timeout) || timeout < 1000) {
       timeout = 8000;
     }
-    state.nip46.toolsWaitPromise = new Promise(function (resolve, reject) {
-      function check() {
-        if (hasNostrTools()) {
-          state.nip46.toolsWaitPromise = null;
-          resolve();
-          return;
-        }
-        if (Date.now() - startedAt >= timeout) {
-          state.nip46.toolsWaitPromise = null;
-          reject(new Error('Phone signer setup is still loading. The browser may have blocked the Nostr tools script. Advanced signed JSON remains available.'));
-          return;
-        }
-        window.setTimeout(check, 80);
-      }
-      check();
+    state.nip46.toolsWaitPromise = window.CitrineNostrWeb.waitForNostrTools({
+      target: window,
+      document: document,
+      timeoutMs: timeout,
+      errorMessage: 'Phone signer setup is still loading. The browser may have blocked the Nostr tools script. Advanced signed JSON remains available.'
+    }).then(function () {
+      state.nip46.toolsWaitPromise = null;
+    }).catch(function (err) {
+      state.nip46.toolsWaitPromise = null;
+      throw err;
     });
     return state.nip46.toolsWaitPromise;
   }
 
   function getBrowserSigner() {
-    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.getNip07Signer === 'function') {
-      var citrineSigner = window.CitrineNostrWeb.getNip07Signer(window);
-      if (citrineSigner) return citrineSigner;
-    }
-    var signer = window.nostr || null;
-    if (!signer) {
+    try {
+      return window.CitrineNostrWeb.getNip07Signer(window);
+    } catch (_err) {
       throw new Error('No browser signer detected. Install nos2x-fox or use phone/manual login.');
     }
-    if (typeof signer.signEvent !== 'function') {
-      throw new Error('Browser signer is missing signEvent.');
-    }
-    return signer;
   }
 
   function ensureAuthMessageEl() {
@@ -1664,31 +1644,14 @@
   function authEventTemplate(challenge, action, pubkey) {
     var eventAction = action || 'login';
     var signerPubkey = String(pubkey || '').trim();
-    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.createAuthEventTemplate === 'function') {
-      return window.CitrineNostrWeb.createAuthEventTemplate({
-        kind: AUTH_KIND,
-        challenge: challenge,
-        action: eventAction,
-        pubkey: signerPubkey,
-        origin: currentOrigin(),
-        domain: currentHost()
-      });
-    }
-    var tags = [
-      ['challenge', String(challenge || '')],
-      ['origin', currentOrigin()],
-      ['domain', currentHost()]
-    ];
-    if (eventAction && eventAction !== 'login') {
-      tags.push(['action', eventAction]);
-    }
-    return {
+    return window.CitrineNostrWeb.createAuthEventTemplate({
       kind: AUTH_KIND,
-      created_at: nowEpoch(),
-      tags: tags,
-      content: '',
-      pubkey: signerPubkey || undefined
-    };
+      challenge: challenge,
+      action: eventAction,
+      pubkey: signerPubkey,
+      origin: currentOrigin(),
+      domain: currentHost()
+    });
   }
 
   function normalizeSignedEvent(result) {
@@ -2238,25 +2201,14 @@
       url: window.location.origin,
       description: 'Sign in, vote on lists, and sign zaps for this blog.'
     };
-    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.buildNostrConnectUri === 'function') {
-      return window.CitrineNostrWeb.buildNostrConnectUri({
-        appPubkey: appPubkey,
-        pairSecret: pairSecret,
-        relays: relays,
-        name: 'gazeta',
-        metadata: metadata,
-        perms: 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5'
-      });
-    }
-    var params = new URLSearchParams();
-    relays.forEach(function (relay) {
-      params.append('relay', relay);
+    return window.CitrineNostrWeb.buildNostrConnectUri({
+      appPubkey: appPubkey,
+      pairSecret: pairSecret,
+      relays: relays,
+      name: 'gazeta',
+      metadata: metadata,
+      perms: 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5'
     });
-    params.set('secret', pairSecret);
-    params.set('name', 'gazeta');
-    params.set('metadata', JSON.stringify(metadata));
-    params.set('perms', 'get_public_key,sign_event:22242,sign_event:9734,sign_event:7,sign_event:17,sign_event:5');
-    return 'nostrconnect://' + appPubkey + '?' + params.toString();
   }
 
   function saveNip46PairState() {
@@ -2529,30 +2481,7 @@
   }
 
   function extractConnectSecret(msg) {
-    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.extractConnectSecret === 'function') {
-      return window.CitrineNostrWeb.extractConnectSecret(msg);
-    }
-    if (!msg) {
-      return '';
-    }
-    if (typeof msg.result === 'string') {
-      return msg.result;
-    }
-    if (typeof msg.secret === 'string') {
-      return msg.secret;
-    }
-    if (Array.isArray(msg.params)) {
-      if (typeof msg.params[1] === 'string') {
-        return msg.params[1];
-      }
-      if (typeof msg.params[0] === 'string' && msg.params.length === 1) {
-        return msg.params[0];
-      }
-      if (msg.params[0] && typeof msg.params[0] === 'object' && typeof msg.params[0].secret === 'string') {
-        return msg.params[0].secret;
-      }
-    }
-    return '';
+    return window.CitrineNostrWeb.extractConnectSecret(msg);
   }
 
   function decryptNip46Content(event) {
@@ -2726,38 +2655,17 @@
       state.nip46.accountPubkey = '';
     }
 
-    if (typeof window !== 'undefined' && window.CitrineNostrWeb && typeof window.CitrineNostrWeb.withTimedOutRetry === 'function') {
-      return window.CitrineNostrWeb.withTimedOutRetry(getNip46AccountPubkey, {
-        delays: delays,
-        wait: function (delayMs) {
-          return new Promise(function (resolve) {
-            window.setTimeout(resolve, delayMs);
-          });
-        },
-        onRetry: function () {
-          setNip46Diagnostics('Signer connected. Waiting for approval response.', 'waiting');
-        }
-      });
-    }
-
-    var attempt = 0;
-
-    function run() {
-      return getNip46AccountPubkey().catch(function (err) {
-        var message = String((err && err.message) || '');
-        if (attempt >= delays.length || message.indexOf('timed out') < 0) {
-          throw err;
-        }
-        var delayMs = delays[attempt];
-        attempt += 1;
-        setNip46Diagnostics('Signer connected. Waiting for approval response.', 'waiting');
+    return window.CitrineNostrWeb.withTimedOutRetry(getNip46AccountPubkey, {
+      delays: delays,
+      wait: function (delayMs) {
         return new Promise(function (resolve) {
           window.setTimeout(resolve, delayMs);
-        }).then(run);
-      });
-    }
-
-    return run();
+        });
+      },
+      onRetry: function () {
+        setNip46Diagnostics('Signer connected. Waiting for approval response.', 'waiting');
+      }
+    });
   }
 
   function signInWithSigner(signEventFn, options) {
@@ -3113,55 +3021,38 @@
 
   function resolveSharedNostrSigner(opts) {
     var options = opts && typeof opts === 'object' ? opts : {};
-    var silent = !!options.silent;
-
-    if (typeof window.nostr !== 'undefined' && window.nostr && typeof window.nostr.signEvent === 'function') {
-      var browserSigner = getBrowserSigner();
-      return Promise.resolve({
-        method: 'browser',
-        signEvent: function (template) {
-          return Promise.resolve(browserSigner.signEvent(template));
+    return window.CitrineNostrWeb.createSharedNostrSigner({
+      target: window,
+      unavailableMessage: sharedSignerUnavailableMessage(),
+      getLastPubkey: function () {
+        return localStorage.getItem('last_auth_pubkey') || '';
+      },
+      nip46Client: {
+        state: function () {
+          return state.nip46;
         },
-        getPublicKey: function () {
-          if (typeof browserSigner.getPublicKey === 'function') {
-            return Promise.resolve(browserSigner.getPublicKey()).then(function (value) {
-              return normalizePubkeyHex(value);
-            });
-          }
-          return Promise.resolve(normalizePubkeyHex(localStorage.getItem('last_auth_pubkey') || ''));
-        }
-      });
-    }
+        ensurePairing: initNip46Pairing,
+        sendRpc: sendNip46Rpc,
+        getAccountPubkey: getNip46AccountPubkey
+      }
+    }).resolve(options);
+  }
 
-    if (!hasNostrTools()) {
-      if (silent) {
-        return Promise.resolve(null);
-      }
-      return Promise.reject(new Error(sharedSignerUnavailableMessage()));
-    }
-
-    return initNip46Pairing().catch(function (err) {
-      if (silent) {
-        return null;
-      }
-      throw err;
-    }).then(function () {
-      var pairedPubkey = normalizePubkeyHex(state.nip46.signerPubkey || '');
-      if (!pairedPubkey) {
-        if (silent) {
-          return null;
-        }
-        throw new Error(sharedSignerUnavailableMessage());
-      }
-      return {
-        method: 'nip46',
-        signEvent: function (template) {
-          return nip46SignEvent(template);
+  function createBlogNostrSigner() {
+    return window.CitrineNostrWeb.createSharedNostrSigner({
+      target: window,
+      unavailableMessage: sharedSignerUnavailableMessage(),
+      getLastPubkey: function () {
+        return localStorage.getItem('last_auth_pubkey') || '';
+      },
+      nip46Client: {
+        state: function () {
+          return state.nip46;
         },
-        getPublicKey: function () {
-          return getNip46AccountPubkey();
-        }
-      };
+        ensurePairing: initNip46Pairing,
+        sendRpc: sendNip46Rpc,
+        getAccountPubkey: getNip46AccountPubkey
+      }
     });
   }
 
@@ -3169,40 +3060,7 @@
     if (window.blogNostrSigner && window.blogNostrSigner.__wizardryShared === true) {
       return;
     }
-    window.blogNostrSigner = {
-      __wizardryShared: true,
-      signEvent: function (template) {
-        return resolveSharedNostrSigner().then(function (signer) {
-          return signer.signEvent(template);
-        });
-      },
-      getPublicKey: function () {
-        return resolveSharedNostrSigner().then(function (signer) {
-          return signer.getPublicKey();
-        });
-      },
-      getStatus: function () {
-        return resolveSharedNostrSigner({ silent: true }).then(function (signer) {
-          if (!signer) {
-            return { available: false, method: '', pubkey: '' };
-          }
-          if (signer.method === 'nip46') {
-            return {
-              available: true,
-              method: 'nip46',
-              pubkey: normalizePubkeyHex(state.nip46.accountPubkey || localStorage.getItem('last_auth_pubkey') || '')
-            };
-          }
-          return Promise.resolve(signer.getPublicKey()).then(function (pubkey) {
-            return {
-              available: true,
-              method: String(signer.method || ''),
-              pubkey: normalizePubkeyHex(pubkey || '')
-            };
-          });
-        });
-      }
-    };
+    window.blogNostrSigner = createBlogNostrSigner();
   }
 
   exposeSharedNostrSigner();

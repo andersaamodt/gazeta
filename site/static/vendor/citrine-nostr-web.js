@@ -202,6 +202,73 @@
     };
   }
 
+  function hasNostrTools(target) {
+    var root = target || (typeof window !== 'undefined' ? window : {});
+    var tools = root.NostrTools || null;
+    return !!(tools &&
+      typeof tools.generateSecretKey === 'function' &&
+      typeof tools.getPublicKey === 'function' &&
+      typeof tools.finalizeEvent === 'function' &&
+      tools.nip04 &&
+      typeof tools.nip04.encrypt === 'function' &&
+      typeof tools.nip04.decrypt === 'function' &&
+      typeof tools.SimplePool === 'function');
+  }
+
+  function waitForNostrTools(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var root = opts.target || (typeof window !== 'undefined' ? window : null);
+    var doc = opts.document || (root && root.document) || (typeof document !== 'undefined' ? document : null);
+    var timeout = Number(opts.timeoutMs || 8000);
+    var interval = Number(opts.intervalMs || 80);
+    var scriptSrc = String(opts.scriptSrc || '');
+    var errorMessage = String(opts.errorMessage || 'Nostr signer tools did not load.');
+    if (!root) return Promise.reject(new Error(errorMessage));
+    if (hasNostrTools(root)) return Promise.resolve(root.NostrTools);
+    if (!isFinite(timeout) || timeout < 1000) timeout = 8000;
+    if (!isFinite(interval) || interval < 20) interval = 80;
+    if (root.__citrineNostrToolsPromise) return root.__citrineNostrToolsPromise;
+    root.__citrineNostrToolsPromise = new Promise(function (resolve, reject) {
+      var startedAt = Date.now();
+      var done = false;
+      var timer = 0;
+      function clear() {
+        if (timer && root.clearTimeout) root.clearTimeout(timer);
+        timer = 0;
+      }
+      function finish(err) {
+        if (done) return;
+        done = true;
+        clear();
+        root.__citrineNostrToolsPromise = null;
+        if (err) reject(err);
+        else resolve(root.NostrTools);
+      }
+      function check() {
+        if (hasNostrTools(root)) {
+          finish(null);
+          return;
+        }
+        if (Date.now() - startedAt >= timeout) {
+          finish(new Error(errorMessage));
+          return;
+        }
+        timer = root.setTimeout(check, interval);
+      }
+      if (scriptSrc && doc && doc.head && !doc.querySelector('script[data-citrine-nostr-tools="true"]')) {
+        var script = doc.createElement('script');
+        script.src = scriptSrc;
+        script.async = true;
+        script.dataset.citrineNostrTools = 'true';
+        script.onload = check;
+        script.onerror = function () { finish(new Error(errorMessage)); };
+        doc.head.appendChild(script);
+      }
+      check();
+    });
+    return root.__citrineNostrToolsPromise;
+  }
+
   function defaultState(relays) {
     return {
       active: false,
@@ -448,6 +515,99 @@
     if (typeof signer.getPublicKey !== 'function') throw new Error('Browser signer is missing getPublicKey.');
     if (typeof signer.signEvent !== 'function') throw new Error('Browser signer is missing signEvent.');
     return signer;
+  }
+
+  function createSharedNostrSigner(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var root = opts.target || (typeof window !== 'undefined' ? window : {});
+    var client = opts.nip46Client || null;
+    var unavailableMessage = String(opts.unavailableMessage || 'No Nostr signer detected.');
+    var lastPubkey = typeof opts.getLastPubkey === 'function' ? opts.getLastPubkey : function () { return ''; };
+
+    function browserSigner() {
+      try {
+        return getNip07Signer(root);
+      } catch (_err) {
+        return null;
+      }
+    }
+
+    function resolve(resolveOptions) {
+      var ropts = resolveOptions && typeof resolveOptions === 'object' ? resolveOptions : {};
+      var silent = !!ropts.silent;
+      var signer = browserSigner();
+      if (signer) {
+        return Promise.resolve({
+          method: 'browser',
+          signEvent: function (template) { return Promise.resolve(signer.signEvent(template)); },
+          getPublicKey: function () { return Promise.resolve(signer.getPublicKey()).then(normalizePubkeyHex); }
+        });
+      }
+      if (!client) {
+        return silent ? Promise.resolve(null) : Promise.reject(new Error(unavailableMessage));
+      }
+      return Promise.resolve(typeof opts.ensureNip46Ready === 'function' ? opts.ensureNip46Ready(client) : client.ensurePairing()).then(function () {
+        var state = typeof client.state === 'function' ? client.state() : {};
+        var paired = normalizePubkeyHex(state.signerPubkey || '');
+        if (!paired) {
+          if (silent) return null;
+          throw new Error(unavailableMessage);
+        }
+        return {
+          method: 'nip46',
+          signEvent: function (template) {
+            return client.sendRpc('sign_event', [JSON.stringify(template)], ropts.signTimeoutMs || 70000).then(function (result) {
+              return typeof result === 'string' ? parseJson(result) : result;
+            });
+          },
+          getPublicKey: function () { return client.getAccountPubkey(ropts); }
+        };
+      }).catch(function (err) {
+        if (silent) return null;
+        throw err;
+      });
+    }
+
+    function status() {
+      return resolve({ silent: true }).then(function (signer) {
+        if (!signer) return { available: false, method: '', pubkey: '' };
+        if (signer.method === 'nip46') {
+          var state = client && typeof client.state === 'function' ? client.state() : {};
+          return { available: true, method: 'nip46', pubkey: normalizePubkeyHex(state.accountPubkey || lastPubkey() || '') };
+        }
+        return signer.getPublicKey().then(function (pubkey) {
+          return { available: true, method: 'browser', pubkey: normalizePubkeyHex(pubkey || '') };
+        });
+      });
+    }
+
+    return {
+      __wizardryShared: true,
+      resolve: resolve,
+      signEvent: function (template) { return resolve().then(function (signer) { return signer.signEvent(template); }); },
+      getPublicKey: function () { return resolve().then(function (signer) { return signer.getPublicKey(); }); },
+      getStatus: status
+    };
+  }
+
+  function signerUnavailableError(err) {
+    var message = String((err && err.message) || err || '').toLowerCase();
+    return message.indexOf('no nostr signer') !== -1 ||
+      message.indexOf('no browser nostr signer') !== -1 ||
+      message.indexOf('fresh signer approval') !== -1 ||
+      message.indexOf('phone signer is not paired') !== -1 ||
+      message.indexOf('signer is not paired') !== -1;
+  }
+
+  function signerIsAvailable(api) {
+    if (!api) return Promise.resolve(false);
+    if (typeof api.getStatus !== 'function') return Promise.resolve(true);
+    return Promise.resolve(api.getStatus()).then(function (status) {
+      return !!(status && status.available);
+    }).catch(function (err) {
+      if (signerUnavailableError(err)) return false;
+      throw err;
+    });
   }
 
   function bindSignerReturnRefresh(target, refresh) {
@@ -727,6 +887,198 @@
     return icons[key] || icons.fallback;
   }
 
+  function lud16ToUrl(lud16) {
+    var value = String(lud16 || '').trim().toLowerCase();
+    var parts = value.split('@');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) throw new Error('Lightning address must look like name@example.com.');
+    return 'https://' + parts[1] + '/.well-known/lnurlp/' + encodeURIComponent(parts[0]);
+  }
+
+  function bytesFromText(text) {
+    if (typeof TextEncoder !== 'undefined') return Array.prototype.slice.call(new TextEncoder().encode(String(text || '')));
+    return String(text || '').split('').map(function (char) { return char.charCodeAt(0) & 255; });
+  }
+
+  function convertBits(data, fromBits, toBits, pad) {
+    var acc = 0;
+    var bits = 0;
+    var ret = [];
+    var maxv = (1 << toBits) - 1;
+    var maxAcc = (1 << (fromBits + toBits - 1)) - 1;
+    for (var i = 0; i < data.length; i += 1) {
+      var value = data[i];
+      if (value < 0 || (value >> fromBits) !== 0) return [];
+      acc = ((acc << fromBits) | value) & maxAcc;
+      bits += fromBits;
+      while (bits >= toBits) {
+        bits -= toBits;
+        ret.push((acc >> bits) & maxv);
+      }
+    }
+    if (pad) {
+      if (bits > 0) ret.push((acc << (toBits - bits)) & maxv);
+    } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) {
+      return [];
+    }
+    return ret;
+  }
+
+  function bech32Polymod(values) {
+    var generators = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+    var chk = 1;
+    for (var i = 0; i < values.length; i += 1) {
+      var top = chk >> 25;
+      chk = ((chk & 0x1ffffff) << 5) ^ values[i];
+      for (var j = 0; j < generators.length; j += 1) {
+        if ((top >> j) & 1) chk ^= generators[j];
+      }
+    }
+    return chk;
+  }
+
+  function bech32HrpExpand(hrp) {
+    var out = [];
+    for (var i = 0; i < hrp.length; i += 1) out.push(hrp.charCodeAt(i) >> 5);
+    out.push(0);
+    for (var j = 0; j < hrp.length; j += 1) out.push(hrp.charCodeAt(j) & 31);
+    return out;
+  }
+
+  function bech32Encode(hrp, text) {
+    var charset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+    var words = convertBits(bytesFromText(text), 8, 5, true);
+    if (!words.length) throw new Error('Could not encode LNURL.');
+    var values = bech32HrpExpand(hrp).concat(words).concat([0, 0, 0, 0, 0, 0]);
+    var polymod = bech32Polymod(values) ^ 1;
+    var combined = words.slice();
+    for (var i = 0; i < 6; i += 1) combined.push((polymod >> (5 * (5 - i))) & 31);
+    var out = hrp + '1';
+    combined.forEach(function (value) { out += charset.charAt(value); });
+    return out;
+  }
+
+  function fetchJson(url, options) {
+    var fetchFn = options && typeof options.fetch === 'function' ? options.fetch : (typeof fetch === 'function' ? fetch : null);
+    if (!fetchFn) return Promise.reject(new Error('Fetch is not available.'));
+    return fetchFn(url, { method: 'GET', credentials: 'omit', cache: 'no-store' }).then(function (res) {
+      return res.text().then(function (text) {
+        var json = parseJson(text);
+        if (!res.ok) throw new Error(json && json.reason ? json.reason : ('HTTP ' + String(res.status)));
+        if (!json || typeof json !== 'object') throw new Error('Expected a JSON response.');
+        return json;
+      });
+    });
+  }
+
+  function resolveZapCallbackUrl(callback, payUrl) {
+    var raw = String(callback || '').trim();
+    if (!raw) throw new Error('Lightning provider did not return a callback URL.');
+    try {
+      return new URL(raw, payUrl).toString();
+    } catch (_err) {
+      throw new Error('Lightning provider returned an invalid callback URL.');
+    }
+  }
+
+  function loadLnurlZapInfo(lud16, options) {
+    var payUrl = lud16ToUrl(lud16);
+    return fetchJson(payUrl, options).then(function (data) {
+      var nostrPubkey = normalizePubkeyHex(data.nostrPubkey || '');
+      if (data.allowsNostr !== true || !nostrPubkey) throw new Error('Lightning provider does not advertise Nostr zap support.');
+      return {
+        payUrl: payUrl,
+        callback: resolveZapCallbackUrl(data.callback, payUrl),
+        encodedLnurl: bech32Encode('lnurl', payUrl),
+        nostrPubkey: nostrPubkey,
+        minSendable: Number(data.minSendable || 0),
+        maxSendable: Number(data.maxSendable || 0),
+        commentAllowed: Number(data.commentAllowed || 0)
+      };
+    });
+  }
+
+  function createZapRequestTemplate(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var lnurlInfo = opts.lnurlInfo || {};
+    var zapConfig = opts.zapConfig || {};
+    var target = opts.target || {};
+    var amountMsats = Number(opts.amountMsats || 0);
+    var recipientPubkey = normalizePubkeyHex(lnurlInfo.nostrPubkey || '');
+    if (!recipientPubkey) throw new Error('Lightning provider returned an invalid Nostr recipient pubkey.');
+    var tags = [
+      ['relays'].concat(zapConfig.relays || []),
+      ['amount', String(amountMsats)],
+      ['lnurl', String(lnurlInfo.encodedLnurl || '')],
+      ['p', recipientPubkey]
+    ];
+    if (target.eventId) tags.push(['e', String(target.eventId)]);
+    if (target.address) tags.push(['a', String(target.address)]);
+    if (target.kind) tags.push(['k', String(target.kind)]);
+    var template = {
+      kind: 9734,
+      created_at: Number(opts.createdAt || Math.floor(Date.now() / 1000)),
+      content: String(opts.note || ''),
+      tags: tags
+    };
+    var pubkey = normalizePubkeyHex(opts.pubkey || '');
+    if (pubkey) template.pubkey = pubkey;
+    return template;
+  }
+
+  function createSignedZapRequest(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var signer = opts.signer || null;
+    if (!signer || typeof signer.signEvent !== 'function') return Promise.reject(new Error('A Nostr signer is required.'));
+    return Promise.resolve(typeof signer.getPublicKey === 'function' ? signer.getPublicKey() : '').catch(function () {
+      return '';
+    }).then(function (pubkey) {
+      var template = createZapRequestTemplate(Object.assign({}, opts, { pubkey: pubkey }));
+      return signer.signEvent(template);
+    }).then(function (signed) {
+      var normalized = typeof signed === 'string' ? parseJson(signed) : signed;
+      if (!normalized || typeof normalized !== 'object') throw new Error('Signer returned an invalid zap request.');
+      return normalized;
+    });
+  }
+
+  function requestZapInvoice(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var lnurlInfo = opts.lnurlInfo || {};
+    var url = new URL(lnurlInfo.callback);
+    url.searchParams.set('amount', String(Number(opts.amountMsats || 0)));
+    if (opts.signedEvent) {
+      url.searchParams.set('nostr', JSON.stringify(opts.signedEvent));
+      url.searchParams.set('lnurl', String(lnurlInfo.encodedLnurl || ''));
+    } else if (opts.note && Number(lnurlInfo.commentAllowed || 0) > 0) {
+      url.searchParams.set('comment', String(opts.note || '').slice(0, Number(lnurlInfo.commentAllowed || 0)));
+    }
+    return fetchJson(url.toString(), opts).then(function (data) {
+      var invoice = String(data.pr || '').trim();
+      if (!invoice) throw new Error((data && data.reason) || 'Lightning provider did not return an invoice.');
+      return invoice;
+    });
+  }
+
+  function createZapInvoice(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    return loadLnurlZapInfo(opts.lud16, opts).then(function (lnurlInfo) {
+      var amountMsats = Number(opts.amountMsats || Number(opts.sats || 0) * 1000);
+      if ((lnurlInfo.minSendable > 0 && amountMsats < lnurlInfo.minSendable) || (lnurlInfo.maxSendable > 0 && amountMsats > lnurlInfo.maxSendable)) {
+        throw new Error('Amount must be between ' + String(Math.ceil(lnurlInfo.minSendable / 1000)) + ' and ' + String(Math.floor(lnurlInfo.maxSendable / 1000)) + ' sats for this wallet.');
+      }
+      if (!opts.signer) {
+        return requestZapInvoice(Object.assign({}, opts, { lnurlInfo: lnurlInfo, amountMsats: amountMsats })).then(function (invoice) {
+          return { invoice: invoice, signed: false, lnurlInfo: lnurlInfo };
+        });
+      }
+      return createSignedZapRequest(Object.assign({}, opts, { lnurlInfo: lnurlInfo, amountMsats: amountMsats })).then(function (signedEvent) {
+        return requestZapInvoice(Object.assign({}, opts, { lnurlInfo: lnurlInfo, amountMsats: amountMsats, signedEvent: signedEvent })).then(function (invoice) {
+          return { invoice: invoice, signed: true, signedEvent: signedEvent, lnurlInfo: lnurlInfo };
+        });
+      });
+    });
+  }
+
   return {
     NIP46_KIND: NIP46_KIND,
     DEFAULT_RETRY_DELAYS: DEFAULT_RETRY_DELAYS.slice(),
@@ -741,8 +1093,13 @@
     withTimedOutRetry: withTimedOutRetry,
     createSessionStorageAdapter: createSessionStorageAdapter,
     createMemoryStorageAdapter: createMemoryStorageAdapter,
+    hasNostrTools: hasNostrTools,
+    waitForNostrTools: waitForNostrTools,
     createNip46Client: createNip46Client,
     getNip07Signer: getNip07Signer,
+    createSharedNostrSigner: createSharedNostrSigner,
+    signerUnavailableError: signerUnavailableError,
+    signerIsAvailable: signerIsAvailable,
     bindSignerReturnRefresh: bindSignerReturnRefresh,
     nostrLoginDialogHtml: nostrLoginDialogHtml,
     ensureNostrLoginDialog: ensureNostrLoginDialog,
@@ -750,6 +1107,13 @@
     recommendationPlatformLabel: recommendationPlatformLabel,
     nostrLoginRecommendation: nostrLoginRecommendation,
     nostrZapRecommendation: nostrZapRecommendation,
-    renderNostrRecommendations: renderNostrRecommendations
+    renderNostrRecommendations: renderNostrRecommendations,
+    lud16ToUrl: lud16ToUrl,
+    bech32Encode: bech32Encode,
+    loadLnurlZapInfo: loadLnurlZapInfo,
+    createZapRequestTemplate: createZapRequestTemplate,
+    createSignedZapRequest: createSignedZapRequest,
+    requestZapInvoice: requestZapInvoice,
+    createZapInvoice: createZapInvoice
   };
 }));
