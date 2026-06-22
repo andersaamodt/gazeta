@@ -94,7 +94,7 @@ done
 
 items_json=$(jq -sc '.' "$items_file" 2>/dev/null || printf '[]')
 rm -f "$items_file"
-style_css_version='20260621-parchment-restore2'
+style_css_version='20260622-lapidarist-restore1'
 includes_dir="$blog_site_root/site/includes"
 nav_file="$includes_dir/nav.md"
 footer_file="$includes_dir/footer.md"

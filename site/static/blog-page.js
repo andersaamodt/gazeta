@@ -53,6 +53,8 @@
     authSignature: '',
     posts: [],
     postsLoading: true,
+    staticPrerenderListAdopted: false,
+    adoptedPostListSignature: '',
     initialContentPainted: false,
     initialPageStateLoaded: false,
     initialPostsLoaded: false,
@@ -4227,6 +4229,25 @@
     });
   }
 
+  function postListSignature() {
+    return JSON.stringify(filteredPosts().map(function (post) {
+      return {
+        url: String(post && post.url || ''),
+        title: String(post && post.title || ''),
+        type: String(post && post.type || 'post'),
+        year: String(post && post.year || ''),
+        tags: normalizePostTags(post && post.tags),
+        summary: String(post && post.summary || ''),
+        summary_truncated: !!(post && post.summary_truncated),
+        published_date: String(post && (post.published_date || post.pub_date) || ''),
+        reading_minutes: Number(post && post.reading_minutes || 0) || 0,
+        author: String(post && post.author || ''),
+        link_url: String(post && post.link_url || ''),
+        comment_count: Number(post && post.comment_count || 0) || 0
+      };
+    }));
+  }
+
   function filterButtonHtml(group, value, label, isActive) {
     return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
   }
@@ -4683,7 +4704,7 @@
 	    return JSON.stringify({
 	      payload: normalizedPayloadForRenderSignature(),
 	      isAdmin: isAdmin(),
-	      posts: Array.isArray(state.posts) ? state.posts : [],
+	      postList: postListSignature(),
 	      filters: {
 	        tags: sortedSet(state.filters.tags),
 	        years: sortedSet(state.filters.years),
@@ -5445,6 +5466,8 @@
     }
 	    state.postsLoading = !hasWarmPosts;
 	    if (hasMatchingStaticPrerender(prerenderedPayload, els.list)) {
+	      state.staticPrerenderListAdopted = true;
+	      state.adoptedPostListSignature = postListSignature();
 	      renderHead();
 	      renderAdmin();
 	      renderDraftNotice();
@@ -5470,6 +5493,17 @@
       loadDraftNoticeData();
       var nextSignature = renderSignature();
       if (state.renderSignature !== nextSignature) {
+        if (state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature()) {
+          renderHead();
+          renderAdmin();
+          renderDraftNotice();
+          renderValidation();
+          renderExtrasAfter();
+          renderFilters();
+          renderComposeUi();
+          state.renderSignature = nextSignature;
+          return;
+        }
         state.renderSignature = nextSignature;
         renderAll();
       }

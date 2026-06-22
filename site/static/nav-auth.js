@@ -3629,19 +3629,24 @@
       }
       if (hideCandidate && !hideCandidate.classList.contains('is-nav-overflow-hidden')) {
         hideCandidate.classList.add('is-nav-overflow-hidden');
-        changed = true;
+        guard += 1;
+        continue;
       }
-    } else {
+      break;
+    }
+
+    if (!hasNavPressure()) {
       var hiddenInOrder = links.filter(function (link) {
         return link.classList.contains('is-nav-overflow-hidden');
       });
-      if (hiddenInOrder.length) {
+      while (hiddenInOrder.length) {
         var revealCandidate = hiddenInOrder[0];
         revealCandidate.classList.remove('is-nav-overflow-hidden');
         if (hasNavPressure()) {
           revealCandidate.classList.add('is-nav-overflow-hidden');
+          break;
         } else {
-          changed = true;
+          hiddenInOrder.shift();
         }
       }
     }
@@ -4042,7 +4047,7 @@
 
   function updateThemeStylesheet(theme) {
     var nextTheme = normalizeThemeName(theme);
-    var themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260621-parchment-restore2');
+    var themeVersion = String(window.__wizardryThemeStylesheetVersion || '20260622-lapidarist-restore1');
     var href = '/static/themes/' + encodeURIComponent(nextTheme) + '.css?v=' + encodeURIComponent(themeVersion);
     var themeLink = document.getElementById('theme-stylesheet');
     if (isThemeHrefAlreadyActive(themeLink, href)) {
