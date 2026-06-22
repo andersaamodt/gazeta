@@ -20,17 +20,19 @@ assert_file_contains() {
   fi
 }
 
-assert_file_contains "$NAV_FILE" "function seedInitialMobileOverflowMenu()" 'nav include seeds mobile overflow menu before nav hydration finishes'
-assert_file_contains "$NAV_FILE" "window.matchMedia('(max-width: 780px)').matches" 'mobile overflow seeding only applies on narrow viewports'
-assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'mobile overflow seeding clones current navbar links into the overflow panel'
+assert_file_contains "$NAV_FILE" "function seedInitialOverflowMenu()" 'nav include seeds overflow menu before nav hydration finishes'
+assert_file_contains "$NAV_FILE" "while (hasNavPressure() && guard < links.length)" 'nav include computes the initial overflow set in one layout pass'
+assert_file_contains "$NAV_FILE" "link.classList.remove('is-nav-overflow-hidden');" 'nav include starts overflow measurement from a clean link set'
+assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'nav include clones hidden navbar links into the overflow panel'
 assert_file_contains "$NAV_FILE" "menu.hidden = false;" 'mobile overflow seeding reveals the overflow trigger immediately'
 
-assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-center > a[data-page]" 'hydrating mobile nav hides inline page links before overflow sync'
+assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-center > a[data-page].is-nav-overflow-hidden" 'hydrating mobile nav hides only measured overflow links'
 assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-overflow-menu[hidden]" 'hydrating mobile nav forces the overflow trigger visible'
 
 assert_file_contains "$AUTH_FILE" "navOverflowReady: false" 'nav auth tracks whether the first overflow layout pass has completed'
 assert_file_contains "$AUTH_FILE" "function markNavOverflowReady()" 'nav auth exposes a one-time nav overflow readiness gate'
 assert_file_contains "$AUTH_FILE" "markHydrationNavReady();" 'nav hydration readiness is driven by the overflow readiness gate'
 assert_file_contains "$AUTH_FILE" "state.navOverflowReady = true;" 'nav overflow gate flips after the first sync'
+assert_file_contains "$AUTH_FILE" "while (hasNavPressure() && guard < links.length)" 'nav auth resolves all overflow pressure in one sync'
 
 printf '%s\n' 'ok'

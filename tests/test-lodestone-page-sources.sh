@@ -89,7 +89,7 @@ grep -Fq 'gazeta-lodestone" render-md "$lodestone_template"' "$site_root/cgi/blo
   exit 1
 }
 
-grep -Fq 'v0.7.6' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.11' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

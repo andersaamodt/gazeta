@@ -464,6 +464,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "'/cgi/blog-save-po
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJson('/static/public-posts.json')" 'blog posts prefer static catalog fetch'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJson('/cgi/blog-list-public-posts')" 'blog posts fall back to CGI catalog fetch'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function filteredPostsForPageDefaults(posts, payload)' 'blog page filters warm post catalogs against page default tags before first paint'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'state.staticPrerenderListAdopted = true;' 'blog hydration adopts matching static prerendered lists'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'state.adoptedPostListSignature === postListSignature()' 'blog hydration skips redrawing unchanged prerendered lists after fetch'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'filter_blog_posts_json_for_default_tag()' 'blog prerender bootstrap filters post catalogs for default-tag blog pages'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'pageSyncStatusPillHtml()' 'blog index page does not render Nostr sync pills in the title actions'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderSyncStatusPill();' 'blog index page does not show a sync status pill for non-admin visitors'

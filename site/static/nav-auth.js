@@ -3609,9 +3609,9 @@
     }
 
     var activeLink = links.find(function (link) { return link.classList.contains('active'); }) || null;
-    var changed = false;
+    var guard = 0;
 
-    if (hasNavPressure()) {
+    while (hasNavPressure() && guard < links.length) {
       var hideCandidate = null;
       for (var i = links.length - 1; i >= 0; i -= 1) {
         var visibleLink = links[i];
@@ -3676,9 +3676,6 @@
     setNavOverflowButtonCount(hiddenLinks.length);
     els.navOverflowMenu.hidden = false;
     markNavOverflowReady();
-    if (changed) {
-      scheduleNavOverflowMenuSync();
-    }
   }
 
   function placeNavOverflowMenuWithPageLinks() {

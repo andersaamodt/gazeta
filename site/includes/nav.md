@@ -126,17 +126,15 @@
 </div>
 </div>
 </nav>
-<script type="module">
+<script>
 (function () {
-  function seedInitialMobileOverflowMenu() {
+  function seedInitialOverflowMenu() {
     var docEl = document.documentElement;
     if (!docEl || !docEl.classList.contains('app-hydrating')) {
       return;
     }
-    if (window.matchMedia && !window.matchMedia('(max-width: 780px)').matches) {
-      return;
-    }
     var navCenter = document.querySelector('nav.site-nav .nav-center');
+    var navRight = document.querySelector('nav.site-nav .nav-right');
     var menu = document.getElementById('nav-overflow-menu');
     var button = document.getElementById('nav-overflow-btn');
     var count = document.getElementById('nav-overflow-count');
@@ -148,8 +146,108 @@
     if (!links.length) {
       return;
     }
-    panel.innerHTML = '';
+
+    function rectVisible(rect) {
+      return !!rect && rect.width > 0 && rect.height > 0;
+    }
+
+    function rectsVerticallyOverlap(a, b) {
+      return !!(a && b && a.bottom > b.top && b.bottom > a.top);
+    }
+
+    function rightmostVisibleLinkRect() {
+      for (var idx = links.length - 1; idx >= 0; idx -= 1) {
+        var link = links[idx];
+        if (link.classList.contains('is-nav-overflow-hidden')) {
+          continue;
+        }
+        var rect = link.getBoundingClientRect();
+        if (rectVisible(rect)) {
+          return rect;
+        }
+      }
+      return null;
+    }
+
+    function navCollisionLeft() {
+      if (!navRight) {
+        return null;
+      }
+      var search = navRight.querySelector('.nav-search');
+      var target = search && !search.hidden ? search : navRight;
+      var rect = target.getBoundingClientRect();
+      if (!rectVisible(rect)) {
+        return null;
+      }
+      return rect.left;
+    }
+
+    function hasRightSideCollision() {
+      var linkRect = rightmostVisibleLinkRect();
+      var collisionLeft = navCollisionLeft();
+      if (!linkRect || collisionLeft === null) {
+        return false;
+      }
+      var centerRect = navCenter.getBoundingClientRect();
+      var rightRect = navRight ? navRight.getBoundingClientRect() : null;
+      if (!rectsVerticallyOverlap(centerRect, rightRect)) {
+        return false;
+      }
+      return linkRect.right > (collisionLeft - 8);
+    }
+
+    function hasNavPressure() {
+      return navCenter.scrollWidth > (navCenter.clientWidth + 1) || hasRightSideCollision();
+    }
+
     links.forEach(function (link) {
+      link.classList.remove('is-nav-overflow-hidden');
+    });
+    menu.hidden = true;
+    panel.innerHTML = '';
+
+    var activeLink = links.find(function (link) {
+      return link.classList.contains('active') || link.getAttribute('aria-current') === 'page';
+    }) || null;
+    if (hasNavPressure()) {
+      menu.hidden = false;
+      var guard = 0;
+      while (hasNavPressure() && guard < links.length) {
+        var hide = null;
+        for (var i = links.length - 1; i >= 0; i -= 1) {
+          if (links[i].classList.contains('is-nav-overflow-hidden')) {
+            continue;
+          }
+          if (activeLink && links[i] === activeLink) {
+            continue;
+          }
+          hide = links[i];
+          break;
+        }
+        if (!hide && activeLink && !activeLink.classList.contains('is-nav-overflow-hidden')) {
+          hide = activeLink;
+        }
+        if (!hide) {
+          break;
+        }
+        hide.classList.add('is-nav-overflow-hidden');
+        guard += 1;
+      }
+    }
+
+    var hiddenLinks = links.filter(function (link) {
+      return link.classList.contains('is-nav-overflow-hidden');
+    });
+    if (!hiddenLinks.length) {
+      count.textContent = '0';
+      count.hidden = true;
+      button.setAttribute('aria-label', 'More pages');
+      menu.hidden = true;
+      return;
+    }
+
+    panel.innerHTML = '';
+    hiddenLinks.forEach(function (link) {
       var item = document.createElement('a');
       item.className = 'nav-menu-item';
       item.setAttribute('role', 'menuitem');
@@ -157,13 +255,13 @@
       item.textContent = String(link.textContent || '').trim() || 'Page';
       panel.appendChild(item);
     });
-    count.textContent = String(links.length);
+    count.textContent = String(hiddenLinks.length);
     count.hidden = false;
-    button.setAttribute('aria-label', 'More pages (' + String(links.length) + ' hidden)');
+    button.setAttribute('aria-label', 'More pages (' + String(hiddenLinks.length) + ' hidden)');
     menu.hidden = false;
   }
 
-  seedInitialMobileOverflowMenu();
+  seedInitialOverflowMenu();
 })();
 </script>
 <script type="module">
@@ -458,6 +556,36 @@
         guard += 1;
       }
     }
+    function syncInitialOverflowPanelNow() {
+      var overflowMenu = document.getElementById('nav-overflow-menu');
+      var overflowButton = document.getElementById('nav-overflow-btn');
+      var overflowCount = document.getElementById('nav-overflow-count');
+      var overflowPanel = document.getElementById('nav-overflow-panel');
+      if (!overflowMenu || !overflowButton || !overflowCount || !overflowPanel) {
+        return;
+      }
+      var hiddenLinks = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page].is-nav-overflow-hidden'));
+      overflowPanel.innerHTML = '';
+      hiddenLinks.forEach(function (link) {
+        var item = document.createElement('a');
+        item.className = 'nav-menu-item';
+        item.setAttribute('role', 'menuitem');
+        item.href = link.getAttribute('href') || '/';
+        item.textContent = String(link.textContent || '').trim() || 'Page';
+        overflowPanel.appendChild(item);
+      });
+      if (!hiddenLinks.length) {
+        overflowCount.textContent = '0';
+        overflowCount.hidden = true;
+        overflowButton.setAttribute('aria-label', 'More pages');
+        overflowMenu.hidden = true;
+        return;
+      }
+      overflowCount.textContent = String(hiddenLinks.length);
+      overflowCount.hidden = false;
+      overflowButton.setAttribute('aria-label', 'More pages (' + String(hiddenLinks.length) + ' hidden)');
+      overflowMenu.hidden = false;
+    }
     if (navCenter && cachedRaw) {
       var cachedPages = JSON.parse(cachedRaw);
       if (!Array.isArray(cachedPages)) {
@@ -501,6 +629,7 @@
     }
     highlightCurrentNavNow();
     collapseOverflowingNavLinksNow();
+    syncInitialOverflowPanelNow();
   } catch (_err2) {
     // Ignore cache parse failures and let runtime fetch reconcile state.
   }
