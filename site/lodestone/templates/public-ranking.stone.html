@@ -10,7 +10,7 @@ license: "CC BY 4.0"
 
 <lode-page>
 <section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug={slug} data-page-type="public-ranking" data-page-title={title}{@html prerender_attrs}>
-<div class="list-page-head"><h1 id="public-ranking-title">{title}</h1><p id="public-ranking-description" class="muted">{description}</p></div>
+<div class="list-page-head"><h1 id="public-ranking-title">{title}</h1><nostr-sync-pill slug={slug}></nostr-sync-pill><p id="public-ranking-description" class="muted">{description}</p></div>
 <div id="public-ranking-admin" class="list-admin" hidden></div>
 <div id="public-ranking-validation" class="list-validation" hidden></div>
 <div id="public-ranking-content" class="list-page-content"{@html prerender_attrs}>{@html content_html}</div>

@@ -10,7 +10,7 @@ license: "CC BY 4.0"
 
 <lode-page>
 <section id="overworld-page-root" class="overworld-page-shell" data-page-slug={slug} data-page-type="overworld" data-page-title={title}{@html prerender_attrs}>
-<div class="list-page-head overworld-page-head"><h1 id="overworld-page-title">{title}</h1></div>
+<div class="list-page-head overworld-page-head"><h1 id="overworld-page-title">{title}</h1><nostr-sync-pill slug={slug}></nostr-sync-pill></div>
 <div class="overworld-game-mount" data-overworld-game{@html prerender_attrs}>{@html content_html}</div>
 </section>
 

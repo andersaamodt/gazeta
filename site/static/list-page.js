@@ -95,7 +95,8 @@
     initialContentPainted: false,
     publicSubmitBusy: false,
     publicSubmitExpanded: false,
-    renderSignature: ''
+    renderSignature: '',
+    staticPrerenderListAdopted: false
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
@@ -383,6 +384,16 @@
 	    return !payload.is_admin && !hasLikelyAuthenticatedSession();
 	  }
 
+  function shouldPreserveAdoptedStaticPrerender() {
+    return state.staticPrerenderListAdopted &&
+      !hasLikelyAuthenticatedSession() &&
+      !hasMarkerFilterHashOverride() &&
+      root &&
+      els.content &&
+      root.getAttribute('data-prerender-painted') === 'true' &&
+      els.content.getAttribute('data-prerender-painted') === 'true';
+  }
+
 	  function renderFromBootstrapPayload(payload) {
     if (!payload || typeof payload !== 'object' || !isExpectedPayload(payload)) {
       return false;
@@ -431,8 +442,10 @@
 	      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
 	    });
 	    if (canPreserveStaticPrerender(cachedPayload) && hasMatchingStaticPrerender(cachedPayload, els.content)) {
+	      state.staticPrerenderListAdopted = true;
 	      initializePrerenderMarkerFiltersFromPayload();
       if (hasMarkerFilterHashOverride()) {
+        state.staticPrerenderListAdopted = false;
         renderList();
         renderAdmin();
         renderValidation();
@@ -655,6 +668,12 @@
     function pollForMarked() {
       if (window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function') {
         markedUpgradeTimer = 0;
+        if (shouldPreserveAdoptedStaticPrerender()) {
+          renderHead();
+          renderAdmin();
+          renderValidation();
+          return;
+        }
         renderList();
         renderAdmin();
         renderValidation();
@@ -5496,7 +5515,8 @@
           setSaveStatus('saved');
           state.renderSignature = nextRenderSignature;
           writeBootstrapCache(state.payload);
-	          if (shouldRepaint) {
+	          if (shouldRepaint && !shouldPreserveAdoptedStaticPrerender()) {
+              state.staticPrerenderListAdopted = false;
 	            renderList();
 	            renderAdmin();
 	            renderValidation();
