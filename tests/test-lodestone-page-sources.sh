@@ -137,6 +137,17 @@ grep -Fq '<p class="list-page-empty-state">No rankings yet.</p>' "$site_root/sit
   exit 1
 }
 
+projects_root_count=$(grep -F '<section id="public-ranking-root"' "$site_root/site/pages/projects.md" | wc -l | tr -d ' ')
+[ "$projects_root_count" = "1" ] || {
+  printf '%s\n' "projects page rendered nested public-ranking shells" >&2
+  exit 1
+}
+
+if grep -Fq '<nostr-sync-pill' "$site_root/site/lodestone/templates/public-ranking.stone.html"; then
+  printf '%s\n' "public ranking template emits a duplicate static sync pill" >&2
+  exit 1
+fi
+
 if grep -Fq '&lt;section id=&quot;public-ranking-root&quot;' "$site_root/site/pages/projects.md" ||
    grep -Fq '&lt;div data-lodestone-root=&quot;page&quot;' "$site_root/site/pages/projects.md"; then
   printf '%s\n' "projects page escaped its previous generated shell into content" >&2
@@ -153,7 +164,7 @@ grep -Fq -- '--html-file "posts_json=$render_posts_tmp"' "$site_root/cgi/blog-no
   exit 1
 }
 
-grep -Fq 'v0.7.18' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.19' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

@@ -9,7 +9,7 @@ blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260526-product-price1'
-blog_nostr_public_ranking_page_js_version='20260404-rankingv1'
+blog_nostr_public_ranking_page_js_version='20260622-projects-sync1'
 blog_nostr_overworld_game_js_version='20260522-overworld-textures'
 
 blog_nostr_pages_config_path() {

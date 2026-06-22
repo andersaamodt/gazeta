@@ -290,11 +290,16 @@
     return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
   }
 
+  function titleActionsHtml(syncOnly) {
+    return '<span id="public-ranking-page-title-actions" class="list-page-title-actions' + (syncOnly ? ' public-ranking-sync-actions' : '') + '"></span>';
+  }
+
   function renderSyncStatusPill() {
     var actionsHost = document.getElementById('public-ranking-page-title-actions');
     if (!actionsHost) {
       return;
     }
+    actionsHost.classList.add('public-ranking-sync-actions');
     actionsHost.innerHTML = pageSyncStatusPillHtml();
   }
 
@@ -662,14 +667,14 @@
     if (els.title) {
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {
-          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="public-ranking-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Public Ranking') + '" data-ranking-head-input="title"></span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="public-ranking-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Public Ranking') + '" data-ranking-head-input="title"></span>' + titleActionsHtml(false);
         } else if (state.editMode) {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="title">Edit...</button><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="title">Edit...</button>' + titleActionsHtml(false);
         } else {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
       } else {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span><span id="public-ranking-page-title-actions" class="list-page-title-actions"></span>';
+        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(true);
       }
     }
     if (!isAdmin()) {
@@ -735,6 +740,7 @@
       }
       var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
       if (nonAdminActionsHost) {
+        nonAdminActionsHost.classList.add('public-ranking-sync-actions');
         nonAdminActionsHost.innerHTML = pageSyncStatusPillHtml();
       }
       els.admin.hidden = true;
@@ -748,6 +754,9 @@
     var canRevert = hasCanonical && hasDraftChanges;
     var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
     var actionsHost = document.getElementById('public-ranking-page-title-actions');
+    if (actionsHost) {
+      actionsHost.classList.remove('public-ranking-sync-actions');
+    }
     var html = '';
     html += '<span class="list-page-admin-bar">';
     if (state.saveIndicatorVisible) {

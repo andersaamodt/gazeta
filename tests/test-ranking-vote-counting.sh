@@ -55,4 +55,21 @@ if ! grep -Fq 'support: length' "$ROOT_DIR/cgi/blog-public-ranking-common.sh"; t
   exit 1
 fi
 
+contaminated_state=$(jq -cn '{
+  title: "Projects",
+  content: "<div data-lodestone-root=\"page\"><section id=\"public-ranking-root\"><h1>Projects</h1></section></div>",
+  extras_after: "<nostr-sync-pill slug=\"projects\"></nostr-sync-pill>"
+}')
+normalized_ranking=$(blog_public_ranking_normalize_state_json projects "$contaminated_state")
+normalized_content=$(printf '%s\n' "$normalized_ranking" | jq -r '.content')
+normalized_after=$(printf '%s\n' "$normalized_ranking" | jq -r '.extras_after')
+[ -z "$normalized_content" ] || {
+  printf '%s\n' 'public-ranking normalization preserved generated page shell content' >&2
+  exit 1
+}
+[ -z "$normalized_after" ] || {
+  printf '%s\n' 'public-ranking normalization preserved generated sync shell content' >&2
+  exit 1
+}
+
 printf '%s\n' "ranking vote counting ok"

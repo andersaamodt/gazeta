@@ -48,14 +48,22 @@ blog_public_ranking_normalize_state_json() {
       (($v // "") | tostring | ascii_downcase | gsub("[^0-9a-f]";""));
     def is_coord($v):
       (($v // "") | tostring | test("^[0-9]+:[0-9a-f]{64}:[^[:space:]]+$"));
+    def is_generated_page_shell($v):
+      (($v // "") | tostring) as $text
+      | ($text | test("<\\s*div\\b[^>]*data-lodestone-root=\"page\""; "i"))
+        or ($text | test("<\\s*section\\b[^>]*id=\"public-ranking-root\""; "i"))
+        or ($text | test("<\\s*nostr-sync-pill\\b"; "i"));
+    def clean_editable_markdown($v):
+      (($v // "") | tostring) as $text
+      | if is_generated_page_shell($text) then "" else $text end;
 
     {
       slug: $slug,
       type: "public-ranking",
       title: ((.title // $fallback_title) | tostring),
       description: ((.description // .summary // "") | tostring),
-      content: ((.content // "") | tostring),
-      extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
+      content: clean_editable_markdown(.content),
+      extras_after: clean_editable_markdown(.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // ""),
       extras_after_format: "markdown",
       vote_cooldown_seconds: ((.vote_cooldown_seconds // .vote_cooldown // 86400) | tonumber? // 86400),
       submission_mode: norm_mode(

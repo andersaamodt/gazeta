@@ -463,6 +463,22 @@ strong {
   border-radius: 8px;
 }
 
+#public-ranking-title:has(.public-ranking-sync-actions) {
+  padding-right: 6.8rem;
+}
+
+#public-ranking-title .public-ranking-sync-actions {
+  position: absolute;
+  top: 0.12rem;
+  right: 0;
+  width: fit-content;
+  margin: 0;
+  padding: 0;
+  transform: none;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
 .inline-tip {
   border-color: color-mix(in srgb, var(--gold-leaf) 58%, var(--border) 42%);
   color: var(--malachite);
