@@ -85,6 +85,32 @@ html body .blog-post-item .blog-year-pill:focus-visible {
   text-shadow: none !important;
 }
 
+html body .blog-post-item :is(a, button).blog-type-pill,
+html body .blog-post-item :is(a, button).blog-type-pill:hover,
+html body .blog-post-item :is(a, button).blog-type-pill:focus-visible,
+html body .post-single-item :is(a, button).blog-type-pill,
+html body .post-single-item :is(a, button).blog-type-pill:hover,
+html body .post-single-item :is(a, button).blog-type-pill:focus-visible {
+  border-color: var(--post-tag-type-border) !important;
+  background: var(--post-tag-type-bg) !important;
+  background-color: var(--post-tag-type-bg) !important;
+  color: var(--post-tag-type-text) !important;
+  -webkit-text-fill-color: var(--post-tag-type-text) !important;
+}
+
+html body .blog-post-item :is(a, button).blog-year-pill,
+html body .blog-post-item :is(a, button).blog-year-pill:hover,
+html body .blog-post-item :is(a, button).blog-year-pill:focus-visible,
+html body .post-single-item :is(a, button).blog-year-pill,
+html body .post-single-item :is(a, button).blog-year-pill:hover,
+html body .post-single-item :is(a, button).blog-year-pill:focus-visible {
+  border-color: var(--post-tag-year-border) !important;
+  background: var(--post-tag-year-bg) !important;
+  background-color: var(--post-tag-year-bg) !important;
+  color: var(--post-tag-year-text) !important;
+  -webkit-text-fill-color: var(--post-tag-year-text) !important;
+}
+
 </style>
 <script defer src="/static/page-head.js?v=20260620-route-hydration1"></script>
 <script defer src="/static/zap-ui.js?v=20260524-zap-panel1"></script>
