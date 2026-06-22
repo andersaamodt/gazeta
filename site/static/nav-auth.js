@@ -3758,7 +3758,7 @@
     placeNavOverflowMenuWithPageLinks();
     syncNavSiteSignatureDestination();
     highlightCurrentPage();
-    scheduleNavOverflowMenuSync();
+    syncNavOverflowMenuNow();
   }
 
   function loadNavbarNostrPages(options) {

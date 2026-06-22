@@ -142,6 +142,79 @@
     if (!navCenter || !menu || !button || !count || !panel) {
       return;
     }
+
+    function esc(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeNavPath(path) {
+      var p = String(path || '').trim();
+      if (!p) {
+        return '/';
+      }
+      if (p.indexOf('http://') === 0 || p.indexOf('https://') === 0) {
+        try {
+          p = new URL(p, window.location.href).pathname || '/';
+        } catch (_urlErr) {
+          p = '/';
+        }
+      }
+      p = p.split('?', 1)[0].replace(/\/+$/, '') || '/';
+      if (p.indexOf('/pages/') === 0) {
+        p = '/' + p.slice('/pages/'.length).replace(/\.html?$/i, '');
+      }
+      return p || '/';
+    }
+
+    function initialNavbarPages() {
+      var bootstrap = window.__wizardrySiteBootstrap;
+      if (bootstrap && Array.isArray(bootstrap.navbar_pages) && bootstrap.navbar_pages.length) {
+        return bootstrap.navbar_pages;
+      }
+      try {
+        var cached = JSON.parse(localStorage.getItem('cached_navbar_pages_v1') || '[]');
+        if (Array.isArray(cached) && cached.length) {
+          return cached;
+        }
+      } catch (_cacheErr) {
+        // Ignore invalid cached navbar rows.
+      }
+      return null;
+    }
+
+    function renderInitialNavbarPages() {
+      var pages = initialNavbarPages();
+      if (!pages || !pages.length) {
+        return;
+      }
+      var current = normalizeNavPath(window.location.pathname);
+      var seen = {};
+      var html = '';
+      pages.forEach(function (page) {
+        var slug = String(page && page.slug || '').trim();
+        var title = String(page && page.title || '').trim();
+        var path = String(page && page.path || '').trim();
+        if (!slug || !path || seen[slug]) {
+          return;
+        }
+        seen[slug] = true;
+        var active = normalizeNavPath(path) === current;
+        html += '<a href="' + esc(path) + '" data-page="' + esc(slug) + '"' + (active ? ' class="active" aria-current="page"' : '') + '>' + esc(title || slug) + '</a>';
+      });
+      if (!html) {
+        return;
+      }
+      navCenter.innerHTML = html;
+      navCenter.appendChild(menu);
+    }
+
+    renderInitialNavbarPages();
+
     var links = Array.prototype.slice.call(navCenter.querySelectorAll('a[data-page][href]'));
     if (!links.length) {
       return;

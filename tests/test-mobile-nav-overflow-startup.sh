@@ -21,6 +21,8 @@ assert_file_contains() {
 }
 
 assert_file_contains "$NAV_FILE" "function seedInitialOverflowMenu()" 'nav include seeds overflow menu before nav hydration finishes'
+assert_file_contains "$NAV_FILE" "function renderInitialNavbarPages()" 'nav include renders bootstrap or cached navbar rows before measuring overflow'
+assert_file_contains "$NAV_FILE" "window.__wizardrySiteBootstrap" 'nav include can use generated bootstrap navbar rows for first layout'
 assert_file_contains "$NAV_FILE" "while (hasNavPressure() && guard < links.length)" 'nav include computes the initial overflow set in one layout pass'
 assert_file_contains "$NAV_FILE" "link.classList.remove('is-nav-overflow-hidden');" 'nav include starts overflow measurement from a clean link set'
 assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'nav include clones hidden navbar links into the overflow panel'
@@ -34,5 +36,6 @@ assert_file_contains "$AUTH_FILE" "function markNavOverflowReady()" 'nav auth ex
 assert_file_contains "$AUTH_FILE" "markHydrationNavReady();" 'nav hydration readiness is driven by the overflow readiness gate'
 assert_file_contains "$AUTH_FILE" "state.navOverflowReady = true;" 'nav overflow gate flips after the first sync'
 assert_file_contains "$AUTH_FILE" "while (hasNavPressure() && guard < links.length)" 'nav auth resolves all overflow pressure in one sync'
+assert_file_contains "$AUTH_FILE" "syncNavOverflowMenuNow();" 'nav auth syncs overflow immediately after rendering bootstrap navbar rows'
 
 printf '%s\n' 'ok'
