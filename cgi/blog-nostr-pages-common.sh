@@ -1409,7 +1409,13 @@ blog_nostr_page_render_lodestone_source() {
   render_template=$(blog_nostr_page_lodestone_template_path "$render_page_type")
   [ -f "$render_template" ] || return 1
   render_content_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-content.XXXXXX")
+  render_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-posts.XXXXXX")
   printf '%s\n' "$render_content_html" > "$render_content_tmp"
+  if [ "$render_page_type" = "blog" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    jq -c '.bootstrap_posts // []' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" > "$render_posts_tmp" 2>/dev/null || printf '[]\n' > "$render_posts_tmp"
+  else
+    printf '[]\n' > "$render_posts_tmp"
+  fi
   "$blog_site_root/cgi/gazeta-lodestone" render-md "$render_template" \
     --set "title=$render_title" \
     --set "slug=$render_slug" \
@@ -1425,8 +1431,8 @@ blog_nostr_page_render_lodestone_source() {
     --set "overworld_game_js_version=$blog_nostr_overworld_game_js_version" \
     --set "blog_page_js_version=$blog_page_js_version" \
     --html-file "content_html=$render_content_tmp" \
-    --html-file "posts_html=$render_content_tmp" > "$render_out"
-  rm -f "$render_content_tmp"
+    --html-file "posts_json=$render_posts_tmp" > "$render_out"
+  rm -f "$render_content_tmp" "$render_posts_tmp"
 }
 
 blog_nostr_page_write_prerendered_source() {
@@ -1462,7 +1468,7 @@ blog_nostr_page_write_prerendered_source() {
   case "$page_type" in
     contact) lodestone_content_html=$(blog_nostr_prerender_contact_html "$payload_json") ;;
     nip23) lodestone_content_html=$(blog_nostr_prerender_nip23_html "$payload_json") ;;
-    blog) lodestone_content_html=$(blog_nostr_prerender_blog_posts_html "$payload_json") ;;
+    blog) lodestone_content_html='' ;;
     public-ranking) lodestone_content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json") ;;
     overworld) lodestone_content_html=$(blog_nostr_prerender_overworld_html) ;;
     *) lodestone_content_html=$(blog_nostr_prerender_list_html "$payload_json") ;;
@@ -1512,14 +1518,14 @@ blog_nostr_page_write_prerendered_source() {
       posts_html=$(blog_nostr_prerender_blog_posts_html "$payload_json")
       lodestone_template="$blog_site_root/site/lodestone/pages/blog.stone.html"
       if [ -x "$blog_site_root/cgi/gazeta-lodestone" ] && [ -f "$lodestone_template" ]; then
-        posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-posts.XXXXXX")
-        printf '%s\n' "$posts_html" > "$posts_tmp"
+        posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-posts-json.XXXXXX")
+        blog_nostr_prerender_payload_input "$payload_json" | jq -c '.bootstrap_posts // []' > "$posts_tmp" 2>/dev/null || printf '[]\n' > "$posts_tmp"
         "$blog_site_root/cgi/gazeta-lodestone" render-md "$lodestone_template" \
           --set "title=$page_title" \
           --set "slug=$slug" \
           --set "prerender_attrs=$attrs" \
           --set "blog_page_js_version=$blog_page_js_version" \
-          --html-file "posts_html=$posts_tmp" > "$tmp"
+          --html-file "posts_json=$posts_tmp" > "$tmp"
         rm -f "$posts_tmp"
       else
         {
