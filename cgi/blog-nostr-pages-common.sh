@@ -1420,8 +1420,22 @@ blog_nostr_page_write_prerendered_source() {
     return 1
   fi
 
-  blog_snapshot_file_before_replace "$page_file" "$tmp"
-  mv "$tmp" "$page_file"
+  source_template_type=missing
+  if [ -f "$page_file" ]; then
+    source_template_type=$(blog_nostr_page_source_template_type "$page_file")
+  fi
+  if [ "$source_template_type" = "custom" ]; then
+    mount_path=$(blog_nostr_page_mount_path "$slug")
+    mkdir -p "$(dirname "$mount_path")"
+    blog_snapshot_file_before_replace "$mount_path" "$tmp"
+    mv "$tmp" "$mount_path"
+    chmod 644 "$mount_path" 2>/dev/null || true
+  else
+    blog_snapshot_file_before_replace "$page_file" "$tmp"
+    mv "$tmp" "$page_file"
+    chmod 644 "$page_file" 2>/dev/null || true
+    blog_nostr_page_sync_mount "$slug" "$page_type" force >/dev/null 2>&1 || true
+  fi
   rm -f "$payload_tmp"
   if [ -n "$prev_prerender_payload_file" ]; then
     BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$prev_prerender_payload_file
@@ -1429,8 +1443,6 @@ blog_nostr_page_write_prerendered_source() {
   else
     unset BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
   fi
-  chmod 644 "$page_file" 2>/dev/null || true
-  blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
 }
 
 blog_nostr_page_load_draft_state_json() {
@@ -2743,6 +2755,7 @@ blog_nostr_pages_prune_clean_url_build_dirs() {
 blog_nostr_page_sync_mount() {
   slug=$(blog_nostr_page_slug "${1-}")
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  force_sync=${3-}
   [ -n "$slug" ] || return 1
   source_path=$(blog_nostr_page_source_path "$slug" "$page_type")
   mount_path=$(blog_nostr_page_mount_path "$slug")
@@ -2755,7 +2768,7 @@ blog_nostr_page_sync_mount() {
   elif [ -e "$mount_path" ]; then
     existing_type=$(blog_nostr_page_source_template_type "$mount_path")
     existing_slug=$(blog_nostr_page_source_template_slug "$mount_path")
-    if [ "$existing_type" = "custom" ]; then
+    if [ "$existing_type" = "custom" ] && [ "$force_sync" != "force" ]; then
       return 0
     fi
     if [ "$existing_type" != "$page_type" ] || ! { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } || ! blog_nostr_page_template_is_current "$mount_path" "$page_type"; then

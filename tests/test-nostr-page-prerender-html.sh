@@ -71,6 +71,7 @@ export WIZARDRY_SITE_NAME="$SITE_NAME"
 export PATH="$BIN_DIR:$PATH"
 
 mkdir -p "$SITE_ROOT/site/includes" "$SITE_ROOT/site/pages" "$SITE_ROOT/site/static" "$SITE_ROOT/build/static" "$SITE_DATA" "$BIN_DIR"
+cp -R "$ROOT_DIR/site/lodestone" "$SITE_ROOT/site/lodestone"
 
 cat > "$BIN_DIR/config-get" <<'EOS'
 #!/bin/sh
@@ -132,21 +133,22 @@ blog_nostr_pages_save_json '{
   ]
 }'
 
-blog_nostr_page_save_draft_state_json oeuvre list '{
+blog_state_markdown_write_json "$(blog_nostr_page_source_path oeuvre list)" '{
   "title":"Oeuvre",
-	  "description":"Grouped work",
-	  "group_by":"year",
-	  "show_marker_filters":true,
-	  "show_markers":true,
-	  "default_markers":"curated",
-	  "elements":[
-	    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"curated"},
-	    {"type":"entry","markdown":"[Post URL Label](https://wrong.example/ignored)","post_url":"https://right.example/final","date":"2026","marker":"curated"},
-	    {"type":"entry","markdown":"[Ultramemes](/oeuvre/ultramemes.mkv)","date":"2026","marker":"curated, video talk"},
-	    {"type":"entry","markdown":"Essay Work","date":"2025","marker":"essay"},
-	    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
+  "description":"Grouped work",
+  "group_by":"year",
+  "show_marker_filters":true,
+  "show_markers":true,
+  "default_markers":"curated",
+  "elements":[
+    {"type":"entry","markdown":"Oeuvre Entry","date":"2026","marker":"curated"},
+    {"type":"entry","markdown":"Post URL Label","post_url":"https://right.example/final","date":"2026","marker":"curated"},
+    {"type":"entry","markdown":"[Linked Markdown Plus URL](https://wrong.example/ignored)","post_url":"https://right.example/final","date":"2026","marker":"curated"},
+    {"type":"entry","markdown":"[Ultramemes](/oeuvre/ultramemes.mkv)","date":"2026","marker":"curated, video talk"},
+    {"type":"entry","markdown":"Essay Work","date":"2025","marker":"essay"},
+    {"type":"entry","markdown":"Another Work","date":"2025","marker":"draft"}
   ]
-}'
+}' content
 
 blog_nostr_page_save_draft_state_json reading-list list '{
   "title":"Reading List",
@@ -289,8 +291,9 @@ assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-marker-filter-pill 
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'data-marker-filter-action="toggle"' 'list prerender includes marker filter controls'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '--marker-pill-h:' 'list prerender includes first-paint marker pill colors'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'list-entry-line list-depth-0 is-row-highlight' 'list prerender includes final read-only row striping'
-assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<span class="list-entry-markdown"><a href="https://wrong.example/ignored">Post URL Label</a></span><a class="list-entry-post-url-link" href="https://right.example/final" title="Open linked post" aria-label="Open linked post">' 'list prerender keeps Markdown links and shows post_url as an external-link action'
-assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a class="list-entry-markdown is-post-url-linked" href="https://right.example/final" title="Open linked post">Post URL Label</a>' 'list prerender does not replace Markdown links with post_url when both are present'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a class="list-entry-markdown is-post-url-linked" href="https://right.example/final" title="Open linked post">Post URL Label</a>' 'list prerender uses visitor-visible local source payload post_url links'
+assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<span class="list-entry-markdown"><a href="https://wrong.example/ignored">Linked Markdown Plus URL</a></span><a class="list-entry-post-url-link" href="https://right.example/final" title="Open linked post" aria-label="Open linked post">' 'list prerender keeps Markdown links and shows post_url as an external-link action'
+assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a class="list-entry-markdown is-post-url-linked" href="https://right.example/final" title="Open linked post">Linked Markdown Plus URL</a>' 'list prerender does not replace Markdown links with post_url when both are present'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a href="/oeuvre/ultramemes.mkv">Ultramemes</a>' 'list prerender preserves file links without extension-specific download attributes'
 assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" '<a href="/oeuvre/ultramemes.mkv" download>' 'list prerender does not force MKV links to download HTML fallbacks'
 assert_file_contains "$SITE_ROOT/site/pages/oeuvre.md" 'video talk' 'list prerender includes multi-word marker filter labels'

@@ -340,12 +340,7 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
   fi
   is_prerender_type "$page_type" || continue
   payload_json=''
-  if blog_nostr_page_load_draft_state_json "$slug" "$page_type" >/dev/null 2>&1; then
-    payload_json=$(fallback_payload_json "$slug" "$page_type" 2>/dev/null || printf '')
-  fi
-  if [ -z "$payload_json" ]; then
-    payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
-  fi
+  payload_json=$(render_payload_json "$slug" 2>/dev/null || printf '')
   if [ -z "$payload_json" ]; then
     payload_json=$(fallback_payload_json "$slug" "$page_type" 2>/dev/null || printf '')
   fi
