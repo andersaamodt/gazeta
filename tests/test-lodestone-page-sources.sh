@@ -66,6 +66,26 @@ cat > "$state_root/nostr-pages.json" <<'JSON'
 }
 JSON
 
+cat > "$site_root/site/pages/projects.md" <<'PROJECTS'
+---
+title: "Projects"
+published_at: "2026-04-15T00:00:00Z"
+content_hash: ""
+tags: ["nostr", "public-ranking"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+---
+
+<div data-lodestone-root="page" data-lodestone-render="universal">
+<section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="projects" data-page-type="public-ranking" data-page-title="Projects">
+<div id="public-ranking-content" class="list-page-content">
+<p class="list-page-empty-state">No rankings yet.</p>
+</div>
+</section>
+</div>
+PROJECTS
+
 "$site_root/cgi/pre-build"
 
 for rel in \
@@ -107,6 +127,22 @@ grep -Fq 'data-lodestone-component="blog-post-card"' "$site_root/site/pages/blog
   exit 1
 }
 
+grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md" || {
+  printf '%s\n' "projects page missing public-ranking shell" >&2
+  exit 1
+}
+
+grep -Fq '<p class="list-page-empty-state">No rankings yet.</p>' "$site_root/site/pages/projects.md" || {
+  printf '%s\n' "projects page missing prerendered empty state" >&2
+  exit 1
+}
+
+if grep -Fq '&lt;section id=&quot;public-ranking-root&quot;' "$site_root/site/pages/projects.md" ||
+   grep -Fq '&lt;div data-lodestone-root=&quot;page&quot;' "$site_root/site/pages/projects.md"; then
+  printf '%s\n' "projects page escaped its previous generated shell into content" >&2
+  exit 1
+fi
+
 grep -Fq '"$render_lodestone_cmd" render-md "$render_template"' "$site_root/cgi/blog-nostr-pages-common.sh" || {
   printf '%s\n' "blog prerender branch does not render through lodestone" >&2
   exit 1
@@ -117,7 +153,7 @@ grep -Fq -- '--html-file "posts_json=$render_posts_tmp"' "$site_root/cgi/blog-no
   exit 1
 }
 
-grep -Fq 'v0.7.14' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.18' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

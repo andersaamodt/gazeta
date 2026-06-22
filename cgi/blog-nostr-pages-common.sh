@@ -2623,6 +2623,18 @@ blog_nostr_page_source_template_type() {
   printf 'custom\n'
 }
 
+blog_nostr_page_source_template_is_managed() {
+  file=${1-}
+  case "$(blog_nostr_page_source_template_type "$file")" in
+    missing|custom)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
 blog_nostr_page_source_template_slug() {
   file=${1-}
   [ -f "$file" ] || {

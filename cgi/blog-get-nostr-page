@@ -97,22 +97,24 @@ fi
 if [ "$local_has_source" != "true" ]; then
   local_source_path=$(blog_nostr_page_source_path "$page_slug" "$page_type")
   if [ -n "$local_source_path" ] && [ -f "$local_source_path" ]; then
-    local_has_source=true
-    local_raw=$(blog_state_markdown_to_json "$local_source_path" content 2>/dev/null || printf '')
-    case "$page_type" in
-      contact)
-        local_state_json=$(blog_contact_normalize_state_json "$page_slug" "$local_raw")
-        ;;
-      public-ranking)
-        local_state_json=$(blog_public_ranking_normalize_state_json "$page_slug" "$local_raw")
-        ;;
-      nip23|blog)
-        local_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$local_raw" "$page_type")
-        ;;
-      *)
-        local_state_json=$(blog_list_normalize_state_json "$page_slug" "$local_raw")
-        ;;
-    esac
+    if ! blog_nostr_page_source_template_is_managed "$local_source_path"; then
+      local_has_source=true
+      local_raw=$(blog_state_markdown_to_json "$local_source_path" content 2>/dev/null || printf '')
+      case "$page_type" in
+        contact)
+          local_state_json=$(blog_contact_normalize_state_json "$page_slug" "$local_raw")
+          ;;
+        public-ranking)
+          local_state_json=$(blog_public_ranking_normalize_state_json "$page_slug" "$local_raw")
+          ;;
+        nip23|blog)
+          local_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$local_raw" "$page_type")
+          ;;
+        *)
+          local_state_json=$(blog_list_normalize_state_json "$page_slug" "$local_raw")
+          ;;
+      esac
+    fi
   fi
 fi
 if [ -z "$local_state_json" ]; then
