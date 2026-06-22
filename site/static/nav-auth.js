@@ -87,6 +87,11 @@
     navOverflowReady: false
   };
 
+  if (!window.CitrineNostrWeb || typeof window.CitrineNostrWeb.ensureNostrLoginDialog !== 'function') {
+    throw new Error('CitrineNostrWeb.ensureNostrLoginDialog is required for Nostr login');
+  }
+  window.CitrineNostrWeb.ensureNostrLoginDialog(document, { title: 'Sign in' });
+
   var els = {
     loginBtn: document.getElementById('login-btn'),
     loginSplit: document.getElementById('nav-login-split'),
@@ -922,245 +927,8 @@
     if (els.authManualEvent) { els.authManualEvent.value = ''; }
   }
 
-  function signInHelperMessage(tabName) {
-    var base = 'Choose a sign-in method. Your Nostr public key is your account, and the site never asks for a private key. First successful sign-in creates your account automatically. You can change your username after you log in.';
-    var tab = String(tabName || 'register');
-    if (tab === 'phone') {
-      return base + ' Connect Nostr with the link or QR. Sign-in continues after pairing.';
-    }
-    if (tab === 'manual') {
-      return base + ' Create a challenge, then paste the signed event JSON.';
-    }
-    return base;
-  }
-
-  function recommendationPlatformLabel(tabName, flavor) {
-    var tab = String(tabName || 'register');
-    var key = String(flavor || '').trim();
-    if (tab === 'phone' && key === 'android') {
-      return 'Android';
-    }
-    if (tab === 'phone' && key === 'ios') {
-      return 'iPhone / iPad';
-    }
-    if (tab === 'phone' && key === 'remote') {
-      return 'Remote signer';
-    }
-    if (tab === 'manual') {
-      return 'Manual login';
-    }
-    return 'Desktop';
-  }
-
-  function loginOnboardingRecommendation(tabName, flavor) {
-    var tab = String(tabName || 'register');
-    var key = String(flavor || '').trim();
-    var platformLabel = recommendationPlatformLabel(tab, key);
-    var amberFDroid = { source: 'F-Droid', label: 'Download Amber', url: 'https://f-droid.org/packages/com.greenart7c3.nostrsigner/' };
-    if (tab === 'phone' && key === 'ios') {
-      return {
-        summary: platformLabel + ' login',
-        note: 'Recommended for iPhone and iPad Nostr Connect login.',
-        apps: [
-          {
-            iconKey: 'nostr-connect',
-            name: 'Nostr Connect-compatible signer',
-            platformLabel: platformLabel,
-            purpose: 'Login via Nostr',
-            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
-          }
-        ]
-      };
-    }
-    if (tab === 'phone' && key === 'remote') {
-      return {
-        summary: platformLabel + ' login',
-        note: 'Recommended for remote Nostr Connect signers.',
-        apps: [
-          {
-            iconKey: 'nostr-connect',
-            name: 'Nostr Connect remote signer',
-            platformLabel: platformLabel,
-            purpose: 'Login via Nostr',
-            url: 'https://github.com/nostr-protocol/nips/blob/master/46.md',
-            stores: [{ source: 'NIP-46', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/46.md' }]
-          }
-        ]
-      };
-    }
-    if (tab === 'phone') {
-      return {
-        summary: platformLabel + ' login',
-        note: 'Recommended for Android Nostr Connect login.',
-        apps: [
-          {
-            iconKey: 'amber',
-            name: 'Amber',
-            platformLabel: platformLabel,
-            purpose: 'Login via Nostr',
-            url: 'https://github.com/greenart7c3/Amber',
-            stores: [amberFDroid]
-          }
-        ]
-      };
-    }
-    if (tab === 'manual') {
-      return {
-        summary: platformLabel,
-        note: 'Fallback for signing the login challenge outside this page.',
-        apps: [
-          {
-            iconKey: 'signed-challenge',
-            name: 'Signed challenge',
-            platformLabel: 'Any platform',
-            purpose: 'Login via Nostr',
-            url: 'https://github.com/nostr-protocol/nips/blob/master/98.md',
-            stores: [{ source: 'NIP-98', label: 'Protocol details', url: 'https://github.com/nostr-protocol/nips/blob/master/98.md' }]
-          }
-        ]
-      };
-    }
+  function authRecommendationIconAssets() {
     return {
-      summary: platformLabel + ' login',
-      note: 'Recommended for desktop browser sign-in.',
-      apps: [
-        {
-          iconKey: 'nos2x',
-          name: 'nos2x-fox',
-          platformLabel: 'Desktop Firefox',
-          purpose: 'Login via Nostr',
-          url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/',
-          stores: [{ source: 'Firefox Add-ons', label: 'Download nos2x-fox', url: 'https://addons.mozilla.org/en-US/firefox/addon/nos2x-fox/' }]
-        }
-      ]
-    };
-  }
-
-  function zapOnboardingRecommendation(tabName, flavor) {
-    var tab = String(tabName || 'register');
-    var key = String(flavor || '').trim();
-    var platformLabel = recommendationPlatformLabel(tab, key);
-    var amethystDownload = { source: 'GitHub', label: 'Download Amethyst', url: 'https://github.com/vitorpamplona/amethyst#installation' };
-    var zeusDownload = { source: 'ZEUS', label: 'Download ZEUS', url: 'https://github.com/ZeusLN/zeus#app-store-links' };
-    var auroraStore = { source: 'Aurora', label: 'Download Aurora Store', url: 'https://auroraoss.com/downloads/AuroraStore/' };
-    if (tab === 'phone' && key === 'ios') {
-      return {
-        summary: platformLabel + ' zaps',
-        note: 'Recommended for sending zaps from iPhone and iPad.',
-        apps: [
-          {
-            iconKey: 'damus',
-            name: 'Damus',
-            platformLabel: platformLabel,
-            purpose: 'Zaps: Nostr client',
-            url: 'https://damus.io/',
-            stores: [{ source: 'App Store', label: 'Download Damus', url: 'https://apps.apple.com/us/app/damus/id1628663131' }]
-          },
-          {
-            iconKey: 'nostur',
-            name: 'Nostur',
-            platformLabel: platformLabel,
-            purpose: 'Zaps: Nostr client',
-            url: 'https://nostur.com/',
-            stores: [{ source: 'App Store', label: 'Download Nostur', url: 'https://nostur.com/appstore' }]
-          },
-          {
-            iconKey: 'zeus',
-            name: 'ZEUS',
-            platformLabel: platformLabel,
-            purpose: 'Zaps: Lightning wallet',
-            url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [{ source: 'App Store', label: 'Download ZEUS', url: 'https://apps.apple.com/us/app/zeus-ln/id1456038895' }]
-          }
-        ]
-      };
-    }
-    if (tab === 'phone' && key === 'remote') {
-      return {
-        summary: platformLabel + ' zaps',
-        note: 'Recommended when the signer is remote or the current platform is unknown.',
-        apps: [
-          {
-            iconKey: 'zeus',
-            name: 'ZEUS',
-            platformLabel: 'Remote signer',
-            purpose: 'Zaps: Lightning wallet',
-            url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [zeusDownload, auroraStore]
-          }
-        ]
-      };
-    }
-    if (tab === 'phone') {
-      return {
-        summary: platformLabel + ' zaps',
-        note: 'Recommended for sending zaps from Android.',
-        apps: [
-          {
-            iconKey: 'amethyst',
-            name: 'Amethyst',
-            platformLabel: platformLabel,
-            purpose: 'Zaps: Nostr client',
-            url: 'https://github.com/vitorpamplona/amethyst#installation',
-            stores: [amethystDownload, auroraStore]
-          },
-          {
-            iconKey: 'zeus',
-            name: 'ZEUS',
-            platformLabel: platformLabel,
-            purpose: 'Zaps: Lightning wallet',
-            url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [zeusDownload, auroraStore]
-          }
-        ]
-      };
-    }
-    if (tab === 'manual') {
-      return {
-        summary: 'Manual login zaps',
-        note: 'Zap recommendations are separate from manual login and can use any compatible wallet.',
-        apps: [
-          {
-            iconKey: 'zeus',
-            name: 'ZEUS',
-            platformLabel: 'Any platform',
-            purpose: 'Zaps: Lightning wallet',
-            url: 'https://github.com/ZeusLN/zeus#app-store-links',
-            stores: [zeusDownload, auroraStore]
-          }
-        ]
-      };
-    }
-    return {
-      summary: platformLabel + ' zaps',
-      note: 'Recommended for desktop or browser-based zap flows.',
-      apps: [
-        {
-          iconKey: 'zeus',
-          name: 'ZEUS',
-          platformLabel: 'Desktop / web',
-          purpose: 'Zaps: Lightning wallet',
-          url: 'https://github.com/ZeusLN/zeus#app-store-links',
-          stores: [zeusDownload, auroraStore]
-        }
-      ]
-    };
-  }
-
-  function recommendationIconSvg(iconKey) {
-    var key = String(iconKey || '').trim();
-    var icons = {
-      'nostr-connect': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 7.5h10"></path><path d="M7 16.5h10"></path><circle cx="7" cy="7.5" r="2.3"></circle><circle cx="17" cy="16.5" r="2.3"></circle></svg>',
-      'signed-challenge': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.5 8.5 5 12l3.5 3.5"></path><path d="M15.5 8.5 19 12l-3.5 3.5"></path><path d="m13.5 7-3 10"></path></svg>',
-      'fallback': '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 20 10l-8 11-8-11z"></path><path d="M4 10h16"></path><path d="M8 10l4 11 4-11"></path><path d="M8 10l4-7 4 7"></path></svg>'
-    };
-    return icons[key] || icons.fallback;
-  }
-
-  function recommendationIconAsset(iconKey) {
-    var key = String(iconKey || '').trim();
-    var assets = {
       amber: '/static/icons/apps/amber.svg',
       amethyst: '/static/icons/apps/amethyst.png',
       damus: '/static/icons/apps/damus.png',
@@ -1168,102 +936,20 @@
       nos2x: '/static/icons/apps/nos2x-fox.svg',
       zeus: '/static/icons/apps/zeus.png'
     };
-    return assets[key] || '';
   }
 
-  function renderRecommendationIcon(icon, app) {
-    var asset = recommendationIconAsset(app.iconKey);
-    icon.textContent = '';
-    if (asset) {
-      var img = document.createElement('img');
-      img.className = 'auth-reco-app-img';
-      img.src = asset;
-      img.alt = '';
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      icon.appendChild(img);
-      return;
-    }
-    icon.innerHTML = recommendationIconSvg(app.iconKey);
-  }
-
-  function renderRecommendationList(summaryEl, appsEl, noteEl, recommendation) {
-    if (!summaryEl || !appsEl) {
-      return;
-    }
-    summaryEl.textContent = recommendation.summary || 'Install:';
-    if (noteEl) {
-      noteEl.textContent = recommendation.note || '';
-    }
-    appsEl.innerHTML = '';
-    recommendation.apps.forEach(function (app) {
-      var item = document.createElement('li');
-      var appLink = document.createElement('a');
-      var icon = document.createElement('span');
-      var label = document.createElement('span');
-      var name = document.createElement('strong');
-      var purpose = document.createElement('span');
-      var platform = document.createElement('span');
-      var stores = document.createElement('span');
-      appLink.className = 'auth-reco-app-link';
-      appLink.href = app.url;
-      appLink.target = '_blank';
-      appLink.rel = 'noopener noreferrer';
-      icon.className = 'auth-reco-app-icon';
-      renderRecommendationIcon(icon, app);
-      label.className = 'auth-reco-app-label';
-      name.textContent = app.name;
-      purpose.className = 'auth-reco-app-purpose';
-      purpose.textContent = app.purpose || recommendation.purpose || '';
-      platform.className = 'auth-reco-platform';
-      platform.textContent = app.platformLabel || recommendation.platformLabel || '';
-      label.appendChild(name);
-      if (purpose.textContent) {
-        label.appendChild(purpose);
-      }
-      if (platform.textContent) {
-        label.appendChild(platform);
-      }
-      appLink.appendChild(icon);
-      appLink.appendChild(label);
-      stores.className = 'auth-reco-store-links';
-      (app.stores || []).forEach(function (store, idx) {
-        var link = document.createElement('a');
-        var source = String(store.source || '').trim();
-        link.href = store.url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = store.label;
-        if (source) {
-          stores.appendChild(document.createTextNode(source + ': '));
-        }
-        stores.appendChild(link);
-        if (idx < app.stores.length - 1) {
-          stores.appendChild(document.createTextNode(' / '));
-        }
-      });
-      item.appendChild(appLink);
-      item.appendChild(stores);
-      appsEl.appendChild(item);
+  function renderAuthOnboarding(tabName, flavor) {
+    window.CitrineNostrWeb.renderNostrRecommendations({
+      tab: tabName,
+      flavor: flavor,
+      loginSummary: els.authLoginSummary,
+      loginApps: els.authLoginApps,
+      loginNote: els.authLoginNote,
+      zapSummary: els.authZapSummary,
+      zapApps: els.authZapApps,
+      zapNote: els.authZapNote,
+      iconAssets: authRecommendationIconAssets()
     });
-  }
-
-  function renderLoginOnboarding(tabName, flavor) {
-    renderRecommendationList(
-      els.authLoginSummary,
-      els.authLoginApps,
-      els.authLoginNote,
-      loginOnboardingRecommendation(tabName, flavor)
-    );
-  }
-
-  function renderZapOnboarding(tabName, flavor) {
-    renderRecommendationList(
-      els.authZapSummary,
-      els.authZapApps,
-      els.authZapNote,
-      zapOnboardingRecommendation(tabName, flavor)
-    );
   }
 
   function updateAuthPlatformCards(tab, flavor) {
@@ -1293,8 +979,7 @@
       els.authModalTitle.textContent = 'Sign in';
     }
     updateAuthPlatformCards(tab, flavor);
-    renderLoginOnboarding(tab, flavor);
-    renderZapOnboarding(tab, flavor);
+    renderAuthOnboarding(tab, flavor);
 
     if (els.authTabRegister) {
       var activeRegister = tab === 'register';
@@ -1318,7 +1003,7 @@
 
     if (tab === 'phone') {
       updatePhoneContinueState();
-      setAuthMessage(signInHelperMessage(tab), 'plain');
+      setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
       initNip46Pairing().then(function () {
         updatePhoneContinueState();
       }).catch(function (err) {
@@ -1327,10 +1012,10 @@
       return;
     }
     if (tab === 'manual') {
-      setAuthMessage(signInHelperMessage(tab), 'plain');
+      setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
       return;
     }
-    setAuthMessage(signInHelperMessage(tab), 'plain');
+    setAuthMessage(window.CitrineNostrWeb.signInHelperMessage(tab), 'plain');
   }
 
   function showAuthModal(initialTab) {
