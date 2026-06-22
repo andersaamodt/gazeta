@@ -4,6 +4,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
 SITE_SOURCE_ROOT="$ROOT_DIR/site"
+export GAZETA_LODESTONE="${GAZETA_LODESTONE:-$ROOT_DIR/../lodestone/spells/lodestone}"
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -170,6 +171,7 @@ SITE_DATA="$SITES_DIR/.sitedata/$SITE_NAME"
 BIN_DIR="$TMP_ROOT/bin"
 
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_DATA" "$BIN_DIR"
+cp -R "$SITE_SOURCE_ROOT/lodestone" "$SITE_ROOT/site/lodestone"
 
 cat > "$BIN_DIR/http-status" <<'EOS'
 #!/bin/sh
@@ -350,7 +352,8 @@ assert_contains "$headers_out" 'HEADER:Expires=0' 'json headers expires'
 assert_contains "$headers_out" 'END-HEADERS' 'json headers terminator'
 
 # 2) Publish endpoints must trigger sync and rebuild.
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish nostr page sync hook present'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_pages_sync_source_pages' 'publish nostr page sync hook present'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish nostr page sync failures are not masked'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish nostr page build hook present'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" 'blog_nostr_sign_product_backing_events_json' 'manual product page publish signs app and marketplace backing events'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy" "software-gallery) expected_kind='30267'" 'manual software-gallery publish validates kind 30267'
@@ -360,9 +363,12 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_sign_software_stall_event()' 'software products can emit a NIP-15 stall record'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_backing_audit_json()' 'site can audit canonical Nostr page backing without publishing'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" '. "$SCRIPT_DIR/blog-nostr-pages-common.sh"' 'publish list imports nostr pages common'
-assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync hook present'
+assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages' 'publish list sync hook present'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync failures are not masked'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" '--set "posts_json=[]"' 'pre-build uses Lodestone structured blog post input'
+assert_file_not_contains "$ROOT_DIR/cgi/pre-build" '--set "posts_html="' 'pre-build does not use legacy rendered post HTML input'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer-pages.json' 'pre-build writes static footer page list asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer_pages:' 'pre-build includes footer pages in site bootstrap'
@@ -466,6 +472,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return fetchPostsJ
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function filteredPostsForPageDefaults(posts, payload)' 'blog page filters warm post catalogs against page default tags before first paint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'state.staticPrerenderListAdopted = true;' 'blog hydration adopts matching static prerendered lists'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'state.adoptedPostListSignature === postListSignature()' 'blog hydration skips redrawing unchanged prerendered lists after fetch'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/pages/blog.stone.html" '<lode-blog-post-list posts={posts_json}></lode-blog-post-list>' 'blog Lodestone page renders posts from structured data'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '--html-file "posts_json=$render_posts_tmp"' 'blog prerender passes structured post data into Lodestone'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_blog_posts_html()' 'blog prerender has no parallel non-Lodestone post-card renderer'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'cat > "$page_file" <<EOBLOG' 'missing blog page creation has no hand-written fallback template'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'filter_blog_posts_json_for_default_tag()' 'blog prerender bootstrap filters post catalogs for default-tag blog pages'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'pageSyncStatusPillHtml()' 'blog index page does not render Nostr sync pills in the title actions'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderSyncStatusPill();' 'blog index page does not show a sync status pill for non-admin visitors'
@@ -733,7 +743,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.route-load-failure {
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" "document.documentElement.classList.add('app-hydrating')" 'route transitions do not force global app-hydrating blank state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html.app-hydrating nav.site-nav,' 'hydration gate hides navbar until page is ready'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-type="list"' 'list mount template marks list page type explicitly'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/list.stone.html" 'data-page-type="list"' 'list mount template marks list page type explicitly'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260621-post-url-external-icon1'" 'list page script cache buster tracks post_url external-link display fixes'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'endswith(".mkv")' 'server list renderer does not special-case MKV links'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" '/\\.mkv$/' 'client list renderer does not special-case MKV links'
@@ -906,7 +916,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Scheduled Rooms' 'admin
 assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'Name | image URL' 'admin video calling settings document themed room images'
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" "WIDGET_BUILD_VERSION = '20260525-soft-actions2'" 'video chat widget publishes the soft-action button build version'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "videoChatWidgetBuildVersion = '20260525-soft-actions2'" 'contact page loads the soft-action video widget build'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>' 'contact page HTML loads the video widget before contact-page hydration'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/contact.stone.html" '<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>' 'contact page HTML loads the video widget before contact-page hydration'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'video-chat-loading-mockup' 'contact page prerender includes a disabled loading call widget fallback'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'vcw-shell vcw-shell-no-heading vcw-shell-center-precall' 'contact page prerender uses the final video widget shell classes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.video-chat-loading-mockup.vcw-shell' 'global CSS styles the prerendered video widget like the hydrated shell'
@@ -1083,8 +1093,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "target.closest('[d
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-draft-banner-action="dismiss"' 'draft notice exposes an explicit dismiss button'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function closeIconSvg()' 'draft notice close control uses an SVG icon'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-draft-notice-close' 'draft notice close control has dedicated sizing and dark icon styling'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-blog-slug="$slug"' 'blog mount template includes explicit slug marker for sync'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-type="list"' 'list mount template marks list type'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/pages/blog.stone.html" 'data-blog-slug={slug}' 'blog mount template includes explicit slug marker for sync'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/list.stone.html" 'data-page-type="list"' 'list mount template marks list type'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-tile-description {' 'tile view renders tiny description style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'max-width: min(1820px, calc(100vw - 0.75rem));' 'list page edit-mode body width cap expanded for full table fit'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'width: fit-content;' 'list page shell can grow to fit edit table width'
@@ -1239,7 +1249,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.11' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.12' 'footer exposes current site version before GitHub'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-type-pill,' 'shared head recovery covers single-post anchor type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-type-bg) !important;' 'shared head recovery forces type pills light green'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-year-pill,' 'shared head recovery covers single-post anchor year pills'

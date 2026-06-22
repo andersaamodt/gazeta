@@ -1235,76 +1235,6 @@ blog_nostr_prerender_contact_video_chat_html() {
 EOF
 }
 
-blog_nostr_prerender_blog_posts_html() {
-  payload_json=${1-}
-  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
-    def h:
-      tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
-    def summary_html:
-      tostring as $s
-      | "\\[(?<label>[^\\]]+)\\]\\((?<href>https?://[^)\\s]+|mailto:[^)\\s]+|/[^)\\s]*|#[^)\\s]*)\\)" as $link_re
-      | [match($link_re; "g")] as $matches
-      | if ($matches | length) == 0 then ($s | h)
-        else
-          (reduce $matches[] as $m
-            ({out: "", pos: 0};
-              ($m.captures[] | select(.name == "label") | .string) as $label
-              | ($m.captures[] | select(.name == "href") | .string) as $href
-              | .out = (.out + ($s[.pos:$m.offset] | h) + "<a href=\"" + ($href | h) + "\">" + ($label | h) + "</a>")
-              | .pos = ($m.offset + $m.length)
-            )
-          ) as $built
-          | $built.out + ($s[$built.pos:] | h)
-        end;
-    def fmt_type:
-      tostring
-      | if . == "longform" or . == "post" then "post"
-        elif . == "link-share" then "link"
-        elif . == "capture-media" then "capture"
-        elif . == "upload-media" then "media"
-        elif . == "audio-note" then "audio"
-        elif . == "go-live" then "go live"
-        else gsub("[_-]+"; " ")
-        end;
-    def norm_tags:
-      if type == "array" then map(tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0))
-      elif type == "string" then split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))
-      else []
-      end;
-    def tag_chip($tag):
-      "<button type=\"button\" class=\"tag blog-inline-tag\" data-inline-tag=\"" + ($tag | h) + "\" aria-pressed=\"false\">" + ($tag | h) + "</button>";
-    def meta_chips($p):
-      (($p.type // "post") | tostring) as $type
-      | (($p.year // (($p.published_at // "") | tostring | .[0:4]) // "Unknown") | tostring) as $year
-      | "<button type=\"button\" class=\"tag blog-type-pill\" data-inline-filter-group=\"types\" data-inline-filter-value=\"" + ($type | h) + "\" aria-pressed=\"false\" aria-label=\"Filter by " + (($type | fmt_type) | h) + "\">" + (($type | fmt_type) | h) + "</button>" +
-        "<button type=\"button\" class=\"tag blog-year-pill\" data-inline-filter-group=\"years\" data-inline-filter-value=\"" + ($year | h) + "\" aria-pressed=\"false\" aria-label=\"Filter by " + ($year | h) + "\">" + ($year | h) + "</button>";
-    def tag_strip($p):
-      ($p.tags | norm_tags) as $tags
-      | "<div class=\"post-card-footer\"><div class=\"tags post-card-meta-tags\">" + meta_chips($p) + ($tags | map(tag_chip(.)) | join("")) + "</div><span class=\"post-card-comments-count\">" + (((($p.comment_count // 0) | tonumber? // 0) | tostring) + " comments" | h) + "</span></div>";
-    def offsite_note($p; $author):
-      (($p.link_url // "") | tostring) as $link_url
-      | if (($p.type // "") | tostring) == "link-share" then
-          "<div class=\"post-offsite-link-note\"><span class=\"post-offsite-link-kind\">Off-site link</span><span>Linked by " + ($author | h) + "</span>" +
-          (if ($link_url | length) > 0 then "<a class=\"post-offsite-url\" href=\"" + ($link_url | h) + "\" title=\"" + ($link_url | h) + "\">" + ($link_url | h) + "</a>" else "" end) +
-          "</div>"
-        else "" end;
-    def post_html($p):
-      (($p.title // "") | tostring) as $title
-      | (($p.summary // "") | summary_html) as $summary
-      | (($p.url // $p.path // "#") | tostring) as $url
-      | (($p.author // "Blog Author") | tostring) as $author
-      | (($p.published_date // $p.pub_date // $p.date // "Unknown date") | tostring) as $date
-      | (($p.reading_minutes // 1) | tonumber? // 1) as $mins
-      | "<article class=\"post-item blog-post-item" + (if (($p.type // "") | tostring) == "link-share" then " is-link-share" else "" end) + "\"><div class=\"post-head\"><div class=\"post-head-main\"><h2 class=\"post-title\"><a href=\"" + ($url | h) + "\">" + ((if ($title | length) > 0 then $title else "Untitled" end) | h) + "</a></h2>" + offsite_note($p; $author) + "<div class=\"post-head-divider\" aria-hidden=\"true\"></div><div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">" + ($author | h) + "</span><span class=\"post-reading-inline\">" + ($mins | tostring | h) + " min read</span><span class=\"post-date\">" + ($date | h) + "</span></div></div></div>" +
-        (if ($summary | length) > 0 then "<div class=\"post-summary\"><p>" + $summary + "</p></div>" else "" end) +
-        tag_strip($p) + "</article>";
-    (.bootstrap_posts // []) as $posts
-    | if ($posts | length) == 0 then "<p class=\"placeholder\">No posts to show yet.</p>"
-      else ($posts | map(post_html(.)) | join(""))
-      end
-  ' 2>/dev/null || printf '<p class="placeholder">No posts to show yet.</p>\n'
-}
-
 blog_nostr_prerender_public_ranking_html() {
   payload_json=${1-}
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '
@@ -1405,7 +1335,12 @@ blog_nostr_page_render_lodestone_source() {
   render_content_html=${6-}
   render_out=${7-}
   [ -n "$render_slug" ] && [ -n "$render_out" ] || return 1
-  [ -x "$blog_site_root/cgi/gazeta-lodestone" ] || return 1
+  if [ -n "${GAZETA_LODESTONE:-}" ]; then
+    render_lodestone_cmd=$GAZETA_LODESTONE
+  else
+    render_lodestone_cmd="$blog_site_root/cgi/gazeta-lodestone"
+    [ -x "$render_lodestone_cmd" ] || return 1
+  fi
   render_template=$(blog_nostr_page_lodestone_template_path "$render_page_type")
   [ -f "$render_template" ] || return 1
   render_content_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-content.XXXXXX")
@@ -1416,7 +1351,7 @@ blog_nostr_page_render_lodestone_source() {
   else
     printf '[]\n' > "$render_posts_tmp"
   fi
-  "$blog_site_root/cgi/gazeta-lodestone" render-md "$render_template" \
+  "$render_lodestone_cmd" render-md "$render_template" \
     --set "title=$render_title" \
     --set "slug=$render_slug" \
     --set "page_type=$render_page_type" \
@@ -1474,117 +1409,15 @@ blog_nostr_page_write_prerendered_source() {
     *) lodestone_content_html=$(blog_nostr_prerender_list_html "$payload_json") ;;
   esac
 
-  if blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "$lodestone_content_html" "$tmp"; then
-    :
-  else
-  case "$page_type" in
-    contact)
-      content_html=$(blog_nostr_prerender_contact_html "$payload_json")
-      {
-        printf '<section id="contact-page-root" class="list-page-shell" data-page-slug="%s" data-page-type="contact" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
-        printf '%s\n' '<div class="list-page-head">'
-        printf '<h1 id="contact-page-title">%s</h1>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
-        printf '<p id="contact-page-description" class="muted">%s</p>\n' "$(printf '%s' "$page_description" | jq -Rr '@html')"
-        printf '%s\n' '</div><div id="contact-page-admin" class="list-admin" hidden></div><div id="contact-page-validation" class="list-validation" hidden></div>'
-        printf '<div id="contact-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
-        printf '%s\n' '<script src="/static/simplex-web-transport.js"></script>'
-        printf '%s\n' '<script type="importmap">'
-        printf '%s\n' '{"imports":{"@noble/ciphers/":"https://cdn.jsdelivr.net/npm/@noble/ciphers@2.2.0/","@noble/curves/":"https://cdn.jsdelivr.net/npm/@noble/curves@2.2.0/","@noble/hashes/":"https://cdn.jsdelivr.net/npm/@noble/hashes@2.2.0/"}}'
-        printf '%s\n' '</script>'
-        printf '<script type="module" src="/static/simplex-web-browser-adapter-init.mjs?v=%s"></script>\n' "$blog_nostr_simplex_web_adapter_init_js_version"
-        printf '<script src="/static/simplex-web-default-chat.js?v=%s"></script>\n' "$blog_nostr_simplex_web_default_chat_js_version"
-        printf '%s\n' '<script src="/static/simplex-web-session-store.js"></script>'
-        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
-        printf '%s\n' '<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>'
-        printf '<script src="/static/contact-page.js?v=%s"></script>\n' "$blog_nostr_contact_page_js_version"
-      } >> "$tmp"
-      ;;
-    nip23)
-      content_html=$(blog_nostr_prerender_nip23_html "$payload_json")
-      {
-        printf '<section id="nip23-page-root" class="list-page-shell" data-page-slug="%s" data-page-type="nip23" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
-        printf '<div class="list-page-head"><h1 id="nip23-page-title">%s</h1></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
-        printf '%s\n' '<div id="nip23-page-admin" class="list-admin" hidden></div><div id="nip23-page-validation" class="list-validation" hidden></div>'
-        printf '<div id="nip23-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
-        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
-        printf '<script src="/static/nip23-page.js?v=%s"></script>\n' "$blog_nostr_nip23_page_js_version"
-      } >> "$tmp"
-      ;;
-    blog)
-      posts_html=$(blog_nostr_prerender_blog_posts_html "$payload_json")
-      lodestone_template="$blog_site_root/site/lodestone/pages/blog.stone.html"
-      if [ -x "$blog_site_root/cgi/gazeta-lodestone" ] && [ -f "$lodestone_template" ]; then
-        posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-prerender-posts-json.XXXXXX")
-        blog_nostr_prerender_payload_input "$payload_json" | jq -c '.bootstrap_posts // []' > "$posts_tmp" 2>/dev/null || printf '[]\n' > "$posts_tmp"
-        "$blog_site_root/cgi/gazeta-lodestone" render-md "$lodestone_template" \
-          --set "title=$page_title" \
-          --set "slug=$slug" \
-          --set "prerender_attrs=$attrs" \
-          --set "blog_page_js_version=$blog_page_js_version" \
-          --html-file "posts_json=$posts_tmp" > "$tmp"
-        rm -f "$posts_tmp"
-      else
-        {
-          printf '<section id="blog-page-root" class="blog-page" data-blog-slug="%s" data-page-type="blog" aria-live="polite"%s>\n' "$slug" "$attrs"
-          printf '%s\n' '<div class="blog-layout"><div class="blog-filter-column"><button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts"><svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3"></line><circle cx="6" cy="3" r="1.25"></circle><line x1="2" y1="8" x2="14" y2="8"></line><circle cx="10.5" cy="8" r="1.25"></circle><line x1="2" y1="13" x2="14" y2="13"></line><circle cx="4.5" cy="13" r="1.25"></circle></svg></button></div><div class="blog-main-column">'
-          printf '<div class="list-page-head"><h1 id="blog-page-title">%s</h1><p id="blog-page-description" class="muted" hidden></p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
-          printf '%s\n' '<div id="blog-page-admin" class="list-admin" hidden></div><div id="blog-page-validation" class="list-validation" hidden></div><div id="blog-page-content" class="list-page-content" hidden></div>'
-          printf '%s\n' '<div id="blog-filter-panel" class="blog-filter-panel" hidden><div class="blog-filter-grid"><div class="blog-filter-group"><h3>Tags</h3><div id="blog-filter-tags" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Year</h3><div id="blog-filter-years" class="blog-filter-options"></div></div><div class="blog-filter-group"><h3>Type</h3><div id="blog-filter-types" class="blog-filter-options"></div></div></div><div class="blog-filter-footer"><button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button></div></div>'
-          printf '<div id="blog-post-list" class="post-list"%s>\n%s\n</div><p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>\n' "$attrs" "$posts_html"
-          printf '%s\n' '</div></div></section>'
-          printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-          printf '<script src="/static/blog-page.js?v=%s"></script>\n' "$blog_page_js_version"
-        } >> "$tmp"
-      fi
-      ;;
-    public-ranking)
-      content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json")
-      {
-        printf '<section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="%s" data-page-type="public-ranking" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
-        printf '<div class="list-page-head"><h1 id="public-ranking-title">%s</h1><p id="public-ranking-description" class="muted">%s</p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')" "$(printf '%s' "$page_description" | jq -Rr '@html')"
-        printf '%s\n' '<div id="public-ranking-admin" class="list-admin" hidden></div><div id="public-ranking-validation" class="list-validation" hidden></div>'
-        printf '<div id="public-ranking-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
-        printf '%s\n' '<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>'
-        printf '<script src="/static/public-ranking-page.js?v=%s"></script>\n' "$blog_nostr_public_ranking_page_js_version"
-      } >> "$tmp"
-      ;;
-    overworld)
-      content_html=$(blog_nostr_prerender_overworld_html)
-      {
-        printf '<section id="overworld-page-root" class="overworld-page-shell" data-page-slug="%s" data-page-type="overworld" data-page-title="%s"%s>\n' "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$attrs"
-        printf '<div class="list-page-head overworld-page-head"><h1 id="overworld-page-title">%s</h1></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')"
-        printf '<div class="overworld-game-mount" data-overworld-game%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '<script src="/static/overworld-game.js?v=%s"></script>\n' "$blog_nostr_overworld_game_js_version"
-      } >> "$tmp"
-      ;;
-    icon-gallery|*)
-      content_html=$(blog_nostr_prerender_list_html "$payload_json")
-      root_id=list-page-root
-      root_class=''
-      case "$page_type" in
-        icon-gallery|software-gallery)
-          root_id=icon-gallery-root
-          root_class=' icon-gallery-shell'
-          ;;
-      esac
-      {
-        printf '<section id="%s" class="list-page-shell%s" data-list-slug="%s" data-list-title="%s" data-page-type="%s"%s>\n' "$root_id" "$root_class" "$slug" "$(printf '%s' "$page_title" | jq -Rr '@html')" "$page_type" "$attrs"
-        printf '<div class="list-page-head"><h1 id="list-page-title">%s</h1><p id="list-page-description" class="muted">%s</p></div>\n' "$(printf '%s' "$page_title" | jq -Rr '@html')" "$(printf '%s' "$page_description" | jq -Rr '@html')"
-        printf '%s\n' '<div id="list-page-admin" class="list-admin" hidden></div><div id="list-page-validation" class="list-validation" hidden></div>'
-        printf '<div id="list-page-content" class="list-page-content"%s>\n%s\n</div>\n</section>\n\n' "$attrs" "$content_html"
-        printf '%s\n' '<script src="/static/nostr-page-bootstrap/'"$slug"'.js"></script>'
-        printf '%s\n' '<script src="/static/nostr-publish-dialog.js"></script>'
-        printf '<script src="/static/list-page.js?v=%s"></script>\n' "$blog_nostr_list_page_js_version"
-      } >> "$tmp"
-      ;;
-  esac
+  if ! blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "$lodestone_content_html" "$tmp"; then
+    rm -f "$payload_tmp" "$tmp"
+    if [ -n "$prev_prerender_payload_file" ]; then
+      BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$prev_prerender_payload_file
+      export BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+    else
+      unset BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+    fi
+    return 1
   fi
 
   blog_snapshot_file_before_replace "$page_file" "$tmp"
@@ -2992,251 +2825,7 @@ blog_nostr_page_ensure_source_page() {
     return 0
   fi
 
-  case "$page_type" in
-    contact)
-      cat > "$page_file" <<EOCONTACT
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "contact"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="contact-page-root" class="list-page-shell" data-page-slug="$slug" data-page-type="contact" data-page-title="$page_title">
-<div class="list-page-head">
-<h1 id="contact-page-title">$page_title</h1>
-<p id="contact-page-description" class="muted"></p>
-</div>
-<div id="contact-page-admin" class="list-admin" hidden></div>
-<div id="contact-page-validation" class="list-validation" hidden></div>
-	<div id="contact-page-content" class="list-page-content"></div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/simplex-web-transport.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "@noble/ciphers/": "https://cdn.jsdelivr.net/npm/@noble/ciphers@2.2.0/",
-    "@noble/curves/": "https://cdn.jsdelivr.net/npm/@noble/curves@2.2.0/",
-    "@noble/hashes/": "https://cdn.jsdelivr.net/npm/@noble/hashes@2.2.0/"
-  }
-}
-</script>
-<script type="module" src="/static/simplex-web-browser-adapter-init.mjs?v=$blog_nostr_simplex_web_adapter_init_js_version"></script>
-<script src="/static/simplex-web-default-chat.js?v=$blog_nostr_simplex_web_default_chat_js_version"></script>
-<script src="/static/simplex-web-session-store.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/video-chat-widget.js?v=20260525-soft-actions2" data-video-chat-widget="1"></script>
-<script src="/static/contact-page.js?v=$blog_nostr_contact_page_js_version"></script>
-EOCONTACT
-      ;;
-    nip23)
-      cat > "$page_file" <<EONIP23
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "nip23"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="nip23-page-root" class="list-page-shell" data-page-slug="$slug" data-page-type="nip23" data-page-title="$page_title">
-<div class="list-page-head">
-<h1 id="nip23-page-title">$page_title</h1>
-</div>
-<div id="nip23-page-admin" class="list-admin" hidden></div>
-<div id="nip23-page-validation" class="list-validation" hidden></div>
-	<div id="nip23-page-content" class="list-page-content"></div>
-</section>
-
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/nip23-page.js?v=$blog_nostr_nip23_page_js_version"></script>
-EONIP23
-      ;;
-    blog)
-      cat > "$page_file" <<EOBLOG
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "blog"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="blog-page-root" class="blog-page" data-blog-slug="$slug" data-page-type="blog" aria-live="polite">
-<div class="blog-layout">
-<div class="blog-filter-column">
-<button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts">
-<svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true">
-<line x1="2" y1="3" x2="14" y2="3"></line>
-<circle cx="6" cy="3" r="1.25"></circle>
-<line x1="2" y1="8" x2="14" y2="8"></line>
-<circle cx="10.5" cy="8" r="1.25"></circle>
-<line x1="2" y1="13" x2="14" y2="13"></line>
-<circle cx="4.5" cy="13" r="1.25"></circle>
-</svg>
-</button>
-</div>
-<div class="blog-main-column">
-<div class="list-page-head">
-<h1 id="blog-page-title">$page_title</h1>
-<p id="blog-page-description" class="muted" hidden></p>
-</div>
-<div id="blog-page-admin" class="list-admin" hidden></div>
-<div id="blog-page-validation" class="list-validation" hidden></div>
-	<div id="blog-page-content" class="list-page-content" hidden></div>
-<div id="blog-filter-panel" class="blog-filter-panel" hidden>
-<div class="blog-filter-grid">
-<div class="blog-filter-group">
-<h3>Tags</h3>
-<div id="blog-filter-tags" class="blog-filter-options"></div>
-</div>
-<div class="blog-filter-group">
-<h3>Year</h3>
-<div id="blog-filter-years" class="blog-filter-options"></div>
-</div>
-<div class="blog-filter-group">
-<h3>Type</h3>
-<div id="blog-filter-types" class="blog-filter-options"></div>
-</div>
-</div>
-<div class="blog-filter-footer">
-<button id="blog-clear-filters" type="button" class="blog-clear-filters">Clear filters</button>
-</div>
-</div>
-
-	<div id="blog-post-list" class="post-list"><p class="placeholder">No posts to show yet.</p></div>
-<p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
-</div>
-</div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/blog-page.js?v=$blog_page_js_version"></script>
-EOBLOG
-      ;;
-    public-ranking)
-      cat > "$page_file" <<EORANKING
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "public-ranking"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="$slug" data-page-type="public-ranking" data-page-title="$page_title">
-<div class="list-page-head">
-<h1 id="public-ranking-title">$page_title</h1>
-<p id="public-ranking-description" class="muted"></p>
-</div>
-<div id="public-ranking-admin" class="list-admin" hidden></div>
-<div id="public-ranking-validation" class="list-validation" hidden></div>
-	<div id="public-ranking-content" class="list-page-content"></div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/nostr-publish-dialog.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-<script src="/static/public-ranking-page.js?v=$blog_nostr_public_ranking_page_js_version"></script>
-EORANKING
-      ;;
-    overworld)
-      cat > "$page_file" <<EOOVERWORLD
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "overworld"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="overworld-page-root" class="overworld-page-shell" data-page-slug="$slug" data-page-type="overworld" data-page-title="$page_title">
-<div class="list-page-head overworld-page-head">
-<h1 id="overworld-page-title">$page_title</h1>
-</div>
-	<div class="overworld-game-mount" data-overworld-game>
-	$(blog_nostr_prerender_overworld_html)
-	</div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/overworld-game.js?v=$blog_nostr_overworld_game_js_version"></script>
-EOOVERWORLD
-      ;;
-    icon-gallery|software-gallery)
-      cat > "$page_file" <<EOICONGALLERY
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "list", "$page_type"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="icon-gallery-root" class="list-page-shell icon-gallery-shell" data-list-slug="$slug" data-list-title="$page_title" data-page-type="$page_type">
-<div class="list-page-head">
-<h1 id="list-page-title">$page_title</h1>
-<p id="list-page-description" class="muted"></p>
-</div>
-<div id="list-page-admin" class="list-admin" hidden></div>
-<div id="list-page-validation" class="list-validation" hidden></div>
-	<div id="list-page-content" class="list-page-content"></div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
-EOICONGALLERY
-      ;;
-    *)
-      cat > "$page_file" <<EOLIST
----
-title: "$page_title"
-published_at: "$(blog_now_iso)"
-content_hash: ""
-tags: ["nostr", "list"]
-author: "author"
-visibility: "public"
-license: "CC BY 4.0"
----
-
-<section id="list-page-root" class="list-page-shell" data-list-slug="$slug" data-list-title="$page_title" data-page-type="list">
-<div class="list-page-head">
-<h1 id="list-page-title">$page_title</h1>
-<p id="list-page-description" class="muted"></p>
-</div>
-<div id="list-page-admin" class="list-admin" hidden></div>
-<div id="list-page-validation" class="list-validation" hidden></div>
-	<div id="list-page-content" class="list-page-content"></div>
-</section>
-
-<script src="/static/nostr-page-bootstrap/$slug.js"></script>
-<script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/list-page.js?v=$blog_nostr_list_page_js_version"></script>
-EOLIST
-      ;;
-  esac
-
-  chmod 644 "$page_file" 2>/dev/null || true
-  blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
+  return 1
 }
 
 blog_nostr_pages_sync_source_pages() {
@@ -3251,6 +2840,6 @@ blog_nostr_pages_sync_source_pages() {
     slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
     page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
     [ -n "$slug" ] || continue
-    blog_nostr_page_ensure_source_page "$slug" "$page_type" >/dev/null 2>&1 || true
+    blog_nostr_page_ensure_source_page "$slug" "$page_type"
   done
 }
