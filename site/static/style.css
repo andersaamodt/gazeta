@@ -7360,6 +7360,7 @@ nav.site-nav .btn-login {
 }
 
 .auth-modal {
+  --auth-modal-nav-offset: 0px;
   position: fixed;
   inset: 0;
   z-index: 1100;
@@ -8307,10 +8308,15 @@ nav.site-nav .btn-login {
 }
 
 @media (max-width: 640px) {
+  .auth-modal {
+    --auth-modal-mobile-top-gap: 0.5rem;
+    --auth-modal-mobile-bottom-gap: 0.5rem;
+  }
+
   .auth-modal-panel {
     width: calc(100vw - 1rem);
-    margin: 0.75rem auto 0;
-    max-height: calc(100vh - 1.5rem);
+    margin: calc(var(--auth-modal-nav-offset, 0px) + var(--auth-modal-mobile-top-gap)) auto 0;
+    max-height: calc(100vh - var(--auth-modal-nav-offset, 0px) - var(--auth-modal-mobile-top-gap) - var(--auth-modal-mobile-bottom-gap));
     padding: 0;
     border-radius: 12px;
   }
@@ -14298,17 +14304,22 @@ nav.site-nav > .nav-right .nav-search button {
 }
 
 @media (max-width: 640px) {
+  .auth-modal {
+    --auth-modal-mobile-top-gap: 0.5rem;
+    --auth-modal-mobile-bottom-gap: 0.5rem;
+  }
+
   .auth-modal-panel,
   .auth-info-modal-panel {
     width: min(100%, calc(100dvw - 0.75rem));
-    margin: 0.5rem auto 0;
-    max-height: calc(100dvh - 1rem);
+    margin: calc(var(--auth-modal-nav-offset, 0px) + var(--auth-modal-mobile-top-gap)) auto 0;
+    max-height: calc(100dvh - var(--auth-modal-nav-offset, 0px) - var(--auth-modal-mobile-top-gap) - var(--auth-modal-mobile-bottom-gap));
     padding: 0;
     border-radius: 12px;
   }
 
   .auth-modal-scroll {
-    max-height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - var(--auth-modal-nav-offset, 0px) - var(--auth-modal-mobile-top-gap) - var(--auth-modal-mobile-bottom-gap));
     padding: 0.82rem 0.72rem 0.9rem;
   }
 

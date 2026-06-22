@@ -1333,12 +1333,14 @@
       return;
     }
     var initialSelection = normalizeAuthInitialSelection(initialTab);
+    syncAuthModalNavOffset();
     if (authModalHideTimer) {
       clearTimeout(authModalHideTimer);
       authModalHideTimer = null;
     }
     els.authModal.hidden = false;
     requestAnimationFrame(function () {
+      syncAuthModalNavOffset();
       els.authModal.classList.add('is-open');
     });
     document.body.classList.add('auth-modal-open');
@@ -1364,6 +1366,23 @@
       }
       authModalHideTimer = null;
     }, 210);
+  }
+
+  function syncAuthModalNavOffset() {
+    if (!els.authModal) {
+      return;
+    }
+    var offset = 0;
+    if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
+      var nav = document.querySelector('nav.site-nav');
+      if (nav) {
+        var rect = nav.getBoundingClientRect();
+        if (rect && rect.bottom > 0) {
+          offset = Math.ceil(rect.bottom);
+        }
+      }
+    }
+    els.authModal.style.setProperty('--auth-modal-nav-offset', String(offset) + 'px');
   }
 
   function showPanel(panel, show) {
@@ -4501,6 +4520,20 @@
     window.addEventListener('focus', function () {
       refreshPhoneSignerListenerAfterReturn('focus');
     });
+
+    window.addEventListener('resize', function () {
+      if (els.authModal && !els.authModal.hidden) {
+        syncAuthModalNavOffset();
+      }
+    });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () {
+        if (els.authModal && !els.authModal.hidden) {
+          syncAuthModalNavOffset();
+        }
+      });
+    }
   }
 
   function bootstrap() {
