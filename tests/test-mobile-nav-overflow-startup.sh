@@ -21,6 +21,8 @@ assert_file_contains() {
 }
 
 assert_file_contains "$NAV_FILE" "function seedInitialOverflowMenu()" 'nav include seeds overflow menu before nav hydration finishes'
+assert_file_contains "$NAV_FILE" "nav-overflow-booting" 'nav include hides the pre-measurement row only while JS is booting overflow'
+assert_file_contains "$NAV_FILE" "docEl.classList.remove('nav-overflow-booting');" 'nav include reveals navbar after synchronous overflow seeding'
 assert_file_contains "$NAV_FILE" "function renderInitialNavbarPages()" 'nav include renders bootstrap or cached navbar rows before measuring overflow'
 assert_file_contains "$NAV_FILE" "window.__wizardrySiteBootstrap" 'nav include can use generated bootstrap navbar rows for first layout'
 assert_file_contains "$NAV_FILE" "while (hasNavPressure() && guard < links.length)" 'nav include computes the initial overflow set in one layout pass'
@@ -29,6 +31,7 @@ assert_file_contains "$NAV_FILE" "panel.appendChild(item);" 'nav include clones 
 assert_file_contains "$NAV_FILE" "menu.hidden = false;" 'mobile overflow seeding reveals the overflow trigger immediately'
 
 assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-center > a[data-page].is-nav-overflow-hidden" 'hydrating mobile nav hides only measured overflow links'
+assert_file_contains "$STYLE_FILE" "html.nav-overflow-booting nav.site-nav .nav-center" 'booting nav hides the unmeasured row before first visible layout'
 assert_file_contains "$STYLE_FILE" "html.app-hydrating nav.site-nav .nav-overflow-menu[hidden]" 'hydrating mobile nav forces the overflow trigger visible'
 
 assert_file_contains "$AUTH_FILE" "navOverflowReady: false" 'nav auth tracks whether the first overflow layout pass has completed'

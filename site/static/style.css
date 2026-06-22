@@ -235,6 +235,11 @@ html.app-hydrating nav.site-nav .nav-center {
   min-width: 0;
 }
 
+html.nav-overflow-booting nav.site-nav .nav-center,
+html.nav-overflow-booting nav.site-nav .nav-overflow-menu {
+  visibility: hidden;
+}
+
 @media (max-width: 780px) {
   html.app-hydrating nav.site-nav .nav-center > a[data-page].is-nav-overflow-hidden {
     display: none;

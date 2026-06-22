@@ -52,6 +52,14 @@
 })();
 </script>
 <a class="skip-link" href="#main-content">Skip to content</a>
+<script>
+(function () {
+  var docEl = document.documentElement;
+  if (docEl && docEl.classList.contains('app-hydrating')) {
+    docEl.classList.add('nav-overflow-booting');
+  }
+})();
+</script>
 <nav class="site-nav">
 <a id="nav-site-signature" class="nav-site-signature" href="/">Site</a>
 <div class="nav-center">
@@ -133,6 +141,14 @@
     if (!docEl || !docEl.classList.contains('app-hydrating')) {
       return;
     }
+    try {
+      seedInitialOverflowMenuNow();
+    } finally {
+      docEl.classList.remove('nav-overflow-booting');
+    }
+  }
+
+  function seedInitialOverflowMenuNow() {
     var navCenter = document.querySelector('nav.site-nav .nav-center');
     var navRight = document.querySelector('nav.site-nav .nav-right');
     var menu = document.getElementById('nav-overflow-menu');
