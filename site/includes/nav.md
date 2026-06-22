@@ -915,7 +915,7 @@
   </div>
 </div>
 
-<script defer src="/static/nav-auth.js?v=20260527-logout-overflow1"></script>
+<script defer src="/static/nav-auth.js?v=20260622-mobile-nip46-return1"></script>
 <script defer src="/static/shop-cart.js?v=20260324-cartv3"></script>
 <script async src="https://cdn.jsdelivr.net/npm/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>

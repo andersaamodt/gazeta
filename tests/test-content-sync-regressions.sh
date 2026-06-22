@@ -545,6 +545,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "fetch('/cgi/blog-ge
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'readBootstrapNavbarPages' 'nav-auth can hydrate navbar from static bootstrap'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'readBootstrapConfig' 'nav-auth can hydrate config from static bootstrap'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'syncNavSiteSignatureDestination' 'nav-auth keeps the site title linked to the first navbar page'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'lastReturnLoginAttemptAt' 'nav-auth throttles mobile phone signer return login recovery'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'state.nip46.signerPubkey && !hasPendingNip46Requests() && !state.nip46.autoLoginInFlight' 'nav-auth resumes paired phone signer login after mobile return'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'continuePhoneSignerLogin(true);' 'nav-auth restarts phone signer approval from the return handler'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nav-auth.js?v=20260622-mobile-nip46-return1' 'nav-auth include is cache-busted for mobile signer return fix'
 
 # Seed author allowlist for deterministic canonical selection tests.
 printf '%s\n' "$KEY_A" "$KEY_B" > "$blog_nostr_authors_file"
@@ -1255,7 +1259,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.19' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.21' 'footer exposes current site version before GitHub'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-type-pill,' 'shared head recovery covers single-post anchor type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-type-bg) !important;' 'shared head recovery forces type pills light green'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-year-pill,' 'shared head recovery covers single-post anchor year pills'
@@ -1422,7 +1426,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Connect Nostr with 
 assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nostr-info-modal' 'Learn about Nostr sign-in no longer uses a separate modal'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'showInfoModal' 'Learn about Nostr sign-in no longer opens a separate info modal'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "showAuthModal('register');" 'Learn about Nostr sign-in opens the main sign-in modal'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nav-auth.js?v=20260527-logout-overflow1' 'nav auth script URL is cache-busted after logout overflow menu update'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nav-auth.js?v=20260622-mobile-nip46-return1' 'nav auth script URL is cache-busted after mobile signer return update'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'zap-ui.js?v=20260524-zap-panel1' 'zap UI script URL is cache-busted after zap panel polish'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "wss://andersaamodt.com" 'Nostr Connect defaults to the site Stonr relay'
 assert_file_contains "$SITE_SOURCE_ROOT/static/zap-ui.js" "wss://andersaamodt.com" 'Zap requests default to the site Stonr relay'
@@ -1494,7 +1498,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "setNip46Diagnostics
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'Phone signer is already paired. Continue sign-in and approve the login request in Amber.' 'paired phone signer state gives Amber-specific continuation guidance'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "els.authPhoneBtn.textContent = 'Continue sign-in'" 'paired phone signer state uses login continuation as the primary action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "openNativeDeepLink(currentNip46Uri(), 'Phone signer link is not ready yet.')" 'paired phone signer login reopens the saved Amber connection without rotating it'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nav-auth.js?v=20260527-logout-overflow1' 'nav auth include is cache-busted for logout overflow menu update'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'nav-auth.js?v=20260622-mobile-nip46-return1' 'nav auth include is cache-busted for mobile signer return update'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.machine-string-copy {' 'machine string copy buttons share one minimal icon style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'aspect-ratio: 1;' 'Nostr Connect copy icon button stays square'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'background: transparent;' 'machine string copy buttons are transparent until hover'

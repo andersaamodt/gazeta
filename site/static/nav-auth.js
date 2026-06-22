@@ -60,6 +60,7 @@
       toolsWaitPromise: null,
       returnRefreshTimer: 0,
       deepLinkFallbackTimer: 0,
+      lastReturnLoginAttemptAt: 0,
       autoLoginInFlight: false,
       diagnostics: {
         eventsSeen: 0,
@@ -1951,6 +1952,7 @@
         clearTimeout(state.nip46.deepLinkFallbackTimer);
         state.nip46.deepLinkFallbackTimer = 0;
       }
+      state.nip46.lastReturnLoginAttemptAt = 0;
       state.nip46.autoLoginInFlight = false;
       state.nip46.diagnostics = {
         eventsSeen: 0,
@@ -2649,6 +2651,13 @@
         }
         ensureNip46Subscription(180, status);
         updateNip46PairingLink();
+        if (state.nip46.signerPubkey && !hasPendingNip46Requests() && !state.nip46.autoLoginInFlight) {
+          var currentTime = Date.now();
+          if (!state.nip46.lastReturnLoginAttemptAt || currentTime - state.nip46.lastReturnLoginAttemptAt > 15000) {
+            state.nip46.lastReturnLoginAttemptAt = currentTime;
+            continuePhoneSignerLogin(true);
+          }
+        }
       }).catch(function (err) {
         setNip46Diagnostics((err && err.message) || 'Phone signer setup is still loading.', 'error');
       });
