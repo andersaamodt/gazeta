@@ -283,6 +283,7 @@ write_bootstrap_js() {
   } > "$js_tmp"
 
   out_file="$bootstrap_dir/$slug.js"
+  mkdir -p "$(dirname "$out_file")"
   mv "$js_tmp" "$out_file"
   chmod 644 "$out_file" 2>/dev/null || true
   printf '%s\n' "$slug" >> "$manifest_tmp"
@@ -312,6 +313,7 @@ write_local_embed_bootstrap_js() {
     printf '%s\n' '})();'
   } > "$js_tmp"
   out_file="$bootstrap_dir/$slug.js"
+  mkdir -p "$(dirname "$out_file")"
   mv "$js_tmp" "$out_file"
   chmod 644 "$out_file" 2>/dev/null || true
   printf '%s\n' "$slug" >> "$manifest_tmp"
