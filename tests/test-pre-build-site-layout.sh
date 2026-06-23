@@ -89,7 +89,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/contact.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/contact-page.js"></script>
+<script src="/static/contact-page.js?v=20260622-single-sync-pill1"></script>
 EOFCONTACT
 
 mkdir -p "$tmp_root/bin"
