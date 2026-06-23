@@ -19,6 +19,7 @@ state_root="$WIZARDRY_SITES_DIR/.sitedata/$WIZARDRY_SITE_NAME"
 mkdir -p "$site_root"
 cp -R "$ROOT_DIR/cgi" "$site_root/"
 mkdir -p "$canonical_root/includes" "$canonical_root/pages/embed" "$canonical_root/static" "$state_root"
+cp -R "$ROOT_DIR/site/lodestone" "$canonical_root/"
 
 cat > "$site_root/site.conf" <<'EOFCONF'
 template=blog
@@ -248,7 +249,7 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
-grep -Fq 'v0.7.6' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.32' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer missing current site version before GitHub" >&2
   exit 1
 }
