@@ -1282,7 +1282,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.32' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.33' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: any active nav item must stay in button-blue on hover\/focus\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
@@ -1439,6 +1439,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'function waitForDes
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'return waitForDesktopSigner(1200).then(function (available)' 'primary login waits briefly before falling back to the sign-in modal'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'emitAuthChanged({' 'verified login event carries session details after auth check'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'applyOptimisticAdminFromAuthEvent(event);' 'list pages reveal admin controls from the verified auth event'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'applyOptimisticAdminFromAuthEvent(event);' 'blog pages reveal the inline compose button from the verified auth event'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function renderAdminChromeUi()' 'blog page groups admin chrome and inline compose rendering'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderAdminChromeUi();' 'blog fetched post rerenders refresh the inline compose button visibility'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'applyOptimisticAdminFromAuthEvent(event);' 'post pages reveal admin controls from the verified auth event'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'eventHasVerifiedAdminState(event)' 'single post admin menu uses the verified auth event without a second session wait'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'No desktop signer detected' 'login errors use signer-neutral wording'

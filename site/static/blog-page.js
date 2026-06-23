@@ -166,13 +166,14 @@
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (cachedAdminFlag() ? 'admin' : 'visitor');
   }
 
-  function maybeReloadForAuthChange() {
+  function maybeReloadForAuthChange(event) {
     var nextSig = authSignature();
     var lastSig = String(state.authSignature || '');
     if (nextSig === lastSig) {
       return;
     }
     state.authSignature = nextSig;
+    applyOptimisticAdminFromAuthEvent(event);
     loadPageState({ deferRender: false, deferInitialFlags: true });
   }
 
@@ -4558,15 +4559,19 @@
     }
   }
 
-  function renderAll() {
-    renderHead();
+  function renderAdminChromeUi() {
     renderAdmin();
     renderDraftNotice();
     renderValidation();
     renderExtrasAfter();
+    renderComposeUi();
+  }
+
+  function renderAll() {
+    renderHead();
+    renderAdminChromeUi();
     renderFilters();
     renderList();
-    renderComposeUi();
     updateRenderSignature();
   }
 
@@ -4794,19 +4799,20 @@
 	    return true;
 	  }
 
-	  function renderFetchedPostsIfChanged(previousSignature) {
-	    var nextSignature = renderSignature();
-	    if (previousSignature === nextSignature) {
-	      state.renderSignature = nextSignature;
-	      return false;
-	    }
-	    renderFilters();
-	    renderList();
-	    state.renderSignature = nextSignature;
-	    return true;
-	  }
+  function renderFetchedPostsIfChanged(previousSignature) {
+    var nextSignature = renderSignature();
+    if (previousSignature === nextSignature) {
+      state.renderSignature = nextSignature;
+      return false;
+    }
+    renderAdminChromeUi();
+    renderFilters();
+    renderList();
+    state.renderSignature = nextSignature;
+    return true;
+  }
 
-	  function loadPageState(options) {
+  function loadPageState(options) {
     var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
     var requestedSlug = expectedSlug || slug;
@@ -4911,6 +4917,24 @@
 	        }
 	      });
 	  }
+
+  function authEventIsAdmin(event) {
+    if (event && event.detail && event.detail.is_admin === true) {
+      return true;
+    }
+    return cachedAdminFlag();
+  }
+
+  function applyOptimisticAdminFromAuthEvent(event) {
+    if (!authEventIsAdmin(event) || !state.payload || state.payload.is_admin) {
+      return;
+    }
+    state.payload = Object.assign({}, state.payload, { is_admin: true });
+    renderAdmin();
+    renderValidation();
+    renderComposeUi();
+    updateRenderSignature();
+  }
 
   root.addEventListener('click', function (event) {
     var target = eventTargetElement(event.target);

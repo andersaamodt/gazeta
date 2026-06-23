@@ -53,5 +53,5 @@ title: Blog
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
 <script src="/static/compose-shared.js?v=20260403-compose1"></script>
-<script defer src="/static/blog-page.js?v=20260622-single-sync-pill1" data-lodestone-hydrate="script"></script>
+<script defer src="/static/blog-page.js?v=20260623-blog-compose-admin1" data-lodestone-hydrate="script"></script>
 </div>
