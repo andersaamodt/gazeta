@@ -290,7 +290,7 @@
   }
 
   function markdownBlock(md) {
-    var value = String(md || '');
+    var value = stripLegacyNostrSyncPills(md);
     if (!value) {
       return '';
     }
@@ -840,6 +840,10 @@
   function pageSyncStatusPillHtml() {
     var info = pageSyncStatusInfo();
     return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+  }
+
+  function stripLegacyNostrSyncPills(value) {
+    return String(value || '').replace(/<\s*nostr-sync-pill\b[^>]*>(?:\s*<\/\s*nostr-sync-pill\s*>)?/gi, '').trim();
   }
 
   function renderSyncStatusPill() {
@@ -4171,7 +4175,7 @@
   function renderContentHtml() {
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
-    var extrasAfter = String(s.extras_after || '');
+    var extrasAfter = stripLegacyNostrSyncPills(s.extras_after);
     var renderedAfter = String(extrasAfter).trim() ? renderMarkdownWithWidgetIncludes(extrasAfter, 'video-chat') : '';
     var afterContent = '';
     if (String(renderedAfter || '').trim()) {

@@ -3,14 +3,14 @@
 
 set -eu
 
-blog_nostr_list_page_js_version='20260621-post-url-external-icon1'
-blog_page_js_version='20260620-blog-prerender-ready1'
-blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'
+blog_nostr_list_page_js_version='20260622-single-sync-pill1'
+blog_page_js_version='20260622-single-sync-pill1'
+blog_nostr_contact_page_js_version='20260622-single-sync-pill1'
 blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
-blog_nostr_nip23_page_js_version='20260526-product-price1'
-blog_nostr_public_ranking_page_js_version='20260622-projects-sync1'
-blog_nostr_overworld_game_js_version='20260522-overworld-textures'
+blog_nostr_nip23_page_js_version='20260622-single-sync-pill1'
+blog_nostr_public_ranking_page_js_version='20260622-single-sync-pill1'
+blog_nostr_overworld_game_js_version='20260622-single-sync-pill1'
 
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"

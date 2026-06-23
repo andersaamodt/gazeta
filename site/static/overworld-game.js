@@ -250,6 +250,90 @@
     }
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function syncStatusConfig(status) {
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Server newer',
+          message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer',
+          message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'Synced',
+          message: 'Server copy and published Nostr state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Server only',
+          message: 'This page exists only on the server so far. Visitors see the server copy.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function bootstrapPayload() {
+    const slug = String(document.querySelector('[data-page-slug]')?.getAttribute('data-page-slug') || 'overworld').trim() || 'overworld';
+    const bootstraps = window.__gazetaNostrPageBootstraps;
+    if (bootstraps && bootstraps[slug] && typeof bootstraps[slug] === 'object') {
+      return bootstraps[slug];
+    }
+    return {};
+  }
+
+  function pageSyncStatusPillHtml() {
+    const payload = bootstrapPayload();
+    const sync = payload && payload.sync_status && typeof payload.sync_status === 'object' ? payload.sync_status : {};
+    const status = String(sync.status || 'unknown').trim();
+    const config = syncStatusConfig(status);
+    const message = String(sync.message || config.message).trim();
+    return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
+  }
+
+  function renderSyncStatusPill() {
+    const title = document.getElementById('overworld-page-title');
+    if (!title) {
+      return;
+    }
+    let text = title.querySelector('.list-page-title-text');
+    if (!text) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      text.textContent = title.textContent || 'Overworld';
+      title.replaceChildren(text);
+    }
+    let actions = document.getElementById('overworld-page-title-actions');
+    if (!actions) {
+      actions = document.createElement('span');
+      actions.id = 'overworld-page-title-actions';
+      actions.className = 'list-page-title-actions';
+      title.appendChild(actions);
+    }
+    actions.innerHTML = pageSyncStatusPillHtml();
+  }
+
   function hasCacheStorage() {
     return 'caches' in window && window.isSecureContext;
   }
@@ -438,6 +522,7 @@
   }
 
   function init() {
+    renderSyncStatusPill();
     const mounts = Array.from(document.querySelectorAll('[data-overworld-game], .overworld-game-mount'));
     mounts.forEach(mount);
     if (!mounts.length) {

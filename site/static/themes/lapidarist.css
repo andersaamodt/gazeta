@@ -302,6 +302,7 @@ strong {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
+  transition: none;
 }
 
 .nav-center a {
@@ -319,29 +320,16 @@ strong {
 .nav-center a[aria-current="page"]:focus-visible,
 .nav-username.active:hover,
 .nav-username.active:focus-visible {
-  background:
-    var(--button-primary-overlay),
-    linear-gradient(
-      128deg,
-      color-mix(in srgb, var(--lapis) 76%, white 24%) 0%,
-      color-mix(in srgb, var(--lapis) 88%, white 12%) 42%,
-      #2f60b7 100%
-    ) !important;
-  background-image:
-    var(--button-primary-overlay),
-    linear-gradient(
-      128deg,
-      color-mix(in srgb, var(--lapis) 76%, white 24%) 0%,
-      color-mix(in srgb, var(--lapis) 88%, white 12%) 42%,
-      #2f60b7 100%
-    ) !important;
-  background-color: color-mix(in srgb, var(--lapis) 88%, white 12%) !important;
+  background: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis) 36%, #2f60b7 72%, #244d99 100%) !important;
+  background-image: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis) 36%, #2f60b7 72%, #244d99 100%) !important;
+  background-color: var(--lapis) !important;
   color: var(--button-primary-text) !important;
   -webkit-text-fill-color: var(--button-primary-text) !important;
   text-decoration: none !important;
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--button-primary-border) 56%, white 18%) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
+  transition: none !important;
 }
 
 .nav-center a.active.allow-active-click,
@@ -361,6 +349,7 @@ strong {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--button-primary-border) 42%, transparent) inset,
     0 1px 0 rgba(182, 139, 53, 0.26);
+  transition: none;
 }
 
 .nav-menu-btn:hover,
@@ -493,7 +482,9 @@ strong {
 #nip23-page-title:has(.list-page-title-actions) .list-page-title-text,
 #nip23-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
 #public-ranking-title:has(.list-page-title-actions) .list-page-title-text,
-#public-ranking-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
+#public-ranking-title:has(.list-page-title-actions) .list-page-title-edit-wrap,
+#overworld-page-title:has(.list-page-title-actions) .list-page-title-text,
+#overworld-page-title:has(.list-page-title-actions) .list-page-title-edit-wrap {
   color: var(--heading-color);
   background: var(--heading-gradient);
   -webkit-background-clip: text;
@@ -509,7 +500,8 @@ strong {
 #blog-page-title:has(.list-page-title-actions),
 #contact-page-title:has(.list-page-title-actions),
 #nip23-page-title:has(.list-page-title-actions),
-#public-ranking-title:has(.list-page-title-actions) {
+#public-ranking-title:has(.list-page-title-actions),
+#overworld-page-title:has(.list-page-title-actions) {
   background: none;
   -webkit-background-clip: border-box;
   background-clip: border-box;
@@ -524,7 +516,8 @@ strong {
 #blog-page-title:has(.list-page-title-actions)::after,
 #contact-page-title:has(.list-page-title-actions)::after,
 #nip23-page-title:has(.list-page-title-actions)::after,
-#public-ranking-title:has(.list-page-title-actions)::after {
+#public-ranking-title:has(.list-page-title-actions)::after,
+#overworld-page-title:has(.list-page-title-actions)::after {
   content: "";
   position: absolute;
   left: 0;

@@ -161,6 +161,10 @@
     return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
   }
 
+  function stripLegacyNostrSyncPills(value) {
+    return String(value || '').replace(/<\s*nostr-sync-pill\b[^>]*>(?:\s*<\/\s*nostr-sync-pill\s*>)?/gi, '').trim();
+  }
+
   function renderSyncStatusPill() {
     var actionsHost = document.getElementById('list-page-title-actions');
     if (!actionsHost) {
@@ -3678,7 +3682,7 @@
   }
 
   function renderExtraContent(text, format, role) {
-    var value = String(text || '');
+    var value = stripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
     }

@@ -290,6 +290,10 @@
     return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
   }
 
+  function stripLegacyNostrSyncPills(value) {
+    return String(value || '').replace(/<\s*nostr-sync-pill\b[^>]*>(?:\s*<\/\s*nostr-sync-pill\s*>)?/gi, '').trim();
+  }
+
   function titleActionsHtml(syncOnly) {
     return '<span id="public-ranking-page-title-actions" class="list-page-title-actions' + (syncOnly ? ' public-ranking-sync-actions' : '') + '"></span>';
   }
@@ -953,7 +957,7 @@
   }
 
   function renderExtraContent(text, format, role) {
-    var value = String(text || '');
+    var value = stripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
     }

@@ -143,10 +143,20 @@ projects_root_count=$(grep -F '<section id="public-ranking-root"' "$site_root/si
   exit 1
 }
 
-if grep -Fq '<nostr-sync-pill' "$site_root/site/lodestone/templates/public-ranking.stone.html"; then
-  printf '%s\n' "public ranking template emits a duplicate static sync pill" >&2
-  exit 1
-fi
+for stone_file in \
+  "$site_root/site/lodestone/pages/blog.stone.html" \
+  "$site_root/site/lodestone/templates/list.stone.html" \
+  "$site_root/site/lodestone/templates/icon-gallery.stone.html" \
+  "$site_root/site/lodestone/templates/contact.stone.html" \
+  "$site_root/site/lodestone/templates/nip23.stone.html" \
+  "$site_root/site/lodestone/templates/public-ranking.stone.html" \
+  "$site_root/site/lodestone/templates/overworld.stone.html"
+do
+  if grep -Fq '<nostr-sync-pill' "$stone_file"; then
+    printf '%s\n' "$stone_file emits a duplicate static sync pill" >&2
+    exit 1
+  fi
+done
 
 if grep -Fq '&lt;section id=&quot;public-ranking-root&quot;' "$site_root/site/pages/projects.md" ||
    grep -Fq '&lt;div data-lodestone-root=&quot;page&quot;' "$site_root/site/pages/projects.md"; then
@@ -164,7 +174,7 @@ grep -Fq -- '--html-file "posts_json=$render_posts_tmp"' "$site_root/cgi/blog-no
   exit 1
 }
 
-grep -Fq 'v0.7.21' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.29' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }
