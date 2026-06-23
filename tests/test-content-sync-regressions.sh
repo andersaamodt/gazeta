@@ -255,6 +255,20 @@ export WIZARDRY_SITE_NAME="$SITE_NAME"
 
 blog_init
 
+missing_pages_path=$(blog_nostr_pages_config_path)
+rm -f "$missing_pages_path"
+missing_pages_json=$(blog_nostr_pages_load_json)
+assert_file_missing "$missing_pages_path" 'loading missing Nostr page registry is side-effect-free'
+assert_eq 'blog' "$(printf '%s\n' "$missing_pages_json" | jq -r '.pages[0].slug')" 'missing Nostr page registry still returns default blog fallback'
+
+mkdir -p "$(dirname "$missing_pages_path")"
+printf '{"pages":[{"slug":"reading-list","type":"public-ranking","show_in_nav":true,"placeholder_title":"Reading list"}]}' > "$missing_pages_path"
+before_pages_checksum=$(cksum "$missing_pages_path" | awk '{print $1 ":" $2}')
+loaded_pages_json=$(blog_nostr_pages_load_json)
+after_pages_checksum=$(cksum "$missing_pages_path" | awk '{print $1 ":" $2}')
+assert_eq "$before_pages_checksum" "$after_pages_checksum" 'loading existing Nostr page registry does not rewrite or prune it'
+assert_eq 'reading-list' "$(printf '%s\n' "$loaded_pages_json" | jq -r '.pages[0].slug')" 'loading existing Nostr page registry preserves reading-list row'
+
 unicode_form_encoded='Kelly%E2%80%94Pillzy%E2%80%99s%20%E2%80%9Cquote%E2%80%9D'
 unicode_form_expected=$(printf 'Kelly\342\200\224Pillzy\342\200\231s \342\200\234quote\342\200\235')
 assert_eq "$unicode_form_expected" "$(blog_param_decode_component "$unicode_form_encoded")" 'form decoder preserves utf-8 punctuation'
@@ -446,7 +460,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'BOOTSTRAP_CACHE
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'BOOTSTRAP_CACHE_MAX_AGE_MS = 15000' 'nip23 bootstrap cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'POSTS_CACHE_MAX_AGE_MS = 15000' 'blog posts cache has freshness window'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-inline-filter-group' 'blog post year and type pills can open and select filters'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_page_js_version='20260620-blog-prerender-ready1'" 'blog page script cache buster tracks prerender readiness updates'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_page_js_version='20260622-single-sync-pill1'" 'blog page script cache buster tracks single sync pill updates'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-type-pill,' 'blog listing type pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'button.blog-year-pill,' 'blog listing year pill color does not require main-content wrapper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '--post-tag-type-bg: #dff4d7;' 'post type chips use light green'
@@ -763,7 +777,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/head.html" "document.docume
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'html.app-hydrating nav.site-nav,' 'hydration gate hides navbar until page is ready'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'icon-gallery' 'icon-gallery page type plumbing exists'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/list.stone.html" 'data-page-type="list"' 'list mount template marks list page type explicitly'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260621-post-url-external-icon1'" 'list page script cache buster tracks post_url external-link display fixes'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_list_page_js_version='20260622-single-sync-pill1'" 'list page script cache buster tracks single sync pill updates'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'endswith(".mkv")' 'server list renderer does not special-case MKV links'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" '/\\.mkv$/' 'client list renderer does not special-case MKV links'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-common.sh" 'image_url' 'list state supports image_url fields'
@@ -945,7 +959,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" '.vcw-btn.v
 assert_file_contains "$SITE_SOURCE_ROOT/static/video-chat-widget.js" 'box-shadow:var(--action-soft-shadow' 'video chat widget small buttons use the shared soft action shadow'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/style.css" 'html body #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:not(.blog-compose-fab)' 'contact title buttons do not override shared soft action clipping'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" 'html body #contact-page-root #contact-page-title .list-page-title-actions .list-admin-primary-btn:not(.blog-compose-fab)' 'lapidarist contact title buttons do not override shared soft action clipping'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_contact_page_js_version='20260526-call-prerender-shell1'" 'contact page cache buster tracks call prerender shell recovery'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_contact_page_js_version='20260622-single-sync-pill1'" 'contact page cache buster tracks single sync pill updates'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" "blog_nostr_simplex_web_default_chat_js_version='20260523-login-note1'" 'shared Secure Chat renderer cache buster tracks login prompt rendering'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="image_url"' 'list inline editor supports image_url cell editing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'data-inline-field="post_url"' 'list inline editor supports post_url cell editing'
@@ -1268,7 +1282,11 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.29' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.30' 'footer exposes current site version before GitHub'
+navbar_guard_block=$(sed -n '/Absolute final guard: any active nav item must stay in button-blue on hover\/focus\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
+assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
+lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
+assert_contains "$lapidarist_nav_guard_block" 'transition: none;' 'Lapidarist active navbar pills do not animate on hover'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-type-pill,' 'shared head recovery covers single-post anchor type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'background: var(--post-tag-type-bg) !important;' 'shared head recovery forces type pills light green'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/head.html" 'html body .post-single-item :is(a, button).blog-year-pill,' 'shared head recovery covers single-post anchor year pills'

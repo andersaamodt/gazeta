@@ -45,7 +45,7 @@ title: Blog
 </div>
 </div>
 
-<div id="blog-post-list" class="post-list"></div>
+<div id="blog-post-list" class="post-list"><p class="placeholder">No posts to show yet.</p></div>
 <p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
 </div>
 </div>
@@ -53,5 +53,5 @@ title: Blog
 
 <script src="/static/nostr-page-bootstrap/blog.js"></script>
 <script src="/static/compose-shared.js?v=20260403-compose1"></script>
-<script defer src="/static/blog-page.js?v=20260620-blog-prerender-ready1" data-lodestone-hydrate="script"></script>
+<script defer src="/static/blog-page.js?v=20260622-single-sync-pill1" data-lodestone-hydrate="script"></script>
 </div>

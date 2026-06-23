@@ -242,17 +242,11 @@ blog_nostr_pages_prune_legacy_empty_home_json() {
 blog_nostr_pages_load_json() {
   path=$(blog_nostr_pages_config_path)
   raw=''
-  raw_norm=''
   if [ -f "$path" ]; then
     raw=$(cat "$path" 2>/dev/null || printf '')
-    raw_norm=$(printf '%s\n' "$raw" | jq -c '.' 2>/dev/null || printf '')
   fi
   normalized=$(blog_nostr_pages_normalize_json "$raw")
   normalized=$(blog_nostr_pages_prune_legacy_empty_home_json "$normalized")
-  normalized_norm=$(printf '%s\n' "$normalized" | jq -c '.' 2>/dev/null || printf '')
-  if [ ! -f "$path" ] || [ "$raw_norm" != "$normalized_norm" ]; then
-    blog_nostr_pages_save_json "$normalized"
-  fi
   printf '%s\n' "$normalized"
 }
 
