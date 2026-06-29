@@ -1,10 +1,11 @@
-use crate::resolved_site_data_dir;
 use crate::action_registry::{action_allowed, RuntimeDomain};
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
+use crate::site_runtime::{
+    generated_static_dir, resolve_site_identity, resolve_sites_data_dir, resolve_state_dir,
+};
 use crate::urlcodec::query_param;
 use serde_json::{json, Map, Value};
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -19,31 +20,18 @@ struct SitePaths {
 
 impl SitePaths {
     fn from_env() -> Result<Self> {
-        let sites_dir = env_path("WIZARDRY_SITES_DIR").ok_or_else(|| {
-            ReadError::new("config_missing", "WIZARDRY_SITES_DIR is not configured.")
-        })?;
-        let default_sites_data_dir = sites_dir.join(".sitedata");
-        let sites_data_dir = env_path("WIZARDRY_SITES_DATA_DIR").unwrap_or_else(|| {
-            if looks_like_git_checkout(&sites_dir) {
-                env_path("XDG_STATE_HOME")
-                    .unwrap_or_else(|| home_dir().join(".local/state"))
-                    .join("gazeta/sites-data")
-            } else {
-                default_sites_data_dir.clone()
-            }
-        });
-        let site_name = env::var("WIZARDRY_SITE_NAME").map_err(|_| {
-            ReadError::new("config_missing", "WIZARDRY_SITE_NAME is not configured.")
-        })?;
-        let site_root = sites_dir.join(&site_name);
-        let state_dir = resolved_site_data_dir(
-            &site_root,
+        let identity = resolve_site_identity(true, "default")
+            .map_err(|error| ReadError::new(error.code, error.message))?;
+        let default_sites_data_dir = identity.sites_dir.join(".sitedata");
+        let sites_data_dir = resolve_sites_data_dir(&identity.sites_dir, &default_sites_data_dir);
+        let state_dir = resolve_state_dir(
+            &identity.site_root,
+            &identity.site_name,
             &sites_data_dir,
             &default_sites_data_dir,
-            &site_name,
         );
         Ok(Self {
-            site_root,
+            site_root: identity.site_root,
             state_dir,
         })
     }
@@ -80,26 +68,13 @@ impl SitePaths {
         self.state_dir.join("nostr/state/site_pubkey")
     }
 
-    fn generated_root(&self) -> PathBuf {
-        if looks_like_git_checkout(&self.site_root) {
-            env_path("BLOG_GENERATED_ROOT").unwrap_or_else(|| {
-                env_path("XDG_STATE_HOME")
-                    .unwrap_or_else(|| home_dir().join(".local/state"))
-                    .join("gazeta/generated")
-                    .join(
-                        self.site_root
-                            .file_name()
-                            .and_then(|value| value.to_str())
-                            .unwrap_or("default"),
-                    )
-            })
-        } else {
-            self.site_root.join("site")
-        }
-    }
-
     fn generated_static_dir(&self) -> PathBuf {
-        self.generated_root().join("static")
+        let site_name = self
+            .site_root
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("default");
+        generated_static_dir(&self.site_root, site_name)
     }
 }
 
@@ -738,20 +713,4 @@ fn civil_from_days(days: i64) -> Option<(i64, i64, i64)> {
     let month = mp + if mp < 10 { 3 } else { -9 };
     let year = y + if month <= 2 { 1 } else { 0 };
     Some((year, month, day))
-}
-
-fn env_path(name: &str) -> Option<PathBuf> {
-    env::var_os(name)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-}
-
-fn home_dir() -> PathBuf {
-    env_path("HOME").unwrap_or_else(|| PathBuf::from("/"))
-}
-
-fn looks_like_git_checkout(path: &Path) -> bool {
-    let home = home_dir();
-    let home_git = home.join("git");
-    path.starts_with(&home_git) || path.starts_with("/Users/andersaamodt/git")
 }

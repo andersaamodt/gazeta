@@ -1,5 +1,6 @@
 mod action_registry;
 mod runtime_types;
+mod site_runtime;
 mod urlcodec;
 
 pub mod gazeta_admin;

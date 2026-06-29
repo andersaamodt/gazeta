@@ -1,7 +1,10 @@
-use crate::resolved_site_data_dir;
 use crate::action_registry::{action_allowed, RuntimeDomain};
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
+use crate::site_runtime::{
+    env_path, looks_like_git_checkout, resolve_generated_root, resolve_site_identity,
+    resolve_sites_data_dir, resolve_state_dir,
+};
 use crate::urlcodec::percent_decode;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -221,48 +224,27 @@ struct SitePaths {
 
 impl SitePaths {
     fn from_env() -> Result<Self> {
-        let sites_dir = env_path("WIZARDRY_SITES_DIR").unwrap_or_else(default_sites_dir);
-        let site_name = env::var("WIZARDRY_SITE_NAME").unwrap_or_else(|_| "default".to_string());
-        let site_root = sites_dir.join(&site_name);
-        let default_sites_data_dir = sites_dir.join(".sitedata");
-        let sites_data_dir = match env_path("WIZARDRY_SITES_DATA_DIR") {
-            Some(path) => path,
-            None => {
-                if looks_like_git_checkout(&sites_dir) {
-                    env_path("XDG_STATE_HOME")
-                        .unwrap_or_else(|| home_dir().join(".local/state"))
-                        .join("gazeta/sites-data")
-                } else {
-                    default_sites_data_dir.clone()
-                }
-            }
-        };
-        let state_dir = resolved_site_data_dir(
-            &site_root,
+        let identity = resolve_site_identity(false, "default")
+            .map_err(|error| AdminError::new(error.code, error.message))?;
+        let default_sites_data_dir = identity.sites_dir.join(".sitedata");
+        let sites_data_dir = resolve_sites_data_dir(&identity.sites_dir, &default_sites_data_dir);
+        let state_dir = resolve_state_dir(
+            &identity.site_root,
+            &identity.site_name,
             &sites_data_dir,
             &default_sites_data_dir,
-            &site_name,
         );
-        let generated_root = if looks_like_git_checkout(&site_root) {
-            env_path("BLOG_GENERATED_ROOT").unwrap_or_else(|| {
-                env_path("XDG_STATE_HOME")
-                    .unwrap_or_else(|| home_dir().join(".local/state"))
-                    .join("gazeta/generated")
-                    .join(&site_name)
-            })
-        } else {
-            site_root.join("site")
-        };
-        let posts_dir = if looks_like_git_checkout(&site_root) {
+        let generated_root = resolve_generated_root(&identity.site_root, &identity.site_name);
+        let posts_dir = if looks_like_git_checkout(&identity.site_root) {
             generated_root.join("pages/posts")
         } else {
-            site_root.join("site/pages/posts")
+            identity.site_root.join("site/pages/posts")
         };
         let posts_store_dir = state_dir.join("content/posts");
-        let generated_build_pages_dir = if looks_like_git_checkout(&site_root) {
+        let generated_build_pages_dir = if looks_like_git_checkout(&identity.site_root) {
             generated_root.join("build/pages")
         } else {
-            site_root.join("build/pages")
+            identity.site_root.join("build/pages")
         };
         Ok(Self {
             state_dir,
@@ -816,28 +798,6 @@ fn now_iso() -> Result<String> {
         .map_err(|error| AdminError::new("time_failed", format!("Could not format time: {error}")))?
         .format(RFC3339_FORMAT)
         .map_err(|error| AdminError::new("time_failed", format!("Could not format time: {error}")))
-}
-
-fn env_path(key: &str) -> Option<PathBuf> {
-    env::var_os(key)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-}
-
-fn default_sites_dir() -> PathBuf {
-    home_dir().join("sites")
-}
-
-fn home_dir() -> PathBuf {
-    env_path("HOME").unwrap_or_else(|| PathBuf::from("/"))
-}
-
-fn looks_like_git_checkout(path: &Path) -> bool {
-    let path = path.to_string_lossy();
-    path.starts_with(&format!("{}/git/", home_dir().display()))
-        || path == format!("{}/git", home_dir().display())
-        || path.starts_with("/Users/andersaamodt/git/")
-        || path == "/Users/andersaamodt/git"
 }
 
 fn io_error(code: &'static str, context: &'static str) -> impl FnOnce(io::Error) -> AdminError {
