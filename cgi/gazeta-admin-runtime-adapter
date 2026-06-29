@@ -1,52 +1,7 @@
 #!/bin/sh
-# Shared CGI adapter for Gazeta Theurgy admin mutation actions.
+# Shared CGI adapter wrapper for Gazeta Theurgy admin mutation actions.
 
 set -eu
 
-action=${1-}
-case "$action" in
-  blog-manage-post|blog-upload-media|blog-save-post|blog-publish-nostr-page|blog-video-chat-control|blog-secure-chat-admin|blog-payments) ;;
-  *)
-    printf '%s\n\n' 'Content-Type: application/json'
-    printf '{"success":false,"code":"bad_action","error":"Unknown Gazeta admin action."}\n'
-    exit 0
-    ;;
-esac
-
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
-# shellcheck disable=SC1091
-. "$SCRIPT_DIR/gazeta-paths.sh"
-RELEASE_RUNTIME=$(gazeta_runtime_path release gazeta-admin)
-DEBUG_RUNTIME=$(gazeta_runtime_path debug gazeta-admin)
-
-if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
-  : "${WIZARDRY_SITES_DIR:=$(dirname "$REPO_ROOT")}"
-  : "${WIZARDRY_SITE_NAME:=$(basename "$REPO_ROOT")}"
-  export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
-fi
-export GAZETA_REPO_ROOT=${GAZETA_REPO_ROOT:-$REPO_ROOT}
-
-run_candidate() {
-  candidate=$1
-  [ -x "$candidate" ] || return 1
-  exec "$candidate" "$action"
-}
-
-if [ -n "${GAZETA_ADMIN_RUNTIME-}" ]; then
-  run_candidate "$GAZETA_ADMIN_RUNTIME" || {
-    printf '%s\n\n' 'Content-Type: application/json'
-    printf '{"success":false,"code":"runtime_missing","error":"Configured Gazeta admin runtime is not executable."}\n'
-    exit 0
-  }
-fi
-
-if [ "${GAZETA_THEURGY_ALLOW_CARGO-}" = 1 ] && command -v cargo >/dev/null 2>&1; then
-  exec "$SCRIPT_DIR/gazeta-cargo" run --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin gazeta-admin -- "$action"
-fi
-
-run_candidate "$RELEASE_RUNTIME" || true
-run_candidate "$DEBUG_RUNTIME" || true
-
-printf '%s\n\n' 'Content-Type: application/json'
-printf '{"success":false,"code":"runtime_missing","error":"Gazeta admin runtime is not built. Build ~/.local/state/gazeta/cargo-target/release/gazeta-admin or set GAZETA_ADMIN_RUNTIME."}\n'
+exec /bin/sh "$SCRIPT_DIR/gazeta-runtime-adapter" admin "${1-}"

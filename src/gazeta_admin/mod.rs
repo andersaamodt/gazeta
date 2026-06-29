@@ -1,4 +1,5 @@
 use crate::resolved_site_data_dir;
+use crate::action_registry::{action_allowed, RuntimeDomain};
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use mime_guess::MimeGuess;
@@ -56,6 +57,9 @@ impl AdminError {
 type Result<T> = std::result::Result<T, AdminError>;
 
 pub fn run_action(action: &str) -> Result<AdminActionResult> {
+    if !action_allowed(RuntimeDomain::Admin, action) {
+        return Err(AdminError::new("bad_action", "Unknown Gazeta admin action."));
+    }
     match action {
         "blog-manage-post" => {
             blog_manage_post().map(|value| AdminActionResult::Response(CgiResponse::json(value)))

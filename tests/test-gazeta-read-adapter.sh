@@ -30,4 +30,8 @@ bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-read-runtime-adapter" invalid-action)
 printf '%s\n' "$bad_output" | grep '"success":false' >/dev/null
 printf '%s\n' "$bad_output" | grep '"code":"bad_action"' >/dev/null
 
+domain_bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-runtime-adapter" not-a-domain list-public-posts)
+printf '%s\n' "$domain_bad_output" | grep '"success":false' >/dev/null
+printf '%s\n' "$domain_bad_output" | grep '"code":"bad_domain"' >/dev/null
+
 printf '%s\n' 'gazeta read adapter tests passed'

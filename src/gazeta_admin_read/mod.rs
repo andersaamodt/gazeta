@@ -1,4 +1,5 @@
 use crate::resolved_site_data_dir;
+use crate::action_registry::{action_allowed, RuntimeDomain};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -88,6 +89,12 @@ impl SitePaths {
 }
 
 pub fn run_action(action: &str) -> Result<CgiResponse> {
+    if !action_allowed(RuntimeDomain::AdminRead, action) {
+        return Err(ReadError::new(
+            "bad_action",
+            "Unknown Gazeta admin read action.",
+        ));
+    }
     match action {
         "blog-list-pages" => blog_list_pages().map(CgiResponse::json),
         _ => Err(ReadError::new(

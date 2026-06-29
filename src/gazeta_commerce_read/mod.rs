@@ -1,4 +1,5 @@
 use crate::resolved_site_data_dir;
+use crate::action_registry::{action_allowed, RuntimeDomain};
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
@@ -105,6 +106,12 @@ impl SitePaths {
 }
 
 pub fn run_action(action: &str) -> Result<CgiResponse> {
+    if !action_allowed(RuntimeDomain::CommerceRead, action) {
+        return Err(ReadError::new(
+            "bad_action",
+            "Unknown Gazeta commerce read action.",
+        ));
+    }
     match action {
         "blog-get-product" => blog_get_product().map(CgiResponse::json),
         _ => Err(ReadError::new(
