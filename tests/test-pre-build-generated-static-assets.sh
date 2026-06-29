@@ -59,9 +59,9 @@ cat > "$canonical_root/static/themes/lapidarist.css" <<'EOFTHEME'
 EOFTHEME
 
 printf '%s\n' 'fixture-texture' > "$canonical_root/static/textures/lapidarist-parchment.webp"
-mkdir -p "$XDG_STATE_HOME/gazeta/legacy-assets/oeuvre" "$XDG_STATE_HOME/gazeta/legacy-assets/root"
-printf '%s\n' 'legacy-video-fixture' > "$XDG_STATE_HOME/gazeta/legacy-assets/oeuvre/ultramemes.mkv"
-printf '%s\n' 'legacy-root-fixture' > "$XDG_STATE_HOME/gazeta/legacy-assets/root/feed.xml"
+mkdir -p "$site_data_root/files/legacy-assets/oeuvre" "$site_data_root/files/legacy-assets/root"
+printf '%s\n' 'legacy-video-fixture' > "$site_data_root/files/legacy-assets/oeuvre/ultramemes.mkv"
+printf '%s\n' 'legacy-root-fixture' > "$site_data_root/files/legacy-assets/root/feed.xml"
 
 mkdir -p "$tmp_root/bin"
 cat > "$tmp_root/bin/config-get" <<'EOFCONFIG'

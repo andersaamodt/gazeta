@@ -415,7 +415,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-prerender-painted="true"' 'managed Nostr prerendered HTML marks stable static content'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_prune_clean_url_build_dirs() {' 'managed Nostr pages prune stale clean-url build copies before rebuild'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_prune_clean_url_build_dirs "$pages_json"' 'pre-build removes stale clean-url build copies for managed pages'
-assert_file_contains "$ROOT_DIR/cgi/pre-build" 'copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"' 'pre-build mirrors state-backed legacy assets into generated static files'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"' 'pre-build mirrors site-data-backed legacy assets into generated static files'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_legacy_asset_aliases "$legacy_assets_src"' 'pre-build exposes legacy asset files through clean generated URLs'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_contact_video_chat_html() {' 'contact prerender reserves the public video chat shell when enabled'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json"' 'bootstrap prerender writes static source pages from the hydration payload'

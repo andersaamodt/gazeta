@@ -91,7 +91,7 @@ legacy_assets_dir() {
     printf '%s\n' "$BLOG_LEGACY_ASSETS_DIR"
     return 0
   fi
-  printf '%s/gazeta/legacy-assets\n' "${XDG_STATE_HOME:-$HOME/.local/state}"
+  printf '%s/legacy-assets\n' "$blog_files_dir"
 }
 
 copy_tree_overlay() {
