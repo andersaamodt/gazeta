@@ -1,4 +1,4 @@
-use crate::gazeta_read::{read_json_file, rebuild, ReadError, Result, SitePaths};
+use crate::gazeta_read::{read_json_file, ReadError, Result, SitePaths};
 use serde_json::Value;
 use std::path::Path;
 
@@ -14,14 +14,12 @@ pub(crate) fn list_navbar_pages() -> Result<Value> {
         return Ok(value);
     }
 
-    rebuild(&paths, "rebuild-navbar-pages")?;
-
     read_pages_payload(&static_navbar)
         .or_else(|| read_pages_payload(&cache_navbar))
         .ok_or_else(|| {
             ReadError::new(
                 "navbar_missing",
-                "Gazeta navbar pages were not available after rebuild.",
+                "Gazeta navbar pages are not available. Run blog-maintenance rebuild-navbar-pages.",
             )
         })
 }

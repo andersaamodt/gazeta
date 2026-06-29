@@ -63,6 +63,21 @@ navbar_json=$(printf '%s\n' "$navbar_payload" | sed -n '/^{/,$p')
 printf '%s\n' "$navbar_json" | jq -e '.success == true' >/dev/null
 printf '%s\n' "$navbar_json" | jq -e '.pages[0].slug == "replay" and .pages[0].title == "Replay"' >/dev/null
 
+rm -f "$GENERATED_ROOT/static/public-posts.json" "$SITE_DATA/public-posts-cache.json"
+missing_posts_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-list-public-posts")
+missing_posts_json=$(printf '%s\n' "$missing_posts_payload" | sed -n '/^{/,$p')
+printf '%s\n' "$missing_posts_json" | jq -e '.success == false and .code == "catalog_missing"' >/dev/null
+[ ! -f "$GENERATED_ROOT/static/public-posts.json" ]
+[ ! -f "$SITE_DATA/public-posts-cache.json" ]
+
+rm -f "$GENERATED_ROOT/static/search-index.json" "$SITE_DATA/search-index-cache.json"
+search_missing_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-search"
+search_missing_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$search_missing_fixture" -- env QUERY_STRING='q=fixture' /bin/sh "$ROOT_DIR/cgi/blog-search")
+search_missing_json=$(printf '%s\n' "$search_missing_payload" | sed -n '/^{/,$p')
+printf '%s\n' "$search_missing_json" | jq -e '.success == false and .code == "search_index_missing"' >/dev/null
+[ ! -f "$GENERATED_ROOT/static/search-index.json" ]
+[ ! -f "$SITE_DATA/search-index-cache.json" ]
+
 now=$(date +%s)
 cat > "$SITE_DATA/btc-usd-rate.json" <<JSON
 {"success":true,"btc_usd":64000.25,"currency":"USD","source":"coinbase","stale":false,"fetched_at":$now}

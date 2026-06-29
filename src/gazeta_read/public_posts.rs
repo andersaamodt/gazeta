@@ -1,4 +1,4 @@
-use crate::gazeta_read::{read_json_file, rebuild, ReadError, Result, SitePaths};
+use crate::gazeta_read::{read_json_file, ReadError, Result, SitePaths};
 use serde_json::Value;
 use std::path::Path;
 
@@ -18,14 +18,12 @@ pub(crate) fn public_posts_catalog_value() -> Result<Value> {
         return Ok(value);
     }
 
-    rebuild(&paths, "rebuild-public-posts")?;
-
     read_catalog(&static_catalog)
         .or_else(|| read_catalog(&cache_catalog))
         .ok_or_else(|| {
             ReadError::new(
                 "catalog_missing",
-                "Gazeta public posts catalog was not available after rebuild.",
+                "Gazeta public posts catalog is not available. Run blog-maintenance rebuild-public-posts.",
             )
         })
 }

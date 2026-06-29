@@ -6,7 +6,6 @@ mod btc_rate;
 mod error;
 mod html;
 mod json_io;
-mod maintenance;
 mod navbar_pages;
 mod public_posts;
 mod response;
@@ -17,7 +16,6 @@ pub use self::response::CgiResponse;
 
 pub(crate) use self::html::{html_escape, markdown_block_html};
 pub(crate) use self::json_io::{read_json_file, write_json_atomic};
-pub(crate) use self::maintenance::rebuild;
 pub(crate) use self::site_paths::SitePaths;
 
 pub fn run_action(action: &str) -> Result<CgiResponse> {

@@ -1,5 +1,5 @@
 use crate::gazeta_read::{
-    html_escape, read_json_file, rebuild, CgiResponse, ReadError, Result, SitePaths,
+    html_escape, read_json_file, CgiResponse, ReadError, Result, SitePaths,
 };
 use serde_json::Value;
 use std::env;
@@ -34,13 +34,12 @@ fn search_index_entries() -> Result<Vec<Value>> {
         return Ok(entries);
     }
 
-    rebuild(&paths, "rebuild-search-index")?;
     read_entries(&static_index)
         .or_else(|| read_entries(&cache_index))
         .ok_or_else(|| {
             ReadError::new(
                 "search_index_missing",
-                "Gazeta search index was not available after rebuild.",
+                "Gazeta search index is not available. Run blog-maintenance rebuild-search-index.",
             )
         })
 }
