@@ -2,6 +2,7 @@ use crate::gazeta_read::{
     html_escape, markdown_block_html, public_posts::public_posts_catalog_value, CgiResponse,
     ReadError, Result,
 };
+use crate::public_post::PublicPost;
 use serde_json::Value;
 use std::env;
 
@@ -9,13 +10,14 @@ const POSTS_PER_PAGE: usize = 10;
 
 pub(crate) fn blog_index() -> Result<CgiResponse> {
     let catalog = public_posts_catalog_value()?;
-    let posts = catalog
+    let posts_json = catalog
         .get("posts")
         .and_then(Value::as_array)
         .ok_or_else(|| {
             ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
         })?;
-    Ok(CgiResponse::html(render_index(posts, requested_page())))
+    let posts: Vec<PublicPost> = posts_json.iter().filter_map(PublicPost::from_value).collect();
+    Ok(CgiResponse::html(render_index(&posts, requested_page())))
 }
 
 fn requested_page() -> usize {
@@ -29,7 +31,7 @@ fn requested_page() -> usize {
         .unwrap_or(1)
 }
 
-fn render_index(posts: &[Value], requested_page: usize) -> String {
+fn render_index(posts: &[PublicPost], requested_page: usize) -> String {
     let total_posts = posts.len();
     let total_pages = if total_posts == 0 {
         1
@@ -57,18 +59,34 @@ fn render_index(posts: &[Value], requested_page: usize) -> String {
     html
 }
 
-fn render_post(html: &mut String, post: &Value) {
-    let url = string_field(post, "url");
-    let title = string_field(post, "title");
-    let author = string_field_or(post, "author", "Blog Author");
-    let reading_minutes = number_or_string_field(post, "reading_minutes", "1");
-    let published_timestamp = string_field(post, "published_timestamp");
-    let pub_date = string_field_or(post, "pub_date", "Unknown date");
-    let comment_count = integer_field(post, "comment_count");
-    let summary = string_field(post, "summary");
-    let link_url = string_field(post, "link_url");
-    let summary_truncated = bool_field(post, "summary_truncated");
-    let post_type = string_field_or(post, "type", "post");
+fn render_post(html: &mut String, post: &PublicPost) {
+    let url = if post.url.is_empty() { "" } else { &post.url };
+    let title = if post.title.is_empty() { "" } else { &post.title };
+    let author = if post.author.is_empty() {
+        "Blog Author"
+    } else {
+        &post.author
+    };
+    let reading_minutes = if post.reading_minutes_text.is_empty() {
+        "1"
+    } else {
+        &post.reading_minutes_text
+    };
+    let published_timestamp = &post.published_timestamp;
+    let pub_date = if post.pub_date.is_empty() {
+        "Unknown date"
+    } else {
+        &post.pub_date
+    };
+    let comment_count = post.comment_count;
+    let summary = &post.summary;
+    let link_url = &post.link_url;
+    let summary_truncated = post.summary_truncated;
+    let post_type = if post.post_type.is_empty() {
+        "post"
+    } else {
+        &post.post_type
+    };
 
     html.push_str("<article class=\"post-item\">\n");
     html.push_str("  <div class=\"post-head\">\n");
@@ -123,23 +141,16 @@ fn render_post(html: &mut String, post: &Value) {
         html.push_str("</div>\n");
     }
 
-    if let Some(tags) = post.get("tags").and_then(Value::as_array) {
-        if !tags.is_empty() {
-            html.push_str("  <div class=\"tags\">\n");
-            for tag in tags
-                .iter()
-                .filter_map(Value::as_str)
-                .filter(|tag| !tag.trim().is_empty())
-            {
-                let clean = tag.trim();
-                html.push_str("    <a href=\"/tags#");
-                html.push_str(&html_escape(clean));
-                html.push_str("\" class=\"tag\">");
-                html.push_str(&html_escape(clean));
-                html.push_str("</a>\n");
-            }
-            html.push_str("  </div>\n");
+    if !post.tags.is_empty() {
+        html.push_str("  <div class=\"tags\">\n");
+        for tag in post.tags.iter().map(String::as_str) {
+            html.push_str("    <a href=\"/tags#");
+            html.push_str(&html_escape(tag));
+            html.push_str("\" class=\"tag\">");
+            html.push_str(&html_escape(tag));
+            html.push_str("</a>\n");
         }
+        html.push_str("  </div>\n");
     }
 
     html.push_str("</article>\n\n");
@@ -187,37 +198,4 @@ fn render_pagination(html: &mut String, page: usize, total_pages: usize) {
         html.push_str("  <span class=\"page-link disabled\">Next &raquo;</span>\n");
     }
     html.push_str("</div>\n");
-}
-
-fn string_field(value: &Value, field: &str) -> String {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string()
-}
-
-fn string_field_or(value: &Value, field: &str, fallback: &str) -> String {
-    let raw = string_field(value, field);
-    if raw.is_empty() {
-        fallback.to_string()
-    } else {
-        raw
-    }
-}
-
-fn number_or_string_field(value: &Value, field: &str, fallback: &str) -> String {
-    match value.get(field) {
-        Some(Value::Number(number)) => number.to_string(),
-        Some(Value::String(text)) if !text.is_empty() => text.to_string(),
-        _ => fallback.to_string(),
-    }
-}
-
-fn integer_field(value: &Value, field: &str) -> i64 {
-    value.get(field).and_then(Value::as_i64).unwrap_or(0)
-}
-
-fn bool_field(value: &Value, field: &str) -> bool {
-    value.get(field).and_then(Value::as_bool).unwrap_or(false)
 }

@@ -1,4 +1,5 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
+use crate::public_post::PublicPost;
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
@@ -230,7 +231,7 @@ fn comments_for_address(paths: &SitePaths, address: &str) -> Vec<Value> {
         .collect()
 }
 
-fn public_posts(paths: &SitePaths) -> Result<Vec<Value>> {
+fn public_posts(paths: &SitePaths) -> Result<Vec<PublicPost>> {
     let catalog = read_json_object(&paths.public_posts_catalog_static())
         .or_else(|| read_json_object(&paths.public_posts_catalog_cache()))
         .ok_or_else(|| {
@@ -239,67 +240,78 @@ fn public_posts(paths: &SitePaths) -> Result<Vec<Value>> {
                 "Gazeta public posts catalog is not available.",
             )
         })?;
-    catalog
+    let posts_json = catalog
         .get("posts")
         .and_then(Value::as_array)
         .cloned()
-        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))
+        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))?;
+    Ok(posts_json
+        .iter()
+        .filter_map(PublicPost::from_value)
+        .collect())
 }
 
-fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
+fn context_post_json(paths: &SitePaths, post: &PublicPost) -> Value {
     let slug = post_path_slug(post).unwrap_or_default();
     let mut object = Map::new();
     object.insert(
         "title".to_string(),
-        Value::String(string_field(post, "title")),
+        Value::String(post.title.clone()),
     );
     object.insert(
         "author".to_string(),
-        Value::String(string_field_or(post, "author", "Blog Author")),
+        Value::String(if post.author.is_empty() {
+            "Blog Author".to_string()
+        } else {
+            post.author.clone()
+        }),
     );
-    object.insert("url".to_string(), Value::String(string_field(post, "url")));
+    object.insert("url".to_string(), Value::String(post.url.clone()));
     object.insert(
         "path".to_string(),
-        Value::String(string_field_or(post, "path", &format!("posts/{slug}"))),
+        Value::String(if post.path.is_empty() {
+            format!("posts/{slug}")
+        } else {
+            post.path.clone()
+        }),
     );
     object.insert(
         "source_path".to_string(),
-        Value::String(string_field(post, "source_path")),
+        Value::String(post.source_path.clone()),
     );
     object.insert(
         "type".to_string(),
-        Value::String(string_field_or(post, "type", "post")),
+        Value::String(if post.post_type.is_empty() {
+            "post".to_string()
+        } else {
+            post.post_type.clone()
+        }),
     );
     object.insert(
         "published_at".to_string(),
-        Value::String(string_field(post, "published_at")),
+        Value::String(post.published_at.clone()),
     );
     object.insert(
         "published_date".to_string(),
-        Value::String(string_field(post, "published_date")),
+        Value::String(post.published_date.clone()),
     );
     object.insert(
         "published_timestamp".to_string(),
-        Value::String(string_field(post, "published_timestamp")),
+        Value::String(post.published_timestamp.clone()),
     );
-    object.insert(
-        "year".to_string(),
-        Value::String(string_field_or(post, "year", "")),
-    );
+    object.insert("year".to_string(), Value::String(post.year.clone()));
     object.insert(
         "summary".to_string(),
-        Value::String(string_field(post, "summary")),
+        Value::String(post.summary.clone()),
     );
-    object.insert("word_count".to_string(), integer_json(post, "word_count"));
+    object.insert("word_count".to_string(), json!(post.word_count));
     object.insert(
         "reading_minutes".to_string(),
-        integer_json(post, "reading_minutes"),
+        json!(post.reading_minutes),
     );
     object.insert(
         "tags".to_string(),
-        post.get("tags")
-            .cloned()
-            .unwrap_or_else(|| Value::Array(Vec::new())),
+        Value::Array(post.tags.iter().cloned().map(Value::String).collect()),
     );
     object.insert(
         "nostr".to_string(),
@@ -308,13 +320,13 @@ fn context_post_json(paths: &SitePaths, post: &Value) -> Value {
     Value::Object(object)
 }
 
-fn nostr_context_for_post(paths: &SitePaths, post: &Value, slug: &str) -> Option<Value> {
-    let mut id = string_field(post, "nostr_event_id");
-    let mut pubkey = string_field(post, "nostr_pubkey");
-    let mut kind = string_field(post, "nostr_kind");
-    let mut d = string_field(post, "nostr_d");
-    let mut address = string_field(post, "nostr_address");
-    let mut uri = string_field(post, "nostr_uri");
+fn nostr_context_for_post(paths: &SitePaths, post: &PublicPost, slug: &str) -> Option<Value> {
+    let mut id = post.nostr_event_id.clone();
+    let mut pubkey = post.nostr_pubkey.clone();
+    let mut kind = post.nostr_kind.clone();
+    let mut d = post.nostr_d.clone();
+    let mut address = post.nostr_address.clone();
+    let mut uri = post.nostr_uri.clone();
 
     if id.is_empty() && pubkey.is_empty() && kind.is_empty() && d.is_empty() && uri.is_empty() {
         if let Some(record) = post_record_for_slug(paths, slug) {
@@ -368,7 +380,7 @@ fn nostr_context_for_post(paths: &SitePaths, post: &Value, slug: &str) -> Option
     }))
 }
 
-fn post_sync_status_json(paths: &SitePaths, post: &Value, slug: &str) -> Value {
+fn post_sync_status_json(paths: &SitePaths, post: &PublicPost, slug: &str) -> Value {
     let local_source_path = local_post_source_path(paths, post, slug);
     let local_nostr_event_id = local_source_path
         .as_deref()
@@ -517,8 +529,8 @@ fn post_record_for_slug(paths: &SitePaths, slug: &str) -> Option<Value> {
         .find(|record| record.get("slug").and_then(Value::as_str) == Some(slug))
 }
 
-fn local_post_source_path(paths: &SitePaths, post: &Value, slug: &str) -> Option<PathBuf> {
-    let relative = string_field(post, "source_path");
+fn local_post_source_path(paths: &SitePaths, post: &PublicPost, slug: &str) -> Option<PathBuf> {
+    let relative = post.source_path.clone();
     let relative = if relative.is_empty() {
         format!("posts/{slug}.md")
     } else {
@@ -581,9 +593,11 @@ fn d_tag_from_record(record: &Value) -> Option<String> {
         })
 }
 
-fn post_path_slug(post: &Value) -> Option<&str> {
-    let path = post.get("path").and_then(Value::as_str)?;
-    path.strip_prefix("posts/").or(Some(path))
+fn post_path_slug(post: &PublicPost) -> Option<&str> {
+    if post.path.is_empty() {
+        return None;
+    }
+    post.path.strip_prefix("posts/").or(Some(post.path.as_str()))
 }
 
 fn add_created_at_iso(mut comment: Value) -> Value {
@@ -652,30 +666,11 @@ fn string_field(value: &Value, field: &str) -> String {
         .to_string()
 }
 
-fn string_field_or(value: &Value, field: &str, fallback: &str) -> String {
-    let raw = string_field(value, field);
-    if raw.is_empty() {
-        fallback.to_string()
-    } else {
-        raw
-    }
-}
-
 fn number_or_string_field(value: &Value, field: &str) -> String {
     match value.get(field) {
         Some(Value::Number(number)) => number.to_string(),
         Some(Value::String(text)) => text.to_string(),
         _ => String::new(),
-    }
-}
-
-fn integer_json(value: &Value, field: &str) -> Value {
-    match value.get(field) {
-        Some(Value::Number(number)) => Value::Number(number.clone()),
-        Some(Value::String(text)) => text
-            .parse::<i64>()
-            .map_or_else(|_| json!(0), |number| json!(number)),
-        _ => json!(0),
     }
 }
 

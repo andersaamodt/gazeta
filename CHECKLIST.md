@@ -7,4 +7,4 @@
 - [x] Merge the five near-identical runtime adapter scripts into one parameterized adapter.
 - [x] Consolidate duplicated runtime response/error primitives into shared modules.
 - [x] Replace repeated query and percent-decoding helpers with one canonical utility.
-- [ ] Introduce a typed shared `PublicPost` projection used by index/archive/tags/search/context surfaces.
+- [x] Introduce a typed shared `PublicPost` projection used by index/archive/tags/search/context surfaces.

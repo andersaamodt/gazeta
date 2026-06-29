@@ -1,20 +1,22 @@
 use crate::gazeta_read::{
     html_escape, public_posts::public_posts_catalog_value, CgiResponse, ReadError, Result,
 };
+use crate::public_post::PublicPost;
 use serde_json::Value;
 
 pub(crate) fn blog_archive() -> Result<CgiResponse> {
     let catalog = public_posts_catalog_value()?;
-    let posts = catalog
+    let posts_json = catalog
         .get("posts")
         .and_then(Value::as_array)
         .ok_or_else(|| {
             ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
         })?;
-    Ok(CgiResponse::html(render_archive(posts)))
+    let posts: Vec<PublicPost> = posts_json.iter().filter_map(PublicPost::from_value).collect();
+    Ok(CgiResponse::html(render_archive(&posts)))
 }
 
-fn render_archive(posts: &[Value]) -> String {
+fn render_archive(posts: &[PublicPost]) -> String {
     if posts.is_empty() {
         return "<p>No published posts yet.</p>\n".to_string();
     }
@@ -71,17 +73,17 @@ struct ArchiveRow {
 }
 
 impl ArchiveRow {
-    fn from_post(post: &Value) -> Self {
-        let pub_date = string_field(post, "pub_date");
+    fn from_post(post: &PublicPost) -> Self {
+        let pub_date = post.pub_date.clone();
         let (year, month, day) = parse_date_parts(&pub_date);
         let month_name = month_name(month);
         Self {
             month_key: format!("{year}-{month:02}"),
             month_label: format!("{month_name} {year}"),
             date_label: format!("{month_name} {day}, {year}"),
-            url: string_field(post, "url"),
-            title: string_field(post, "title"),
-            comment_count: integer_field(post, "comment_count"),
+            url: post.url.clone(),
+            title: post.title.clone(),
+            comment_count: post.comment_count,
         }
     }
 }
@@ -121,16 +123,4 @@ fn month_name(month: u8) -> &'static str {
         12 => "December",
         _ => "January",
     }
-}
-
-fn string_field(value: &Value, field: &str) -> String {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string()
-}
-
-fn integer_field(value: &Value, field: &str) -> i64 {
-    value.get(field).and_then(Value::as_i64).unwrap_or(0)
 }

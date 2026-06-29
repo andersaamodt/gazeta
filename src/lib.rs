@@ -1,5 +1,6 @@
 mod action_registry;
 mod admin_security;
+mod public_post;
 mod runtime_types;
 mod site_runtime;
 mod urlcodec;

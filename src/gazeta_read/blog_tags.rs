@@ -1,21 +1,23 @@
 use crate::gazeta_read::{
     html_escape, public_posts::public_posts_catalog_value, CgiResponse, ReadError, Result,
 };
+use crate::public_post::PublicPost;
 use serde_json::Value;
 use std::collections::HashMap;
 
 pub(crate) fn blog_tags() -> Result<CgiResponse> {
     let catalog = public_posts_catalog_value()?;
-    let posts = catalog
+    let posts_json = catalog
         .get("posts")
         .and_then(Value::as_array)
         .ok_or_else(|| {
             ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
         })?;
-    Ok(CgiResponse::html(render_tags(posts)))
+    let posts: Vec<PublicPost> = posts_json.iter().filter_map(PublicPost::from_value).collect();
+    Ok(CgiResponse::html(render_tags(&posts)))
 }
 
-fn render_tags(posts: &[Value]) -> String {
+fn render_tags(posts: &[PublicPost]) -> String {
     let rows: Vec<TagPostRow> = posts.iter().filter_map(TagPostRow::from_post).collect();
     if rows.is_empty() {
         return "<p>No tags found yet.</p>\n".to_string();
@@ -79,38 +81,17 @@ struct TagPostRow {
 }
 
 impl TagPostRow {
-    fn from_post(post: &Value) -> Option<Self> {
-        let tags: Vec<String> = post
-            .get("tags")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .map(str::trim)
-            .filter(|tag| !tag.is_empty())
-            .map(ToString::to_string)
-            .collect();
+    fn from_post(post: &PublicPost) -> Option<Self> {
+        let tags = post.tags.clone();
         if tags.is_empty() {
             return None;
         }
         Some(Self {
-            url: string_field(post, "url"),
-            title: string_field(post, "title"),
-            pub_date: string_field(post, "pub_date"),
+            url: post.url.clone(),
+            title: post.title.clone(),
+            pub_date: post.pub_date.clone(),
             tags,
-            comment_count: integer_field(post, "comment_count"),
+            comment_count: post.comment_count,
         })
     }
-}
-
-fn string_field(value: &Value, field: &str) -> String {
-    value
-        .get(field)
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string()
-}
-
-fn integer_field(value: &Value, field: &str) -> i64 {
-    value.get(field).and_then(Value::as_i64).unwrap_or(0)
 }
