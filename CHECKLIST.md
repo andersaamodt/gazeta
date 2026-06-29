@@ -5,6 +5,6 @@
 - [x] Replace dual adapter/Rust action allowlists with one canonical action registry.
 - [ ] Collapse the admin runtime legacy re-dispatch (`ExecLegacy`) by choosing a single migration direction.
 - [x] Merge the five near-identical runtime adapter scripts into one parameterized adapter.
-- [ ] Consolidate duplicated runtime response/error primitives into shared modules.
-- [ ] Replace repeated query and percent-decoding helpers with one canonical utility.
+- [x] Consolidate duplicated runtime response/error primitives into shared modules.
+- [x] Replace repeated query and percent-decoding helpers with one canonical utility.
 - [ ] Introduce a typed shared `PublicPost` projection used by index/archive/tags/search/context surfaces.
