@@ -1,4 +1,5 @@
 mod action_registry;
+mod admin_security;
 mod runtime_types;
 mod site_runtime;
 mod urlcodec;
