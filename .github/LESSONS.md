@@ -2,3 +2,4 @@
 - After a NIP-46 connect ack, retry timed-out `get_public_key` requests because mobile signer relay listeners may need a short settle window.
 - Nostr page sync status should have one client-owned title action mount; prerendered or editable-content sync tags create duplicate pills.
 - Public page-registry reads must be side-effect-free; missing or stale state should not be rewritten into default blog-only config.
+- Nostr page reads must not return `unknown_page` for `index` when a local source page exists but no canonical event or draft exists.

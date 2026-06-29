@@ -7,10 +7,10 @@ pub(crate) fn list_navbar_pages() -> Result<Value> {
     let static_navbar = paths.generated_static_dir().join("navbar-pages.json");
     let cache_navbar = paths.state_dir.join("navbar-pages-cache.json");
 
-    if let Some(value) = read_pages_payload(&cache_navbar) {
+    if let Some(value) = read_pages_payload(&static_navbar) {
         return Ok(value);
     }
-    if let Some(value) = read_pages_payload(&static_navbar) {
+    if let Some(value) = read_pages_payload(&cache_navbar) {
         return Ok(value);
     }
 

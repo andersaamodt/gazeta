@@ -201,7 +201,7 @@ case "$page_type" in
 esac
 
 # Treat an empty legacy Home/index page as non-existent.
-if [ "$page_slug" = "index" ] && [ "$page_type" = "nip23" ] && [ "$canonical_exists" != "true" ] && [ "$draft_exists" != "true" ]; then
+if [ "$page_slug" = "index" ] && [ "$page_type" = "nip23" ] && [ "$canonical_exists" != "true" ] && [ "$draft_exists" != "true" ] && [ "$local_has_source" != "true" ]; then
   blog_json_error "Unknown Nostr page slug" "unknown_page"
   exit 0
 fi

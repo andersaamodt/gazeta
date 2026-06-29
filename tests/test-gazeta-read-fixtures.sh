@@ -52,6 +52,10 @@ cat > "$GENERATED_ROOT/static/navbar-pages.json" <<'JSON'
 {"success":true,"pages":[{"slug":"replay","title":"Replay","path":"/replay","type":"list","kind":30004}]}
 JSON
 
+cat > "$SITE_DATA/navbar-pages-cache.json" <<'JSON'
+{"success":true,"pages":[{"slug":"stale-cache","title":"Stale Cache","path":"/stale-cache","type":"list","kind":30004}]}
+JSON
+
 navbar_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/list-navbar-pages"
 navbar_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$navbar_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-list-navbar-pages")
 navbar_json=$(printf '%s\n' "$navbar_payload" | sed -n '/^{/,$p')

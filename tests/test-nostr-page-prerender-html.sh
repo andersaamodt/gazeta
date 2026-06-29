@@ -104,6 +104,12 @@ cat > "$SITE_ROOT/site/includes/footer.md" <<'EOFFOOT'
 <footer>Fixture Footer</footer>
 EOFFOOT
 
+cat > "$SITE_ROOT/site/pages/index.md" <<'EOFINDEX'
+# Index Local Fixture
+
+This page exists only as a local source fixture.
+EOFINDEX
+
 # shellcheck disable=SC1091
 . "$ROOT_DIR/cgi/blog-lib.sh"
 # shellcheck disable=SC1091
@@ -273,6 +279,17 @@ if printf '%s\n' "$oeuvre_body" | jq -e '(.prerender_signature // "") | type == 
   pass
 else
   fail 'hydrated Nostr page payload carries a prerender signature for DOM preservation'
+fi
+
+index_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=index "$ROOT_DIR/cgi/blog-get-nostr-page")
+index_body=$(printf '%s\n' "$index_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$index_body" ]; then
+  index_body=$index_payload
+fi
+if printf '%s\n' "$index_body" | jq -e '.success == true and .slug == "index" and .view_mode == "local" and (.sync_status.local_has_source == true)' >/dev/null; then
+  pass
+else
+  fail 'index slug with only a local source stays readable instead of returning unknown_page'
 fi
 
 for page in oeuvre reading-list software blog values contact projects overworld; do
