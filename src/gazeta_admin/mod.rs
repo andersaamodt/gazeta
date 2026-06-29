@@ -3,15 +3,14 @@ use crate::admin_security::{require_admin_session as require_admin_session_share
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
-    env_path, looks_like_git_checkout, resolve_generated_root, resolve_site_identity,
-    resolve_sites_data_dir, resolve_state_dir,
+    looks_like_git_checkout, resolve_generated_root, resolve_site_identity, resolve_sites_data_dir,
+    resolve_state_dir,
 };
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use mime_guess::MimeGuess;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
 use std::io;
 use std::os::unix::fs::PermissionsExt;
@@ -24,44 +23,22 @@ use time::OffsetDateTime;
 static RFC3339_FORMAT: &[FormatItem<'static>] =
     format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
 
-pub enum AdminActionResult {
-    Response(CgiResponse),
-    ExecLegacy { script_path: PathBuf },
-}
-
 pub type AdminError = RuntimeError;
 
 type Result<T> = std::result::Result<T, AdminError>;
 
-pub fn run_action(action: &str) -> Result<AdminActionResult> {
+pub fn run_action(action: &str) -> Result<CgiResponse> {
     if !action_allowed(RuntimeDomain::Admin, action) {
         return Err(AdminError::new("bad_action", "Unknown Gazeta admin action."));
     }
     match action {
-        "blog-manage-post" => {
-            blog_manage_post().map(|value| AdminActionResult::Response(CgiResponse::json(value)))
-        }
-        "blog-upload-media" => {
-            blog_upload_media().map(|value| AdminActionResult::Response(CgiResponse::json(value)))
-        }
-        "blog-save-post"
-        | "blog-publish-nostr-page"
-        | "blog-video-chat-control"
-        | "blog-secure-chat-admin"
-        | "blog-payments" => Ok(AdminActionResult::ExecLegacy {
-            script_path: legacy_script_path(action)?,
-        }),
+        "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
+        "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
         _ => Err(AdminError::new(
             "bad_action",
             "Unknown Gazeta admin action.",
         )),
     }
-}
-
-fn legacy_script_path(action: &str) -> Result<PathBuf> {
-    let repo_root =
-        env_path("GAZETA_REPO_ROOT").unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
-    Ok(repo_root.join("cgi").join(format!("{action}-legacy")))
 }
 
 fn blog_manage_post() -> Result<Value> {

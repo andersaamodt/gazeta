@@ -1,4 +1,4 @@
-use gazeta_theurgy::gazeta_admin::{run_action, AdminActionResult, CgiResponse};
+use gazeta_theurgy::gazeta_admin::{run_action, CgiResponse};
 use serde_json::json;
 use std::env;
 
@@ -7,21 +7,7 @@ fn main() {
         .nth(1)
         .unwrap_or_else(|| "blog-manage-post".to_string());
     match run_action(&action) {
-        Ok(AdminActionResult::Response(response)) => print_response(response),
-        Ok(AdminActionResult::ExecLegacy { script_path }) => {
-            let status = std::process::Command::new("/bin/sh")
-                .arg(script_path)
-                .status()
-                .unwrap_or_else(|error| {
-                    print_response(CgiResponse::json(json!({
-                        "success": false,
-                        "code": "legacy_exec_failed",
-                        "error": format!("Could not launch legacy Gazeta action: {error}"),
-                    })));
-                    std::process::exit(1);
-                });
-            std::process::exit(status.code().unwrap_or(1));
-        }
+        Ok(response) => print_response(response),
         Err(error) => print_response(CgiResponse::json(json!({
             "success": false,
             "code": error.code,
