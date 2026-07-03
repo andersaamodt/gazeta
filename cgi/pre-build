@@ -187,7 +187,7 @@ sync_static_tree "$blog_source_static_dir" "$build_bootstrap_dir"
 legacy_assets_src=$(legacy_assets_dir)
 copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"
 copy_tree_overlay "$legacy_assets_src" "$build_bootstrap_dir/legacy-assets"
-sync_legacy_asset_aliases "$legacy_assets_src"
+sync_legacy_asset_aliases "$site_bootstrap_dir/legacy-assets"
 
 sync_lodestone_pages() {
   lodestone_pages_dir="$blog_site_root/site/lodestone/pages"

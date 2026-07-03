@@ -25,6 +25,7 @@ cp -R "$ROOT_DIR/cgi" "$site_root/"
 mkdir -p \
   "$canonical_root/includes" \
   "$canonical_root/pages" \
+  "$canonical_root/static/legacy-assets/root" \
   "$canonical_root/static/themes" \
   "$canonical_root/static/textures" \
   "$site_data_root"
@@ -58,6 +59,7 @@ cat > "$canonical_root/static/themes/lapidarist.css" <<'EOFTHEME'
 :root { --fixture-theme: "lapidarist"; }
 EOFTHEME
 
+printf '%s\n' '<!doctype html><title>Root Alias</title>' > "$canonical_root/static/legacy-assets/root/semanthesis"
 printf '%s\n' 'fixture-texture' > "$canonical_root/static/textures/lapidarist-parchment.webp"
 mkdir -p "$site_data_root/files/legacy-assets/oeuvre" "$site_data_root/files/legacy-assets/root"
 printf '%s\n' 'legacy-video-fixture' > "$site_data_root/files/legacy-assets/oeuvre/ultramemes.mkv"
@@ -146,6 +148,10 @@ blog_nostr_pages_save_json '{"pages":[]}'
   printf '%s\n' "missing root legacy asset alias" >&2
   exit 1
 }
+[ -f "$generated_root/build/semanthesis" ] || {
+  printf '%s\n' "missing extensionless root legacy asset alias" >&2
+  exit 1
+}
 
 grep -Fq 'theme: "lapidarist"' "$generated_root/static/site-bootstrap.js" || {
   printf '%s\n' "generated bootstrap did not default to the Lapidarist theme" >&2
@@ -175,12 +181,20 @@ grep -Fq 'legacy-video-fixture' "$generated_root/build/oeuvre/ultramemes.mkv" ||
   printf '%s\n' "clean-url legacy asset alias content mismatch" >&2
   exit 1
 }
+grep -Fq 'Root Alias' "$generated_root/build/semanthesis" || {
+  printf '%s\n' "extensionless root legacy asset alias content mismatch" >&2
+  exit 1
+}
 grep -Fq 'oeuvre/ultramemes.mkv' "$generated_root/build/.legacy-asset-aliases.manifest" || {
   printf '%s\n' "legacy asset alias manifest missing nested alias" >&2
   exit 1
 }
 grep -Fq 'feed.xml' "$generated_root/build/.legacy-asset-aliases.manifest" || {
   printf '%s\n' "legacy asset alias manifest missing root alias" >&2
+  exit 1
+}
+grep -Fq 'semanthesis' "$generated_root/build/.legacy-asset-aliases.manifest" || {
+  printf '%s\n' "legacy asset alias manifest missing extensionless root alias" >&2
   exit 1
 }
 
