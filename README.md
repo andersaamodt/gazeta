@@ -138,6 +138,7 @@ visibility: "public"  # Change from "draft"
 - Public page source lives under `.sitedata/<site>/blog/content/pages/`
 - `site/pages/*.md` mounts are generated from that canonical content directory during build
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
+- Lodestone page sources in `site/lodestone/` are canonical template inputs; their rendered Markdown projections belong in the same generated page root, not in the source checkout.
 
 ## Sample Site Data
 
@@ -231,6 +232,7 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/blog/content/`.
 - That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
 - For repo-root local tooling runs under `~/git`, Gazeta also moves the canonical `.sitedata/<site>` default to `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/sites-data/<site>` so local app state and generated mounts do not accumulate inside the synced git tree.
+- Wizardry builds should consume Gazeta projections through explicit `pages-dir`, `static-dir`, and `build-dir` paths, or the equivalent `WIZARDRY_PAGES_DIR`, `WIZARDRY_STATIC_DIR`, and `WIZARDRY_BUILD_DIR` environment variables.
 - Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
 - `simplex-web` stays in its own repo; `gazeta` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
 - Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.

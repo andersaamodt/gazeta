@@ -3,7 +3,9 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
+REAL_HOME=${HOME:-}
 export GAZETA_LODESTONE="${GAZETA_LODESTONE:-$ROOT_DIR/../lodestone/spells/lodestone}"
+export GAZETA_SKIP_THEURGY_RUNTIME_BUILD=1
 
 tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-lodestone-pages.XXXXXX")
 trap 'rm -rf "$tmp_root"' EXIT INT TERM
@@ -122,8 +124,9 @@ grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/
   exit 1
 }
 
-grep -Fq 'data-lodestone-component="blog-post-card"' "$site_root/site/pages/blog.md" || {
-  printf '%s\n' "blog page posts were not rendered by lodestone" >&2
+grep -Fq '<lode-blog-post-list posts=' "$site_root/site/pages/blog.md" &&
+  grep -Fq 'Lodestone Rendered Post' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing structured post data in Lodestone projection" >&2
   exit 1
 }
 
@@ -164,6 +167,57 @@ if grep -Fq '&lt;section id=&quot;public-ranking-root&quot;' "$site_root/site/pa
   exit 1
 fi
 
+export HOME="$tmp_root/home"
+export XDG_STATE_HOME="$tmp_root/xdg-state"
+if [ -n "$REAL_HOME" ]; then
+  export RUSTUP_HOME="${RUSTUP_HOME:-$REAL_HOME/.rustup}"
+  export CARGO_HOME="${CARGO_HOME:-$REAL_HOME/.cargo}"
+fi
+export WIZARDRY_SITES_DIR="$HOME/git/sites"
+export WIZARDRY_SITE_NAME="git-lodestone.test"
+git_site_root="$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME"
+git_state_root="$XDG_STATE_HOME/gazeta/sites-data/$WIZARDRY_SITE_NAME"
+git_generated_root="$XDG_STATE_HOME/gazeta/generated/$WIZARDRY_SITE_NAME"
+
+mkdir -p "$git_site_root" "$git_state_root/content/posts"
+cp -R "$ROOT_DIR/cgi" "$ROOT_DIR/site" "$git_site_root/"
+cat > "$git_site_root/site.conf" <<'EOFCONF'
+template=blog
+theme=lapidarist
+site_title=Git Checkout Site
+append_site_title_to_page_title=false
+EOFCONF
+
+mkdir -p "$git_site_root/site/pages"
+cat > "$git_site_root/site/pages/blog.md" <<'SENTINEL'
+---
+title: Sentinel Blog
+---
+
+Repo-local source sentinel.
+SENTINEL
+rm -rf "$git_site_root/site/pages/posts"
+ln -s "$git_state_root/content/posts" "$git_site_root/site/pages/posts"
+
+"$git_site_root/cgi/pre-build"
+
+grep -Fq 'Repo-local source sentinel.' "$git_site_root/site/pages/blog.md" || {
+  printf '%s\n' "git checkout pre-build rewrote repo-local blog.md" >&2
+  exit 1
+}
+[ -f "$git_generated_root/pages/blog.md" ] || {
+  printf '%s\n' "git checkout pre-build did not render Lodestone blog page into generated pages root" >&2
+  exit 1
+}
+grep -Fq 'data-lodestone-root="page"' "$git_generated_root/pages/blog.md" || {
+  printf '%s\n' "generated Lodestone blog page missing render root" >&2
+  exit 1
+}
+[ -f "$git_generated_root/static/site-bootstrap.js" ] || {
+  printf '%s\n' "git checkout pre-build did not write generated static bootstrap" >&2
+  exit 1
+}
+
 grep -Fq '"$render_lodestone_cmd" render-md "$render_template"' "$site_root/cgi/blog-nostr-pages-common.sh" || {
   printf '%s\n' "blog prerender branch does not render through lodestone" >&2
   exit 1
@@ -174,7 +228,7 @@ grep -Fq -- '--html-file "posts_json=$render_posts_tmp"' "$site_root/cgi/blog-no
   exit 1
 }
 
-grep -Fq 'v0.7.32' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.45' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }

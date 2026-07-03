@@ -271,11 +271,14 @@ sync_lodestone_pages() {
     stone_slug=$(basename "$page_rel" .md)
     case "$stone_slug" in
       blog)
+        posts_json_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-posts.XXXXXX")
+        jq -c '.posts // []' "$(blog_public_posts_catalog_static_path)" > "$posts_json_tmp" 2>/dev/null || printf '[]\n' > "$posts_json_tmp"
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
           --set "slug=blog" \
           --set "prerender_attrs=" \
-          --set "posts_json=[]" \
+          --html-file "posts_json=$posts_json_tmp" \
           --set "blog_page_js_version=$blog_page_js_version" > "$page_tmp"
+        rm -f "$posts_json_tmp"
         ;;
       *)
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"

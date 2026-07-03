@@ -3,8 +3,8 @@ use crate::admin_security::{require_admin_session as require_admin_session_share
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
-    looks_like_git_checkout, resolve_generated_root, resolve_site_identity, resolve_sites_data_dir,
-    resolve_state_dir,
+    env_path, looks_like_git_checkout, resolve_generated_root, resolve_site_identity,
+    resolve_sites_data_dir, resolve_state_dir,
 };
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -29,7 +29,10 @@ type Result<T> = std::result::Result<T, AdminError>;
 
 pub fn run_action(action: &str) -> Result<CgiResponse> {
     if !action_allowed(RuntimeDomain::Admin, action) {
-        return Err(AdminError::new("bad_action", "Unknown Gazeta admin action."));
+        return Err(AdminError::new(
+            "bad_action",
+            "Unknown Gazeta admin action.",
+        ));
     }
     match action {
         "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
@@ -212,13 +215,22 @@ impl SitePaths {
             &default_sites_data_dir,
         );
         let generated_root = resolve_generated_root(&identity.site_root, &identity.site_name);
-        let posts_dir = if looks_like_git_checkout(&identity.site_root) {
-            generated_root.join("pages/posts")
+        let pages_dir = if let Some(path) = env_path("WIZARDRY_PAGES_DIR") {
+            path
+        } else if looks_like_git_checkout(&identity.site_root) {
+            generated_root.join("pages")
         } else {
-            identity.site_root.join("site/pages/posts")
+            identity.site_root.join("site/pages")
+        };
+        let posts_dir = if looks_like_git_checkout(&identity.site_root) {
+            pages_dir.join("posts")
+        } else {
+            pages_dir.join("posts")
         };
         let posts_store_dir = state_dir.join("content/posts");
-        let generated_build_pages_dir = if looks_like_git_checkout(&identity.site_root) {
+        let generated_build_pages_dir = if let Some(path) = env_path("WIZARDRY_BUILD_DIR") {
+            path.join("pages")
+        } else if looks_like_git_checkout(&identity.site_root) {
             generated_root.join("build/pages")
         } else {
             identity.site_root.join("build/pages")
@@ -276,9 +288,7 @@ fn require_admin_session(
         Some(43_200),
     )
     .map_err(|error| AdminError::new(error.code, error.message))?;
-    if require_interactive
-        && session.auth_method == "nostr_delegated"
-        && session.force_interactive
+    if require_interactive && session.auth_method == "nostr_delegated" && session.force_interactive
     {
         return Err(AdminError::new(
             "interactive_signature_required",

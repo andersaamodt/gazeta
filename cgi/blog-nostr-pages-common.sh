@@ -2738,7 +2738,7 @@ blog_nostr_pages_prune_stale_source_pages() {
 
 blog_nostr_pages_prune_clean_url_build_dirs() {
   prune_clean_url_cfg_json=${1-}
-  prune_clean_url_build_dir=$blog_site_root/build
+  prune_clean_url_build_dir=$(blog_generated_build_dir)
   [ -d "$prune_clean_url_build_dir" ] || return 0
 
   printf '%s\n' "$prune_clean_url_cfg_json" | jq -r '.pages[]? | .slug // ""' 2>/dev/null | while IFS= read -r prune_clean_url_slug || [ -n "$prune_clean_url_slug" ]; do

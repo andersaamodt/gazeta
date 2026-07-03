@@ -2044,7 +2044,7 @@ blog_file_delete() {
 }
 
 blog_file_sync_public_aliases() {
-  build_dir="$blog_site_root/build"
+  build_dir=$(blog_generated_build_dir)
   manifest_path="$build_dir/.file-aliases.manifest"
   new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases.XXXXXX")
   mkdir -p "$build_dir"
@@ -6008,7 +6008,7 @@ blog_publish_content_markdown() {
     blog_snapshot_file_before_replace "$old_post_path"
     rm -f "$old_post_path"
     if [ -n "$old_rel_html" ]; then
-      rm -f "$blog_site_root/build/pages/$old_rel_html" 2>/dev/null || true
+      rm -f "$(blog_generated_build_pages_dir)/$old_rel_html" 2>/dev/null || true
     fi
   fi
 
@@ -6120,7 +6120,7 @@ blog_wizardry_exec_path() {
 }
 
 blog_fix_build_page_permissions() {
-  build_dir="$blog_site_root/build"
+  build_dir=$(blog_generated_build_dir)
   pages_dir="$build_dir/pages"
   if [ -d "$pages_dir" ]; then
     find "$pages_dir" -type f -name '*.html' ! -name '._*' -exec chmod 644 {} + >/dev/null 2>&1 || true
@@ -6141,17 +6141,20 @@ blog_run_build_async() {
     return 0
   fi
   wizardry_path=$(blog_wizardry_exec_path "$wizardry_dir")
+  wizardry_pages_dir=$(blog_managed_pages_dir)
+  wizardry_static_dir=$(blog_generated_static_dir)
+  wizardry_build_dir=$(blog_generated_build_dir)
 
   if command -v nohup >/dev/null 2>&1; then
     (
-      env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+      env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" WIZARDRY_PAGES_DIR="$wizardry_pages_dir" WIZARDRY_STATIC_DIR="$wizardry_static_dir" WIZARDRY_BUILD_DIR="$wizardry_build_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
       blog_fix_build_page_permissions >/dev/null 2>&1 || true
     ) >/dev/null 2>&1 &
     return 0
   fi
 
   (
-    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" WIZARDRY_PAGES_DIR="$wizardry_pages_dir" WIZARDRY_STATIC_DIR="$wizardry_static_dir" WIZARDRY_BUILD_DIR="$wizardry_build_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
     blog_fix_build_page_permissions >/dev/null 2>&1 || true
   ) &
 }
