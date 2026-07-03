@@ -243,7 +243,7 @@ merch_list_products_json() {
           show_on_merch_page: .show_on_merch_page,
           sort_order: .sort_order
         })) as $missing
-    | ($rows + $missing | sort_by(.sort_order, .name, .source_id))
+    | ($rows + $missing | sort_by(.sort_order, .name, .source_id)))
   '
 }
 
