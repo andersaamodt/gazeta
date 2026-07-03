@@ -380,6 +380,9 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" '. "$SCRIPT_DIR/blog
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages' 'publish list sync hook present'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_pages_sync_source_pages >/dev/null 2>&1 || true' 'publish list sync failures are not masked'
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_run_build_async >/dev/null 2>&1 || true' 'publish list build hook present'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'export BLOG_SUPPRESS_ASYNC_BUILD=1' 'pre-build suppresses nested async rebuilds'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'BLOG_SUPPRESS_ASYNC_BUILD:-${WIZARDRY_BUILD_IN_PROGRESS:-}' 'async rebuild helper honors build-in-progress suppression'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1' 'async rebuild helper marks spawned builds as in progress'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_sync_source_pages "$pages_json"' 'pre-build syncs source mounts from configured pages'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" '--set "posts_json=[]"' 'pre-build uses Lodestone structured blog post input'
 assert_file_not_contains "$ROOT_DIR/cgi/pre-build" '--set "posts_html="' 'pre-build does not use legacy rendered post HTML input'
@@ -416,7 +419,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-prerender-
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_prune_clean_url_build_dirs() {' 'managed Nostr pages prune stale clean-url build copies before rebuild'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_prune_clean_url_build_dirs "$pages_json"' 'pre-build removes stale clean-url build copies for managed pages'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"' 'pre-build mirrors site-data-backed legacy assets into generated static files'
-assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_legacy_asset_aliases "$legacy_assets_src"' 'pre-build exposes legacy asset files through clean generated URLs'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_legacy_asset_aliases "$site_bootstrap_dir/legacy-assets"' 'pre-build exposes legacy asset files through clean generated URLs'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_contact_video_chat_html() {' 'contact prerender reserves the public video chat shell when enabled'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json"' 'bootstrap prerender writes static source pages from the hydration payload'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Loading page content...' 'managed templates do not ship generic page loading copy'
@@ -1282,7 +1285,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.33' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.44' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: any active nav item must stay in button-blue on hover\/focus\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")

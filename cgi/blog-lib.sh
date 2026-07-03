@@ -6119,6 +6119,11 @@ blog_fix_build_page_permissions() {
 }
 
 blog_run_build_async() {
+  case "${BLOG_SUPPRESS_ASYNC_BUILD:-${WIZARDRY_BUILD_IN_PROGRESS:-}}" in
+    1|true|yes|on)
+      return 0
+      ;;
+  esac
   wizardry_dir=$(blog_resolve_wizardry_dir 2>/dev/null || printf '')
   if [ -z "$wizardry_dir" ]; then
     return 0
@@ -6127,14 +6132,14 @@ blog_run_build_async() {
 
   if command -v nohup >/dev/null 2>&1; then
     (
-      env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+      env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 nohup "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
       blog_fix_build_page_permissions >/dev/null 2>&1 || true
     ) >/dev/null 2>&1 &
     return 0
   fi
 
   (
-    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
+    env PATH="$wizardry_path" WEB_WIZARDRY_ROOT="$blog_sites_dir" WIZARDRY_DIR="$wizardry_dir" BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1 "$wizardry_dir/spells/web/build" "$blog_site_name" >/dev/null 2>&1 </dev/null || true
     blog_fix_build_page_permissions >/dev/null 2>&1 || true
   ) &
 }

@@ -10,6 +10,8 @@ if [ -z "${WIZARDRY_SITES_DIR:-}" ] || [ -z "${WIZARDRY_SITE_NAME:-}" ]; then
   : "${WIZARDRY_SITE_NAME:=$(basename "$script_site_root")}"
   export WIZARDRY_SITES_DIR WIZARDRY_SITE_NAME
 fi
+export BLOG_SUPPRESS_ASYNC_BUILD=1
+export WIZARDRY_BUILD_IN_PROGRESS=1
 . "$SCRIPT_DIR/blog-lib.sh"
 . "$SCRIPT_DIR/blog-list-common.sh"
 . "$SCRIPT_DIR/blog-public-ranking-common.sh"

@@ -4,3 +4,4 @@
 - Public page-registry reads must be side-effect-free; missing or stale state should not be rewritten into default blog-only config.
 - Nostr page reads must not return `unknown_page` for `index` when a local source page exists but no canonical event or draft exists.
 - Public read runtimes must not rebuild derived artifacts on read paths; they should fail with explicit maintenance guidance when artifacts are missing.
+- Build-triggered publish hooks must carry an in-progress marker so pre-build maintenance cannot recursively spawn fresh asynchronous builds.
