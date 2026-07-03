@@ -90,6 +90,10 @@ blog_generated_repo_root() {
 }
 
 blog_managed_pages_dir() {
+  if [ -n "${WIZARDRY_PAGES_DIR:-}" ]; then
+    printf '%s\n' "$WIZARDRY_PAGES_DIR"
+    return 0
+  fi
   if blog_site_root_is_git_checkout; then
     printf '%s/pages\n' "$(blog_generated_repo_root)"
     return 0
@@ -98,6 +102,10 @@ blog_managed_pages_dir() {
 }
 
 blog_generated_static_dir() {
+  if [ -n "${WIZARDRY_STATIC_DIR:-}" ]; then
+    printf '%s\n' "$WIZARDRY_STATIC_DIR"
+    return 0
+  fi
   if blog_site_root_is_git_checkout; then
     printf '%s/static\n' "$(blog_generated_repo_root)"
     return 0
@@ -114,6 +122,10 @@ blog_generated_build_static_dir() {
 }
 
 blog_generated_build_dir() {
+  if [ -n "${WIZARDRY_BUILD_DIR:-}" ]; then
+    printf '%s\n' "$WIZARDRY_BUILD_DIR"
+    return 0
+  fi
   if blog_site_root_is_git_checkout; then
     printf '%s/build\n' "$(blog_generated_repo_root)"
     return 0

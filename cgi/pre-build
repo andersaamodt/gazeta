@@ -73,16 +73,73 @@ esac
 
 site_bootstrap_dir=$(blog_generated_static_dir)
 build_bootstrap_dir=$(blog_generated_build_static_dir)
+copy_file_if_changed() {
+  copy_src=${1-}
+  copy_dest=${2-}
+  [ -n "$copy_src" ] && [ -n "$copy_dest" ] || return 1
+  mkdir -p "$(dirname "$copy_dest")"
+  if [ -f "$copy_dest" ] && cmp -s "$copy_src" "$copy_dest"; then
+    return 0
+  fi
+  cp "$copy_src" "$copy_dest"
+}
+
+install_file_if_changed() {
+  install_src=${1-}
+  install_dest=${2-}
+  [ -n "$install_src" ] && [ -n "$install_dest" ] || return 1
+  mkdir -p "$(dirname "$install_dest")"
+  if [ -f "$install_dest" ] && cmp -s "$install_src" "$install_dest"; then
+    rm -f "$install_src"
+    return 0
+  fi
+  mv "$install_src" "$install_dest"
+}
+
 sync_static_tree() {
   sync_src=${1-}
   sync_dest=${2-}
   [ -n "$sync_dest" ] || return 1
-  rm -rf "$sync_dest"
-  mkdir -p "$(dirname "$sync_dest")"
+  mkdir -p "$(dirname "$sync_dest")" "$sync_dest"
   if [ -d "$sync_src" ]; then
-    cp -R "$sync_src" "$sync_dest"
+    (
+      cd "$sync_dest" || exit 1
+      find . -depth -type f -print
+    ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
+      sync_rel=${sync_rel#./}
+      [ -n "$sync_rel" ] || continue
+      if [ ! -f "$sync_src/$sync_rel" ]; then
+        rm -f "$sync_dest/$sync_rel"
+      fi
+    done
+    (
+      cd "$sync_dest" || exit 1
+      find . -depth -type d -print
+    ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
+      sync_rel=${sync_rel#./}
+      [ -n "$sync_rel" ] || continue
+      if [ ! -d "$sync_src/$sync_rel" ]; then
+        rmdir "$sync_dest/$sync_rel" 2>/dev/null || true
+      fi
+    done
+    (
+      cd "$sync_src" || exit 1
+      find . -type d -print
+    ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
+      sync_rel=${sync_rel#./}
+      [ -n "$sync_rel" ] || continue
+      mkdir -p "$sync_dest/$sync_rel"
+    done
+    (
+      cd "$sync_src" || exit 1
+      find . -type f -print
+    ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
+      sync_rel=${sync_rel#./}
+      [ -n "$sync_rel" ] || continue
+      copy_file_if_changed "$sync_src/$sync_rel" "$sync_dest/$sync_rel"
+    done
   else
-    mkdir -p "$sync_dest"
+    find "$sync_dest" -mindepth 1 -depth -exec rm -rf {} + 2>/dev/null || true
   fi
   find "$sync_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
   find "$sync_dest" -type f -exec chmod 644 {} \; 2>/dev/null || true
@@ -123,7 +180,7 @@ copy_tree_overlay() {
       .*|../*|*/../*|/*) continue ;;
     esac
     mkdir -p "$(dirname "$overlay_dest/$overlay_rel")"
-    cp "$overlay_src/$overlay_rel" "$overlay_dest/$overlay_rel"
+    copy_file_if_changed "$overlay_src/$overlay_rel" "$overlay_dest/$overlay_rel"
     chmod 644 "$overlay_dest/$overlay_rel" 2>/dev/null || true
   done
   find "$overlay_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
@@ -170,7 +227,7 @@ sync_legacy_asset_aliases() {
     alias_path="$aliases_dest/$alias_rel"
     [ -d "$alias_path" ] && continue
     mkdir -p "$(dirname "$alias_path")"
-    cp "$aliases_src/$asset_rel" "$alias_path"
+    copy_file_if_changed "$aliases_src/$asset_rel" "$alias_path"
     chmod 644 "$alias_path" 2>/dev/null || true
     printf '%s\n' "$alias_rel" >> "$aliases_new_manifest"
   done
@@ -208,7 +265,7 @@ sync_lodestone_pages() {
     esac
     page_rel=${stone_rel%.stone.html}.md
     stone_source="$lodestone_pages_dir/$stone_rel"
-    page_dest="$blog_site_root/site/pages/$page_rel"
+    page_dest=$(blog_managed_page_path_for_rel "$page_rel")
     page_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-page.XXXXXX")
     mkdir -p "$(dirname "$page_dest")"
     stone_slug=$(basename "$page_rel" .md)
@@ -224,7 +281,7 @@ sync_lodestone_pages() {
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"
         ;;
     esac
-    mv "$page_tmp" "$page_dest"
+    install_file_if_changed "$page_tmp" "$page_dest"
     chmod 644 "$page_dest" 2>/dev/null || true
   done
 }
@@ -242,12 +299,12 @@ site_bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-site-bootstrap.XXXXXX")
 printf '%s\n' "$navbar_json" > "$navbar_json_tmp"
 mv "$navbar_json_tmp" "$navbar_json_path"
 chmod 644 "$navbar_json_path" 2>/dev/null || true
-cp "$navbar_json_path" "$build_navbar_json_path"
+copy_file_if_changed "$navbar_json_path" "$build_navbar_json_path"
 chmod 644 "$build_navbar_json_path" 2>/dev/null || true
 printf '%s\n' "$footer_json" > "$footer_json_tmp"
 mv "$footer_json_tmp" "$footer_json_path"
 chmod 644 "$footer_json_path" 2>/dev/null || true
-cp "$footer_json_path" "$build_footer_json_path"
+copy_file_if_changed "$footer_json_path" "$build_footer_json_path"
 chmod 644 "$build_footer_json_path" 2>/dev/null || true
 cat > "$site_bootstrap_tmp" <<EOF
 (function () {
@@ -277,7 +334,7 @@ cat > "$site_bootstrap_tmp" <<EOF
 EOF
 mv "$site_bootstrap_tmp" "$site_bootstrap_path"
 chmod 644 "$site_bootstrap_path" 2>/dev/null || true
-cp "$site_bootstrap_path" "$build_site_bootstrap_path"
+copy_file_if_changed "$site_bootstrap_path" "$build_site_bootstrap_path"
 chmod 644 "$build_site_bootstrap_path" 2>/dev/null || true
 
 write_local_embed_bootstraps() {
