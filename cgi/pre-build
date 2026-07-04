@@ -269,6 +269,21 @@ sync_lodestone_pages() {
     page_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-page.XXXXXX")
     mkdir -p "$(dirname "$page_dest")"
     stone_slug=$(basename "$page_rel" .md)
+    if printf '%s\n' "$pages_json" | jq -e --arg slug "$stone_slug" '
+      any(.pages[]?;
+        ((.slug // "") == $slug)
+        and (((.type // "") | ascii_downcase) as $type
+          | $type == "list"
+            or $type == "icon-gallery"
+            or $type == "software-gallery"
+            or $type == "nip23"
+            or $type == "blog"
+            or $type == "contact"
+            or $type == "public-ranking"))
+    ' >/dev/null 2>&1; then
+      rm -f "$page_tmp"
+      continue
+    fi
     case "$stone_slug" in
       blog)
         posts_json_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-posts.XXXXXX")

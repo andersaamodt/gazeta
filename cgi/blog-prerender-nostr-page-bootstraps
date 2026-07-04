@@ -26,6 +26,8 @@ site_name=${WIZARDRY_SITE_NAME:-$blog_site_name}
 manifest_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-manifest.XXXXXX")
 trap 'rm -f "$manifest_tmp"' EXIT HUP INT TERM
 : > "$manifest_tmp"
+input_signature_file="$blog_state_dir/prerender/nostr-page-bootstraps.sig"
+mkdir -p "$(dirname "$input_signature_file")"
 
 is_prerender_type() {
   case "$1" in
@@ -319,7 +321,119 @@ write_local_embed_bootstrap_js() {
   printf '%s\n' "$slug" >> "$manifest_tmp"
 }
 
+append_file_signature() {
+  signature_label=${1-}
+  signature_file=${2-}
+  if [ -f "$signature_file" ]; then
+    cksum "$signature_file" 2>/dev/null | awk -v label="$signature_label" '{ printf "%s file %s %s\n", label, $1, $2 }'
+  else
+    printf '%s missing\n' "$signature_label"
+  fi
+}
+
+append_dir_signature() {
+  signature_label=${1-}
+  signature_dir=${2-}
+  if [ ! -d "$signature_dir" ]; then
+    printf '%s missing\n' "$signature_label"
+    return 0
+  fi
+  find "$signature_dir" -type f ! -name '._*' 2>/dev/null | sort | while IFS= read -r signature_file || [ -n "$signature_file" ]; do
+    [ -n "$signature_file" ] || continue
+    cksum "$signature_file" 2>/dev/null | awk -v label="$signature_label" -v file="$signature_file" '{ printf "%s %s %s %s\n", label, file, $1, $2 }'
+  done
+}
+
+append_lodestone_signature() {
+  if [ -n "${GAZETA_LODESTONE:-}" ]; then
+    append_file_signature lodestone-command "$GAZETA_LODESTONE"
+    return 0
+  fi
+  for candidate in \
+    "$SCRIPT_DIR/../../lodestone/spells/lodestone" \
+    "$HOME/git/lodestone/spells/lodestone" \
+    "/Users/andersaamodt/git/lodestone/spells/lodestone"
+  do
+    if [ -x "$candidate" ]; then
+      append_file_signature lodestone-command "$candidate"
+      candidate_repo=$(CDPATH= cd -- "$(dirname "$candidate")/.." 2>/dev/null && pwd -P)
+      append_file_signature lodestone-cargo "$candidate_repo/Cargo.toml"
+      append_file_signature lodestone-source "$candidate_repo/src/main.rs"
+      return 0
+    fi
+  done
+  printf '%s\n' 'lodestone missing'
+}
+
+prerender_input_signature() {
+  signature_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-inputs.XXXXXX")
+  {
+    printf '%s\n' 'blog-prerender-nostr-page-bootstraps-v2'
+    printf '%s\n' "$cfg_json" | jq -cS '.' 2>/dev/null | cksum | awk '{ printf "pages-config %s %s\n", $1, $2 }'
+    append_file_signature script "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps"
+    append_file_signature get-page "$SCRIPT_DIR/blog-get-nostr-page"
+    append_file_signature pages-common "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+    append_file_signature blog-lib "$SCRIPT_DIR/blog-lib.sh"
+    append_lodestone_signature
+    append_dir_signature page-states "$blog_page_states_dir"
+    append_dir_signature legacy-lists "$blog_lists_dir"
+    append_dir_signature nostr-events "$blog_nostr_events_dir"
+    append_dir_signature posts "$blog_posts_dir"
+  } > "$signature_tmp"
+  cksum "$signature_tmp" | awk '{ printf "%s-%s\n", $1, $2 }'
+  rm -f "$signature_tmp"
+}
+
+prerender_expected_outputs_exist() {
+  missing_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-missing.XXXXXX")
+  printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
+    slug=$(blog_nostr_page_slug "$raw_slug")
+    page_type=$(printf '%s' "${raw_type-}" | tr '[:upper:]' '[:lower:]')
+    [ -n "$slug" ] || continue
+    if ! is_prerender_type "$page_type" && ! is_local_embed_type "$page_type"; then
+      continue
+    fi
+    if [ ! -f "$bootstrap_dir/$slug.js" ]; then
+      printf '%s bootstrap\n' "$slug" >> "$missing_tmp"
+      continue
+    fi
+    source_path=$(blog_nostr_page_source_path "$slug" "$page_type" 2>/dev/null || printf '')
+    if [ -n "$source_path" ] && [ ! -f "$source_path" ]; then
+      printf '%s source\n' "$slug" >> "$missing_tmp"
+      continue
+    fi
+    mount_path=$(blog_nostr_page_mount_path "$slug" 2>/dev/null || printf '')
+    if [ -n "$mount_path" ] && [ ! -f "$mount_path" ]; then
+      printf '%s mount\n' "$slug" >> "$missing_tmp"
+    fi
+  done
+  if [ -s "$missing_tmp" ]; then
+    rm -f "$missing_tmp"
+    return 1
+  fi
+  rm -f "$missing_tmp"
+  return 0
+}
+
 cfg_json=$(blog_nostr_pages_load_json)
+input_signature=$(prerender_input_signature)
+case "${BLOG_NOSTR_PAGE_PRERENDER_FORCE:-0}" in
+  1|true|yes|on)
+    ;;
+  *)
+    previous_signature=''
+    if [ -f "$input_signature_file" ]; then
+      previous_signature=$(sed -n '1p' "$input_signature_file" 2>/dev/null || printf '')
+    fi
+    if [ -n "$input_signature" ] &&
+       [ "$previous_signature" = "$input_signature" ] &&
+       prerender_expected_outputs_exist; then
+      blog_nostr_pages_sync_source_pages "$cfg_json" >/dev/null 2>&1 || true
+      exit 0
+    fi
+    ;;
+esac
+
 printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r raw_slug raw_type || [ -n "$raw_slug" ]; do
   slug=$(blog_nostr_page_slug "$raw_slug")
   page_type=$(printf '%s' "${raw_type-}" | tr '[:upper:]' '[:lower:]')
@@ -368,3 +482,8 @@ if [ -d "$bootstrap_dir" ]; then
     fi
   done
 fi
+
+signature_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-input-signature.XXXXXX")
+printf '%s\n' "$input_signature" > "$signature_tmp"
+mv "$signature_tmp" "$input_signature_file"
+chmod 644 "$input_signature_file" 2>/dev/null || true
