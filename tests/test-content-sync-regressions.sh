@@ -397,6 +397,7 @@ assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer_pages:' 'pre-build includ
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_static_tree "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"' 'pre-build incrementally syncs prerendered page bootstraps into served build output'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_public_posts_catalog_write_artifacts' 'pre-build writes static public post catalog'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
+assert_file_contains "$ROOT_DIR/.gitignore" 'site/pages/posts' 'generated post content mount is ignored instead of tracked as source'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'mkdir -p "$(dirname "$out_file")"' 'bootstrap prerender creates destination directory immediately before atomic writes'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_nostr_pages_sync_source_pages "$normalized"' 'save-nostr-pages refreshes source mounts'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-pages" 'blog_run_build_async' 'save-nostr-pages triggers rebuild'
@@ -939,6 +940,10 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'selected_defaul
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'row_class += " is-row-highlight"' 'list page prerender includes hydrated read-only row striping'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'external_post_url_link_html(url)' 'list page prerender keeps Markdown links and shows post_url as a separate external-link action'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'marked@11.0.0/marked.min.js"></script>\n        printf '\''<script src="/static/list-page.js' 'list page script is not blocked behind the external Markdown renderer'
+assert_file_contains "$ROOT_DIR/cgi/blog-open-post" '/static/js/htmx.min.js' 'server-opened posts load vendored htmx from canonical static source'
+assert_file_contains "$ROOT_DIR/cgi/blog-open-post" '/static/js/idiomorph-ext.min.js' 'server-opened posts load vendored idiomorph from canonical static source'
+assert_success test -f "$SITE_SOURCE_ROOT/static/js/htmx.min.js"
+assert_success test -f "$SITE_SOURCE_ROOT/static/js/idiomorph-ext.min.js"
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'style="--list-depth:' 'list page hydrated read-only rows keep prerendered depth style'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'window.marked && typeof window.marked.parseInline' 'list page hydration does not repaint inline Markdown after external renderer load'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'data-video-chat-show-heading="false"' 'contact page hides the video widget internal heading'

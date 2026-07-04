@@ -17,5 +17,6 @@ site/static/footer-pages.json
 site/static/public-posts.json
 site/static/search-index.json
 site/static/product-index.json
+site/pages/posts
 cgi/secure-chat-native-driver/.log
 site/static/legacy-assets/oeuvre/ultramemes.mkv
