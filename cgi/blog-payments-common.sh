@@ -196,12 +196,24 @@ blog_btcpay_config_value() {
   printf '%s\n' "$(blog_config_get "$blog_site_conf" "$blog_btcpay_config_key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
+blog_btcpay_default_secret_file() {
+  blog_btcpay_default_secret_key=${1-}
+  [ -n "$blog_btcpay_default_secret_key" ] || return 1
+  blog_btcpay_default_secret_name=$(printf '%s' "$blog_btcpay_default_secret_key" | tr '_' '-')
+  printf '%s/secrets/%s\n' "$blog_site_data" "$blog_btcpay_default_secret_name"
+}
+
 blog_btcpay_config_secret_value() {
   blog_btcpay_config_secret_key=${1-}
   [ -n "$blog_btcpay_config_secret_key" ] || return 1
   blog_btcpay_config_secret_file=$(blog_btcpay_config_value "${blog_btcpay_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   if [ -n "$blog_btcpay_config_secret_file" ] && [ -f "$blog_btcpay_config_secret_file" ]; then
     sed -n '1p' "$blog_btcpay_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
+    return 0
+  fi
+  blog_btcpay_default_file=$(blog_btcpay_default_secret_file "$blog_btcpay_config_secret_key")
+  if [ "$blog_btcpay_default_file" != "$blog_btcpay_config_secret_file" ] && [ -f "$blog_btcpay_default_file" ]; then
+    sed -n '1p' "$blog_btcpay_default_file" 2>/dev/null | tr -d '\r\n[:space:]'
     return 0
   fi
   blog_btcpay_config_value "$blog_btcpay_config_secret_key" | tr -d '\n[:space:]'

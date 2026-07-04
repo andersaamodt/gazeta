@@ -36,11 +36,17 @@ write_secret_value() {
   key=$1
   value=$2
   secret_file=$(blog_btcpay_config_value "${key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$secret_file" ] && [ ! -e "$secret_file" ]; then
+    secret_dir=${secret_file%/*}
+    if [ "$secret_dir" != "$secret_file" ] && [ ! -d "$secret_dir" ]; then
+      secret_file=$(blog_btcpay_default_secret_file "$key")
+    fi
+  fi
   if [ -n "$secret_file" ]; then
     case "$secret_file" in
       /*)
         mkdir -p "$(dirname "$secret_file")"
-        tmp=$(mktemp "${TMPDIR:-/tmp}/blog-btcpay-secret.XXXXXX")
+        tmp=$(mktemp "$(dirname "$secret_file")/.blog-btcpay-secret.XXXXXX")
         printf '%s\n' "$value" > "$tmp"
         mv "$tmp" "$secret_file"
         chmod 600 "$secret_file" 2>/dev/null || true

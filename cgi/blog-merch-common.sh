@@ -9,12 +9,24 @@ blog_merch_config_value() {
   printf '%s\n' "$(config-get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
+blog_merch_default_secret_file() {
+  blog_merch_default_secret_key=${1-}
+  [ -n "$blog_merch_default_secret_key" ] || return 1
+  blog_merch_default_secret_name=$(printf '%s' "$blog_merch_default_secret_key" | tr '_' '-')
+  printf '%s/secrets/%s\n' "$blog_site_data" "$blog_merch_default_secret_name"
+}
+
 blog_merch_config_secret_value() {
   blog_merch_config_secret_key=${1-}
   [ -n "$blog_merch_config_secret_key" ] || return 1
   blog_merch_config_secret_file=$(blog_merch_config_value "${blog_merch_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   if [ -n "$blog_merch_config_secret_file" ] && [ -f "$blog_merch_config_secret_file" ]; then
     sed -n '1p' "$blog_merch_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
+    return 0
+  fi
+  blog_merch_default_file=$(blog_merch_default_secret_file "$blog_merch_config_secret_key")
+  if [ "$blog_merch_default_file" != "$blog_merch_config_secret_file" ] && [ -f "$blog_merch_default_file" ]; then
+    sed -n '1p' "$blog_merch_default_file" 2>/dev/null | tr -d '\r\n[:space:]'
     return 0
   fi
   blog_merch_config_value "$blog_merch_config_secret_key" | tr -d '\n[:space:]'
@@ -26,6 +38,12 @@ blog_merch_write_secret_value() {
   [ -n "$blog_merch_write_secret_key" ] || return 1
   [ -n "$blog_merch_write_secret_value" ] || return 1
   blog_merch_write_secret_file=$(blog_merch_config_value "${blog_merch_write_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$blog_merch_write_secret_file" ] && [ ! -e "$blog_merch_write_secret_file" ]; then
+    blog_merch_write_secret_dir=${blog_merch_write_secret_file%/*}
+    if [ "$blog_merch_write_secret_dir" != "$blog_merch_write_secret_file" ] && [ ! -d "$blog_merch_write_secret_dir" ]; then
+      blog_merch_write_secret_file=$(blog_merch_default_secret_file "$blog_merch_write_secret_key")
+    fi
+  fi
   if [ -n "$blog_merch_write_secret_file" ]; then
     blog_merch_write_secret_dir=${blog_merch_write_secret_file%/*}
     [ "$blog_merch_write_secret_dir" != "$blog_merch_write_secret_file" ] || blog_merch_write_secret_dir=.
