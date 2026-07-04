@@ -100,6 +100,19 @@ sync_static_tree() {
   sync_src=${1-}
   sync_dest=${2-}
   [ -n "$sync_dest" ] || return 1
+  sync_state_dir="$blog_state_dir/pre-build/static-sync"
+  mkdir -p "$sync_state_dir"
+  sync_manifest=$(mktemp "${TMPDIR:-/tmp}/gazeta-static-manifest.XXXXXX")
+  sync_manifest_current "$sync_src" "$sync_manifest"
+  sync_signature=$(cksum "$sync_manifest" | awk '{ print $1 "-" $2 }')
+  sync_dest_key=$(printf '%s\n' "$sync_dest" | cksum | awk '{ print $1 "-" $2 }')
+  sync_dest_signature_file="$sync_state_dir/$sync_dest_key.sig"
+  if [ -f "$sync_dest_signature_file" ] &&
+     [ "$(cat "$sync_dest_signature_file" 2>/dev/null || printf '')" = "$sync_signature" ] &&
+     sync_manifest_outputs_exist "$sync_manifest" "$sync_dest"; then
+    rm -f "$sync_manifest"
+    return 0
+  fi
   mkdir -p "$(dirname "$sync_dest")" "$sync_dest"
   if [ -d "$sync_src" ]; then
     (
@@ -143,6 +156,57 @@ sync_static_tree() {
   fi
   find "$sync_dest" -type d -exec chmod 755 {} \; 2>/dev/null || true
   find "$sync_dest" -type f -exec chmod 644 {} \; 2>/dev/null || true
+  printf '%s\n' "$sync_signature" > "$sync_dest_signature_file"
+  chmod 600 "$sync_dest_signature_file" 2>/dev/null || true
+  rm -f "$sync_manifest"
+}
+
+static_file_state() {
+  static_path=${1-}
+  if stat -f '%z	%m' "$static_path" 2>/dev/null; then
+    return 0
+  fi
+  stat -c '%s	%Y' "$static_path" 2>/dev/null || printf '0	0\n'
+}
+
+sync_manifest_current() {
+  manifest_src=${1-}
+  manifest_out=${2-}
+  [ -n "$manifest_out" ] || return 1
+  : > "$manifest_out"
+  if [ ! -d "$manifest_src" ]; then
+    printf 'missing\n' > "$manifest_out"
+    return 0
+  fi
+  (
+    cd "$manifest_src" || exit 1
+    find . -type f -print | LC_ALL=C sort
+  ) | while IFS= read -r manifest_rel || [ -n "$manifest_rel" ]; do
+    manifest_rel=${manifest_rel#./}
+    [ -n "$manifest_rel" ] || continue
+    manifest_state=$(static_file_state "$manifest_src/$manifest_rel")
+    printf 'f	%s	%s\n' "$manifest_state" "$manifest_rel" >> "$manifest_out"
+  done
+}
+
+sync_manifest_outputs_exist() {
+  manifest_file=${1-}
+  manifest_dest=${2-}
+  [ -f "$manifest_file" ] && [ -d "$manifest_dest" ] || return 1
+  if grep -Fxq 'missing' "$manifest_file" 2>/dev/null; then
+    return 1
+  fi
+  missing_output=$(
+    awk -F '	' '$1 == "f" { print $4 }' "$manifest_file" |
+      while IFS= read -r manifest_rel || [ -n "$manifest_rel" ]; do
+        [ -n "$manifest_rel" ] || continue
+        if [ ! -f "$manifest_dest/$manifest_rel" ]; then
+          printf '%s\n' "$manifest_rel"
+          break
+        fi
+      done
+  )
+  [ -z "$missing_output" ]
 }
 
 legacy_assets_dir() {
@@ -395,10 +459,8 @@ if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
     wait "$prerender_timer_pid" 2>/dev/null || true
   )
   if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
-    rm -rf "$build_bootstrap_dir/nostr-page-bootstrap"
     mkdir -p "$build_bootstrap_dir"
-    cp -R "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"
-    find "$build_bootstrap_dir/nostr-page-bootstrap" -type f -exec chmod 644 {} \; 2>/dev/null || true
+    sync_static_tree "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"
   fi
 fi
 

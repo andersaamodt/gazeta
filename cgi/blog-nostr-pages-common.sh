@@ -448,6 +448,16 @@ blog_nostr_page_source_path() {
   printf '%s/%s.md\n' "$blog_pages_store_dir" "$slug"
 }
 
+blog_nostr_page_mount_is_prerender_owned() {
+  page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  case "$page_type" in
+    list|icon-gallery|software-gallery|blog|nip23|contact|public-ranking|overworld|cart|checkout)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 blog_nostr_prerender_signature() {
   payload_json=${1-}
   signature_payload=$(blog_nostr_prerender_payload_input "$payload_json" | jq -c 'del(.prerender_signature)' 2>/dev/null || blog_nostr_prerender_payload_input "$payload_json")
@@ -1331,6 +1341,8 @@ blog_nostr_page_render_lodestone_source() {
   [ -n "$render_slug" ] && [ -n "$render_out" ] || return 1
   if [ -n "${GAZETA_LODESTONE:-}" ]; then
     render_lodestone_cmd=$GAZETA_LODESTONE
+  elif [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone" ]; then
+    render_lodestone_cmd="$SCRIPT_DIR/gazeta-lodestone"
   else
     render_lodestone_cmd="$blog_site_root/cgi/gazeta-lodestone"
     [ -x "$render_lodestone_cmd" ] || return 1
@@ -1362,6 +1374,21 @@ blog_nostr_page_render_lodestone_source() {
     --html-file "content_html=$render_content_tmp" \
     --html-file "posts_json=$render_posts_tmp" > "$render_out"
   rm -f "$render_content_tmp" "$render_posts_tmp"
+}
+
+blog_install_generated_file_if_changed() {
+  generated_dest=${1-}
+  generated_tmp=${2-}
+  [ -n "$generated_dest" ] && [ -n "$generated_tmp" ] || return 1
+  [ -f "$generated_tmp" ] || return 1
+  mkdir -p "$(dirname "$generated_dest")"
+  if [ -f "$generated_dest" ] && cmp -s "$generated_dest" "$generated_tmp"; then
+    rm -f "$generated_tmp"
+    return 0
+  fi
+  blog_snapshot_file_before_replace "$generated_dest" "$generated_tmp"
+  mv "$generated_tmp" "$generated_dest"
+  chmod 644 "$generated_dest" 2>/dev/null || true
 }
 
 blog_nostr_page_write_prerendered_source() {
@@ -1420,14 +1447,9 @@ blog_nostr_page_write_prerendered_source() {
   fi
   if [ "$source_template_type" = "custom" ]; then
     mount_path=$(blog_nostr_page_mount_path "$slug")
-    mkdir -p "$(dirname "$mount_path")"
-    blog_snapshot_file_before_replace "$mount_path" "$tmp"
-    mv "$tmp" "$mount_path"
-    chmod 644 "$mount_path" 2>/dev/null || true
+    blog_install_generated_file_if_changed "$mount_path" "$tmp"
   else
-    blog_snapshot_file_before_replace "$page_file" "$tmp"
-    mv "$tmp" "$page_file"
-    chmod 644 "$page_file" 2>/dev/null || true
+    blog_install_generated_file_if_changed "$page_file" "$tmp"
     blog_nostr_page_sync_mount "$slug" "$page_type" force >/dev/null 2>&1 || true
   fi
   rm -f "$payload_tmp"
@@ -2705,34 +2727,44 @@ blog_nostr_page_template_is_current() {
 
 blog_nostr_pages_prune_stale_source_pages() {
   cfg_json=${1-}
-  pages_dir=$(blog_managed_pages_dir)
-  [ -d "$pages_dir" ] || return 0
+  for pages_dir in "$(blog_managed_pages_dir)" "$blog_pages_store_dir"; do
+    [ -d "$pages_dir" ] || continue
 
-  find "$pages_dir" -maxdepth 1 \( -type f -o -type l \) -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
-    [ -n "$page_file" ] || continue
-    existing_type=$(blog_nostr_page_source_template_type "$page_file")
-    case "$existing_type" in
-      custom|missing)
+    find "$pages_dir" -maxdepth 1 \( -type f -o -type l \) -name '*.md' | while IFS= read -r page_file || [ -n "$page_file" ]; do
+      [ -n "$page_file" ] || continue
+      existing_type=$(blog_nostr_page_source_template_type "$page_file")
+      case "$existing_type" in
+        custom|missing)
+          continue
+          ;;
+        *)
+          ;;
+      esac
+
+      existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
+      [ -n "$existing_slug" ] || continue
+
+      current_row=$(printf '%s\n' "$cfg_json" | jq -c --arg slug "$existing_slug" '.pages[]? | select(.slug == $slug) | .' 2>/dev/null | head -n 1)
+      if [ -z "$current_row" ]; then
+        rm -f "$page_file"
         continue
-        ;;
-      *)
-        ;;
-    esac
+      fi
 
-    existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
-    [ -n "$existing_slug" ] || continue
-
-    current_row=$(printf '%s\n' "$cfg_json" | jq -c --arg slug "$existing_slug" '.pages[]? | select(.slug == $slug) | .' 2>/dev/null | head -n 1)
-    if [ -z "$current_row" ]; then
-      rm -f "$page_file"
-      continue
-    fi
-
-    current_type=$(printf '%s\n' "$current_row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
-    mount_path=$(blog_nostr_page_mount_path "$existing_slug" 2>/dev/null || printf '')
-    if [ -z "$mount_path" ] || [ "$current_type" != "$existing_type" ] || [ "$page_file" != "$mount_path" ]; then
-      rm -f "$page_file"
-    fi
+      current_type=$(printf '%s\n' "$current_row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+      mount_path=$(blog_nostr_page_mount_path "$existing_slug" 2>/dev/null || printf '')
+      source_path=$(blog_nostr_page_source_path "$existing_slug" "$current_type" 2>/dev/null || printf '')
+      if [ "$page_file" = "$mount_path" ]; then
+        if [ "$current_type" != "$existing_type" ]; then
+          rm -f "$page_file"
+        fi
+      elif [ "$page_file" = "$source_path" ]; then
+        if [ "$current_type" != "$existing_type" ]; then
+          rm -f "$page_file"
+        fi
+      else
+        rm -f "$page_file"
+      fi
+    done
   done
 }
 
@@ -2750,7 +2782,9 @@ blog_nostr_pages_prune_clean_url_build_dirs() {
         ;;
     esac
 
-    prune_clean_url_source_page=$(blog_nostr_page_mount_path "$prune_clean_url_slug" 2>/dev/null || printf '')
+    prune_clean_url_page_type=$(printf '%s\n' "$prune_clean_url_cfg_json" | jq -r --arg slug "$prune_clean_url_slug" '.pages[]? | select(.slug == $slug) | .type // "list"' 2>/dev/null | head -n 1)
+    [ -n "$prune_clean_url_page_type" ] || prune_clean_url_page_type=list
+    prune_clean_url_source_page=$(blog_nostr_page_source_path "$prune_clean_url_slug" "$prune_clean_url_page_type" 2>/dev/null || printf '')
     prune_clean_url_build_path=$prune_clean_url_build_dir/$prune_clean_url_slug
     [ -f "$prune_clean_url_source_page" ] || continue
     [ -d "$prune_clean_url_build_path" ] || continue
@@ -2785,9 +2819,7 @@ blog_nostr_page_sync_mount() {
 
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-page-mount.XXXXXX")
   cp "$source_path" "$tmp"
-  blog_snapshot_file_before_replace "$mount_path" "$tmp"
-  mv "$tmp" "$mount_path"
-  chmod 644 "$mount_path" 2>/dev/null || true
+  blog_install_generated_file_if_changed "$mount_path" "$tmp"
 }
 
 blog_nostr_page_ensure_source_page() {
@@ -2812,6 +2844,9 @@ blog_nostr_page_ensure_source_page() {
     case "$existing_type" in
       custom)
         # Preserve non-managed/custom pages.
+        if blog_nostr_page_mount_is_prerender_owned "$page_type"; then
+          return 0
+        fi
         blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
         return 0
         ;;
@@ -2820,6 +2855,9 @@ blog_nostr_page_ensure_source_page() {
       *)
         existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
         if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } && blog_nostr_page_template_is_current "$page_file" "$page_type"; then
+          if blog_nostr_page_mount_is_prerender_owned "$page_type"; then
+            return 0
+          fi
           blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
           return 0
         fi
@@ -2840,6 +2878,9 @@ blog_nostr_page_ensure_source_page() {
   esac
   if blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "" "" "$initial_content_html" "$page_file"; then
     chmod 644 "$page_file" 2>/dev/null || true
+    if blog_nostr_page_mount_is_prerender_owned "$page_type"; then
+      return 0
+    fi
     blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
     return 0
   fi

@@ -394,7 +394,7 @@ assert_file_not_contains "$ROOT_DIR/cgi/pre-build" '--set "posts_html="' 'pre-bu
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'site-bootstrap.js' 'pre-build writes static site bootstrap asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer-pages.json' 'pre-build writes static footer page list asset'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'footer_pages:' 'pre-build includes footer pages in site bootstrap'
-assert_file_contains "$ROOT_DIR/cgi/pre-build" 'cp -R "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"' 'pre-build copies prerendered page bootstraps into served build output'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_static_tree "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"' 'pre-build incrementally syncs prerendered page bootstraps into served build output'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_public_posts_catalog_write_artifacts' 'pre-build writes static public post catalog'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'wizardry_blog_theme_v1' 'pre-build seeds cached theme bootstrap state'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'mkdir -p "$(dirname "$out_file")"' 'bootstrap prerender creates destination directory immediately before atomic writes'
@@ -506,6 +506,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/lodestone/templates/contact.stone.ht
 assert_file_not_contains "$SITE_SOURCE_ROOT/lodestone/templates/nip23.stone.html" '<nostr-sync-pill' 'nip23 Lodestone template does not emit a duplicate static Nostr sync pill'
 assert_file_not_contains "$SITE_SOURCE_ROOT/lodestone/templates/overworld.stone.html" '<nostr-sync-pill' 'overworld Lodestone template does not emit a duplicate static Nostr sync pill'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '--html-file "posts_json=$render_posts_tmp"' 'blog prerender passes structured post data into Lodestone'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'elif [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone" ]; then' 'Nostr page prerender resolves Lodestone from the running Gazeta script directory'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_blog_posts_html()' 'blog prerender has no parallel non-Lodestone post-card renderer'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'cat > "$page_file" <<EOBLOG' 'missing blog page creation has no hand-written fallback template'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'filter_blog_posts_json_for_default_tag()' 'blog prerender bootstrap filters post catalogs for default-tag blog pages'
@@ -535,6 +536,11 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/includes/nav.md" 'data-page="softwar
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "Object.assign({ cache: 'no-store' }, options || {})" 'admin fetch default no-store'
 assert_file_contains "$ROOT_DIR/cgi/blog-list-files" '"public_path":"%s"' 'files API exposes editable public path metadata'
 assert_file_contains "$ROOT_DIR/cgi/blog-update-file" 'config-set "$record_path" public_path "$public_path"' 'file metadata endpoint saves public path'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'previous_state=$(awk -F' 'public file alias sync reads prior manifest state before copying'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '[ "$previous_state" = "$current_state" ]' 'public file alias sync skips unchanged alias copies'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'alias_counts=$(mktemp' 'public file alias sync computes uniqueness once per run'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-lib.sh" 'blog_file_public_path_is_unique_for_record "$record_path" "$public_path" || continue' 'public file alias sync does not rescan all records for each alias'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'awk -F' 'public file alias sync prunes aliases from the previous manifest'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "'/cgi/blog-update-file'" 'files admin saves uploaded file metadata'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'data-file-field="public_path"' 'files admin exposes public path editing'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" 'data-file-field="safe_name"' 'files admin exposes download filename editing'
@@ -809,8 +815,18 @@ assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_page_loa
 assert_file_contains "$ROOT_DIR/cgi/blog-publish-list-page" 'blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$canonical_state_json"' 'legacy list publisher writes modern Nostr page-state drafts'
 assert_file_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'blog_nostr_page_load_draft_state_json "$list_slug" "$page_type"' 'add-post-to-list reads modern Nostr page-state drafts before stale list JSON'
 assert_file_contains "$ROOT_DIR/cgi/blog-add-post-to-list" 'blog_nostr_page_save_draft_state_json "$list_slug" "$page_type" "$next_state"' 'add-post-to-list writes modern Nostr page-state drafts'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_snapshot_file_before_replace "$page_file" "$tmp"' 'page prerender writes snapshot the previous generated source before replacement'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_snapshot_file_before_replace "$mount_path" "$tmp"' 'page source mount sync snapshots the previous mounted page before replacement'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_install_generated_file_if_changed()' 'generated page writes have a byte-stable installer'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_install_generated_file_if_changed "$page_file" "$tmp"' 'page prerender avoids rewriting unchanged generated sources'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_install_generated_file_if_changed "$mount_path" "$tmp"' 'page source mount sync avoids rewriting unchanged mounts'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_snapshot_file_before_replace "$generated_dest" "$generated_tmp"' 'generated page writes still snapshot before real replacements'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_mount_is_prerender_owned()' 'prerendered page mounts have a single writer'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'if blog_nostr_page_mount_is_prerender_owned "$page_type"; then' 'source-page sync does not overwrite prerender-owned mounts'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_pages_sync_source_pages "$cfg_json" >/dev/null 2>&1 || true' 'prerender cache hits do not remount canonical source over prerendered pages'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'local_mount_candidate=$(blog_nostr_page_mount_path "$page_slug"' 'page getter can infer local-only site pages from their mount path'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'local_mount_source_path=$(blog_nostr_page_mount_path "$page_slug"' 'page getter reads local-only mounted pages as server source'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_manifest_current "$sync_src" "$sync_manifest"' 'static tree sync has a source manifest gate'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_manifest_outputs_exist "$sync_manifest" "$sync_dest"' 'static tree sync verifies expected outputs before skipping'
+assert_file_contains "$ROOT_DIR/cgi/pre-build" 'printf '\''%s\n'\'' "$sync_signature" > "$sync_dest_signature_file"' 'static tree sync records per-destination signatures'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-page-draft" 'show_marker_filters=$(blog_param show_marker_filters)' 'save-draft endpoint accepts show_marker_filters setting'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-save-nostr-page-draft" 'blog_param extras_after_format' 'save-draft endpoint no longer accepts after-content format selector input'
 assert_file_contains "$ROOT_DIR/cgi/blog-save-nostr-page-draft" "extras_after_format='markdown'" 'save-draft endpoint forces after-content format to markdown'
@@ -1290,7 +1306,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.46' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.49' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: any active nav item must stay in button-blue on hover\/focus\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
@@ -1770,29 +1786,29 @@ sync_cfg=$(jq -cn '{pages:[
 blog_nostr_pages_save_json "$sync_cfg"
 blog_nostr_pages_sync_source_pages "$sync_cfg"
 
-about_mount=$(blog_nostr_page_mount_path 'about')
-contact_mount=$(blog_nostr_page_mount_path 'contact')
-list_mount=$(blog_nostr_page_mount_path 'list')
-ranking_mount=$(blog_nostr_page_mount_path 'assignments')
+about_source=$(blog_nostr_page_source_path 'about' 'nip23')
+contact_source=$(blog_nostr_page_source_path 'contact' 'contact')
+list_source=$(blog_nostr_page_source_path 'list' 'list')
+ranking_source=$(blog_nostr_page_source_path 'assignments' 'public-ranking')
 
-assert_success test -f "$about_mount"
-assert_success test -f "$contact_mount"
-assert_success test -f "$list_mount"
-assert_success test -f "$ranking_mount"
-assert_file_contains "$about_mount" 'id="nip23-page-title"' 'nip23 mount keeps expected template markers'
-assert_file_contains "$contact_mount" 'id="contact-page-title"' 'contact mount keeps expected template markers'
-assert_file_contains "$list_mount" 'id="list-page-title"' 'list mount keeps expected template markers'
-assert_file_contains "$ranking_mount" 'id="public-ranking-title"' 'public ranking mount keeps expected template markers'
+assert_success test -f "$about_source"
+assert_success test -f "$contact_source"
+assert_success test -f "$list_source"
+assert_success test -f "$ranking_source"
+assert_file_contains "$about_source" 'id="nip23-page-title"' 'nip23 canonical source keeps expected template markers'
+assert_file_contains "$contact_source" 'id="contact-page-title"' 'contact canonical source keeps expected template markers'
+assert_file_contains "$list_source" 'id="list-page-title"' 'list canonical source keeps expected template markers'
+assert_file_contains "$ranking_source" 'id="public-ranking-title"' 'public ranking canonical source keeps expected template markers'
 
 # Prune stale managed mount when slug disappears from config.
 stale_cfg=$(jq -cn '{pages:[{slug:"stale-list", type:"list", show_in_nav:true}]}')
 blog_nostr_pages_save_json "$stale_cfg"
 blog_nostr_pages_sync_source_pages "$stale_cfg"
-stale_mount=$(blog_nostr_page_mount_path 'stale-list')
-assert_success test -f "$stale_mount"
+stale_source=$(blog_nostr_page_source_path 'stale-list' 'list')
+assert_success test -f "$stale_source"
 blog_nostr_pages_save_json "$(jq -cn '{pages:[]}')"
 blog_nostr_pages_sync_source_pages "$(jq -cn '{pages:[]}')"
-assert_file_missing "$stale_mount" 'stale managed mount removed when no longer configured'
+assert_file_missing "$stale_source" 'stale managed source removed when no longer configured'
 
 # Preserve custom mount files (must not overwrite user-authored page files).
 custom_slug='custom-safe'

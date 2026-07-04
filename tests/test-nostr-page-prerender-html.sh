@@ -348,6 +348,32 @@ assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" '.allow_signe
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'Download (6.8 MB)' 'Overworld prerender includes splash controls'
 
+file_mtime() {
+  mtime_path=${1-}
+  stat -f '%m' "$mtime_path" 2>/dev/null || stat -c '%Y' "$mtime_path" 2>/dev/null || printf '0\n'
+}
+
+blog_page_checksum_before=$(cksum "$SITE_ROOT/site/pages/blog.md")
+blog_page_mtime_before=$(file_mtime "$SITE_ROOT/site/pages/blog.md")
+oeuvre_mount_checksum_before=$(cksum "$SITE_ROOT/site/pages/oeuvre.md")
+oeuvre_mount_mtime_before=$(file_mtime "$SITE_ROOT/site/pages/oeuvre.md")
+sleep 1
+BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=30 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
+blog_page_checksum_after=$(cksum "$SITE_ROOT/site/pages/blog.md")
+blog_page_mtime_after=$(file_mtime "$SITE_ROOT/site/pages/blog.md")
+oeuvre_mount_checksum_after=$(cksum "$SITE_ROOT/site/pages/oeuvre.md")
+oeuvre_mount_mtime_after=$(file_mtime "$SITE_ROOT/site/pages/oeuvre.md")
+if [ "$blog_page_checksum_before" = "$blog_page_checksum_after" ] && [ "$blog_page_mtime_before" = "$blog_page_mtime_after" ]; then
+  pass
+else
+  fail 'second prerender leaves unchanged blog source bytes and mtime intact'
+fi
+if [ "$oeuvre_mount_checksum_before" = "$oeuvre_mount_checksum_after" ] && [ "$oeuvre_mount_mtime_before" = "$oeuvre_mount_mtime_after" ]; then
+  pass
+else
+  fail 'second prerender leaves unchanged list mount bytes and mtime intact'
+fi
+
 printf 'PASS: %s\n' "$PASS_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s\n' "$FAIL_COUNT" >&2

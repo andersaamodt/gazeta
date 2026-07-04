@@ -2047,15 +2047,13 @@ blog_file_sync_public_aliases() {
   build_dir=$(blog_generated_build_dir)
   manifest_path="$build_dir/.file-aliases.manifest"
   new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases.XXXXXX")
+  old_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases-old.XXXXXX")
+  current_aliases=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases-current.XXXXXX")
+  alias_candidates=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-candidates.XXXXXX")
+  alias_counts=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-counts.XXXXXX")
   mkdir -p "$build_dir"
-
   if [ -f "$manifest_path" ]; then
-    while IFS= read -r old_alias || [ -n "$old_alias" ]; do
-      case "$old_alias" in
-        ''|.*|*/*) continue ;;
-      esac
-      rm -f "$build_dir/$old_alias" 2>/dev/null || true
-    done < "$manifest_path"
+    cp "$manifest_path" "$old_manifest" 2>/dev/null || : > "$old_manifest"
   fi
 
   for record_path in "$blog_file_records_dir"/*.conf; do
@@ -2065,24 +2063,60 @@ blog_file_sync_public_aliases() {
     blog_file_is_public_effective "$file_id" || continue
     public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
     [ -n "$public_path" ] || continue
-    blog_file_public_path_is_unique_for_record "$record_path" "$public_path" || continue
+    printf '%s\n' "$public_path" >> "$alias_candidates"
+  done
+  sort "$alias_candidates" | uniq -c | awk '{ count = $1; $1 = ""; sub(/^ /, ""); print $0 "\t" count }' > "$alias_counts"
+
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    file_id=$(blog_config_get "$record_path" file_id 2>/dev/null || printf '')
+    [ -n "$file_id" ] || continue
+    blog_file_is_public_effective "$file_id" || continue
+    public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
+    [ -n "$public_path" ] || continue
+    public_path_count=$(awk -F '	' -v alias="$public_path" '$1 == alias { print $2; exit }' "$alias_counts" 2>/dev/null || printf '')
+    [ "$public_path_count" = "1" ] || continue
     source_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
     [ -f "$source_path" ] || continue
     dest_path="$build_dir/$public_path"
     case "$dest_path" in "$build_dir"/*) ;; *) continue ;; esac
-    tmp_path=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-copy.XXXXXX")
-    if cp "$source_path" "$tmp_path"; then
-      chmod 644 "$tmp_path" 2>/dev/null || true
-      mv "$tmp_path" "$dest_path"
-      printf '%s\n' "$public_path" >> "$new_manifest"
-    else
-      rm -f "$tmp_path"
+    source_size=$(stat -f '%z' "$source_path" 2>/dev/null || stat -c '%s' "$source_path" 2>/dev/null || printf '0')
+    source_mtime=$(stat -f '%m' "$source_path" 2>/dev/null || stat -c '%Y' "$source_path" 2>/dev/null || printf '0')
+    current_state=$(printf '%s\t%s\t%s' "$source_path" "$source_size" "$source_mtime")
+    previous_state=''
+    if [ -f "$manifest_path" ]; then
+      previous_state=$(awk -F '	' -v alias="$public_path" '$1 == alias { print $2 "\t" $3 "\t" $4; exit }' "$manifest_path" 2>/dev/null || printf '')
     fi
+    if ! { [ -f "$dest_path" ] && [ "$previous_state" = "$current_state" ]; }; then
+      tmp_path=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-copy.XXXXXX")
+      if cp "$source_path" "$tmp_path"; then
+        chmod 644 "$tmp_path" 2>/dev/null || true
+        mv "$tmp_path" "$dest_path"
+      else
+        rm -f "$tmp_path"
+        continue
+      fi
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$public_path" "$source_path" "$source_size" "$source_mtime" >> "$new_manifest"
   done
 
   sort -u "$new_manifest" > "$manifest_path"
   chmod 644 "$manifest_path" 2>/dev/null || true
-  rm -f "$new_manifest"
+  awk -F '	' '{ print $1 }' "$manifest_path" | while IFS= read -r new_alias || [ -n "$new_alias" ]; do
+    [ -n "$new_alias" ] || continue
+    printf '%s\n' "$new_alias"
+  done > "$current_aliases"
+  if [ -s "$old_manifest" ]; then
+    awk -F '	' '{ print $1 }' "$old_manifest" | while IFS= read -r old_alias || [ -n "$old_alias" ]; do
+      case "$old_alias" in
+        ''|.*|*/*) continue ;;
+      esac
+      if ! grep -Fxq "$old_alias" "$current_aliases" 2>/dev/null; then
+        rm -f "$build_dir/$old_alias" 2>/dev/null || true
+      fi
+    done
+  fi
+  rm -f "$new_manifest" "$old_manifest" "$current_aliases" "$alias_candidates" "$alias_counts"
 }
 
 blog_to_base64url() {

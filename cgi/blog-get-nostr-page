@@ -29,8 +29,21 @@ fi
 
 page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
 if [ -z "$page_type" ]; then
-  blog_json_error "Unknown Nostr page slug" "unknown_page"
-  exit 0
+  local_mount_candidate=$(blog_nostr_page_mount_path "$page_slug" 2>/dev/null || printf '')
+  if [ -n "$local_mount_candidate" ] && [ -f "$local_mount_candidate" ]; then
+    local_mount_type=$(blog_nostr_page_source_template_type "$local_mount_candidate" 2>/dev/null || printf 'custom')
+    case "$local_mount_type" in
+      contact|public-ranking|overworld|list|icon-gallery|blog|nip23)
+        page_type=$local_mount_type
+        ;;
+      *)
+        page_type=nip23
+        ;;
+    esac
+  else
+    blog_json_error "Unknown Nostr page slug" "unknown_page"
+    exit 0
+  fi
 fi
 if ! blog_plugin_enabled "nostr_posts"; then
   blog_json_error "Nostr-backed pages plugin is disabled for this site" "plugin_disabled"
@@ -96,6 +109,12 @@ fi
 
 if [ "$local_has_source" != "true" ]; then
   local_source_path=$(blog_nostr_page_source_path "$page_slug" "$page_type")
+  if [ -n "$local_source_path" ] && [ ! -f "$local_source_path" ]; then
+    local_mount_source_path=$(blog_nostr_page_mount_path "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$local_mount_source_path" ] && [ -f "$local_mount_source_path" ]; then
+      local_source_path=$local_mount_source_path
+    fi
+  fi
   if [ -n "$local_source_path" ] && [ -f "$local_source_path" ]; then
     if ! blog_nostr_page_source_template_is_managed "$local_source_path"; then
       local_has_source=true

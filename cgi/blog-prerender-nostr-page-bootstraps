@@ -428,7 +428,6 @@ case "${BLOG_NOSTR_PAGE_PRERENDER_FORCE:-0}" in
     if [ -n "$input_signature" ] &&
        [ "$previous_signature" = "$input_signature" ] &&
        prerender_expected_outputs_exist; then
-      blog_nostr_pages_sync_source_pages "$cfg_json" >/dev/null 2>&1 || true
       exit 0
     fi
     ;;
