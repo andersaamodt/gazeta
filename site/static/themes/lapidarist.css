@@ -314,11 +314,8 @@ strong {
   font-weight: 600;
 }
 
-.nav-center a.active:hover,
 .nav-center a.active:focus-visible,
-.nav-center a[aria-current="page"]:hover,
 .nav-center a[aria-current="page"]:focus-visible,
-.nav-username.active:hover,
 .nav-username.active:focus-visible {
   background: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis) 36%, #2f60b7 72%, #244d99 100%) !important;
   background-image: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis) 36%, #2f60b7 72%, #244d99 100%) !important;

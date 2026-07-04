@@ -461,7 +461,7 @@ nav.site-nav .nav-site-signature {
   cursor: pointer;
 }
 
-.nav-center a:hover {
+.nav-center a:not(.active):not([aria-current="page"]):hover {
   background-color: transparent;
   color: var(--text);
   text-decoration: underline;
@@ -497,9 +497,7 @@ nav.site-nav .nav-site-signature {
   text-decoration: underline !important;
 }
 
-.nav-center a.active:hover,
 .nav-center a.active:focus-visible,
-.nav-username.active:hover,
 .nav-username.active:focus-visible {
   text-decoration: none;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
@@ -13911,9 +13909,8 @@ nav.site-nav .nav-center a.active.allow-active-click:focus-visible {
   text-decoration: underline !important;
 }
 
-/* Absolute final guard: any active nav item must stay in button-blue on hover/focus. */
+/* Absolute final guard: active nav items stay in button-blue without hover treatment. */
 nav.site-nav .nav-center a.active,
-nav.site-nav .nav-center a.active:hover,
 nav.site-nav .nav-center a.active:focus-visible {
   background: linear-gradient(128deg, #5b8fe8 0%, var(--lapis, var(--accent, #3b70d0)) 36%, #2f60b7 72%, #244d99 100%) !important;
   background-image: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis, var(--accent, #3b70d0)) 36%, #2f60b7 72%, #244d99 100%) !important;
@@ -13925,7 +13922,6 @@ nav.site-nav .nav-center a.active:focus-visible {
 
 /* If active class is ever missing, aria-current still forces lapis active styling. */
 nav.site-nav .nav-center a[aria-current="page"],
-nav.site-nav .nav-center a[aria-current="page"]:hover,
 nav.site-nav .nav-center a[aria-current="page"]:focus-visible {
   background: linear-gradient(128deg, #5b8fe8 0%, var(--lapis, var(--accent, #3b70d0)) 36%, #2f60b7 72%, #244d99 100%) !important;
   background-image: var(--button-primary-overlay), linear-gradient(128deg, #5b8fe8 0%, var(--lapis, var(--accent, #3b70d0)) 36%, #2f60b7 72%, #244d99 100%) !important;
