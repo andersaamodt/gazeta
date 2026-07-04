@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+release_dir=${DEPLOYMENTS_RELEASE_DIR:-$(pwd -P)}
+build_dir=${1:-${DEPLOYMENTS_BUILD_DIR:-$release_dir/build}}
+web_root=${WEB_WIZARDRY_ROOT:-$(dirname "$release_dir")}
+site_name=$(basename "$release_dir")
+builder=${WIZARDRY_DIR:-}/spells/web/build
+site_data_dir=${DEPLOYMENTS_SITE_DATA_DIR:-$web_root/.sitedata/$site_name}
+empty_legacy_assets_dir="$release_dir/.deployments-empty-legacy-assets"
+
+[ -x "$builder" ] || {
+  printf '%s\n' "deployments-build: missing Wizardry builder: $builder" >&2
+  exit 1
+}
+
+rm -rf "$empty_legacy_assets_dir"
+mkdir -p "$empty_legacy_assets_dir"
+
+BLOG_LEGACY_ASSETS_DIR="$empty_legacy_assets_dir" WEB_WIZARDRY_ROOT="$web_root" "$builder" "$site_name" --full
+[ -d "$build_dir" ] || {
+  printf '%s\n' "deployments-build: build directory was not created: $build_dir" >&2
+  exit 1
+}
+
+link_public_sitedata() {
+  link_src=$1
+  link_dest=$2
+  [ -e "$link_src" ] || return 0
+  mkdir -p "$(dirname "$link_dest")"
+  rm -rf "$link_dest"
+  ln -s "$link_src" "$link_dest"
+}
+
+legacy_assets_dir="$site_data_dir/files/legacy-assets"
+overworld_godot_dir="$site_data_dir/static/overworld-godot"
+link_public_sitedata "$legacy_assets_dir" "$build_dir/static/legacy-assets"
+link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/ultramemes.mkv"
+link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/oeuvre/ultramemes.mkv"
+link_public_sitedata "$overworld_godot_dir" "$build_dir/static/overworld-godot"
+
+if [ -n "${DEPLOYMENTS_BUILD_MANIFEST:-}" ]; then
+  printf '{"schema":1,"builder":"scripts/deployments-build","mode":"wizardry-full","assets":"sitedata-symlinks","source_revision":"%s","release_revision":"%s"}\n' \
+    "${DEPLOYMENTS_SOURCE_REVISION:-}" "${DEPLOYMENTS_RELEASE_REVISION:-}" >"$DEPLOYMENTS_BUILD_MANIFEST"
+fi

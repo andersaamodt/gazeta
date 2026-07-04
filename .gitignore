@@ -19,4 +19,5 @@ site/static/search-index.json
 site/static/product-index.json
 site/pages/posts
 cgi/secure-chat-native-driver/.log
-site/static/legacy-assets/oeuvre/ultramemes.mkv
+site/static/legacy-assets/
+site/static/overworld-godot/
