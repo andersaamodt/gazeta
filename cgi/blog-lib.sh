@@ -5379,7 +5379,9 @@ blog_nostr_rebuild_derived() {
   fi
   chmod 644 "$blog_nostr_posts_index" "$blog_nostr_comments_index" 2>/dev/null || true
 
-  blog_nostr_write_projection_posts "$blog_nostr_posts_index"
+  # Nostr events are sync/import state, not public site post sources.
+  # Clear legacy projected Markdown so canonical posts remain site-authored files only.
+  blog_nostr_clear_projection_posts
 
   rm -f "$nostr_events_tmp"
   trap - EXIT HUP INT TERM
@@ -5389,9 +5391,7 @@ blog_nostr_rebuild_derived() {
 blog_nostr_post_record_for_slug() {
   slug=${1-}
   [ -n "$slug" ] || return 1
-  if [ ! -f "$blog_nostr_posts_index" ]; then
-    blog_nostr_rebuild_derived >/dev/null 2>&1 || true
-  fi
+  [ -f "$blog_nostr_posts_index" ] || return 1
   jq -c --arg slug "$slug" '.[] | select(.slug == $slug) | . ' "$blog_nostr_posts_index" 2>/dev/null | head -n 1
 }
 
@@ -5407,9 +5407,6 @@ blog_nostr_post_record_for_path() {
 blog_nostr_post_record_for_event_id() {
   event_id=${1-}
   [ -n "$event_id" ] || return 1
-  if [ ! -f "$blog_nostr_posts_index" ]; then
-    blog_nostr_rebuild_derived >/dev/null 2>&1 || true
-  fi
   if [ ! -f "$blog_nostr_posts_index" ]; then
     return 1
   fi
@@ -5497,10 +5494,10 @@ blog_nostr_post_markdown_file_in_sync() {
 }
 
 blog_nostr_sync_post_markdown_file() {
-  file=${1-}
-  [ -f "$file" ] || return 1
+  sync_post_file=${1-}
+  [ -f "$sync_post_file" ] || return 1
 
-  visibility=$(blog_read_front_matter_value "$file" visibility 2>/dev/null || printf 'public')
+  visibility=$(blog_read_front_matter_value "$sync_post_file" visibility 2>/dev/null || printf 'public')
   if [ -z "$visibility" ]; then
     visibility=public
   fi
@@ -5508,10 +5505,10 @@ blog_nostr_sync_post_markdown_file() {
     return 1
   fi
 
-  content=$(blog_read_markdown_body "$file")
-  desired_event_json=$(blog_nostr_build_post_event_json_for_file "$file" 2>/dev/null || printf '')
+  content=$(blog_read_markdown_body "$sync_post_file")
+  desired_event_json=$(blog_nostr_build_post_event_json_for_file "$sync_post_file" 2>/dev/null || printf '')
   [ -n "$desired_event_json" ] || return 1
-  existing_event_json=$(blog_nostr_post_existing_event_json_for_file "$file" 2>/dev/null || printf '')
+  existing_event_json=$(blog_nostr_post_existing_event_json_for_file "$sync_post_file" 2>/dev/null || printf '')
   desired_signature=$(blog_nostr_event_signature_json "$desired_event_json" 2>/dev/null || printf '')
   existing_signature=$(blog_nostr_event_signature_json "$existing_event_json" 2>/dev/null || printf '')
 
@@ -5519,6 +5516,7 @@ blog_nostr_sync_post_markdown_file() {
     if ! blog_nostr_publish_event_json "$existing_event_json" >/dev/null 2>&1; then
       return 1
     fi
+    blog_post_mark_nostr_event_synced "$sync_post_file" "$existing_event_json" >/dev/null 2>&1 || true
     blog_nostr_mark_content_files_public "$content" ""
     printf 'unchanged\n'
     return 0
@@ -5527,8 +5525,45 @@ blog_nostr_sync_post_markdown_file() {
   if ! blog_nostr_publish_and_store_event_json "$desired_event_json" >/dev/null 2>&1; then
     return 1
   fi
+  blog_post_mark_nostr_event_synced "$sync_post_file" "$desired_event_json" >/dev/null 2>&1 || true
   blog_nostr_mark_content_files_public "$content" ""
   printf 'updated\n'
+}
+
+blog_post_mark_nostr_event_synced() {
+  mark_post_file=${1-}
+  mark_event_json=${2-}
+  [ -f "$mark_post_file" ] || return 1
+  [ -n "$mark_event_json" ] || return 1
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+
+  mark_event_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-post-event.XXXXXX")
+  mark_state_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-post-state.XXXXXX")
+  mark_next_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-post-next.XXXXXX")
+  printf '%s\n' "$mark_event_json" > "$mark_event_tmp"
+  if ! blog_state_markdown_to_json "$mark_post_file" content > "$mark_state_tmp"; then
+    rm -f "$mark_event_tmp" "$mark_state_tmp" "$mark_next_tmp"
+    return 1
+  fi
+  if ! jq -c --slurpfile event "$mark_event_tmp" '
+    ($event[0] // {}) as $ev
+    | ([($ev.tags // [])[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first // "") as $d
+    | .nostr_event_id = ($ev.id // "")
+    | .nostr_pubkey = ($ev.pubkey // "")
+    | .nostr_kind = (($ev.kind // "") | tostring)
+    | .nostr_d = $d
+    | .nostr_address = (((($ev.kind // "") | tostring) + ":" + ($ev.pubkey // "") + ":" + $d))
+    | .nostr_uri = ("nostr:" + (((($ev.kind // "") | tostring) + ":" + ($ev.pubkey // "") + ":" + $d)))
+    | .nostr_synced_content_hash = (.content_hash // "")
+    | .nostr_synced_at = ((($ev.created_at // 0) | tonumber? // 0) | todateiso8601)
+  ' "$mark_state_tmp" > "$mark_next_tmp"; then
+    rm -f "$mark_event_tmp" "$mark_state_tmp" "$mark_next_tmp"
+    return 1
+  fi
+  blog_state_markdown_write_json "$mark_post_file" "$(cat "$mark_next_tmp")" content
+  rm -f "$mark_event_tmp" "$mark_state_tmp" "$mark_next_tmp"
 }
 
 blog_list_normalize_slug() {
@@ -6055,11 +6090,18 @@ blog_publish_content_nostr() {
   if ! blog_nostr_publish_and_store_event_json "$event_json" >/dev/null 2>&1; then
     return 1
   fi
-  blog_nostr_rebuild_derived >/dev/null 2>&1 || true
   blog_nostr_mark_content_files_public "$content" "$draft_id"
 
-  slug=$(blog_slugify "$d_tag")
-  printf '%s.md\n' "$slug"
+  if ! filename=$(blog_publish_content_markdown "$title" "$tags" "$summary" "$content" "$_author" "$draft_id" immediate "" "$_post_type" "$source_post_path" "$post_filename"); then
+    return 1
+  fi
+  post_file=$(blog_managed_page_path_for_rel "posts/$filename" 2>/dev/null || printf '')
+  if [ -n "$post_file" ] && [ -f "$post_file" ]; then
+    blog_post_mark_nostr_event_synced "$post_file" "$event_json" >/dev/null 2>&1 || true
+  fi
+  blog_nostr_rebuild_derived >/dev/null 2>&1 || true
+
+  printf '%s\n' "$filename"
 }
 
 blog_publish_content() {
@@ -6369,26 +6411,16 @@ blog_collect_public_posts() {
   candidates_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-post-candidates.XXXXXX")
   temp=$(mktemp "${TMPDIR:-/tmp}/blog-posts.XXXXXX")
 
-  if blog_nostr_bridge_enabled; then
-    blog_nostr_rebuild_derived >/dev/null 2>&1 || true
-    if [ -f "$blog_nostr_posts_index" ]; then
-      jq -r '.[]?.md_path // empty' "$blog_nostr_posts_index" 2>/dev/null | while IFS= read -r rel_md || [ -n "$rel_md" ]; do
-        [ -n "$rel_md" ] || continue
-        file="$blog_site_root/site/pages/$rel_md"
-        if [ ! -f "$file" ]; then
-          file=$(blog_managed_page_path_for_rel "$rel_md" 2>/dev/null || printf '')
-        fi
-        if [ -f "$file" ]; then
-          printf '%s\n' "$file"
-        fi
-      done >> "$candidates_tmp"
-    fi
-  fi
-
   find -L "$blog_posts_dir" -type f -name '*.md' 2>/dev/null >> "$candidates_tmp"
 
   sort -u "$candidates_tmp" | while IFS= read -r file; do
     [ -f "$file" ] || continue
+    nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf '')
+    case "$nostr_projection" in
+      true|1|yes|on)
+        continue
+        ;;
+    esac
     visibility=$(blog_read_front_matter_value "$file" visibility 2>/dev/null || printf '')
     if [ -z "$visibility" ]; then
       visibility="public"
@@ -6478,11 +6510,7 @@ blog_public_posts_catalog_build_json() {
       year=$(printf '%s' "$pub_date" | cut -c1-4)
       case "$year" in ''|*[!0-9]*) year='Unknown' ;; esac
 
-      nostr_projection=$(blog_read_front_matter_value "$file" nostr_projection 2>/dev/null || printf 'false')
       source='local'
-      case "$nostr_projection" in
-        true|1|yes|on) source='nostr' ;;
-      esac
 
       if [ "$first" -eq 0 ]; then
         printf ','

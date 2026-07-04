@@ -38,10 +38,6 @@ if [ -z "$md_file" ]; then
   printf 'Invalid path\n'
   exit 0
 fi
-if [ ! -f "$md_file" ] && blog_nostr_bridge_enabled; then
-  blog_nostr_rebuild_derived >/dev/null 2>&1 || true
-  md_file=$(blog_resolve_post_markdown_file "$path" 2>/dev/null || printf '')
-fi
 if [ ! -f "$md_file" ]; then
   http-status 404 "Not Found"
   http-header "Content-Type" "text/plain; charset=utf-8"

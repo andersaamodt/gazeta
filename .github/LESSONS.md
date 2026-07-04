@@ -5,3 +5,4 @@
 - Nostr page reads must not return `unknown_page` for `index` when a local source page exists but no canonical event or draft exists.
 - Public read runtimes must not rebuild derived artifacts on read paths; they should fail with explicit maintenance guidance when artifacts are missing.
 - Build-triggered publish hooks must carry an in-progress marker so pre-build maintenance cannot recursively spawn fresh asynchronous builds.
+- POSIX shell helpers that call other helpers must use function-prefixed variable names for paths such as post files and relay files, or nested calls can clobber the caller and write metadata to the wrong file.

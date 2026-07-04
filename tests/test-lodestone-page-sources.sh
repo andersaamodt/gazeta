@@ -124,11 +124,17 @@ grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/
   exit 1
 }
 
-grep -Fq '<lode-blog-post-list posts=' "$site_root/site/pages/blog.md" &&
+grep -Fq 'data-lodestone-component="lode-blog-post-list"' "$site_root/site/pages/blog.md" &&
+  grep -Fq '<article class="post-item blog-post-item">' "$site_root/site/pages/blog.md" &&
   grep -Fq 'Lodestone Rendered Post' "$site_root/site/pages/blog.md" || {
-  printf '%s\n' "blog page missing structured post data in Lodestone projection" >&2
+  printf '%s\n' "blog page missing Lodestone-rendered post cards" >&2
   exit 1
 }
+
+if grep -Fq '<lode-blog-post-list posts=' "$site_root/site/pages/blog.md"; then
+  printf '%s\n' "blog page shipped an unexpanded Lodestone post-list component" >&2
+  exit 1
+fi
 
 grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md" || {
   printf '%s\n' "projects page missing public-ranking shell" >&2
@@ -228,7 +234,7 @@ grep -Fq -- '--html-file "posts_json=$render_posts_tmp"' "$site_root/cgi/blog-no
   exit 1
 }
 
-grep -Fq 'v0.7.45' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.46' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer version was not incremented" >&2
   exit 1
 }
