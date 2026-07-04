@@ -48,6 +48,7 @@ BIN_DIR="$TMP_ROOT/bin"
 
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_DATA" "$BIN_DIR"
 ln -s "$ROOT_DIR/cgi" "$SITE_ROOT/cgi"
+ln -s "$ROOT_DIR/site/lodestone" "$SITE_ROOT/site/lodestone"
 
 cat > "$BIN_DIR/http-status" <<'EOS'
 #!/bin/sh
@@ -315,7 +316,7 @@ run_payments_cgi() {
   query=$1
   method=${2-GET}
   host=${3-blog.example.com}
-  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="$host" /bin/sh "$ROOT_DIR/cgi/blog-payments" 2>&1
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="$host" /bin/sh "$ROOT_DIR/cgi/blog-payments-legacy" 2>&1
 }
 
 run_payments_cgi_body() {
@@ -323,7 +324,7 @@ run_payments_cgi_body() {
   body=$2
   host=${3-blog.example.com}
   len=$(printf '%s' "$body" | wc -c | tr -d '[:space:]')
-  printf '%s' "$body" | REQUEST_METHOD=POST QUERY_STRING="$query" HTTP_HOST="$host" CONTENT_TYPE="application/json" CONTENT_LENGTH="$len" /bin/sh "$ROOT_DIR/cgi/blog-payments" 2>&1
+  printf '%s' "$body" | REQUEST_METHOD=POST QUERY_STRING="$query" HTTP_HOST="$host" CONTENT_TYPE="application/json" CONTENT_LENGTH="$len" /bin/sh "$ROOT_DIR/cgi/blog-payments-legacy" 2>&1
 }
 
 run_product_cgi() {
