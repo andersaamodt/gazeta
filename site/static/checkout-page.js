@@ -264,16 +264,20 @@
       var element = React.createElement(
         Crossmint.CrossmintProvider,
         { apiKey: clientKey },
-        React.createElement(Crossmint.CrossmintEmbeddedCheckout, {
-          orderId: orderId,
-          clientSecret: clientSecret,
-          payment: {
-            receiptEmail: receiptEmail,
-            crypto: { enabled: false },
-            fiat: { enabled: true },
-            defaultMethod: 'fiat'
-          }
-        })
+        React.createElement(
+          Crossmint.CrossmintCheckoutProvider,
+          null,
+          React.createElement(Crossmint.CrossmintEmbeddedCheckout, {
+            orderId: orderId,
+            clientSecret: clientSecret,
+            payment: {
+              receiptEmail: receiptEmail,
+              crypto: { enabled: false },
+              fiat: { enabled: true },
+              defaultMethod: 'fiat'
+            }
+          })
+        )
       );
       ReactDOM.createRoot(mount).render(element);
       state.crossmintMountKey = mountKey;

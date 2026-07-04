@@ -1313,7 +1313,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.53' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.55' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: active nav items stay in button-blue without hover treatment\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
@@ -2018,6 +2018,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" "action: 'sync_selected
 assert_file_contains "$SITE_SOURCE_ROOT/static/shop-cart.js" 'variant_id: item.variant_id' 'cart API submits selected product variant ids'
 assert_file_contains "$SITE_SOURCE_ROOT/static/shop-cart.js" 'plugins.commerce !== false' 'cart script is controlled by commerce plugin flag'
 assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'data-shipping-field="address1"' 'checkout page renders shipping address fields'
+assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'Crossmint.CrossmintCheckoutProvider' 'checkout page wraps embedded Crossmint checkout in the SDK checkout provider'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'data-nip23-product-variant="true"' 'NIP-23 product page renders variant selector'
 assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_verify_token "$token" download' 'download cgi verifies signed download token'
 assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_verify_token "$token" delivery' 'delivery cgi verifies durable buyer delivery token'
