@@ -144,6 +144,19 @@ case "$url" in
   https://pay.blog.example.com/btcpay/api/v1/stores/test-store/invoices/btcpay-invoice-1)
     printf '{"id":"btcpay-invoice-1","status":"Settled"}\n'
     ;;
+  https://www.crossmint.com/api/2022-06-09/orders)
+    [ "$method" = "POST" ] || exit 22
+    body='{"clientSecret":"crossmint-client-secret-1","order":{"orderId":"crossmint-order-1","phase":"payment","payment":{"status":"awaiting-payment","method":"card","currency":"usd"}}}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '201'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
+  https://www.crossmint.com/api/2022-06-09/orders/crossmint-order-1)
+    printf '{"orderId":"crossmint-order-1","phase":"payment","payment":{"status":"completed","method":"card","currency":"usd"}}\n'
+    ;;
   https://api.printful.com/stores)
     body='{"code":200,"result":[{"id":12345,"name":"Gazeta API Store","type":"manual_order"}]}'
     if [ -n "$output_file" ]; then
@@ -301,6 +314,7 @@ merch_state=$(jq -cn '{
   extras_after_format:"markdown"
 }')
 blog_nostr_page_save_draft_state_json "merch-shirt" "nip23" "$merch_state"
+"$ROOT_DIR/cgi/blog-maintenance" rebuild-product-index >/dev/null 2>&1
 
 admin_profile=$(blog_user_profile admin)
 blog_config_set "$admin_profile" username admin
@@ -369,26 +383,27 @@ assert_contains "$status_out" '"success":true' 'payments status succeeds'
 assert_contains "$status_out" '"commerce_enabled":true' 'payments status reports commerce plugin enabled by default'
 assert_contains "$status_out" '"btcpay_host":"pay.blog.example.com"' 'payments status derives btcpay host from request host'
 assert_contains "$status_out" '"btcpay_url":"https://pay.blog.example.com"' 'payments status emits btcpay url'
-assert_contains "$status_out" '"ramp_host_api_key":' 'payments status includes ramp runtime key'
+assert_contains "$status_out" '"crossmint_client_api_key":' 'payments status includes Crossmint runtime key'
 assert_contains "$status_out" '"paybis_partner_id":' 'payments status includes paybis runtime key'
 blog_config_set "$blog_site_conf" btcpay_rootpath /btcpay
 status_rootpath_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_rootpath_out" '"btcpay_url":"https://pay.blog.example.com/btcpay"' 'payments status includes btcpay root path'
 
-blog_config_set "$blog_site_conf" plugin_ramp true
+blog_config_set "$blog_site_conf" plugin_crossmint true
 SECRET_DIR="$SITE_DATA/secrets"
 mkdir -p "$SECRET_DIR"
-RAMP_SECRET_FILE="$SECRET_DIR/ramp-host-api-key"
+CROSSMINT_SECRET_FILE="$SECRET_DIR/crossmint-api-key"
 PRINTFUL_SECRET_FILE="$SECRET_DIR/printful-api-token"
 BTCPAY_SECRET_FILE="$SECRET_DIR/btcpay-api-key"
 WEBHOOK_SECRET_FILE="$SECRET_DIR/payments-webhook-secret"
-printf '%s\n' test-ramp-key > "$RAMP_SECRET_FILE"
+printf '%s\n' test-crossmint-secret > "$CROSSMINT_SECRET_FILE"
 printf '%s\n' test-printful-token > "$PRINTFUL_SECRET_FILE"
 printf '%s\n' webhook-secret > "$WEBHOOK_SECRET_FILE"
-chmod 600 "$RAMP_SECRET_FILE" "$PRINTFUL_SECRET_FILE" "$WEBHOOK_SECRET_FILE" 2>/dev/null || true
-blog_config_set "$blog_site_conf" ramp_host_api_key_file "$RAMP_SECRET_FILE"
-blog_config_set "$blog_site_conf" ramp_btc_address bc1qmerchant
-blog_config_set "$blog_site_conf" ramp_webhook_signature_required false
+chmod 600 "$CROSSMINT_SECRET_FILE" "$PRINTFUL_SECRET_FILE" "$WEBHOOK_SECRET_FILE" 2>/dev/null || true
+blog_config_set "$blog_site_conf" crossmint_api_key_file "$CROSSMINT_SECRET_FILE"
+blog_config_set "$blog_site_conf" crossmint_client_api_key test-crossmint-client-key
+blog_config_set "$blog_site_conf" crossmint_recipient_wallet_address So11111111111111111111111111111111111111112
+blog_config_set "$blog_site_conf" crossmint_token_locator solana:usdc
 blog_config_set "$blog_site_conf" payments_webhook_secret_file "$WEBHOOK_SECRET_FILE"
 blog_config_set "$blog_site_conf" btcpay_api_key_file "$BTCPAY_SECRET_FILE"
 blog_config_set "$blog_site_conf" plugin_merch_store true
@@ -396,7 +411,7 @@ blog_config_set "$blog_site_conf" printful_api_token_file "$PRINTFUL_SECRET_FILE
 blog_config_set "$blog_site_conf" printful_store_id test-printful-store
 blog_config_set "$blog_site_conf" printful_confirm_orders false
 status_connected_out=$(run_payments_cgi 'action=status')
-assert_contains "$status_connected_out" '"ramp_configured":true' 'payments status reports configured Ramp plugin'
+assert_contains "$status_connected_out" '"crossmint_configured":true' 'payments status reports configured Crossmint plugin'
 assert_contains "$status_connected_out" '"printful_configured":true' 'payments status reports configured Printful plugin'
 
 # 2) Product lookup works for cart bootstrap.
@@ -410,29 +425,26 @@ assert_contains "$merch_product_out" '"fulfillment_provider":"printful"' 'merch 
 assert_contains "$merch_product_out" '"variants":' 'merch product lookup includes variants'
 
 merch_items_json=$(printf '%s' '[{"slug":"merch-shirt","variant_id":"111","qty":1}]')
-merch_no_shipping=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$merch_items_json")")
+merch_no_shipping=$(run_payments_cgi "action=create_order&payment_method=credit&provider=crossmint&items_json=$(blog_url_encode "$merch_items_json")")
 assert_contains "$merch_no_shipping" '"code":"shipping_required"' 'merch create_order requires shipping recipient'
 
 recipient_json=$(printf '%s' '{"name":"Ada Buyer","email":"ada@example.com","phone":"555-0100","address1":"1 Main St","city":"New York","state_code":"NY","country_code":"US","zip":"10001"}')
-merch_create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$merch_items_json")&recipient_json=$(blog_url_encode "$recipient_json")")
+merch_create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=crossmint&items_json=$(blog_url_encode "$merch_items_json")&recipient_json=$(blog_url_encode "$recipient_json")")
 assert_contains "$merch_create_out" '"success":true' 'merch create_order succeeds with shipping'
 assert_contains "$merch_create_out" '"shipping":"4.99"' 'merch order stores Printful shipping'
 assert_contains "$merch_create_out" '"total":"34.99"' 'merch order total includes shipping'
-assert_contains "$merch_create_out" '"provider_url":"https://app.rampnetwork.com/' 'merch order uses Ramp app URL'
-assert_contains "$merch_create_out" 'inAssetValue=3499' 'Ramp URL uses total in minor fiat units'
-assert_contains "$merch_create_out" 'userAddress=bc1qmerchant' 'Ramp URL sends BTC to configured merchant address'
-assert_contains "$merch_create_out" 'webhookStatusUrl=' 'Ramp URL includes webhook status URL'
+assert_contains "$merch_create_out" '"provider":"crossmint"' 'merch order uses Crossmint provider'
+assert_contains "$merch_create_out" '"crossmint_order_id":"crossmint-order-1"' 'merch order stores Crossmint order id'
+assert_contains "$merch_create_out" '"crossmint_client_secret":"crossmint-client-secret-1"' 'merch order stores Crossmint client secret'
 merch_order_id=$(printf '%s\n' "$merch_create_out" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$merch_order_id" 'merch create_order returns order_id'
 
-ramp_wrong_receiver=$(run_payments_cgi_body "action=webhook&provider=ramp&order_id=$merch_order_id&webhook_secret=webhook-secret" '{"type":"RELEASED","purchase":{"userAddress":"bc1qwrong"}}')
-assert_contains "$ramp_wrong_receiver" '"code":"ramp_receiver_mismatch"' 'Ramp webhook rejects wrong BTC receiver address'
-ramp_webhook_body='{"type":"RELEASED","purchase":{"userAddress":"bc1qmerchant"}}'
-ramp_webhook_out=$(run_payments_cgi_body "action=webhook&provider=ramp&order_id=$merch_order_id&webhook_secret=webhook-secret" "$ramp_webhook_body")
-assert_contains "$ramp_webhook_out" '"success":true' 'Ramp webhook succeeds for released purchase'
-assert_contains "$ramp_webhook_out" '"status":"paid"' 'Ramp webhook marks merch order paid'
-assert_contains "$ramp_webhook_out" '"fulfillment_status":"draft"' 'paid merch order creates Printful draft fulfillment'
-assert_contains "$ramp_webhook_out" '"printful_order_id":"98765"' 'paid merch order stores Printful order id'
+crossmint_webhook_body='{"type":"orders.payment.succeeded","payload":{"orderIdentifier":"crossmint-order-1","paymentMethodType":"credit-card","totalPrice":{"amount":"34.99","currency":"usd"}}}'
+crossmint_webhook_out=$(run_payments_cgi_body "action=webhook&provider=crossmint&webhook_secret=webhook-secret" "$crossmint_webhook_body")
+assert_contains "$crossmint_webhook_out" '"success":true' 'Crossmint webhook succeeds for paid order'
+assert_contains "$crossmint_webhook_out" '"status":"paid"' 'Crossmint webhook marks merch order paid'
+assert_contains "$crossmint_webhook_out" '"fulfillment_status":"draft"' 'paid merch order creates Printful draft fulfillment'
+assert_contains "$crossmint_webhook_out" '"printful_order_id":"98765"' 'paid merch order stores Printful order id'
 
 manage_merch_status=$(run_manage_merch_cgi "action=status&session_token=$session_token&csrf_token=$csrf_token")
 assert_contains "$manage_merch_status" '"printful_api_ready":true' 'merch manager status validates Printful API'
@@ -473,17 +485,16 @@ assert_contains "$pages_after_merch_sync" '"show_in_nav":false' 'merch landing p
 
 # 3) Order create -> status flow.
 items_json=$(printf '%s' '[{"slug":"sample-product","qty":2}]')
-create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=ramp&items_json=$(blog_url_encode "$items_json")")
+create_out=$(run_payments_cgi "action=create_order&payment_method=credit&provider=crossmint&items_json=$(blog_url_encode "$items_json")")
 assert_contains "$create_out" '"success":true' 'create_order succeeds'
-assert_contains "$create_out" '"provider":"ramp"' 'create_order keeps selected credit provider'
-assert_contains "$create_out" '"provider_url":"https://app.rampnetwork.com/' 'create_order emits provider_url for ramp'
+assert_contains "$create_out" '"provider":"crossmint"' 'create_order keeps selected credit provider'
+assert_contains "$create_out" '"crossmint_order_id":"crossmint-order-1"' 'create_order stores Crossmint order id'
 order_id=$(printf '%s\n' "$create_out" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id" 'create_order returns order_id'
 
 status_order_out=$(run_payments_cgi "action=order_status&order_id=$order_id")
 assert_contains "$status_order_out" "\"order_id\":\"$order_id\"" 'order_status returns requested order'
-assert_contains "$status_order_out" '"status":"pending"' 'order_status starts as pending'
-assert_contains "$status_order_out" '"provider_url":"https://app.rampnetwork.com/' 'order_status preserves provider_url'
+assert_contains "$status_order_out" '"status":"paid"' 'order_status refreshes completed Crossmint order'
 
 # 4) Simulate paid requires auth and then produces download links.
 simulate_unauth=$(run_payments_cgi "action=simulate_paid&order_id=$order_id" POST)

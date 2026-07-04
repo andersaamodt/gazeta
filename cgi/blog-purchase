@@ -65,9 +65,11 @@ provider_url_for_order() {
       partner=$(blog_config_get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
       printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$fiat_total")" "$(blog_url_encode "$order_id")"
       ;;
-    ramp|*)
-      quote_json=$(jq -cn --arg total "$(blog_payments_format_money "$fiat_total")" --arg subtotal "$(blog_payments_format_money "$fiat_total")" '{total:$total, subtotal:$subtotal}')
-      blog_ramp_provider_url "$order_id" "$quote_json" ""
+    crossmint)
+      printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
+      ;;
+    *)
+      return 1
       ;;
   esac
 }
@@ -101,10 +103,10 @@ case "$payment_method" in
   *) payment_method='crypto' ;;
 esac
 case "$provider" in
-  btcpay|ramp|paybis) ;;
+  btcpay|crossmint|paybis) ;;
   *)
     if [ "$payment_method" = 'credit' ]; then
-      provider='ramp'
+      provider='crossmint'
     else
       provider='btcpay'
     fi
@@ -175,8 +177,8 @@ fi
 
 purchase_payload=$(jq -cn --arg order_id "$order_id" --arg provider "$provider" --arg slug "$slug" '{order_id:$order_id, provider:$provider, product:$slug}')
 purchase_token=$(blog_payments_issue_token purchase "$purchase_payload" 7200 2>/dev/null || printf '')
-if [ "$provider" = "ramp" ] && ! blog_ramp_configured; then
-  emit_json_error "Ramp checkout is not connected yet" "ramp_not_configured"
+if [ "$provider" = "crossmint" ] && ! blog_crossmint_configured; then
+  emit_json_error "Crossmint checkout is not connected yet" "crossmint_not_configured"
   exit 0
 fi
 provider_url=$(provider_url_for_order "$order_id" "$provider" "$(blog_payments_format_money "$subtotal_num")" "$(blog_payments_format_money "$crypto_total_num")")
@@ -186,6 +188,9 @@ if [ -z "$provider_url" ]; then
 fi
 btcpay_invoice_id=''
 btcpay_checkout_link=''
+crossmint_order_id=''
+crossmint_client_secret=''
+crossmint_order='null'
 if [ "$provider" = "btcpay" ]; then
   invoice_json=$(blog_btcpay_create_invoice_json "$order_id" "$(blog_payments_format_money "$crypto_total_num")" "USD" "$title" 2>/dev/null || printf '')
   if [ -n "$invoice_json" ]; then
@@ -201,6 +206,24 @@ if [ "$provider" = "btcpay" ]; then
     emit_json_error "BTCPay checkout is not connected yet" "btcpay_not_configured"
     exit 0
   fi
+elif [ "$provider" = "crossmint" ]; then
+  quote_json=$(jq -cn \
+    --arg subtotal "$(blog_payments_format_money "$subtotal_num")" \
+    --arg total "$(blog_payments_format_money "$subtotal_num")" \
+    --argjson items "$(jq -cn --argjson line "$line_json" '[$line]')" \
+    '{subtotal:$subtotal,total:$total,items:$items}')
+  crossmint_json=$(blog_crossmint_create_order_json "$order_id" "$quote_json" "" 2>/dev/null || printf '')
+  if [ -z "$crossmint_json" ]; then
+    emit_json_error "Crossmint order creation failed" "crossmint_order_failed"
+    exit 0
+  fi
+  crossmint_order_id=$(printf '%s\n' "$crossmint_json" | jq -r '.order.orderId // .orderId // ""' 2>/dev/null || printf '')
+  crossmint_client_secret=$(printf '%s\n' "$crossmint_json" | jq -r '.clientSecret // ""' 2>/dev/null || printf '')
+  crossmint_order=$(printf '%s\n' "$crossmint_json" | jq -c '.order // .' 2>/dev/null || printf 'null')
+  if [ -z "$crossmint_order_id" ] || [ -z "$crossmint_client_secret" ]; then
+    emit_json_error "Crossmint order response was missing checkout credentials" "crossmint_order_invalid"
+    exit 0
+  fi
 fi
 
 now=$(blog_now_epoch)
@@ -212,6 +235,9 @@ order_json=$(jq -cn \
   --arg provider_url "$provider_url" \
   --arg btcpay_invoice_id "$btcpay_invoice_id" \
   --arg btcpay_checkout_link "$btcpay_checkout_link" \
+  --arg crossmint_order_id "$crossmint_order_id" \
+  --arg crossmint_client_secret "$crossmint_client_secret" \
+  --argjson crossmint_order "$crossmint_order" \
   --arg checkout_url "/checkout?order_id=$order_id" \
   --argjson created_at "$now" \
   --argjson line "$line_json" \
@@ -227,6 +253,9 @@ order_json=$(jq -cn \
     provider_url: $provider_url,
     btcpay_invoice_id: $btcpay_invoice_id,
     btcpay_checkout_link: $btcpay_checkout_link,
+    crossmint_order_id: $crossmint_order_id,
+    crossmint_client_secret: $crossmint_client_secret,
+    crossmint_order: $crossmint_order,
     checkout_url: $checkout_url,
     items: [$line],
     totals: {

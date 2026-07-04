@@ -36,17 +36,16 @@ emit_runtime_status() {
   [ -n "$btcpay_webhook_secret" ] && btcpay_webhook_configured=true
   btcpay_authorize_url=$(blog_btcpay_authorize_url 2>/dev/null || printf '')
   btcpay_webhook_url=$(blog_btcpay_webhook_url 2>/dev/null || printf '')
-  ramp_host_api_key=$(blog_ramp_host_api_key)
-  ramp_btc_address=$(blog_ramp_btc_address)
-  ramp_widget_url=$(blog_ramp_widget_url)
-  ramp_webhook_url=$(blog_ramp_webhook_url "ORDER_ID" 2>/dev/null || printf '')
-  ramp_webhook_signature_required=$(blog_ramp_webhook_signature_required)
-  ramp_plugin_enabled=false
+  crossmint_client_api_key=$(blog_crossmint_client_api_key)
+  crossmint_token_locator=$(blog_crossmint_token_locator)
+  crossmint_recipient_wallet_address=$(blog_crossmint_recipient_wallet_address)
+  crossmint_webhook_url=$(blog_crossmint_webhook_url "ORDER_ID" 2>/dev/null || printf '')
+  crossmint_plugin_enabled=false
   commerce_enabled=false
-  ramp_configured=false
+  crossmint_configured=false
   blog_plugin_enabled commerce && commerce_enabled=true
-  blog_plugin_enabled ramp && ramp_plugin_enabled=true
-  blog_ramp_configured && ramp_configured=true
+  blog_plugin_enabled crossmint && crossmint_plugin_enabled=true
+  blog_crossmint_configured && crossmint_configured=true
   merch_store_enabled=false
   printful_configured=false
   printful_confirm_orders=$(blog_printful_confirm_orders)
@@ -61,14 +60,13 @@ emit_runtime_status() {
     --argjson btcpay_webhook_configured "$btcpay_webhook_configured" \
     --arg btcpay_authorize_url "$btcpay_authorize_url" \
     --arg btcpay_webhook_url "$btcpay_webhook_url" \
-    --arg ramp_host_api_key "$ramp_host_api_key" \
-    --arg ramp_btc_address "$ramp_btc_address" \
-    --arg ramp_widget_url "$ramp_widget_url" \
-    --arg ramp_webhook_url "$ramp_webhook_url" \
-    --argjson ramp_plugin_enabled "$ramp_plugin_enabled" \
+    --arg crossmint_client_api_key "$crossmint_client_api_key" \
+    --arg crossmint_token_locator "$crossmint_token_locator" \
+    --arg crossmint_recipient_wallet_address "$crossmint_recipient_wallet_address" \
+    --arg crossmint_webhook_url "$crossmint_webhook_url" \
+    --argjson crossmint_plugin_enabled "$crossmint_plugin_enabled" \
     --argjson commerce_enabled "$commerce_enabled" \
-    --argjson ramp_configured "$ramp_configured" \
-    --argjson ramp_webhook_signature_required "$ramp_webhook_signature_required" \
+    --argjson crossmint_configured "$crossmint_configured" \
     --argjson merch_store_enabled "$merch_store_enabled" \
     --argjson printful_configured "$printful_configured" \
     --argjson printful_confirm_orders "$printful_confirm_orders" \
@@ -82,20 +80,18 @@ emit_runtime_status() {
       btcpay_webhook_configured: $btcpay_webhook_configured,
       btcpay_authorize_url: $btcpay_authorize_url,
       btcpay_webhook_url: $btcpay_webhook_url,
-      ramp_host_api_key: $ramp_host_api_key,
-      ramp_btc_address_configured: (($ramp_btc_address | length) > 0),
-      ramp_widget_url: $ramp_widget_url,
-      ramp_webhook_url: $ramp_webhook_url,
-      ramp_plugin_enabled: $ramp_plugin_enabled,
+      crossmint_client_api_key: $crossmint_client_api_key,
+      crossmint_token_locator: $crossmint_token_locator,
+      crossmint_recipient_wallet_configured: (($crossmint_recipient_wallet_address | length) > 0),
+      crossmint_webhook_url: $crossmint_webhook_url,
+      crossmint_plugin_enabled: $crossmint_plugin_enabled,
       commerce_enabled: $commerce_enabled,
-      ramp_webhook_signature_required: $ramp_webhook_signature_required,
       merch_store_enabled: $merch_store_enabled,
       printful_configured: $printful_configured,
       printful_confirm_orders: $printful_confirm_orders,
       paybis_partner_id: $paybis_partner_id,
-      ramp_key: $ramp_host_api_key,
       paybis_partner: $paybis_partner_id,
-      ramp_configured: $ramp_configured,
+      crossmint_configured: $crossmint_configured,
       paybis_configured: (($paybis_partner_id | length) > 0)
     }'
   printf '\n'
@@ -371,12 +367,15 @@ provider_url_for_order() {
         printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
       fi
       ;;
+    crossmint)
+      printf '/checkout?order_id=%s\n' "$(blog_url_encode "$order_id")"
+      ;;
     paybis)
       partner=$(blog_config_get "$blog_site_conf" paybis_partner_id 2>/dev/null || printf '')
       printf 'https://widget.paybis.com/?partnerId=%s&fiatCurrency=USD&fiatAmount=%s&orderId=%s\n' "$(blog_url_encode "$partner")" "$(blog_url_encode "$total")" "$(blog_url_encode "$order_id")"
       ;;
-    ramp|*)
-      blog_ramp_provider_url "$order_id" "$quote_json" "$buyer_email"
+    *)
+      return 1
       ;;
   esac
 }
@@ -464,102 +463,55 @@ refresh_btcpay_order_json() {
   esac
 }
 
-ramp_public_key_to_file() {
-  out=${1-}
-  [ -n "$out" ] || return 1
-  configured=$(blog_config_get "$blog_site_conf" ramp_public_key_pem_path 2>/dev/null || printf '')
-  if [ -n "$configured" ] && [ -f "$configured" ]; then
-    cp "$configured" "$out"
-    return $?
-  fi
-  env_name=$(blog_config_get "$blog_site_conf" ramp_environment 2>/dev/null || printf '')
-  env_name=$(printf '%s' "$env_name" | tr '[:upper:]' '[:lower:]')
-  if [ "$env_name" = "demo" ] || [ "$env_name" = "test" ] || [ "$env_name" = "sandbox" ]; then
-    cat > "$out" <<'EOF'
------BEGIN PUBLIC KEY-----
-MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEevN2PMEeIaaMkS4VIfXOqsLebj19kVeu
-wWl0AnkIA6DJU0r3ixkXVhJTltycJtkDoEAYtPHfARyTofB5ZNw9xA==
------END PUBLIC KEY-----
-EOF
+refresh_crossmint_order_json() {
+  order_json=${1-}
+  [ -n "$order_json" ] || return 1
+  status=$(printf '%s\n' "$order_json" | jq -r '.status // "pending"' 2>/dev/null || printf 'pending')
+  provider=$(printf '%s\n' "$order_json" | jq -r '.provider // ""' 2>/dev/null || printf '')
+  crossmint_order_id=$(printf '%s\n' "$order_json" | jq -r '.crossmint_order_id // ""' 2>/dev/null || printf '')
+  client_secret=$(printf '%s\n' "$order_json" | jq -r '.crossmint_client_secret // ""' 2>/dev/null || printf '')
+  order_id=$(printf '%s\n' "$order_json" | jq -r '.order_id // ""' 2>/dev/null || printf '')
+  if [ "$status" != "pending" ] || [ "$provider" != "crossmint" ] || [ -z "$crossmint_order_id" ] || [ -z "$order_id" ]; then
+    printf '%s\n' "$order_json"
     return 0
   fi
-  cat > "$out" <<'EOF'
------BEGIN PUBLIC KEY-----
-MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAElvxpYOhgdAmI+7oL4mABRAfM5CwLkCbZ
-m64ERVKAisSulWFC3oRZom/PeyE2iXPX1ekp9UD1r+51c9TiuIHU4w==
------END PUBLIC KEY-----
-EOF
+  crossmint_json=$(blog_crossmint_get_order_json "$crossmint_order_id" "$client_secret" 2>/dev/null || printf '')
+  [ -n "$crossmint_json" ] || {
+    printf '%s\n' "$order_json"
+    return 0
+  }
+  payment_status=$(printf '%s\n' "$crossmint_json" | jq -r '.payment.status // ""' 2>/dev/null | tr '[:upper:]' '[:lower:]')
+  case "$payment_status" in
+    completed)
+      mark_order_paid_json "$order_id" "crossmint"
+      ;;
+    failed-kyc|failed|refunded|cancelled|canceled)
+      now=$(blog_now_epoch)
+      updated=$(printf '%s\n' "$order_json" | jq -c --arg status failed --arg provider crossmint --arg provider_status "$payment_status" --argjson updated_at "$now" --argjson crossmint "$crossmint_json" '. + {status:$status, provider:$provider, provider_status:$provider_status, updated_at:$updated_at, crossmint_order:$crossmint}')
+      blog_payments_order_save_json "$order_id" "$updated"
+      printf '%s\n' "$updated"
+      ;;
+    *)
+      now=$(blog_now_epoch)
+      updated=$(printf '%s\n' "$order_json" | jq -c --arg provider crossmint --arg provider_status "$payment_status" --argjson updated_at "$now" --argjson crossmint "$crossmint_json" '. + {provider:$provider, provider_status:$provider_status, updated_at:$updated_at, crossmint_order:$crossmint}')
+      blog_payments_order_save_json "$order_id" "$updated"
+      printf '%s\n' "$updated"
+      ;;
+  esac
 }
 
-ramp_base64_decode_to_file() {
-  value=${1-}
-  out=${2-}
-  [ -n "$value" ] || return 1
-  [ -n "$out" ] || return 1
-  if printf '%s' "$value" | base64 --decode > "$out" 2>/dev/null; then
-    return 0
-  fi
-  if printf '%s' "$value" | base64 -D > "$out" 2>/dev/null; then
-    return 0
-  fi
-  if printf '%s' "$value" | openssl base64 -d -A > "$out" 2>/dev/null; then
-    return 0
-  fi
+find_order_id_by_crossmint_order_id() {
+  crossmint_order_id=${1-}
+  [ -n "$crossmint_order_id" ] || return 1
+  for path in "$blog_payments_orders_dir"/*.json; do
+    [ -f "$path" ] || continue
+    found=$(jq -r --arg crossmint_order_id "$crossmint_order_id" 'select((.crossmint_order_id // "") == $crossmint_order_id) | .order_id // ""' "$path" 2>/dev/null || printf '')
+    if [ -n "$found" ]; then
+      printf '%s\n' "$found"
+      return 0
+    fi
+  done
   return 1
-}
-
-ramp_webhook_signature_valid() {
-  body=${1-}
-  signature=${2-}
-  [ -n "$body" ] || return 1
-  [ -n "$signature" ] || return 1
-  command -v jq >/dev/null 2>&1 || return 1
-  command -v openssl >/dev/null 2>&1 || return 1
-  key_file=$(mktemp "${TMPDIR:-/tmp}/blog-ramp-key.XXXXXX")
-  msg_file=$(mktemp "${TMPDIR:-/tmp}/blog-ramp-msg.XXXXXX")
-  sig_file=$(mktemp "${TMPDIR:-/tmp}/blog-ramp-sig.XXXXXX")
-  ok=false
-  if ramp_public_key_to_file "$key_file" &&
-    printf '%s\n' "$body" | jq -cS '.' > "$msg_file" 2>/dev/null &&
-    ramp_base64_decode_to_file "$signature" "$sig_file" &&
-    openssl dgst -sha256 -verify "$key_file" -signature "$sig_file" "$msg_file" >/dev/null 2>&1; then
-    ok=true
-  fi
-  rm -f "$key_file" "$msg_file" "$sig_file"
-  [ "$ok" = "true" ]
-}
-
-ramp_webhook_signature_ok() {
-  required=$(blog_ramp_webhook_signature_required)
-  signature=${HTTP_X_BODY_SIGNATURE-}
-  if [ -z "$signature" ]; then
-    [ "$required" != "true" ]
-    return $?
-  fi
-  ramp_webhook_signature_valid "$BLOG_REQUEST_BODY" "$signature"
-}
-
-ramp_webhook_receiver_address() {
-  body=${1-}
-  if [ -n "$body" ] && printf '%s\n' "$body" | jq -e 'type=="object"' >/dev/null 2>&1; then
-    printf '%s\n' "$body" | jq -r '
-      [
-        .purchase.receiverAddress?,
-        .purchase.userAddress?,
-        .purchase.walletAddress?,
-        .purchase.cryptoAddress?,
-        .purchase.assetInfo.address?,
-        .purchase.crypto.assetInfo.address?,
-        .receiverAddress?,
-        .userAddress?,
-        .walletAddress?
-      ]
-      | map(select(. != null) | tostring | select(length > 0))
-      | .[0] // ""
-    ' 2>/dev/null
-    return 0
-  fi
-  printf '%s\n' "$(blog_param ramp_receiver_address)"
 }
 
 action=$(blog_param action)
@@ -603,8 +555,8 @@ case "$action" in
       *) payment_method='crypto' ;;
     esac
     case "$provider" in
-      btcpay|ramp|paybis) ;;
-      *) provider=$( [ "$payment_method" = 'credit' ] && printf 'ramp' || printf 'btcpay' ) ;;
+      btcpay|crossmint|paybis) ;;
+      *) provider=$( [ "$payment_method" = 'credit' ] && printf 'crossmint' || printf 'btcpay' ) ;;
     esac
 
     quoted=$(quote_items_json "$items_json" '' '' 2>/dev/null || printf '')
@@ -642,8 +594,8 @@ case "$action" in
       quoted=$(printf '%s\n' "$quoted" | jq -c --argjson recipient "$recipient_json" '. + {recipient:$recipient}' 2>/dev/null || printf '%s\n' "$quoted")
     fi
 
-    if [ "$provider" = "ramp" ] && ! blog_ramp_configured; then
-      blog_json_error "Ramp checkout is not connected yet" "ramp_not_configured"
+    if [ "$provider" = "crossmint" ] && ! blog_crossmint_configured; then
+      blog_json_error "Crossmint checkout is not connected yet" "crossmint_not_configured"
       exit 0
     fi
 
@@ -661,8 +613,12 @@ case "$action" in
       blog_json_error "Could not create provider checkout URL" "provider_url_failed"
       exit 0
     fi
+    buyer_email=$(printf '%s\n' "$quoted" | jq -r '.recipient.email // ""' 2>/dev/null || printf '')
     btcpay_invoice_id=''
     btcpay_checkout_link=''
+    crossmint_order_id=''
+    crossmint_client_secret=''
+    crossmint_order='null'
     if [ "$provider" = "btcpay" ]; then
       order_title=$(printf '%s\n' "$quoted" | jq -r '[.items[]?.title] | join(", ")' 2>/dev/null || printf 'gazeta order')
       crypto_total=$(printf '%s\n' "$quoted" | jq -r '.crypto_total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
@@ -680,6 +636,19 @@ case "$action" in
         blog_json_error "BTCPay checkout is not connected yet" "btcpay_not_configured"
         exit 0
       fi
+    elif [ "$provider" = "crossmint" ]; then
+      crossmint_json=$(blog_crossmint_create_order_json "$order_id" "$quoted" "$buyer_email" 2>/dev/null || printf '')
+      if [ -z "$crossmint_json" ]; then
+        blog_json_error "Crossmint order creation failed" "crossmint_order_failed"
+        exit 0
+      fi
+      crossmint_order_id=$(printf '%s\n' "$crossmint_json" | jq -r '.order.orderId // .orderId // ""' 2>/dev/null || printf '')
+      crossmint_client_secret=$(printf '%s\n' "$crossmint_json" | jq -r '.clientSecret // ""' 2>/dev/null || printf '')
+      crossmint_order=$(printf '%s\n' "$crossmint_json" | jq -c '.order // .' 2>/dev/null || printf 'null')
+      if [ -z "$crossmint_order_id" ] || [ -z "$crossmint_client_secret" ]; then
+        blog_json_error "Crossmint order response was missing checkout credentials" "crossmint_order_invalid"
+        exit 0
+      fi
     fi
 
     now=$(blog_now_epoch)
@@ -693,6 +662,9 @@ case "$action" in
       --arg provider_url "$provider_url" \
       --arg btcpay_invoice_id "$btcpay_invoice_id" \
       --arg btcpay_checkout_link "$btcpay_checkout_link" \
+      --arg crossmint_order_id "$crossmint_order_id" \
+      --arg crossmint_client_secret "$crossmint_client_secret" \
+      --argjson crossmint_order "$crossmint_order" \
       --arg checkout_url "/checkout?order_id=$order_id" \
       --argjson created_at "$now" \
       '{
@@ -705,6 +677,9 @@ case "$action" in
         provider_url: $provider_url,
         btcpay_invoice_id: $btcpay_invoice_id,
         btcpay_checkout_link: $btcpay_checkout_link,
+        crossmint_order_id: $crossmint_order_id,
+        crossmint_client_secret: $crossmint_client_secret,
+        crossmint_order: $crossmint_order,
         checkout_url: $checkout_url,
         items: ($quote.items // []),
         recipient: $recipient,
@@ -744,6 +719,7 @@ case "$action" in
       exit 0
     fi
     order_json=$(refresh_btcpay_order_json "$order_json" 2>/dev/null || printf '%s\n' "$order_json")
+    order_json=$(refresh_crossmint_order_json "$order_json" 2>/dev/null || printf '%s\n' "$order_json")
     jq -cn --argjson order "$order_json" '{success:true, order:$order}'
     printf '\n'
     ;;
@@ -770,11 +746,11 @@ case "$action" in
     provider=$(printf '%s' "$(blog_param provider)" | tr '[:upper:]' '[:lower:]')
     [ -n "$provider" ] || provider='unknown'
     if [ -n "$BLOG_REQUEST_BODY" ] && printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e 'type=="object"' >/dev/null 2>&1; then
-      body_order_id=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.metadata.orderId // .metadata.order_id // .orderId // ""' 2>/dev/null || printf '')
+      body_order_id=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.metadata.orderId // .metadata.order_id // .orderId // .payload.orderIdentifier // ""' 2>/dev/null || printf '')
       body_status=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -r '.type // .status // ""' 2>/dev/null || printf '')
       body_provider=$(printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e 'has("deliveryId")' >/dev/null 2>&1 && printf 'btcpay' || printf '')
-      if [ -z "$body_provider" ] && printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e 'has("purchase") or ((.type // "") | tostring | test("^(CREATED|RELEASED|RETURNED)$"))' >/dev/null 2>&1; then
-        body_provider='ramp'
+      if [ -z "$body_provider" ] && printf '%s\n' "$BLOG_REQUEST_BODY" | jq -e '((.type // "") | tostring | test("^orders[.]")) or (.payload.orderIdentifier? != null)' >/dev/null 2>&1; then
+        body_provider='crossmint'
       fi
       [ -n "$order_id" ] || order_id=$body_order_id
       [ -n "$payment_status" ] || payment_status=$(printf '%s' "$body_status" | tr '[:upper:]' '[:lower:]')
@@ -792,22 +768,14 @@ case "$action" in
       blog_json_error "order_id is required" "missing_order_id"
       exit 0
     fi
-    if [ "$provider" = "ramp" ]; then
-      if ! ramp_webhook_signature_ok; then
-        blog_json_error "Invalid Ramp webhook signature" "ramp_signature_invalid"
-        exit 0
-      fi
-      expected_receiver=$(blog_ramp_btc_address)
-      observed_receiver=$(ramp_webhook_receiver_address "$BLOG_REQUEST_BODY" | tr -d '\r\n[:space:]')
-      if [ -n "$expected_receiver" ] && [ -n "$observed_receiver" ] && [ "$expected_receiver" != "$observed_receiver" ]; then
-        blog_json_error "Ramp webhook receiver address did not match configured merchant address" "ramp_receiver_mismatch"
-        exit 0
-      fi
+    if [ "$provider" = "crossmint" ]; then
       case "$payment_status" in
-        released) payment_status='paid' ;;
-        created|'') payment_status='pending' ;;
-        returned|failed|failure|expired|cancelled|canceled) payment_status='failed' ;;
+        orders.payment.succeeded) payment_status='paid' ;;
+        orders.payment.failed|orders.delivery.failed) payment_status='failed' ;;
+        orders.quote.created|orders.quote.updated|orders.delivery.initiated|orders.delivery.completed|'') payment_status='pending' ;;
       esac
+      mapped_order_id=$(find_order_id_by_crossmint_order_id "$order_id" 2>/dev/null || printf '')
+      [ -z "$mapped_order_id" ] || order_id=$mapped_order_id
     fi
     case "$payment_status" in
       paid|success|succeeded|settled|invoice_payment_settled|invoice_processing|processing)

@@ -11,7 +11,7 @@ license: "CC BY 4.0"
 <section id="checkout-page-root" class="checkout-shell" data-page-slug="checkout" data-page-type="checkout">
 <div class="checkout-head">
 <h1>Checkout</h1>
-<p>Choose crypto or credit-card onramp, then complete payment in-panel.</p>
+<p>Choose BTCPay or credit card, then complete payment in-panel.</p>
 </div>
 <div id="checkout-page-content" class="checkout-page-content"></div>
 </section>

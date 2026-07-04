@@ -46,7 +46,7 @@ plugin_nostr_posts=$(blog_param plugin_nostr_posts)
 plugin_zaps=$(blog_param plugin_zaps)
 plugin_commerce=$(blog_param plugin_commerce)
 plugin_btcpay=$(blog_param plugin_btcpay)
-plugin_ramp=$(blog_param plugin_ramp)
+plugin_crossmint=$(blog_param plugin_crossmint)
 plugin_merch_store=$(blog_param plugin_merch_store)
 plugin_video_chat=$(blog_param plugin_video_chat)
 plugin_overworld=$(blog_param plugin_overworld)
@@ -210,7 +210,7 @@ set_plugin_flag "nostr_posts" "$plugin_nostr_posts"
 set_plugin_flag "zaps" "$plugin_zaps"
 set_plugin_flag "commerce" "$plugin_commerce"
 set_plugin_flag "btcpay" "$plugin_btcpay"
-set_plugin_flag "ramp" "$plugin_ramp"
+set_plugin_flag "crossmint" "$plugin_crossmint"
 set_plugin_flag "merch_store" "$plugin_merch_store"
 set_plugin_flag "video_chat" "$plugin_video_chat"
 set_plugin_flag "overworld" "$plugin_overworld"

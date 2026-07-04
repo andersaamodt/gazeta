@@ -18,6 +18,8 @@
     methodTouched: false,
     busy: false,
     order: null,
+    crossmintMountKey: '',
+    crossmintMounting: false,
     orderPollTimer: 0,
     message: '',
     messageTone: 'info',
@@ -209,8 +211,8 @@
 
   function currentProvider() {
     if (state.paymentMethod === 'credit') {
-      if (state.provider !== 'ramp' && state.provider !== 'paybis') {
-        state.provider = 'ramp';
+      if (state.provider !== 'crossmint') {
+        state.provider = 'crossmint';
       }
       return state.provider;
     }
@@ -232,9 +234,56 @@
       var partner = runtime.paybis_partner_id || '';
       return 'https://widget.paybis.com/?partnerId=' + encodeURIComponent(partner);
     }
-    var key = runtime.ramp_host_api_key || '';
-    var base = runtime.ramp_widget_url || 'https://app.rampnetwork.com';
-    return String(base).replace(/\/+$/, '') + '/?hostApiKey=' + encodeURIComponent(key);
+    return '';
+  }
+
+  function mountCrossmintCheckout() {
+    var order = state.order || {};
+    var runtime = state.runtime || {};
+    var mount = document.getElementById('crossmint-checkout-mount');
+    var clientKey = String(runtime.crossmint_client_api_key || '');
+    var orderId = String(order.crossmint_order_id || '');
+    var clientSecret = String(order.crossmint_client_secret || '');
+    if (!mount || !clientKey || !orderId || !clientSecret || state.crossmintMounting) {
+      return;
+    }
+    var mountKey = clientKey + ':' + orderId + ':' + clientSecret;
+    if (state.crossmintMountKey === mountKey && mount.childNodes.length) {
+      return;
+    }
+    state.crossmintMounting = true;
+    Promise.all([
+      import('https://esm.sh/react@18.3.1'),
+      import('https://esm.sh/react-dom@18.3.1/client'),
+      import('https://esm.sh/@crossmint/client-sdk-react-ui')
+    ]).then(function (mods) {
+      var React = mods[0];
+      var ReactDOM = mods[1];
+      var Crossmint = mods[2];
+      var receiptEmail = String(order.recipient && order.recipient.email || state.shipping.email || '');
+      var element = React.createElement(
+        Crossmint.CrossmintProvider,
+        { apiKey: clientKey },
+        React.createElement(Crossmint.CrossmintEmbeddedCheckout, {
+          orderId: orderId,
+          clientSecret: clientSecret,
+          payment: {
+            receiptEmail: receiptEmail,
+            crypto: { enabled: false },
+            fiat: { enabled: true },
+            defaultMethod: 'fiat'
+          }
+        })
+      );
+      ReactDOM.createRoot(mount).render(element);
+      state.crossmintMountKey = mountKey;
+    }).catch(function () {
+      if (mount) {
+        mount.innerHTML = '<p class="checkout-provider-placeholder">Could not load Crossmint checkout. Refresh this page or use the order link after payment support is configured.</p>';
+      }
+    }).finally(function () {
+      state.crossmintMounting = false;
+    });
   }
 
   function renderOrderPanel() {
@@ -316,7 +365,7 @@
     var hasShippingItems = cartHasShippingItems(items);
     if (hasShippingItems && !state.methodTouched && !state.order) {
       state.paymentMethod = 'credit';
-      state.provider = 'ramp';
+      state.provider = 'crossmint';
     }
     var provider = currentProvider();
     var embedUrl = providerEmbedUrl(provider);
@@ -329,14 +378,16 @@
         + '</div>';
     } else if (provider === 'btcpay') {
       embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a BTCPay invoice. The secure BTCPay checkout will open from this page after the order is created.</p>';
-    } else if (provider === 'ramp' && !(state.order && state.order.provider_url)) {
-      embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a Ramp order with the final total.</p>';
+    } else if (provider === 'crossmint' && state.order && state.order.crossmint_order_id && state.order.crossmint_client_secret) {
+      embedHtml = '<div id="crossmint-checkout-mount" class="checkout-crossmint-mount" aria-label="Crossmint checkout"></div>';
+    } else if (provider === 'crossmint') {
+      embedHtml = '<p class="checkout-provider-placeholder">Start payment to create a Crossmint card checkout for the final total.</p>';
     } else if (embedUrl) {
       embedHtml = '<iframe class="checkout-provider-embed" src="' + escapeHtml(embedUrl) + '" title="' + escapeHtml(provider) + ' checkout panel"></iframe>';
     } else if (provider === 'paybis') {
       embedHtml = '<p class="checkout-provider-placeholder">Paybis embed is available as a stub until partner credentials are configured.</p>';
     } else {
-      embedHtml = '<p class="checkout-provider-placeholder">Ramp embed is available as a stub until host API key is configured.</p>';
+      embedHtml = '<p class="checkout-provider-placeholder">Checkout provider is not configured.</p>';
     }
 
     content.innerHTML = ''
@@ -368,8 +419,7 @@
       + '<legend>' + (state.paymentMethod === 'credit' ? 'Credit onramp provider' : 'Crypto processor') + '</legend>'
       + '<div class="checkout-choice-grid">'
       + (state.paymentMethod === 'credit'
-        ? ('<label class="checkout-choice' + (provider === 'ramp' ? ' is-selected' : '') + '"><input type="radio" name="checkout-provider" value="ramp"' + (provider === 'ramp' ? ' checked' : '') + '><span>Ramp</span></label>'
-          + '<label class="checkout-choice' + (provider === 'paybis' ? ' is-selected' : '') + '"><input type="radio" name="checkout-provider" value="paybis"' + (provider === 'paybis' ? ' checked' : '') + '><span>Paybis</span></label>')
+        ? '<label class="checkout-choice is-selected"><input type="radio" name="checkout-provider" value="crossmint" checked><span>Crossmint</span></label>'
         : ('<label class="checkout-choice is-selected"><input type="radio" name="checkout-provider" value="btcpay" checked><span>BTCPay Server</span></label>'))
       + '</div>'
       + '</fieldset>'
@@ -381,19 +431,18 @@
       + '</div>'
       + '</div>'
       + '</section>';
+    mountCrossmintCheckout();
   }
 
   function loadRuntimeStatus() {
     return apiPost('/cgi/blog-payments', { action: 'status' }, false).then(function (data) {
-      var rampHostApiKey = String(data.ramp_host_api_key || data.ramp_key || '');
       var paybisPartnerId = String(data.paybis_partner_id || data.paybis_partner || '');
       state.runtime = {
         btcpay_url: String(data.btcpay_url || ''),
         btcpay_host: String(data.btcpay_host || ''),
-        ramp_host_api_key: rampHostApiKey,
-        ramp_widget_url: String(data.ramp_widget_url || 'https://app.rampnetwork.com'),
+        crossmint_client_api_key: String(data.crossmint_client_api_key || ''),
+        crossmint_configured: !!data.crossmint_configured,
         paybis_partner_id: paybisPartnerId,
-        ramp_configured: !!data.ramp_configured,
         paybis_configured: !!data.paybis_configured
       };
       return data;
@@ -516,8 +565,8 @@
       state.methodTouched = true;
       if (state.paymentMethod === 'crypto') {
         state.provider = 'btcpay';
-      } else if (state.provider !== 'ramp' && state.provider !== 'paybis') {
-        state.provider = 'ramp';
+      } else {
+        state.provider = 'crossmint';
       }
       render();
       return;

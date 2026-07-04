@@ -196,11 +196,15 @@ blog_btcpay_config_value() {
   printf '%s\n' "$(blog_config_get "$blog_site_conf" "$blog_btcpay_config_key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
+blog_payments_default_secret_file() {
+  blog_payments_default_secret_key=${1-}
+  [ -n "$blog_payments_default_secret_key" ] || return 1
+  blog_payments_default_secret_name=$(printf '%s' "$blog_payments_default_secret_key" | tr '_' '-')
+  printf '%s/secrets/%s\n' "$blog_site_data" "$blog_payments_default_secret_name"
+}
+
 blog_btcpay_default_secret_file() {
-  blog_btcpay_default_secret_key=${1-}
-  [ -n "$blog_btcpay_default_secret_key" ] || return 1
-  blog_btcpay_default_secret_name=$(printf '%s' "$blog_btcpay_default_secret_key" | tr '_' '-')
-  printf '%s/secrets/%s\n' "$blog_site_data" "$blog_btcpay_default_secret_name"
+  blog_payments_default_secret_file "${1-}"
 }
 
 blog_btcpay_config_secret_value() {
@@ -211,7 +215,7 @@ blog_btcpay_config_secret_value() {
     sed -n '1p' "$blog_btcpay_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
     return 0
   fi
-  blog_btcpay_default_file=$(blog_btcpay_default_secret_file "$blog_btcpay_config_secret_key")
+  blog_btcpay_default_file=$(blog_payments_default_secret_file "$blog_btcpay_config_secret_key")
   if [ "$blog_btcpay_default_file" != "$blog_btcpay_config_secret_file" ] && [ -f "$blog_btcpay_default_file" ]; then
     sed -n '1p' "$blog_btcpay_default_file" 2>/dev/null | tr -d '\r\n[:space:]'
     return 0
@@ -262,59 +266,64 @@ blog_btcpay_webhook_url() {
   printf '%s/cgi/blog-payments?action=webhook&provider=btcpay\n' "$public_url"
 }
 
-blog_ramp_config_value() {
+blog_payments_config_value() {
   key=${1-}
   [ -n "$key" ] || return 1
   printf '%s\n' "$(blog_config_get "$blog_site_conf" "$key" 2>/dev/null || printf '')" | tr -d '\r'
 }
 
-blog_ramp_config_secret_value() {
-  blog_ramp_config_secret_key=${1-}
-  [ -n "$blog_ramp_config_secret_key" ] || return 1
-  blog_ramp_config_secret_file=$(blog_ramp_config_value "${blog_ramp_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-  if [ -n "$blog_ramp_config_secret_file" ] && [ -f "$blog_ramp_config_secret_file" ]; then
-    sed -n '1p' "$blog_ramp_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
+blog_payments_config_secret_value() {
+  blog_payments_config_secret_key=${1-}
+  [ -n "$blog_payments_config_secret_key" ] || return 1
+  blog_payments_config_secret_file=$(blog_payments_config_value "${blog_payments_config_secret_key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$blog_payments_config_secret_file" ] && [ -f "$blog_payments_config_secret_file" ]; then
+    sed -n '1p' "$blog_payments_config_secret_file" 2>/dev/null | tr -d '\r\n[:space:]'
     return 0
   fi
-  blog_ramp_config_value "$blog_ramp_config_secret_key" | tr -d '\n[:space:]'
+  blog_payments_default_file=$(blog_payments_default_secret_file "$blog_payments_config_secret_key")
+  if [ "$blog_payments_default_file" != "$blog_payments_config_secret_file" ] && [ -f "$blog_payments_default_file" ]; then
+    sed -n '1p' "$blog_payments_default_file" 2>/dev/null | tr -d '\r\n[:space:]'
+    return 0
+  fi
+  blog_payments_config_value "$blog_payments_config_secret_key" | tr -d '\n[:space:]'
 }
 
-blog_ramp_widget_url() {
-  url=$(blog_ramp_config_value ramp_widget_url | tr -d '\n[:space:]')
-  [ -n "$url" ] || url='https://app.rampnetwork.com'
+blog_crossmint_api_base() {
+  url=$(blog_payments_config_value crossmint_api_base | tr -d '\n[:space:]')
+  [ -n "$url" ] || url='https://www.crossmint.com/api'
   printf '%s\n' "${url%/}"
 }
 
-blog_ramp_host_api_key() {
-  blog_ramp_config_secret_value ramp_host_api_key
+blog_crossmint_api_key() {
+  blog_payments_config_secret_value crossmint_api_key
 }
 
-blog_ramp_btc_address() {
-  blog_ramp_config_value ramp_btc_address | tr -d '\n[:space:]'
+blog_crossmint_client_api_key() {
+  blog_payments_config_value crossmint_client_api_key | tr -d '\n[:space:]'
 }
 
-blog_ramp_host_app_name() {
-  name=$(blog_ramp_config_value ramp_host_app_name | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
-  [ -n "$name" ] || name='gazeta checkout'
-  printf '%s\n' "$name"
+blog_crossmint_token_locator() {
+  locator=$(blog_payments_config_value crossmint_token_locator | tr -d '\n[:space:]')
+  [ -n "$locator" ] || locator='solana:usdc'
+  printf '%s\n' "$locator"
 }
 
-blog_ramp_host_logo_url() {
-  blog_ramp_config_value ramp_host_logo_url | tr -d '\n'
+blog_crossmint_recipient_wallet_address() {
+  blog_payments_config_value crossmint_recipient_wallet_address | tr -d '\n[:space:]'
 }
 
-blog_ramp_webhook_signature_required() {
-  value=$(blog_ramp_config_value ramp_webhook_signature_required | tr '[:upper:]' '[:lower:]' | tr -d '\n[:space:]')
-  case "$value" in
-    true|1|yes|on) printf 'true\n' ;;
-    *) printf 'false\n' ;;
-  esac
+blog_crossmint_payment_method() {
+  method=$(blog_payments_config_value crossmint_payment_method | tr -d '\n[:space:]')
+  [ -n "$method" ] || method='card'
+  printf '%s\n' "$method"
 }
 
-blog_ramp_configured() {
-  blog_plugin_enabled ramp || return 1
-  [ -n "$(blog_ramp_host_api_key)" ] || return 1
-  [ -n "$(blog_ramp_btc_address)" ] || return 1
+blog_crossmint_configured() {
+  blog_plugin_enabled crossmint || return 1
+  [ -n "$(blog_crossmint_api_key)" ] || return 1
+  [ -n "$(blog_crossmint_client_api_key)" ] || return 1
+  [ -n "$(blog_crossmint_recipient_wallet_address)" ] || return 1
+  [ -n "$(blog_crossmint_token_locator)" ] || return 1
 }
 
 blog_money_to_minor_units() {
@@ -322,64 +331,100 @@ blog_money_to_minor_units() {
   awk 'BEGIN { v = ARGV[1] + 0; if (v < 0) v = 0; printf "%.0f\n", v * 100 }' "$amount"
 }
 
-blog_ramp_webhook_url() {
+blog_crossmint_webhook_url() {
   order_id=${1-}
   public_url=$(blog_payments_public_site_url)
   secret=$(blog_btcpay_webhook_secret)
   [ -n "$public_url" ] || return 1
   [ -n "$order_id" ] || return 1
   if [ -n "$secret" ]; then
-    printf '%s/cgi/blog-payments?action=webhook&provider=ramp&order_id=%s&webhook_secret=%s\n' "$public_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$secret")"
+    printf '%s/cgi/blog-payments?action=webhook&provider=crossmint&order_id=%s&webhook_secret=%s\n' "$public_url" "$(blog_url_encode "$order_id")" "$(blog_url_encode "$secret")"
     return 0
   fi
-  printf '%s/cgi/blog-payments?action=webhook&provider=ramp&order_id=%s\n' "$public_url" "$(blog_url_encode "$order_id")"
+  printf '%s/cgi/blog-payments?action=webhook&provider=crossmint&order_id=%s\n' "$public_url" "$(blog_url_encode "$order_id")"
 }
 
-blog_ramp_provider_url() {
+blog_crossmint_create_order_json() {
   order_id=${1-}
   quote_json=${2-}
   buyer_email=${3-}
   [ -n "$order_id" ] || return 1
   [ -n "$quote_json" ] || return 1
-  blog_ramp_configured || return 1
-  base=$(blog_ramp_widget_url)
-  host_api_key=$(blog_ramp_host_api_key)
-  btc_address=$(blog_ramp_btc_address)
-  host_app_name=$(blog_ramp_host_app_name)
-  host_logo_url=$(blog_ramp_host_logo_url)
+  blog_crossmint_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  base=$(blog_crossmint_api_base)
+  api_key=$(blog_crossmint_api_key)
+  token_locator=$(blog_crossmint_token_locator)
+  recipient_wallet=$(blog_crossmint_recipient_wallet_address)
+  payment_method=$(blog_crossmint_payment_method)
   total=$(printf '%s\n' "$quote_json" | jq -r '.total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
-  total_units=$(blog_money_to_minor_units "$total")
-  checkout_url="/checkout?order_id=$order_id"
-  public_url=$(blog_payments_public_site_url)
-  success_url=$checkout_url
-  failure_url=$checkout_url
-  final_url=$checkout_url
-  if [ -n "$public_url" ]; then
-    success_url="$public_url$checkout_url"
-    failure_url="$public_url$checkout_url"
-    final_url="$public_url$checkout_url"
-  fi
-  webhook_url=$(blog_ramp_webhook_url "$order_id" 2>/dev/null || printf '')
+  [ -n "$buyer_email" ] || buyer_email=$(printf '%s\n' "$quote_json" | jq -r '.recipient.email // ""' 2>/dev/null || printf '')
+  payload=$(jq -cn \
+    --arg token_locator "$token_locator" \
+    --arg amount "$(blog_payments_format_money "$total")" \
+    --arg payment_method "$payment_method" \
+    --arg receipt_email "$buyer_email" \
+    --arg wallet_address "$recipient_wallet" \
+    '{
+      lineItems: [
+        {
+          tokenLocator: $token_locator,
+          executionParameters: {
+            mode: "exact-in",
+            amount: $amount
+          }
+        }
+      ],
+      payment: {
+        method: $payment_method,
+        receiptEmail: $receipt_email
+      },
+      recipient: {
+        walletAddress: $wallet_address
+      }
+    }')
+  [ -n "$payload" ] || return 1
 
-  url="$base/?hostApiKey=$(blog_url_encode "$host_api_key")"
-  url="$url&hostAppName=$(blog_url_encode "$host_app_name")"
-  if [ -n "$host_logo_url" ]; then
-    url="$url&hostLogoUrl=$(blog_url_encode "$host_logo_url")"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-crossmint-order.XXXXXX")
+  http_code=$(curl -sS --max-time 25 \
+    -H "X-API-KEY: $api_key" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -o "$tmp" \
+    -w '%{http_code}' \
+    -X POST \
+    --data "$payload" \
+    "$base/2022-06-09/orders" 2>/dev/null || printf '000')
+  body=$(cat "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  case "$http_code" in
+    200|201)
+      printf '%s\n' "$body" | jq -c '.' 2>/dev/null
+      return $?
+      ;;
+  esac
+  return 1
+}
+
+blog_crossmint_get_order_json() {
+  provider_order_id=${1-}
+  client_secret=${2-}
+  [ -n "$provider_order_id" ] || return 1
+  blog_crossmint_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  base=$(blog_crossmint_api_base)
+  api_key=$(blog_crossmint_api_key)
+  if [ -n "$client_secret" ]; then
+    curl -fsS --max-time 15 \
+      -H "Authorization: $client_secret" \
+      -H "Accept: application/json" \
+      "$base/2022-06-09/orders/$provider_order_id" 2>/dev/null | jq -c '.' 2>/dev/null
+    return $?
   fi
-  url="$url&enabledFlows=ONRAMP&defaultFlow=ONRAMP"
-  url="$url&enabledCryptoAssets=BTC_BTC&outAsset=BTC_BTC"
-  url="$url&inAsset=USD&inAssetValue=$(blog_url_encode "$total_units")"
-  url="$url&userAddress=$(blog_url_encode "$btc_address")"
-  url="$url&successUrl=$(blog_url_encode "$success_url")"
-  url="$url&failureUrl=$(blog_url_encode "$failure_url")"
-  url="$url&finalUrl=$(blog_url_encode "$final_url")"
-  if [ -n "$webhook_url" ]; then
-    url="$url&webhookStatusUrl=$(blog_url_encode "$webhook_url")"
-  fi
-  if [ -n "$buyer_email" ]; then
-    url="$url&userEmailAddress=$(blog_url_encode "$buyer_email")"
-  fi
-  printf '%s\n' "$url"
+  curl -fsS --max-time 15 \
+    -H "X-API-KEY: $api_key" \
+    -H "Accept: application/json" \
+    "$base/2022-06-09/orders/$provider_order_id" 2>/dev/null | jq -c '.' 2>/dev/null
 }
 
 blog_btcpay_create_invoice_json() {

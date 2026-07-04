@@ -2351,7 +2351,7 @@ blog_json_error() {
 blog_plugin_supported() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
-    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|commerce|btcpay|ramp|merch_store|video_chat|overworld) return 0 ;;
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|commerce|btcpay|crossmint|merch_store|video_chat|overworld) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -2359,7 +2359,7 @@ blog_plugin_supported() {
 blog_plugin_default_enabled() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
-    ramp|merch_store|video_chat|overworld) printf 'false\n' ;;
+    crossmint|merch_store|video_chat|overworld) printf 'false\n' ;;
     nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|commerce|btcpay) printf 'true\n' ;;
     *) printf 'false\n' ;;
   esac
@@ -2419,7 +2419,7 @@ blog_plugins_json() {
   zaps=$(blog_plugin_enabled_json "zaps")
   commerce=$(blog_plugin_enabled_json "commerce")
   btcpay=$(blog_plugin_enabled_json "btcpay")
-  ramp=$(blog_plugin_enabled_json "ramp")
+  crossmint=$(blog_plugin_enabled_json "crossmint")
   merch_store=$(blog_plugin_enabled_json "merch_store")
   video_chat=$(blog_plugin_enabled_json "video_chat")
   overworld=$(blog_plugin_enabled_json "overworld")
@@ -2431,7 +2431,7 @@ blog_plugins_json() {
   printf '"zaps":%s,' "$zaps"
   printf '"commerce":%s,' "$commerce"
   printf '"btcpay":%s,' "$btcpay"
-  printf '"ramp":%s,' "$ramp"
+  printf '"crossmint":%s,' "$crossmint"
   printf '"merch_store":%s,' "$merch_store"
   printf '"video_chat":%s,' "$video_chat"
   printf '"overworld":%s' "$overworld"

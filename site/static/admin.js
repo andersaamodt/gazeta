@@ -48,7 +48,7 @@
       zaps: true,
       commerce: true,
       btcpay: true,
-      ramp: false,
+      crossmint: false,
       merch_store: false,
       video_chat: false,
       overworld: false
@@ -223,7 +223,7 @@
     pluginZaps: document.getElementById('plugin-zaps'),
     pluginCommerce: document.getElementById('plugin-commerce'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
-    pluginRamp: document.getElementById('plugin-ramp'),
+    pluginCrossmint: document.getElementById('plugin-crossmint'),
     pluginMerchStore: document.getElementById('plugin-merch-store'),
     pluginVideoChat: document.getElementById('plugin-video-chat'),
     pluginOverworld: document.getElementById('plugin-overworld'),
@@ -3852,7 +3852,7 @@
       zaps: src.zaps !== false,
       commerce: src.commerce !== false,
       btcpay: src.btcpay !== false,
-      ramp: src.ramp === true,
+      crossmint: src.crossmint === true,
       merch_store: src.merch_store === true,
       video_chat: src.video_chat === true,
       overworld: src.overworld === true
@@ -3986,7 +3986,7 @@
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
     if (els.pluginCommerce) els.pluginCommerce.checked = !!p.commerce;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
-    if (els.pluginRamp) els.pluginRamp.checked = !!p.ramp;
+    if (els.pluginCrossmint) els.pluginCrossmint.checked = !!p.crossmint;
     if (els.pluginMerchStore) els.pluginMerchStore.checked = !!p.merch_store;
     if (els.pluginVideoChat) els.pluginVideoChat.checked = !!p.video_chat;
     if (els.pluginOverworld) els.pluginOverworld.checked = !!p.overworld;
@@ -4063,7 +4063,7 @@
       zaps: !!(els.pluginZaps && els.pluginZaps.checked),
       commerce: !!(els.pluginCommerce && els.pluginCommerce.checked),
       btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
-      ramp: !!(els.pluginRamp && els.pluginRamp.checked),
+      crossmint: !!(els.pluginCrossmint && els.pluginCrossmint.checked),
       merch_store: !!(els.pluginMerchStore && els.pluginMerchStore.checked),
       video_chat: !!(els.pluginVideoChat && els.pluginVideoChat.checked),
       overworld: !!(els.pluginOverworld && els.pluginOverworld.checked)
@@ -4084,7 +4084,7 @@
         plugin_zaps: plugins.zaps ? 'true' : 'false',
         plugin_commerce: plugins.commerce ? 'true' : 'false',
         plugin_btcpay: plugins.btcpay ? 'true' : 'false',
-        plugin_ramp: plugins.ramp ? 'true' : 'false',
+        plugin_crossmint: plugins.crossmint ? 'true' : 'false',
         plugin_merch_store: plugins.merch_store ? 'true' : 'false',
         plugin_video_chat: plugins.video_chat ? 'true' : 'false',
         plugin_overworld: plugins.overworld ? 'true' : 'false'
@@ -8965,7 +8965,7 @@
       els.pluginZaps,
       els.pluginCommerce,
       els.pluginBtcpay,
-      els.pluginRamp,
+      els.pluginCrossmint,
       els.pluginMerchStore,
       els.pluginVideoChat,
       els.pluginOverworld

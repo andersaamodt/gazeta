@@ -343,6 +343,10 @@ rebuild_merch_landing_page() {
   jq -cn --argjson products "$products_json" '{slug:"merch", path:"/merch", products:$products}'
 }
 
+refresh_product_index_quiet() {
+  /bin/sh "$SCRIPT_DIR/blog-maintenance" rebuild-product-index >/dev/null 2>&1 || true
+}
+
 case "$action" in
   status)
     emit_success_runtime "Merch runtime loaded."
@@ -448,6 +452,7 @@ case "$action" in
     ')
     saved=$(blog_merch_selection_save_json "$updated_selection")
     landing=$(rebuild_merch_landing_page)
+    refresh_product_index_quiet
     blog_run_build_async
     jq -cn --argjson runtime "$(runtime_json)" --argjson selection "$saved" --argjson imported "$imported_json" --argjson landing "$landing" \
       '{success:true, message:"Selected merch products synced.", runtime:$runtime, selection:$selection, imported:$imported, landing:$landing}'
@@ -470,6 +475,7 @@ case "$action" in
     fi
     slug=$(printf '%s\n' "$imported" | jq -r '.slug // ""')
     state_json=$(printf '%s\n' "$imported" | jq -c '.state')
+    refresh_product_index_quiet
     blog_run_build_async
     jq -cn \
       --arg slug "$slug" \
