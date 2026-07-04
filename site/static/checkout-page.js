@@ -253,9 +253,9 @@
     }
     state.crossmintMounting = true;
     Promise.all([
-      import('https://esm.sh/react@18.3.1'),
-      import('https://esm.sh/react-dom@18.3.1/client'),
-      import('https://esm.sh/@crossmint/client-sdk-react-ui')
+      import('https://esm.sh/react@19.2.7'),
+      import('https://esm.sh/react-dom@19.2.7/client'),
+      import('https://esm.sh/@crossmint/client-sdk-react-ui?deps=react@19.2.7,react-dom@19.2.7')
     ]).then(function (mods) {
       var React = mods[0];
       var ReactDOM = mods[1];

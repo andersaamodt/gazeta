@@ -1313,7 +1313,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.55' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.59' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: active nav items stay in button-blue without hover treatment\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
@@ -1994,6 +1994,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_enabled:' 'p
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_disabled' 'payments cgi blocks quote/create when commerce plugin is disabled'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_crossmint_create_order_json' 'payments cgi creates Crossmint checkout orders through shared helper'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'orders.payment.succeeded' 'payments cgi handles Crossmint paid webhooks'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_crossmint_link_recipient_wallet_json' 'payments cgi links Crossmint external recipient wallets before order creation'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_crossmint_recipient_user_email' 'payments cgi can link Crossmint recipient wallet to a configured merchant user'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
@@ -2019,6 +2021,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/shop-cart.js" 'variant_id: item.v
 assert_file_contains "$SITE_SOURCE_ROOT/static/shop-cart.js" 'plugins.commerce !== false' 'cart script is controlled by commerce plugin flag'
 assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'data-shipping-field="address1"' 'checkout page renders shipping address fields'
 assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'Crossmint.CrossmintCheckoutProvider' 'checkout page wraps embedded Crossmint checkout in the SDK checkout provider'
+assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'react@19.2.7' 'checkout page loads a React runtime compatible with Crossmint SDK'
+assert_file_contains "$SITE_SOURCE_ROOT/static/checkout-page.js" 'deps=react@19.2.7,react-dom@19.2.7' 'checkout page loads Crossmint SDK against the same React runtime'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'data-nip23-product-variant="true"' 'NIP-23 product page renders variant selector'
 assert_file_contains "$ROOT_DIR/cgi/blog-download" 'blog_payments_verify_token "$token" download' 'download cgi verifies signed download token'
 assert_file_contains "$ROOT_DIR/cgi/blog-delivery" 'blog_payments_verify_token "$token" delivery' 'delivery cgi verifies durable buyer delivery token'

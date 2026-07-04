@@ -154,6 +154,16 @@ case "$url" in
       printf '%s\n' "$body"
     fi
     ;;
+  https://www.crossmint.com/api/2025-06-09/users/email%3Amerchant%40example.com/linked-wallets/So11111111111111111111111111111111111111112)
+    [ "$method" = "PUT" ] || exit 22
+    body='{"chain":"solana","walletAddress":"So11111111111111111111111111111111111111112"}'
+    if [ -n "$output_file" ]; then
+      printf '%s\n' "$body" > "$output_file"
+      [ -n "$write_out" ] && printf '200'
+    else
+      printf '%s\n' "$body"
+    fi
+    ;;
   https://www.crossmint.com/api/2022-06-09/orders/crossmint-order-1)
     printf '{"orderId":"crossmint-order-1","phase":"payment","payment":{"status":"completed","method":"card","currency":"usd"}}\n'
     ;;
@@ -403,6 +413,7 @@ chmod 600 "$CROSSMINT_SECRET_FILE" "$PRINTFUL_SECRET_FILE" "$WEBHOOK_SECRET_FILE
 blog_config_set "$blog_site_conf" crossmint_api_key_file "$CROSSMINT_SECRET_FILE"
 blog_config_set "$blog_site_conf" crossmint_client_api_key test-crossmint-client-key
 blog_config_set "$blog_site_conf" crossmint_recipient_wallet_address So11111111111111111111111111111111111111112
+blog_config_set "$blog_site_conf" crossmint_recipient_user_email merchant@example.com
 blog_config_set "$blog_site_conf" crossmint_token_locator solana:usdc
 blog_config_set "$blog_site_conf" payments_webhook_secret_file "$WEBHOOK_SECRET_FILE"
 blog_config_set "$blog_site_conf" btcpay_api_key_file "$BTCPAY_SECRET_FILE"

@@ -308,8 +308,21 @@ blog_crossmint_token_locator() {
   printf '%s\n' "$locator"
 }
 
+blog_crossmint_recipient_wallet_chain() {
+  chain=$(blog_payments_config_value crossmint_recipient_wallet_chain | tr -d '\n[:space:]')
+  if [ -z "$chain" ]; then
+    chain=$(blog_crossmint_token_locator | sed 's/:.*$//')
+  fi
+  [ -n "$chain" ] || chain='solana'
+  printf '%s\n' "$chain"
+}
+
 blog_crossmint_recipient_wallet_address() {
   blog_payments_config_value crossmint_recipient_wallet_address | tr -d '\n[:space:]'
+}
+
+blog_crossmint_recipient_user_email() {
+  blog_payments_config_value crossmint_recipient_user_email | tr -d '\n[:space:]'
 }
 
 blog_crossmint_payment_method() {
@@ -344,6 +357,47 @@ blog_crossmint_webhook_url() {
   printf '%s/cgi/blog-payments?action=webhook&provider=crossmint&order_id=%s\n' "$public_url" "$(blog_url_encode "$order_id")"
 }
 
+blog_crossmint_link_recipient_wallet_json() {
+  buyer_email=${1-}
+  recipient_email=$(blog_crossmint_recipient_user_email)
+  [ -n "$recipient_email" ] || recipient_email=$buyer_email
+  [ -n "$recipient_email" ] || return 0
+  blog_crossmint_configured || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  base=$(blog_crossmint_api_base)
+  api_key=$(blog_crossmint_api_key)
+  recipient_wallet=$(blog_crossmint_recipient_wallet_address)
+  recipient_chain=$(blog_crossmint_recipient_wallet_chain)
+  [ -n "$recipient_wallet" ] || return 1
+  [ -n "$recipient_chain" ] || return 1
+  user_locator=$(blog_url_encode "email:$recipient_email")
+  wallet_locator=$(blog_url_encode "$recipient_wallet")
+  payload=$(jq -cn --arg chain "$recipient_chain" '{chain:$chain}')
+  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-crossmint-wallet.XXXXXX")
+  http_code=$(curl -sS --max-time 25 \
+    -H "X-API-KEY: $api_key" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -o "$tmp" \
+    -w '%{http_code}' \
+    -X PUT \
+    --data "$payload" \
+    "$base/2025-06-09/users/$user_locator/linked-wallets/$wallet_locator" 2>/dev/null || printf '000')
+  body=$(cat "$tmp" 2>/dev/null || printf '')
+  rm -f "$tmp"
+  case "$http_code" in
+    200|201|204)
+      if [ -n "$body" ]; then
+        printf '%s\n' "$body" | jq -c '.' 2>/dev/null || printf '{}\n'
+      else
+        printf '{}\n'
+      fi
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 blog_crossmint_create_order_json() {
   order_id=${1-}
   quote_json=${2-}
@@ -359,6 +413,7 @@ blog_crossmint_create_order_json() {
   payment_method=$(blog_crossmint_payment_method)
   total=$(printf '%s\n' "$quote_json" | jq -r '.total // .subtotal // "0.00"' 2>/dev/null || printf '0.00')
   [ -n "$buyer_email" ] || buyer_email=$(printf '%s\n' "$quote_json" | jq -r '.recipient.email // ""' 2>/dev/null || printf '')
+  blog_crossmint_link_recipient_wallet_json "$buyer_email" >/dev/null || return 1
   payload=$(jq -cn \
     --arg token_locator "$token_locator" \
     --arg amount "$(blog_payments_format_money "$total")" \
