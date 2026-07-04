@@ -780,7 +780,7 @@ case "$action" in
       [ -n "$payment_status" ] || payment_status=$(printf '%s' "$body_status" | tr '[:upper:]' '[:lower:]')
       [ "$provider" != "unknown" ] || [ -z "$body_provider" ] || provider=$body_provider
     fi
-    webhook_secret_expected=$(blog_config_get "$blog_site_conf" payments_webhook_secret 2>/dev/null || printf '')
+    webhook_secret_expected=$(blog_btcpay_webhook_secret 2>/dev/null || printf '')
     if [ -n "$webhook_secret_expected" ]; then
       webhook_secret=$(blog_param webhook_secret)
       if [ -z "$webhook_secret" ] || [ "$webhook_secret" != "$webhook_secret_expected" ]; then

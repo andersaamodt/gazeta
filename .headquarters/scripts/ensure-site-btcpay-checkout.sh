@@ -5,6 +5,7 @@ site_user=${HQ_SITE_USER-}
 site_domain=${HQ_SITE_DOMAIN-}
 btcpay_host=${HQ_BTCPAY_HOST:-}
 btcpay_rootpath=${HQ_BTCPAY_ROOTPATH:-/}
+btcpay_store_id=${HQ_BTCPAY_STORE_ID:-}
 
 run_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -59,6 +60,22 @@ release_site_conf() {
   printf '%s/.wizardry.hq/release-config/site.conf\n' "$(site_home)"
 }
 
+site_data_dir() {
+  printf '%s/.wizardry.hq/site-data\n' "$(site_home)"
+}
+
+btcpay_secret_dir() {
+  printf '%s/payments\n' "$(site_data_dir)"
+}
+
+btcpay_api_key_file() {
+  printf '%s/btcpay_api_key\n' "$(btcpay_secret_dir)"
+}
+
+payments_webhook_secret_file() {
+  printf '%s/payments_webhook_secret\n' "$(btcpay_secret_dir)"
+}
+
 normalize_rootpath() {
   raw=${1-}
   raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
@@ -92,6 +109,11 @@ read_conf_value() {
   run_root awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file" 2>/dev/null || true
 }
 
+read_secret_value() {
+  file=$1
+  run_root sed -n '1p' "$file" 2>/dev/null | tr -d '\r\n[:space:]' || true
+}
+
 write_conf_value() {
   file=$1
   key=$2
@@ -117,9 +139,17 @@ END {
   rm -f "$tmp"
 }
 
-ensure_webhook_secret() {
+write_secret_file() {
   file=$1
-  current=$(read_conf_value "$file" payments_webhook_secret | tr -d '\r\n[:space:]')
+  value=$2
+  tmp=$(mktemp "${TMPDIR:-/tmp}/btcpay-checkout-secret.XXXXXX")
+  printf '%s\n' "$value" > "$tmp"
+  run_root install -o "$site_user" -g "$site_user" -m 600 "$tmp" "$file"
+  rm -f "$tmp"
+}
+
+ensure_webhook_secret() {
+  current=$(read_secret_value "$(payments_webhook_secret_file)")
   if [ -n "$current" ]; then
     printf '%s\n' "$current"
     return 0
@@ -129,12 +159,13 @@ ensure_webhook_secret() {
   else
     secret=$(dd if=/dev/urandom bs=24 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')
   fi
-  write_conf_value "$file" payments_webhook_secret "$secret"
+  write_secret_file "$(payments_webhook_secret_file)" "$secret"
   printf '%s\n' "$secret"
 }
 
 write_site_config() {
   rootpath=$(normalize_rootpath "$btcpay_rootpath")
+  run_root install -o "$site_user" -g "$site_user" -m 700 -d "$(btcpay_secret_dir)"
   for conf in "$(active_site_conf)" "$(release_site_conf)"; do
     run_root test -f "$conf" || {
       status_bad "Missing site config: $conf"
@@ -142,14 +173,29 @@ write_site_config() {
     }
     write_conf_value "$conf" btcpay_host "$btcpay_host"
     write_conf_value "$conf" btcpay_rootpath "$rootpath"
+    [ -n "$btcpay_store_id" ] && write_conf_value "$conf" btcpay_store_id "$btcpay_store_id"
+    write_conf_value "$conf" btcpay_api_key_file "$(btcpay_api_key_file)"
+    write_conf_value "$conf" payments_webhook_secret_file "$(payments_webhook_secret_file)"
     write_conf_value "$conf" plugin_btcpay true
-    ensure_webhook_secret "$conf" >/dev/null
   done
+  ensure_webhook_secret >/dev/null
 }
 
 public_ready() {
   command -v curl >/dev/null 2>&1 || return 1
   curl -fsSI --max-time 12 "$(btcpay_url)/" >/dev/null 2>&1
+}
+
+api_ready() {
+  command -v curl >/dev/null 2>&1 || return 1
+  store_id=$(read_conf_value "$(active_site_conf)" btcpay_store_id | tr -d '\r\n[:space:]')
+  api_key=$(read_secret_value "$(btcpay_api_key_file)")
+  [ -n "$store_id" ] || return 1
+  [ -n "$api_key" ] || return 1
+  curl -fsS --max-time 12 \
+    -H "Authorization: token $api_key" \
+    -H "Accept: application/json" \
+    "$(btcpay_url)/api/v1/stores/$store_id" >/dev/null 2>&1
 }
 
 check_status() {
@@ -159,14 +205,34 @@ check_status() {
   printf 'btcpay_rootpath=%s\n' "$rootpath"
   printf 'btcpay_url=%s\n' "$(btcpay_url)"
   active_host=$(read_conf_value "$(active_site_conf)" btcpay_host)
+  active_store_id=$(read_conf_value "$(active_site_conf)" btcpay_store_id | tr -d '\r\n[:space:]')
   active_plugin=$(read_conf_value "$(active_site_conf)" plugin_btcpay)
-  active_secret=$(read_conf_value "$(active_site_conf)" payments_webhook_secret | tr -d '\r\n[:space:]')
+  active_key_file=$(read_conf_value "$(active_site_conf)" btcpay_api_key_file)
+  active_secret_file=$(read_conf_value "$(active_site_conf)" payments_webhook_secret_file)
+  active_key=$(read_secret_value "$(btcpay_api_key_file)")
+  active_secret=$(read_secret_value "$(payments_webhook_secret_file)")
   if [ "$active_host" != "$btcpay_host" ]; then
     status_bad "The active site is not pointed at $btcpay_host yet."
     return 0
   fi
   if [ "$active_plugin" != "true" ]; then
     status_bad "The BTCPay plugin is not enabled in site config yet."
+    return 0
+  fi
+  if [ -z "$active_store_id" ]; then
+    status_bad "The BTCPay store id is not configured yet."
+    return 0
+  fi
+  if [ "$active_key_file" != "$(btcpay_api_key_file)" ]; then
+    status_bad "The BTCPay API key file path is not managed by Headquarters yet."
+    return 0
+  fi
+  if [ -z "$active_key" ]; then
+    status_bad "The BTCPay API key has not been saved to $(btcpay_api_key_file) yet."
+    return 0
+  fi
+  if [ "$active_secret_file" != "$(payments_webhook_secret_file)" ]; then
+    status_bad "The BTCPay webhook secret file path is not managed by Headquarters yet."
     return 0
   fi
   if [ -z "$active_secret" ]; then
@@ -177,7 +243,11 @@ check_status() {
     status_bad "BTCPay is not reachable at $(btcpay_url)/."
     return 0
   fi
-  status_ok "BTCPay checkout is wired to $(btcpay_url)/ for $site_domain; API key/store authorization is completed from the site's BTCPay admin panel."
+  if ! api_ready; then
+    status_bad "The configured BTCPay API key cannot read store $active_store_id yet."
+    return 0
+  fi
+  status_ok "BTCPay checkout is wired to $(btcpay_url)/ for $site_domain and the configured store API key is ready."
 }
 
 case "${1-}" in

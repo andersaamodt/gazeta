@@ -32,6 +32,25 @@ write_conf_value() {
   config-set "$blog_site_conf" "$key" "$value"
 }
 
+write_secret_value() {
+  key=$1
+  value=$2
+  secret_file=$(blog_btcpay_config_value "${key}_file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  if [ -n "$secret_file" ]; then
+    case "$secret_file" in
+      /*)
+        mkdir -p "$(dirname "$secret_file")"
+        tmp=$(mktemp "${TMPDIR:-/tmp}/blog-btcpay-secret.XXXXXX")
+        printf '%s\n' "$value" > "$tmp"
+        mv "$tmp" "$secret_file"
+        chmod 600 "$secret_file" 2>/dev/null || true
+        return 0
+        ;;
+    esac
+  fi
+  write_conf_value "$key" "$value"
+}
+
 public_head_ok() {
   url=${1-}
   [ -n "$url" ] || return 1
@@ -134,8 +153,8 @@ case "$action" in
     write_conf_value btcpay_host "$btcpay_host"
     write_conf_value btcpay_rootpath "$btcpay_rootpath"
     [ -n "$btcpay_store_id" ] && write_conf_value btcpay_store_id "$btcpay_store_id"
-    [ -n "$btcpay_api_key" ] && write_conf_value btcpay_api_key "$btcpay_api_key"
-    [ -n "$webhook_secret" ] && write_conf_value payments_webhook_secret "$webhook_secret"
+    [ -n "$btcpay_api_key" ] && write_secret_value btcpay_api_key "$btcpay_api_key"
+    [ -n "$webhook_secret" ] && write_secret_value payments_webhook_secret "$webhook_secret"
     write_conf_value plugin_btcpay true
     emit_success "BTCPay checkout settings saved."
     ;;

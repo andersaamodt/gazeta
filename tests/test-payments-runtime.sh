@@ -47,6 +47,7 @@ SITE_DATA="$SITES_DIR/.sitedata/$SITE_NAME"
 BIN_DIR="$TMP_ROOT/bin"
 
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_DATA" "$BIN_DIR"
+ln -s "$ROOT_DIR/cgi" "$SITE_ROOT/cgi"
 
 cat > "$BIN_DIR/http-status" <<'EOS'
 #!/bin/sh
@@ -355,6 +356,12 @@ run_manage_merch_cgi() {
   REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-manage-merch" 2>&1
 }
 
+run_manage_btcpay_cgi() {
+  query=$1
+  method=${2-GET}
+  REQUEST_METHOD="$method" QUERY_STRING="$query" HTTP_HOST="blog.example.com" /bin/sh "$ROOT_DIR/cgi/blog-manage-btcpay" 2>&1
+}
+
 # 1) Public runtime status keys.
 status_out=$(run_payments_cgi 'action=status')
 assert_contains "$status_out" '"success":true' 'payments status succeeds'
@@ -372,13 +379,17 @@ SECRET_DIR="$SITE_DATA/secrets"
 mkdir -p "$SECRET_DIR"
 RAMP_SECRET_FILE="$SECRET_DIR/ramp-host-api-key"
 PRINTFUL_SECRET_FILE="$SECRET_DIR/printful-api-token"
+BTCPAY_SECRET_FILE="$SECRET_DIR/btcpay-api-key"
+WEBHOOK_SECRET_FILE="$SECRET_DIR/payments-webhook-secret"
 printf '%s\n' test-ramp-key > "$RAMP_SECRET_FILE"
 printf '%s\n' test-printful-token > "$PRINTFUL_SECRET_FILE"
-chmod 600 "$RAMP_SECRET_FILE" "$PRINTFUL_SECRET_FILE" 2>/dev/null || true
+printf '%s\n' webhook-secret > "$WEBHOOK_SECRET_FILE"
+chmod 600 "$RAMP_SECRET_FILE" "$PRINTFUL_SECRET_FILE" "$WEBHOOK_SECRET_FILE" 2>/dev/null || true
 blog_config_set "$blog_site_conf" ramp_host_api_key_file "$RAMP_SECRET_FILE"
 blog_config_set "$blog_site_conf" ramp_btc_address bc1qmerchant
 blog_config_set "$blog_site_conf" ramp_webhook_signature_required false
-blog_config_set "$blog_site_conf" payments_webhook_secret webhook-secret
+blog_config_set "$blog_site_conf" payments_webhook_secret_file "$WEBHOOK_SECRET_FILE"
+blog_config_set "$blog_site_conf" btcpay_api_key_file "$BTCPAY_SECRET_FILE"
 blog_config_set "$blog_site_conf" plugin_merch_store true
 blog_config_set "$blog_site_conf" printful_api_token_file "$PRINTFUL_SECRET_FILE"
 blog_config_set "$blog_site_conf" printful_store_id test-printful-store
@@ -427,6 +438,12 @@ assert_contains "$manage_merch_status" '"printful_api_ready":true' 'merch manage
 manage_merch_save=$(run_manage_merch_cgi "action=save_config&printful_api_token=saved-printful-token&session_token=$session_token&csrf_token=$csrf_token" POST)
 assert_contains "$manage_merch_save" '"success":true' 'merch manager saves Printful token'
 assert_contains "$(cat "$PRINTFUL_SECRET_FILE")" 'saved-printful-token' 'merch manager writes Printful token to configured secret file'
+manage_btcpay_save=$(run_manage_btcpay_cgi "action=save_config&btcpay_host=pay.blog.example.com&btcpay_rootpath=/btcpay&btcpay_store_id=test-store&btcpay_api_key=file-api-key&payments_webhook_secret=file-webhook-secret&session_token=$session_token&csrf_token=$csrf_token" POST)
+assert_contains "$manage_btcpay_save" '"success":true' 'BTCPay manager saves checkout settings'
+assert_contains "$(cat "$BTCPAY_SECRET_FILE")" 'file-api-key' 'BTCPay manager writes API key to configured secret file'
+assert_contains "$(cat "$WEBHOOK_SECRET_FILE")" 'file-webhook-secret' 'BTCPay manager writes webhook secret to configured secret file'
+printf '%s\n' webhook-secret > "$WEBHOOK_SECRET_FILE"
+printf '%s\n' test-api-key > "$BTCPAY_SECRET_FILE"
 manage_merch_import=$(run_manage_merch_cgi "action=import_printful_product&printful_product_id=777&session_token=$session_token&csrf_token=$csrf_token" POST)
 assert_contains "$manage_merch_import" '"success":true' 'merch manager imports Printful product'
 assert_contains "$manage_merch_import" '"slug":"printful-shirt"' 'merch import slugifies Printful product name'
@@ -483,7 +500,6 @@ assert_contains "$delivery_out" '"/download/sample-product?token=' 'delivery pag
 
 # 5) Webhook paid path updates order.
 blog_config_set "$blog_site_conf" btcpay_store_id test-store
-blog_config_set "$blog_site_conf" btcpay_api_key test-api-key
 create_out_2=$(run_payments_cgi "action=create_order&payment_method=crypto&provider=btcpay&items_json=$(blog_url_encode "$items_json")")
 order_id_2=$(printf '%s\n' "$create_out_2" | sed -n 's/.*"order_id":"\([^"]*\)".*/\1/p' | head -n 1)
 assert_nonempty "$order_id_2" 'second create_order returns order_id'
