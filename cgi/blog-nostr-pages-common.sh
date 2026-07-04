@@ -2893,6 +2893,16 @@ blog_nostr_pages_sync_source_pages() {
   if [ -z "$cfg_json" ]; then
     cfg_json=$(blog_nostr_pages_load_json)
   fi
+  source_sync_signature=$(blog_nostr_pages_source_sync_signature "$cfg_json")
+  source_sync_state_dir="$blog_state_dir/pre-build"
+  source_sync_signature_file="$source_sync_state_dir/nostr-source-pages.sig"
+  mkdir -p "$source_sync_state_dir"
+  if [ -n "$source_sync_signature" ] &&
+     [ -f "$source_sync_signature_file" ] &&
+     [ "$(cat "$source_sync_signature_file" 2>/dev/null || printf '')" = "$source_sync_signature" ] &&
+     blog_nostr_pages_expected_source_pages_exist "$cfg_json"; then
+    return 0
+  fi
 
   blog_nostr_pages_prune_stale_source_pages "$cfg_json"
   printf '%s\n' "$cfg_json" | jq -c '.pages[]' | while IFS= read -r row || [ -n "$row" ]; do
@@ -2902,4 +2912,60 @@ blog_nostr_pages_sync_source_pages() {
     [ -n "$slug" ] || continue
     blog_nostr_page_ensure_source_page "$slug" "$page_type"
   done
+  printf '%s\n' "$source_sync_signature" > "$source_sync_signature_file"
+  chmod 600 "$source_sync_signature_file" 2>/dev/null || true
+}
+
+blog_nostr_pages_source_sync_file_signature() {
+  signature_label=${1-}
+  signature_file=${2-}
+  [ -n "$signature_label" ] && [ -f "$signature_file" ] || return 0
+  cksum "$signature_file" 2>/dev/null | awk -v label="$signature_label" '{ printf "%s %s %s\n", label, $1, $2 }'
+}
+
+blog_nostr_pages_source_sync_signature() {
+  cfg_json=${1-}
+  signature_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-source-pages-signature.XXXXXX")
+  {
+    printf '%s\n' 'blog-nostr-source-pages-v1'
+    printf '%s\n' "$cfg_json" | jq -cS '.' 2>/dev/null | cksum | awk '{ printf "pages-config %s %s\n", $1, $2 }'
+    blog_nostr_pages_source_sync_file_signature pages-common "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+    blog_nostr_pages_source_sync_file_signature blog-lib "$SCRIPT_DIR/blog-lib.sh"
+    blog_nostr_pages_source_sync_file_signature gazeta-lodestone "$SCRIPT_DIR/gazeta-lodestone"
+    for template_file in \
+      "$blog_site_root/site/lodestone/pages/blog.stone.html" \
+      "$blog_site_root/site/lodestone/templates/list.stone.html" \
+      "$blog_site_root/site/lodestone/templates/icon-gallery.stone.html" \
+      "$blog_site_root/site/lodestone/templates/contact.stone.html" \
+      "$blog_site_root/site/lodestone/templates/nip23.stone.html" \
+      "$blog_site_root/site/lodestone/templates/public-ranking.stone.html" \
+      "$blog_site_root/site/lodestone/templates/overworld.stone.html"
+    do
+      blog_nostr_pages_source_sync_file_signature template "$template_file"
+    done
+  } > "$signature_tmp"
+  cksum "$signature_tmp" | awk '{ printf "%s-%s\n", $1, $2 }'
+  rm -f "$signature_tmp"
+}
+
+blog_nostr_pages_expected_source_pages_exist() {
+  cfg_json=${1-}
+  missing_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-source-pages-missing.XXXXXX")
+  printf '%s\n' "$cfg_json" | jq -c '.pages[]' 2>/dev/null | while IFS= read -r row || [ -n "$row" ]; do
+    [ -n "$row" ] || continue
+    slug=$(printf '%s\n' "$row" | jq -r '.slug // ""' 2>/dev/null || printf '')
+    page_type=$(printf '%s\n' "$row" | jq -r '.type // "list"' 2>/dev/null || printf 'list')
+    [ -n "$slug" ] || continue
+    source_path=$(blog_nostr_page_source_path "$slug" "$page_type" 2>/dev/null || printf '')
+    if [ -n "$source_path" ] && [ ! -f "$source_path" ]; then
+      printf '%s\n' "$slug" >> "$missing_tmp"
+      break
+    fi
+  done
+  if [ -s "$missing_tmp" ]; then
+    rm -f "$missing_tmp"
+    return 1
+  fi
+  rm -f "$missing_tmp"
+  return 0
 }

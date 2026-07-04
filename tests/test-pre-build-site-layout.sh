@@ -249,7 +249,7 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
-grep -Fq 'v0.7.49' "$ROOT_DIR/site/includes/footer.md" || {
+grep -Fq 'v0.7.50' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer missing current site version before GitHub" >&2
   exit 1
 }

@@ -417,6 +417,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_sou
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'prerender_signature: $signature' 'runtime Nostr page payloads carry the server prerender signature'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_source_sync_signature "$cfg_json"' 'Nostr source page sync has a deterministic input signature'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_expected_source_pages_exist "$cfg_json"' 'Nostr source page sync verifies expected canonical sources before skipping'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-list-common.sh"' 'navbar endpoint avoids unrelated list library parse cost'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/blog-public-ranking-common.sh"' 'navbar endpoint avoids unrelated ranking library parse cost'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_write_prerendered_source() {' 'managed Nostr pages have a shared static HTML prerender writer'
@@ -1306,7 +1308,7 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.49' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.50' 'footer exposes current site version before GitHub'
 navbar_guard_block=$(sed -n '/Absolute final guard: any active nav item must stay in button-blue on hover\/focus\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
