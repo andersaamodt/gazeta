@@ -809,8 +809,17 @@
       });
       variantsHtml += '</select></label>';
     }
+    var imageUrl = String(s.image_url || '').trim();
+    if (!imageUrl && variants.length) {
+      imageUrl = String(variants[0].image_url || '').trim();
+    }
+    var imageHtml = imageUrl
+      ? '<div class="nip23-product-card-media"><img class="nip23-product-card-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>'
+      : '';
     var html = '';
-    html += '<section class="nip23-product-card" aria-label="Product checkout">';
+    html += '<section class="nip23-product-card' + (imageHtml ? ' has-image' : '') + '" aria-label="Product checkout">';
+    html += imageHtml;
+    html += '<div class="nip23-product-card-main">';
     html += '<div class="nip23-product-card-head">';
     html += '<strong>Checkout</strong>';
     html += '<span class="nip23-product-type-pill">' + escapeHtml(productType) + '</span>';
@@ -828,6 +837,7 @@
     html += variantsHtml;
     html += '<div class="nip23-product-actions">';
     html += '<button type="button" class="nip23-product-btn nip23-product-btn-primary" data-nip23-action="add-to-cart">Add to Cart</button>';
+    html += '</div>';
     html += '</div>';
     html += '</section>';
     return html;

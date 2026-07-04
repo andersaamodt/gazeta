@@ -3941,11 +3941,39 @@ body.nav-cart-open {
 }
 
 .nip23-product-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.72rem;
   margin: 0 0 1rem;
   padding: 0.68rem 0.76rem;
   border: 1px solid var(--border, #c8d4f3);
   border-radius: 10px;
   background: var(--card-bg);
+}
+
+.nip23-product-card.has-image {
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  align-items: start;
+}
+
+.nip23-product-card-media {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border, #c8d4f3) 78%, transparent);
+  background: color-mix(in srgb, var(--card-bg, #ffffff) 76%, var(--accent, #3158a4) 24%);
+}
+
+.nip23-product-card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nip23-product-card-main {
+  min-width: 0;
 }
 
 .nip23-product-card-head {
@@ -4375,6 +4403,10 @@ body.nav-cart-open {
   .nip23-product-overview,
   .nip23-product-benefit-grid,
   .nip23-product-more-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nip23-product-card.has-image {
     grid-template-columns: 1fr;
   }
 

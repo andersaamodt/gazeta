@@ -6,3 +6,4 @@
 - Public read runtimes must not rebuild derived artifacts on read paths; they should fail with explicit maintenance guidance when artifacts are missing.
 - Build-triggered publish hooks must carry an in-progress marker so pre-build maintenance cannot recursively spawn fresh asynchronous builds.
 - POSIX shell helpers that call other helpers must use function-prefixed variable names for paths such as post files and relay files, or nested calls can clobber the caller and write metadata to the wrong file.
+- Product detail renderers must consume the same `image_url` field as gallery/index rows so product media does not disappear between list and detail views.
