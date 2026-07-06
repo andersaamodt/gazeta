@@ -111,4 +111,48 @@ printf '%s\n' "$serve_headers" | grep -q '^Status: 200 OK$'
 printf '%s\n' "$serve_headers" | grep -q '^Content-Type: text/plain$'
 printf '%s\n' "$serve_headers" | grep -q '^X-Accel-Redirect: /__site-files/hello.txt$'
 
+visibility_private_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&make_public=false"
+visibility_private_output=$(
+  printf '%s' "$visibility_private_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#visibility_private_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-set-file-visibility"
+)
+visibility_private_json=$(printf '%s\n' "$visibility_private_output" | sed -n '/^{/,$p')
+printf '%s\n' "$visibility_private_json" | jq -e '.success == true and .explicit_public == false and .effective_public == false' >/dev/null
+grep -q '^explicit_public=false$' "$record"
+test ! -f "$SITE_ROOT/build/hello public.txt"
+
+visibility_public_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&make_public=true"
+visibility_public_output=$(
+  printf '%s' "$visibility_public_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#visibility_public_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-set-file-visibility"
+)
+visibility_public_json=$(printf '%s\n' "$visibility_public_output" | sed -n '/^{/,$p')
+printf '%s\n' "$visibility_public_json" | jq -e '.success == true and .explicit_public == true and .effective_public == true and .url == "/hello%20public.txt"' >/dev/null
+grep -q '^explicit_public=true$' "$record"
+test -f "$SITE_ROOT/build/hello public.txt"
+grep -q '^Hello$' "$SITE_ROOT/build/hello public.txt"
+
+delete_body="session_token=$token&csrf_token=$csrf&file_id=$file_id"
+delete_output=$(
+  printf '%s' "$delete_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#delete_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-delete-file"
+)
+delete_json=$(printf '%s\n' "$delete_output" | sed -n '/^{/,$p')
+printf '%s\n' "$delete_json" | jq -e '.success == true and .file_id == "'"$file_id"'"' >/dev/null
+test ! -f "$record"
+test ! -f "$SITE_DATA/files/$stored_name"
+test ! -f "$SITE_ROOT/build/hello public.txt"
+
 printf '%s\n' 'gazeta upload media runtime tests passed'

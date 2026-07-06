@@ -1,0 +1,64 @@
+#!/bin/sh
+# Create a new draft initialized from a published post.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+post_path=$(blog_param post_path)
+if [ -z "$post_path" ]; then
+  blog_json_error "post_path is required" "missing_post_path"
+  exit 0
+fi
+
+post_path=$(printf '%s' "$post_path" | sed -e 's#^https\{0,1\}://[^/]*/##' -e 's#^/##')
+case "$post_path" in
+  *'..'*|*'\\'*|*'//'*)
+    blog_json_error "Invalid post path" "invalid_post_path"
+    exit 0
+    ;;
+esac
+
+file=$(blog_resolve_post_markdown_file "$post_path" 2>/dev/null || printf '')
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  blog_json_error "Post not found" "not_found"
+  exit 0
+fi
+post_path=$(blog_managed_post_rel_path_for_file "$file" 2>/dev/null || printf '')
+if [ -z "$post_path" ]; then
+  blog_json_error "Invalid post path" "invalid_post_path"
+  exit 0
+fi
+
+title=$(blog_read_front_matter_value "$file" title 2>/dev/null || printf 'Untitled')
+summary=$(blog_read_front_matter_value "$file" summary 2>/dev/null || printf '')
+post_type=$(blog_read_front_matter_value "$file" post_type 2>/dev/null || printf '')
+if [ -z "$post_type" ]; then
+  post_type=$(blog_read_front_matter_value "$file" type 2>/dev/null || printf '')
+fi
+post_type=$(blog_normalize_post_type "$post_type")
+author=$(blog_read_front_matter_value "$file" author 2>/dev/null || printf '')
+if [ -z "$author" ]; then
+  author=$(blog_get_publish_name "$BLOG_SESSION_USERNAME" 2>/dev/null || printf '%s' "$BLOG_SESSION_USERNAME")
+fi
+
+tags_raw=$(blog_read_front_matter_value "$file" tags 2>/dev/null || printf '')
+tags_csv=$(printf '%s' "$tags_raw" | sed 's/^\[//; s/\]$//; s/"//g; s/, */,/g')
+tags=$(blog_normalize_tags "$tags_csv")
+content=$(blog_read_markdown_body "$file")
+origin_platforms_json=$(blog_origin_post_platforms_json "$post_path" "$(blog_origin_enabled_platforms_json)")
+
+draft_id=$(blog_new_draft_id)
+post_filename=$(blog_normalize_post_filename "$post_path" 2>/dev/null || printf '')
+blog_save_draft "$draft_id" "$title" "$tags" "$summary" "$content" "$author" draft "" draft "$post_type" "$post_path" "$post_filename" "$origin_platforms_json"
+
+printf '{"success":true,"draft_id":"%s","message":"Draft created from published post."}\n' "$(blog_json_escape "$draft_id")"

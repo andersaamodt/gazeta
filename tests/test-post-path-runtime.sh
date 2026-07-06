@@ -139,6 +139,48 @@ draft_list_json=$(printf '%s' "$draft_list_body" |
   sed -n '/^{/,$p')
 assert_eq "$edit_draft_id" "$(printf '%s\n' "$draft_list_json" | jq -r '.drafts[] | select(.source_post_path == "posts/example-post.md") | .draft_id')" 'draft list exposes source edit draft id for reopening'
 
+edit_draft_file=$(blog_draft_resolve_file_path "$edit_draft_id")
+edit_draft_title=$(blog_read_front_matter_value "$edit_draft_file" title 2>/dev/null || printf 'Untitled Draft')
+edit_draft_tags=$(blog_read_front_matter_value "$edit_draft_file" tags 2>/dev/null || printf '')
+edit_draft_summary=$(blog_read_front_matter_value "$edit_draft_file" summary 2>/dev/null || printf '')
+edit_draft_author=$(blog_read_front_matter_value "$edit_draft_file" author 2>/dev/null || printf '')
+edit_draft_content=$(blog_read_markdown_body "$edit_draft_file" 2>/dev/null || printf '')
+edit_draft_post_type=$(blog_read_front_matter_value "$edit_draft_file" post_type 2>/dev/null || printf '')
+edit_draft_source_post_path=$(blog_read_front_matter_value "$edit_draft_file" source_post_path 2>/dev/null || printf '')
+edit_draft_post_filename=$(blog_read_front_matter_value "$edit_draft_file" post_filename 2>/dev/null || printf '')
+edit_draft_origin_platforms=$(blog_read_front_matter_value "$edit_draft_file" origin_platforms 2>/dev/null || printf '[]')
+blog_save_draft "$edit_draft_id" "$edit_draft_title" "$edit_draft_tags" "$edit_draft_summary" "$edit_draft_content" "$edit_draft_author" scheduled "2026-07-06T12:00:00Z" queued "$edit_draft_post_type" "$edit_draft_source_post_path" "$edit_draft_post_filename" "$edit_draft_origin_platforms"
+assert_eq 'queued' "$(blog_read_front_matter_value "$edit_draft_file" status 2>/dev/null || printf '')" 'test fixture can place the edit draft into queued state before runtime unqueue'
+assert_eq 'scheduled' "$(blog_read_front_matter_value "$edit_draft_file" publish_mode 2>/dev/null || printf '')" 'test fixture preserves queued publish mode before runtime unqueue'
+
+unqueue_body="draft_id=$edit_draft_id&session_token=$session_token&csrf_token=$csrf_token"
+unqueue_json=$(printf '%s' "$unqueue_body" |
+  REQUEST_METHOD=POST \
+  CONTENT_TYPE=application/x-www-form-urlencoded \
+  CONTENT_LENGTH=${#unqueue_body} \
+  /bin/sh "$ROOT_DIR/cgi/blog-unqueue-draft" |
+  sed -n '/^{/,$p')
+case "$unqueue_json" in
+  *'"success":true'*) pass ;;
+  *) fail 'unqueue draft succeeds for a queued edit draft' ;;
+esac
+assert_eq 'draft' "$(blog_read_front_matter_value "$edit_draft_file" status 2>/dev/null || printf '')" 'unqueue draft restores draft status through the runtime adapter'
+assert_eq 'draft' "$(blog_read_front_matter_value "$edit_draft_file" publish_mode 2>/dev/null || printf '')" 'unqueue draft restores draft publish mode through the runtime adapter'
+assert_eq '' "$(blog_read_front_matter_value "$edit_draft_file" scheduled_at 2>/dev/null || printf '')" 'unqueue draft clears scheduled time through the runtime adapter'
+
+delete_draft_body="draft_id=$edit_draft_id&session_token=$session_token&csrf_token=$csrf_token"
+delete_draft_json=$(printf '%s' "$delete_draft_body" |
+  REQUEST_METHOD=POST \
+  CONTENT_TYPE=application/x-www-form-urlencoded \
+  CONTENT_LENGTH=${#delete_draft_body} \
+  /bin/sh "$ROOT_DIR/cgi/blog-delete-draft" |
+  sed -n '/^{/,$p')
+case "$delete_draft_json" in
+  *'"success":true'*) pass ;;
+  *) fail 'delete draft succeeds through the runtime adapter' ;;
+esac
+assert_eq 'false' "$(test -f "$edit_draft_file" && printf true || printf false)" 'delete draft removes the draft file through the runtime adapter'
+
 catalog_json=$(blog_public_posts_catalog_build_json)
 link_catalog_row=$(printf '%s\n' "$catalog_json" | jq -c '.posts[] | select(.source_path == "posts/link-post.md")')
 assert_eq 'link-share' "$(printf '%s\n' "$link_catalog_row" | jq -r '.type // ""')" 'public posts catalog keeps link-share post type'
