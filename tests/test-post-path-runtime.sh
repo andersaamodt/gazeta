@@ -132,6 +132,7 @@ assert_eq 'posts/example-post.md' "$(blog_public_posts_catalog_build_json | jq -
 assert_eq '0' "$(wc -l < "$SITE_DATA/nostr/state/hidden_posts.txt" | tr -d ' ')" 'creating an edit draft does not hide the post from Nostr projection state'
 draft_list_body="session_token=$session_token&csrf_token=$csrf_token"
 draft_list_json=$(printf '%s' "$draft_list_body" |
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=POST \
   CONTENT_TYPE=application/x-www-form-urlencoded \
   CONTENT_LENGTH=${#draft_list_body} \

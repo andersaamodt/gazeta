@@ -391,7 +391,7 @@ config-set "$blog_site_conf" origin_public_base_url 'https://andersaamodt.com'
 run_cgi() {
   script=$1
   query=$2
-  output=$(REQUEST_METHOD=GET QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/$script" 2>&1)
+  output=$(GAZETA_THEURGY_ALLOW_CARGO=1 REQUEST_METHOD=GET QUERY_STRING="$query" HTTP_HOST="blog.example.com" "$ROOT_DIR/cgi/$script" 2>&1)
   printf '%s\n' "$output" | awk 'NF { last = $0 } END { print last }'
 }
 

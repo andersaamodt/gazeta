@@ -107,6 +107,29 @@ origin_platforms: ["telegram"]
 Draft body.
 EOF
 
+cat > "$SITE_DATA/content/drafts/queued-draft.md" <<'EOF'
+---
+draft_id: "queued-draft"
+title: ""
+tags: ""
+summary: ""
+post_type: "shortform"
+publish_mode: "drip"
+status: "queued"
+created_at: "2026-07-05T12:00:00Z"
+updated_at: "2026-07-05T12:00:00Z"
+---
+
+Queue body for drip publishing.
+EOF
+
+cat > "$SITE_ROOT/site.conf" <<'EOF'
+origin_enabled_platforms=["bluesky","telegram"]
+origin_default_platforms=["telegram"]
+drip_interval_hours=2
+drip_randomness_minutes=15
+EOF
+
 cat > "$SITE_DATA/content/posts/example-post.md" <<'EOF'
 ---
 title: "Example Post"
@@ -159,11 +182,13 @@ printf '%s\n' "$ok" | jq -e '.lists[2].slug == "wizard-tools" and .lists[2].titl
 printf '%s\n' "$ok" | jq -e '[.lists[].slug] | index("blog") == null' >/dev/null
 
 draft_ok=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=GET \
   QUERY_STRING="draft_id=example-draft&session_token=$token&csrf_token=$csrf" \
   /bin/sh "$ROOT_DIR/cgi/blog-get-draft" | extract_json
 )
 printf '%s\n' "$draft_ok" | jq -e '.success == true and .draft.draft_id == "example-draft" and .draft.title == "Example Draft"' >/dev/null
+printf '%s\n' "$draft_ok" | jq -e '.draft.post_type == "longform" and .draft.origin_platforms == []' >/dev/null
 
 posts_ok=$(
   REQUEST_METHOD=GET \
@@ -173,11 +198,13 @@ posts_ok=$(
 printf '%s\n' "$posts_ok" | jq -e '.success == true and (.posts | length) == 1 and .posts[0].path == "posts/example-post.md"' >/dev/null
 
 drafts_ok=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=GET \
   QUERY_STRING="session_token=$token&csrf_token=$csrf" \
   /bin/sh "$ROOT_DIR/cgi/blog-list-drafts" | extract_json
 )
 printf '%s\n' "$drafts_ok" | jq -e '.success == true and (.drafts | length) == 1 and .drafts[0].draft_id == "example-draft"' >/dev/null
+printf '%s\n' "$drafts_ok" | jq -e '.drafts[0].content_excerpt == "Draft body."' >/dev/null
 
 users_ok=$(
   REQUEST_METHOD=GET \
@@ -187,11 +214,12 @@ users_ok=$(
 printf '%s\n' "$users_ok" | jq -e '.success == true and .actor_username == "admin" and (.users | length) == 2' >/dev/null
 
 queue_ok=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=GET \
   QUERY_STRING="session_token=$token&csrf_token=$csrf" \
   /bin/sh "$ROOT_DIR/cgi/blog-list-queue" | extract_json
 )
-printf '%s\n' "$queue_ok" | jq -e '.success == true and (.queue | length) == 0' >/dev/null
+printf '%s\n' "$queue_ok" | jq -e '.success == true and .drip_interval_hours == 2.0 and .drip_interval_minutes == 120 and .drip_randomness_minutes == 15 and (.queue | length) == 1 and .queue[0].draft_id == "queued-draft" and .queue[0].title == "Queue body for drip publishing."' >/dev/null
 
 moderation_ok=$(
   REQUEST_METHOD=GET \
