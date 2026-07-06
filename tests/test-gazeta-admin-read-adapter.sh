@@ -193,13 +193,6 @@ queue_ok=$(
 )
 printf '%s\n' "$queue_ok" | jq -e '.success == true and (.queue | length) == 0' >/dev/null
 
-files_ok=$(
-  REQUEST_METHOD=GET \
-  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
-  /bin/sh "$ROOT_DIR/cgi/blog-list-files" | extract_json
-)
-printf '%s\n' "$files_ok" | jq -e '.success == true and (.files | length) == 0' >/dev/null
-
 moderation_ok=$(
   REQUEST_METHOD=GET \
   QUERY_STRING="session_token=$token&csrf_token=$csrf" \

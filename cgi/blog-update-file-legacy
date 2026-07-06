@@ -106,7 +106,6 @@ config-set "$record_path" public_path "$public_path"
 config-set "$record_path" explicit_public "$explicit_public"
 config-set "$record_path" updated_at "$(blog_now_iso)"
 blog_file_sync_public_aliases >/dev/null 2>&1 || true
-blog_run_build_async >/dev/null 2>&1 || true
 
 effective_public=false
 if blog_file_is_public_effective "$file_id"; then

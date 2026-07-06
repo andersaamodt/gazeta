@@ -2103,7 +2103,6 @@ blog_file_delete() {
   fi
   rm -f "$record_path"
   blog_file_sync_public_aliases >/dev/null 2>&1 || true
-  blog_run_build_async >/dev/null 2>&1 || true
 }
 
 blog_file_sync_public_aliases() {

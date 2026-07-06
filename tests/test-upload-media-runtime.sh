@@ -99,6 +99,15 @@ test "$pretty_ids" = "$file_id"
 test -f "$SITE_ROOT/build/hello public.txt"
 grep -q '^Hello$' "$SITE_ROOT/build/hello public.txt"
 
+list_files_output=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-files"
+)
+list_files_json=$(printf '%s\n' "$list_files_output" | sed -n '/^{/,$p')
+printf '%s\n' "$list_files_json" | jq -e '.success == true and (.files | length) == 1 and .files[0].file_id == "'"$file_id"'" and .files[0].url == "/hello%20public.txt"' >/dev/null
+
 serve_query="fileid=$file_id&session_token=$token&csrf_token=$csrf"
 serve_output=$(
   REQUEST_METHOD=GET \
@@ -154,5 +163,13 @@ printf '%s\n' "$delete_json" | jq -e '.success == true and .file_id == "'"$file_
 test ! -f "$record"
 test ! -f "$SITE_DATA/files/$stored_name"
 test ! -f "$SITE_ROOT/build/hello public.txt"
+
+list_files_after_delete=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-files"
+)
+printf '%s\n' "$list_files_after_delete" | sed -n '/^{/,$p' | jq -e '.success == true and (.files | length) == 0' >/dev/null
 
 printf '%s\n' 'gazeta upload media runtime tests passed'

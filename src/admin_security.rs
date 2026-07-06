@@ -1,7 +1,7 @@
+use crate::config_kv::{config_string, read_config, update_config_value};
 use crate::runtime_types::RuntimeError;
 use crate::urlcodec::percent_decode;
 use serde_json::Value;
-use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -99,8 +99,8 @@ pub(crate) fn require_admin_session(
         let _ = fs::remove_file(&session_path);
         return Err(RuntimeError::new("auth_required", "Not authenticated"));
     }
-    let is_admin = user_is_admin(users_dir, &username)
-        || boolish(Some(&config_string(&session, "is_admin")));
+    let is_admin =
+        user_is_admin(users_dir, &username) || boolish(Some(&config_string(&session, "is_admin")));
     if !is_admin {
         return Err(RuntimeError::new(
             "admin_required",
@@ -109,7 +109,12 @@ pub(crate) fn require_admin_session(
     }
     if let Some(ttl_seconds) = extend_ttl_seconds {
         let new_expiry = now_epoch() + ttl_seconds;
-        update_config_value(&session_path, "expires_at", &new_expiry.to_string())?;
+        update_config_value(
+            &session_path,
+            "expires_at",
+            &new_expiry.to_string(),
+            "Could not update session state",
+        )?;
     }
     Ok(SessionState {
         username,
@@ -173,42 +178,6 @@ fn user_is_admin_direct(users_dir: &Path, username: &str) -> bool {
 
 fn user_profile(users_dir: &Path, username: &str) -> PathBuf {
     users_dir.join(username).join("profile.conf")
-}
-
-fn read_config(path: &Path) -> Option<BTreeMap<String, String>> {
-    let text = fs::read_to_string(path).ok()?;
-    let mut config = BTreeMap::new();
-    for line in text.lines() {
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        config.insert(key.to_string(), value.to_string());
-    }
-    Some(config)
-}
-
-fn config_string(config: &BTreeMap<String, String>, key: &str) -> String {
-    config.get(key).cloned().unwrap_or_default()
-}
-
-fn update_config_value(path: &Path, key: &str, value: &str) -> Result<(), RuntimeError> {
-    let mut config = read_config(path).unwrap_or_default();
-    config.insert(key.to_string(), value.to_string());
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|error| {
-            RuntimeError::new("write_failed", format!("Could not update session state: {error}"))
-        })?;
-    }
-    let mut text = String::new();
-    for (current_key, current_value) in config {
-        text.push_str(&current_key);
-        text.push('=');
-        text.push_str(&current_value);
-        text.push('\n');
-    }
-    fs::write(path, text).map_err(|error| {
-        RuntimeError::new("write_failed", format!("Could not update session state: {error}"))
-    })
 }
 
 fn is_hex_len(value: &str, len: usize) -> bool {

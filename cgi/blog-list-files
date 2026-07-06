@@ -1,7 +1,7 @@
 #!/bin/sh
-# List uploaded attachments through the Gazeta authenticated admin read runtime.
+# List uploaded attachments through the Gazeta authenticated admin runtime.
 
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
-exec /bin/sh "$SCRIPT_DIR/gazeta-admin-read-runtime-adapter" blog-list-files
+exec /bin/sh "$SCRIPT_DIR/gazeta-admin-runtime-adapter" blog-list-files
