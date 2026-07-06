@@ -48,6 +48,14 @@ cat > "$canonical_root/includes/footer.md" <<'EOFFOOT'
 <footer class="site-footer">Fixture Footer</footer>
 EOFFOOT
 
+cat > "$canonical_root/pages/blog.md" <<'EOFPAGE'
+---
+title: Blog
+---
+
+<script src="/static/nostr-page-bootstrap/blog.js"></script>
+EOFPAGE
+
 cat > "$canonical_root/static/style.css" <<'EOFSTYLE'
 body { color: #123456; }
 --post-tag-type-bg: #dff4d7;
@@ -132,6 +140,14 @@ blog_nostr_pages_save_json '{"pages":[]}'
   printf '%s\n' "missing build-static site bootstrap artifact" >&2
   exit 1
 }
+[ -f "$generated_root/static/nostr-page-bootstrap/blog.js" ] || {
+  printf '%s\n' "missing generated placeholder page bootstrap" >&2
+  exit 1
+}
+[ -f "$generated_root/build-static/nostr-page-bootstrap/blog.js" ] || {
+  printf '%s\n' "missing build-static placeholder page bootstrap" >&2
+  exit 1
+}
 [ -f "$generated_root/static/legacy-assets/oeuvre/ultramemes.mkv" ] || {
   printf '%s\n' "missing generated legacy asset static mirror" >&2
   exit 1
@@ -159,6 +175,10 @@ grep -Fq 'theme: "lapidarist"' "$generated_root/static/site-bootstrap.js" || {
 }
 grep -Fq 'theme: "lapidarist"' "$generated_root/build-static/site-bootstrap.js" || {
   printf '%s\n' "build-static bootstrap did not default to the Lapidarist theme" >&2
+  exit 1
+}
+grep -Fq 'window.__wizardryNostrPageBootstrap' "$generated_root/static/nostr-page-bootstrap/blog.js" || {
+  printf '%s\n' "generated placeholder page bootstrap content mismatch" >&2
   exit 1
 }
 grep -Fq 'fixture-theme' "$generated_root/static/themes/lapidarist.css" || {

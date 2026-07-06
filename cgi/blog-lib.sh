@@ -273,6 +273,67 @@ blog_config_set() {
   /bin/sh "$config_set_path" "$@"
 }
 
+blog_site_setting() {
+  setting_key=${1-}
+  setting_default=${2-}
+  [ -n "$setting_key" ] || return 1
+  setting_value=$(blog_config_get "$blog_site_conf" "$setting_key" 2>/dev/null || printf '')
+  if [ -n "$setting_value" ]; then
+    printf '%s\n' "$setting_value"
+    return 0
+  fi
+  printf '%s\n' "$setting_default"
+}
+
+blog_legacy_assets_dir() {
+  if [ -n "${BLOG_LEGACY_ASSETS_DIR:-}" ]; then
+    printf '%s\n' "$BLOG_LEGACY_ASSETS_DIR"
+    return 0
+  fi
+  configured_dir=$(blog_site_setting blog_legacy_assets_dir '')
+  if [ -n "$configured_dir" ]; then
+    printf '%s\n' "$configured_dir"
+    return 0
+  fi
+  printf '%s/legacy-assets\n' "$blog_files_dir"
+}
+
+blog_legacy_asset_mode() {
+  mode=${BLOG_LEGACY_ASSET_MODE:-$(blog_site_setting blog_legacy_asset_mode copy)}
+  case "$mode" in
+    copy|manifest)
+      printf '%s\n' "$mode"
+      ;;
+    *)
+      printf '%s\n' copy
+      ;;
+  esac
+}
+
+blog_public_file_alias_mode() {
+  mode=${BLOG_PUBLIC_FILE_ALIAS_MODE:-$(blog_site_setting blog_public_file_alias_mode copy)}
+  case "$mode" in
+    copy|manifest|skip)
+      printf '%s\n' "$mode"
+      ;;
+    *)
+      printf '%s\n' copy
+      ;;
+  esac
+}
+
+blog_nostr_page_prerender_enabled() {
+  raw_value=${BLOG_NOSTR_PAGE_PRERENDER_ENABLED:-$(blog_site_setting nostr_page_prerender_enabled true)}
+  case "$raw_value" in
+    1|true|yes|on)
+      printf '%s\n' true
+      ;;
+    *)
+      printf '%s\n' false
+      ;;
+  esac
+}
+
 blog_normalize_public_host() {
   raw=${1-}
   raw=$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's#^[[:space:]]*##' -e 's#[[:space:]]*$##')
@@ -2046,6 +2107,7 @@ blog_file_delete() {
 blog_file_sync_public_aliases() {
   build_dir=$(blog_generated_build_dir)
   manifest_path="$build_dir/.file-aliases.manifest"
+  alias_mode=$(blog_public_file_alias_mode)
   new_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases.XXXXXX")
   old_manifest=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases-old.XXXXXX")
   current_aliases=$(mktemp "${TMPDIR:-/tmp}/blog-file-aliases-current.XXXXXX")
@@ -2078,6 +2140,10 @@ blog_file_sync_public_aliases() {
     [ "$public_path_count" = "1" ] || continue
     source_path=$(blog_file_resolve_disk_path "$file_id" 2>/dev/null || printf '')
     [ -f "$source_path" ] || continue
+    source_dir=$(dirname "$source_path")
+    source_base=$(basename "$source_path")
+    source_dir_real=$(CDPATH= cd -- "$source_dir" 2>/dev/null && pwd -P || printf '%s' "$source_dir")
+    source_path="$source_dir_real/$source_base"
     dest_path="$build_dir/$public_path"
     case "$dest_path" in "$build_dir"/*) ;; *) continue ;; esac
     source_size=$(stat -f '%z' "$source_path" 2>/dev/null || stat -c '%s' "$source_path" 2>/dev/null || printf '0')
@@ -2087,16 +2153,26 @@ blog_file_sync_public_aliases() {
     if [ -f "$manifest_path" ]; then
       previous_state=$(awk -F '	' -v alias="$public_path" '$1 == alias { print $2 "\t" $3 "\t" $4; exit }' "$manifest_path" 2>/dev/null || printf '')
     fi
-    if ! { [ -f "$dest_path" ] && [ "$previous_state" = "$current_state" ]; }; then
-      tmp_path=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-copy.XXXXXX")
-      if cp "$source_path" "$tmp_path"; then
-        chmod 644 "$tmp_path" 2>/dev/null || true
-        mv "$tmp_path" "$dest_path"
-      else
-        rm -f "$tmp_path"
+    case "$alias_mode" in
+      copy|'')
+        if ! { [ -f "$dest_path" ] && [ "$previous_state" = "$current_state" ]; }; then
+          tmp_path=$(mktemp "${TMPDIR:-/tmp}/blog-file-alias-copy.XXXXXX")
+          if cp "$source_path" "$tmp_path"; then
+            chmod 644 "$tmp_path" 2>/dev/null || true
+            mv "$tmp_path" "$dest_path"
+          else
+            rm -f "$tmp_path"
+            continue
+          fi
+        fi
+        ;;
+      manifest)
+        rm -f "$dest_path" 2>/dev/null || true
+        ;;
+      skip)
         continue
-      fi
-    fi
+        ;;
+    esac
     printf '%s\t%s\t%s\t%s\n' "$public_path" "$source_path" "$source_size" "$source_mtime" >> "$new_manifest"
   done
 

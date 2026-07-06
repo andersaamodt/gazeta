@@ -73,6 +73,28 @@ esac
 
 site_bootstrap_dir=$(blog_generated_static_dir)
 build_bootstrap_dir=$(blog_generated_build_static_dir)
+legacy_asset_mode=$(blog_legacy_asset_mode)
+
+sync_rel_is_skipped() {
+  rel=${1-}
+  skip_prefixes=${BLOG_STATIC_SYNC_SKIP_PREFIXES:-}
+  [ -n "$rel" ] || return 1
+  [ -n "$skip_prefixes" ] || return 1
+  old_ifs=$IFS
+  IFS=:
+  for skip_prefix in $skip_prefixes; do
+    [ -n "$skip_prefix" ] || continue
+    case "$rel" in
+      "$skip_prefix"|"$skip_prefix"/*)
+        IFS=$old_ifs
+        return 0
+        ;;
+    esac
+  done
+  IFS=$old_ifs
+  return 1
+}
+
 copy_file_if_changed() {
   copy_src=${1-}
   copy_dest=${2-}
@@ -121,6 +143,10 @@ sync_static_tree() {
     ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
       sync_rel=${sync_rel#./}
       [ -n "$sync_rel" ] || continue
+      if sync_rel_is_skipped "$sync_rel"; then
+        rm -f "$sync_dest/$sync_rel"
+        continue
+      fi
       if [ ! -f "$sync_src/$sync_rel" ]; then
         rm -f "$sync_dest/$sync_rel"
       fi
@@ -131,6 +157,10 @@ sync_static_tree() {
     ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
       sync_rel=${sync_rel#./}
       [ -n "$sync_rel" ] || continue
+      if sync_rel_is_skipped "$sync_rel"; then
+        rmdir "$sync_dest/$sync_rel" 2>/dev/null || true
+        continue
+      fi
       if [ ! -d "$sync_src/$sync_rel" ]; then
         rmdir "$sync_dest/$sync_rel" 2>/dev/null || true
       fi
@@ -141,6 +171,7 @@ sync_static_tree() {
     ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
       sync_rel=${sync_rel#./}
       [ -n "$sync_rel" ] || continue
+      sync_rel_is_skipped "$sync_rel" && continue
       mkdir -p "$sync_dest/$sync_rel"
     done
     (
@@ -149,6 +180,7 @@ sync_static_tree() {
     ) | while IFS= read -r sync_rel || [ -n "$sync_rel" ]; do
       sync_rel=${sync_rel#./}
       [ -n "$sync_rel" ] || continue
+      sync_rel_is_skipped "$sync_rel" && continue
       copy_file_if_changed "$sync_src/$sync_rel" "$sync_dest/$sync_rel"
     done
   else
@@ -184,6 +216,7 @@ sync_manifest_current() {
   ) | while IFS= read -r manifest_rel || [ -n "$manifest_rel" ]; do
     manifest_rel=${manifest_rel#./}
     [ -n "$manifest_rel" ] || continue
+    sync_rel_is_skipped "$manifest_rel" && continue
     manifest_state=$(static_file_state "$manifest_src/$manifest_rel")
     printf 'f	%s	%s\n' "$manifest_state" "$manifest_rel" >> "$manifest_out"
   done
@@ -210,11 +243,7 @@ sync_manifest_outputs_exist() {
 }
 
 legacy_assets_dir() {
-  if [ -n "${BLOG_LEGACY_ASSETS_DIR:-}" ]; then
-    printf '%s\n' "$BLOG_LEGACY_ASSETS_DIR"
-    return 0
-  fi
-  printf '%s/legacy-assets\n' "$blog_files_dir"
+  blog_legacy_assets_dir
 }
 
 copy_tree_overlay() {
@@ -262,7 +291,8 @@ sync_legacy_asset_aliases() {
   mkdir -p "$aliases_dest"
 
   if [ -f "$aliases_manifest" ]; then
-    while IFS= read -r old_alias || [ -n "$old_alias" ]; do
+    while IFS= read -r old_alias_line || [ -n "$old_alias_line" ]; do
+      old_alias=${old_alias_line%%	*}
       case "$old_alias" in
         ''|.*|../*|*/../*|/*) continue ;;
       esac
@@ -288,12 +318,29 @@ sync_legacy_asset_aliases() {
         continue
         ;;
     esac
+    source_path="$aliases_src/$asset_rel"
+    source_dir=$(dirname "$source_path")
+    source_base=$(basename "$source_path")
+    source_dir_real=$(CDPATH= cd -- "$source_dir" 2>/dev/null && pwd -P || printf '%s' "$source_dir")
+    source_path="$source_dir_real/$source_base"
     alias_path="$aliases_dest/$alias_rel"
     [ -d "$alias_path" ] && continue
-    mkdir -p "$(dirname "$alias_path")"
-    copy_file_if_changed "$aliases_src/$asset_rel" "$alias_path"
-    chmod 644 "$alias_path" 2>/dev/null || true
-    printf '%s\n' "$alias_rel" >> "$aliases_new_manifest"
+    case "$legacy_asset_mode" in
+      copy)
+        mkdir -p "$(dirname "$alias_path")"
+        copy_file_if_changed "$aliases_src/$asset_rel" "$alias_path"
+        chmod 644 "$alias_path" 2>/dev/null || true
+        ;;
+      manifest)
+        rm -f "$alias_path" 2>/dev/null || true
+        ;;
+      *)
+        rm -f "$aliases_new_manifest"
+        printf '%s\n' "Unsupported BLOG_LEGACY_ASSET_MODE: $legacy_asset_mode" >&2
+        exit 1
+        ;;
+    esac
+    printf '%s\t%s\n' "$alias_rel" "$source_path" >> "$aliases_new_manifest"
   done
 
   sort -u "$aliases_new_manifest" > "$aliases_manifest"
@@ -302,15 +349,31 @@ sync_legacy_asset_aliases() {
 }
 
 if [ "$site_bootstrap_dir" != "$blog_source_static_dir" ]; then
+  case "$legacy_asset_mode" in
+    manifest) BLOG_STATIC_SYNC_SKIP_PREFIXES=legacy-assets ;;
+    *) BLOG_STATIC_SYNC_SKIP_PREFIXES= ;;
+  esac
   sync_static_tree "$blog_source_static_dir" "$site_bootstrap_dir"
 else
   mkdir -p "$site_bootstrap_dir"
 fi
 sync_static_tree "$blog_source_static_dir" "$build_bootstrap_dir"
+BLOG_STATIC_SYNC_SKIP_PREFIXES=
 legacy_assets_src=$(legacy_assets_dir)
-copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"
-copy_tree_overlay "$legacy_assets_src" "$build_bootstrap_dir/legacy-assets"
-sync_legacy_asset_aliases "$site_bootstrap_dir/legacy-assets"
+case "$legacy_asset_mode" in
+  copy)
+    copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"
+    copy_tree_overlay "$legacy_assets_src" "$build_bootstrap_dir/legacy-assets"
+    sync_legacy_asset_aliases "$site_bootstrap_dir/legacy-assets"
+    ;;
+  manifest)
+    sync_legacy_asset_aliases "$legacy_assets_src"
+    ;;
+  *)
+    printf '%s\n' "Unsupported BLOG_LEGACY_ASSET_MODE: $legacy_asset_mode" >&2
+    exit 1
+    ;;
+esac
 
 sync_lodestone_pages() {
   lodestone_pages_dir="$blog_site_root/site/lodestone/pages"
@@ -419,8 +482,55 @@ chmod 644 "$site_bootstrap_path" 2>/dev/null || true
 copy_file_if_changed "$site_bootstrap_path" "$build_site_bootstrap_path"
 chmod 644 "$build_site_bootstrap_path" 2>/dev/null || true
 
+write_bootstrap_placeholder() {
+  placeholder_slug=${1-}
+  [ -n "$placeholder_slug" ] || return 0
+  if [ -e "$site_bootstrap_dir/nostr-page-bootstrap/$placeholder_slug.js" ]; then
+    return 0
+  fi
+  placeholder_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-page-bootstrap-placeholder.XXXXXX")
+  {
+    printf '%s\n' '(function () {'
+    printf '%s\n' '  window.__wizardryNostrPageBootstrap = window.__wizardryNostrPageBootstrap || {};'
+    printf '%s\n' '})();'
+  } > "$placeholder_tmp"
+  mv "$placeholder_tmp" "$site_bootstrap_dir/nostr-page-bootstrap/$placeholder_slug.js"
+  chmod 644 "$site_bootstrap_dir/nostr-page-bootstrap/$placeholder_slug.js" 2>/dev/null || true
+}
+
+write_bootstrap_placeholders_from_dir() {
+  placeholders_dir=${1-}
+  [ -d "$placeholders_dir" ] || return 0
+  placeholder_list=$(mktemp "${TMPDIR:-/tmp}/blog-page-bootstrap-placeholders.XXXXXX")
+  (
+    cd "$placeholders_dir" || exit 1
+    find . -type f -name '*.md' -print
+  ) > "$placeholder_list"
+  while IFS= read -r placeholder_rel || [ -n "$placeholder_rel" ]; do
+    placeholder_rel=${placeholder_rel#./}
+    [ -n "$placeholder_rel" ] || continue
+    case "$placeholder_rel" in
+      .*|../*|*/../*|/*)
+        continue
+        ;;
+    esac
+    placeholder_file="$placeholders_dir/$placeholder_rel"
+    grep -q '/static/nostr-page-bootstrap/' "$placeholder_file" 2>/dev/null || continue
+    placeholder_slug=$(basename "$placeholder_rel" .md)
+    placeholder_slug=$(blog_nostr_page_slug "$placeholder_slug")
+    [ -n "$placeholder_slug" ] || continue
+    write_bootstrap_placeholder "$placeholder_slug"
+  done < "$placeholder_list"
+  rm -f "$placeholder_list"
+}
+
 write_local_embed_bootstraps() {
   mkdir -p "$site_bootstrap_dir/nostr-page-bootstrap"
+  write_bootstrap_placeholders_from_dir "$blog_source_pages_dir"
+  managed_pages_dir=$(blog_managed_pages_dir)
+  if [ "$managed_pages_dir" != "$blog_source_pages_dir" ]; then
+    write_bootstrap_placeholders_from_dir "$managed_pages_dir"
+  fi
   printf '%s\n' "$pages_json" | jq -r '.pages[]? | select((.type // "") == "overworld") | (.slug // "")' 2>/dev/null | while IFS= read -r local_slug || [ -n "$local_slug" ]; do
     local_slug=$(blog_nostr_page_slug "$local_slug")
     [ -n "$local_slug" ] || continue
@@ -440,7 +550,9 @@ write_local_embed_bootstraps() {
 
 write_local_embed_bootstraps
 
-if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
+blog_prerender_enabled=$(blog_nostr_page_prerender_enabled)
+
+if [ "$blog_prerender_enabled" = true ] && [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   prerender_timeout=${BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS-}
   [ -n "$prerender_timeout" ] || prerender_timeout=$(config-get "$blog_site_conf" nostr_page_prerender_timeout_seconds 2>/dev/null || printf '120')
   case "$prerender_timeout" in ''|*[!0-9]*) prerender_timeout=25 ;; esac
@@ -458,10 +570,13 @@ if [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
     kill "$prerender_timer_pid" 2>/dev/null || true
     wait "$prerender_timer_pid" 2>/dev/null || true
   )
-  if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
-    mkdir -p "$build_bootstrap_dir"
-    sync_static_tree "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"
-  fi
+fi
+
+write_local_embed_bootstraps
+
+if [ -d "$site_bootstrap_dir/nostr-page-bootstrap" ]; then
+  mkdir -p "$build_bootstrap_dir"
+  sync_static_tree "$site_bootstrap_dir/nostr-page-bootstrap" "$build_bootstrap_dir/nostr-page-bootstrap"
 fi
 
 if [ "${GAZETA_SKIP_THEURGY_RUNTIME_BUILD:-0}" != "1" ] &&

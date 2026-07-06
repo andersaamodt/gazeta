@@ -2,49 +2,165 @@
 set -eu
 
 release_dir=${DEPLOYMENTS_RELEASE_DIR:-$(pwd -P)}
+release_dir=$(CDPATH= cd -- "$release_dir" && pwd -P)
 build_dir=${1:-${DEPLOYMENTS_BUILD_DIR:-$release_dir/build}}
-web_root=${WEB_WIZARDRY_ROOT:-$(dirname "$release_dir")}
-site_name=$(basename "$release_dir")
 builder=${WIZARDRY_DIR:-}/spells/web/build
-site_data_dir=${DEPLOYMENTS_SITE_DATA_DIR:-$web_root/.sitedata/$site_name}
-empty_legacy_assets_dir="$release_dir/.deployments-empty-legacy-assets"
-site_conf="$release_dir/site.conf"
-site_conf_backup=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf.XXXXXX")
+site_conf_backup=
 site_conf_existed=0
+staged_sites_root=
+resolved_site_root=
+resolved_web_root=
+resolved_site_name=
+
+canonical_dir() {
+  CDPATH= cd -- "$1" && pwd -P
+}
+
+default_site_data_dir() {
+  current_web_root=$1
+  current_site_name=$2
+  case "$current_web_root" in
+    "$HOME/git"|"$HOME/git/"*|/Users/andersaamodt/git|/Users/andersaamodt/git/*)
+      printf '%s/gazeta/sites-data/%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}" "$current_site_name"
+      ;;
+    *)
+      printf '%s/.sitedata/%s\n' "$current_web_root" "$current_site_name"
+      ;;
+  esac
+}
+
+site_conf_value() {
+  site_conf_file=$1
+  site_conf_key=$2
+  awk -F= -v wanted="$site_conf_key" '
+    $1 == wanted {
+      value=$0
+      sub(/^[^=]*=/, "", value)
+      print value
+      found=1
+      exit
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+    }
+  ' "$site_conf_file"
+}
+
+resolve_template_site_root() {
+  template_root=$1
+  while IFS= read -r sites_root || [ -n "$sites_root" ]; do
+    [ -n "$sites_root" ] || continue
+    [ -d "$sites_root" ] || continue
+    for candidate_conf in "$sites_root"/*/site.conf; do
+      [ -f "$candidate_conf" ] || continue
+      candidate_template=$(site_conf_value "$candidate_conf" local-template 2>/dev/null || printf '')
+      [ -n "$candidate_template" ] || continue
+      [ -d "$candidate_template" ] || continue
+      candidate_template=$(canonical_dir "$candidate_template" 2>/dev/null || printf '')
+      [ -n "$candidate_template" ] || continue
+      if [ "$candidate_template" = "$template_root" ]; then
+        printf '%s\n' "${candidate_conf%/site.conf}"
+        return 0
+      fi
+    done
+  done <<EOF
+${DEPLOYMENTS_SITES_ROOT:-}
+${WIZARDRY_SITES_DIR:-}
+${WEB_WIZARDRY_ROOT:-}
+${HOME:-}/sites
+$(dirname "$template_root")
+EOF
+  return 1
+}
+
+resolve_site_context() {
+  if [ -n "${DEPLOYMENTS_SITE_ROOT:-}" ] && [ -f "${DEPLOYMENTS_SITE_ROOT}/site.conf" ]; then
+    resolved_site_root=$(canonical_dir "$DEPLOYMENTS_SITE_ROOT")
+  elif [ -f "$release_dir/site.conf" ]; then
+    resolved_site_root=$release_dir
+  else
+    resolved_site_root=$(resolve_template_site_root "$release_dir" 2>/dev/null || printf '')
+    if [ -z "$resolved_site_root" ]; then
+      resolved_site_root=$release_dir
+    fi
+  fi
+  resolved_web_root=$(dirname "$resolved_site_root")
+  resolved_site_name=$(basename "$resolved_site_root")
+}
 
 [ -x "$builder" ] || {
   printf '%s\n' "deployments-build: missing Wizardry builder: $builder" >&2
   exit 1
 }
-restore_site_conf() {
+
+resolve_site_context
+site_name=$resolved_site_name
+site_data_dir=${DEPLOYMENTS_SITE_DATA_DIR:-$(default_site_data_dir "$resolved_web_root" "$site_name")}
+site_data_root=$(dirname "$site_data_dir")
+if [ "$resolved_site_root" != "$release_dir" ]; then
+  staged_sites_root=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-deployment-site.XXXXXX")
+  site_root="$staged_sites_root/$site_name"
+  mkdir -p "$site_root"
+  cp -R "$release_dir/cgi" "$site_root/cgi"
+  cp -R "$release_dir/site" "$site_root/site"
+  cp "$resolved_site_root/site.conf" "$site_root/site.conf"
+  mkdir -p "$staged_sites_root/.sitedata"
+  ln -s "$site_data_dir" "$staged_sites_root/.sitedata/$site_name"
+  site_conf_existed=1
+  web_root=$staged_sites_root
+else
+  site_root=$resolved_site_root
+  web_root=${WEB_WIZARDRY_ROOT:-$resolved_web_root}
+fi
+site_conf="$site_root/site.conf"
+site_conf_backup=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf.XXXXXX")
+
+cleanup() {
   if [ "$site_conf_existed" = "1" ] && [ -f "$site_conf_backup" ]; then
     mv "$site_conf_backup" "$site_conf"
   else
-    rm -f "$site_conf" "$site_conf_backup"
+    rm -f "$site_conf"
+    rm -f "$site_conf_backup"
   fi
+  rm -rf "$staged_sites_root"
 }
 
-trap 'restore_site_conf' EXIT HUP INT TERM
+trap 'cleanup' EXIT HUP INT TERM
 if [ -f "$site_conf" ]; then
-  cp "$site_conf" "$site_conf_backup"
-  site_conf_existed=1
+  if [ "$site_conf_existed" = "1" ]; then
+    mv "$site_conf" "$site_conf_backup"
+  else
+    cp "$site_conf" "$site_conf_backup"
+    site_conf_existed=1
+  fi
 fi
 site_conf_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf-next.XXXXXX")
 if [ "$site_conf_existed" = "1" ]; then
-  awk '/^build-dir=/{ next } { print }' "$site_conf_backup" > "$site_conf_tmp"
+  awk '
+    /^build-dir=/ { next }
+    /^blog_legacy_asset_mode=/ { next }
+    /^blog_public_file_alias_mode=/ { next }
+    /^blog_legacy_assets_dir=/ { next }
+    /^nostr_page_prerender_enabled=/ { next }
+    { print }
+  ' "$site_conf_backup" > "$site_conf_tmp"
 else
   printf '%s\n' 'domain=localhost' > "$site_conf_tmp"
 fi
 printf 'build-dir=%s\n' "$build_dir" >> "$site_conf_tmp"
+printf '%s\n' 'blog_legacy_asset_mode=manifest' >> "$site_conf_tmp"
+printf '%s\n' 'blog_public_file_alias_mode=manifest' >> "$site_conf_tmp"
+printf 'blog_legacy_assets_dir=%s\n' "$site_data_dir/files/legacy-assets" >> "$site_conf_tmp"
+printf '%s\n' 'nostr_page_prerender_enabled=false' >> "$site_conf_tmp"
 mv "$site_conf_tmp" "$site_conf"
 
-rm -rf "$empty_legacy_assets_dir"
-mkdir -p "$empty_legacy_assets_dir"
-
-BLOG_LEGACY_ASSETS_DIR="$empty_legacy_assets_dir" \
 WEB_WIZARDRY_ROOT="$web_root" \
+WIZARDRY_SITES_DIR="$web_root" \
+WIZARDRY_SITES_DATA_DIR="$site_data_root" \
 "$builder" "$site_name" --full
-restore_site_conf
+cleanup
 trap - EXIT HUP INT TERM
 [ -d "$build_dir" ] || {
   printf '%s\n' "deployments-build: build directory was not created: $build_dir" >&2
@@ -60,14 +176,36 @@ link_public_sitedata() {
   ln -s "$link_src" "$link_dest"
 }
 
+link_manifest_aliases() {
+  manifest_path=$1
+  [ -f "$manifest_path" ] || return 0
+  while IFS='	' read -r public_path source_path _size _mtime || [ -n "$public_path" ]; do
+    [ -n "$public_path" ] || continue
+    [ -f "$source_path" ] || continue
+    link_public_sitedata "$source_path" "$build_dir/$public_path"
+  done < "$manifest_path"
+}
+
+link_legacy_aliases() {
+  manifest_path=$1
+  [ -f "$manifest_path" ] || return 0
+  while IFS='	' read -r alias_rel source_path || [ -n "$alias_rel" ]; do
+    [ -n "$alias_rel" ] || continue
+    [ -f "$source_path" ] || continue
+    link_public_sitedata "$source_path" "$build_dir/$alias_rel"
+  done < "$manifest_path"
+}
+
 legacy_assets_dir="$site_data_dir/files/legacy-assets"
 overworld_godot_dir="$site_data_dir/static/overworld-godot"
+link_manifest_aliases "$build_dir/.file-aliases.manifest"
+link_legacy_aliases "$build_dir/.legacy-asset-aliases.manifest"
 link_public_sitedata "$legacy_assets_dir" "$build_dir/static/legacy-assets"
 link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/ultramemes.mkv"
 link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/oeuvre/ultramemes.mkv"
 link_public_sitedata "$overworld_godot_dir" "$build_dir/static/overworld-godot"
 
 if [ -n "${DEPLOYMENTS_BUILD_MANIFEST:-}" ]; then
-  printf '{"schema":1,"builder":"scripts/deployments-build","mode":"wizardry-full","assets":"sitedata-symlinks","source_revision":"%s","release_revision":"%s"}\n' \
-    "${DEPLOYMENTS_SOURCE_REVISION:-}" "${DEPLOYMENTS_RELEASE_REVISION:-}" >"$DEPLOYMENTS_BUILD_MANIFEST"
+  printf '{"schema":1,"builder":"scripts/deployments-build","mode":"wizardry-full","site_name":"%s","assets":"sitedata-symlinks","source_revision":"%s","release_revision":"%s"}\n' \
+    "$site_name" "${DEPLOYMENTS_SOURCE_REVISION:-}" "${DEPLOYMENTS_RELEASE_REVISION:-}" >"$DEPLOYMENTS_BUILD_MANIFEST"
 fi
