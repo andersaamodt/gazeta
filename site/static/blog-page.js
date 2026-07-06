@@ -522,7 +522,7 @@
   }
 
   function stripLegacyNostrSyncPills(value) {
-    return String(value || '').replace(/<\s*nostr-sync-pill\b[^>]*>(?:\s*<\/\s*nostr-sync-pill\s*>)?/gi, '').trim();
+    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function renderSyncStatusPill() {

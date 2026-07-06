@@ -52,7 +52,7 @@ blog_public_ranking_normalize_state_json() {
       (($v // "") | tostring) as $text
       | ($text | test("<\\s*div\\b[^>]*data-lodestone-root=\"page\""; "i"))
         or ($text | test("<\\s*section\\b[^>]*id=\"public-ranking-root\""; "i"))
-        or ($text | test("<\\s*nostr-sync-pill\\b"; "i"));
+        or ($text | test("<\\s*(nostr-sync-pill|gazeta-sync-pill)\\b"; "i"));
     def clean_editable_markdown($v):
       (($v // "") | tostring) as $text
       | if is_generated_page_shell($text) then "" else $text end;

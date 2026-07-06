@@ -3,12 +3,44 @@
 
 set -eu
 
-if [ -n "${GAZETA_LODESTONE:-}" ]; then
-  exec "$GAZETA_LODESTONE" "$@"
-fi
-
 script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
+component_command="$script_dir/gazeta-lodestone-components"
+
+[ -x "$component_command" ] || {
+  printf '%s\n' "gazeta-lodestone: missing component renderer: $component_command" >&2
+  exit 1
+}
+
+delegate_lodestone() {
+  lodestone_cmd=$1
+  shift
+  action=${1-}
+  case "$action" in
+    verify-output)
+      [ "$#" -ge 3 ] || exec "$lodestone_cmd" "$@"
+      action=$1
+      source_file=$2
+      output_file=$3
+      shift 3
+      exec "$lodestone_cmd" "$action" "$source_file" "$output_file" --component-command "$component_command" "$@"
+      ;;
+    render|render-md|manifest|verify)
+      [ "$#" -ge 2 ] || exec "$lodestone_cmd" "$@"
+      action=$1
+      source_file=$2
+      shift 2
+      exec "$lodestone_cmd" "$action" "$source_file" --component-command "$component_command" "$@"
+      ;;
+    *)
+      exec "$lodestone_cmd" "$@"
+      ;;
+  esac
+}
+
+if [ -n "${GAZETA_LODESTONE:-}" ]; then
+  delegate_lodestone "$GAZETA_LODESTONE" "$@"
+fi
 
 for candidate in \
   "$repo_root/../lodestone/spells/lodestone" \
@@ -16,7 +48,7 @@ for candidate in \
   "/Users/andersaamodt/git/lodestone/spells/lodestone"
 do
   if [ -x "$candidate" ]; then
-    exec "$candidate" "$@"
+    delegate_lodestone "$candidate" "$@"
   fi
 done
 

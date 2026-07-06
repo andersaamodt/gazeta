@@ -1,0 +1,135 @@
+#!/bin/sh
+# Render Gazeta-owned Lodestone custom elements.
+
+set -eu
+
+payload=$(cat)
+name=$(printf '%s\n' "$payload" | jq -r '.name // ""' 2>/dev/null || printf '')
+
+render_sync_pill() {
+  printf '%s\n' "$payload" | jq -r '
+    def html_unescape:
+      gsub("&quot;"; "\"")
+      | gsub("&#39;"; "\u0027")
+      | gsub("&gt;"; ">")
+      | gsub("&lt;"; "<")
+      | gsub("&amp;"; "&");
+
+    ((.attrs.slug // .frontmatter.slug // "page") | tostring | html_unescape) as $slug
+    | "<span class=\"page-sync-status-pill status-unknown nostr-sync-pill\" data-gazeta-component=\"sync-pill\" data-nostr-sync-slug=\"\($slug | @html)\" aria-live=\"polite\">Nostr sync</span>"
+  '
+}
+
+render_blog_post_list() {
+  printf '%s\n' "$payload" | jq -r '
+    def html_unescape:
+      gsub("&quot;"; "\"")
+      | gsub("&#39;"; "\u0027")
+      | gsub("&gt;"; ">")
+      | gsub("&lt;"; "<")
+      | gsub("&amp;"; "&");
+    def trimmed($value):
+      (($value // "") | tostring | gsub("^\\s+|\\s+$"; ""));
+    def esc($value):
+      (trimmed($value) | @html);
+    def nonempty_or_null($post; $key):
+      (trimmed($post[$key])) as $value
+      | if $value == "" then null else $value end;
+    def integer_value($post; $key):
+      ($post[$key] // 0)
+      | if type == "number" then .
+        elif type == "string" then (tonumber? // 0)
+        else 0
+        end;
+    def bool_value($post; $key):
+      (($post[$key] // false) == true);
+    def tags_value($post):
+      ($post.tags // [])
+      | if type == "array" then
+          map((. // "") | tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0))
+        else
+          []
+        end;
+    def format_post_type($value):
+      (($value // "") | tostring | gsub("_"; "-") | split("-"))
+      | map(select(length > 0) | (.[:1] | ascii_upcase) + .[1:])
+      | join(" ");
+    def render_blog_filter_pill($class_name; $group; $value; $label):
+      "<button type=\"button\" class=\"\($class_name | @html)\" data-inline-filter-group=\"\($group | @html)\" data-inline-filter-value=\"\($value | @html)\" aria-pressed=\"false\" aria-label=\"Filter by \($label | @html)\">\($label | @html)</button>";
+    def render_blog_link_note($post; $author):
+      (trimmed($post.link_url)) as $link_url
+      | "<div class=\"post-offsite-link-note\"><span class=\"post-offsite-link-kind\">Off-site link</span><span>Linked by \($author | @html)</span>"
+        + (if $link_url == "" then
+             ""
+           else
+             "<a class=\"post-offsite-url\" href=\"\($link_url | @html)\" title=\"\($link_url | @html)\">\($link_url | @html)</a>"
+           end)
+        + "</div>\n";
+    def render_blog_post_summary($post; $url):
+      (trimmed($post.summary)) as $summary
+      | if $summary == "" then
+          ""
+        else
+          "<div class=\"post-summary\"><p>\($summary | @html)</p>"
+          + (if bool_value($post; "summary_truncated") and ($url != "") then
+               "<a class=\"post-summary-read-more\" href=\"\($url | @html)\">Read more...</a>"
+             else
+               ""
+             end)
+          + "</div>\n"
+        end;
+    def render_blog_post_card($post):
+      (nonempty_or_null($post; "title") // nonempty_or_null($post; "summary") // "Untitled") as $title
+      | (nonempty_or_null($post; "url") // "") as $url
+      | (nonempty_or_null($post; "type") // "post") as $post_type
+      | (nonempty_or_null($post; "author") // "Blog Author") as $author
+      | ([integer_value($post; "reading_minutes"), 1] | max) as $read_minutes
+      | (nonempty_or_null($post; "published_date") // nonempty_or_null($post; "pub_date") // "Unknown date") as $published_date
+      | (nonempty_or_null($post; "published_timestamp") // nonempty_or_null($post; "published_at") // "") as $published_timestamp
+      | (nonempty_or_null($post; "year") // "Unknown") as $year
+      | tags_value($post) as $tags
+      | ([integer_value($post; "comment_count"), 0] | max) as $comments
+      | (if $comments == 1 then "1 comment" else "\($comments) comments" end) as $comments_label
+      | "<article class=\"post-item blog-post-item"
+        + (if $post_type == "link-share" then " is-link-share" else "" end)
+        + "\">\n"
+        + "<div class=\"post-head\">\n"
+        + "<div class=\"post-head-main\">\n"
+        + "<h2 class=\"post-title\"><a href=\"\($url | @html)\">\($title | @html)</a></h2>\n"
+        + (if $post_type == "link-share" then render_blog_link_note($post; $author) else "" end)
+        + "<div class=\"post-head-divider\" aria-hidden=\"true\"></div>\n"
+        + "<div class=\"post-byline post-byline-bottom\"><span class=\"post-author\">\($author | @html)</span><span class=\"post-reading-inline\">\($read_minutes | tostring | @html) min read</span><span class=\"post-date\""
+        + (if $published_timestamp == "" then "" else " title=\"\($published_timestamp | @html)\"" end)
+        + ">\($published_date | @html)</span></div>\n"
+        + "</div>\n"
+        + "</div>\n"
+        + render_blog_post_summary($post; $url)
+        + "<div class=\"post-card-footer\"><div class=\"tags post-card-meta-tags\">"
+        + render_blog_filter_pill("tag blog-type-pill"; "types"; $post_type; format_post_type($post_type))
+        + render_blog_filter_pill("tag blog-year-pill"; "years"; $year; $year)
+        + ($tags | map("<button type=\"button\" class=\"tag blog-inline-tag\" data-inline-tag=\"\(. | @html)\" aria-pressed=\"false\">\(. | @html)</button>") | join(""))
+        + "</div><span class=\"post-card-comments-count\">\($comments_label | @html)</span></div>\n"
+        + "</article>\n";
+
+    ((.attrs.posts // "[]") | tostring | html_unescape | fromjson? // []) as $posts
+    | if ($posts | length) == 0 then
+        "<p class=\"placeholder\" data-gazeta-component=\"blog-post-list\">No posts to show yet.</p>"
+      else
+        "<div data-gazeta-component=\"blog-post-list\">\n"
+        + ($posts | map(render_blog_post_card(.)) | join(""))
+        + "</div>"
+      end
+  '
+}
+
+case "$name" in
+  gazeta-sync-pill)
+    render_sync_pill
+    ;;
+  gazeta-blog-post-list)
+    render_blog_post_list
+    ;;
+  *)
+    exit 3
+    ;;
+esac

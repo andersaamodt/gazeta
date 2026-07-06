@@ -1352,13 +1352,14 @@ blog_nostr_page_render_lodestone_source() {
   render_content_html=${6-}
   render_out=${7-}
   [ -n "$render_slug" ] && [ -n "$render_out" ] || return 1
-  if [ -n "${GAZETA_LODESTONE:-}" ]; then
-    render_lodestone_cmd=$GAZETA_LODESTONE
-  elif [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone" ]; then
+  if [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone" ]; then
     render_lodestone_cmd="$SCRIPT_DIR/gazeta-lodestone"
-  else
+  elif [ -x "$blog_site_root/cgi/gazeta-lodestone" ]; then
     render_lodestone_cmd="$blog_site_root/cgi/gazeta-lodestone"
-    [ -x "$render_lodestone_cmd" ] || return 1
+  elif [ -n "${GAZETA_LODESTONE:-}" ]; then
+    render_lodestone_cmd=$GAZETA_LODESTONE
+  else
+    return 1
   fi
   render_template=$(blog_nostr_page_lodestone_template_path "$render_page_type")
   [ -f "$render_template" ] || return 1
@@ -2684,7 +2685,9 @@ blog_nostr_page_template_is_current() {
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&
-      grep -q "/static/blog-page.js?v=$blog_page_js_version" "$file" 2>/dev/null
+      grep -q "/static/blog-page.js?v=$blog_page_js_version" "$file" 2>/dev/null &&
+      grep -q 'data-gazeta-component="blog-post-list"' "$file" 2>/dev/null &&
+      ! grep -q '<gazeta-blog-post-list\b' "$file" 2>/dev/null
       ;;
     nip23)
       grep -q 'id="nip23-page-title"' "$file" 2>/dev/null &&
@@ -2945,6 +2948,7 @@ blog_nostr_pages_source_sync_signature() {
     blog_nostr_pages_source_sync_file_signature pages-common "$SCRIPT_DIR/blog-nostr-pages-common.sh"
     blog_nostr_pages_source_sync_file_signature blog-lib "$SCRIPT_DIR/blog-lib.sh"
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone "$SCRIPT_DIR/gazeta-lodestone"
+    blog_nostr_pages_source_sync_file_signature gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"
     for template_file in \
       "$blog_site_root/site/lodestone/pages/blog.stone.html" \
       "$blog_site_root/site/lodestone/templates/list.stone.html" \

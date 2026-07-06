@@ -58,7 +58,7 @@ fi
 contaminated_state=$(jq -cn '{
   title: "Projects",
   content: "<div data-lodestone-root=\"page\"><section id=\"public-ranking-root\"><h1>Projects</h1></section></div>",
-  extras_after: "<nostr-sync-pill slug=\"projects\"></nostr-sync-pill>"
+  extras_after: "<gazeta-sync-pill slug=\"projects\"></gazeta-sync-pill>"
 }')
 normalized_ranking=$(blog_public_ranking_normalize_state_json projects "$contaminated_state")
 normalized_content=$(printf '%s\n' "$normalized_ranking" | jq -r '.content')

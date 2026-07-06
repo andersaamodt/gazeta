@@ -8,16 +8,44 @@ site_name=$(basename "$release_dir")
 builder=${WIZARDRY_DIR:-}/spells/web/build
 site_data_dir=${DEPLOYMENTS_SITE_DATA_DIR:-$web_root/.sitedata/$site_name}
 empty_legacy_assets_dir="$release_dir/.deployments-empty-legacy-assets"
+site_conf="$release_dir/site.conf"
+site_conf_backup=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf.XXXXXX")
+site_conf_existed=0
 
 [ -x "$builder" ] || {
   printf '%s\n' "deployments-build: missing Wizardry builder: $builder" >&2
   exit 1
 }
+restore_site_conf() {
+  if [ "$site_conf_existed" = "1" ] && [ -f "$site_conf_backup" ]; then
+    mv "$site_conf_backup" "$site_conf"
+  else
+    rm -f "$site_conf" "$site_conf_backup"
+  fi
+}
+
+trap 'restore_site_conf' EXIT HUP INT TERM
+if [ -f "$site_conf" ]; then
+  cp "$site_conf" "$site_conf_backup"
+  site_conf_existed=1
+fi
+site_conf_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf-next.XXXXXX")
+if [ "$site_conf_existed" = "1" ]; then
+  awk '/^build-dir=/{ next } { print }' "$site_conf_backup" > "$site_conf_tmp"
+else
+  printf '%s\n' 'domain=localhost' > "$site_conf_tmp"
+fi
+printf 'build-dir=%s\n' "$build_dir" >> "$site_conf_tmp"
+mv "$site_conf_tmp" "$site_conf"
 
 rm -rf "$empty_legacy_assets_dir"
 mkdir -p "$empty_legacy_assets_dir"
 
-BLOG_LEGACY_ASSETS_DIR="$empty_legacy_assets_dir" WEB_WIZARDRY_ROOT="$web_root" "$builder" "$site_name" --full
+BLOG_LEGACY_ASSETS_DIR="$empty_legacy_assets_dir" \
+WEB_WIZARDRY_ROOT="$web_root" \
+"$builder" "$site_name" --full
+restore_site_conf
+trap - EXIT HUP INT TERM
 [ -d "$build_dir" ] || {
   printf '%s\n' "deployments-build: build directory was not created: $build_dir" >&2
   exit 1
