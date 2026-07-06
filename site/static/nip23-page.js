@@ -811,13 +811,20 @@
     }
     var imageUrl = String(s.image_url || '').trim();
     if (!imageUrl && variants.length) {
-      imageUrl = String(variants[0].image_url || '').trim();
+      variants.some(function (variant) {
+        var candidate = String(variant && variant.image_url || '').trim();
+        if (!candidate) {
+          return false;
+        }
+        imageUrl = candidate;
+        return true;
+      });
     }
     var imageHtml = imageUrl
-      ? '<div class="nip23-product-card-media"><img class="nip23-product-card-image" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy" decoding="async"></div>'
+      ? '<div class="nip23-product-card-media"><img class="nip23-product-card-image" src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(s.title || 'Product image') + '" loading="lazy" decoding="async"></div>'
       : '';
     var html = '';
-    html += '<section class="nip23-product-card' + (imageHtml ? ' has-image' : '') + '" aria-label="Product checkout">';
+    html += '<section class="nip23-product-card' + (imageHtml ? ' has-image' : '') + (productType === 'merch' ? ' merch-product-page' : '') + '" aria-label="Product checkout">';
     html += imageHtml;
     html += '<div class="nip23-product-card-main">';
     html += '<div class="nip23-product-card-head">';

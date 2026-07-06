@@ -1142,6 +1142,11 @@ blog_nostr_prerender_nip23_html() {
         elif (($currency // "USD") | tostring | ascii_upcase) == "USD" then "$" + ($p | money)
         else ($p | money) + " " + (($currency // "USD") | tostring | ascii_upcase)
         end;
+    def resolved_product_image($state):
+      (($state.image_url // "") | tostring) as $root_image
+      | if ($root_image | length) > 0 then $root_image
+        else ([($state.variants // [])[]? | (.image_url // .thumbnail_url // "") | tostring | select(length > 0)] | first // "")
+        end;
     def md_block:
       tostring as $raw
       | if ($raw | gsub("\\s"; "") | length) == 0 then ""
@@ -1154,8 +1159,16 @@ blog_nostr_prerender_nip23_html() {
     | (($s.content // "") | content_block) as $main
     | (($s.extras_after // "") | md_block) as $after
     | (price_label(($s.price // ""); ($s.currency // "USD"))) as $display_price
+    | (resolved_product_image($s)) as $product_image
     | (if (($s.product_enabled // false) == true or (($s.price // "") | tostring | length) > 0) then
-        "<section class=\"nip23-product-card\" aria-label=\"Product checkout\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div>" + (if ($display_price | length) > 0 then "<div class=\"nip23-product-page-price\"><span>Price</span><strong>" + ($display_price | h) + "</strong></div>" else "" end) + "<div class=\"nip23-product-actions\"><button type=\"button\" class=\"nip23-product-btn nip23-product-btn-primary\" data-nip23-action=\"add-to-cart\">Add to Cart</button></div></section>"
+        "<section class=\"nip23-product-card" +
+          (if ($product_image | length) > 0 then " has-image" else "" end) +
+          (if (($s.product_type // "software") | tostring | ascii_downcase) == "merch" then " merch-product-page" else "" end) +
+          "\" aria-label=\"Product checkout\">" +
+          (if ($product_image | length) > 0 then "<div class=\"nip23-product-card-media\"><img class=\"nip23-product-card-image\" src=\"" + ($product_image | h) + "\" alt=\"" + (($s.title // "Product image") | h) + "\" loading=\"eager\" decoding=\"async\"></div>" else "" end) +
+          "<div class=\"nip23-product-card-main\"><div class=\"nip23-product-card-head\"><strong>Checkout</strong><span class=\"nip23-product-type-pill\">" + (($s.product_type // "software") | h) + "</span></div>" +
+          (if ($display_price | length) > 0 then "<div class=\"nip23-product-page-price\"><span>Price</span><strong>" + ($display_price | h) + "</strong></div>" else "" end) +
+          "<div class=\"nip23-product-actions\"><button type=\"button\" class=\"nip23-product-btn nip23-product-btn-primary\" data-nip23-action=\"add-to-cart\">Add to Cart</button></div></div></section>"
       else "" end) as $product
     | $product + (if ($main | length) > 0 then "<article class=\"list-entry-markdown\">" + $main + "</article>" else "<p class=\"list-page-empty-state\">No content yet.</p>" end) +
       (if ($after | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\">" + $after + "</section>" else "" end)

@@ -275,11 +275,11 @@ merch_page_content_json() {
       | gsub("\""; "&quot;");
     def card:
       "<article class=\"nip23-product-info-card merch-product-card\">" +
-      (if ((.image_url // "") | length) > 0 then "<a class=\"merch-product-card-media\" href=\"/" + (.slug | html) + "\"><img src=\"" + (.image_url | html) + "\" alt=\"\" loading=\"lazy\"></a>" else "" end) +
+      (if ((.image_url // "") | length) > 0 then "<a class=\"merch-product-card-media\" href=\"/" + (.slug | html) + "\"><img src=\"" + (.image_url | html) + "\" alt=\"" + (.title | html) + "\" loading=\"lazy\"></a>" else "" end) +
       "<div class=\"merch-product-card-body\">" +
       "<h3><a href=\"/" + (.slug | html) + "\">" + (.title | html) + "</a></h3>" +
       (if ((.price // "") | tostring | length) > 0 then "<p class=\"nip23-product-card-price\">$" + ((.price // "") | tostring | html) + " " + ((.currency // "USD") | html) + "</p>" else "" end) +
-      "<div class=\"nip23-product-card-actions\"><button type=\"button\" data-merch-add=\"" + (.slug | html) + "\">Add to cart</button><a class=\"secondary\" href=\"/" + (.slug | html) + "\">Details</a></div>" +
+      "<div class=\"nip23-product-card-actions\"><button type=\"button\" class=\"nip23-product-btn nip23-product-btn-primary merch-product-card-button\" data-merch-add=\"" + (.slug | html) + "\">Add to Cart</button></div>" +
       "</div></article>";
     "<section class=\"nip23-product-landing merch-page\"><section class=\"nip23-product-more\" aria-labelledby=\"merch-products-heading\"><h2 id=\"merch-products-heading\">Merchandise</h2><div class=\"nip23-product-more-grid merch-product-grid\">" +
     (map(card) | join("")) +

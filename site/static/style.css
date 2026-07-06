@@ -4340,7 +4340,7 @@ body.nav-cart-open {
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-bottom: 1px solid color-mix(in srgb, var(--border, #c8d4f3) 68%, white 32%);
-  background: color-mix(in srgb, var(--post-card-bg-single, #fff) 80%, var(--bg, #f7efe2) 20%);
+  background: #fff;
 }
 
 .merch-product-card-media img {
@@ -4357,6 +4357,10 @@ body.nav-cart-open {
   gap: 0.45rem;
   min-width: 0;
   padding: 0.88rem 1rem 1rem;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent, #3158a4) 5%, white 95%) 0%,
+      color-mix(in srgb, var(--accent, #3158a4) 10%, var(--card-bg, #fff) 90%) 100%);
 }
 
 .merch-product-card h3 {
@@ -4385,6 +4389,21 @@ body.nav-cart-open {
   align-items: center;
   gap: 0.6rem;
   margin-top: auto;
+}
+
+.merch-product-card-button {
+  min-width: 0;
+  min-height: 0;
+  padding: 0.58rem 1rem;
+  font-size: 0.95rem;
+}
+
+.merch-product-page .nip23-product-card-media {
+  background: #fff;
+}
+
+.merch-product-page .nip23-product-card-image {
+  object-fit: contain;
 }
 
 .nip23-product-info-card h3 {
