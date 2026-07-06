@@ -24,6 +24,22 @@ mkdir -p \
 mkdir -p "$SITE_ROOT/site/pages"
 ln -s "$SITE_DATA/content/posts" "$SITE_ROOT/site/pages/posts"
 
+BIN_DIR="$TMP_ROOT/bin"
+mkdir -p "$BIN_DIR"
+cat > "$BIN_DIR/config-get" <<'EOF'
+#!/bin/sh
+set -eu
+file=${1-}
+key=${2-}
+[ -f "$file" ] || exit 1
+line=$(grep -E "^${key}=" "$file" 2>/dev/null | tail -n 1 || true)
+[ -n "$line" ] || exit 1
+printf '%s\n' "${line#*=}"
+EOF
+chmod +x "$BIN_DIR/config-get"
+PATH="$BIN_DIR:$PATH"
+export PATH
+
 token=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 csrf=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 reader_token=cccccccccccccccccccccccccccccccccccccccccccccccc
@@ -155,6 +171,48 @@ posts_ok=$(
   /bin/sh "$ROOT_DIR/cgi/blog-list-posts" | extract_json
 )
 printf '%s\n' "$posts_ok" | jq -e '.success == true and (.posts | length) == 1 and .posts[0].path == "posts/example-post.md"' >/dev/null
+
+drafts_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-drafts" | extract_json
+)
+printf '%s\n' "$drafts_ok" | jq -e '.success == true and (.drafts | length) == 1 and .drafts[0].draft_id == "example-draft"' >/dev/null
+
+users_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-users" | extract_json
+)
+printf '%s\n' "$users_ok" | jq -e '.success == true and .actor_username == "admin" and (.users | length) == 2' >/dev/null
+
+queue_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-queue" | extract_json
+)
+printf '%s\n' "$queue_ok" | jq -e '.success == true and (.queue | length) == 0' >/dev/null
+
+files_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-files" | extract_json
+)
+printf '%s\n' "$files_ok" | jq -e '.success == true and (.files | length) == 0' >/dev/null
+
+moderation_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-public-ranking-moderation" | extract_json
+)
+printf '%s\n' "$moderation_ok" | jq -e '.success == true and (.items | length) == 0' >/dev/null
+
+nostr_pages_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-nostr-pages" | extract_json
+)
+printf '%s\n' "$nostr_pages_ok" | jq -e '.success == true and (.pages | length) == 2 and .pages[0].slug == "blog"' >/dev/null
 
 bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-admin-read-runtime-adapter" invalid-action)
 printf '%s\n' "$bad_output" | grep '"success":false' >/dev/null

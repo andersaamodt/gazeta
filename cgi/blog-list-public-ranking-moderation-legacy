@@ -1,0 +1,97 @@
+#!/bin/sh
+# List pending Public Ranking moderation actions across all ranking pages.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+. "$SCRIPT_DIR/blog-public-ranking-common.sh"
+. "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+filter_page_slug=$(blog_nostr_page_slug "$(blog_param page_slug)")
+filter_item_type=$(printf '%s' "$(blog_param item_type)" | tr '[:upper:]' '[:lower:]')
+filter_age=$(printf '%s' "$(blog_param age)" | tr '[:upper:]' '[:lower:]')
+now_epoch=$(blog_now_epoch)
+
+case "$filter_item_type" in
+  ''|all|group|entry) ;;
+  *) filter_item_type='all' ;;
+esac
+case "$filter_age" in
+  ''|all|24h|7d|30d|older) ;;
+  *) filter_age='all' ;;
+esac
+
+all_events_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-ranking-moderation-events.XXXXXX")
+find "$blog_nostr_events_dir" -type f \( -path '*/30040/*.json' -o -path '*/30041/*.json' \) 2>/dev/null | while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  jq -c '.' "$file" 2>/dev/null || true
+done > "$all_events_tmp"
+
+pending_json=$(jq -s -c --arg now "$now_epoch" '
+  def first_tag($tags; $k): ([($tags // [])[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
+  def all_tags($tags; $k): [($tags // [])[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]];
+  def coord_of($ev): ((($ev.kind // 0) | tostring) + ":" + ($ev.pubkey // "") + ":" + first_tag($ev.tags; "d"));
+  def parse_d($coord): (($coord // "") | tostring | split(":") | if length >= 3 then .[2] else "" end);
+
+  map(select(type=="object" and (.kind==30040 or .kind==30041) and (.tags|type)=="array"))
+  | map(. + {
+      coordinate: coord_of(.),
+      d: first_tag(.tags; "d"),
+      ranking_coord: first_tag(.tags; "ranking"),
+      status: (first_tag(.tags; "status") | tostring | ascii_downcase),
+      title: first_tag(.tags; "title"),
+      summary: first_tag(.tags; "summary"),
+      content: (.content // ""),
+      author: first_tag(.tags; "author"),
+      topics: (all_tags(.tags; "t") | map(ascii_downcase))
+    })
+  | map(select(.d != ""))
+  | map(select(((.topics | index("public-ranking")) == null)))
+  | sort_by(.kind, .pubkey, .d, (.created_at // 0), (.id // ""))
+  | group_by(.kind, .pubkey, .d)
+  | map(last)
+  | map(select(.status == "pending" and ((.ranking_coord // "") | test("^[0-9]+:[0-9a-f]{64}:[^[:space:]]+$"))))
+  | map(. + {
+      page_slug: parse_d(.ranking_coord),
+      item_type: (if .kind == 30040 then "group" else "entry" end),
+      age_seconds: (($now | tonumber? // 0) - ((.created_at // 0) | tonumber? // 0) | if . < 0 then 0 else . end),
+      page_path: (if parse_d(.ranking_coord) == "index" then "/" else ("/" + parse_d(.ranking_coord)) end)
+    })
+  | sort_by((.created_at // 0), (.id // ""))
+  | reverse
+' "$all_events_tmp" 2>/dev/null || printf '[]')
+
+rm -f "$all_events_tmp"
+
+filtered_json=$(printf '%s\n' "$pending_json" | jq -c \
+  --arg page_slug "$filter_page_slug" \
+  --arg item_type "$filter_item_type" \
+  --arg age "$filter_age" '
+  .
+  | (if ($page_slug | length) > 0 then map(select(.page_slug == $page_slug)) else . end)
+  | (if ($item_type == "all" or ($item_type | length) == 0) then . else map(select(.item_type == $item_type)) end)
+  | (if ($age == "24h") then map(select((.age_seconds // 0) <= 86400))
+     elif ($age == "7d") then map(select((.age_seconds // 0) <= 604800))
+     elif ($age == "30d") then map(select((.age_seconds // 0) <= 2592000))
+     elif ($age == "older") then map(select((.age_seconds // 0) > 2592000))
+     else .
+     end)
+' 2>/dev/null || printf '[]')
+
+jq -cn \
+  --argjson items "$filtered_json" \
+  '{
+    success: true,
+    pending_count: ($items | length),
+    items: $items
+  }'
+printf '\n'

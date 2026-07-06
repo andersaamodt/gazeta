@@ -1,0 +1,69 @@
+#!/bin/sh
+# List drafts (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true; then
+  exit 0
+fi
+
+tmp=$(mktemp "${TMPDIR:-/tmp}/blog-drafts.XXXXXX")
+blog_find_draft_files | while IFS= read -r draft_file; do
+  updated=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '1970-01-01T00:00:00Z')
+  printf '%s\t%s\n' "$updated" "$draft_file"
+done | sort -r > "$tmp"
+
+tab=$(printf '\t')
+printf '{"success":true,"drafts":['
+first=1
+while IFS="$tab" read -r _ draft_file; do
+  [ -f "$draft_file" ] || continue
+  draft_id=$(blog_read_front_matter_value "$draft_file" draft_id 2>/dev/null || printf '')
+  [ -n "$draft_id" ] || continue
+  title=$(blog_read_front_matter_value "$draft_file" title 2>/dev/null || printf '')
+  tags=$(blog_read_front_matter_value "$draft_file" tags 2>/dev/null || printf '')
+  summary=$(blog_read_front_matter_value "$draft_file" summary 2>/dev/null || printf '')
+  post_type=$(blog_read_front_matter_value "$draft_file" post_type 2>/dev/null || printf '')
+  if [ -z "$post_type" ]; then
+    post_type=$(blog_read_front_matter_value "$draft_file" type 2>/dev/null || printf '')
+  fi
+  post_type=$(blog_normalize_post_type "$post_type")
+  publish_mode=$(blog_read_front_matter_value "$draft_file" publish_mode 2>/dev/null || printf 'draft')
+  status=$(blog_read_front_matter_value "$draft_file" status 2>/dev/null || printf 'draft')
+  scheduled_at=$(blog_read_front_matter_value "$draft_file" scheduled_at 2>/dev/null || printf '')
+  created_at=$(blog_read_front_matter_value "$draft_file" created_at 2>/dev/null || printf '')
+  updated_at=$(blog_read_front_matter_value "$draft_file" updated_at 2>/dev/null || printf '')
+  source_post_path=$(blog_read_front_matter_value "$draft_file" source_post_path 2>/dev/null || printf '')
+  content=$(blog_read_markdown_body "$draft_file" 2>/dev/null || printf '')
+  if [ "$status" != "draft" ] || [ "$publish_mode" != "draft" ]; then
+    continue
+  fi
+  content_excerpt=$(blog_auto_summary_from_content "$content")
+  title=$(blog_effective_post_title "$title" "$content" "$post_type")
+
+  if [ "$first" -eq 0 ]; then
+    printf ','
+  fi
+  first=0
+
+  printf '{'
+  printf '"draft_id":"%s",' "$(blog_json_escape "$draft_id")"
+  printf '"title":"%s",' "$(blog_json_escape "$title")"
+  printf '"tags":"%s",' "$(blog_json_escape "$tags")"
+  printf '"summary":"%s",' "$(blog_json_escape "$summary")"
+  printf '"content_excerpt":"%s",' "$(blog_json_escape "$content_excerpt")"
+  printf '"source_post_path":"%s",' "$(blog_json_escape "$source_post_path")"
+  printf '"created_at":"%s",' "$(blog_json_escape "$created_at")"
+  printf '"updated_at":"%s"' "$(blog_json_escape "$updated_at")"
+  printf '}'
+done < "$tmp"
+printf ']}\n'
+
+rm -f "$tmp"
