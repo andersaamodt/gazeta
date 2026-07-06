@@ -15,9 +15,14 @@ mkdir -p \
   "$SITE_ROOT" \
   "$SITE_DATA/lists" \
   "$SITE_DATA/nostr/events/pubkey/30004" \
+  "$SITE_DATA/content/drafts" \
+  "$SITE_DATA/content/posts" \
   "$SITE_DATA/ssh-auth/sessions" \
   "$SITE_DATA/ssh-auth/users/admin" \
   "$SITE_DATA/ssh-auth/users/reader"
+
+mkdir -p "$SITE_ROOT/site/pages"
+ln -s "$SITE_DATA/content/posts" "$SITE_ROOT/site/pages/posts"
 
 token=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 csrf=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -69,6 +74,33 @@ cat > "$SITE_DATA/nostr-pages.json" <<'JSON'
 ]}
 JSON
 
+cat > "$SITE_DATA/content/drafts/example-draft.md" <<'EOF'
+---
+draft_id: "example-draft"
+title: "Example Draft"
+tags: "wizardry"
+summary: "Draft summary"
+post_type: "longform"
+publish_mode: "draft"
+status: "draft"
+created_at: "2026-07-06T00:00:00Z"
+updated_at: "2026-07-06T00:00:00Z"
+origin_platforms: ["telegram"]
+---
+
+Draft body.
+EOF
+
+cat > "$SITE_DATA/content/posts/example-post.md" <<'EOF'
+---
+title: "Example Post"
+visibility: "public"
+published_at: "2026-07-06T00:00:00Z"
+---
+
+Published body.
+EOF
+
 extract_json() {
   sed -n '/^{/,$p'
 }
@@ -109,6 +141,20 @@ printf '%s\n' "$ok" | jq -e '.lists[0].slug == "configured-list" and .lists[0].t
 printf '%s\n' "$ok" | jq -e '.lists[1].slug == "public-favorites" and .lists[1].title == "Public Favorites"' >/dev/null
 printf '%s\n' "$ok" | jq -e '.lists[2].slug == "wizard-tools" and .lists[2].title == "Wizard Tools"' >/dev/null
 printf '%s\n' "$ok" | jq -e '[.lists[].slug] | index("blog") == null' >/dev/null
+
+draft_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="draft_id=example-draft&session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-get-draft" | extract_json
+)
+printf '%s\n' "$draft_ok" | jq -e '.success == true and .draft.draft_id == "example-draft" and .draft.title == "Example Draft"' >/dev/null
+
+posts_ok=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-posts" | extract_json
+)
+printf '%s\n' "$posts_ok" | jq -e '.success == true and (.posts | length) == 1 and .posts[0].path == "posts/example-post.md"' >/dev/null
 
 bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-admin-read-runtime-adapter" invalid-action)
 printf '%s\n' "$bad_output" | grep '"success":false' >/dev/null
