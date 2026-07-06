@@ -1,0 +1,103 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
+lodestone_cmd="$repo_root/cgi/gazeta-lodestone"
+mode=${1:-sync}
+
+case "$mode" in
+  sync|--sync)
+    mode=sync
+    ;;
+  check|--check)
+    mode=check
+    ;;
+  *)
+    printf '%s\n' "usage: scripts/sync-lodestone-page-projections [sync|check]" >&2
+    exit 2
+    ;;
+esac
+
+[ -x "$lodestone_cmd" ] || {
+  printf '%s\n' "sync-lodestone-page-projections: missing renderer: $lodestone_cmd" >&2
+  exit 1
+}
+
+blog_page_js_version=$(sed -n "s/^blog_page_js_version='\\([^']*\\)'/\\1/p" "$repo_root/cgi/blog-nostr-pages-common.sh" | head -n 1)
+[ -n "$blog_page_js_version" ] || {
+  printf '%s\n' "sync-lodestone-page-projections: could not determine blog_page_js_version" >&2
+  exit 1
+}
+
+render_projection() {
+  projection_rel=$1
+  projection_tmp=$2
+  stone_path=$repo_root/site/lodestone/pages/${projection_rel%.md}.stone.html
+  [ -f "$stone_path" ] || {
+    printf '%s\n' "sync-lodestone-page-projections: missing Lodestone source: $stone_path" >&2
+    return 1
+  }
+  case "$projection_rel" in
+    blog.md)
+      posts_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-posts.XXXXXX")
+      printf '[]\n' > "$posts_tmp"
+      "$lodestone_cmd" render-md "$stone_path" \
+        --set "slug=blog" \
+        --set "prerender_attrs=" \
+        --html-file "posts_json=$posts_tmp" \
+        --set "blog_page_js_version=$blog_page_js_version" > "$projection_tmp"
+      rm -f "$posts_tmp"
+      ;;
+    *)
+      "$lodestone_cmd" render-md "$stone_path" > "$projection_tmp"
+      ;;
+  esac
+}
+
+sync_projection() {
+  projection_rel=$1
+  projection_path=$repo_root/site/pages/$projection_rel
+  projection_dir=$(dirname "$projection_path")
+  projection_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-projection.XXXXXX")
+
+  mkdir -p "$projection_dir"
+  render_projection "$projection_rel" "$projection_tmp"
+
+  case "$mode" in
+    check)
+      if [ ! -f "$projection_path" ] || ! cmp -s "$projection_path" "$projection_tmp"; then
+        printf '%s\n' "stale Lodestone projection: site/pages/$projection_rel" >&2
+        rm -f "$projection_tmp"
+        return 1
+      fi
+      ;;
+    sync)
+      if [ ! -f "$projection_path" ] || ! cmp -s "$projection_path" "$projection_tmp"; then
+        mv "$projection_tmp" "$projection_path"
+        chmod 644 "$projection_path" 2>/dev/null || true
+        printf '%s\n' "updated site/pages/$projection_rel"
+        return 0
+      fi
+      ;;
+  esac
+
+  rm -f "$projection_tmp"
+  return 0
+}
+
+status=0
+for projection_rel in \
+  admin.md \
+  artificer.md \
+  blog.md \
+  cart.md \
+  checkout.md \
+  embed/video-chat.md \
+  login-security.md \
+  search.md
+do
+  sync_projection "$projection_rel" || status=1
+done
+
+exit "$status"

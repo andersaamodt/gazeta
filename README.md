@@ -139,6 +139,7 @@ visibility: "public"  # Change from "draft"
 - `site/pages/*.md` mounts are generated from that canonical content directory during build
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
 - Lodestone page sources in `site/lodestone/` are canonical template inputs; their rendered Markdown projections belong in the same generated page root, not in the source checkout.
+- The checked-in application page shells under `site/pages/` are compatibility projections of `site/lodestone/pages/`; regenerate or verify them with `scripts/sync-lodestone-page-projections`.
 - Gazeta-specific Lodestone components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
 
 ## Sample Site Data
