@@ -1325,22 +1325,40 @@ blog_nostr_page_front_matter_to_tmp() {
   } > "$tmp"
 }
 
-blog_nostr_page_lodestone_template_path() {
+blog_nostr_page_lodestone_template_relpath() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
     blog)
-      printf '%s/site/lodestone/pages/blog.stone.html\n' "$blog_site_root"
+      printf '%s\n' 'site/lodestone/pages/blog.stone.html'
       ;;
     software-gallery)
-      printf '%s/site/lodestone/templates/icon-gallery.stone.html\n' "$blog_site_root"
+      printf '%s\n' 'site/lodestone/templates/icon-gallery.stone.html'
       ;;
     icon-gallery|contact|nip23|public-ranking|overworld|list)
-      printf '%s/site/lodestone/templates/%s.stone.html\n' "$blog_site_root" "$page_type"
+      printf 'site/lodestone/templates/%s.stone.html\n' "$page_type"
       ;;
     *)
-      printf '%s/site/lodestone/templates/list.stone.html\n' "$blog_site_root"
+      printf '%s\n' 'site/lodestone/templates/list.stone.html'
       ;;
   esac
+}
+
+blog_nostr_page_lodestone_template_path() {
+  page_rel=$(blog_nostr_page_lodestone_template_relpath "${1-}")
+  site_template="$blog_site_root/$page_rel"
+  if [ -f "$site_template" ]; then
+    printf '%s\n' "$site_template"
+    return 0
+  fi
+  if [ -n "${SCRIPT_DIR:-}" ]; then
+    default_template_root=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+    default_template="$default_template_root/$page_rel"
+    if [ -f "$default_template" ]; then
+      printf '%s\n' "$default_template"
+      return 0
+    fi
+  fi
+  return 1
 }
 
 blog_nostr_page_render_lodestone_source() {
@@ -2949,15 +2967,8 @@ blog_nostr_pages_source_sync_signature() {
     blog_nostr_pages_source_sync_file_signature blog-lib "$SCRIPT_DIR/blog-lib.sh"
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone "$SCRIPT_DIR/gazeta-lodestone"
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"
-    for template_file in \
-      "$blog_site_root/site/lodestone/pages/blog.stone.html" \
-      "$blog_site_root/site/lodestone/templates/list.stone.html" \
-      "$blog_site_root/site/lodestone/templates/icon-gallery.stone.html" \
-      "$blog_site_root/site/lodestone/templates/contact.stone.html" \
-      "$blog_site_root/site/lodestone/templates/nip23.stone.html" \
-      "$blog_site_root/site/lodestone/templates/public-ranking.stone.html" \
-      "$blog_site_root/site/lodestone/templates/overworld.stone.html"
-    do
+    for template_kind in blog list icon-gallery contact nip23 public-ranking overworld; do
+      template_file=$(blog_nostr_page_lodestone_template_path "$template_kind" 2>/dev/null || printf '')
       blog_nostr_pages_source_sync_file_signature template "$template_file"
     done
   } > "$signature_tmp"

@@ -92,19 +92,20 @@ export WIZARDRY_SITE_NAME="$SITE_NAME"
 mkdir -p "$SITE_ROOT/site/pages" "$SITE_ROOT/site/static" "$SITE_ROOT/build/static" "$SITE_DATA"
 printf 'plugin_overworld=true\nplugin_nostr_posts=true\nsite_title=Demo\n' > "$SITE_ROOT/site.conf"
 printf '{"pages":[{"slug":"overworld","type":"overworld","show_in_nav":true,"placeholder_title":"Overworld","path":"/overworld"}]}\n' > "$SITE_DATA/nostr-pages.json"
+mkdir -p "$SITE_DATA/static/overworld-godot/v20260523-page-help"
+printf '%s\n' '<!doctype html><title>Overworld Export</title>' > "$SITE_DATA/static/overworld-godot/v20260523-page-help/index.html"
+printf '%s\n' 'fixture-pck' > "$SITE_DATA/static/overworld-godot/v20260523-page-help/index.pck"
 
 # shellcheck disable=SC1091
 . "$ROOT_DIR/cgi/blog-lib.sh"
 blog_init
 
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'overworld)' 'plugin registry supports Overworld'
-assert_file_contains "$ROOT_DIR/site/pages/admin.md" 'plugin-overworld' 'admin plugin table exposes Overworld'
-assert_file_contains "$ROOT_DIR/site/pages/admin.md" 'account-overworld-ssh-user' 'account settings expose Overworld SSH username'
+assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'plugin-overworld' 'admin plugin table exposes Overworld'
+assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'account-overworld-ssh-user' 'account settings expose Overworld SSH username'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" 'data-overworld-game' 'web game mounts shortcode host'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" "GODOT_BUILD_PATH = '/static/overworld-godot/v20260523-page-help/'" 'web game targets versioned Godot export'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" "GODOT_URL = GODOT_BUILD_PATH + 'index.html'" 'web game mounts Godot export HTML from the versioned build'
-assert_file_exists "$ROOT_DIR/site/static/overworld-godot/v20260523-page-help/index.html" 'Godot export HTML exists'
-assert_file_exists "$ROOT_DIR/site/static/overworld-godot/v20260523-page-help/index.pck" 'Godot export package exists'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" 'Download (6.8 MB)' 'web game advertises compressed opt-in download size'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" 'Play cached game' 'web game distinguishes cached launch from first download'
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" "GODOT_SERVICE_WORKER_URL = GODOT_BUILD_PATH + 'index.service.worker.js'" 'web game registers the Godot cache worker before launch'
@@ -146,6 +147,8 @@ header_reset_json=$(REQUEST_METHOD=GET QUERY_STRING='action=reset' HTTP_X_OVERWO
 assert_jq "$header_reset_json" '.success == true and .authenticated == true and .username == "mobileuser"' 'Overworld API accepts header auth for Godot web GET requests'
 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=2 WIZARDRY_SITES_DIR="$SITES_DIR" WIZARDRY_SITE_NAME="$SITE_NAME" "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
+assert_file_exists "$SITE_ROOT/site/static/overworld-godot/v20260523-page-help/index.html" 'pre-build mirrors site-owned Godot export HTML into static root'
+assert_file_exists "$SITE_ROOT/build/static/overworld-godot/v20260523-page-help/index.pck" 'pre-build mirrors site-owned Godot export package into build-static root'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '<div class="overworld-game-mount" data-overworld-game data-prerender-painted="true"' 'pre-build creates Overworld page with a prerendered game mount'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'pre-build creates Overworld page with a stable play-surface shell'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-status' 'pre-build creates Overworld status row before runtime JS'

@@ -72,6 +72,9 @@ printf '%s\n' 'fixture-texture' > "$canonical_root/static/textures/lapidarist-pa
 mkdir -p "$site_data_root/files/legacy-assets/oeuvre" "$site_data_root/files/legacy-assets/root"
 printf '%s\n' 'legacy-video-fixture' > "$site_data_root/files/legacy-assets/oeuvre/ultramemes.mkv"
 printf '%s\n' 'legacy-root-fixture' > "$site_data_root/files/legacy-assets/root/feed.xml"
+mkdir -p "$site_data_root/static/overworld-godot/test-build"
+printf '%s\n' '<!doctype html><title>Overworld Fixture</title>' > "$site_data_root/static/overworld-godot/test-build/index.html"
+printf '%s\n' 'fixture-pck' > "$site_data_root/static/overworld-godot/test-build/index.pck"
 
 mkdir -p "$tmp_root/bin"
 cat > "$tmp_root/bin/config-get" <<'EOFCONFIG'
@@ -140,6 +143,14 @@ blog_nostr_pages_save_json '{"pages":[]}'
   printf '%s\n' "missing build-static site bootstrap artifact" >&2
   exit 1
 }
+[ -f "$generated_root/static/overworld-godot/test-build/index.html" ] || {
+  printf '%s\n' "missing generated site-owned static overlay" >&2
+  exit 1
+}
+[ -f "$generated_root/build-static/overworld-godot/test-build/index.pck" ] || {
+  printf '%s\n' "missing build-static site-owned static overlay" >&2
+  exit 1
+}
 [ -f "$generated_root/static/nostr-page-bootstrap/blog.js" ] || {
   printf '%s\n' "missing generated placeholder page bootstrap" >&2
   exit 1
@@ -179,6 +190,10 @@ grep -Fq 'theme: "lapidarist"' "$generated_root/build-static/site-bootstrap.js" 
 }
 grep -Fq 'window.__wizardryNostrPageBootstrap' "$generated_root/static/nostr-page-bootstrap/blog.js" || {
   printf '%s\n' "generated placeholder page bootstrap content mismatch" >&2
+  exit 1
+}
+grep -Fq 'Overworld Fixture' "$generated_root/static/overworld-godot/test-build/index.html" || {
+  printf '%s\n' "generated site-owned static overlay content mismatch" >&2
   exit 1
 }
 grep -Fq 'fixture-theme' "$generated_root/static/themes/lapidarist.css" || {

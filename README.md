@@ -73,13 +73,10 @@ blog/
 │   │   ├── head.html             # Shared document head shell
 │   │   ├── nav.md                # Shared site navigation shell
 │   │   └── footer.md             # Shared footer shell
-│   ├── pages/
-│   │   ├── admin.md              # Application/admin page (template-owned)
-│   │   ├── login-security.md     # Application/help page (template-owned)
-│   │   ├── blog.md -> .../blog/content/pages/blog.md
-│   │   ├── list.md -> .../blog/content/pages/list.md
-│   │   ├── reading-list.md -> .../blog/content/pages/reading-list.md
-│   │   └── posts -> .../blog/content/posts
+│   ├── lodestone/
+│   │   ├── pages/                # Canonical application page shells
+│   │   └── templates/            # Canonical managed Nostr page shells
+│   ├── pages/                    # Generated managed page mounts + posts symlink
 │   └── static/
 │       └── style.css             # Shared blog styling and page bundles
 │
@@ -138,8 +135,7 @@ visibility: "public"  # Change from "draft"
 - Public page source lives under `.sitedata/<site>/blog/content/pages/`
 - `site/pages/*.md` mounts are generated from that canonical content directory during build
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
-- Lodestone page sources in `site/lodestone/` are canonical template inputs; their rendered Markdown projections belong in the same generated page root, not in the source checkout.
-- The checked-in application page shells under `site/pages/` are compatibility projections of `site/lodestone/pages/`; regenerate or verify them with `scripts/sync-lodestone-page-projections`.
+- Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
 - Gazeta-specific Lodestone components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
 
 ## Sample Site Data

@@ -446,9 +446,9 @@ assert_eq '0' "$(printf '%s' "$posts_after_crosspost" | jq -r '.posts[0].crosspo
 assert_eq 'false' "$(printf '%s' "$posts_after_crosspost" | jq -r '.posts[0].crossposting.needs_action')" 'posts list hides follow-up action once fully cross-posted'
 assert_eq '["bluesky","mastodon","reddit","telegram"]' "$(jq -c '.platforms | sort' "$post_settings")" 'manual cross-post merges post selection into saved origin settings'
 
-assert_file_contains "$ROOT_DIR/site/pages/admin.md" 'data-admin-nav="crossposting"' 'admin nav exposes cross-posting section'
-assert_file_contains "$ROOT_DIR/site/pages/admin.md" 'id="compose-crosspost-details"' 'compose UI includes cross-posting details control'
-assert_file_contains "$ROOT_DIR/site/pages/admin.md" 'id="post-crosspost-dialog"' 'posts UI includes cross-post dialog'
+assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'data-admin-nav="crossposting"' 'admin nav exposes cross-posting section'
+assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'id="compose-crosspost-details"' 'compose UI includes cross-posting details control'
+assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'id="post-crosspost-dialog"' 'posts UI includes cross-post dialog'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'origin_platforms: JSON.stringify(arrayFromMaybe(state.composeOriginPlatforms))' 'compose payload sends selected origin platforms'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'class="post-crosspost-trigger"' 'posts list renders explicit cross-post action button'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'function renderCrosspostingSettingsUi() {' 'admin JS renders cross-post settings section'

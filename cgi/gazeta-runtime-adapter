@@ -9,12 +9,19 @@ action=${2-}
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 REGISTRY_FILE="$SCRIPT_DIR/gazeta-action-registry.conf"
+legacy_script="$SCRIPT_DIR/${action}-legacy"
 
 runtime_bin=''
 runtime_env=''
 unknown_action=''
 configured_missing=''
 runtime_missing=''
+
+run_legacy_if_present() {
+  [ -n "$action" ] || return 1
+  [ -f "$legacy_script" ] || return 1
+  exec /bin/sh "$legacy_script"
+}
 
 case "$domain" in
   read)
@@ -74,6 +81,7 @@ if [ -n "$action" ] && [ -f "$REGISTRY_FILE" ]; then
 fi
 
 if [ "$action_allowed" != 'true' ]; then
+  run_legacy_if_present || true
   printf '%s\n\n' 'Content-Type: application/json'
   printf '{"success":false,"code":"bad_action","error":"%s"}\n' "$unknown_action"
   exit 0
@@ -100,6 +108,7 @@ run_candidate() {
 eval "configured_runtime=\${$runtime_env-}"
 if [ -n "$configured_runtime" ]; then
   run_candidate "$configured_runtime" || {
+    run_legacy_if_present || true
     printf '%s\n\n' 'Content-Type: application/json'
     printf '{"success":false,"code":"runtime_missing","error":"%s"}\n' "$configured_missing"
     exit 0
@@ -112,6 +121,7 @@ fi
 
 run_candidate "$RELEASE_RUNTIME" || true
 run_candidate "$DEBUG_RUNTIME" || true
+run_legacy_if_present || true
 
 printf '%s\n\n' 'Content-Type: application/json'
 printf '{"success":false,"code":"runtime_missing","error":"%s"}\n' "$runtime_missing"

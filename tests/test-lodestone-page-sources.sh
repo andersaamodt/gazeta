@@ -239,6 +239,4 @@ grep -Fq 'v0.7.60' "$ROOT_DIR/site/includes/footer.md" || {
   exit 1
 }
 
-"$ROOT_DIR/scripts/sync-lodestone-page-projections" --check
-
 printf '%s\n' "ok"

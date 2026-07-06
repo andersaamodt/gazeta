@@ -246,6 +246,18 @@ legacy_assets_dir() {
   blog_legacy_assets_dir
 }
 
+site_static_overlays_dir() {
+  printf '%s/static\n' "$blog_site_data"
+}
+
+sync_site_static_overlay() {
+  overlay_rel=${1-}
+  [ -n "$overlay_rel" ] || return 1
+  overlay_src="$(site_static_overlays_dir)/$overlay_rel"
+  sync_static_tree "$overlay_src" "$site_bootstrap_dir/$overlay_rel"
+  sync_static_tree "$overlay_src" "$build_bootstrap_dir/$overlay_rel"
+}
+
 copy_tree_overlay() {
   overlay_src=${1-}
   overlay_dest=${2-}
@@ -374,6 +386,8 @@ case "$legacy_asset_mode" in
     exit 1
     ;;
 esac
+
+sync_site_static_overlay "overworld-godot"
 
 sync_lodestone_pages() {
   lodestone_pages_dir="$blog_site_root/site/lodestone/pages"

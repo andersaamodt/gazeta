@@ -39,7 +39,7 @@ assert_file_not_contains() {
 }
 
 CGI="$ROOT_DIR/cgi/blog-artificer-web"
-PAGE="$ROOT_DIR/site/pages/artificer.md"
+PAGE="$ROOT_DIR/site/lodestone/pages/artificer.stone.html"
 JS="$ROOT_DIR/site/static/artificer-web-page.js"
 CSS="$ROOT_DIR/site/static/artificer-web-page.css"
 NAV="$ROOT_DIR/site/static/nav-auth.js"
