@@ -13,7 +13,7 @@ license: "CC BY 4.0"
 <div class="list-page-head"><h1 id="public-ranking-title"><span class="list-page-title-text">{title}</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span></h1><p id="public-ranking-description" class="muted"{@html description_attrs}><span class="list-page-description-text">{@html description_html}</span></p></div>
 <div id="public-ranking-admin" class="list-admin" hidden></div>
 <div id="public-ranking-validation" class="list-validation" hidden></div>
-<div id="public-ranking-content" class="list-page-content"{@html prerender_attrs}>{@html content_html}</div>
+<div id="public-ranking-content" class="list-page-content"{@html prerender_attrs}><gazeta-nostr-page-content page_type="public-ranking">{@html content_html}</gazeta-nostr-page-content></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/{slug}.js"></script>

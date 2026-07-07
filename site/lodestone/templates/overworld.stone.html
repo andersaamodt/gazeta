@@ -11,7 +11,7 @@ license: "CC BY 4.0"
 <lode-page>
 <section id="overworld-page-root" class="overworld-page-shell" data-page-slug={slug} data-page-type="overworld" data-page-title={title}{@html prerender_attrs}>
 <div class="list-page-head overworld-page-head"><h1 id="overworld-page-title"><span class="list-page-title-text">{title}</span><span id="overworld-page-title-actions" class="list-page-title-actions"></span></h1></div>
-<div class="overworld-game-mount" data-overworld-game{@html prerender_attrs}>{@html content_html}</div>
+<div class="overworld-game-mount" data-overworld-game{@html prerender_attrs}><gazeta-nostr-page-content page_type="overworld">{@html content_html}</gazeta-nostr-page-content></div>
 </section>
 
 <script src="/static/nostr-page-bootstrap/{slug}.js"></script>

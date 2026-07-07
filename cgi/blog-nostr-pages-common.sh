@@ -1498,10 +1498,28 @@ blog_nostr_page_render_lodestone_source() {
   render_description_html=$(blog_nostr_prerender_inline_html_from_text "$render_description")
   render_description_attrs=''
   render_content_attrs=''
+  render_payload_content_attrs='__wizardry_missing__'
   if [ -z "$render_description_html" ]; then
     render_description_attrs=' hidden'
   fi
-  if [ -z "$render_content_html" ]; then
+  if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    render_payload_content_attrs=$(
+      jq -r '
+        if (has("prerender") and (.prerender | type) == "object" and (.prerender | has("content_attrs"))) then
+          (.prerender.content_attrs // "") | tostring
+        else
+          "__wizardry_missing__"
+        end
+      ' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" 2>/dev/null || printf '__wizardry_missing__'
+    )
+  fi
+  if [ "$render_payload_content_attrs" != '__wizardry_missing__' ]; then
+    render_content_attrs=$render_payload_content_attrs
+  elif [ -z "$render_content_html" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    if [ -z "$(blog_nostr_page_prerender_content_html "$(cat "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE")" "$render_page_type" 2>/dev/null || printf '')" ]; then
+      render_content_attrs=' hidden'
+    fi
+  elif [ -z "$render_content_html" ]; then
     render_content_attrs=' hidden'
   fi
   printf '%s\n' "$render_content_html" > "$render_content_tmp"
@@ -1577,9 +1595,7 @@ blog_nostr_page_write_prerendered_source() {
   esac
   blog_nostr_page_front_matter_to_tmp "$page_file" "$page_title" "$tags" "$tmp"
 
-  lodestone_content_html=$(blog_nostr_page_prerender_content_html "$payload_json" "$page_type")
-
-  if ! blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "$lodestone_content_html" "$tmp"; then
+  if ! blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "" "$tmp"; then
     rm -f "$payload_tmp" "$tmp"
     if [ -n "$prev_prerender_payload_file" ]; then
       BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$prev_prerender_payload_file
