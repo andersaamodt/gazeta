@@ -607,6 +607,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'if [ -n "${SCRI
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone" '--component-command "$component_command"' 'Gazeta Lodestone wrapper injects the Gazeta-owned component renderer'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" '. "$SCRIPT_DIR/blog-nostr-pages-common.sh"' 'Gazeta Lodestone components reuse the shared Nostr page prerender helpers'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" 'gazeta-nostr-page-content)' 'Gazeta Lodestone component renderer owns Nostr page content components'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_render_component_html "gazeta-nostr-page-content" "$page_type" "$payload_json" ""' 'bootstrap prerender projection routes read-only page content through the Gazeta-owned component renderer'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"' 'source-page signature tracks the Gazeta-owned Lodestone component renderer'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog-post-cards-common "$SCRIPT_DIR/blog-post-cards-common.sh"' 'source-page signature tracks the shared blog card renderer that powers universal hydration'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_blog_posts_html()' 'blog prerender has no parallel non-Lodestone post-card renderer'
