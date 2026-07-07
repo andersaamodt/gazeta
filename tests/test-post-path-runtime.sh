@@ -113,6 +113,7 @@ assert_eq 'posts/example-post.md' "$catalog_source_path" 'public posts catalog e
 
 edit_body="post_path=$(blog_url_encode 'posts/example-post.md')&session_token=$session_token&csrf_token=$csrf_token"
 edit_json=$(printf '%s' "$edit_body" |
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=POST \
   CONTENT_TYPE=application/x-www-form-urlencoded \
   CONTENT_LENGTH=${#edit_body} \
@@ -156,6 +157,7 @@ assert_eq 'scheduled' "$(blog_read_front_matter_value "$edit_draft_file" publish
 
 unqueue_body="draft_id=$edit_draft_id&session_token=$session_token&csrf_token=$csrf_token"
 unqueue_json=$(printf '%s' "$unqueue_body" |
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=POST \
   CONTENT_TYPE=application/x-www-form-urlencoded \
   CONTENT_LENGTH=${#unqueue_body} \
@@ -171,6 +173,7 @@ assert_eq '' "$(blog_read_front_matter_value "$edit_draft_file" scheduled_at 2>/
 
 delete_draft_body="draft_id=$edit_draft_id&session_token=$session_token&csrf_token=$csrf_token"
 delete_draft_json=$(printf '%s' "$delete_draft_body" |
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=POST \
   CONTENT_TYPE=application/x-www-form-urlencoded \
   CONTENT_LENGTH=${#delete_draft_body} \

@@ -1,7 +1,7 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
 use crate::admin_security::{require_admin_session as require_admin_session_shared, RequestParams};
 use crate::config_kv::{config_string, read_config, write_config};
-use crate::markdown_content::read_markdown_front_matter;
+use crate::markdown_content::{normalize_post_type, normalize_tags, read_markdown_front_matter};
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
@@ -12,7 +12,7 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use mime_guess::MimeGuess;
 use serde_json::{json, Value};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::io;
@@ -39,6 +39,9 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     }
     match action {
         "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
+        "blog-create-draft-from-post" => blog_create_draft_from_post().map(CgiResponse::json),
+        "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
+        "blog-delete-draft" => blog_delete_draft().map(CgiResponse::json),
         "blog-list-files" => blog_list_files().map(CgiResponse::json),
         "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
         "blog-update-file" => blog_update_file().map(CgiResponse::json),
@@ -113,6 +116,144 @@ fn blog_manage_post() -> Result<Value> {
         }
         _ => Err(AdminError::new("invalid_action", "Unknown action")),
     }
+}
+
+fn blog_create_draft_from_post() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let session = require_admin_session(&paths, &request, false)?;
+
+    let raw_post_path = request.value("post_path").unwrap_or_default();
+    if raw_post_path.is_empty() {
+        return Err(AdminError::new(
+            "missing_post_path",
+            "post_path is required",
+        ));
+    }
+    let post_path = normalize_requested_post_path(&raw_post_path)
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    let file = resolve_post_markdown_file(&paths, &post_path)
+        .ok_or_else(|| AdminError::new("not_found", "Post not found"))?;
+    let post_path = managed_post_rel_path_for_file(&paths, &file)
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    let doc = MarkdownDoc::from_path(&file)
+        .ok_or_else(|| AdminError::new("not_found", "Post not found"))?;
+
+    let draft_id = random_hex(12)?;
+    let author = if doc.author().is_empty() {
+        publish_name_for_user(&paths, &session.username)
+    } else {
+        doc.author()
+    };
+    let tags = normalize_tags(doc.front_matter("tags").unwrap_or_default());
+    let summary = doc.front_matter("summary").unwrap_or_default();
+    let content = doc.content.clone();
+    let post_type = doc.post_type();
+    let post_filename = normalize_post_filename(&post_path).unwrap_or_default();
+    let origin_platforms = origin_post_platforms_for_path(&paths, &post_path);
+    save_draft(
+        &paths,
+        DraftSaveParams {
+            draft_id: draft_id.clone(),
+            title: doc.title_or("Untitled"),
+            tags,
+            summary,
+            content,
+            author,
+            publish_mode: "draft".to_string(),
+            scheduled_at: String::new(),
+            status: "draft".to_string(),
+            post_type,
+            source_post_path: post_path,
+            post_filename,
+            origin_platforms,
+        },
+    )?;
+
+    Ok(json!({
+        "success": true,
+        "draft_id": draft_id,
+        "message": "Draft created from published post.",
+    }))
+}
+
+fn blog_unqueue_draft() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_admin_session(&paths, &request, true)?;
+
+    let draft_id = request.value("draft_id").unwrap_or_default();
+    if draft_id.is_empty() {
+        return Err(AdminError::new("invalid_request", "draft_id is required"));
+    }
+    let draft = find_draft_by_id(&paths, &draft_id)
+        .ok_or_else(|| AdminError::new("not_found", "Draft not found"))?;
+    let raw_origin_platforms = draft
+        .front_matter_raw("origin_platforms")
+        .unwrap_or_default();
+    let enabled_origin_platforms = origin_enabled_platforms(&paths);
+    let mut origin_platforms =
+        normalize_origin_platforms(raw_origin_platforms.clone(), &enabled_origin_platforms);
+    if origin_platforms.is_empty() && raw_origin_platforms.is_empty() {
+        origin_platforms = origin_default_platforms(&paths, &enabled_origin_platforms);
+    }
+    let tags = normalize_tags(draft.front_matter("tags").unwrap_or_default());
+    let summary = draft.front_matter("summary").unwrap_or_default();
+    let content = draft.content.clone();
+    let author = draft.front_matter("author").unwrap_or_default();
+    let post_type = draft.post_type();
+    let source_post_path = draft.front_matter("source_post_path").unwrap_or_default();
+    let post_filename = draft.post_filename();
+
+    save_draft(
+        &paths,
+        DraftSaveParams {
+            draft_id: draft_id.clone(),
+            title: draft.title_or("Untitled Draft"),
+            tags,
+            summary,
+            content,
+            author,
+            publish_mode: "draft".to_string(),
+            scheduled_at: String::new(),
+            status: "draft".to_string(),
+            post_type,
+            source_post_path,
+            post_filename,
+            origin_platforms,
+        },
+    )?;
+
+    Ok(json!({
+        "success": true,
+        "message": "Draft moved back to drafts",
+        "draft_id": draft_id,
+    }))
+}
+
+fn blog_delete_draft() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_admin_session(&paths, &request, true)?;
+
+    let draft_id = request.value("draft_id").unwrap_or_default();
+    if draft_id.is_empty() {
+        return Err(AdminError::new("invalid_request", "draft_id is required"));
+    }
+    let draft_path = resolve_draft_path(&paths, &draft_id)
+        .ok_or_else(|| AdminError::new("not_found", "Draft not found"))?;
+    clear_draft_refs(&paths, &draft_id)?;
+    let _ = fs::remove_file(&draft_path);
+    let direct_path = paths.drafts_dir().join(format!("{draft_id}.md"));
+    if direct_path != draft_path {
+        let _ = fs::remove_file(direct_path);
+    }
+
+    Ok(json!({
+        "success": true,
+        "deleted": true,
+        "draft_id": draft_id,
+    }))
 }
 
 fn blog_upload_media() -> Result<Value> {
@@ -473,6 +614,10 @@ impl SitePaths {
         self.state_dir.join("ssh-auth/users")
     }
 
+    fn drafts_dir(&self) -> PathBuf {
+        self.state_dir.join("content/drafts")
+    }
+
     fn sessions_dir(&self) -> PathBuf {
         self.state_dir.join("ssh-auth/sessions")
     }
@@ -526,7 +671,89 @@ fn require_admin_session(
     })
 }
 
-fn resolve_post_markdown_file(paths: &SitePaths, raw: &str) -> Option<PathBuf> {
+#[derive(Clone)]
+struct MarkdownDoc {
+    path: PathBuf,
+    front_matter: BTreeMap<String, String>,
+    front_matter_raw: BTreeMap<String, String>,
+    content: String,
+}
+
+impl MarkdownDoc {
+    fn from_path(path: &Path) -> Option<Self> {
+        let parsed = read_markdown_front_matter(path)?;
+        Some(Self {
+            path: path.to_path_buf(),
+            front_matter: parsed.parsed,
+            front_matter_raw: parsed.raw,
+            content: parsed.body,
+        })
+    }
+
+    fn draft_id(&self) -> String {
+        self.front_matter("draft_id").unwrap_or_else(|| {
+            self.path
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_string()
+        })
+    }
+
+    fn front_matter(&self, key: &str) -> Option<String> {
+        self.front_matter.get(key).cloned()
+    }
+
+    fn front_matter_raw(&self, key: &str) -> Option<String> {
+        self.front_matter_raw.get(key).cloned()
+    }
+
+    fn post_type(&self) -> String {
+        normalize_post_type(
+            self.front_matter("post_type")
+                .filter(|value| !value.is_empty())
+                .or_else(|| self.front_matter("type"))
+                .unwrap_or_default(),
+        )
+    }
+
+    fn title_or(&self, default: &str) -> String {
+        self.front_matter("title")
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| default.to_string())
+    }
+
+    fn author(&self) -> String {
+        self.front_matter("author").unwrap_or_default()
+    }
+
+    fn post_filename(&self) -> String {
+        let stored = self.front_matter("post_filename").unwrap_or_default();
+        if !stored.is_empty() {
+            return stored;
+        }
+        normalize_post_filename(&self.front_matter("source_post_path").unwrap_or_default())
+            .unwrap_or_default()
+    }
+}
+
+struct DraftSaveParams {
+    draft_id: String,
+    title: String,
+    tags: String,
+    summary: String,
+    content: String,
+    author: String,
+    publish_mode: String,
+    scheduled_at: String,
+    status: String,
+    post_type: String,
+    source_post_path: String,
+    post_filename: String,
+    origin_platforms: Vec<String>,
+}
+
+fn normalize_requested_post_path(raw: &str) -> Option<String> {
     let mut requested = raw.trim().trim_start_matches('/').to_string();
     if let Some(stripped) = requested
         .strip_prefix("http://")
@@ -542,9 +769,15 @@ fn resolve_post_markdown_file(paths: &SitePaths, raw: &str) -> Option<PathBuf> {
         .trim_start_matches("pages/posts/")
         .trim_start_matches("posts/")
         .to_string();
-    if requested.contains("..") || requested.contains('\\') || requested.contains("//") {
-        return None;
-    }
+    (!requested.is_empty()
+        && !requested.contains("..")
+        && !requested.contains('\\')
+        && !requested.contains("//"))
+    .then_some(requested)
+}
+
+fn resolve_post_markdown_file(paths: &SitePaths, raw: &str) -> Option<PathBuf> {
+    let requested = normalize_requested_post_path(raw)?;
     let rel_md = if requested.ends_with(".html") {
         format!("{}.md", requested.trim_end_matches(".html"))
     } else if requested.ends_with(".md") {
@@ -614,6 +847,53 @@ fn managed_post_rel_path_for_file(paths: &SitePaths, file: &Path) -> Option<Stri
     None
 }
 
+fn resolve_draft_path(paths: &SitePaths, draft_id: &str) -> Option<PathBuf> {
+    let direct = paths.drafts_dir().join(format!("{draft_id}.md"));
+    if direct.is_file() {
+        return Some(direct);
+    }
+    for entry in fs::read_dir(paths.drafts_dir())
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("md") {
+            continue;
+        }
+        let Some(doc) = MarkdownDoc::from_path(&path) else {
+            continue;
+        };
+        if doc.draft_id() == draft_id {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn find_draft_by_id(paths: &SitePaths, draft_id: &str) -> Option<MarkdownDoc> {
+    let path = resolve_draft_path(paths, draft_id)?;
+    MarkdownDoc::from_path(&path)
+}
+
+fn publish_name_for_user(paths: &SitePaths, username: &str) -> String {
+    if !valid_username(username) {
+        return username.to_string();
+    }
+    let profile = paths.users_dir().join(username).join("profile.conf");
+    if let Some(config) = read_config(&profile) {
+        let publish_name = config_string(&config, "publish_name");
+        if !publish_name.is_empty() {
+            return publish_name;
+        }
+        let player_name = config_string(&config, "player_name");
+        if !player_name.is_empty() {
+            return player_name;
+        }
+    }
+    username.to_string()
+}
+
 fn strip_post_date_prefix(slug: &str) -> &str {
     if slug.len() > 11 {
         let prefix = &slug.as_bytes()[..11];
@@ -672,6 +952,380 @@ fn post_nostr_address_for_file(
         }
     }
     String::new()
+}
+
+fn read_json(path: &Path) -> Option<Value> {
+    let text = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+fn save_draft(paths: &SitePaths, mut params: DraftSaveParams) -> Result<()> {
+    fs::create_dir_all(paths.drafts_dir()).map_err(io_error(
+        "write_failed",
+        "Could not prepare drafts directory",
+    ))?;
+    let now = now_iso()?;
+    let existing = find_draft_by_id(paths, &params.draft_id);
+    let created_at = existing
+        .and_then(|draft| draft.front_matter("created_at"))
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| now.clone());
+    params.tags = normalize_tags(&params.tags);
+    params.post_type = normalize_post_type(&params.post_type);
+    if params.post_type == "shortform" {
+        params.title.clear();
+    }
+    let slug = if let Some(filename) =
+        normalize_post_filename(&params.post_filename).filter(|value| !value.is_empty())
+    {
+        params.post_filename = filename.clone();
+        filename
+    } else if let Some(filename) =
+        normalize_post_filename(&params.source_post_path).filter(|value| !value.is_empty())
+    {
+        params.post_filename = filename.clone();
+        filename
+    } else {
+        slugify(&slug_seed_text(&params.title, &params.content))
+    };
+    let draft_file = paths.drafts_dir().join(format!("{}.md", params.draft_id));
+    write_draft_markdown(&draft_file, &params, &slug, &created_at, &now)?;
+    sync_draft_refs(paths, &params.draft_id, &params.content)?;
+    Ok(())
+}
+
+fn write_draft_markdown(
+    draft_file: &Path,
+    params: &DraftSaveParams,
+    slug: &str,
+    created_at: &str,
+    updated_at: &str,
+) -> Result<()> {
+    let mut text = String::new();
+    text.push_str("---\n");
+    text.push_str(&format!(
+        "draft_id: \"{}\"\n",
+        yaml_escape(&params.draft_id)
+    ));
+    text.push_str(&format!("title: \"{}\"\n", yaml_escape(&params.title)));
+    text.push_str(&format!("slug: \"{}\"\n", yaml_escape(slug)));
+    text.push_str(&format!("tags: {}\n", tags_to_yaml_array(&params.tags)));
+    text.push_str(&format!(
+        "post_type: \"{}\"\n",
+        yaml_escape(&params.post_type)
+    ));
+    if !params.source_post_path.is_empty() {
+        text.push_str(&format!(
+            "source_post_path: \"{}\"\n",
+            yaml_escape(&params.source_post_path)
+        ));
+    }
+    if !params.post_filename.is_empty() {
+        text.push_str(&format!(
+            "post_filename: \"{}\"\n",
+            yaml_escape(&params.post_filename)
+        ));
+    }
+    text.push_str(&format!(
+        "origin_platforms: {}\n",
+        serde_json::to_string(&params.origin_platforms).unwrap_or_else(|_| "[]".to_string())
+    ));
+    text.push_str(&format!("summary: \"{}\"\n", yaml_escape(&params.summary)));
+    text.push_str(&format!("author: \"{}\"\n", yaml_escape(&params.author)));
+    text.push_str(&format!(
+        "publish_mode: \"{}\"\n",
+        yaml_escape(&params.publish_mode)
+    ));
+    text.push_str(&format!(
+        "scheduled_at: \"{}\"\n",
+        yaml_escape(&params.scheduled_at)
+    ));
+    text.push_str(&format!("status: \"{}\"\n", yaml_escape(&params.status)));
+    text.push_str(&format!("created_at: \"{}\"\n", yaml_escape(created_at)));
+    text.push_str(&format!("updated_at: \"{}\"\n", yaml_escape(updated_at)));
+    text.push_str("---\n\n");
+    text.push_str(&params.content);
+    fs::write(draft_file, text)
+        .map_err(io_error("write_failed", "Could not write draft markdown"))?;
+    if let Ok(metadata) = fs::metadata(draft_file) {
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o644);
+        let _ = fs::set_permissions(draft_file, perms);
+    }
+    Ok(())
+}
+
+fn clear_draft_refs(paths: &SitePaths, draft_id: &str) -> Result<()> {
+    if draft_id.is_empty() {
+        return Ok(());
+    }
+    for mut record in load_file_records(paths) {
+        if record.draft_id != draft_id {
+            continue;
+        }
+        record.draft_id.clear();
+        record.updated_at = now_iso()?;
+        record.write_to(&paths.file_record_path(&record.file_id))?;
+    }
+    Ok(())
+}
+
+fn sync_draft_refs(paths: &SitePaths, draft_id: &str, content: &str) -> Result<()> {
+    if draft_id.is_empty() {
+        return Ok(());
+    }
+    clear_draft_refs(paths, draft_id)?;
+    let referenced = referenced_file_ids(paths, content);
+    if referenced.is_empty() {
+        return Ok(());
+    }
+    for mut record in load_file_records(paths) {
+        if !referenced.contains(&record.file_id) {
+            continue;
+        }
+        record.draft_id = draft_id.to_string();
+        record.updated_at = now_iso()?;
+        record.write_to(&paths.file_record_path(&record.file_id))?;
+    }
+    Ok(())
+}
+
+fn referenced_file_ids(paths: &SitePaths, content: &str) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    if content.is_empty() {
+        return out;
+    }
+    let marker = "file_id=";
+    let mut rest = content;
+    while let Some(index) = rest.find(marker) {
+        rest = &rest[index + marker.len()..];
+        let file_id = rest
+            .chars()
+            .take_while(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '~' | '-'))
+            .collect::<String>();
+        if !file_id.is_empty() {
+            out.insert(file_id);
+        }
+    }
+    for record in load_file_records(paths) {
+        let url = file_public_url_for_record(paths, &record);
+        if !url.is_empty() && content.contains(&url) {
+            out.insert(record.file_id);
+        }
+    }
+    out
+}
+
+fn yaml_escape(value: &str) -> String {
+    value.replace('"', "\\\"")
+}
+
+fn tags_to_yaml_array(tags: &str) -> String {
+    let normalized = normalize_tags(tags);
+    if normalized.is_empty() {
+        return "[]".to_string();
+    }
+    let entries = normalized
+        .split(',')
+        .map(str::trim)
+        .filter(|tag| !tag.is_empty())
+        .map(|tag| format!("\"{}\"", yaml_escape(tag)))
+        .collect::<Vec<_>>();
+    format!("[{}]", entries.join(", "))
+}
+
+fn slug_seed_text(title: &str, content: &str) -> String {
+    let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !title.is_empty() {
+        return title;
+    }
+    let excerpt = content
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .unwrap_or_default()
+        .to_string();
+    if !excerpt.is_empty() {
+        return excerpt;
+    }
+    "draft".to_string()
+}
+
+fn slugify(value: &str) -> String {
+    let slug = value
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if slug.is_empty() {
+        "draft".to_string()
+    } else {
+        slug
+    }
+}
+
+fn normalize_post_filename(raw: &str) -> Option<String> {
+    let raw = raw
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .unwrap_or(raw)
+        .trim_start_matches('/')
+        .trim_start_matches("pages/")
+        .trim_start_matches("posts/");
+    let raw = raw
+        .rsplit('/')
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches(".md")
+        .trim_end_matches(".MD")
+        .trim_end_matches(".html")
+        .trim_end_matches(".HTML")
+        .trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let slug = raw
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    (!slug.is_empty()).then_some(slug)
+}
+
+fn origin_post_platforms_for_path(paths: &SitePaths, post_path: &str) -> Vec<String> {
+    let enabled = origin_enabled_platforms(paths);
+    let Some(slug) = normalize_post_filename(post_path) else {
+        return enabled;
+    };
+    let settings_path = paths
+        .state_dir
+        .join("origin/posts")
+        .join(format!("{slug}.json"));
+    let Some(value) = read_json(&settings_path) else {
+        return enabled;
+    };
+    let raw = value
+        .get("platforms")
+        .cloned()
+        .map(|platforms| platforms.to_string())
+        .unwrap_or_else(|| "[]".to_string());
+    normalize_origin_platforms(raw, &enabled)
+}
+
+fn available_origin_platforms() -> Vec<String> {
+    let Some(dir) = origin_dir() else {
+        return Vec::new();
+    };
+    let Some(json) = read_json(&dir.join("origin.json")) else {
+        return Vec::new();
+    };
+    let Some(platforms) = json.get("platforms").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    let mut available = platforms
+        .iter()
+        .filter(|(_, value)| value.get("enabled").and_then(Value::as_bool) != Some(false))
+        .map(|(id, _)| id.to_string())
+        .collect::<Vec<_>>();
+    available.sort();
+    available
+}
+
+fn normalize_origin_platforms(raw: String, allowed: &[String]) -> Vec<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let parsed = if trimmed.starts_with('[') {
+        serde_json::from_str::<Value>(trimmed)
+            .ok()
+            .and_then(|value| value.as_array().cloned())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|value| value.as_str().map(ToString::to_string))
+            .collect::<Vec<_>>()
+    } else {
+        trimmed
+            .split(',')
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+    };
+    let allowed = allowed.iter().cloned().collect::<BTreeSet<_>>();
+    let mut out = BTreeSet::new();
+    for value in parsed {
+        let cleaned = value
+            .to_ascii_lowercase()
+            .chars()
+            .filter(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-'))
+            .collect::<String>();
+        if !cleaned.is_empty() && allowed.contains(&cleaned) {
+            out.insert(cleaned);
+        }
+    }
+    out.into_iter().collect()
+}
+
+fn origin_enabled_platforms(paths: &SitePaths) -> Vec<String> {
+    let available = available_origin_platforms();
+    if available.is_empty() {
+        return Vec::new();
+    }
+    let configured = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "origin_enabled_platforms"))
+        .unwrap_or_else(|| "__missing__".to_string());
+    if configured == "__missing__" {
+        return available;
+    }
+    normalize_origin_platforms(configured, &available)
+}
+
+fn origin_default_platforms(paths: &SitePaths, enabled: &[String]) -> Vec<String> {
+    if enabled.is_empty() {
+        return Vec::new();
+    }
+    let configured = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "origin_default_platforms"))
+        .unwrap_or_else(|| "__missing__".to_string());
+    if configured == "__missing__" {
+        return enabled.to_vec();
+    }
+    normalize_origin_platforms(configured, enabled)
+}
+
+fn origin_dir() -> Option<PathBuf> {
+    let configured = env::var_os("ORIGIN_DIR").map(PathBuf::from);
+    if configured
+        .as_deref()
+        .is_some_and(|path| path.join("bin/origin").is_file() && path.join("origin.json").is_file())
+    {
+        return configured;
+    }
+    let origin_bin = env::var_os("PATH").and_then(|paths| {
+        env::split_paths(&paths)
+            .map(|path| path.join("origin"))
+            .find(|path| path.is_file())
+    });
+    if let Some(bin) = origin_bin {
+        let candidate = bin.parent().and_then(Path::parent).map(Path::to_path_buf);
+        if candidate.as_deref().is_some_and(|path| {
+            path.join("bin/origin").is_file() && path.join("origin.json").is_file()
+        }) {
+            return candidate;
+        }
+    }
+    let home = env::var_os("HOME").map(PathBuf::from)?;
+    let candidate = home.join("git/origin");
+    (candidate.join("bin/origin").is_file() && candidate.join("origin.json").is_file())
+        .then_some(candidate)
 }
 
 fn append_unique_line(path: &Path, value: &str) -> Result<()> {
@@ -1162,6 +1816,17 @@ fn read_alias_manifest(path: &Path) -> HashSet<String> {
 
 fn is_invalid_basename(value: &str) -> bool {
     matches!(value, "" | "." | "..")
+}
+
+fn valid_username(value: &str) -> bool {
+    !value.is_empty()
+        && value != "."
+        && value != ".."
+        && !value.starts_with('-')
+        && !value.starts_with('.')
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
 fn write_record(path: &Path, values: &[(&str, &str)]) -> Result<()> {
