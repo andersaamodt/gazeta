@@ -39,18 +39,8 @@
     currentMetric: 'momentum',
     initialContentPainted: false
   };
-  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
-
-  function authSignature() {
-    var auth = window.__wizardryAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
-  }
-
-  function bootstrapCacheKey() {
-    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
-  }
 
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
@@ -62,9 +52,9 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWriteBootstrapCache(payload, {
-      storageKey: bootstrapCacheKey(),
-      authSignature: authSignature
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature
     });
   }
 
@@ -1699,18 +1689,11 @@
 
   bindEvents();
   window.addEventListener('blog-auth-changed', load);
-  window.__wizardryRenderFromBootstrapSources({
-    readCache: function () {
-      return window.__wizardryReadBootstrapCache({
-        storageKey: bootstrapCacheKey(),
-        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-        authSignature: authSignature,
-        isExpectedPayload: isExpectedPayload
-      });
-    },
-    readPrerender: function () {
-      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-    },
+  window.__wizardryRenderManagedNostrBootstrapSources({
+    slug: slug,
+    maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+    authSignature: window.__wizardrySessionAuthSignature,
+    isExpectedPayload: isExpectedPayload,
     renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });

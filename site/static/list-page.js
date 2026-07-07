@@ -85,7 +85,6 @@
     renderSignature: '',
     staticPrerenderListAdopted: false
   };
-  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
   var authRefreshPollTimer = 0;
@@ -193,10 +192,6 @@
     });
   }
 
-  function bootstrapCacheKey() {
-    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
-  }
-
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -207,8 +202,8 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWriteBootstrapCache(payload, {
-      storageKey: bootstrapCacheKey(),
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
       authSignature: authSignature,
       allowWrite: function (nextPayload) {
         return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
@@ -5496,18 +5491,14 @@
     state.markerFilterInitialized = false;
     renderList();
   });
-  window.__wizardryRenderFromBootstrapSources({
-    readCache: function () {
-      return window.__wizardryReadBootstrapCache({
-        storageKey: bootstrapCacheKey(),
-        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-        authSignature: authSignature,
-        isExpectedPayload: isExpectedPayload,
-        allowRead: window.__wizardryHasLikelyAuthenticatedSession
-      });
-    },
-    readPrerender: function () {
-      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
+  window.__wizardryRenderManagedNostrBootstrapSources({
+    slug: slug,
+    maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+    authSignature: authSignature,
+    isExpectedPayload: isExpectedPayload,
+    allowRead: window.__wizardryHasLikelyAuthenticatedSession,
+    allowWrite: function (nextPayload) {
+      return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
     },
     renderPayload: renderFromBootstrapPayload,
     writeCache: writeBootstrapCache

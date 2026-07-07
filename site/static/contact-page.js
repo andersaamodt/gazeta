@@ -118,7 +118,6 @@
   };
   var videoChatScriptLoading = null;
   var pageLifecycleClosing = false;
-  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var SECURE_CHAT_STATE_TIMEOUT_MS = 12000;
   var SECURE_CHAT_VOICE_REQUEST_TEXT = 'Voice note permission request';
@@ -433,11 +432,6 @@
     return String(localStorage.getItem('session_token') || '').trim();
   }
 
-  function authSignature() {
-    var auth = window.__wizardryAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
-  }
-
   function secureChatAuthMethod() {
     return String(localStorage.getItem('last_auth_method') || '').trim().toLowerCase();
   }
@@ -601,10 +595,6 @@
     });
   }
 
-  function bootstrapCacheKey() {
-    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
-  }
-
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -615,9 +605,9 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWriteBootstrapCache(payload, {
-      storageKey: bootstrapCacheKey(),
-      authSignature: authSignature
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature
     });
   }
 
@@ -5091,18 +5081,11 @@
       state.chat.pollTimer = null;
     }
   });
-  window.__wizardryRenderFromBootstrapSources({
-    readCache: function () {
-      return window.__wizardryReadBootstrapCache({
-        storageKey: bootstrapCacheKey(),
-        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-        authSignature: authSignature,
-        isExpectedPayload: isExpectedPayload
-      });
-    },
-    readPrerender: function () {
-      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-    },
+  window.__wizardryRenderManagedNostrBootstrapSources({
+    slug: slug,
+    maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+    authSignature: window.__wizardrySessionAuthSignature,
+    isExpectedPayload: isExpectedPayload,
     renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });

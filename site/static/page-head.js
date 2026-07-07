@@ -302,6 +302,10 @@
       contentNode.getAttribute('data-prerender-signature') === signature;
   }
 
+  function pageBootstrapCacheKey(slug) {
+    return 'nostr_page_bootstrap_v1:' + String(slug || '').trim();
+  }
+
   function readBootstrapCache(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var storageKey = String(opts.storageKey || '').trim();
@@ -374,6 +378,21 @@
     } catch (_err) {
       // Ignore storage failures.
     }
+  }
+
+  function sessionAuthSignature() {
+    var auth = authPayload();
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
+  }
+
+  function writePageBootstrapCache(payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    return writeBootstrapCache(payload, {
+      storageKey: pageBootstrapCacheKey(opts.slug),
+      authSignature: opts.authSignature || sessionAuthSignature,
+      allowWrite: opts.allowWrite,
+      clearOnDeny: opts.clearOnDeny
+    });
   }
 
   function authPayload() {
@@ -645,6 +664,34 @@
     return true;
   }
 
+  function renderManagedNostrBootstrapSources(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    return renderFromBootstrapSources({
+      readCache: function () {
+        return readBootstrapCache({
+          storageKey: pageBootstrapCacheKey(opts.slug),
+          maxAgeMs: opts.maxAgeMs,
+          authSignature: opts.authSignature || sessionAuthSignature,
+          isExpectedPayload: opts.isExpectedPayload,
+          allowRead: opts.allowRead,
+          clearOnDeny: opts.clearOnDeny
+        });
+      },
+      readPrerender: function () {
+        return readNostrPageBootstrap(opts.slug, opts.isExpectedPayload);
+      },
+      renderPayload: opts.renderPayload,
+      writeCache: opts.writeCache || function (payload) {
+        writePageBootstrapCache(payload, {
+          slug: opts.slug,
+          authSignature: opts.authSignature || sessionAuthSignature,
+          allowWrite: opts.allowWrite,
+          clearOnDeny: opts.clearOnDeny
+        });
+      }
+    });
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -769,12 +816,16 @@
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
+  window.__wizardryPageBootstrapCacheKey = pageBootstrapCacheKey;
   window.__wizardryReadBootstrapCache = readBootstrapCache;
   window.__wizardryWriteBootstrapCache = writeBootstrapCache;
+  window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
   window.__wizardryAuthPayload = authPayload;
+  window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
+  window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);

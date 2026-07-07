@@ -61,7 +61,6 @@
     authSignature: '',
     initialContentPainted: false
   };
-  var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
 
@@ -230,11 +229,6 @@
     return window.__wizardryPrerenderFragment(state.payload, key);
   }
 
-  function authSignature() {
-    var auth = window.__wizardryAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
       state: state,
@@ -250,10 +244,6 @@
       fallbackText: fallbackText,
       slug: slug
     });
-  }
-
-  function bootstrapCacheKey() {
-    return PAGE_BOOTSTRAP_CACHE_PREFIX + slug;
   }
 
   function isExpectedPayload(payload) {
@@ -272,9 +262,9 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWriteBootstrapCache(payload, {
-      storageKey: bootstrapCacheKey(),
-      authSignature: authSignature
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature
     });
   }
 
@@ -1014,7 +1004,7 @@
   }
 
   function maybeReloadForAuthChange(event) {
-    var nextSig = authSignature();
+    var nextSig = window.__wizardrySessionAuthSignature();
     if (nextSig !== state.authSignature) {
       applyOptimisticAdminFromAuthEvent(event);
       load();
@@ -1023,7 +1013,7 @@
 
   function load() {
     var auth = window.__wizardryAuthPayload();
-    state.authSignature = auth.session_token + '|' + auth.csrf_token;
+    state.authSignature = window.__wizardrySessionAuthSignature();
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: slug,
       session_token: auth.session_token,
@@ -1061,18 +1051,11 @@
       maybeReloadForAuthChange();
     }
   });
-  window.__wizardryRenderFromBootstrapSources({
-    readCache: function () {
-      return window.__wizardryReadBootstrapCache({
-        storageKey: bootstrapCacheKey(),
-        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-        authSignature: authSignature,
-        isExpectedPayload: isExpectedPayload
-      });
-    },
-    readPrerender: function () {
-      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-    },
+  window.__wizardryRenderManagedNostrBootstrapSources({
+    slug: slug,
+    maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+    authSignature: window.__wizardrySessionAuthSignature,
+    isExpectedPayload: isExpectedPayload,
     renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });
