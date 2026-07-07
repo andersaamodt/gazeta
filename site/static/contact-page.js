@@ -671,20 +671,6 @@
       !String(state.chat.draftText || '').trim();
   }
 
-  function pageSyncStatusPillHtml() {
-    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-      messageVariant: 'local_source'
-    });
-  }
-
-  function renderSyncStatusPill() {
-    var actionsHost = document.getElementById('contact-page-title-actions');
-    if (!actionsHost) {
-      return;
-    }
-    actionsHost.innerHTML = pageSyncStatusPillHtml();
-  }
-
   function apiPost(url, payload) {
     var body = new URLSearchParams(payload || {});
     return fetch(url, {
@@ -3722,7 +3708,9 @@
 	      }
 	    }
     if (!isAdmin()) {
-      renderSyncStatusPill();
+      window.__wizardryRenderSyncStatusPill('contact-page-title-actions', state.payload && state.payload.sync_status, {
+        messageVariant: 'local_source'
+      });
     }
     renderNavbarTitleRow(s);
     if (els.description) {
@@ -3820,7 +3808,9 @@
     if (showRevert) {
       html += '<button type="button" data-contact-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
-    html += pageSyncStatusPillHtml();
+    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
+      messageVariant: 'local_source'
+    });
     if (showPublish) {
       html += '<button type="button" class="list-admin-primary-btn" data-contact-action="publish">Publish to Nostr...</button>';
     }

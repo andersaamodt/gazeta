@@ -320,20 +320,6 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function pageSyncStatusPillHtml() {
-    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-      messageVariant: 'local_source'
-    });
-  }
-
-  function renderSyncStatusPill() {
-    var actionsHost = document.getElementById('nip23-page-title-actions');
-    if (!actionsHost) {
-      return;
-    }
-    actionsHost.innerHTML = pageSyncStatusPillHtml();
-  }
-
   function apiPost(url, payload) {
     var body = new URLSearchParams(payload || {});
     return fetch(url, {
@@ -515,7 +501,9 @@
 	      });
 	    }
     if (!isAdmin()) {
-      renderSyncStatusPill();
+      window.__wizardryRenderSyncStatusPill('nip23-page-title-actions', state.payload && state.payload.sync_status, {
+        messageVariant: 'local_source'
+      });
     }
     renderNavbarTitleRow(s);
   }
@@ -555,7 +543,9 @@
     if (showRevert) {
       html += '<button type="button" data-nip23-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
-    html += pageSyncStatusPillHtml();
+    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
+      messageVariant: 'local_source'
+    });
     if (showPublish) {
       html += '<button type="button" class="list-admin-primary-btn" data-nip23-action="publish">Publish to Nostr...</button>';
     }

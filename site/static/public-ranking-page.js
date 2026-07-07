@@ -122,23 +122,8 @@
     return normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
   }
 
-  function pageSyncStatusPillHtml() {
-    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-      messageVariant: 'local_source'
-    });
-  }
-
   function titleActionsHtml(syncOnly) {
     return '<span id="public-ranking-page-title-actions" class="list-page-title-actions' + (syncOnly ? ' public-ranking-sync-actions' : '') + '"></span>';
-  }
-
-  function renderSyncStatusPill() {
-    var actionsHost = document.getElementById('public-ranking-page-title-actions');
-    if (!actionsHost) {
-      return;
-    }
-    actionsHost.classList.add('public-ranking-sync-actions');
-    actionsHost.innerHTML = pageSyncStatusPillHtml();
   }
 
   function escapeHtml(text) {
@@ -482,7 +467,10 @@
 	      }
 	    }
     if (!isAdmin()) {
-      renderSyncStatusPill();
+      window.__wizardryRenderSyncStatusPill('public-ranking-page-title-actions', state.payload && state.payload.sync_status, {
+        messageVariant: 'local_source',
+        hostClassName: 'public-ranking-sync-actions'
+      });
     }
     renderNavbarTitleRow(s);
     if (els.description) {
@@ -553,8 +541,10 @@
       }
       var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
       if (nonAdminActionsHost) {
-        nonAdminActionsHost.classList.add('public-ranking-sync-actions');
-        nonAdminActionsHost.innerHTML = pageSyncStatusPillHtml();
+        window.__wizardryRenderSyncStatusPill(nonAdminActionsHost, state.payload && state.payload.sync_status, {
+          messageVariant: 'local_source',
+          hostClassName: 'public-ranking-sync-actions'
+        });
       }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
@@ -586,7 +576,9 @@
     if (showRevert) {
       html += '<button type="button" data-ranking-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }
-    html += pageSyncStatusPillHtml();
+    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
+      messageVariant: 'local_source'
+    });
     if (showPublish) {
       html += '<button type="button" data-ranking-action="publish" class="list-admin-primary-btn">Publish to Nostr...</button>';
     }

@@ -247,6 +247,22 @@
     return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
   }
 
+  function renderSyncStatusPill(actionsHostOrId, syncStatus, options) {
+    var host = typeof actionsHostOrId === 'string'
+      ? document.getElementById(String(actionsHostOrId || '').trim())
+      : actionsHostOrId;
+    if (!host) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    var hostClassName = String(opts.hostClassName || '').trim();
+    if (hostClassName && host.classList) {
+      host.classList.add(hostClassName);
+    }
+    host.innerHTML = syncStatusPillHtml(syncStatus, opts);
+    return true;
+  }
+
   function stripLegacyNostrSyncPills(value) {
     return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
@@ -701,6 +717,7 @@
   window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
+  window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;

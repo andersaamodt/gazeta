@@ -95,18 +95,6 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function pageSyncStatusPillHtml() {
-    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
-  }
-
-  function renderSyncStatusPill() {
-    var actionsHost = document.getElementById('list-page-title-actions');
-    if (!actionsHost) {
-      return;
-    }
-    actionsHost.innerHTML = pageSyncStatusPillHtml();
-  }
-
   function authSignature() {
     var auth = window.__wizardryAuthPayload();
     var adminHint = '';
@@ -2979,7 +2967,7 @@
 	        });
 	      }
 	    }
-    renderSyncStatusPill();
+    window.__wizardryRenderSyncStatusPill('list-page-title-actions', state.payload && state.payload.sync_status);
     renderNavbarTitleRow(s);
 
     if (!els.description) {
@@ -3899,7 +3887,7 @@
       }
       html += '</span>';
       }
-    html += pageSyncStatusPillHtml();
+    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
     if (showRevert) {
       html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
     }

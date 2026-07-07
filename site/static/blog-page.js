@@ -398,18 +398,6 @@
     return '<p>' + markdownInlineFallback(value).replace(/\n/g, '<br>') + '</p>';
   }
 
-  function pageSyncStatusPillHtml() {
-    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
-  }
-
-  function renderSyncStatusPill() {
-    var actionsHost = document.getElementById('blog-page-title-actions');
-    if (!actionsHost) {
-      return;
-    }
-    actionsHost.innerHTML = pageSyncStatusPillHtml();
-  }
-
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -518,7 +506,7 @@
 	        fallbackText: 'Blog'
 	      });
 	      els.title.hidden = false;
-	      renderSyncStatusPill();
+	      window.__wizardryRenderSyncStatusPill('blog-page-title-actions', state.payload && state.payload.sync_status);
 	    }
     if (!els.description) {
       return;

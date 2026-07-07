@@ -280,11 +280,6 @@
     return window.__wizardryHasMatchingStaticPrerender(root, host, payload);
   }
 
-  function pageSyncStatusPillHtml() {
-    const payload = bootstrapPayload();
-    return window.__wizardrySyncStatusPillHtml(payload && payload.sync_status);
-  }
-
 	  function renderSyncStatusPill() {
 	    const title = document.getElementById('overworld-page-title');
 	    if (!title) {
@@ -295,12 +290,13 @@
 	      actionsClassName: 'list-page-title-actions',
 	      fallbackText: 'Overworld'
     });
-    let actions = shell && shell.actions ? shell.actions : null;
-    if (!actions) {
-      return;
-    }
-    actions.innerHTML = pageSyncStatusPillHtml();
-  }
+	    let actions = shell && shell.actions ? shell.actions : null;
+	    if (!actions) {
+	      return;
+	    }
+	    const payload = bootstrapPayload();
+	    window.__wizardryRenderSyncStatusPill(actions, payload && payload.sync_status);
+	  }
 
   function hasCacheStorage() {
     return 'caches' in window && window.isSecureContext;
