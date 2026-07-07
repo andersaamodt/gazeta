@@ -449,6 +449,8 @@ assert_eq '["bluesky","mastodon","reddit","telegram"]' "$(jq -c '.platforms | so
 assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'data-admin-nav="crossposting"' 'admin nav exposes cross-posting section'
 assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'id="compose-crosspost-details"' 'compose UI includes cross-posting details control'
 assert_file_contains "$ROOT_DIR/site/lodestone/pages/admin.stone.html" 'id="post-crosspost-dialog"' 'posts UI includes cross-post dialog'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-action-registry.conf" 'admin blog-crosspost-post' 'cross-post endpoint is registered to the admin runtime'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-crosspost-post" => blog_crosspost_post().map(CgiResponse::json)' 'cross-post endpoint is runtime-owned'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'origin_platforms: JSON.stringify(arrayFromMaybe(state.composeOriginPlatforms))' 'compose payload sends selected origin platforms'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'class="post-crosspost-trigger"' 'posts list renders explicit cross-post action button'
 assert_file_contains "$ROOT_DIR/site/static/admin.js" 'function renderCrosspostingSettingsUi() {' 'admin JS renders cross-post settings section'

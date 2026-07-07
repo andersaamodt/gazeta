@@ -18,6 +18,7 @@ use std::fs;
 use std::io;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::format_description::FormatItem;
 use time::macros::format_description;
@@ -42,6 +43,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
         "blog-create-draft-from-post" => blog_create_draft_from_post().map(CgiResponse::json),
         "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
         "blog-delete-draft" => blog_delete_draft().map(CgiResponse::json),
+        "blog-crosspost-post" => blog_crosspost_post().map(CgiResponse::json),
         "blog-list-files" => blog_list_files().map(CgiResponse::json),
         "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
         "blog-update-file" => blog_update_file().map(CgiResponse::json),
@@ -253,6 +255,82 @@ fn blog_delete_draft() -> Result<Value> {
         "success": true,
         "deleted": true,
         "draft_id": draft_id,
+    }))
+}
+
+fn blog_crosspost_post() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_admin_session(&paths, &request, true)?;
+
+    let raw_post_path = request.value("post_path").unwrap_or_default();
+    if raw_post_path.is_empty() {
+        return Err(AdminError::new(
+            "missing_post_path",
+            "post_path is required",
+        ));
+    }
+    let requested_post_path = normalize_requested_post_path(&raw_post_path)
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    let file = resolve_post_markdown_file(&paths, &requested_post_path)
+        .ok_or_else(|| AdminError::new("not_found", "Post not found"))?;
+    let rel_path = managed_post_rel_path_for_file(&paths, &file)
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    if origin_dir().is_none() {
+        return Err(AdminError::new(
+            "origin_unavailable",
+            "Origin is not available on this server",
+        ));
+    }
+
+    let site_enabled_platforms = origin_enabled_platforms(&paths);
+    let requested_platforms = normalize_origin_platforms(
+        request.value("platforms").unwrap_or_default(),
+        &site_enabled_platforms,
+    );
+    if requested_platforms.is_empty() {
+        return Err(AdminError::new(
+            "platforms_required",
+            "Select at least one cross-post destination",
+        ));
+    }
+
+    let mut next_platforms = origin_post_platforms_for_path(&paths, &rel_path);
+    for platform in &requested_platforms {
+        if !next_platforms.contains(platform) {
+            next_platforms.push(platform.clone());
+        }
+    }
+    next_platforms.sort();
+    save_origin_post_platforms(&paths, &rel_path, &next_platforms)?;
+
+    let results = origin_emit_file_json(&paths, &file, &requested_platforms).ok_or_else(|| {
+        AdminError::new("crosspost_failed", "Cross-posting could not be completed")
+    })?;
+    let results_rows = results
+        .get("results")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let published_count = results_rows
+        .iter()
+        .filter(|row| row.get("status").and_then(Value::as_str) == Some("published"))
+        .count();
+    let failed_count = results_rows
+        .iter()
+        .filter(|row| row.get("status").and_then(Value::as_str) == Some("failed"))
+        .count();
+    let message = if failed_count > 0 {
+        format!("Cross-posted to {published_count} site(s); {failed_count} site(s) failed.")
+    } else {
+        format!("Cross-posted to {published_count} site(s).")
+    };
+
+    Ok(json!({
+        "success": true,
+        "message": message,
+        "results": results,
+        "crossposting": origin_crossposting_summary_for_file(&paths, &file, &rel_path),
     }))
 }
 
@@ -634,6 +712,22 @@ impl SitePaths {
         self.file_records_dir().join(format!("{file_id}.conf"))
     }
 
+    fn origin_dir(&self) -> PathBuf {
+        self.state_dir.join("origin")
+    }
+
+    fn origin_posts_dir(&self) -> PathBuf {
+        self.origin_dir().join("posts")
+    }
+
+    fn origin_state_dir(&self) -> PathBuf {
+        self.origin_dir().join("state")
+    }
+
+    fn origin_site_config(&self) -> PathBuf {
+        self.origin_dir().join("origin.json")
+    }
+
     fn nostr_hidden_posts_file(&self) -> PathBuf {
         self.state_dir.join("nostr/state/hidden_posts.txt")
     }
@@ -751,6 +845,11 @@ struct DraftSaveParams {
     source_post_path: String,
     post_filename: String,
     origin_platforms: Vec<String>,
+}
+
+struct OriginPlatformMeta {
+    id: String,
+    family: String,
 }
 
 fn normalize_requested_post_path(raw: &str) -> Option<String> {
@@ -1206,10 +1305,7 @@ fn origin_post_platforms_for_path(paths: &SitePaths, post_path: &str) -> Vec<Str
     let Some(slug) = normalize_post_filename(post_path) else {
         return enabled;
     };
-    let settings_path = paths
-        .state_dir
-        .join("origin/posts")
-        .join(format!("{slug}.json"));
+    let settings_path = paths.origin_posts_dir().join(format!("{slug}.json"));
     let Some(value) = read_json(&settings_path) else {
         return enabled;
     };
@@ -1222,6 +1318,13 @@ fn origin_post_platforms_for_path(paths: &SitePaths, post_path: &str) -> Vec<Str
 }
 
 fn available_origin_platforms() -> Vec<String> {
+    origin_platform_meta()
+        .into_iter()
+        .map(|platform| platform.id)
+        .collect()
+}
+
+fn origin_platform_meta() -> Vec<OriginPlatformMeta> {
     let Some(dir) = origin_dir() else {
         return Vec::new();
     };
@@ -1234,9 +1337,16 @@ fn available_origin_platforms() -> Vec<String> {
     let mut available = platforms
         .iter()
         .filter(|(_, value)| value.get("enabled").and_then(Value::as_bool) != Some(false))
-        .map(|(id, _)| id.to_string())
+        .map(|(id, value)| OriginPlatformMeta {
+            id: id.to_string(),
+            family: value
+                .get("family")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        })
         .collect::<Vec<_>>();
-    available.sort();
+    available.sort_by(|left, right| left.id.cmp(&right.id));
     available
 }
 
@@ -1326,6 +1436,350 @@ fn origin_dir() -> Option<PathBuf> {
     let candidate = home.join("git/origin");
     (candidate.join("bin/origin").is_file() && candidate.join("origin.json").is_file())
         .then_some(candidate)
+}
+
+fn origin_public_base_url(paths: &SitePaths) -> String {
+    let configured = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "origin_public_base_url"))
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches('/')
+        .to_string();
+    if configured.starts_with("http://") || configured.starts_with("https://") {
+        configured
+    } else {
+        String::new()
+    }
+}
+
+fn save_origin_post_platforms(
+    paths: &SitePaths,
+    rel_path: &str,
+    platforms: &[String],
+) -> Result<()> {
+    let Some(slug) = normalize_post_filename(rel_path) else {
+        return Err(AdminError::new("invalid_post_path", "Invalid post path"));
+    };
+    fs::create_dir_all(paths.origin_posts_dir()).map_err(io_error(
+        "write_failed",
+        "Could not prepare Origin post settings directory",
+    ))?;
+    let settings_path = paths.origin_posts_dir().join(format!("{slug}.json"));
+    let payload = json!({
+        "source_path": rel_path,
+        "platforms": platforms,
+        "updated_at": now_iso()?,
+    });
+    fs::write(
+        &settings_path,
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string()),
+    )
+    .map_err(io_error(
+        "write_failed",
+        "Could not write Origin post settings",
+    ))?;
+    if let Ok(metadata) = fs::metadata(&settings_path) {
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o644);
+        let _ = fs::set_permissions(&settings_path, perms);
+    }
+    Ok(())
+}
+
+fn write_origin_site_config(paths: &SitePaths, origin_root: &Path) -> Result<()> {
+    let source_path = origin_root.join("origin.json");
+    let mut config = read_json(&source_path).ok_or_else(|| {
+        AdminError::new(
+            "origin_unavailable",
+            "Origin is not available on this server",
+        )
+    })?;
+    let enabled = origin_enabled_platforms(paths);
+    let enabled_set = enabled.iter().cloned().collect::<HashSet<_>>();
+    if let Some(object) = config.as_object_mut() {
+        object.insert(
+            "state_dir".to_string(),
+            Value::String(paths.origin_state_dir().display().to_string()),
+        );
+        if let Some(renderer) = object.get_mut("renderer").and_then(Value::as_object_mut) {
+            absolutize_origin_command(renderer, "markdown_to_html", origin_root);
+            absolutize_origin_command(renderer, "markdown_to_text", origin_root);
+        }
+        if let Some(platforms) = object.get_mut("platforms").and_then(Value::as_object_mut) {
+            for (platform_id, value) in platforms {
+                if let Some(platform) = value.as_object_mut() {
+                    platform.insert(
+                        "enabled".to_string(),
+                        Value::Bool(enabled_set.contains(platform_id)),
+                    );
+                    absolutize_origin_section_command(platform, "project", "command", origin_root);
+                    absolutize_origin_section_command(platform, "emit", "command", origin_root);
+                    absolutize_origin_section_command(
+                        platform,
+                        "emit",
+                        "edit_command",
+                        origin_root,
+                    );
+                    absolutize_origin_section_command(platform, "fetch", "command", origin_root);
+                    absolutize_origin_section_command(
+                        platform,
+                        "normalize",
+                        "command",
+                        origin_root,
+                    );
+                }
+            }
+        }
+    }
+    fs::create_dir_all(paths.origin_dir()).map_err(io_error(
+        "write_failed",
+        "Could not prepare Origin state directory",
+    ))?;
+    fs::write(
+        paths.origin_site_config(),
+        serde_json::to_string_pretty(&config).unwrap_or_else(|_| "{}".to_string()),
+    )
+    .map_err(io_error(
+        "write_failed",
+        "Could not prepare Origin site config",
+    ))?;
+    Ok(())
+}
+
+fn absolutize_origin_command(
+    object: &mut serde_json::Map<String, Value>,
+    key: &str,
+    origin_root: &Path,
+) {
+    if let Some(value) = object.get_mut(key).and_then(Value::as_array_mut) {
+        absolutize_origin_command_array(value, origin_root);
+    }
+}
+
+fn absolutize_origin_section_command(
+    object: &mut serde_json::Map<String, Value>,
+    section_key: &str,
+    command_key: &str,
+    origin_root: &Path,
+) {
+    if let Some(section) = object.get_mut(section_key).and_then(Value::as_object_mut) {
+        absolutize_origin_command(section, command_key, origin_root);
+    }
+}
+
+fn absolutize_origin_command_array(command: &mut [Value], origin_root: &Path) {
+    let Some(first) = command.first_mut() else {
+        return;
+    };
+    let Some(text) = first.as_str() else {
+        return;
+    };
+    if let Some(stripped) = text.strip_prefix("./") {
+        *first = Value::String(origin_root.join(stripped).display().to_string());
+    }
+}
+
+fn origin_emit_file_json(
+    paths: &SitePaths,
+    source_file: &Path,
+    platforms: &[String],
+) -> Option<Value> {
+    if !source_file.is_file() {
+        return None;
+    }
+    if platforms.is_empty() {
+        return Some(json!({
+            "post_id": origin_post_id_for_file(source_file).unwrap_or_default(),
+            "results": [],
+        }));
+    }
+    let origin_root = origin_dir()?;
+    write_origin_site_config(paths, &origin_root).ok()?;
+    let prepared_file = prepare_origin_post_file(paths, source_file, platforms).ok()?;
+    let mut command = Command::new(origin_root.join("bin/origin"));
+    command
+        .arg("--config")
+        .arg(paths.origin_site_config())
+        .arg("emit");
+    for platform in platforms {
+        command.arg("--platform").arg(platform);
+    }
+    command.arg(&prepared_file);
+    let output = command.output().ok()?;
+    let _ = fs::remove_file(&prepared_file);
+    if !output.status.success() {
+        return None;
+    }
+    serde_json::from_slice(&output.stdout).ok()
+}
+
+fn prepare_origin_post_file(
+    paths: &SitePaths,
+    source_file: &Path,
+    platforms: &[String],
+) -> Result<PathBuf> {
+    let source_text = fs::read_to_string(source_file)
+        .map_err(io_error("write_failed", "Could not read post for Origin"))?;
+    let rel_path = managed_post_rel_path_for_file(paths, source_file)
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    let slug = normalize_post_filename(&rel_path)
+        .or_else(|| origin_post_id_for_file(source_file))
+        .ok_or_else(|| AdminError::new("invalid_post_path", "Invalid post path"))?;
+    let public_base_url = origin_public_base_url(paths);
+    let public_post_url = if public_base_url.is_empty() {
+        String::new()
+    } else {
+        format!("{public_base_url}/posts/{slug}")
+    };
+    let mut doc = MarkdownDoc::from_path(source_file).unwrap_or(MarkdownDoc {
+        path: source_file.to_path_buf(),
+        front_matter: BTreeMap::new(),
+        front_matter_raw: BTreeMap::new(),
+        content: source_text.clone(),
+    });
+    doc.front_matter.insert("slug".to_string(), slug.clone());
+    if !public_post_url.is_empty() {
+        doc.front_matter
+            .insert("canonical_url".to_string(), public_post_url.clone());
+        doc.front_matter
+            .insert("url".to_string(), public_post_url.clone());
+    }
+    doc.front_matter.insert(
+        "origin_platforms".to_string(),
+        serde_json::to_string(platforms).unwrap_or_else(|_| "[]".to_string()),
+    );
+
+    let temp_path = env::temp_dir().join(format!("gazeta-origin-{}.md", random_hex(12)?));
+    let mut text = String::new();
+    text.push_str("---\n");
+    for (key, value) in &doc.front_matter {
+        if key == "tags" && value.trim_start().starts_with('[') {
+            text.push_str(&format!("{key}: {value}\n"));
+        } else if key == "origin_platforms" && value.trim_start().starts_with('[') {
+            text.push_str(&format!("{key}: {value}\n"));
+        } else {
+            text.push_str(&format!("{key}: \"{}\"\n", yaml_escape(value)));
+        }
+    }
+    text.push_str("---\n\n");
+    text.push_str(&doc.content);
+    fs::write(&temp_path, text).map_err(io_error(
+        "write_failed",
+        "Could not prepare post for Origin",
+    ))?;
+    Ok(temp_path)
+}
+
+fn origin_crossposting_summary_for_file(paths: &SitePaths, file: &Path, rel_path: &str) -> Value {
+    if !file.is_file() {
+        return json!({
+            "available": false,
+            "platforms": [],
+            "enabled_count": 0,
+            "selected_count": 0,
+            "published_count": 0,
+            "remaining_count": 0,
+            "needs_action": false,
+        });
+    }
+    let available = origin_dir().is_some();
+    let meta = origin_platform_meta();
+    let enabled = origin_enabled_platforms(paths);
+    let selected = origin_post_platforms_for_path(paths, rel_path);
+    let selected_set = selected.iter().cloned().collect::<HashSet<_>>();
+    let platforms = meta
+        .into_iter()
+        .filter(|platform| enabled.contains(&platform.id))
+        .map(|platform| {
+            let selected_here = selected_set.contains(&platform.id);
+            let state_path = origin_state_file_for_post(paths, file, &platform.id);
+            let (status, remote_url) =
+                if let Some(state) = state_path.as_deref().and_then(read_json) {
+                    let saved_status = state
+                        .get("status")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string();
+                    let remote_url = state
+                        .get("remote_url")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string();
+                    let status = match saved_status.as_str() {
+                        "published" | "failed" | "outdated" | "fetch-failed" | "mismatch"
+                        | "ok" => saved_status,
+                        "skipped" if selected_here => "skipped".to_string(),
+                        "skipped" => "not_selected".to_string(),
+                        _ if selected_here => "unpublished".to_string(),
+                        _ => "not_selected".to_string(),
+                    };
+                    (status, remote_url)
+                } else if selected_here {
+                    ("unpublished".to_string(), String::new())
+                } else {
+                    ("not_selected".to_string(), String::new())
+                };
+            json!({
+                "id": platform.id,
+                "family": platform.family,
+                "selected": selected_here,
+                "status": status,
+                "remote_url": remote_url,
+            })
+        })
+        .collect::<Vec<_>>();
+    let published_count = platforms
+        .iter()
+        .filter(|platform| platform.get("status").and_then(Value::as_str) == Some("published"))
+        .count();
+    let remaining_count = platforms.len().saturating_sub(published_count);
+    json!({
+        "available": available,
+        "platforms": platforms,
+        "enabled_platforms": enabled,
+        "selected_platforms": selected,
+        "enabled_count": enabled.len(),
+        "selected_count": selected_set.len(),
+        "published_count": published_count,
+        "remaining_count": remaining_count,
+        "needs_action": remaining_count > 0,
+    })
+}
+
+fn origin_post_id_for_file(file: &Path) -> Option<String> {
+    let doc = MarkdownDoc::from_path(file)?;
+    for candidate in [
+        doc.front_matter("nostr_event_id"),
+        doc.front_matter("slug"),
+        doc.front_matter("title").map(|value| slugify(&value)),
+        first_heading(&doc.content).map(|value| slugify(&value)),
+        file.file_stem()
+            .and_then(|value| value.to_str())
+            .map(slugify),
+    ] {
+        let value = candidate.unwrap_or_default();
+        if !value.is_empty() {
+            return Some(value);
+        }
+    }
+    None
+}
+
+fn origin_state_file_for_post(paths: &SitePaths, file: &Path, platform: &str) -> Option<PathBuf> {
+    let post_id = origin_post_id_for_file(file)?;
+    Some(
+        paths
+            .origin_state_dir()
+            .join(post_id)
+            .join(format!("{platform}.json")),
+    )
+}
+
+fn first_heading(content: &str) -> Option<String> {
+    content
+        .lines()
+        .find_map(|line| line.strip_prefix("# ").map(|line| line.trim().to_string()))
+        .filter(|line| !line.is_empty())
 }
 
 fn append_unique_line(path: &Path, value: &str) -> Result<()> {
