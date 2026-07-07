@@ -626,8 +626,20 @@ fn blog_publish_nostr_page() -> Result<Value> {
 
 fn blog_payments() -> Result<Value> {
     let request = RequestParams::from_env_and_stdin();
-    let response = run_legacy_cgi_json("blog-payments", &request, &[])
-        .map_err(|message| AdminError::new("payments_failed", message))?;
+    let response = run_shell_request_function_json(
+        &[
+            "cgi/blog-lib.sh",
+            "cgi/blog-list-common.sh",
+            "cgi/blog-public-ranking-common.sh",
+            "cgi/blog-nostr-pages-common.sh",
+            "cgi/blog-payments-common.sh",
+            "cgi/blog-merch-common.sh",
+        ],
+        "blog_payments_json",
+        &request,
+        &[],
+    )
+    .map_err(|message| AdminError::new("payments_failed", message))?;
     Ok(response)
 }
 
@@ -2738,6 +2750,16 @@ fn run_shell_function_json(
     serde_json::from_str(&output).map_err(|error| error.to_string())
 }
 
+fn run_shell_request_function_json(
+    sources: &[&str],
+    function: &str,
+    request: &RequestParams,
+    envs: &[(&str, String)],
+) -> std::result::Result<Value, String> {
+    let output = run_shell_request_function(sources, function, request, envs)?;
+    serde_json::from_str(&output).map_err(|error| error.to_string())
+}
+
 fn run_shell_function(
     sources: &[&str],
     function: &str,
@@ -2772,20 +2794,31 @@ fn run_shell_function(
     }
 }
 
-fn run_legacy_cgi_json(
-    action: &str,
+fn run_shell_request_function(
+    sources: &[&str],
+    function: &str,
     request: &RequestParams,
     envs: &[(&str, String)],
-) -> std::result::Result<Value, String> {
-    let legacy_script = gazeta_repo_root()
-        .join("cgi")
-        .join(format!("{action}-legacy"));
+) -> std::result::Result<String, String> {
+    let repo_root = gazeta_repo_root();
     let method = env::var("REQUEST_METHOD").unwrap_or_else(|_| "GET".to_string());
     let content_type = env::var("CONTENT_TYPE").unwrap_or_default();
     let host = env::var("HTTP_HOST").unwrap_or_default();
     let body = request.body().to_string();
     let mut command = Command::new("/bin/sh");
-    command.arg(legacy_script);
+    command
+        .arg("-c")
+        .arg(
+            ". \"$1\"; shift; while [ \"$1\" != \"--\" ]; do . \"$1\"; shift; done; shift; blog_init; blog_read_request_body; fn=\"$1\"; shift; \"$fn\" \"$@\"",
+        )
+        .arg("shell-request-function")
+        .arg(repo_root.join("cgi/blog-lib.sh"));
+    for source in sources {
+        if *source != "cgi/blog-lib.sh" {
+            command.arg(repo_root.join(source));
+        }
+    }
+    command.arg("--").arg(function);
     command.env("REQUEST_METHOD", &method);
     command.env("QUERY_STRING", request.query());
     if !host.is_empty() {
@@ -2814,24 +2847,13 @@ fn run_legacy_cgi_json(
     let output = child
         .wait_with_output()
         .map_err(|error| error.to_string())?;
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let payload = stdout
-        .lines()
-        .rev()
-        .find(|line| !line.trim().is_empty())
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    serde_json::from_str(&payload).map_err(|error| {
-        if !stderr.is_empty() {
-            stderr
-        } else if !payload.is_empty() {
-            format!("Could not decode legacy CGI response: {error}")
-        } else {
-            "Legacy CGI produced no JSON response".to_string()
-        }
-    })
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Err(if !stderr.is_empty() { stderr } else { stdout })
+    }
 }
 
 fn gazeta_repo_root() -> PathBuf {

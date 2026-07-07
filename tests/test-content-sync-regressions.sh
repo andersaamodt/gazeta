@@ -1324,7 +1324,16 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" "window.addEvent
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'text-align: left;' 'blog preview summary text stays left aligned'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'margin: 0.35rem 0 0;' 'blog preview read-more link follows left-aligned summary text'
 assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'id="footer-pages"' 'footer includes dynamic page list mount'
-assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'v0.7.60' 'footer exposes current site version before GitHub'
+assert_file_contains "$SITE_SOURCE_ROOT/includes/footer.md" 'class="footer-version"' 'footer exposes a dedicated site version marker'
+footer_version_line=$(grep -n 'class="footer-version"' "$SITE_SOURCE_ROOT/includes/footer.md" | head -n1 | cut -d: -f1)
+footer_github_line=$(grep -n 'GitHub repository' "$SITE_SOURCE_ROOT/includes/footer.md" | head -n1 | cut -d: -f1)
+assert_nonempty "$footer_version_line" 'footer version marker line is discoverable'
+assert_nonempty "$footer_github_line" 'footer GitHub link line is discoverable'
+if [ "$footer_version_line" -lt "$footer_github_line" ]; then
+  pass
+else
+  fail 'footer shows the site version before the GitHub link'
+fi
 navbar_guard_block=$(sed -n '/Absolute final guard: active nav items stay in button-blue without hover treatment\./,/If active class is ever missing, aria-current still forces lapis active styling\./p' "$SITE_SOURCE_ROOT/static/style.css")
 assert_contains "$navbar_guard_block" 'transition: none !important;' 'active navbar pills do not animate on hover'
 lapidarist_nav_guard_block=$(sed -n '/^\.nav-center a\.active,/,/^\.nav-menu-btn:hover,/p' "$SITE_SOURCE_ROOT/static/themes/lapidarist.css")
@@ -1996,22 +2005,22 @@ assert_success test -x "$ROOT_DIR/cgi/blog-delivery"
 assert_success test -x "$ROOT_DIR/cgi/blog-create-product-page"
 assert_file_contains "$ROOT_DIR/cgi/gazeta-action-registry.conf" 'admin blog-payments' 'payments endpoint is registered to the admin runtime'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-payments" => blog_payments().map(CgiResponse::json)' 'payments endpoint is runtime-owned'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'create_order' 'payments implementation supports create_order action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'order_status' 'payments implementation supports order_status action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'simulate_paid' 'payments implementation supports simulated paid transition'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'webhook' 'payments implementation supports provider webhook action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'crossmint_client_api_key:' 'payments status emits Crossmint runtime key for checkout embeds'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_enabled:' 'payments status emits commerce plugin runtime key'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'commerce_disabled' 'payments cgi blocks quote/create when commerce plugin is disabled'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_crossmint_create_order_json' 'payments cgi creates Crossmint checkout orders through shared helper'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'orders.payment.succeeded' 'payments cgi handles Crossmint paid webhooks'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'create_order' 'payments implementation supports create_order action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'order_status' 'payments implementation supports order_status action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'simulate_paid' 'payments implementation supports simulated paid transition'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'webhook' 'payments implementation supports provider webhook action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_payments_refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'crossmint_client_api_key:' 'payments status emits Crossmint runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'commerce_enabled:' 'payments status emits commerce plugin runtime key'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'commerce_disabled' 'payments cgi blocks quote/create when commerce plugin is disabled'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_crossmint_create_order_json' 'payments cgi creates Crossmint checkout orders through shared helper'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'orders.payment.succeeded' 'payments cgi handles Crossmint paid webhooks'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_crossmint_link_recipient_wallet_json' 'payments cgi links Crossmint external recipient wallets before order creation'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_crossmint_recipient_user_email' 'payments cgi can link Crossmint recipient wallet to a configured merchant user'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'blog_order_fulfill_merch_json' 'payments cgi submits paid merch orders to fulfillment'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'paybis_partner_id:' 'payments status emits paybis runtime key for checkout embeds'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-common.sh" 'provider_url: $provider_url' 'payments orders persist provider_url for reload-safe embeds'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_sync_product_json' 'merch common can load Printful sync products'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_merch_selection_save_json' 'merch common persists Printful product curation selection'
 assert_file_contains "$ROOT_DIR/cgi/blog-merch-common.sh" 'blog_printful_create_order_json' 'merch common can create Printful orders'

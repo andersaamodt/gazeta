@@ -609,7 +609,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-secure-chat-service.js" 'nativeSimplexD
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-default-chat.js' 'contact page loads shared simplex-web renderer'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-session-store.js' 'contact page loads shared simplex-web session store'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-transport.js' 'contact page loads shared simplex-web transport facade'
-assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'type="importmap"' 'contact page loads an import map for browser-native simplex-web dependencies'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/contact.stone.html" 'type="importmap"' 'contact page loads an import map for browser-native simplex-web dependencies'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-web-browser-adapter-init.mjs' 'contact page loads the browser-native simplex-web adapter bootstrap'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '/static/simplex-chat-websocket-adapter.js' 'contact page no longer loads the loopback SimpleX Chat WebSocket adapter'
 assert_file_contains "$SITE_SOURCE_ROOT/static/simplex-web-default-chat.js" 'SimplexWebDefaultChat' 'shared simplex-web renderer is vendored into gazeta'
@@ -856,7 +856,7 @@ assert_contains "$secure_chat_input_wrap_after_css" 'pointer-events: none;' 'sec
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'sessionCheckGraceCount < 2' 'nav auth tolerates one transient failed session check before clearing login state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nav-auth.js" 'scheduleSessionCheckRetry(token)' 'nav auth retries noisy session checks before tearing down signer auth state'
 assert_file_contains "$ROOT_DIR/cgi/ssh-auth-check-session" 'simplex_contact_info' 'session bootstrap exposes SimpleX account info'
-assert_file_contains "$SITE_SOURCE_ROOT/pages/admin.md" 'account-simplex-contact' 'account page renders SimpleX contact field'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/pages/admin.stone.html" 'account-simplex-contact' 'account page renders SimpleX contact field'
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s tests failed; %s passed\n' "$FAIL_COUNT" "$PASS_COUNT" >&2

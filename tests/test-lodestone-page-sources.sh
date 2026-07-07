@@ -90,19 +90,19 @@ PROJECTS
 
 "$site_root/cgi/pre-build"
 
-for rel in \
-  admin.md \
-  artificer.md \
-  blog.md \
-  cart.md \
-  checkout.md \
-  embed/video-chat.md \
-  login-security.md \
-  search.md
+for stone_rel in \
+  admin.stone.html \
+  artificer.stone.html \
+  blog.stone.html \
+  cart.stone.html \
+  checkout.stone.html \
+  embed/video-chat.stone.html \
+  login-security.stone.html \
+  search.stone.html
 do
-  stone_file="$site_root/site/lodestone/pages/${rel%.md}.stone.html"
+  stone_file="$site_root/site/lodestone/pages/$stone_rel"
   [ -f "$stone_file" ] || {
-    printf '%s\n' "missing lodestone source for $rel" >&2
+    printf '%s\n' "missing lodestone source for $stone_rel" >&2
     exit 1
   }
 done

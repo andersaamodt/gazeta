@@ -43,14 +43,6 @@ cat > "$canonical_root/includes/footer.md" <<'EOFFOOT'
 <footer class="site-footer">Example Footer</footer>
 EOFFOOT
 
-cat > "$canonical_root/pages/admin.md" <<'EOFPAGE'
----
-title: Admin
----
-
-Admin page
-EOFPAGE
-
 cat > "$canonical_root/pages/embed/video-chat.md" <<'EOPEMBED'
 ---
 title: Video Chat
@@ -144,8 +136,8 @@ EOFSTALE
   printf '%s\n' "missing canonical nav include" >&2
   exit 1
 }
-[ -f "$canonical_root/pages/admin.md" ] || {
-  printf '%s\n' "missing canonical admin page" >&2
+[ -f "$canonical_root/lodestone/pages/admin.stone.html" ] || {
+  printf '%s\n' "missing lodestone admin source" >&2
   exit 1
 }
 [ -f "$canonical_root/pages/embed/video-chat.md" ] || {
@@ -249,10 +241,16 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
-grep -Fq 'v0.7.51' "$ROOT_DIR/site/includes/footer.md" || {
-  printf '%s\n' "footer missing current site version before GitHub" >&2
+grep -Fq 'class="footer-version"' "$ROOT_DIR/site/includes/footer.md" || {
+  printf '%s\n' "footer missing site version marker before GitHub" >&2
   exit 1
 }
+footer_version_line=$(grep -n 'class="footer-version"' "$ROOT_DIR/site/includes/footer.md" | head -n1 | cut -d: -f1)
+footer_github_line=$(grep -n 'GitHub repository' "$ROOT_DIR/site/includes/footer.md" | head -n1 | cut -d: -f1)
+if [ -z "$footer_version_line" ] || [ -z "$footer_github_line" ] || [ "$footer_version_line" -ge "$footer_github_line" ]; then
+  printf '%s\n' "footer missing current site version before GitHub" >&2
+  exit 1
+fi
 if grep -Fq 'paintContactFirstFrame' "$canonical_root/static/nostr-page-bootstrap/contact.js" || grep -Fq 'hasOnlyInitialPlaceholder' "$canonical_root/static/nostr-page-bootstrap/contact.js"; then
   printf '%s\n' "contact bootstrap still contains first-frame DOM replacement code" >&2
   exit 1
