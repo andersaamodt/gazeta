@@ -11,20 +11,7 @@
     root.classList.add('is-loading');
   }
 
-  function removeLegacyTitleBlock() {
-    var prev = root.previousElementSibling;
-    if (!prev || prev.tagName !== 'HEADER') {
-      return;
-    }
-    if (!prev.querySelector || !prev.querySelector('.title')) {
-      return;
-    }
-    if (prev.parentNode) {
-      prev.parentNode.removeChild(prev);
-    }
-  }
-
-  removeLegacyTitleBlock();
+  window.__wizardryRemoveLegacyTitleBlock(root);
 
   function overflowMenuIconSvg() {
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
@@ -111,10 +98,6 @@
 
   function pageSyncStatusPillHtml() {
     return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
-  }
-
-  function stripLegacyNostrSyncPills(value) {
-    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function renderSyncStatusPill() {
@@ -3596,7 +3579,7 @@
   }
 
   function renderExtraContent(text, format, role) {
-    var value = stripLegacyNostrSyncPills(text);
+    var value = window.__wizardryStripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
     }

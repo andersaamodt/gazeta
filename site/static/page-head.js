@@ -75,6 +75,23 @@
     return nextTitle;
   }
 
+  function removeLegacyTitleBlock(rootNode) {
+    var root = rootNode || null;
+    if (!root) {
+      return;
+    }
+    var prev = root.previousElementSibling;
+    if (!prev || prev.tagName !== 'HEADER') {
+      return;
+    }
+    if (!prev.querySelector || !prev.querySelector('.title')) {
+      return;
+    }
+    if (prev.parentNode) {
+      prev.parentNode.removeChild(prev);
+    }
+  }
+
   function ensureReadOnlyTitleShell(titleNode, options) {
     if (!titleNode) {
       return { text: null, actions: null };
@@ -227,6 +244,10 @@
     var config = syncStatusDefaults(status, options);
     var message = String(sync.message || config.message).trim();
     return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
+  }
+
+  function stripLegacyNostrSyncPills(value) {
+    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function readNostrPageBootstrap(slug, isExpectedPayload) {
@@ -604,11 +625,13 @@
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderFromBootstrapSources = renderFromBootstrapSources;
+  window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
+  window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;

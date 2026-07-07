@@ -319,19 +319,6 @@
       });
   }
 
-  function removeLegacyTitleBlock() {
-    var prev = root.previousElementSibling;
-    if (!prev || prev.tagName !== 'HEADER') {
-      return;
-    }
-    if (!prev.querySelector || !prev.querySelector('.title')) {
-      return;
-    }
-    if (prev.parentNode) {
-      prev.parentNode.removeChild(prev);
-    }
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
       state: state,
@@ -413,10 +400,6 @@
 
   function pageSyncStatusPillHtml() {
     return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
-  }
-
-  function stripLegacyNostrSyncPills(value) {
-    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function renderSyncStatusPill() {
@@ -5422,7 +5405,7 @@
     }, 120);
   });
 
-  removeLegacyTitleBlock();
+  window.__wizardryRemoveLegacyTitleBlock(root);
   clearRouteRepairParam();
   ensureFilterGutterLayout();
   ensureDraftNoticeHost();

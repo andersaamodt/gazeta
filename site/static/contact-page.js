@@ -4,20 +4,7 @@
     return;
   }
 
-  function removeLegacyTitleBlock() {
-    var prev = root.previousElementSibling;
-    if (!prev || prev.tagName !== 'HEADER') {
-      return;
-    }
-    if (!prev.querySelector || !prev.querySelector('.title')) {
-      return;
-    }
-    if (prev.parentNode) {
-      prev.parentNode.removeChild(prev);
-    }
-  }
-
-  removeLegacyTitleBlock();
+  window.__wizardryRemoveLegacyTitleBlock(root);
 
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-page-slug') || query.get('page_slug') || query.get('slug') || 'contact').trim() || 'contact';
@@ -290,7 +277,7 @@
   }
 
   function markdownBlock(md) {
-    var value = stripLegacyNostrSyncPills(md);
+    var value = window.__wizardryStripLegacyNostrSyncPills(md);
     if (!value) {
       return '';
     }
@@ -718,10 +705,6 @@
     return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
       messageVariant: 'local_source'
     });
-  }
-
-  function stripLegacyNostrSyncPills(value) {
-    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function renderSyncStatusPill() {
@@ -4059,7 +4042,7 @@
   function renderContentHtml() {
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
-    var extrasAfter = stripLegacyNostrSyncPills(s.extras_after);
+    var extrasAfter = window.__wizardryStripLegacyNostrSyncPills(s.extras_after);
     var renderedAfter = String(extrasAfter).trim() ? renderMarkdownWithWidgetIncludes(extrasAfter, 'video-chat') : '';
     var afterContent = '';
     if (String(renderedAfter || '').trim()) {

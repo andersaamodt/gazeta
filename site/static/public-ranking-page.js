@@ -6,20 +6,7 @@
     return;
   }
 
-  function removeLegacyTitleBlock() {
-    var prev = root.previousElementSibling;
-    if (!prev || prev.tagName !== 'HEADER') {
-      return;
-    }
-    if (!prev.querySelector || !prev.querySelector('.title')) {
-      return;
-    }
-    if (prev.parentNode) {
-      prev.parentNode.removeChild(prev);
-    }
-  }
-
-  removeLegacyTitleBlock();
+  window.__wizardryRemoveLegacyTitleBlock(root);
 
   var query = new URLSearchParams(window.location.search || '');
   var slug = String(root.getAttribute('data-ranking-slug') || query.get('page_slug') || query.get('slug') || 'ranking').trim() || 'ranking';
@@ -170,10 +157,6 @@
     return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
       messageVariant: 'local_source'
     });
-  }
-
-  function stripLegacyNostrSyncPills(value) {
-    return String(value || '').replace(/<\s*(?:nostr-sync-pill|gazeta-sync-pill)\b[^>]*>(?:\s*<\/\s*(?:nostr-sync-pill|gazeta-sync-pill)\s*>)?/gi, '').trim();
   }
 
   function titleActionsHtml(syncOnly) {
@@ -832,7 +815,7 @@
   }
 
   function renderExtraContent(text, format, role) {
-    var value = stripLegacyNostrSyncPills(text);
+    var value = window.__wizardryStripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
     }
