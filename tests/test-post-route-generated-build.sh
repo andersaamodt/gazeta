@@ -47,5 +47,9 @@ output=$(QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET /bin/sh "$ROO
 printf '%s\n' "$output" | grep 'Status: 200 OK' >/dev/null
 printf '%s\n' "$output" | grep 'generated-build-marker' >/dev/null
 printf '%s\n' "$output" | grep 'served from generated build' >/dev/null
+printf '%s\n' "$output" | grep 'post-single-item' >/dev/null
+printf '%s\n' "$output" | grep 'post-head-main' >/dev/null
+printf '%s\n' "$output" | grep 'post-single-body' >/dev/null
+printf '%s\n' "$output" | grep 'post-page-menu' >/dev/null
 
 printf '%s\n' 'post route generated build tests passed'

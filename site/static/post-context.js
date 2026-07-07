@@ -108,10 +108,6 @@
   }
 
   function maybeRepairWrongPostShell(mdPath) {
-    var blogRoot = document.getElementById('blog-page-root');
-    if (!blogRoot) {
-      return false;
-    }
     var slug = postSlugFromMdPath(mdPath);
     if (!slug) {
       return false;
@@ -919,71 +915,20 @@
     return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
   }
 
-  function ensureSinglePostCard(current) {
+  function existingSinglePostLayout() {
     var root = document.body;
     if (!root) {
       return null;
     }
-    var existingCard = root.querySelector('.post-single-item');
-    if (existingCard) {
-      return {
-        anchor: root,
-        card: existingCard,
-        body: existingCard.querySelector('.post-single-body') || existingCard
-      };
+    var card = root.querySelector('.post-single-item');
+    if (!card) {
+      return null;
     }
-
-    var heading = document.querySelector('h1.title, h1');
-    var footer = document.querySelector('.site-footer');
-    var nav = document.querySelector('.site-nav');
-
-    var card = document.createElement('article');
-    card.className = 'post-item post-single-item';
-
-    var head = document.createElement('div');
-    head.className = 'post-head';
-    head.innerHTML =
-      '<div class="post-head-main">' +
-      '<h1 id="main-content" class="post-title">' + escapeHtml(current.title || document.title || 'Untitled') + '</h1>' +
-      postHeaderMetaHtml(current) +
-      '</div>';
-
-    var body = document.createElement('div');
-    body.className = 'post-single-body';
-
-    var node = nav ? nav.nextSibling : root.firstChild;
-    while (node && node !== footer) {
-      var next = node.nextSibling;
-      if (!(node.nodeType === 1 && node.classList && node.classList.contains('site-footer'))) {
-        body.appendChild(node);
-      }
-      node = next;
-    }
-
-    var titleBlock = body.querySelector('#title-block-header');
-    if (titleBlock) {
-      titleBlock.remove();
-    }
-
-    if (heading && heading.parentNode && heading.parentNode !== card && heading.parentNode !== body) {
-      heading.remove();
-    }
-
-    Array.prototype.forEach.call(body.querySelectorAll('h1.title, p.author, p.date'), function (el) {
-      if (el && el.parentNode) {
-        el.parentNode.removeChild(el);
-      }
-    });
-
-    card.appendChild(head);
-    card.appendChild(body);
-    if (footer && footer.parentNode) {
-      footer.parentNode.insertBefore(card, footer);
-    } else {
-      root.appendChild(card);
-    }
-
-    return { anchor: root, card: card, body: body };
+    return {
+      anchor: root,
+      card: card,
+      body: card.querySelector('.post-single-body') || card
+    };
   }
 
   function renderPostEndTags(current) {
@@ -2105,7 +2050,7 @@
       currentRelPath = canonicalPath;
     }
 
-    var layout = ensureSinglePostCard(payload.current);
+    var layout = existingSinglePostLayout();
     if (!layout || !layout.body) {
       return;
     }
@@ -2206,10 +2151,6 @@
 
   function triggerEarlyPostRouteRepair() {
     if (!isPostPage(window.location.pathname)) {
-      return false;
-    }
-    var blogRoot = document.getElementById('blog-page-root');
-    if (!blogRoot) {
       return false;
     }
     var resolvedPath = resolveCurrentPostPathFromLocation();

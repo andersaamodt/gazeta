@@ -119,8 +119,13 @@ grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   exit 1
 }
 
-grep -Fq '<h1 id="blog-page-title">Blog</h1>' "$site_root/site/pages/blog.md" || {
-  printf '%s\n' "blog page missing prerendered title from lodestone render" >&2
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span></h1>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing hydration-matching prerendered title shell from lodestone render" >&2
+  exit 1
+}
+
+grep -Fq '<p id="blog-page-description" class="muted" hidden><span class="list-page-description-text">' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing hydration-matching prerendered description shell from lodestone render" >&2
   exit 1
 }
 

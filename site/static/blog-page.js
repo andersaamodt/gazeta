@@ -604,7 +604,10 @@
       document.title = title;
     }
     if (els.title) {
-      els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(title) + '</span><span id="blog-page-title-actions" class="list-page-title-actions"></span>';
+      var titleShell = ensureBlogTitleActionsHost();
+      if (titleShell && titleShell.text) {
+        titleShell.text.textContent = title;
+      }
       els.title.hidden = false;
       renderSyncStatusPill();
     }
@@ -613,13 +616,56 @@
     }
     var descriptionHtml = String(state.payload && state.payload.prerender && state.payload.prerender.description_html || '');
     var descriptionAttrs = String(state.payload && state.payload.prerender && state.payload.prerender.description_attrs || '');
+    var descriptionText = ensureBlogDescriptionTextNode();
     if (descriptionHtml) {
-      els.description.innerHTML = '<span class="list-page-description-text">' + descriptionHtml + '</span>';
+      descriptionText.innerHTML = descriptionHtml;
       els.description.hidden = descriptionAttrs.indexOf('hidden') !== -1;
-    } else {
-      els.description.innerHTML = '';
-      els.description.hidden = true;
+      return;
     }
+    descriptionText.innerHTML = '';
+    els.description.hidden = true;
+  }
+
+  function ensureBlogTitleActionsHost() {
+    if (!els.title) {
+      return null;
+    }
+    var text = els.title.querySelector('.list-page-title-text');
+    if (!text) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      while (els.title.firstChild) {
+        text.appendChild(els.title.firstChild);
+      }
+      els.title.appendChild(text);
+    }
+    var actions = document.getElementById('blog-page-title-actions');
+    if (!actions) {
+      actions = document.createElement('span');
+      actions.id = 'blog-page-title-actions';
+      actions.className = 'list-page-title-actions';
+      els.title.appendChild(actions);
+    }
+    return {
+      text: text,
+      actions: actions
+    };
+  }
+
+  function ensureBlogDescriptionTextNode() {
+    if (!els.description) {
+      return null;
+    }
+    var text = els.description.querySelector('.list-page-description-text');
+    if (!text) {
+      text = document.createElement('span');
+      text.className = 'list-page-description-text';
+      while (els.description.firstChild) {
+        text.appendChild(els.description.firstChild);
+      }
+      els.description.appendChild(text);
+    }
+    return text;
   }
 
   function ensureFilterGutterLayout() {

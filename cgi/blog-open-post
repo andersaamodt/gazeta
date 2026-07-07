@@ -167,6 +167,19 @@ rm -f "$posts_tmp"
 post_nav_html=$(blog_post_nav_html "$(post_nav_json "$newer_file" "Newer" "post-nav-prev")" "$(post_nav_json "$older_file" "Older" "post-nav-next")")
 
 post_menu_html=$(blog_post_page_menu_html)
+author=$(blog_post_author_display_for_file "$md_file")
+if [ -z "$author" ]; then
+  author='Blog Author'
+fi
+published_date=$(blog_iso_to_human_date "$published_at")
+published_timestamp=$(blog_iso_to_human_timestamp "$published_at")
+title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf '')
+body_plain=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
+title=$(blog_effective_post_title "$title" "$body_plain" "$post_type")
+word_count=$(blog_word_count "$body_plain")
+reading_minutes=$(blog_estimated_read_minutes "$word_count")
+safe_title=$(blog_html_escape "$title")
+post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$published_date" "$published_timestamp")
 
 html_file=$(blog_generated_post_html_path_for_file "$md_file" 2>/dev/null || printf '')
 style_css_version='20260622-lapidarist-restore1'
@@ -177,24 +190,33 @@ head_file="$includes_dir/head.html"
 
 if [ -n "$html_file" ] && [ -f "$html_file" ]; then
   tmp_injected=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-html.XXXXXX")
-  awk -v menu="$post_menu_html" -v extras="$post_end_tags_html$post_nav_html" '
-    BEGIN { inserted_menu = 0; inserted_extras = 0 }
-    {
-      line = $0
-      if (inserted_extras == 0 && index(line, "</article>") > 0) {
-        print extras
-        inserted_extras = 1
-      }
-      print line
-      if (inserted_menu == 0 && index(line, "<div class=\"post-head\">") > 0) {
-        print menu
-        inserted_menu = 1
+  POST_MENU_HTML=$post_menu_html \
+  POST_HEADER_META_HTML=$post_header_meta_html \
+  POST_EXTRAS_HTML=$post_end_tags_html$post_nav_html \
+  perl -0pe '
+    BEGIN {
+      $menu = $ENV{"POST_MENU_HTML"} // "";
+      $header = $ENV{"POST_HEADER_META_HTML"} // "";
+      $extras = $ENV{"POST_EXTRAS_HTML"} // "";
+    }
+    if (index($_, "post-single-item") < 0) {
+      s{<article\b([^>]*)\bclass=(["\x27])([^"\x27]*)\2([^>]*)>}{<article$1class=$2$3 post-item post-single-item$2$4>}s
+        or s{<article\b((?:(?!>).)*)>}{<article$1 class="post-item post-single-item">}s;
+    }
+    if (index($_, "post-single-body") < 0) {
+      s{<div class="post-head">\s*(<h1\b[^>]*>.*?</h1>)\s*</div>}{"<div class=\"post-head\">$menu<div class=\"post-head-main\">$1$header</div></div><div class=\"post-single-body\">"}se;
+      if (index($_, "post-single-body") >= 0) {
+        s{</article>}{</div>$extras</article>}s;
       }
     }
-    END {
-      if (inserted_extras == 0) {
-        print extras
-      }
+    if (index($_, "post-page-menu") < 0) {
+      s{<div class="post-head">}{<div class="post-head">$menu}s;
+    }
+    if (index($_, "post-head-divider") < 0) {
+      s{</h1>}{</h1>$header}s;
+    }
+    if (index($_, "post-end-tags") < 0 || index($_, "post-nav-enhanced") < 0) {
+      s{</article>}{$extras</article>}s;
     }
   ' "$html_file" > "$tmp_injected"
   http-status 200 "OK"
@@ -222,27 +244,6 @@ if command -v pandoc >/dev/null 2>&1; then
     "$body_md" >/dev/null 2>&1 || true
 
   if [ -f "$body_html_file" ]; then
-    title=$(blog_read_front_matter_value "$md_file" title 2>/dev/null || printf '')
-    author=$(blog_post_author_display_for_file "$md_file")
-    if [ -z "$author" ]; then
-      author='Blog Author'
-    fi
-    published_at=$(blog_read_front_matter_value "$md_file" published_at 2>/dev/null || printf '')
-    published_date=$(blog_iso_to_human_date "$published_at")
-    published_timestamp=$(blog_iso_to_human_timestamp "$published_at")
-    post_type=$(blog_read_front_matter_value "$md_file" post_type 2>/dev/null || printf '')
-    if [ -z "$post_type" ]; then
-      post_type=$(blog_read_front_matter_value "$md_file" type 2>/dev/null || printf '')
-    fi
-    post_type=$(blog_normalize_post_type "$post_type")
-    body_plain=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
-    title=$(blog_effective_post_title "$title" "$body_plain" "$post_type")
-    word_count=$(blog_word_count "$body_plain")
-    reading_minutes=$(blog_estimated_read_minutes "$word_count")
-
-    safe_title=$(blog_html_escape "$title")
-    post_header_meta_html=$(blog_post_header_meta_html "$author" "$reading_minutes" "$published_date" "$published_timestamp")
-
     http-status 200 "OK"
     http-header "Content-Type" "text/html; charset=utf-8"
     http-end-headers
@@ -336,8 +337,13 @@ fi
 cat <<HTML
   <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
     <article class="post-item post-single-item">
-      <div class="post-head">$post_menu_html</div>
-      <h1>$safe_title</h1>
+      <div class="post-head">
+        $post_menu_html
+        <div class="post-head-main">
+          <h1 class="post-title">$safe_title</h1>
+          $post_header_meta_html
+        </div>
+      </div>
       <div class="post-single-body"><pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">$safe_body</pre></div>
       $post_end_tags_html
       $post_nav_html
