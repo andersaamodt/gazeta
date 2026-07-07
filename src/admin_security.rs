@@ -65,6 +65,7 @@ impl RequestParams {
 pub(crate) struct SessionState {
     pub(crate) username: String,
     pub(crate) is_admin: bool,
+    pub(crate) user_pubkey: String,
     pub(crate) auth_method: String,
     pub(crate) force_interactive: bool,
 }
@@ -103,6 +104,13 @@ pub(crate) fn require_session(
     }
     let is_admin =
         user_is_admin(users_dir, &username) || boolish(Some(&config_string(&session, "is_admin")));
+    let user_pubkey = normalized_pubkey(
+        &config_string(&session, "user_pubkey"),
+        &config_string(
+            &read_config(&user_profile(users_dir, &username)).unwrap_or_default(),
+            "nostr_pubkey",
+        ),
+    );
     if require_admin && !is_admin {
         return Err(RuntimeError::new(
             "admin_required",
@@ -121,6 +129,7 @@ pub(crate) fn require_session(
     Ok(SessionState {
         username,
         is_admin,
+        user_pubkey,
         auth_method,
         force_interactive,
     })
@@ -197,6 +206,16 @@ fn is_hex_len(value: &str, len: usize) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+fn normalized_pubkey(primary: &str, fallback: &str) -> String {
+    for value in [primary, fallback] {
+        let normalized = value.trim().to_ascii_lowercase();
+        if is_hex_len(&normalized, 64) {
+            return normalized;
+        }
+    }
+    String::new()
 }
 
 fn boolish(value: Option<&str>) -> bool {

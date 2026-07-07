@@ -47,6 +47,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
         "blog-create-draft-from-post" => blog_create_draft_from_post().map(CgiResponse::json),
+        "blog-publish-nostr-page" => blog_publish_nostr_page().map(CgiResponse::json),
         "blog-save-post" => blog_save_post().map(CgiResponse::json),
         "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
         "blog-delete-draft" => blog_delete_draft().map(CgiResponse::json),
@@ -577,6 +578,49 @@ fn blog_save_post() -> Result<Value> {
         }
         _ => Err(AdminError::new("invalid_action", "Unknown action")),
     }
+}
+
+fn blog_publish_nostr_page() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    if !plugin_enabled(&paths, "nostr_posts") {
+        return Err(AdminError::new(
+            "plugin_disabled",
+            "Nostr-backed pages plugin is disabled for this site",
+        ));
+    }
+    let request = RequestParams::from_env_and_stdin();
+    let session = require_session(&paths, &request, true, true)?;
+    let raw_slug = request
+        .value("page_slug")
+        .or_else(|| request.value("list_slug"))
+        .unwrap_or_default();
+    let preview_only = request.value("preview_only").unwrap_or_default();
+    let event_json = request
+        .value("event_json")
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            serde_json::from_str::<Value>(&value)
+                .map(|json| json.to_string())
+                .map_err(|_| AdminError::new("invalid_event_json", "event_json must be valid JSON"))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let response = run_shell_function_json(
+        &[
+            "cgi/blog-lib.sh",
+            "cgi/blog-list-common.sh",
+            "cgi/blog-public-ranking-common.sh",
+            "cgi/blog-nostr-pages-common.sh",
+        ],
+        "blog_publish_nostr_page_json",
+        &[raw_slug, preview_only, event_json],
+        &[
+            ("BLOG_SESSION_USERNAME", session.username),
+            ("BLOG_SESSION_USER_PUBKEY", session.user_pubkey),
+        ],
+    )
+    .map_err(|message| AdminError::new("publish_failed", message))?;
+    Ok(response)
 }
 
 fn blog_delete_draft() -> Result<Value> {
@@ -2673,16 +2717,44 @@ fn auto_summary_from_content(content: &str) -> String {
 }
 
 fn run_blog_lib_function(function: &str, args: &[String]) -> std::result::Result<String, String> {
-    let blog_lib = gazeta_repo_root().join("cgi/blog-lib.sh");
-    let output = Command::new("/bin/sh")
+    run_shell_function(&["cgi/blog-lib.sh"], function, args, &[])
+}
+
+fn run_shell_function_json(
+    sources: &[&str],
+    function: &str,
+    args: &[String],
+    envs: &[(&str, String)],
+) -> std::result::Result<Value, String> {
+    let output = run_shell_function(sources, function, args, envs)?;
+    serde_json::from_str(&output).map_err(|error| error.to_string())
+}
+
+fn run_shell_function(
+    sources: &[&str],
+    function: &str,
+    args: &[String],
+    envs: &[(&str, String)],
+) -> std::result::Result<String, String> {
+    let repo_root = gazeta_repo_root();
+    let mut command = Command::new("/bin/sh");
+    command
         .arg("-c")
-        .arg(". \"$1\"; blog_init; fn=\"$2\"; shift 2; \"$fn\" \"$@\"")
-        .arg("blog-lib")
-        .arg(blog_lib)
-        .arg(function)
-        .args(args)
-        .output()
-        .map_err(|error| error.to_string())?;
+        .arg(
+            ". \"$1\"; shift; while [ \"$1\" != \"--\" ]; do . \"$1\"; shift; done; shift; blog_init; fn=\"$1\"; shift; \"$fn\" \"$@\"",
+        )
+        .arg("shell-function")
+        .arg(repo_root.join("cgi/blog-lib.sh"));
+    for source in sources {
+        if *source != "cgi/blog-lib.sh" {
+            command.arg(repo_root.join(source));
+        }
+    }
+    command.arg("--").arg(function).args(args);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let output = command.output().map_err(|error| error.to_string())?;
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
