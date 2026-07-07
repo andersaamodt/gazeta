@@ -370,48 +370,6 @@
       .replace(/'/g, '&#39;');
   }
 
-  function longTimestampTitle(raw) {
-    var value = String(raw || '').trim();
-    if (!value || value.indexOf('T') < 0) {
-      return '';
-    }
-    var date = new Date(value);
-    if (!isFinite(date.getTime())) {
-      return value;
-    }
-    try {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'UTC',
-        timeZoneName: 'short'
-      }).format(date);
-    } catch (_err) {
-      return value;
-    }
-  }
-
-  function postDateHtml(post, fallback) {
-    var label = String(fallback || '').trim() || 'Unknown date';
-    var explicit = String(post && post.published_timestamp || '').trim();
-    var title = explicit || longTimestampTitle(post && post.published_at);
-    return '<span class="post-date"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</span>';
-  }
-
-  function postHeaderMetaHtml(post, author, readMinutes, fallbackDate) {
-    return '' +
-      '<div class="post-head-divider" aria-hidden="true"></div>' +
-      '<div class="post-byline post-byline-bottom">' +
-      '<span class="post-author">' + escapeHtml(author || 'Blog Author') + '</span>' +
-      '<span class="post-reading-inline">' + escapeHtml(String(readMinutes || 1)) + ' min read</span>' +
-      postDateHtml(post, fallbackDate || 'Unknown date') +
-      '</div>';
-  }
-
   function markdownInline(md) {
     var value = String(md || '');
     if (!value) {
@@ -533,51 +491,6 @@
     actionsHost.innerHTML = pageSyncStatusPillHtml();
   }
 
-  function cleanMarkdownText(value) {
-    return String(value || '')
-      .replace(/\\"/g, '"')
-      .replace(/\\'/g, "'");
-  }
-
-  function renderPostSummaryHtml(summary, url, truncated) {
-    var text = cleanMarkdownText(summary).trim();
-    if (!text) {
-      return '';
-    }
-    var readMore = '';
-    if (truncated && String(url || '').trim()) {
-      readMore = '<a class="post-summary-read-more" href="' + escapeHtml(url) + '">Read more...</a>';
-    }
-    return '<div class="post-summary">' + markdownBlock(text) + readMore + '</div>';
-  }
-
-  function firstMarkdownHref(value) {
-    var text = String(value || '');
-    var match = text.match(/\[[^\]]+\]\((https?:\/\/[^)\s]+)\)/i);
-    if (match && match[1]) {
-      return String(match[1]).trim();
-    }
-    match = text.match(/https?:\/\/[^\s)<>"']+/i);
-    return match && match[0] ? String(match[0]).trim() : '';
-  }
-
-  function postLinkUrl(post) {
-    return String((post && post.link_url) || firstMarkdownHref(post && post.summary) || '').trim();
-  }
-
-  function postOffsiteLinkNoteHtml(post, author) {
-    if (String(post && post.type || '').trim() !== 'link-share') {
-      return '';
-    }
-    var linkUrl = postLinkUrl(post);
-    return '' +
-      '<div class="post-offsite-link-note">' +
-        '<span class="post-offsite-link-kind">Off-site link</span>' +
-        '<span>Linked by ' + escapeHtml(author || 'Blog Author') + '</span>' +
-        (linkUrl ? '<a class="post-offsite-url" href="' + escapeHtml(linkUrl) + '" title="' + escapeHtml(linkUrl) + '">' + escapeHtml(linkUrl) + '</a>' : '') +
-      '</div>';
-  }
-
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -617,6 +530,12 @@
   function payloadHasDefaultPostTag(payload) {
     var page = payload && payload.state ? normalizePageState(payload.state) : null;
     return !!String(page && page.default_tag || '').trim();
+  }
+
+  function postsHaveRenderedHtml(posts) {
+    return Array.isArray(posts) && posts.every(function (post) {
+      return !!String(post && post.rendered_html || '').trim();
+    });
   }
 
   function getRenderState() {
@@ -4309,24 +4228,15 @@
         reading_minutes: Number(post && post.reading_minutes || 0) || 0,
         author: String(post && post.author || ''),
         link_url: String(post && post.link_url || ''),
-        comment_count: Number(post && post.comment_count || 0) || 0
+        comment_count: Number(post && post.comment_count || 0) || 0,
+        source_path: String(post && post.source_path || ''),
+        rendered_html: String(post && post.rendered_html || '')
       };
     }));
   }
 
   function filterButtonHtml(group, value, label, isActive) {
     return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
-  }
-
-  function inlineFilterPillHtml(className, group, value, label) {
-    var normalized = String(value || '').trim();
-    var display = String(label || normalized || 'Unknown').trim();
-    if (!normalized) {
-      normalized = display;
-    }
-    var filterSet = state.filters[group];
-    var isActive = !!(filterSet && filterSet.has(normalized));
-    return '<button type="button" class="' + escapeHtml(className + (isActive ? ' is-active' : '')) + '" data-inline-filter-group="' + escapeHtml(group) + '" data-inline-filter-value="' + escapeHtml(normalized) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" aria-label="Filter by ' + escapeHtml(display) + '">' + escapeHtml(display) + '</button>';
   }
 
   function uniqueSorted(items, compareFn) {
@@ -4415,57 +4325,73 @@
 
     els.empty.hidden = true;
     els.list.innerHTML = shown.map(function (post) {
-      var postTitle = String(post.title || '').trim();
-      var postSummary = cleanMarkdownText(post.summary || '');
-      if (!postTitle) {
-        postTitle = postSummary.trim() || 'Untitled';
-      }
-      var postPath = String(post.source_path || post.post_path || post.path || '').trim();
-      var tagsHtml = normalizePostTags(post.tags).map(function (tag) {
-        var normalizedTag = String(tag || '');
-        var isActive = state.filters.tags.has(normalizedTag);
-        return '<button type="button" class="tag blog-inline-tag' + (isActive ? ' is-active' : '') + '" data-inline-tag="' + escapeHtml(normalizedTag) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(normalizedTag) + '</button>';
-      }).join('');
-      var postType = String(post.type || 'post');
-      var postYear = String(post.year || 'Unknown');
-      var metaPillsHtml = inlineFilterPillHtml('tag blog-type-pill', 'types', postType, formatType(postType)) + inlineFilterPillHtml('tag blog-year-pill', 'years', postYear, postYear);
-      var comments = Number(post.comment_count || 0);
-      var commentsLabel = comments === 1 ? '1 comment' : String(comments) + ' comments';
-      var commentsHtml = '<span class="post-card-comments-count">' + escapeHtml(commentsLabel) + '</span>';
-      var readMinutes = Number(post.reading_minutes || 0);
-      if (!Number.isFinite(readMinutes) || readMinutes < 1) {
-        readMinutes = 1;
-      }
-      var author = String(post.author || '').trim();
-      if (!author) {
-        author = 'Blog Author';
-      }
-      var adminMenuHtml = '';
-      if (isAdmin() && postPath) {
-        adminMenuHtml = '' +
-          '<div class="post-page-menu">' +
-            '<button type="button" class="post-page-menu-trigger" data-post-card-menu-toggle="' + escapeHtml(postPath) + '" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
-            '<div class="post-page-menu-panel" role="menu" hidden>' +
-              '<button type="button" data-post-card-action="edit_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Edit post...</button>' +
-              '<button type="button" class="post-page-menu-delete" data-post-card-action="delete_post" data-post-path="' + escapeHtml(postPath) + '" role="menuitem">Delete post...</button>' +
-            '</div>' +
-          '</div>';
-      }
+      return String(post && post.rendered_html || '').trim();
+    }).filter(Boolean).join('');
+    syncRenderedListDecorations();
+  }
 
-      return '' +
-        '<article class="post-item blog-post-item' + (postType === 'link-share' ? ' is-link-share' : '') + '">' +
-          '<div class="post-head">' +
-            '<div class="post-head-main">' +
-              '<h2 class="post-title"><a href="' + escapeHtml(post.url || '#') + '">' + escapeHtml(postTitle) + '</a></h2>' +
-              postOffsiteLinkNoteHtml(post, author) +
-              postHeaderMetaHtml(post, author, readMinutes, post.published_date || post.pub_date || 'Unknown date') +
-            '</div>' +
-            adminMenuHtml +
-          '</div>' +
-          renderPostSummaryHtml(post.summary, post.url, !!post.summary_truncated) +
-          '<div class="post-card-footer"><div class="tags post-card-meta-tags">' + metaPillsHtml + tagsHtml + '</div>' + commentsHtml + '</div>' +
-        '</article>';
-    }).join('');
+  function postCardMenuHtml(postPath) {
+    var normalizedPath = String(postPath || '').trim();
+    if (!normalizedPath) {
+      return '';
+    }
+    return '' +
+      '<div class="post-page-menu">' +
+        '<button type="button" class="post-page-menu-trigger" data-post-card-menu-toggle="' + escapeHtml(normalizedPath) + '" aria-label="Post menu" aria-haspopup="menu" aria-expanded="false">' + overflowMenuIconSvg() + '</button>' +
+        '<div class="post-page-menu-panel" role="menu" hidden>' +
+          '<button type="button" data-post-card-action="edit_post" data-post-path="' + escapeHtml(normalizedPath) + '" role="menuitem">Edit post...</button>' +
+          '<button type="button" class="post-page-menu-delete" data-post-card-action="delete_post" data-post-path="' + escapeHtml(normalizedPath) + '" role="menuitem">Delete post...</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function syncRenderedPostCardMenus() {
+    if (!els.list) {
+      return;
+    }
+    var cards = els.list.querySelectorAll('.blog-post-item');
+    cards.forEach(function (card) {
+      var existing = card.querySelector('.post-page-menu');
+      var postPath = String(card.getAttribute('data-post-path') || '').trim();
+      if (!isAdmin() || !postPath) {
+        if (existing && existing.parentNode) {
+          existing.parentNode.removeChild(existing);
+        }
+        return;
+      }
+      if (!existing) {
+        var head = card.querySelector('.post-head');
+        if (!head) {
+          return;
+        }
+        head.insertAdjacentHTML('beforeend', postCardMenuHtml(postPath));
+      }
+    });
+  }
+
+  function syncRenderedListInlineFilterState() {
+    if (!els.list) {
+      return;
+    }
+    els.list.querySelectorAll('[data-inline-tag]').forEach(function (button) {
+      var value = String(button.getAttribute('data-inline-tag') || '');
+      var active = state.filters.tags.has(value);
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    els.list.querySelectorAll('[data-inline-filter-group][data-inline-filter-value]').forEach(function (button) {
+      var group = String(button.getAttribute('data-inline-filter-group') || '');
+      var value = String(button.getAttribute('data-inline-filter-value') || '');
+      var filterSet = state.filters[group];
+      var active = !!(filterSet && filterSet.has(value));
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function syncRenderedListDecorations() {
+    syncRenderedPostCardMenus();
+    syncRenderedListInlineFilterState();
   }
 
   function closePostCardMenus() {
@@ -4565,6 +4491,7 @@
     renderValidation();
     renderExtrasAfter();
     renderComposeUi();
+    syncRenderedPostCardMenus();
   }
 
   function renderAll() {
@@ -4682,6 +4609,10 @@
         return null;
       }
       if (parsed && Array.isArray(parsed.posts)) {
+        if (!postsHaveRenderedHtml(parsed.posts)) {
+          localStorage.removeItem(CACHE_KEY);
+          return null;
+        }
         return parsed.posts;
       }
     } catch (_err) {
@@ -4725,13 +4656,16 @@
     }
   }
 
-	  function readPrerenderPostsBootstrap(payload) {
+  function readPrerenderPostsBootstrap(payload) {
 	    if (!payload || typeof payload !== 'object') {
 	      return null;
     }
     if (!Array.isArray(payload.bootstrap_posts)) {
       return null;
     }
+	    if (!postsHaveRenderedHtml(payload.bootstrap_posts)) {
+	      return null;
+	    }
 	    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
 	  }
 
@@ -4892,6 +4826,9 @@
           return;
         }
         var allPosts = data.posts.slice();
+        if (!postsHaveRenderedHtml(allPosts)) {
+          return;
+        }
         postsCatalogReady = true;
 	        state.posts = filteredPostsForPageDefaults(allPosts, state.payload);
 	        writeCache(allPosts);
@@ -4933,6 +4870,7 @@
     renderAdmin();
     renderValidation();
     renderComposeUi();
+    syncRenderedPostCardMenus();
     updateRenderSignature();
   }
 
@@ -5557,6 +5495,7 @@
 	    if (hasMatchingStaticPrerender(prerenderedPayload, els.list)) {
 	      state.staticPrerenderListAdopted = true;
 	      state.adoptedPostListSignature = postListSignature();
+	      syncRenderedListDecorations();
 	      renderHead();
 	      renderAdmin();
 	      renderDraftNotice();
@@ -5583,6 +5522,7 @@
       var nextSignature = renderSignature();
       if (state.renderSignature !== nextSignature) {
         if (state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature()) {
+          syncRenderedListDecorations();
           renderHead();
           renderAdmin();
           renderDraftNotice();

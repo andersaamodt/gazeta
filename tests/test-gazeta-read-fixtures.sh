@@ -4,6 +4,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
 THEURGY_REPLAY=${THEURGY_REPLAY:-$HOME/git/theurgy/spells/replay-theurgy-cgi-fixture}
+REAL_HOME=${HOME:-}
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-read-fixtures.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT HUP INT TERM
 
@@ -15,6 +16,10 @@ trap 'rm -rf "$TMP_ROOT"' EXIT HUP INT TERM
 export WIZARDRY_SITES_DIR="$TMP_ROOT/sites"
 export HOME="$TMP_ROOT/home"
 export XDG_STATE_HOME="$TMP_ROOT/xdg-state"
+if [ -n "$REAL_HOME" ]; then
+  export RUSTUP_HOME="${RUSTUP_HOME:-$REAL_HOME/.rustup}"
+  export CARGO_HOME="${CARGO_HOME:-$REAL_HOME/.cargo}"
+fi
 export WIZARDRY_SITES_DIR="$HOME/git/sites"
 export WIZARDRY_SITE_NAME="example.test"
 

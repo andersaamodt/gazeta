@@ -3,6 +3,20 @@
 
 set -eu
 
+blog_lib_dir=${BLOG_LIB_DIR:-}
+if [ -z "$blog_lib_dir" ] && [ -n "${SCRIPT_DIR:-}" ] && [ -f "$SCRIPT_DIR/blog-lib.sh" ]; then
+  blog_lib_dir=$SCRIPT_DIR
+fi
+if [ -z "$blog_lib_dir" ] && [ -n "${1-}" ]; then
+  case "$1" in
+    */blog-lib.sh) blog_lib_dir=${1%/blog-lib.sh} ;;
+  esac
+fi
+if [ -n "$blog_lib_dir" ] && [ -f "$blog_lib_dir/blog-post-cards-common.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$blog_lib_dir/blog-post-cards-common.sh"
+fi
+
 blog_sites_dir=${WIZARDRY_SITES_DIR:-$HOME/sites}
 blog_default_sites_data_dir="$blog_sites_dir/.sitedata"
 case "${WIZARDRY_SITES_DATA_DIR:-}" in
@@ -6628,7 +6642,7 @@ blog_public_posts_catalog_build_json() {
       fi
       first=0
 
-      jq -cn \
+      row_json=$(jq -cn \
         --arg path "$public_path" \
         --arg source_path "$source_path" \
         --arg url "$url" \
@@ -6668,7 +6682,9 @@ blog_public_posts_catalog_build_json() {
           reading_minutes: $reading_minutes,
           tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),
           comment_count: $comment_count
-        }'
+        }')
+      rendered_html=$(blog_post_cards_render_card_html "$row_json" 2>/dev/null || printf '')
+      printf '%s\n' "$row_json" | jq -c --arg rendered_html "$rendered_html" '. + {rendered_html: $rendered_html}'
     done < "$posts_tmp"
     printf ']}'
     printf '\n'

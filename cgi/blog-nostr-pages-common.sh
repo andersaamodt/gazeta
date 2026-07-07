@@ -2967,6 +2967,7 @@ blog_nostr_pages_source_sync_signature() {
     blog_nostr_pages_source_sync_file_signature blog-lib "$SCRIPT_DIR/blog-lib.sh"
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone "$SCRIPT_DIR/gazeta-lodestone"
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"
+    blog_nostr_pages_source_sync_file_signature blog-post-cards-common "$SCRIPT_DIR/blog-post-cards-common.sh"
     for template_kind in blog list icon-gallery contact nip23 public-ranking overworld; do
       template_file=$(blog_nostr_page_lodestone_template_path "$template_kind" 2>/dev/null || printf '')
       blog_nostr_pages_source_sync_file_signature template "$template_file"

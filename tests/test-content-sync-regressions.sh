@@ -483,11 +483,17 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.blog-inline-tag {' '
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'flex: 0 0 auto;' 'blog list inline tags keep intrinsic width'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function normalizePostTags(raw)' 'blog list normalizes post tags from catalog data before rendering'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'return acc.concat(normalizePostTags(post.tags));' 'blog filter options include normalized post tags'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'var tagsHtml = normalizePostTags(post.tags).map(function (tag) {' 'blog cards render normalized post tags'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "blog-inline-tag' + (isActive ? ' is-active' : '')" 'blog list inline tags expose active filter state'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "aria-pressed=\"' + (isActive ? 'true' : 'false')" 'blog list inline filters expose pressed state'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postsHaveRenderedHtml(posts)' 'blog hydration requires server-rendered post cards before reusing cached catalogs'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return String(post && post.rendered_html || '').trim();" 'blog list reuses server-rendered post card HTML instead of rebuilding card markup in the browser'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function syncRenderedListInlineFilterState()' 'blog hydration reapplies active inline filter state onto adopted rendered cards'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function syncRenderedPostCardMenus()' 'blog hydration decorates rendered cards with admin menus separately from card markup ownership'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'postOffsiteLinkNoteHtml(post, author)' 'blog page no longer calls a parallel client-side off-site link note renderer for post cards'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderPostSummaryHtml(post.summary' 'blog page no longer calls a parallel client-side summary renderer for post cards'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-card-meta-tags > button.tag.is-active' 'blog list inline active filter chips get a visible active style'
 assert_file_contains "$SITE_SOURCE_ROOT/static/themes/lapidarist.css" '.post-card-meta-tags > button.tag.is-active' 'Lapidarist inline active filter chips preserve a visible active style'
+assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '. + {rendered_html: $rendered_html}' 'public post catalog carries server-rendered card HTML for universal blog hydration'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" '. "$SCRIPT_DIR/blog-post-cards-common.sh"' 'Lodestone blog component reuses the shared blog card renderer'
+assert_file_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" 'blog_post_cards_render_card_html() {' 'shared blog card renderer owns post card markup'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/public_posts.rs" 'read_catalog_with_posts(&static_catalog)' 'public post JSON endpoint rebuilds instead of trusting an empty stale static catalog'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/public_posts.rs" 'read_catalog_with_posts(&static_catalog)' 'fallback blog index rebuilds instead of trusting an empty stale static catalog'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.post-end-tags .blog-type-pill,' 'single post type tag keeps colored pill styling'
@@ -521,6 +527,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '--html-file "po
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'if [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone" ]; then' 'Nostr page prerender resolves Lodestone through the Gazeta wrapper first'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone" '--component-command "$component_command"' 'Gazeta Lodestone wrapper injects the Gazeta-owned component renderer'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"' 'source-page signature tracks the Gazeta-owned Lodestone component renderer'
+assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog-post-cards-common "$SCRIPT_DIR/blog-post-cards-common.sh"' 'source-page signature tracks the shared blog card renderer that powers universal hydration'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_blog_posts_html()' 'blog prerender has no parallel non-Lodestone post-card renderer'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'cat > "$page_file" <<EOBLOG' 'missing blog page creation has no hand-written fallback template'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'filter_blog_posts_json_for_default_tag()' 'blog prerender bootstrap filters post catalogs for default-tag blog pages'
@@ -1753,7 +1760,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "cache: 'no-store'"
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-action=\"delete\"" 'in-blog compose exposes delete-draft trash action'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "apiPost('/cgi/blog-delete-draft'" 'in-blog compose can delete local draft via delete endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'return '\''<div class="post-summary">'\'' + markdownBlock(text) + readMore + '\''</div>'\'';' 'blog index renders post summaries as block markdown'
+assert_file_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" '<div class=\"post-summary\"><p>\($summary | @html)</p>' 'shared blog card renderer owns blog summary markup for prerender and hydration'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function markdownInlineFallback(md)' 'blog index markdown fallback renders summary links when marked is unavailable'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "cache: 'no-store'" 'contact-page has no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "cache: 'no-store'" 'nip23-page has no-store directives'
@@ -1787,6 +1794,7 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-lib.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-get-config"
 assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
+assert_success sh -n "$ROOT_DIR/cgi/blog-post-cards-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy"
 assert_success sh -n "$ROOT_DIR/cgi/blog-audit-nostr-backing"
