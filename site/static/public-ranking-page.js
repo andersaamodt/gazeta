@@ -72,15 +72,7 @@
     return window.__wizardryPrerenderFragment(state.payload, key);
   }
 
-	  function renderFromBootstrapPayload(payload) {
-	    if (!payload || !isExpectedPayload(payload)) {
-	      return false;
-    }
-    var authenticated = window.__wizardryHasLikelyAuthenticatedSession();
-    var optimisticPayload = payload;
-    if (!optimisticPayload.is_admin && authenticated) {
-      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
-    }
+  function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || {});
     state.navTitle = String((payload && payload.nav_title) || '').trim();
@@ -90,24 +82,30 @@
     state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
     state.activeHeadField = '';
     state.submitComposerOpen = false;
-	    state.submitAdvancedOpen = false;
-	    state.saveIndicatorVisible = false;
-	    setSaveStatus('saved');
-	    if (!authenticated && hasMatchingStaticPrerender(optimisticPayload)) {
-	      renderHead();
-	      renderAdmin();
-	      renderValidation();
-      markInitialContentPainted();
-      return true;
-	    }
-	    renderAll();
-    markInitialContentPainted();
-    return true;
+    state.submitAdvancedOpen = false;
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
   }
 
-	  function hasMatchingStaticPrerender(payload) {
-	    return window.__wizardryHasMatchingStaticPrerender(root, els.content, payload);
-	  }
+  function renderBootstrapPayload(payload) {
+    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: isExpectedPayload,
+      applyState: applyBootstrapState,
+      canAdoptStaticPrerender: function (_optimisticPayload, _rawPayload, authenticated) {
+        return !authenticated;
+      },
+      hasMatchingStaticPrerender: function (optimisticPayload) {
+        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
+      },
+      renderAdoptedPrerender: function () {
+        renderHead();
+        renderAdmin();
+        renderValidation();
+      },
+      renderAll: renderAll,
+      markInitialContentPainted: markInitialContentPainted
+    });
+  }
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -1691,7 +1689,7 @@
         throw new Error('Unexpected page payload for public ranking page');
       }
       writeBootstrapCache(payload);
-      renderFromBootstrapPayload(payload);
+      renderBootstrapPayload(payload);
     } catch (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
     } finally {
@@ -1713,7 +1711,7 @@
     readPrerender: function () {
       return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
     },
-    renderPayload: renderFromBootstrapPayload,
+    renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });
   load();

@@ -625,18 +625,7 @@
     return window.__wizardryPrerenderFragment(state.payload, key);
   }
 
-	  function hasMatchingStaticPrerender(payload) {
-	    return window.__wizardryHasMatchingStaticPrerender(root, els.content, payload);
-	  }
-
-	  function renderFromBootstrapPayload(payload) {
-    if (!payload || !isExpectedPayload(payload)) {
-      return false;
-    }
-    var optimisticPayload = payload;
-    if (!optimisticPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession()) {
-      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
-    }
+  function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', description: '', rows: [] });
     state.navTitle = String((payload && payload.nav_title) || '').trim();
@@ -644,23 +633,33 @@
     state.navTitleInput = '';
     state.navTitleBusy = false;
     state.activeHeadField = '';
+    state.headFocusPending = false;
     state.activeRowIndex = -1;
-	    state.activeRowField = '';
-	    state.saveIndicatorVisible = false;
-	    setSaveStatus('saved');
-	    if (hasMatchingStaticPrerender(optimisticPayload)) {
-	      renderHead();
-	      renderAdmin();
-	      renderValidation();
-	      syncSecureChatLastContentHtmlFromDom();
-	      maybeLoadVideoChatWidget();
-	      markInitialContentPainted();
-	      return true;
-	    }
-	    renderAll();
-	    markInitialContentPainted();
-	    return true;
-	  }
+    state.activeRowField = '';
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+  }
+
+  function renderBootstrapPayload(payload) {
+    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: isExpectedPayload,
+      applyState: applyBootstrapState,
+      hasMatchingStaticPrerender: function (optimisticPayload) {
+        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
+      },
+      renderAdoptedPrerender: function () {
+        renderHead();
+        renderAdmin();
+        renderValidation();
+      },
+      renderAll: renderAll,
+      afterRender: function () {
+        syncSecureChatLastContentHtmlFromDom();
+        maybeLoadVideoChatWidget();
+      },
+      markInitialContentPainted: markInitialContentPainted
+    });
+  }
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -5055,20 +5054,8 @@
       if (!isExpectedPayload(payload)) {
         throw new Error('Unexpected page payload for profile page');
       }
-      state.payload = payload;
-      state.draft = normalizeDraftState(payload.state || { title: '', description: '', rows: [] });
-      state.navTitle = String(payload.nav_title || '').trim();
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      state.navTitleBusy = false;
-      state.activeHeadField = '';
-      state.headFocusPending = false;
-      state.activeRowIndex = -1;
-      state.activeRowField = '';
-      state.saveIndicatorVisible = false;
-      setSaveStatus('saved');
       writeBootstrapCache(payload);
-      renderFromBootstrapPayload(payload);
+      renderBootstrapPayload(payload);
       initializeSecureChatAfterLoad();
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
@@ -5116,7 +5103,7 @@
     readPrerender: function () {
       return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
     },
-    renderPayload: renderFromBootstrapPayload,
+    renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });
   secureChatRegisterBrowserNativeTransport();

@@ -141,7 +141,7 @@ visibility: "public"  # Change from "draft"
 - Gazeta-specific Lodestone components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
 - The same Gazeta-owned Lodestone component boundary should also own reusable read-only Nostr page content in prerender projections, so bootstrap payload HTML and generated page HTML stay on one render path.
 - Shared visitor hydration lifecycle helpers such as page-title reconciliation, prerender adoption checks, readiness signaling, and load-fallback placeholders live in `site/static/page-head.js`; page-specific scripts should only own state and behavior that differs by page type.
-- Shared first-paint bootstrap policy also lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow should stay shared unless a page has materially different bootstrap behavior.
+- Shared first-paint bootstrap policy also lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow and the simple managed-page prerender-adoption decision should stay shared unless a page has materially different bootstrap behavior.
 
 ## Sample Site Data
 

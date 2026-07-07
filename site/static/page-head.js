@@ -599,6 +599,52 @@
     return true;
   }
 
+  function renderManagedNostrBootstrapPayload(payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var isExpectedPayload = typeof opts.isExpectedPayload === 'function' ? opts.isExpectedPayload : null;
+    if (!payload || (isExpectedPayload && !isExpectedPayload(payload))) {
+      return false;
+    }
+    var authenticated = window.__wizardryHasLikelyAuthenticatedSession();
+    var optimisticPayload = payload;
+    if (opts.promoteAuthenticated !== false && !optimisticPayload.is_admin && authenticated) {
+      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
+    }
+    if (typeof opts.applyState !== 'function') {
+      return false;
+    }
+    opts.applyState(optimisticPayload, payload, authenticated);
+    var canAdoptStaticPrerender = typeof opts.canAdoptStaticPrerender === 'function'
+      ? opts.canAdoptStaticPrerender(optimisticPayload, payload, authenticated)
+      : true;
+    var matchesStaticPrerender = canAdoptStaticPrerender
+      && typeof opts.hasMatchingStaticPrerender === 'function'
+      && opts.hasMatchingStaticPrerender(optimisticPayload, payload, authenticated);
+    if (matchesStaticPrerender) {
+      if (typeof opts.renderAdoptedPrerender === 'function') {
+        opts.renderAdoptedPrerender(optimisticPayload, payload, authenticated);
+      }
+      if (typeof opts.afterRender === 'function') {
+        opts.afterRender(optimisticPayload, payload, authenticated);
+      }
+      if (typeof opts.markInitialContentPainted === 'function') {
+        opts.markInitialContentPainted();
+      }
+      return true;
+    }
+    if (typeof opts.renderAll !== 'function') {
+      return false;
+    }
+    opts.renderAll(optimisticPayload, payload, authenticated);
+    if (typeof opts.afterRender === 'function') {
+      opts.afterRender(optimisticPayload, payload, authenticated);
+    }
+    if (typeof opts.markInitialContentPainted === 'function') {
+      opts.markInitialContentPainted();
+    }
+    return true;
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -711,6 +757,7 @@
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderFromBootstrapSources = renderFromBootstrapSources;
+  window.__wizardryRenderManagedNostrBootstrapPayload = renderManagedNostrBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;

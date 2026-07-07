@@ -278,36 +278,32 @@
     });
   }
 
-	  function hasMatchingStaticPrerender(payload) {
-	    return window.__wizardryHasMatchingStaticPrerender(root, els.content, payload);
-	  }
-
-	  function renderFromBootstrapPayload(payload) {
-    if (!payload || !isExpectedPayload(payload)) {
-      return false;
-    }
-    var optimisticPayload = payload;
-    if (!optimisticPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession()) {
-      optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
-    }
+  function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
     state.navTitle = String((payload && payload.nav_title) || '').trim();
     state.navTitleEditing = false;
-	    state.navTitleInput = '';
-	    state.navTitleBusy = false;
-	    state.saveIndicatorVisible = false;
-	    setSaveStatus('saved');
-	    if (hasMatchingStaticPrerender(optimisticPayload)) {
-	      renderHead();
-	      renderAdmin();
-	      renderValidation();
-	      markInitialContentPainted();
-	      return true;
-	    }
-	    renderAll();
-	    markInitialContentPainted();
-	    return true;
+    state.navTitleInput = '';
+    state.navTitleBusy = false;
+    state.saveIndicatorVisible = false;
+    setSaveStatus('saved');
+  }
+
+  function renderBootstrapPayload(payload) {
+    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: isExpectedPayload,
+      applyState: applyBootstrapState,
+      hasMatchingStaticPrerender: function (optimisticPayload) {
+        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
+      },
+      renderAdoptedPrerender: function () {
+        renderHead();
+        renderAdmin();
+        renderValidation();
+      },
+      renderAll: renderAll,
+      markInitialContentPainted: markInitialContentPainted
+    });
   }
 
   function scheduleMarkedUpgrade() {
@@ -1040,16 +1036,8 @@
       if (!isExpectedPayload(payload)) {
         throw new Error('Unexpected page payload for long-form page');
       }
-      state.payload = payload;
-      state.draft = normalizeDraftState(payload.state || { title: '', content: '' });
-      state.navTitle = String(payload.nav_title || '').trim();
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      state.navTitleBusy = false;
-      state.saveIndicatorVisible = false;
-      setSaveStatus('saved');
       writeBootstrapCache(payload);
-      renderFromBootstrapPayload(payload);
+      renderBootstrapPayload(payload);
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
     }).finally(function () {
@@ -1085,7 +1073,7 @@
     readPrerender: function () {
       return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
     },
-    renderPayload: renderFromBootstrapPayload,
+    renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });
   load();
