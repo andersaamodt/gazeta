@@ -1555,28 +1555,31 @@ blog_nostr_page_render_lodestone_source() {
   render_description_html=$(blog_nostr_prerender_inline_html_from_text "$render_description")
   render_description_attrs=''
   render_content_attrs=''
-  render_payload_content_attrs='__wizardry_missing__'
+  if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    render_projection_json=$(blog_nostr_page_prerender_projection_json "$(cat "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE")" "$render_page_type")
+    render_description_html=$(
+      printf '%s\n' "$render_projection_json" | jq -r '.description_html // ""' 2>/dev/null ||
+        blog_nostr_prerender_inline_html_from_text "$render_description"
+    )
+    render_description_attrs=$(
+      printf '%s\n' "$render_projection_json" | jq -r '.description_attrs // ""' 2>/dev/null ||
+        printf ''
+    )
+    if [ -z "$render_content_html" ]; then
+      render_content_html=$(
+        printf '%s\n' "$render_projection_json" | jq -r '.content_html // ""' 2>/dev/null ||
+          printf ''
+      )
+      render_content_attrs=$(
+        printf '%s\n' "$render_projection_json" | jq -r '.content_attrs // ""' 2>/dev/null ||
+          printf ''
+      )
+    fi
+  fi
   if [ -z "$render_description_html" ]; then
     render_description_attrs=' hidden'
   fi
-  if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
-    render_payload_content_attrs=$(
-      jq -r '
-        if (has("prerender") and (.prerender | type) == "object" and (.prerender | has("content_attrs"))) then
-          (.prerender.content_attrs // "") | tostring
-        else
-          "__wizardry_missing__"
-        end
-      ' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" 2>/dev/null || printf '__wizardry_missing__'
-    )
-  fi
-  if [ "$render_payload_content_attrs" != '__wizardry_missing__' ]; then
-    render_content_attrs=$render_payload_content_attrs
-  elif [ -z "$render_content_html" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
-    if [ -z "$(blog_nostr_page_prerender_content_html "$(cat "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE")" "$render_page_type" 2>/dev/null || printf '')" ]; then
-      render_content_attrs=' hidden'
-    fi
-  elif [ -z "$render_content_html" ]; then
+  if [ -z "$render_content_attrs" ] && [ -z "$render_content_html" ]; then
     render_content_attrs=' hidden'
   fi
   printf '%s\n' "$render_content_html" > "$render_content_tmp"

@@ -292,12 +292,24 @@
   }
 
   function bootstrapPayload() {
-    const slug = String(document.querySelector('[data-page-slug]')?.getAttribute('data-page-slug') || 'overworld').trim() || 'overworld';
-    const bootstraps = window.__gazetaNostrPageBootstraps;
-    if (bootstraps && bootstraps[slug] && typeof bootstraps[slug] === 'object') {
-      return bootstraps[slug];
+    return window.__wizardryReadNostrPageBootstrap(overworldSlug(), isExpectedPayload) || {};
+  }
+
+  function overworldSlug() {
+    return String(document.querySelector('[data-page-slug]')?.getAttribute('data-page-slug') || 'overworld').trim() || 'overworld';
+  }
+
+  function isExpectedPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
     }
-    return {};
+    return String(payload.slug || '').trim() === overworldSlug() &&
+      String(payload.page_type || '').trim().toLowerCase() === 'overworld';
+  }
+
+  function hasMatchingStaticPrerender(host, payload) {
+    const root = host && host.closest ? host.closest('#overworld-page-root') : null;
+    return window.__wizardryHasMatchingStaticPrerender(root, host, payload);
   }
 
   function pageSyncStatusPillHtml() {
@@ -390,7 +402,9 @@
     host.dataset.overworldMounted = '1';
     injectStyles();
 
-	    const existingShell = host.querySelector('.overworld-godot-shell');
+    const payload = bootstrapPayload();
+    const preserveStaticPrerender = hasMatchingStaticPrerender(host, payload);
+	    const existingShell = preserveStaticPrerender ? host.querySelector('.overworld-godot-shell') : null;
 	    const shell = existingShell || document.createElement('div');
 	    shell.className = 'overworld-godot-shell';
 
@@ -496,7 +510,7 @@
 	    ensureChild(help, keys);
 	    ensureChild(help, loginNote);
 	    ensureChild(shell, help);
-	    if (!existingShell || shell.parentNode !== host) {
+	    if (!preserveStaticPrerender || !existingShell || shell.parentNode !== host) {
 	      host.replaceChildren(shell);
 	    }
 	    markReady();
