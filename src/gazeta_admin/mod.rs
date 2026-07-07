@@ -1,6 +1,7 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
 use crate::admin_security::{require_admin_session as require_admin_session_shared, RequestParams};
 use crate::config_kv::{config_string, read_config, write_config};
+use crate::markdown_content::read_markdown_front_matter;
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
@@ -630,31 +631,9 @@ fn strip_post_date_prefix(slug: &str) -> &str {
 }
 
 fn read_front_matter(path: &Path) -> BTreeMap<String, String> {
-    let mut values = BTreeMap::new();
-    let Ok(text) = fs::read_to_string(path) else {
-        return values;
-    };
-    let mut lines = text.lines();
-    if lines.next() != Some("---") {
-        return values;
-    }
-    for line in lines {
-        if line == "---" {
-            break;
-        }
-        let Some((key, value)) = line.split_once(':') else {
-            continue;
-        };
-        values.insert(
-            key.trim().to_string(),
-            value
-                .trim()
-                .trim_matches('"')
-                .trim_matches('\'')
-                .to_string(),
-        );
-    }
-    values
+    read_markdown_front_matter(path)
+        .map(|front_matter| front_matter.parsed)
+        .unwrap_or_default()
 }
 
 fn post_nostr_address_for_file(

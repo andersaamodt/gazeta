@@ -3,6 +3,10 @@ use crate::admin_security::{
     require_admin_session as require_admin_session_shared, RequestParams, SessionState,
 };
 use crate::config_kv::{config_string, read_config, write_config};
+use crate::markdown_content::{
+    normalize_post_type, normalize_tags, read_markdown_front_matter, state_markdown_to_json,
+    trim_whitespace,
+};
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
@@ -733,19 +737,6 @@ fn read_json(path: &Path) -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
-fn state_markdown_to_json(path: &Path, body_key: &str) -> Option<Value> {
-    let text = fs::read_to_string(path).ok()?;
-    let (front_matter, _, content) = parse_markdown_front_matter(&text);
-    let mut object = serde_json::Map::new();
-    for (key, value) in front_matter {
-        let parsed = serde_json::from_str::<Value>(&value)
-            .unwrap_or_else(|_| Value::String(value.trim_matches('"').trim_matches('\'').to_string()));
-        object.insert(key, parsed);
-    }
-    object.insert(body_key.to_string(), Value::String(content));
-    Some(Value::Object(object))
-}
-
 fn normalized_nostr_page_type(raw: Option<&str>) -> String {
     match raw.unwrap_or("list").to_ascii_lowercase().as_str() {
         "contact" => "contact".to_string(),
@@ -1065,13 +1056,12 @@ struct MarkdownDoc {
 
 impl MarkdownDoc {
     fn from_path(path: &Path) -> Option<Self> {
-        let text = fs::read_to_string(path).ok()?;
-        let (front_matter, front_matter_raw, content) = parse_markdown_front_matter(&text);
+        let parsed = read_markdown_front_matter(path)?;
         Some(Self {
             path: path.to_path_buf(),
-            front_matter,
-            front_matter_raw,
-            content,
+            front_matter: parsed.parsed,
+            front_matter_raw: parsed.raw,
+            content: parsed.body,
         })
     }
 
@@ -1540,40 +1530,6 @@ fn find_draft_by_id(paths: &SitePaths, draft_id: &str) -> Option<MarkdownDoc> {
         .find(|draft| draft.draft_id() == draft_id)
 }
 
-fn parse_markdown_front_matter(
-    text: &str,
-) -> (BTreeMap<String, String>, BTreeMap<String, String>, String) {
-    let mut parsed = BTreeMap::new();
-    let mut raw = BTreeMap::new();
-    let mut lines = text.lines();
-    if lines.next() != Some("---") {
-        return (parsed, raw, text.to_string());
-    }
-    let mut content_start = 0usize;
-    let mut offset = 4usize;
-    for line in text[4..].lines() {
-        if line == "---" {
-            content_start = offset + line.len();
-            break;
-        }
-        if let Some((key, value)) = line.split_once(':') {
-            let trimmed = value.trim().to_string();
-            raw.insert(key.trim().to_string(), trimmed.clone());
-            parsed.insert(
-                key.trim().to_string(),
-                trimmed.trim_matches('"').trim_matches('\'').to_string(),
-            );
-        }
-        offset += line.len() + 1;
-    }
-    let content = text
-        .get(content_start..)
-        .unwrap_or_default()
-        .trim_start_matches('\n')
-        .to_string();
-    (parsed, raw, content)
-}
-
 fn auto_summary_from_content(content: &str) -> String {
     if content.trim().is_empty() {
         return String::new();
@@ -1634,82 +1590,6 @@ fn effective_post_title(title: String, content: &str, post_type: &str) -> String
     }
 }
 
-fn normalize_post_type(raw: String) -> String {
-    let normalized = raw
-        .trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|ch| {
-            if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-') {
-                ch
-            } else {
-                '-'
-            }
-        })
-        .collect::<String>()
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>()
-        .join("-");
-    match normalized.as_str() {
-        "" | "long" | "longform" => "longform".to_string(),
-        "short" | "shortform" => "shortform".to_string(),
-        "capture" | "capture-media" | "capture_media" | "take-photo" | "take-photo-video" => {
-            "capture-media".to_string()
-        }
-        "media" | "media-upload" | "media_upload" | "upload-media" | "upload_media" | "photo"
-        | "video" | "image" => "upload-media".to_string(),
-        "attachment" | "attachments" | "file" | "file-upload" | "file_upload" => {
-            "attachment".to_string()
-        }
-        "audio" | "audio-note" | "audio_note" | "voice" | "voice-note" | "voice_note" => {
-            "audio-note".to_string()
-        }
-        "link" | "link-share" | "link_share" | "url" | "share-link" => "link-share".to_string(),
-        "go-live" | "go_live" | "live" => "go-live".to_string(),
-        _ => normalized,
-    }
-}
-
-fn normalize_tags(tags: String) -> String {
-    let mut seen = BTreeSet::new();
-    let mut out = Vec::new();
-    for tag in tags.replace('\n', ",").split(',') {
-        let trimmed = trim_whitespace(tag);
-        let stripped = trimmed
-            .trim_matches('[')
-            .trim_matches(']')
-            .trim_matches('"')
-            .trim_matches('\'')
-            .replace('\\', "")
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join("-");
-        let cleaned = stripped
-            .chars()
-            .filter(|ch| {
-                ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | ':' | '+' | '/' | '-')
-            })
-            .collect::<String>()
-            .trim_matches('-')
-            .to_string();
-        if cleaned.is_empty()
-            || cleaned.len() > 64
-            || !cleaned.chars().any(|ch| ch.is_ascii_alphanumeric())
-        {
-            continue;
-        }
-        let canonical = match cleaned.to_ascii_lowercase().as_str() {
-            "ai-shitpost" | "ai-quickpost" => "AI quickpost".to_string(),
-            _ => cleaned,
-        };
-        if seen.insert(canonical.clone()) {
-            out.push(canonical);
-        }
-    }
-    out.join(", ")
-}
-
 fn normalize_post_filename(raw: String) -> Option<String> {
     let raw = raw
         .trim()
@@ -1744,10 +1624,6 @@ fn normalize_post_filename(raw: String) -> Option<String> {
         .collect::<Vec<_>>()
         .join("-");
     (!slug.is_empty()).then_some(slug)
-}
-
-fn trim_whitespace(value: &str) -> String {
-    value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn drip_interval_hours(paths: &SitePaths) -> f64 {

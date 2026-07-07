@@ -1,4 +1,5 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
+use crate::markdown_content::front_matter_value;
 use crate::public_post::PublicPost;
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
@@ -546,34 +547,6 @@ fn file_mtime_unix(path: &Path) -> Option<i64> {
     i64::try_from(duration.as_secs()).ok()
 }
 
-fn front_matter_value(path: &Path, key: &str) -> String {
-    let text = match fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(_) => return String::new(),
-    };
-    let mut lines = text.lines();
-    if lines.next().map(str::trim) != Some("---") {
-        return String::new();
-    }
-    for line in lines {
-        let trimmed = line.trim();
-        if trimmed == "---" {
-            break;
-        }
-        let Some((candidate, value)) = trimmed.split_once(':') else {
-            continue;
-        };
-        if candidate.trim() != key {
-            continue;
-        }
-        return value
-            .trim()
-            .trim_matches('"')
-            .trim_matches('\'')
-            .to_string();
-    }
-    String::new()
-}
 
 fn d_tag_from_record(record: &Value) -> Option<String> {
     record
