@@ -15,12 +15,14 @@ mkdir -p \
   "$SITE_ROOT" \
   "$SITE_DATA/lists" \
   "$SITE_DATA/nostr/events/pubkey/30004" \
+  "$SITE_DATA/nostr/events/pubkey/30023" \
   "$SITE_DATA/nostr/events/pubkey/30040" \
   "$SITE_DATA/nostr/events/pubkey/30041" \
   "$SITE_DATA/nostr/state" \
   "$SITE_DATA/origin/posts" \
   "$SITE_DATA/origin/state/example-post" \
   "$SITE_DATA/content/drafts" \
+  "$SITE_DATA/content/page-states" \
   "$SITE_DATA/content/posts" \
   "$SITE_DATA/ssh-auth/sessions" \
   "$SITE_DATA/ssh-auth/users/admin" \
@@ -96,6 +98,10 @@ cat > "$SITE_DATA/nostr/events/pubkey/30004/new.json" <<'JSON'
 {"id":"new","kind":30004,"created_at":200,"tags":[["d","public-favorites"],["title","Public Favorites"]]}
 JSON
 
+cat > "$SITE_DATA/nostr/events/pubkey/30023/blog.json" <<'JSON'
+{"id":"blog","kind":30023,"pubkey":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","created_at":250,"content":"# Canonical blog","tags":[["d","blog"],["title","Canonical Blog"]]}
+JSON
+
 cat > "$SITE_DATA/nostr-pages.json" <<'JSON'
 {"pages":[
   {"slug":"blog","type":"blog"},
@@ -149,12 +155,21 @@ EOF
 cat > "$SITE_DATA/content/posts/example-post.md" <<'EOF'
 ---
 title: "Example Post"
+tags: "writing, essays"
 visibility: "public"
 published_at: "2026-07-06T00:00:00Z"
 publish_mode: "publish_now"
 ---
 
 Published body.
+EOF
+
+cat > "$SITE_DATA/content/page-states/configured-list.md" <<'EOF'
+---
+title: "Configured Draft"
+publish_intro_to_nostr: false
+---
+Draft list body.
 EOF
 
 cat > "$SITE_DATA/origin/posts/example-post.json" <<'EOF'
@@ -263,11 +278,13 @@ moderation_ok=$(
 printf '%s\n' "$moderation_ok" | jq -e '.success == true and (.items | length) == 1 and .items[0].page_slug == "index" and .items[0].item_type == "entry"' >/dev/null
 
 nostr_pages_ok=$(
+  GAZETA_THEURGY_ALLOW_CARGO=1 \
   REQUEST_METHOD=GET \
   QUERY_STRING="session_token=$token&csrf_token=$csrf" \
   /bin/sh "$ROOT_DIR/cgi/blog-list-nostr-pages" | extract_json
 )
 printf '%s\n' "$nostr_pages_ok" | jq -e '.success == true and (.pages | length) == 2 and .pages[0].slug == "blog"' >/dev/null
+printf '%s\n' "$nostr_pages_ok" | jq -e '.available_tags == ["essays","writing"] and .pages[0].canonical_exists == true and .pages[0].connected_posts == 1 and .pages[0].title == "Canonical Blog" and .pages[1].slug == "configured-list" and .pages[1].title == "Configured Draft" and .pages[1].draft_differs == true' >/dev/null
 
 bad_output=$(/bin/sh "$ROOT_DIR/cgi/gazeta-admin-read-runtime-adapter" invalid-action)
 printf '%s\n' "$bad_output" | grep '"success":false' >/dev/null

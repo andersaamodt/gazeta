@@ -68,6 +68,10 @@ impl SitePaths {
         self.state_dir.join("content/drafts")
     }
 
+    fn page_states_dir(&self) -> PathBuf {
+        self.state_dir.join("content/page-states")
+    }
+
     fn scheduler_state(&self) -> PathBuf {
         self.state_dir.join("scheduler.conf")
     }
@@ -107,6 +111,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-get-draft" => blog_get_draft().map(CgiResponse::json),
         "blog-list-drafts" => blog_list_drafts().map(CgiResponse::json),
+        "blog-list-nostr-pages" => blog_list_nostr_pages().map(CgiResponse::json),
         "blog-list-pages" => blog_list_pages().map(CgiResponse::json),
         "blog-list-posts" => blog_list_posts().map(CgiResponse::json),
         "blog-list-public-ranking-moderation" => {
@@ -364,6 +369,71 @@ fn blog_list_pages() -> Result<Value> {
         .collect();
 
     Ok(json!({"success": true, "lists": lists}))
+}
+
+fn blog_list_nostr_pages() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_admin_session(&paths, &request)?;
+
+    if !plugin_enabled(&paths, "nostr_posts") {
+        return Err(ReadError::new(
+            "plugin_disabled",
+            "Nostr-backed pages plugin is disabled for this site",
+        ));
+    }
+
+    let published_posts = collect_published_posts(&paths);
+    let connected_posts_total = published_posts.len() as i64;
+    let available_tags = available_post_tags(&published_posts);
+    let pages = load_nostr_pages_config(&paths)
+        .into_iter()
+        .map(|page| {
+            let draft_state = load_nostr_page_draft_state(&paths, &page.slug, &page.page_type);
+            let canonical_state = canonical_nostr_page_state(&paths, &page);
+            let draft_title = draft_state
+                .as_ref()
+                .and_then(|state| state.get("title"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let default_title = page_default_title(&page.slug, &page.page_type);
+            let title = first_non_empty([
+                draft_title.as_str(),
+                canonical_state.title.as_str(),
+                page.placeholder_title.as_str(),
+                default_title.as_str(),
+            ]);
+            let draft_differs = draft_state
+                .as_ref()
+                .map(|draft| page_state_signature(&page.page_type, draft) != canonical_state.signature)
+                .unwrap_or(false);
+            json!({
+                "slug": page.slug,
+                "type": page.page_type,
+                "kind": page.kind,
+                "path": page.path,
+                "title": title,
+                "placeholder_title": page.placeholder_title,
+                "default_tag": page.default_tag,
+                "connected_posts": if page.page_type == "blog" {
+                    connected_posts_total
+                } else {
+                    0
+                },
+                "show_in_nav": page.show_in_nav,
+                "show_in_footer": page.show_in_footer,
+                "canonical_exists": canonical_state.exists,
+                "draft_differs": draft_differs,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(json!({
+        "success": true,
+        "available_tags": available_tags,
+        "pages": pages,
+    }))
 }
 
 fn blog_list_posts() -> Result<Value> {
@@ -663,6 +733,328 @@ fn read_json(path: &Path) -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
+fn state_markdown_to_json(path: &Path, body_key: &str) -> Option<Value> {
+    let text = fs::read_to_string(path).ok()?;
+    let (front_matter, _, content) = parse_markdown_front_matter(&text);
+    let mut object = serde_json::Map::new();
+    for (key, value) in front_matter {
+        let parsed = serde_json::from_str::<Value>(&value)
+            .unwrap_or_else(|_| Value::String(value.trim_matches('"').trim_matches('\'').to_string()));
+        object.insert(key, parsed);
+    }
+    object.insert(body_key.to_string(), Value::String(content));
+    Some(Value::Object(object))
+}
+
+fn normalized_nostr_page_type(raw: Option<&str>) -> String {
+    match raw.unwrap_or("list").to_ascii_lowercase().as_str() {
+        "contact" => "contact".to_string(),
+        "public-ranking" | "public_ranking" | "ranking" => "public-ranking".to_string(),
+        "overworld" | "overworld-game" | "overworld_game" => "overworld".to_string(),
+        "software-gallery" | "software_gallery" | "software" => "software-gallery".to_string(),
+        "icon-gallery" | "icon_gallery" | "gallery" => "icon-gallery".to_string(),
+        "blog" | "blog-index" | "blog_index" => "blog".to_string(),
+        "nip23" | "article" | "document" => "nip23".to_string(),
+        _ => "list".to_string(),
+    }
+}
+
+fn page_kind(page_type: &str) -> i64 {
+    match page_type {
+        "contact" => 0,
+        "public-ranking" => 30040,
+        "overworld" | "nip23" | "blog" => 30023,
+        "software-gallery" => 30267,
+        _ => 30004,
+    }
+}
+
+fn page_public_path(slug: &str) -> String {
+    if slug == "index" {
+        "/".to_string()
+    } else {
+        format!("/{slug}")
+    }
+}
+
+fn page_default_title(slug: &str, page_type: &str) -> String {
+    if slug == "index" && page_type == "blog" {
+        "Blog".to_string()
+    } else if slug == "index" {
+        "Home".to_string()
+    } else {
+        titleize_slug(slug)
+    }
+}
+
+fn titleize_slug(slug: &str) -> String {
+    let title = slug.replace('-', " ");
+    if title.is_empty() {
+        "Untitled".to_string()
+    } else {
+        let mut chars = title.chars();
+        let first = chars
+            .next()
+            .map(|ch| ch.to_ascii_uppercase())
+            .unwrap_or('U');
+        format!("{first}{}", chars.as_str())
+    }
+}
+
+fn first_non_empty<'a>(values: impl IntoIterator<Item = &'a str>) -> String {
+    values
+        .into_iter()
+        .find(|value| !value.trim().is_empty())
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn list_default_state(slug: &str) -> Value {
+    json!({
+        "slug": slug,
+        "title": page_default_title(slug, "list"),
+        "description": "",
+        "publish_intro_to_nostr": false,
+        "show_marker_filters": false,
+        "show_markers": false,
+        "alphabetize_markers": false,
+        "default_markers": "",
+        "allow_signed_in_submissions": false,
+        "allow_signed_in_votes": false,
+        "group_by": "",
+        "view_mode": "list",
+        "content": "",
+    })
+}
+
+fn list_state_from_event(slug: &str, event: &Value) -> Value {
+    json!({
+        "slug": slug,
+        "content": event.get("content").and_then(Value::as_str).unwrap_or_default(),
+        "title": tag_value(event, "title").unwrap_or_default(),
+        "description": tag_value(event, "summary").unwrap_or_default(),
+        "publish_intro_to_nostr": false,
+        "show_marker_filters": false,
+        "show_markers": false,
+        "alphabetize_markers": false,
+        "default_markers": "",
+        "allow_signed_in_submissions": false,
+        "allow_signed_in_votes": false,
+        "group_by": "",
+        "view_mode": "list",
+    })
+}
+
+fn contact_default_state(slug: &str) -> Value {
+    json!({
+        "slug": slug,
+        "title": page_default_title(slug, "contact"),
+        "description": "",
+        "publish_intro_to_nostr": false,
+        "rows": [],
+    })
+}
+
+fn contact_state_from_event(slug: &str, event: &Value) -> Value {
+    let content = event
+        .get("content")
+        .and_then(Value::as_str)
+        .and_then(|content| serde_json::from_str::<Value>(content).ok())
+        .unwrap_or_else(|| json!({}));
+    json!({
+        "slug": slug,
+        "title": content.get("title").and_then(Value::as_str).unwrap_or_default(),
+        "description": content.get("description").and_then(Value::as_str).unwrap_or_default(),
+        "publish_intro_to_nostr": content
+            .get("publish_intro_to_nostr")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        "rows": content.get("rows").cloned().unwrap_or_else(|| json!([])),
+    })
+}
+
+fn nip23_default_state(slug: &str, page_type: &str) -> Value {
+    json!({
+        "slug": slug,
+        "type": page_type,
+        "title": page_default_title(slug, page_type),
+        "content": "",
+        "product_enabled": false,
+        "price": "",
+        "currency": "USD",
+        "purchase_endpoint": format!("/purchase/{slug}"),
+    })
+}
+
+fn nip23_state_from_event(slug: &str, event: &Value, page_type: &str) -> Value {
+    let price = tag_value(event, "price").unwrap_or_default();
+    let purchase_endpoint = tag_value(event, "r").unwrap_or_default();
+    let product_enabled = !price.is_empty() || !purchase_endpoint.is_empty();
+    json!({
+        "slug": slug,
+        "type": page_type,
+        "title": tag_value(event, "title").unwrap_or_default(),
+        "content": event.get("content").and_then(Value::as_str).unwrap_or_default(),
+        "product_enabled": product_enabled,
+        "price": price,
+        "currency": tag_value(event, "currency").unwrap_or_else(|| "USD".to_string()),
+        "purchase_endpoint": purchase_endpoint,
+    })
+}
+
+fn public_ranking_default_state(slug: &str) -> Value {
+    json!({
+        "slug": slug,
+        "title": page_default_title(slug, "public-ranking"),
+        "description": "",
+        "content": "",
+        "vote_cooldown_seconds": 86400,
+        "submission_mode": "owner_only",
+        "show_marker_filters": false,
+        "default_metric": "momentum",
+        "blacklist_pubkeys": [],
+        "root_refs": [],
+    })
+}
+
+fn public_ranking_state_from_event(slug: &str, event: &Value) -> Value {
+    let submission_mode = tag_value(event, "submission_mode")
+        .or_else(|| tag_value(event, "permission_mode"))
+        .or_else(|| {
+            let signed_in = tag_value(event, "allow_signed_in_submissions")
+                .or_else(|| tag_value(event, "signed_in_submissions"))
+                .unwrap_or_default();
+            (!signed_in.is_empty()).then_some(if signed_in.eq_ignore_ascii_case("true") {
+                "open".to_string()
+            } else {
+                "owner_only".to_string()
+            })
+        })
+        .unwrap_or_else(|| "owner_only".to_string());
+    json!({
+        "slug": slug,
+        "title": tag_value(event, "title").unwrap_or_default(),
+        "description": tag_value(event, "summary")
+            .or_else(|| tag_value(event, "description"))
+            .unwrap_or_default(),
+        "content": event.get("content").and_then(Value::as_str).unwrap_or_default(),
+        "vote_cooldown_seconds": tag_value(event, "vote_cooldown")
+            .or_else(|| tag_value(event, "vote_cooldown_seconds"))
+            .and_then(|value| value.parse::<i64>().ok())
+            .unwrap_or(86_400),
+        "submission_mode": submission_mode,
+        "show_marker_filters": tag_value(event, "show_marker_filters")
+            .map(|value| boolish(Some(value.as_str())))
+            .unwrap_or(false),
+        "default_metric": tag_value(event, "sort_metric")
+            .or_else(|| tag_value(event, "default_metric"))
+            .unwrap_or_else(|| "momentum".to_string()),
+        "blacklist_pubkeys": tag_values(event, "blacklist"),
+        "root_refs": tag_values(event, "a"),
+    })
+}
+
+fn page_state_signature(page_type: &str, state: &Value) -> Value {
+    match page_type {
+        "contact" => json!({
+            "title": json_string(state, "title"),
+            "description": if json_bool(state, "publish_intro_to_nostr") {
+                json_string(state, "description")
+            } else {
+                String::new()
+            },
+            "publish_intro_to_nostr": json_bool(state, "publish_intro_to_nostr"),
+            "rows": state.get("rows").cloned().unwrap_or_else(|| json!([])),
+        }),
+        "nip23" | "blog" => {
+            let product_enabled = json_bool(state, "product_enabled");
+            json!({
+                "title": json_string(state, "title"),
+                "content": json_string(state, "content"),
+                "product_enabled": product_enabled,
+                "price": if product_enabled { json_string(state, "price") } else { String::new() },
+                "currency": if product_enabled {
+                    json_string_or(state, "currency", "USD")
+                } else {
+                    "USD".to_string()
+                },
+                "purchase_endpoint": if product_enabled {
+                    json_string(state, "purchase_endpoint")
+                } else {
+                    String::new()
+                },
+            })
+        }
+        "public-ranking" => json!({
+            "title": json_string(state, "title"),
+            "description": json_string(state, "description"),
+            "content": json_string(state, "content"),
+            "vote_cooldown_seconds": json_i64_or(state, "vote_cooldown_seconds", 86400),
+            "submission_mode": json_string_or(state, "submission_mode", "owner_only"),
+            "show_marker_filters": json_bool(state, "show_marker_filters"),
+            "default_metric": json_string_or(state, "default_metric", "momentum"),
+            "blacklist_pubkeys": state.get("blacklist_pubkeys").cloned().unwrap_or_else(|| json!([])),
+            "root_refs": state.get("root_refs").cloned().unwrap_or_else(|| json!([])),
+        }),
+        _ => json!({
+            "title": json_string(state, "title"),
+            "description": if json_bool(state, "publish_intro_to_nostr") {
+                json_string(state, "description")
+            } else {
+                String::new()
+            },
+            "publish_intro_to_nostr": json_bool(state, "publish_intro_to_nostr"),
+            "show_marker_filters": json_bool(state, "show_marker_filters"),
+            "show_markers": json_bool(state, "show_markers"),
+            "alphabetize_markers": json_bool(state, "alphabetize_markers"),
+            "default_markers": json_string(state, "default_markers"),
+            "allow_signed_in_submissions": json_bool(state, "allow_signed_in_submissions"),
+            "allow_signed_in_votes": json_bool(state, "allow_signed_in_votes"),
+            "group_by": json_string(state, "group_by"),
+            "view_mode": json_string_or(state, "view_mode", "list"),
+            "content": json_string(state, "content"),
+        }),
+    }
+}
+
+fn json_string(value: &Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn json_string_or(value: &Value, key: &str, default: &str) -> String {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or(default)
+        .to_string()
+}
+
+fn json_bool(value: &Value, key: &str) -> bool {
+    value
+        .get(key)
+        .map(|value| match value {
+            Value::Bool(flag) => *flag,
+            Value::String(text) => boolish(Some(text.as_str())),
+            _ => false,
+        })
+        .unwrap_or(false)
+}
+
+fn json_i64_or(value: &Value, key: &str, default: i64) -> i64 {
+    value
+        .get(key)
+        .and_then(|value| match value {
+            Value::Number(number) => number.as_i64(),
+            Value::String(text) => text.parse::<i64>().ok(),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
 #[derive(Clone)]
 struct MarkdownDoc {
     path: PathBuf,
@@ -757,6 +1149,23 @@ struct UserProfile {
     config: BTreeMap<String, String>,
 }
 
+struct NostrPageConfig {
+    slug: String,
+    page_type: String,
+    kind: i64,
+    show_in_nav: bool,
+    show_in_footer: bool,
+    default_tag: String,
+    placeholder_title: String,
+    path: String,
+}
+
+struct CanonicalPageState {
+    exists: bool,
+    title: String,
+    signature: Value,
+}
+
 impl UserProfile {
     fn username(&self) -> String {
         config_string(&self.config, "username")
@@ -798,6 +1207,309 @@ impl UserProfile {
             .unwrap_or(0)
             .max(0)
     }
+}
+
+fn plugin_enabled(paths: &SitePaths, key: &str) -> bool {
+    let key = key.to_ascii_lowercase();
+    let supported = matches!(
+        key.as_str(),
+        "nostr_support"
+            | "nostr_login"
+            | "nostr_bridge"
+            | "nostr_posts"
+            | "zaps"
+            | "commerce"
+            | "btcpay"
+            | "crossmint"
+            | "merch_store"
+            | "video_chat"
+            | "overworld"
+    );
+    if !supported {
+        return false;
+    }
+    let enabled = plugin_raw_enabled(paths, &key);
+    if !enabled {
+        return false;
+    }
+    if matches!(
+        key.as_str(),
+        "nostr_login" | "nostr_bridge" | "nostr_posts" | "zaps"
+    ) {
+        plugin_raw_enabled(paths, "nostr_support")
+    } else {
+        true
+    }
+}
+
+fn plugin_raw_enabled(paths: &SitePaths, key: &str) -> bool {
+    let default_enabled = !matches!(
+        key,
+        "crossmint" | "merch_store" | "video_chat" | "overworld"
+    );
+    let config_key = format!("plugin_{key}");
+    let value = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, &config_key))
+        .unwrap_or_default();
+    match value.as_str() {
+        "" => default_enabled,
+        "true" | "1" | "yes" | "on" => true,
+        "false" | "0" | "no" | "off" => false,
+        _ => default_enabled,
+    }
+}
+
+fn load_nostr_pages_config(paths: &SitePaths) -> Vec<NostrPageConfig> {
+    let config = read_json(&paths.nostr_pages_config());
+    let raw_pages = match config {
+        Some(Value::Object(object)) => object
+            .get("pages")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default(),
+        Some(Value::Array(array)) => array,
+        _ => vec![json!({
+            "slug": "blog",
+            "type": "blog",
+            "kind": 30023,
+            "show_in_nav": true,
+            "placeholder_title": "Blog",
+            "path": "/blog",
+        })],
+    };
+
+    let mut pages = Vec::<NostrPageConfig>::new();
+    for value in raw_pages {
+        let Some(object) = value.as_object() else {
+            continue;
+        };
+        let slug = normalize_page_slug(
+            object
+                .get("slug")
+                .or_else(|| object.get("list_slug"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        );
+        if slug.is_empty() {
+            continue;
+        }
+        let page_type = normalized_nostr_page_type(
+            object
+                .get("type")
+                .or_else(|| object.get("page_type"))
+                .and_then(Value::as_str),
+        );
+        let show_in_nav = object
+            .get("show_in_nav")
+            .map(Value::as_bool)
+            .flatten()
+            .or_else(|| object.get("show_nav").and_then(Value::as_bool))
+            .unwrap_or(true);
+        let show_in_footer = object
+            .get("show_in_footer")
+            .map(Value::as_bool)
+            .flatten()
+            .or_else(|| object.get("show_footer").and_then(Value::as_bool))
+            .unwrap_or(false);
+        let default_tag = if page_type == "blog" {
+            object
+                .get("default_tag")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .trim()
+                .to_string()
+        } else {
+            String::new()
+        };
+        let placeholder_title = object
+            .get("placeholder_title")
+            .or_else(|| object.get("title"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let kind = page_kind(&page_type);
+        let path = page_public_path(&slug);
+        pages.retain(|page| page.slug != slug);
+        pages.push(NostrPageConfig {
+            slug,
+            page_type,
+            kind,
+            show_in_nav,
+            show_in_footer,
+            default_tag,
+            placeholder_title,
+            path,
+        });
+    }
+    prune_legacy_empty_home(paths, pages)
+}
+
+fn prune_legacy_empty_home(paths: &SitePaths, pages: Vec<NostrPageConfig>) -> Vec<NostrPageConfig> {
+    let has_legacy_index = pages
+        .iter()
+        .any(|page| page.slug == "index" && page.page_type == "nip23");
+    if !has_legacy_index {
+        return pages;
+    }
+    let index_event = latest_nip23_event(paths, "index");
+    let index_draft = load_nostr_page_draft_state(paths, "index", "nip23");
+    if index_event.is_some() || index_draft.is_some() {
+        return pages;
+    }
+    pages
+        .into_iter()
+        .filter(|page| !(page.slug == "index" && page.page_type == "nip23"))
+        .collect()
+}
+
+fn available_post_tags(posts: &[MarkdownDoc]) -> Vec<String> {
+    let mut tags = BTreeSet::new();
+    for post in posts {
+        let normalized = normalize_tags(post.front_matter("tags").unwrap_or_default());
+        for tag in normalized.split(',') {
+            let tag = trim_whitespace(tag);
+            if !tag.is_empty() {
+                tags.insert(tag);
+            }
+        }
+    }
+    tags.into_iter().collect()
+}
+
+fn load_nostr_page_draft_state(paths: &SitePaths, slug: &str, page_type: &str) -> Option<Value> {
+    let draft_path = paths.page_states_dir().join(format!("{slug}.md"));
+    let legacy_path = paths.lists_dir().join(format!("{slug}.json"));
+    let mut state = if draft_path.is_file() {
+        state_markdown_to_json(&draft_path, "content")
+    } else if legacy_path.is_file() {
+        read_json(&legacy_path)
+    } else {
+        None
+    }?;
+    let raw_type = state
+        .get("type")
+        .and_then(Value::as_str)
+        .map(|value| normalized_nostr_page_type(Some(value)))
+        .unwrap_or_default();
+    if !raw_type.is_empty() && !draft_type_allowed(page_type, &raw_type) {
+        return None;
+    }
+    if !state.is_object() {
+        state = Value::Object(serde_json::Map::new());
+    }
+    Some(state)
+}
+
+fn draft_type_allowed(page_type: &str, draft_type: &str) -> bool {
+    !matches!(
+        (page_type, draft_type),
+        ("blog", "nip23")
+            | ("nip23", "blog")
+            | ("contact", "blog")
+            | ("contact", "nip23")
+            | ("contact", "list")
+            | ("contact", "public-ranking")
+            | ("public-ranking", "blog")
+            | ("public-ranking", "nip23")
+            | ("public-ranking", "list")
+            | ("public-ranking", "contact")
+            | ("list", "blog")
+            | ("list", "nip23")
+            | ("list", "contact")
+            | ("list", "public-ranking")
+    )
+}
+
+fn canonical_nostr_page_state(paths: &SitePaths, page: &NostrPageConfig) -> CanonicalPageState {
+    let (exists, state) = match page.page_type.as_str() {
+        "contact" => match latest_contact_event(paths) {
+            Some(event) => (true, contact_state_from_event(&page.slug, &event)),
+            None => (false, contact_default_state(&page.slug)),
+        },
+        "nip23" | "blog" => match latest_nip23_event(paths, &page.slug) {
+            Some(event) => (true, nip23_state_from_event(&page.slug, &event, &page.page_type)),
+            None => (false, nip23_default_state(&page.slug, &page.page_type)),
+        },
+        "public-ranking" => match latest_public_ranking_event(paths, &page.slug) {
+            Some(event) => (true, public_ranking_state_from_event(&page.slug, &event)),
+            None => (false, public_ranking_default_state(&page.slug)),
+        },
+        _ => match latest_list_page_event(paths, &page.slug, page.kind) {
+            Some(event) => (true, list_state_from_event(&page.slug, &event)),
+            None => (false, list_default_state(&page.slug)),
+        },
+    };
+    let title = state
+        .get("title")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    CanonicalPageState {
+        exists,
+        title,
+        signature: page_state_signature(&page.page_type, &state),
+    }
+}
+
+fn latest_contact_event(paths: &SitePaths) -> Option<Value> {
+    let authors = read_lines_set(&paths.nostr_authors_file());
+    latest_event(paths, &[0], |event| {
+        let pubkey = event.get("pubkey").and_then(Value::as_str).unwrap_or_default();
+        (authors.is_empty() || authors.contains(pubkey)).then_some(true)
+    })
+}
+
+fn latest_nip23_event(paths: &SitePaths, slug: &str) -> Option<Value> {
+    let authors = read_lines_set(&paths.nostr_authors_file());
+    latest_event(paths, &[30023], |event| {
+        let pubkey = event.get("pubkey").and_then(Value::as_str).unwrap_or_default();
+        let d = tag_value(event, "d").unwrap_or_default();
+        ((authors.is_empty() || authors.contains(pubkey)) && d == slug).then_some(true)
+    })
+}
+
+fn latest_public_ranking_event(paths: &SitePaths, slug: &str) -> Option<Value> {
+    let authors = read_lines_set(&paths.nostr_authors_file());
+    latest_event(paths, &[30040], |event| {
+        let pubkey = event.get("pubkey").and_then(Value::as_str).unwrap_or_default();
+        let d = tag_value(event, "d").unwrap_or_default();
+        let topics = tag_values(event, "t");
+        ((authors.is_empty() || authors.contains(pubkey))
+            && d == slug
+            && topics.iter().any(|topic| topic == "public-ranking"))
+            .then_some(true)
+    })
+}
+
+fn latest_list_page_event(paths: &SitePaths, slug: &str, kind: i64) -> Option<Value> {
+    let kinds = if kind == 30267 {
+        vec![30267]
+    } else {
+        vec![30004, 30267]
+    };
+    latest_event(paths, &kinds, |event| {
+        (tag_value(event, "d").unwrap_or_default() == slug).then_some(true)
+    })
+}
+
+fn latest_event<F>(paths: &SitePaths, kinds: &[i64], predicate: F) -> Option<Value>
+where
+    F: Fn(&Value) -> Option<bool>,
+{
+    let mut events = list_events(&paths.nostr_events_dir(), kinds);
+    events.retain(|event| predicate(event) == Some(true));
+    events.sort_by(|left, right| {
+        (
+            left.get("created_at").and_then(Value::as_i64).unwrap_or(0),
+            left.get("id").and_then(Value::as_str).unwrap_or_default(),
+        )
+            .cmp(&(
+                right.get("created_at").and_then(Value::as_i64).unwrap_or(0),
+                right.get("id").and_then(Value::as_str).unwrap_or_default(),
+            ))
+    });
+    events.pop()
 }
 
 fn all_drafts(paths: &SitePaths) -> Vec<MarkdownDoc> {
