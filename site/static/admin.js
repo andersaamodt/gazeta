@@ -794,25 +794,13 @@
   }
 
   function markHydrationPageReady() {
-    const gate = window.__wizardryHydration;
-    if (gate && typeof gate.markPageReady === 'function') {
-      gate.markPageReady();
-    }
+    window.__wizardryMarkHydrationPageReady();
   }
 
   function markInitialContentPainted() {
-    if (state.initialContentPainted) {
-      return;
-    }
-    state.initialContentPainted = true;
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
-        detail: { slug: 'admin' }
-      }));
-    } catch (_err) {
-      // Ignore event dispatch issues.
-    }
+    window.__wizardryNotifyInitialContentPainted('admin', {
+      state: state
+    });
   }
 
   function setAuthMessage(message, type) {

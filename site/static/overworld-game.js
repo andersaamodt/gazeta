@@ -244,10 +244,7 @@
   }
 
   function markReady() {
-    const gate = window.__wizardryHydration;
-    if (gate && typeof gate.markPageReady === 'function') {
-      gate.markPageReady();
-    }
+    window.__wizardryMarkHydrationPageReady();
   }
 
   function escapeHtml(value) {

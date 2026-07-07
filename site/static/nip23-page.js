@@ -280,18 +280,9 @@
   }
 
   function markInitialContentPainted() {
-    if (state.initialContentPainted) {
-      return;
-    }
-    state.initialContentPainted = true;
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
-        detail: { slug: slug }
-      }));
-    } catch (_err) {
-      // Ignore event dispatch failures.
-    }
+    window.__wizardryNotifyInitialContentPainted(slug, {
+      state: state
+    });
   }
 
   function renderLoadFallback(err, fallbackText) {
@@ -491,10 +482,7 @@
   }
 
   function markHydrationPageReady() {
-    var gate = window.__wizardryHydration;
-    if (gate && typeof gate.markPageReady === 'function') {
-      gate.markPageReady();
-    }
+    window.__wizardryMarkHydrationPageReady();
   }
 
   function apiPost(url, payload) {

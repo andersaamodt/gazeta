@@ -174,10 +174,7 @@
   }
 
   function markHydrationPageReady() {
-    var gate = window.__wizardryHydration;
-    if (gate && typeof gate.markPageReady === 'function') {
-      gate.markPageReady();
-    }
+    window.__wizardryMarkHydrationPageReady();
   }
 
   function authSignature() {
@@ -258,21 +255,11 @@
   }
 
   function markInitialContentPainted() {
-    if (state.initialContentPainted) {
-      return;
-    }
-    state.initialContentPainted = true;
-    if (root && root.classList) {
-      root.classList.remove('is-loading');
-    }
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
-        detail: { slug: slug }
-      }));
-    } catch (_err) {
-      // Ignore event dispatch issues.
-    }
+    window.__wizardryNotifyInitialContentPainted(slug, {
+      state: state,
+      rootNode: root,
+      loadingClass: 'is-loading'
+    });
   }
 
   function renderLoadFallback(err, fallbackText) {

@@ -318,6 +318,45 @@
     }
   }
 
+  function markHydrationPageReady() {
+    try {
+      var gate = window.__wizardryHydration;
+      if (gate && typeof gate.markPageReady === 'function') {
+        gate.markPageReady();
+      }
+    } catch (_gateErr) {
+      // Ignore hydration gate issues.
+    }
+  }
+
+  function notifyInitialContentPainted(slug, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
+    if (state && state.initialContentPainted) {
+      return false;
+    }
+    if (state) {
+      state.initialContentPainted = true;
+    }
+    var rootNode = opts.rootNode || null;
+    var loadingClass = String(opts.loadingClass || '').trim();
+    if (rootNode && rootNode.classList && loadingClass) {
+      rootNode.classList.remove(loadingClass);
+    }
+    try {
+      window.__wizardryPageInitialContentReady = true;
+      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
+        detail: { slug: String(slug || '') }
+      }));
+    } catch (_err) {
+      // Ignore event dispatch failures.
+    }
+    if (opts.markPageReady === true) {
+      markHydrationPageReady();
+    }
+    return true;
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -426,6 +465,8 @@
     return applyPageTitle(baseTitle);
   };
 
+  window.__wizardryMarkHydrationPageReady = markHydrationPageReady;
+  window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;

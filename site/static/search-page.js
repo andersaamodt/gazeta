@@ -21,18 +21,9 @@
   }
 
   function markInitialContentPainted() {
-    try {
-      window.__wizardryPageInitialContentReady = true;
-      window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
-        detail: { slug: 'search' }
-      }));
-    } catch (_err) {
-      // Ignore event dispatch failures.
-    }
-    var gate = window.__wizardryHydration;
-    if (gate && typeof gate.markPageReady === 'function') {
-      gate.markPageReady();
-    }
+    window.__wizardryNotifyInitialContentPainted('search', {
+      markPageReady: true
+    });
   }
 
   function rewriteEmbeddedSearchForms() {
