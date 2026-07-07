@@ -3095,10 +3095,14 @@
         } else {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
-      } else {
-        ensureReadOnlyListTitleShell().text.textContent = String(s.title || 'List');
-      }
-    }
+	      } else {
+	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	          actionsId: 'list-page-title-actions',
+	          actionsClassName: 'list-page-title-actions',
+	          fallbackText: 'List'
+	        }).text.textContent = String(s.title || 'List');
+	      }
+	    }
     renderSyncStatusPill();
     renderNavbarTitleRow(s);
 
@@ -3132,15 +3136,15 @@
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
       }
-    } else {
-      if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-        ensureReadOnlyListDescriptionShell().innerHTML = prerenderFragment('description_html');
-        els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
-      } else {
-        ensureReadOnlyListDescriptionShell().textContent = descText;
-        els.description.hidden = !descText && !hasMainContent;
-      }
-    }
+	    } else {
+	      if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
+	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
+	        els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+	      } else {
+	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).textContent = descText;
+	        els.description.hidden = !descText && !hasMainContent;
+	      }
+	    }
 
     if (isAdmin() && state.activeHeadField) {
       requestAnimationFrame(function () {
@@ -3154,18 +3158,6 @@
         }
       });
     }
-  }
-
-  function ensureReadOnlyListTitleShell() {
-    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
-      actionsId: 'list-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'List'
-    });
-  }
-
-  function ensureReadOnlyListDescriptionShell() {
-    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function datePillForEntryInSection(entry, groupBy, sectionLabel) {

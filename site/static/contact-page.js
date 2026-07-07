@@ -3811,10 +3811,14 @@
         } else {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
         }
-      } else {
-        ensureReadOnlyContactTitleShell().text.textContent = String(s.title || 'Profile');
-      }
-    }
+	      } else {
+	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	          actionsId: 'contact-page-title-actions',
+	          actionsClassName: 'list-page-title-actions',
+	          fallbackText: 'Profile'
+	        }).text.textContent = String(s.title || 'Profile');
+	      }
+	    }
     if (!isAdmin()) {
       renderSyncStatusPill();
     }
@@ -3845,22 +3849,22 @@
           els.description.hidden = true;
           els.description.innerHTML = '';
         }
-      } else if (text) {
-        if (canUsePrerenderReadOnlyView() && prerenderFragment('description_html')) {
-          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
-          ensureReadOnlyContactDescriptionShell().innerHTML = prerenderFragment('description_html');
-        } else {
-          els.description.hidden = false;
-          ensureReadOnlyContactDescriptionShell().innerHTML = markdownInline(text);
-        }
-      } else if (!hasMainContent) {
-        els.description.hidden = true;
-        ensureReadOnlyContactDescriptionShell().innerHTML = '';
-      } else {
-        els.description.hidden = true;
-        ensureReadOnlyContactDescriptionShell().innerHTML = '';
-      }
-    }
+	      } else if (text) {
+	        if (canUsePrerenderReadOnlyView() && prerenderFragment('description_html')) {
+	          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
+	        } else {
+	          els.description.hidden = false;
+	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = markdownInline(text);
+	        }
+	      } else if (!hasMainContent) {
+	        els.description.hidden = true;
+	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
+	      } else {
+	        els.description.hidden = true;
+	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
+	      }
+	    }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
       requestAnimationFrame(function () {
         var id = state.activeHeadField === 'title' ? 'contact-head-title-input' : 'contact-head-description-input';
@@ -3871,18 +3875,6 @@
         state.headFocusPending = false;
       });
     }
-  }
-
-  function ensureReadOnlyContactTitleShell() {
-    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
-      actionsId: 'contact-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'Profile'
-    });
-  }
-
-  function ensureReadOnlyContactDescriptionShell() {
-    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function renderAdmin() {

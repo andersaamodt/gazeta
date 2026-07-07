@@ -585,41 +585,33 @@
 
   function renderHead() {
     var page = getRenderState();
-    var title = String(page.title || '').trim() || titleizeSlug(slug);
-    window.__wizardryApplyPageTitle(title);
-    if (els.title) {
-      var titleShell = ensureBlogTitleActionsHost();
-      if (titleShell && titleShell.text) {
-        titleShell.text.textContent = title;
-      }
+	    var title = String(page.title || '').trim() || titleizeSlug(slug);
+	    window.__wizardryApplyPageTitle(title);
+	    if (els.title) {
+	      var titleShell = window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	        actionsId: 'blog-page-title-actions',
+	        actionsClassName: 'list-page-title-actions',
+	        fallbackText: 'Blog'
+	      });
+	      if (titleShell && titleShell.text) {
+	        titleShell.text.textContent = title;
+	      }
       els.title.hidden = false;
       renderSyncStatusPill();
     }
     if (!els.description) {
       return;
-    }
-    var descriptionHtml = prerenderFragment('description_html');
-    var descriptionAttrs = prerenderFragment('description_attrs');
-    var descriptionText = ensureBlogDescriptionTextNode();
-    if (descriptionHtml) {
-      descriptionText.innerHTML = descriptionHtml;
-      els.description.hidden = descriptionAttrs.indexOf('hidden') !== -1;
+	    }
+	    var descriptionHtml = prerenderFragment('description_html');
+	    var descriptionAttrs = prerenderFragment('description_attrs');
+	    var descriptionText = window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
+	    if (descriptionHtml) {
+	      descriptionText.innerHTML = descriptionHtml;
+	      els.description.hidden = descriptionAttrs.indexOf('hidden') !== -1;
       return;
     }
     descriptionText.innerHTML = '';
     els.description.hidden = true;
-  }
-
-  function ensureBlogTitleActionsHost() {
-    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
-      actionsId: 'blog-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'Blog'
-    });
-  }
-
-  function ensureBlogDescriptionTextNode() {
-    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function prerenderFragment(key) {

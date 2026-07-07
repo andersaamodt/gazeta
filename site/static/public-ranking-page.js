@@ -590,10 +590,14 @@
         } else {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
-      } else {
-        ensureReadOnlyPublicRankingTitleShell().text.textContent = String(s.title || 'Public Ranking');
-      }
-    }
+	      } else {
+	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	          actionsId: 'public-ranking-page-title-actions',
+	          actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
+	          fallbackText: 'Public Ranking'
+	        }).text.textContent = String(s.title || 'Public Ranking');
+	      }
+	    }
     if (!isAdmin()) {
       renderSyncStatusPill();
     }
@@ -622,19 +626,19 @@
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
-      } else {
-        if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = prerenderFragment('description_html');
-          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
-        } else if (desc) {
-          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = markdownInline(desc);
-          els.description.hidden = false;
-        } else {
-          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = '';
-          els.description.hidden = true;
-        }
-      }
-    }
+	      } else {
+	        if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
+	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
+	          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+	        } else if (desc) {
+	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = markdownInline(desc);
+	          els.description.hidden = false;
+	        } else {
+	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
+	          els.description.hidden = true;
+	        }
+	      }
+	    }
     if (isAdmin() && state.activeHeadField) {
       requestAnimationFrame(function () {
         var id = state.activeHeadField === 'title' ? 'public-ranking-head-title-input' : 'public-ranking-head-description-input';
@@ -647,18 +651,6 @@
         }
       });
     }
-  }
-
-  function ensureReadOnlyPublicRankingTitleShell() {
-    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
-      actionsId: 'public-ranking-page-title-actions',
-      actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
-      fallbackText: 'Public Ranking'
-    });
-  }
-
-  function ensureReadOnlyPublicRankingDescriptionShell() {
-    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function renderAdmin() {

@@ -624,24 +624,20 @@
     if (s && s.title) {
       window.__wizardryApplyPageTitle(String(s.title));
     }
-    if (els.title) {
-      ensureReadOnlyNip23TitleShell().text.textContent = String(s.title || 'Untitled');
-    }
+	    if (els.title) {
+	      window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	        actionsId: 'nip23-page-title-actions',
+	        actionsClassName: 'list-page-title-actions',
+	        fallbackText: 'Untitled'
+	      }).text.textContent = String(s.title || 'Untitled');
+	    }
     if (!isAdmin()) {
       renderSyncStatusPill();
     }
     renderNavbarTitleRow(s);
   }
 
-  function ensureReadOnlyNip23TitleShell() {
-    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
-      actionsId: 'nip23-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'Untitled'
-    });
-  }
-
-  removeLegacyTitleBlock();
+	  removeLegacyTitleBlock();
 
   function renderAdmin() {
     if (!els.admin) {
