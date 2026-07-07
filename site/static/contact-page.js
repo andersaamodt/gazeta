@@ -15,6 +15,7 @@
   var secureChatEmojiPickerModule = null;
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
+  var markedUpgradeState = { timer: 0, attempts: 0 };
   var secureChatRecentEmojiLimit = 32;
   var videoChatWidgetBuildVersion = '20260525-soft-actions2';
   var secureChatEmojiSectionDefs = [
@@ -284,6 +285,7 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
+    scheduleMarkedUpgrade();
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
@@ -398,7 +400,14 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
+    scheduleMarkedUpgrade();
     return escapeHtml(value);
+  }
+
+  function scheduleMarkedUpgrade() {
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
   }
 
   function normalizeExtraFormat(value) {

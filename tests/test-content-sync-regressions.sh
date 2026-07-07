@@ -486,6 +486,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderRe
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryPrerenderFragment' 'NIP-23 runtime delegates prerender fragment reads to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryReadNostrPageBootstrap' 'list runtime delegates bootstrap payload lookup to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryHasMatchingStaticPrerender' 'contact runtime delegates static-prerender signature matching to the shared page-head helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryScheduleMarkedUpgrade' 'contact runtime delegates marked-upgrade lifecycle polling to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" '__wizardryReadNostrPageBootstrap' 'public-ranking runtime delegates bootstrap payload lookup to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryReadNostrPageBootstrap' 'Overworld runtime delegates bootstrap payload lookup to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryHasMatchingStaticPrerender' 'Overworld runtime delegates static-prerender signature matching to the shared page-head helper'
