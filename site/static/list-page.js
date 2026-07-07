@@ -300,62 +300,31 @@
   }
 
   function readBootstrapCache() {
-    if (typeof window.__wizardryReadBootstrapCache === 'function') {
-      return window.__wizardryReadBootstrapCache({
-        storageKey: bootstrapCacheKey(),
-        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-        authSignature: authSignature,
-        isExpectedPayload: isExpectedPayload,
-        allowRead: hasLikelyAuthenticatedSession
-      });
-    }
-    return null;
+    return window.__wizardryReadBootstrapCache({
+      storageKey: bootstrapCacheKey(),
+      maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+      authSignature: authSignature,
+      isExpectedPayload: isExpectedPayload,
+      allowRead: hasLikelyAuthenticatedSession
+    });
   }
 
   function writeBootstrapCache(payload) {
-    if (typeof window.__wizardryWriteBootstrapCache === 'function') {
-      window.__wizardryWriteBootstrapCache(payload, {
-        storageKey: bootstrapCacheKey(),
-        authSignature: authSignature,
-        allowWrite: function (nextPayload) {
-          return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
-        }
-      });
-    }
+    window.__wizardryWriteBootstrapCache(payload, {
+      storageKey: bootstrapCacheKey(),
+      authSignature: authSignature,
+      allowWrite: function (nextPayload) {
+        return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
+      }
+    });
   }
 
 	  function readPrerenderBootstrap() {
-	    if (typeof window.__wizardryReadNostrPageBootstrap === 'function') {
-      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-    }
-    try {
-      var allPayloads = window.__wizardryNostrPageBootstrap;
-      if (!allPayloads || typeof allPayloads !== 'object') {
-        return null;
-      }
-      var payload = allPayloads[slug];
-      if (!isExpectedPayload(payload)) {
-        return null;
-      }
-      return payload;
-    } catch (_err) {
-      return null;
-    }
+	    return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
 	  }
 
 	  function hasMatchingStaticPrerender(payload, node) {
-	    if (typeof window.__wizardryHasMatchingStaticPrerender === 'function') {
-      return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
-    }
-    var signature = String(payload && payload.prerender_signature || '').trim();
-    if (!signature || !root || !node) {
-      return false;
-    }
-    if (root.getAttribute('data-prerender-painted') !== 'true' || node.getAttribute('data-prerender-painted') !== 'true') {
-      return false;
-    }
-    return root.getAttribute('data-prerender-signature') === signature ||
-      node.getAttribute('data-prerender-signature') === signature;
+	    return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
 	  }
 
 	  function canPreserveStaticPrerender(payload) {
@@ -366,10 +335,7 @@
 	  }
 
   function prerenderFragment(key) {
-    if (typeof window.__wizardryPrerenderFragment === 'function') {
-      return window.__wizardryPrerenderFragment(state.payload, key);
-    }
-    return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
+    return window.__wizardryPrerenderFragment(state.payload, key);
   }
 
   function shouldPreserveAdoptedStaticPrerender() {
@@ -3160,11 +3126,7 @@
   function renderHead() {
     var s = getRenderState();
     if (s && s.title) {
-      if (typeof window.__wizardryApplyPageTitle === 'function') {
-        window.__wizardryApplyPageTitle(String(s.title));
-      } else {
-        document.title = String(s.title);
-      }
+      window.__wizardryApplyPageTitle(String(s.title));
     }
     if (els.title) {
       if (isAdmin()) {
@@ -3237,9 +3199,6 @@
   }
 
   function ensureReadOnlyListTitleShell() {
-    if (typeof window.__wizardryEnsureReadOnlyTitleShell !== 'function') {
-      return { text: null, actions: null };
-    }
     return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
       actionsId: 'list-page-title-actions',
       actionsClassName: 'list-page-title-actions',
@@ -3248,9 +3207,6 @@
   }
 
   function ensureReadOnlyListDescriptionShell() {
-    if (typeof window.__wizardryEnsureReadOnlyDescriptionShell !== 'function') {
-      return null;
-    }
     return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 

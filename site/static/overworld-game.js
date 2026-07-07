@@ -317,15 +317,12 @@
     if (!title) {
       return;
     }
-    let shell = null;
-    if (typeof window.__wizardryEnsureReadOnlyTitleShell === 'function') {
-      shell = window.__wizardryEnsureReadOnlyTitleShell(title, {
-        actionsId: 'overworld-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'Overworld'
-      });
-    }
-    let actions = shell && shell.actions ? shell.actions : document.getElementById('overworld-page-title-actions');
+    const shell = window.__wizardryEnsureReadOnlyTitleShell(title, {
+      actionsId: 'overworld-page-title-actions',
+      actionsClassName: 'list-page-title-actions',
+      fallbackText: 'Overworld'
+    });
+    let actions = shell && shell.actions ? shell.actions : null;
     if (!actions) {
       return;
     }

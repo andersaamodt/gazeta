@@ -1018,11 +1018,7 @@
   function syncAdminDocumentTitle(sectionName) {
     const sectionTitle = adminSectionDisplayTitle(sectionName);
     const pageTitle = sectionTitle === 'Admin' ? 'Admin' : (sectionTitle + ' · Admin');
-    if (typeof window.__wizardryApplyPageTitle === 'function') {
-      window.__wizardryApplyPageTitle(pageTitle);
-    } else {
-      document.title = pageTitle;
-    }
+    window.__wizardryApplyPageTitle(pageTitle);
   }
 
   function adminSectionHasLazyLoader(sectionName) {
@@ -1843,19 +1839,7 @@
   function applyPageTitleConfig(siteTitle, appendSiteTitle) {
     const normalizedSiteTitle = normalizeSiteTitle(siteTitle);
     const enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
-    if (typeof window.__wizardrySetPageTitleConfig === 'function') {
-      window.__wizardrySetPageTitleConfig(normalizedSiteTitle, enabled);
-      return;
-    }
-    try {
-      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
-      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
-    } catch (_err) {
-      // Ignore storage failures.
-    }
-    if (typeof window.__wizardryApplyPageTitle === 'function') {
-      window.__wizardryApplyPageTitle();
-    }
+    window.__wizardrySetPageTitleConfig(normalizedSiteTitle, enabled);
   }
 
   function parsePossiblyWrappedJson(text) {

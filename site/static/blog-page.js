@@ -598,11 +598,7 @@
   function renderHead() {
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
-    if (typeof window.__wizardryApplyPageTitle === 'function') {
-      window.__wizardryApplyPageTitle(title);
-    } else {
-      document.title = title;
-    }
+    window.__wizardryApplyPageTitle(title);
     if (els.title) {
       var titleShell = ensureBlogTitleActionsHost();
       if (titleShell && titleShell.text) {
@@ -627,9 +623,6 @@
   }
 
   function ensureBlogTitleActionsHost() {
-    if (typeof window.__wizardryEnsureReadOnlyTitleShell !== 'function') {
-      return null;
-    }
     return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
       actionsId: 'blog-page-title-actions',
       actionsClassName: 'list-page-title-actions',
@@ -638,17 +631,11 @@
   }
 
   function ensureBlogDescriptionTextNode() {
-    if (typeof window.__wizardryEnsureReadOnlyDescriptionShell !== 'function') {
-      return null;
-    }
     return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function prerenderFragment(key) {
-    if (typeof window.__wizardryPrerenderFragment === 'function') {
-      return window.__wizardryPrerenderFragment(state.payload, key);
-    }
-    return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
+    return window.__wizardryPrerenderFragment(state.payload, key);
   }
 
   function ensureFilterGutterLayout() {
@@ -4655,34 +4642,11 @@
   }
 
   function readPrerenderPageBootstrap() {
-    if (typeof window.__wizardryReadNostrPageBootstrap === 'function') {
-      return window.__wizardryReadNostrPageBootstrap(slug, function (payload) {
-        var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
-        var payloadSlug = String(payload && payload.slug || '').trim();
-        return payloadType === 'blog' && !!payloadSlug && slugsEquivalent(payloadSlug, slug);
-      });
-    }
-    try {
-      var allPayloads = window.__wizardryNostrPageBootstrap;
-      if (!allPayloads || typeof allPayloads !== 'object') {
-        return null;
-      }
-      var payload = allPayloads[slug];
-      if (!payload || typeof payload !== 'object') {
-        return null;
-      }
-      var payloadType = String(payload.page_type || '').trim().toLowerCase();
-      if (payloadType !== 'blog') {
-        return null;
-      }
-      var payloadSlug = String(payload.slug || '').trim();
-      if (!payloadSlug || !slugsEquivalent(payloadSlug, slug)) {
-        return null;
-      }
-      return payload;
-    } catch (_err) {
-      return null;
-    }
+    return window.__wizardryReadNostrPageBootstrap(slug, function (payload) {
+      var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
+      var payloadSlug = String(payload && payload.slug || '').trim();
+      return payloadType === 'blog' && !!payloadSlug && slugsEquivalent(payloadSlug, slug);
+    });
   }
 
   function readPrerenderPostsBootstrap(payload) {
@@ -4747,18 +4711,7 @@
   }
 
 	  function hasMatchingStaticPrerender(payload, node) {
-	    if (typeof window.__wizardryHasMatchingStaticPrerender === 'function') {
-      return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
-    }
-    var signature = String(payload && payload.prerender_signature || '').trim();
-    if (!signature || !root || !node) {
-      return false;
-    }
-    if (root.getAttribute('data-prerender-painted') !== 'true' || node.getAttribute('data-prerender-painted') !== 'true') {
-      return false;
-    }
-    return root.getAttribute('data-prerender-signature') === signature ||
-      node.getAttribute('data-prerender-signature') === signature;
+	    return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
 	  }
 
 	  function normalizedPayloadForRenderSignature() {

@@ -367,11 +367,7 @@
     updateNavSiteSignature(next.site_title || '');
     cacheSiteTitle(next.site_title || '');
     cacheAppendSiteTitleEnabled(appendSiteTitle);
-    if (typeof window.__wizardrySetPageTitleConfig === 'function') {
-      window.__wizardrySetPageTitleConfig(next.site_title || '', appendSiteTitle);
-    } else if (typeof window.__wizardryApplyPageTitle === 'function') {
-      window.__wizardryApplyPageTitle();
-    }
+    window.__wizardrySetPageTitleConfig(next.site_title || '', appendSiteTitle);
     if (Object.prototype.hasOwnProperty.call(next, 'theme')) {
       state.currentTheme = normalizeThemeName(next.theme);
       cacheTheme(state.currentTheme);
