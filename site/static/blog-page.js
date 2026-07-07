@@ -162,7 +162,7 @@
   }
 
   function authSignature() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (cachedAdminFlag() ? 'admin' : 'visitor');
   }
 
@@ -465,7 +465,7 @@
   }
 
   function hasAuthTokens() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return !!(auth.session_token && auth.csrf_token);
   }
 
@@ -482,13 +482,6 @@
       return true;
     }
     return hasAuthTokens() && cachedAdminFlag();
-  }
-
-  function authPayload() {
-    return {
-      session_token: String(localStorage.getItem('session_token') || '').trim(),
-      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
-    };
   }
 
   function apiPost(url, payload) {
@@ -642,7 +635,7 @@
     if (username) {
       return 'u:' + username;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (auth.session_token) {
       return 's:' + auth.session_token.slice(0, 24);
     }
@@ -840,7 +833,7 @@
     if (state.draftNotice.loading) {
       return Promise.resolve();
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       clearDraftNoticeState();
       return Promise.resolve();
@@ -2043,7 +2036,7 @@
       // Some deployments return this payload with HTTP 200 and success=false.
       return code === '' || code === 'invalid_request' || Number(statusCode) >= 200;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       return Promise.reject(new Error('Sign in again to upload.'));
     }
@@ -3264,7 +3257,7 @@
     if (state.compose.busy || !isAdmin()) {
       return;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       setComposeOutput('Sign in again to compose posts.', 'error');
       renderComposeStatusOnly();
@@ -3385,7 +3378,7 @@
       clearComposeFields();
       return;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       setComposeOutput('Sign in again to delete draft.', 'error');
       renderComposeStatusOnly();
@@ -3518,7 +3511,7 @@
     if (!id) {
       return Promise.reject(new Error('Draft id is missing.'));
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       return Promise.reject(new Error('Sign in as admin first.'));
     }
@@ -4356,7 +4349,7 @@
       window.alert('Sign in as admin first.');
       return;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in as admin first.');
       return;
@@ -4701,7 +4694,7 @@
       maybeRepairRoute('blog-root-slug-mismatch');
       return Promise.resolve();
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     state.authSignature = authSignature();
     return apiPost('/cgi/blog-get-nostr-page', {
       page_slug: requestedSlug,

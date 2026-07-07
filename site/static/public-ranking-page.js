@@ -43,38 +43,8 @@
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
 
-  function authPayload() {
-    return {
-      session_token: String(localStorage.getItem('session_token') || '').trim(),
-      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
-    };
-  }
-
-  function hasLikelyAuthenticatedSession() {
-    var auth = authPayload();
-    return !!(auth && auth.session_token && auth.csrf_token);
-  }
-
-  function ensureNostrPublishDialog() {
-    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
-      return Promise.resolve(true);
-    }
-    return new Promise(function (resolve) {
-      var script = document.createElement('script');
-      script.src = '/static/nostr-publish-dialog.js';
-      script.async = true;
-      script.onload = function () {
-        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
-      };
-      script.onerror = function () {
-        resolve(false);
-      };
-      document.head.appendChild(script);
-    });
-  }
-
   function authSignature() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
   }
 
@@ -106,7 +76,7 @@
 	    if (!payload || !isExpectedPayload(payload)) {
 	      return false;
     }
-    var authenticated = hasLikelyAuthenticatedSession();
+    var authenticated = window.__wizardryHasLikelyAuthenticatedSession();
     var optimisticPayload = payload;
     if (!optimisticPayload.is_admin && authenticated) {
       optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
@@ -144,7 +114,7 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    if (isAdmin() || hasLikelyAuthenticatedSession() || state.submitComposerOpen || state.submitAdvancedOpen) {
+    if (isAdmin() || window.__wizardryHasLikelyAuthenticatedSession() || state.submitComposerOpen || state.submitAdvancedOpen) {
       return false;
     }
     var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
@@ -755,7 +725,7 @@
     if (isAdmin()) {
       return true;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       return false;
     }
@@ -964,7 +934,7 @@
     });
 
     var voteWindow = voteWindowFor(coord);
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     var canAuthVote = !!(auth.session_token && auth.csrf_token);
     var canVoteNow = !voteWindow || voteWindow.can_vote_now !== false;
     var voteDisabled = (!canAuthVote || !canVoteNow) ? ' disabled aria-disabled="true"' : '';
@@ -1126,7 +1096,7 @@
     }
     var nextTitle = String(state.navTitleInput || '').trim();
     state.navTitleBusy = true;
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return apiPost('/cgi/blog-update-nostr-page-nav-title', {
       page_slug: slug,
       nav_title: nextTitle,
@@ -1197,7 +1167,7 @@
     var opts = options || {};
     setSaveStatus('saving');
     try {
-      var auth = authPayload();
+      var auth = window.__wizardryAuthPayload();
       var data = await apiPost('/cgi/blog-save-nostr-page-draft', {
         page_slug: slug,
         state_json: draftPayloadJson(),
@@ -1228,7 +1198,7 @@
     if (!saved) {
       return;
     }
-    var hasDialog = await ensureNostrPublishDialog();
+    var hasDialog = await window.__wizardryEnsureNostrPublishDialog();
     if (!hasDialog) {
       window.alert('Publish dialog unavailable');
       return;
@@ -1254,7 +1224,7 @@
     state.busy = true;
     setSaveStatus('saving');
     try {
-      var auth = authPayload();
+      var auth = window.__wizardryAuthPayload();
       var data = await apiPost('/cgi/blog-revert-nostr-page-draft', {
         page_slug: slug,
         session_token: auth.session_token,
@@ -1312,7 +1282,7 @@
     if (!coord) {
       return;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first to vote.');
       return;
@@ -1363,7 +1333,7 @@
   }
 
   async function submitNode() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first to submit entries.');
       return;
@@ -1413,7 +1383,7 @@
     if (!isAdmin()) {
       return;
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first.');
       return;
@@ -1719,7 +1689,7 @@
 
   async function load() {
     try {
-      var auth = authPayload();
+      var auth = window.__wizardryAuthPayload();
       var payload = await apiPost('/cgi/blog-get-nostr-page', {
         page_slug: slug,
         session_token: auth.session_token,

@@ -420,42 +420,12 @@
     };
   }
 
-  function authPayload() {
-    return {
-      session_token: String(localStorage.getItem('session_token') || '').trim(),
-      csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
-    };
-  }
-
   function storedSessionToken() {
     return String(localStorage.getItem('session_token') || '').trim();
   }
 
-  function hasLikelyAuthenticatedSession() {
-    var auth = authPayload();
-    return !!(auth && auth.session_token && auth.csrf_token);
-  }
-
-  function ensureNostrPublishDialog() {
-    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
-      return Promise.resolve(true);
-    }
-    return new Promise(function (resolve) {
-      var script = document.createElement('script');
-      script.src = '/static/nostr-publish-dialog.js';
-      script.async = true;
-      script.onload = function () {
-        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
-      };
-      script.onerror = function () {
-        resolve(false);
-      };
-      document.head.appendChild(script);
-    });
-  }
-
   function authSignature() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return String(auth.session_token || '') + '|' + String(auth.csrf_token || '');
   }
 
@@ -479,7 +449,7 @@
   }
 
   function secureChatAuthSignature() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return [
       String(auth.session_token || ''),
       String(auth.csrf_token || ''),
@@ -655,7 +625,7 @@
       return false;
     }
     var optimisticPayload = payload;
-    if (!optimisticPayload.is_admin && hasLikelyAuthenticatedSession()) {
+    if (!optimisticPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession()) {
       optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
     }
     state.payload = optimisticPayload;
@@ -689,7 +659,7 @@
 
   function canUsePrerenderReadOnlyView() {
     return !isAdmin() &&
-      !hasLikelyAuthenticatedSession() &&
+      !window.__wizardryHasLikelyAuthenticatedSession() &&
       !state.chat.chatStarted &&
       !state.chat.chatOpening &&
       !state.chat.chatClosing &&
@@ -737,7 +707,7 @@
   }
 
   function hasSecureChatSession() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return !!(auth.session_token && auth.csrf_token);
   }
 
@@ -825,7 +795,7 @@
     if (!hasSecureChatSession()) {
       return Promise.reject(new Error('Secure Chat requires an authenticated Nostr session.'));
     }
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return Promise.resolve({
       'X-Session-Token': auth.session_token,
       'X-CSRF-Token': auth.csrf_token
@@ -2647,7 +2617,7 @@
   }
 
   function runSecureChatAdminAction(action, npub) {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return apiPost('/cgi/blog-secure-chat-admin', {
       action: String(action || ''),
       npub: String(npub || ''),
@@ -4197,7 +4167,7 @@
     }
     var nextTitle = String(state.navTitleInput || '').trim();
     state.navTitleBusy = true;
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     return apiPost('/cgi/blog-update-nostr-page-nav-title', {
       page_slug: slug,
       nav_title: nextTitle,
@@ -4238,7 +4208,7 @@
     var serializedBeforeSave = JSON.stringify(state.draft || {});
     state.busy = true;
     setSaveStatus('saving');
-    var payload = authPayload();
+    var payload = window.__wizardryAuthPayload();
     return apiPost('/cgi/blog-save-nostr-page-draft', {
       page_slug: slug,
       state_json: JSON.stringify(state.draft || {}),
@@ -4336,7 +4306,7 @@
     if (!saved) {
       return;
     }
-    var hasDialog = await ensureNostrPublishDialog();
+    var hasDialog = await window.__wizardryEnsureNostrPublishDialog();
     if (!hasDialog) {
       window.alert('Publish dialog unavailable');
       return;
@@ -4359,7 +4329,7 @@
     if (!window.confirm('Discard local draft changes and restore canonical Nostr version?')) {
       return;
     }
-    var payload = authPayload();
+    var payload = window.__wizardryAuthPayload();
     state.busy = true;
     setSaveStatus('saving');
     apiPost('/cgi/blog-revert-nostr-page-draft', {
@@ -5072,7 +5042,7 @@
   }
 
   function load() {
-    var auth = authPayload();
+    var auth = window.__wizardryAuthPayload();
     state.authSignature = secureChatAuthSignature();
     resetSecureChatState();
     if (!hasSecureChatSession() && storedSessionToken()) {

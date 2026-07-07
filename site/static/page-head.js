@@ -5,6 +5,7 @@
   var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var routeFailureTimer = 0;
   var cachedBasePageTitle = '';
+  var nostrPublishDialogPromise = null;
 
   function normalizeSiteTitle(value) {
     var text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -359,6 +360,45 @@
     }
   }
 
+  function authPayload() {
+    try {
+      return {
+        session_token: String(localStorage.getItem('session_token') || '').trim(),
+        csrf_token: String(localStorage.getItem('csrf_token') || '').trim()
+      };
+    } catch (_err) {
+      return { session_token: '', csrf_token: '' };
+    }
+  }
+
+  function hasLikelyAuthenticatedSession() {
+    var auth = authPayload();
+    return !!(auth && auth.session_token && auth.csrf_token);
+  }
+
+  function ensureNostrPublishDialog() {
+    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
+      return Promise.resolve(true);
+    }
+    if (nostrPublishDialogPromise) {
+      return nostrPublishDialogPromise;
+    }
+    nostrPublishDialogPromise = new Promise(function (resolve) {
+      var script = document.createElement('script');
+      script.src = '/static/nostr-publish-dialog.js';
+      script.async = true;
+      script.onload = function () {
+        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
+      };
+      script.onerror = function () {
+        nostrPublishDialogPromise = null;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+    return nostrPublishDialogPromise;
+  }
+
   function markedParserReady() {
     return !!(window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function');
   }
@@ -667,6 +707,9 @@
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
   window.__wizardryReadBootstrapCache = readBootstrapCache;
   window.__wizardryWriteBootstrapCache = writeBootstrapCache;
+  window.__wizardryAuthPayload = authPayload;
+  window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
+  window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {

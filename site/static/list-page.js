@@ -108,7 +108,7 @@
   }
 
   function authSignature() {
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     var adminHint = '';
     try {
       adminHint = String(localStorage.getItem('last_auth_is_admin') || '');
@@ -223,7 +223,7 @@
       storageKey: bootstrapCacheKey(),
       authSignature: authSignature,
       allowWrite: function (nextPayload) {
-        return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
+        return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
       }
     });
   }
@@ -236,7 +236,7 @@
 	    if (!payload || typeof payload !== 'object') {
 	      return false;
 	    }
-	    return !payload.is_admin && !hasLikelyAuthenticatedSession();
+	    return !payload.is_admin && !window.__wizardryHasLikelyAuthenticatedSession();
 	  }
 
   function prerenderFragment(key) {
@@ -245,7 +245,7 @@
 
   function shouldPreserveAdoptedStaticPrerender() {
     return state.staticPrerenderListAdopted &&
-      !hasLikelyAuthenticatedSession() &&
+      !window.__wizardryHasLikelyAuthenticatedSession() &&
       !hasMarkerFilterHashOverride() &&
       root &&
       els.content &&
@@ -271,7 +271,7 @@
     cachedPayload.validation.errors = [];
     cachedPayload.validation.warnings = [];
     cachedPayload.validation.can_publish = true;
-    if (!cachedPayload.is_admin && hasLikelyAuthenticatedSession()) {
+    if (!cachedPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession()) {
       cachedPayload.is_admin = true;
     }
     state.payload = cachedPayload;
@@ -375,40 +375,6 @@
         authRefreshPollTimer = 0;
       }
     }, 500);
-  }
-
-  function getAuthPayload() {
-    try {
-      return {
-        session_token: localStorage.getItem('session_token') || '',
-        csrf_token: localStorage.getItem('csrf_token') || ''
-      };
-    } catch (_err) {
-      return { session_token: '', csrf_token: '' };
-    }
-  }
-
-  function hasLikelyAuthenticatedSession() {
-    var auth = getAuthPayload();
-    return !!(auth && auth.session_token && auth.csrf_token);
-  }
-
-  function ensureNostrPublishDialog() {
-    if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
-      return Promise.resolve(true);
-    }
-    return new Promise(function (resolve) {
-      var script = document.createElement('script');
-      script.src = '/static/nostr-publish-dialog.js';
-      script.async = true;
-      script.onload = function () {
-        resolve(!!(window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function'));
-      };
-      script.onerror = function () {
-        resolve(false);
-      };
-      document.head.appendChild(script);
-    });
   }
 
   function escapeHtml(text) {
@@ -626,7 +592,7 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    if (isAdmin() || hasLikelyAuthenticatedSession() || state.publicSubmitExpanded || isReadInlineEditing()) {
+    if (isAdmin() || window.__wizardryHasLikelyAuthenticatedSession() || state.publicSubmitExpanded || isReadInlineEditing()) {
       return false;
     }
     if (hasMarkerFilterHashOverride()) {
@@ -1823,7 +1789,7 @@
       return;
     }
     try {
-      var auth = getAuthPayload();
+      var auth = window.__wizardryAuthPayload();
       var latest = await apiPost('/cgi/blog-get-nostr-page', {
         page_slug: slug,
         session_token: auth.session_token,
@@ -1865,7 +1831,7 @@
     state.busy = true;
     setSaveStatus('saving');
     try {
-      var auth = getAuthPayload();
+      var auth = window.__wizardryAuthPayload();
       var elements = cloneEditableElements(state.draft.elements || []).filter(function (el) {
         return !String(el && el._public_entry_id || '');
       });
@@ -2028,7 +1994,7 @@
     if (!saved) {
       return;
     }
-    var hasDialog = await ensureNostrPublishDialog();
+    var hasDialog = await window.__wizardryEnsureNostrPublishDialog();
     if (!hasDialog) {
       window.alert('Publish dialog unavailable');
       return;
@@ -2057,7 +2023,7 @@
     state.busy = true;
     setSaveStatus('saving');
     try {
-      var auth = getAuthPayload();
+      var auth = window.__wizardryAuthPayload();
       await apiPost('/cgi/blog-revert-nostr-page-draft', {
         page_slug: slug,
         session_token: auth.session_token,
@@ -2397,7 +2363,7 @@
       input.focus();
       return;
     }
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first to add entries.');
       return;
@@ -2497,7 +2463,7 @@
   }
 
   async function submitPublicListVote(entryId, value) {
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       showVoteErrorToast('Sign in first to vote.');
       return;
@@ -2554,7 +2520,7 @@
     if (!entry) {
       return false;
     }
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first to edit entries.');
       return false;
@@ -2604,7 +2570,7 @@
     if (!entry) {
       return false;
     }
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     if (!auth.session_token || !auth.csrf_token) {
       window.alert('Sign in first to delete entries.');
       return true;
@@ -2716,7 +2682,7 @@
       description: String(entry.description || ''),
       content: String(entry.description || '')
     };
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     payload.session_token = auth.session_token;
     payload.csrf_token = auth.csrf_token;
 
@@ -3225,7 +3191,7 @@
     var canShowVotes = !!(getRenderState().allow_signed_in_votes && entryId);
     var voteControls = '';
     if (canShowVotes) {
-      var signedIn = hasLikelyAuthenticatedSession();
+      var signedIn = window.__wizardryHasLikelyAuthenticatedSession();
       var score = Number(entry && entry.list_score || 0) || 0;
       var viewerVote = Number(entry && entry.viewer_vote || 0) || 0;
       var viewerCanVoteNow = !entry || entry.viewer_can_vote_now !== false;
@@ -3273,7 +3239,7 @@
     if (!renderState || !renderState.allow_signed_in_submissions) {
       return '';
     }
-    var signedIn = hasLikelyAuthenticatedSession();
+    var signedIn = window.__wizardryHasLikelyAuthenticatedSession();
     var isSubmitting = !!state.publicSubmitBusy;
     var isExpanded = !!state.publicSubmitExpanded;
     var disabled = signedIn && !isSubmitting ? '' : ' disabled aria-disabled="true"';
@@ -3959,7 +3925,7 @@
     }
     var nextTitle = String(state.navTitleInput || '').trim();
     state.navTitleBusy = true;
-    var auth = getAuthPayload();
+    var auth = window.__wizardryAuthPayload();
     return apiPost('/cgi/blog-update-nostr-page-nav-title', {
       page_slug: slug,
       nav_title: nextTitle,
@@ -5372,7 +5338,7 @@
       state.authSignature = authSignature();
       for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
-          var auth = getAuthPayload();
+          var auth = window.__wizardryAuthPayload();
           var payload = await apiPost('/cgi/blog-get-nostr-page', {
             page_slug: slug,
             session_token: auth.session_token,
@@ -5549,7 +5515,7 @@
         maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
         authSignature: authSignature,
         isExpectedPayload: isExpectedPayload,
-        allowRead: hasLikelyAuthenticatedSession
+        allowRead: window.__wizardryHasLikelyAuthenticatedSession
       });
     },
     readPrerender: function () {
