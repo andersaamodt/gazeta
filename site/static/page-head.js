@@ -177,6 +177,80 @@
       contentNode.getAttribute('data-prerender-signature') === signature;
   }
 
+  function readBootstrapCache(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var storageKey = String(opts.storageKey || '').trim();
+    if (!storageKey) {
+      return null;
+    }
+    var clearOnDeny = opts.clearOnDeny !== false;
+    try {
+      if (typeof opts.allowRead === 'function' && opts.allowRead() === false) {
+        if (clearOnDeny) {
+          localStorage.removeItem(storageKey);
+        }
+        return null;
+      }
+      var raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+      var savedAt = Number(parsed.saved_at || 0);
+      var maxAgeMs = Number(opts.maxAgeMs || 0);
+      if (!isFinite(savedAt) || savedAt <= 0 || (maxAgeMs > 0 && (Date.now() - savedAt) > maxAgeMs)) {
+        localStorage.removeItem(storageKey);
+        return null;
+      }
+      var expectedAuthSignature = typeof opts.authSignature === 'function'
+        ? String(opts.authSignature() || '')
+        : String(opts.authSignature || '');
+      if (String(parsed.auth_signature || '') !== expectedAuthSignature) {
+        return null;
+      }
+      if (!parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(parsed.payload)) {
+        localStorage.removeItem(storageKey);
+        return null;
+      }
+      return parsed.payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeBootstrapCache(payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var storageKey = String(opts.storageKey || '').trim();
+    if (!storageKey || !payload || typeof payload !== 'object') {
+      return;
+    }
+    var clearOnDeny = opts.clearOnDeny !== false;
+    try {
+      if (typeof opts.allowWrite === 'function' && opts.allowWrite(payload) === false) {
+        if (clearOnDeny) {
+          localStorage.removeItem(storageKey);
+        }
+        return;
+      }
+      var authSignature = typeof opts.authSignature === 'function'
+        ? String(opts.authSignature() || '')
+        : String(opts.authSignature || '');
+      localStorage.setItem(storageKey, JSON.stringify({
+        auth_signature: authSignature,
+        payload: payload,
+        saved_at: Date.now()
+      }));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
   function normalizeSlug(value) {
     return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   }
@@ -357,6 +431,8 @@
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
+  window.__wizardryReadBootstrapCache = readBootstrapCache;
+  window.__wizardryWriteBootstrapCache = writeBootstrapCache;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);

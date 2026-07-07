@@ -658,48 +658,23 @@
   }
 
   function readBootstrapCache() {
-    try {
-      var raw = localStorage.getItem(bootstrapCacheKey());
-      if (!raw) {
-        return null;
-      }
-      var parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        return null;
-      }
-      var savedAt = Number(parsed.saved_at || 0);
-      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > BOOTSTRAP_CACHE_MAX_AGE_MS) {
-        localStorage.removeItem(bootstrapCacheKey());
-        return null;
-      }
-      if (String(parsed.auth_signature || '') !== authSignature()) {
-        return null;
-      }
-      if (!parsed.payload || typeof parsed.payload !== 'object') {
-        return null;
-      }
-      if (!isExpectedPayload(parsed.payload)) {
-        localStorage.removeItem(bootstrapCacheKey());
-        return null;
-      }
-      return parsed.payload;
-    } catch (_err) {
-      return null;
+    if (typeof window.__wizardryReadBootstrapCache === 'function') {
+      return window.__wizardryReadBootstrapCache({
+        storageKey: bootstrapCacheKey(),
+        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+        authSignature: authSignature,
+        isExpectedPayload: isExpectedPayload
+      });
     }
+    return null;
   }
 
   function writeBootstrapCache(payload) {
-    try {
-      if (!payload || typeof payload !== 'object') {
-        return;
-      }
-      localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
-        auth_signature: authSignature(),
-        payload: payload,
-        saved_at: Date.now()
-      }));
-    } catch (_err) {
-      // Ignore cache write failures.
+    if (typeof window.__wizardryWriteBootstrapCache === 'function') {
+      window.__wizardryWriteBootstrapCache(payload, {
+        storageKey: bootstrapCacheKey(),
+        authSignature: authSignature
+      });
     }
   }
 
