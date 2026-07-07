@@ -606,14 +606,7 @@ fn blog_publish_nostr_page() -> Result<Value> {
         })
         .transpose()?
         .unwrap_or_default();
-    let response = run_shell_function_json(
-        &[
-            "cgi/blog-lib.sh",
-            "cgi/blog-list-common.sh",
-            "cgi/blog-public-ranking-common.sh",
-            "cgi/blog-nostr-pages-common.sh",
-        ],
-        "blog_publish_nostr_page_json",
+    let response = run_publish_nostr_page_bridge(
         &[raw_slug, preview_only, event_json],
         &[
             ("BLOG_SESSION_USERNAME", session.username),
@@ -626,20 +619,8 @@ fn blog_publish_nostr_page() -> Result<Value> {
 
 fn blog_payments() -> Result<Value> {
     let request = RequestParams::from_env_and_stdin();
-    let response = run_shell_request_function_json(
-        &[
-            "cgi/blog-lib.sh",
-            "cgi/blog-list-common.sh",
-            "cgi/blog-public-ranking-common.sh",
-            "cgi/blog-nostr-pages-common.sh",
-            "cgi/blog-payments-common.sh",
-            "cgi/blog-merch-common.sh",
-        ],
-        "blog_payments_json",
-        &request,
-        &[],
-    )
-    .map_err(|message| AdminError::new("payments_failed", message))?;
+    let response = run_payments_bridge(&request)
+        .map_err(|message| AdminError::new("payments_failed", message))?;
     Ok(response)
 }
 
@@ -2740,23 +2721,21 @@ fn run_blog_lib_function(function: &str, args: &[String]) -> std::result::Result
     run_shell_function(&["cgi/blog-lib.sh"], function, args, &[])
 }
 
-fn run_shell_function_json(
-    sources: &[&str],
-    function: &str,
+fn run_publish_nostr_page_bridge(
     args: &[String],
     envs: &[(&str, String)],
 ) -> std::result::Result<Value, String> {
-    let output = run_shell_function(sources, function, args, envs)?;
-    serde_json::from_str(&output).map_err(|error| error.to_string())
-}
-
-fn run_shell_request_function_json(
-    sources: &[&str],
-    function: &str,
-    request: &RequestParams,
-    envs: &[(&str, String)],
-) -> std::result::Result<Value, String> {
-    let output = run_shell_request_function(sources, function, request, envs)?;
+    let output = run_shell_function(
+        &[
+            "cgi/blog-lib.sh",
+            "cgi/blog-list-common.sh",
+            "cgi/blog-public-ranking-common.sh",
+            "cgi/blog-nostr-pages-common.sh",
+        ],
+        "blog_publish_nostr_page_json",
+        args,
+        envs,
+    )?;
     serde_json::from_str(&output).map_err(|error| error.to_string())
 }
 
@@ -2794,12 +2773,7 @@ fn run_shell_function(
     }
 }
 
-fn run_shell_request_function(
-    sources: &[&str],
-    function: &str,
-    request: &RequestParams,
-    envs: &[(&str, String)],
-) -> std::result::Result<String, String> {
+fn run_payments_bridge(request: &RequestParams) -> std::result::Result<Value, String> {
     let repo_root = gazeta_repo_root();
     let method = env::var("REQUEST_METHOD").unwrap_or_else(|_| "GET".to_string());
     let content_type = env::var("CONTENT_TYPE").unwrap_or_default();
@@ -2813,12 +2787,16 @@ fn run_shell_request_function(
         )
         .arg("shell-request-function")
         .arg(repo_root.join("cgi/blog-lib.sh"));
-    for source in sources {
-        if *source != "cgi/blog-lib.sh" {
-            command.arg(repo_root.join(source));
-        }
+    for source in [
+        "cgi/blog-list-common.sh",
+        "cgi/blog-public-ranking-common.sh",
+        "cgi/blog-nostr-pages-common.sh",
+        "cgi/blog-payments-common.sh",
+        "cgi/blog-merch-common.sh",
+    ] {
+        command.arg(repo_root.join(source));
     }
-    command.arg("--").arg(function);
+    command.arg("--").arg("blog_payments_json");
     command.env("REQUEST_METHOD", &method);
     command.env("QUERY_STRING", request.query());
     if !host.is_empty() {
@@ -2830,9 +2808,6 @@ fn run_shell_request_function(
     if method == "POST" {
         command.env("CONTENT_LENGTH", body.len().to_string());
         command.stdin(Stdio::piped());
-    }
-    for (key, value) in envs {
-        command.env(key, value);
     }
     let mut child = command.spawn().map_err(|error| error.to_string())?;
     if method == "POST" && !body.is_empty() {
@@ -2848,7 +2823,8 @@ fn run_shell_request_function(
         .wait_with_output()
         .map_err(|error| error.to_string())?;
     if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        serde_json::from_str(&stdout).map_err(|error| error.to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
