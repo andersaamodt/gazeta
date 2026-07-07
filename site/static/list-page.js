@@ -87,8 +87,7 @@
   };
   var PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
-  var markedUpgradeTimer = 0;
-  var markedUpgradeAttempts = 0;
+  var markedUpgradeState = { timer: 0, attempts: 0 };
   var authRefreshPollTimer = 0;
   var authRefreshPollStartedAt = 0;
 
@@ -499,35 +498,17 @@
   }
 
   function scheduleMarkedUpgrade() {
-    if (window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function') {
-      return;
-    }
-    if (markedUpgradeTimer) {
-      return;
-    }
-    markedUpgradeAttempts = 0;
-    function pollForMarked() {
-      if (window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function') {
-        markedUpgradeTimer = 0;
-        if (shouldPreserveAdoptedStaticPrerender()) {
-          renderHead();
-          renderAdmin();
-          renderValidation();
-          return;
-        }
-        renderList();
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      if (shouldPreserveAdoptedStaticPrerender()) {
+        renderHead();
         renderAdmin();
         renderValidation();
         return;
       }
-      markedUpgradeAttempts += 1;
-      if (markedUpgradeAttempts >= 50) {
-        markedUpgradeTimer = 0;
-        return;
-      }
-      markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
-    }
-    markedUpgradeTimer = window.setTimeout(pollForMarked, 100);
+      renderList();
+      renderAdmin();
+      renderValidation();
+    });
   }
 
   function normalizeExtraFormat(value) {

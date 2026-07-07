@@ -359,6 +359,36 @@
     }
   }
 
+  function markedParserReady() {
+    return !!(window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function');
+  }
+
+  function scheduleMarkedUpgrade(upgradeState, onReady) {
+    var state = upgradeState && typeof upgradeState === 'object' ? upgradeState : null;
+    if (!state || typeof onReady !== 'function' || markedParserReady()) {
+      return false;
+    }
+    if (state.timer) {
+      return false;
+    }
+    state.attempts = 0;
+    function pollForMarked() {
+      if (markedParserReady()) {
+        state.timer = 0;
+        onReady();
+        return;
+      }
+      state.attempts += 1;
+      if (state.attempts >= 50) {
+        state.timer = 0;
+        return;
+      }
+      state.timer = window.setTimeout(pollForMarked, 100);
+    }
+    state.timer = window.setTimeout(pollForMarked, 100);
+    return true;
+  }
+
   function normalizeSlug(value) {
     return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   }
@@ -637,6 +667,7 @@
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
   window.__wizardryReadBootstrapCache = readBootstrapCache;
   window.__wizardryWriteBootstrapCache = writeBootstrapCache;
+  window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);
