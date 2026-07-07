@@ -18,10 +18,13 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::process::Stdio;
+use std::thread;
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::format_description::FormatItem;
 use time::macros::format_description;
@@ -44,9 +47,11 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
         "blog-create-draft-from-post" => blog_create_draft_from_post().map(CgiResponse::json),
+        "blog-save-post" => blog_save_post().map(CgiResponse::json),
         "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
         "blog-delete-draft" => blog_delete_draft().map(CgiResponse::json),
         "blog-crosspost-post" => blog_crosspost_post().map(CgiResponse::json),
+        "blog-secure-chat-admin" => blog_secure_chat_admin().map(CgiResponse::json),
         "blog-video-chat-control" => blog_video_chat_control().map(CgiResponse::json),
         "blog-list-files" => blog_list_files().map(CgiResponse::json),
         "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
@@ -237,6 +242,343 @@ fn blog_unqueue_draft() -> Result<Value> {
     }))
 }
 
+fn blog_save_post() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let session = require_admin_session(&paths, &request, true)?;
+
+    let mut action = request.value("action").unwrap_or_default();
+    let mut draft_id = request.value("draft_id").unwrap_or_default();
+    let mut title = request.value("title").unwrap_or_default();
+    let mut tags = request.value("tags").unwrap_or_default();
+    let mut content = request.value("content").unwrap_or_default();
+    let mut publish_mode = request.value("publish_mode").unwrap_or_default();
+    let publish_destination =
+        normalize_publish_destination(&request.value("publish_destination").unwrap_or_default());
+    let mut scheduled_at = request.value("scheduled_at").unwrap_or_default();
+    let mut post_type = request.value("post_type").unwrap_or_default();
+    let visibility = request.value("visibility").unwrap_or_default();
+    let mut source_post_path = request.value("source_post_path").unwrap_or_default();
+    let mut post_filename = request.value("post_filename").unwrap_or_default();
+    let mut origin_platforms_raw = request.value("origin_platforms").unwrap_or_default();
+    let mut existing_publish_mode = String::new();
+    let mut existing_status = String::new();
+
+    if action.is_empty() {
+        action = if visibility == "public" {
+            "publish_now".to_string()
+        } else {
+            "save_draft".to_string()
+        };
+    }
+    if publish_mode.is_empty() {
+        publish_mode = match action.as_str() {
+            "queue_scheduled" => "scheduled",
+            "queue_drip" => "drip",
+            "publish_now" => "immediate",
+            _ => "draft",
+        }
+        .to_string();
+    }
+
+    let draft = if !draft_id.is_empty() {
+        find_draft_by_id(&paths, &draft_id)
+    } else {
+        None
+    };
+    if draft_id.is_empty() {
+        draft_id = random_hex(12)?;
+    }
+    if let Some(draft) = draft.as_ref() {
+        if title.is_empty() {
+            title = draft.title_or("Untitled Draft");
+        }
+        if tags.is_empty() {
+            tags = draft.front_matter("tags").unwrap_or_default();
+        }
+        if content.is_empty() {
+            content = draft.content.clone();
+        }
+        if scheduled_at.is_empty() {
+            scheduled_at = draft.front_matter("scheduled_at").unwrap_or_default();
+        }
+        if post_type.is_empty() {
+            post_type = draft.post_type();
+        }
+        if source_post_path.is_empty() {
+            source_post_path = draft.front_matter("source_post_path").unwrap_or_default();
+        }
+        if post_filename.is_empty() {
+            post_filename = draft.post_filename();
+        }
+        if origin_platforms_raw.is_empty() {
+            origin_platforms_raw = draft
+                .front_matter_raw("origin_platforms")
+                .unwrap_or_default();
+        }
+        existing_publish_mode = draft.front_matter("publish_mode").unwrap_or_default();
+        existing_status = draft.front_matter("status").unwrap_or_default();
+    }
+
+    if title.is_empty() {
+        title = "Untitled Draft".to_string();
+    }
+    if !source_post_path.is_empty() {
+        source_post_path = normalize_requested_post_path(&source_post_path).ok_or_else(|| {
+            AdminError::new("invalid_source_post_path", "Invalid source post path")
+        })?;
+    }
+    if !post_filename.is_empty() {
+        post_filename = normalize_post_filename(&post_filename).ok_or_else(|| {
+            AdminError::new("invalid_post_filename", "Invalid post filename/slug")
+        })?;
+        let requested_rel_path = format!("posts/{post_filename}.md");
+        if managed_page_path(&paths, &requested_rel_path).is_some_and(|path| path.is_file())
+            && (source_post_path.is_empty() || requested_rel_path != source_post_path)
+        {
+            return Err(AdminError::new(
+                "post_filename_exists",
+                "Post filename already exists",
+            ));
+        }
+    }
+
+    let summary = auto_summary_from_content(&content);
+    let normalized_tags = normalize_tags(&tags);
+    let post_type = normalize_post_type(&post_type);
+    let author_name = publish_name_for_user(&paths, &session.username);
+    let enabled_origin_platforms = origin_enabled_platforms(&paths);
+    let mut origin_platforms =
+        normalize_origin_platforms(origin_platforms_raw.clone(), &enabled_origin_platforms);
+    if origin_platforms.is_empty() && origin_platforms_raw.is_empty() {
+        origin_platforms = origin_default_platforms(&paths, &enabled_origin_platforms);
+    }
+
+    match action.as_str() {
+        "publish_now" => {
+            if content.is_empty() {
+                return Err(AdminError::new(
+                    "content_required",
+                    "Content is required to publish",
+                ));
+            }
+            let function = if publish_destination == "nostr_now" {
+                "blog_publish_content_nostr"
+            } else {
+                "blog_publish_content_markdown"
+            };
+            let filename = run_blog_lib_function(
+                function,
+                &[
+                    title.clone(),
+                    normalized_tags.clone(),
+                    summary.clone(),
+                    content.clone(),
+                    author_name.clone(),
+                    draft_id.clone(),
+                    "immediate".to_string(),
+                    String::new(),
+                    post_type.clone(),
+                    source_post_path.clone(),
+                    post_filename.clone(),
+                ],
+            )
+            .map_err(|message| {
+                if function == "blog_publish_content_nostr" {
+                    let reason = run_blog_lib_function("blog_nostr_publish_diagnostic", &[])
+                        .unwrap_or_default();
+                    if reason.is_empty() {
+                        AdminError::new(
+                            "nostr_publish_failed",
+                            "Publish to Nostr failed. Check Nostr bridge key/relay configuration.",
+                        )
+                    } else {
+                        AdminError::new(
+                            "nostr_publish_failed",
+                            format!("Publish to Nostr failed: {reason}"),
+                        )
+                    }
+                } else if message.contains("post_filename_exists") {
+                    AdminError::new("post_filename_exists", "Post filename already exists")
+                } else {
+                    AdminError::new("publish_failed", "Publish failed.")
+                }
+            })?;
+            let published_rel_path = format!("posts/{filename}");
+            move_origin_post_platforms(&paths, &source_post_path, &published_rel_path)?;
+            save_origin_post_platforms(&paths, &published_rel_path, &origin_platforms)?;
+            delete_draft_file(&paths, &draft_id)?;
+            let _ = run_blog_lib_function("blog_run_build_async", &[]);
+
+            let mut publish_message = if publish_destination == "nostr_now" {
+                "Post published to Nostr".to_string()
+            } else {
+                "Post published".to_string()
+            };
+            if !origin_platforms.is_empty() {
+                let published_file = managed_page_path(&paths, &published_rel_path)
+                    .ok_or_else(|| AdminError::new("publish_failed", "Publish failed."))?;
+                if origin_dir().is_none() {
+                    publish_message.push_str(
+                        " Origin is not available on this server, so cross-posting was skipped.",
+                    );
+                } else if !published_file.is_file() {
+                    publish_message.push_str(
+                        " Cross-posting was skipped because the published post file is not available yet.",
+                    );
+                } else if let Some(origin_results) =
+                    origin_emit_file_json(&paths, &published_file, &origin_platforms)
+                {
+                    let results_rows = origin_results
+                        .get("results")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
+                    let published_count = results_rows
+                        .iter()
+                        .filter(|row| {
+                            row.get("status").and_then(Value::as_str) == Some("published")
+                        })
+                        .count();
+                    let failed_count = results_rows
+                        .iter()
+                        .filter(|row| row.get("status").and_then(Value::as_str) == Some("failed"))
+                        .count();
+                    if failed_count > 0 {
+                        publish_message.push_str(&format!(
+                            " Cross-posted to {published_count} site(s); {failed_count} site(s) failed."
+                        ));
+                    } else {
+                        publish_message
+                            .push_str(&format!(" Cross-posted to {published_count} site(s)."));
+                    }
+                } else {
+                    publish_message.push_str(" Cross-posting could not be completed.");
+                }
+            }
+
+            Ok(json!({
+                "success": true,
+                "message": publish_message,
+                "filename": filename,
+                "draft_id": draft_id,
+                "publish_mode_used": if publish_destination == "nostr_now" { "nostr" } else { "local" },
+            }))
+        }
+        "queue_scheduled" => {
+            if scheduled_at.is_empty() {
+                return Err(AdminError::new(
+                    "scheduled_at_required",
+                    "scheduled_at is required for scheduled posts",
+                ));
+            }
+            if content.is_empty() {
+                return Err(AdminError::new("content_required", "Content is required"));
+            }
+            save_draft(
+                &paths,
+                DraftSaveParams {
+                    draft_id: draft_id.clone(),
+                    title,
+                    tags: normalized_tags,
+                    summary,
+                    content,
+                    author: author_name,
+                    publish_mode: "scheduled".to_string(),
+                    scheduled_at,
+                    status: "scheduled".to_string(),
+                    post_type,
+                    source_post_path,
+                    post_filename,
+                    origin_platforms,
+                },
+            )?;
+            Ok(json!({
+                "success": true,
+                "message": "Draft scheduled",
+                "draft_id": draft_id,
+                "status": "scheduled",
+            }))
+        }
+        "queue_drip" => {
+            if content.is_empty() {
+                return Err(AdminError::new("content_required", "Content is required"));
+            }
+            save_draft(
+                &paths,
+                DraftSaveParams {
+                    draft_id: draft_id.clone(),
+                    title,
+                    tags: normalized_tags,
+                    summary,
+                    content,
+                    author: author_name,
+                    publish_mode: "drip".to_string(),
+                    scheduled_at: String::new(),
+                    status: "queued".to_string(),
+                    post_type,
+                    source_post_path,
+                    post_filename,
+                    origin_platforms,
+                },
+            )?;
+            Ok(json!({
+                "success": true,
+                "message": "Draft queued for drip",
+                "draft_id": draft_id,
+                "status": "queued",
+            }))
+        }
+        "autosave" | "save_draft" | "save" => {
+            let mut effective_publish_mode = publish_mode;
+            let mut status = "draft".to_string();
+            if effective_publish_mode == "immediate" {
+                effective_publish_mode = "draft".to_string();
+            }
+            if action == "autosave" {
+                if existing_publish_mode == "drip" && existing_status == "queued" {
+                    effective_publish_mode = "drip".to_string();
+                    status = "queued".to_string();
+                    scheduled_at.clear();
+                } else if existing_publish_mode == "scheduled" && existing_status == "scheduled" {
+                    effective_publish_mode = "scheduled".to_string();
+                    status = "scheduled".to_string();
+                }
+            }
+            if status == "draft" && matches!(effective_publish_mode.as_str(), "scheduled" | "drip")
+            {
+                effective_publish_mode = "draft".to_string();
+            }
+            save_draft(
+                &paths,
+                DraftSaveParams {
+                    draft_id: draft_id.clone(),
+                    title,
+                    tags: normalized_tags,
+                    summary,
+                    content,
+                    author: author_name,
+                    publish_mode: effective_publish_mode,
+                    scheduled_at,
+                    status: status.clone(),
+                    post_type,
+                    source_post_path,
+                    post_filename,
+                    origin_platforms,
+                },
+            )?;
+            Ok(json!({
+                "success": true,
+                "message": "Draft saved",
+                "draft_id": draft_id,
+                "status": status,
+                "autosaved": action == "autosave",
+            }))
+        }
+        _ => Err(AdminError::new("invalid_action", "Unknown action")),
+    }
+}
+
 fn blog_delete_draft() -> Result<Value> {
     let paths = SitePaths::from_env()?;
     let request = RequestParams::from_env_and_stdin();
@@ -336,6 +678,33 @@ fn blog_crosspost_post() -> Result<Value> {
         "results": results,
         "crossposting": origin_crossposting_summary_for_file(&paths, &file, &rel_path),
     }))
+}
+
+fn blog_secure_chat_admin() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_session(&paths, &request, true, false)?;
+
+    let action = request.value("action").unwrap_or_default();
+    let npub = request.value("npub").unwrap_or_default();
+    let since_seq = request
+        .value("since_seq")
+        .unwrap_or_default()
+        .parse::<u64>()
+        .unwrap_or(0);
+    let payload = json!({
+        "action": if action.is_empty() { "status".to_string() } else { action },
+        "npub": npub,
+        "sinceSeq": since_seq,
+    });
+    let response = secure_chat_service_request_json(&paths, "POST", "/admin", Some(&payload))
+        .ok_or_else(|| {
+            AdminError::new(
+                "service_unavailable",
+                "Secure Chat admin service is unavailable",
+            )
+        })?;
+    Ok(response)
 }
 
 fn blog_video_chat_control() -> Result<Value> {
@@ -764,6 +1133,50 @@ impl SitePaths {
 
     fn video_chat_rooms_dir(&self) -> PathBuf {
         self.video_chat_dir().join("rooms")
+    }
+
+    fn secure_chat_root(&self) -> PathBuf {
+        self.state_dir.join("secure-chat")
+    }
+
+    fn secure_chat_runtime_dir(&self) -> PathBuf {
+        self.secure_chat_root().join("runtime")
+    }
+
+    fn secure_chat_store_dir(&self) -> PathBuf {
+        self.secure_chat_root().join("store")
+    }
+
+    fn secure_chat_contacts_dir(&self) -> PathBuf {
+        self.secure_chat_store_dir().join("contacts")
+    }
+
+    fn secure_chat_messages_dir(&self) -> PathBuf {
+        self.secure_chat_store_dir().join("messages")
+    }
+
+    fn secure_chat_meta_dir(&self) -> PathBuf {
+        self.secure_chat_store_dir().join("meta")
+    }
+
+    fn secure_chat_uploads_dir(&self) -> PathBuf {
+        self.secure_chat_root().join("uploads")
+    }
+
+    fn secure_chat_downloads_dir(&self) -> PathBuf {
+        self.secure_chat_root().join("downloads")
+    }
+
+    fn secure_chat_socket_path(&self) -> PathBuf {
+        self.secure_chat_runtime_dir().join("service.sock")
+    }
+
+    fn secure_chat_pid_path(&self) -> PathBuf {
+        self.secure_chat_runtime_dir().join("service.pid")
+    }
+
+    fn secure_chat_log_path(&self) -> PathBuf {
+        self.secure_chat_runtime_dir().join("service.log")
     }
 
     fn origin_dir(&self) -> PathBuf {
@@ -1681,6 +2094,392 @@ fn read_json(path: &Path) -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
+fn secure_chat_service_request_json(
+    paths: &SitePaths,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> Option<Value> {
+    secure_chat_service_start(paths).ok()?;
+    let mut command = Command::new("curl");
+    command
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--max-time")
+        .arg(env::var("BLOG_SECURE_CHAT_REQUEST_TIMEOUT").unwrap_or_else(|_| "12".to_string()))
+        .arg("--unix-socket")
+        .arg(paths.secure_chat_socket_path())
+        .arg("--request")
+        .arg(method)
+        .arg(format!("http://localhost{path}"));
+    let body_string = body
+        .map(|value| serde_json::to_string(value).ok())
+        .flatten();
+    if body_string.is_some() {
+        command
+            .arg("--header")
+            .arg("Content-Type: application/json")
+            .arg("--data-binary")
+            .arg("@-")
+            .stdin(Stdio::piped());
+    }
+    let mut child = command.spawn().ok()?;
+    if let Some(body_string) = body_string {
+        if let Some(stdin) = child.stdin.as_mut() {
+            let _ = stdin.write_all(body_string.as_bytes());
+        }
+    }
+    let output = child.wait_with_output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    if stdout.trim().is_empty() {
+        return None;
+    }
+    serde_json::from_str(&stdout).ok()
+}
+
+fn secure_chat_service_start(paths: &SitePaths) -> Result<()> {
+    secure_chat_init_storage(paths)?;
+    let lock_dir = paths.secure_chat_runtime_dir().join("service-start.lock");
+    let mut attempts = 0u32;
+    while fs::create_dir(&lock_dir).is_err() {
+        if secure_chat_service_ping(paths) {
+            return Ok(());
+        }
+        attempts += 1;
+        if attempts >= 20 && secure_chat_service_pid(paths).is_none() {
+            let _ = fs::remove_dir(&lock_dir);
+            attempts = 0;
+            continue;
+        }
+        if attempts >= 100 {
+            return Err(AdminError::new(
+                "service_unavailable",
+                "Secure Chat admin service is unavailable",
+            ));
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let result = secure_chat_service_start_inner(paths);
+    let _ = fs::remove_dir(&lock_dir);
+    result
+}
+
+fn secure_chat_service_start_inner(paths: &SitePaths) -> Result<()> {
+    secure_chat_init_storage(paths)?;
+    if secure_chat_service_ping(paths) {
+        if secure_chat_service_command_matches_release(paths) {
+            return Ok(());
+        }
+        secure_chat_service_stop(paths);
+    }
+    let node_bin = secure_chat_node_binary(paths).ok_or_else(|| {
+        AdminError::new(
+            "service_unavailable",
+            "Secure Chat admin service is unavailable",
+        )
+    })?;
+    let simplex_bin = secure_chat_simplex_binary(paths);
+    let launch_path = secure_chat_launch_path(&node_bin, simplex_bin.as_deref());
+    let _ = fs::remove_file(paths.secure_chat_socket_path());
+    let service_script = env::var("GAZETA_REPO_ROOT")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .join("cgi/blog-secure-chat-service.js");
+    let log_file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(paths.secure_chat_log_path())
+        .map_err(io_error(
+            "service_unavailable",
+            "Secure Chat admin service is unavailable",
+        ))?;
+    let log_file_err = log_file.try_clone().map_err(io_error(
+        "service_unavailable",
+        "Secure Chat admin service is unavailable",
+    ))?;
+    let native_module_root = secure_chat_native_module_root(paths).unwrap_or_default();
+    let mut command = Command::new(&node_bin);
+    command
+        .arg(service_script)
+        .env("NODE_NO_WARNINGS", "1")
+        .env("PATH", launch_path)
+        .env(
+            "WIZARDRY_SITES_DIR",
+            env::var("WIZARDRY_SITES_DIR").unwrap_or_default(),
+        )
+        .env(
+            "WIZARDRY_SITE_NAME",
+            env::var("WIZARDRY_SITE_NAME").unwrap_or_default(),
+        )
+        .env(
+            "WIZARDRY_SITE_ROOT",
+            paths
+                .site_conf
+                .parent()
+                .unwrap_or(Path::new("."))
+                .display()
+                .to_string(),
+        )
+        .env("WIZARDRY_SITE_DATA", paths.state_dir.display().to_string())
+        .env(
+            "SECURE_CHAT_STORE_DIR",
+            paths.secure_chat_store_dir().display().to_string(),
+        )
+        .env(
+            "SECURE_CHAT_SOCKET_PATH",
+            paths.secure_chat_socket_path().display().to_string(),
+        )
+        .env(
+            "SECURE_CHAT_UPLOADS_DIR",
+            paths.secure_chat_uploads_dir().display().to_string(),
+        )
+        .env(
+            "SECURE_CHAT_DOWNLOADS_DIR",
+            paths.secure_chat_downloads_dir().display().to_string(),
+        )
+        .env(
+            "SECURE_CHAT_SIMPLEX_BINARY",
+            simplex_bin.unwrap_or_else(|| "simplex-chat".to_string()),
+        )
+        .env("SECURE_CHAT_SIMPLEX_NATIVE_MODULE_ROOT", native_module_root)
+        .env(
+            "SECURE_CHAT_SIMPLEX_WS_PORT",
+            secure_chat_simplex_ws_port(paths).to_string(),
+        )
+        .env(
+            "SECURE_CHAT_BROWSER_OWNER_CONTACT_LINK",
+            read_config(&paths.site_conf)
+                .map(|config| config_string(&config, "secure_chat_browser_owner_contact_link"))
+                .unwrap_or_default(),
+        )
+        .env("SECURE_CHAT_SITE_TITLE", secure_chat_site_title(paths))
+        .stdout(Stdio::from(log_file))
+        .stderr(Stdio::from(log_file_err));
+    let child = command.spawn().map_err(io_error(
+        "service_unavailable",
+        "Secure Chat admin service is unavailable",
+    ))?;
+    fs::write(paths.secure_chat_pid_path(), child.id().to_string()).map_err(io_error(
+        "service_unavailable",
+        "Secure Chat admin service is unavailable",
+    ))?;
+    for _ in 0..80 {
+        if secure_chat_service_ping(paths) {
+            return Ok(());
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    Err(AdminError::new(
+        "service_unavailable",
+        "Secure Chat admin service is unavailable",
+    ))
+}
+
+fn secure_chat_service_ping(paths: &SitePaths) -> bool {
+    if !paths.secure_chat_socket_path().exists() {
+        return false;
+    }
+    Command::new("curl")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--fail")
+        .arg("--unix-socket")
+        .arg(paths.secure_chat_socket_path())
+        .arg("http://localhost/health")
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+fn secure_chat_service_pid(paths: &SitePaths) -> Option<u32> {
+    let pid = fs::read_to_string(paths.secure_chat_pid_path()).ok()?;
+    let pid = pid.trim().parse::<u32>().ok()?;
+    let ok = Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .status()
+        .ok()?;
+    ok.success().then_some(pid)
+}
+
+fn secure_chat_service_command_matches_release(paths: &SitePaths) -> bool {
+    let pid = match secure_chat_service_pid(paths) {
+        Some(pid) => pid,
+        None => return false,
+    };
+    let expected = env::var("GAZETA_REPO_ROOT")
+        .ok()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .join("cgi/blog-secure-chat-service.js")
+        .display()
+        .to_string();
+    let output = Command::new("ps")
+        .arg("-p")
+        .arg(pid.to_string())
+        .arg("-o")
+        .arg("command=")
+        .output()
+        .or_else(|_| {
+            Command::new("ps")
+                .arg("-p")
+                .arg(pid.to_string())
+                .arg("-o")
+                .arg("args=")
+                .output()
+        });
+    output
+        .ok()
+        .map(|output| String::from_utf8_lossy(&output.stdout).contains(&expected))
+        .unwrap_or(false)
+}
+
+fn secure_chat_service_stop(paths: &SitePaths) {
+    let Some(pid) = secure_chat_service_pid(paths) else {
+        return;
+    };
+    let _ = Command::new("kill").arg(pid.to_string()).status();
+    for _ in 0..50 {
+        let still_alive = Command::new("kill")
+            .arg("-0")
+            .arg(pid.to_string())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false);
+        if !still_alive {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = fs::remove_file(paths.secure_chat_pid_path());
+    let _ = fs::remove_file(paths.secure_chat_socket_path());
+}
+
+fn secure_chat_init_storage(paths: &SitePaths) -> Result<()> {
+    for dir in [
+        paths.secure_chat_root(),
+        paths.secure_chat_runtime_dir(),
+        paths.secure_chat_uploads_dir(),
+        paths.secure_chat_downloads_dir(),
+        paths.secure_chat_store_dir(),
+        paths.secure_chat_contacts_dir(),
+        paths.secure_chat_messages_dir(),
+        paths.secure_chat_meta_dir(),
+    ] {
+        fs::create_dir_all(dir).map_err(io_error(
+            "service_unavailable",
+            "Secure Chat admin service is unavailable",
+        ))?;
+    }
+    Ok(())
+}
+
+fn secure_chat_site_title(paths: &SitePaths) -> String {
+    let title = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "site_title"))
+        .unwrap_or_default();
+    if title.trim().is_empty() {
+        "Secure Chat".to_string()
+    } else {
+        title.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+}
+
+fn secure_chat_simplex_ws_port(paths: &SitePaths) -> u16 {
+    let explicit = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "secure_chat_simplex_ws_port"))
+        .and_then(|value| value.parse::<u16>().ok());
+    if let Some(port) = explicit.filter(|port| *port >= 1024) {
+        return port;
+    }
+    let site_name = env::var("WIZARDRY_SITE_NAME").unwrap_or_default();
+    let checksum = site_name.bytes().fold(0u32, |sum, byte| sum + byte as u32);
+    47000 + (checksum % 1000) as u16
+}
+
+fn secure_chat_node_binary(paths: &SitePaths) -> Option<String> {
+    let explicit = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "secure_chat_node_binary"))
+        .unwrap_or_default();
+    if !explicit.is_empty() {
+        return Some(explicit);
+    }
+    find_executable(&["node", "nodejs"])
+}
+
+fn secure_chat_simplex_binary(paths: &SitePaths) -> Option<String> {
+    let explicit = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "secure_chat_simplex_binary"))
+        .unwrap_or_default();
+    if !explicit.is_empty() {
+        return Some(explicit);
+    }
+    find_executable(&["simplex-chat"])
+}
+
+fn secure_chat_native_module_root(paths: &SitePaths) -> Option<String> {
+    let explicit = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, "secure_chat_native_module_root"))
+        .unwrap_or_default();
+    if !explicit.is_empty() {
+        return Some(explicit);
+    }
+    if boolish(
+        read_config(&paths.site_conf)
+            .map(|config| config_string(&config, "secure_chat_native_driver_enabled"))
+            .as_deref(),
+    ) {
+        Some(
+            paths
+                .secure_chat_runtime_dir()
+                .join("native-driver")
+                .display()
+                .to_string(),
+        )
+    } else {
+        None
+    }
+}
+
+fn secure_chat_launch_path(node_bin: &str, simplex_bin: Option<&str>) -> String {
+    let mut launch_path = env::var("PATH").unwrap_or_default();
+    if !launch_path.is_empty() {
+        launch_path.push(':');
+    }
+    launch_path.push_str("/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin");
+    for bin_path in [Some(node_bin), simplex_bin].into_iter().flatten() {
+        if let Some(parent) = Path::new(bin_path).parent() {
+            let parent = parent.display().to_string();
+            if !launch_path.split(':').any(|part| part == parent) {
+                launch_path = format!("{parent}:{launch_path}");
+            }
+        }
+    }
+    launch_path
+}
+
+fn find_executable(candidates: &[&str]) -> Option<String> {
+    for candidate in candidates {
+        if let Ok(output) = Command::new("sh")
+            .arg("-lc")
+            .arg(format!("command -v {candidate}"))
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(path);
+                }
+            }
+        }
+    }
+    None
+}
+
 fn save_draft(paths: &SitePaths, mut params: DraftSaveParams) -> Result<()> {
     fs::create_dir_all(paths.drafts_dir()).map_err(io_error(
         "write_failed",
@@ -1812,6 +2611,95 @@ fn sync_draft_refs(paths: &SitePaths, draft_id: &str, content: &str) -> Result<(
     Ok(())
 }
 
+fn delete_draft_file(paths: &SitePaths, draft_id: &str) -> Result<()> {
+    if draft_id.is_empty() {
+        return Ok(());
+    }
+    clear_draft_refs(paths, draft_id)?;
+    if let Some(draft_path) = resolve_draft_path(paths, draft_id) {
+        let _ = fs::remove_file(&draft_path);
+        let direct_path = paths.drafts_dir().join(format!("{draft_id}.md"));
+        if direct_path != draft_path {
+            let _ = fs::remove_file(direct_path);
+        }
+    }
+    Ok(())
+}
+
+fn normalize_publish_destination(raw: &str) -> &'static str {
+    if raw == "nostr_now" {
+        "nostr_now"
+    } else {
+        "local_only"
+    }
+}
+
+fn auto_summary_from_content(content: &str) -> String {
+    let mut plain = String::new();
+    for line in content.lines() {
+        let mut trimmed = line.trim();
+        if trimmed.starts_with("```") {
+            continue;
+        }
+        while let Some(rest) = trimmed
+            .strip_prefix('#')
+            .or_else(|| trimmed.strip_prefix('>'))
+            .or_else(|| trimmed.strip_prefix('*'))
+            .or_else(|| trimmed.strip_prefix('-'))
+        {
+            trimmed = rest.trim_start();
+        }
+        if !plain.is_empty() && !trimmed.is_empty() {
+            plain.push(' ');
+        }
+        plain.push_str(trimmed);
+    }
+    let words = plain.split_whitespace().collect::<Vec<_>>();
+    if words.is_empty() {
+        return String::new();
+    }
+    let max_words = 48;
+    let summary = words
+        .iter()
+        .take(max_words)
+        .copied()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if words.len() > max_words {
+        format!("{summary}...")
+    } else {
+        summary
+    }
+}
+
+fn run_blog_lib_function(function: &str, args: &[String]) -> std::result::Result<String, String> {
+    let blog_lib = gazeta_repo_root().join("cgi/blog-lib.sh");
+    let output = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(". \"$1\"; blog_init; fn=\"$2\"; shift 2; \"$fn\" \"$@\"")
+        .arg("blog-lib")
+        .arg(blog_lib)
+        .arg(function)
+        .args(args)
+        .output()
+        .map_err(|error| error.to_string())?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Err(if !stderr.is_empty() { stderr } else { stdout })
+    }
+}
+
+fn gazeta_repo_root() -> PathBuf {
+    env::var_os("GAZETA_REPO_ROOT")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
 fn referenced_file_ids(paths: &SitePaths, content: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     if content.is_empty() {
@@ -1921,6 +2809,34 @@ fn normalize_post_filename(raw: &str) -> Option<String> {
         .collect::<Vec<_>>()
         .join("-");
     (!slug.is_empty()).then_some(slug)
+}
+
+fn move_origin_post_platforms(paths: &SitePaths, from_rel: &str, to_rel: &str) -> Result<()> {
+    let Some(from_slug) = normalize_post_filename(from_rel) else {
+        return Ok(());
+    };
+    let Some(to_slug) = normalize_post_filename(to_rel) else {
+        return Ok(());
+    };
+    if from_slug == to_slug {
+        return Ok(());
+    }
+    let from_path = paths.origin_posts_dir().join(format!("{from_slug}.json"));
+    let to_path = paths.origin_posts_dir().join(format!("{to_slug}.json"));
+    if !from_path.is_file() {
+        return Ok(());
+    }
+    if let Some(parent) = to_path.parent() {
+        fs::create_dir_all(parent).map_err(io_error(
+            "write_failed",
+            "Could not prepare Origin post settings directory",
+        ))?;
+    }
+    fs::rename(&from_path, &to_path).map_err(io_error(
+        "write_failed",
+        "Could not move Origin post settings",
+    ))?;
+    Ok(())
 }
 
 fn origin_post_platforms_for_path(paths: &SitePaths, post_path: &str) -> Vec<String> {
