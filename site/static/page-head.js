@@ -378,6 +378,33 @@
     return notifyInitialContentPainted(opts.slug || '', opts);
   }
 
+  function renderFromBootstrapSources(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var renderPayload = typeof opts.renderPayload === 'function' ? opts.renderPayload : null;
+    if (!renderPayload) {
+      return false;
+    }
+    if (typeof opts.readCache === 'function') {
+      if (renderPayload(opts.readCache())) {
+        return true;
+      }
+    }
+    if (typeof opts.readPrerender !== 'function') {
+      return false;
+    }
+    var prerenderedPayload = opts.readPrerender();
+    if (!prerenderedPayload) {
+      return false;
+    }
+    if (!renderPayload(prerenderedPayload)) {
+      return false;
+    }
+    if (typeof opts.writeCache === 'function') {
+      opts.writeCache(prerenderedPayload);
+    }
+    return true;
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -489,6 +516,7 @@
   window.__wizardryMarkHydrationPageReady = markHydrationPageReady;
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
+  window.__wizardryRenderFromBootstrapSources = renderFromBootstrapSources;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;

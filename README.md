@@ -140,6 +140,7 @@ visibility: "public"  # Change from "draft"
 - Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
 - Gazeta-specific Lodestone components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
 - Shared visitor hydration lifecycle helpers such as page-title reconciliation, prerender adoption checks, readiness signaling, and load-fallback placeholders live in `site/static/page-head.js`; page-specific scripts should only own state and behavior that differs by page type.
+- Shared first-paint bootstrap policy also lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow should stay shared unless a page has materially different bootstrap behavior.
 
 ## Sample Site Data
 

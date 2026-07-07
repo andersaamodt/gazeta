@@ -647,25 +647,12 @@
     return payloadSlug === slug && payloadType === 'contact';
   }
 
-  function readBootstrapCache() {
-    return window.__wizardryReadBootstrapCache({
-      storageKey: bootstrapCacheKey(),
-      maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-      authSignature: authSignature,
-      isExpectedPayload: isExpectedPayload
-    });
-  }
-
   function writeBootstrapCache(payload) {
     window.__wizardryWriteBootstrapCache(payload, {
       storageKey: bootstrapCacheKey(),
       authSignature: authSignature
     });
   }
-
-	  function readPrerenderBootstrap() {
-	    return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-	  }
 
   function prerenderFragment(key) {
     return window.__wizardryPrerenderFragment(state.payload, key);
@@ -707,26 +694,6 @@
 	    renderAll();
 	    markInitialContentPainted();
     markHydrationPageReady();
-    return true;
-  }
-
-  function renderFromBootstrapCache() {
-    var cachedPayload = readBootstrapCache();
-    if (!cachedPayload) {
-      return false;
-    }
-    return renderFromBootstrapPayload(cachedPayload);
-  }
-
-  function renderFromPrerenderBootstrap() {
-    var prerenderedPayload = readPrerenderBootstrap();
-    if (!prerenderedPayload) {
-      return false;
-    }
-    if (!renderFromBootstrapPayload(prerenderedPayload)) {
-      return false;
-    }
-    writeBootstrapCache(prerenderedPayload);
     return true;
   }
 
@@ -5236,9 +5203,21 @@
       state.chat.pollTimer = null;
     }
   });
-  if (!renderFromBootstrapCache()) {
-    renderFromPrerenderBootstrap();
-  }
+  window.__wizardryRenderFromBootstrapSources({
+    readCache: function () {
+      return window.__wizardryReadBootstrapCache({
+        storageKey: bootstrapCacheKey(),
+        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+        authSignature: authSignature,
+        isExpectedPayload: isExpectedPayload
+      });
+    },
+    readPrerender: function () {
+      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
+    },
+    renderPayload: renderFromBootstrapPayload,
+    writeCache: writeBootstrapCache
+  });
   secureChatRegisterBrowserNativeTransport();
   load();
 })();

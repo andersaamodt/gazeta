@@ -287,16 +287,6 @@
     return payloadSlug === slug && (payloadType === 'list' || payloadType === 'icon-gallery' || payloadType === 'software-gallery');
   }
 
-  function readBootstrapCache() {
-    return window.__wizardryReadBootstrapCache({
-      storageKey: bootstrapCacheKey(),
-      maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-      authSignature: authSignature,
-      isExpectedPayload: isExpectedPayload,
-      allowRead: hasLikelyAuthenticatedSession
-    });
-  }
-
   function writeBootstrapCache(payload) {
     window.__wizardryWriteBootstrapCache(payload, {
       storageKey: bootstrapCacheKey(),
@@ -306,10 +296,6 @@
       }
     });
   }
-
-	  function readPrerenderBootstrap() {
-	    return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
-	  }
 
 	  function hasMatchingStaticPrerender(payload, node) {
 	    return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
@@ -407,22 +393,6 @@
 	    renderValidation();
     markInitialContentPainted();
     markHydrationPageReady();
-    return true;
-  }
-
-  function renderFromBootstrapCache() {
-    return renderFromBootstrapPayload(readBootstrapCache());
-  }
-
-  function renderFromPrerenderBootstrap() {
-    var prerenderedPayload = readPrerenderBootstrap();
-    if (!prerenderedPayload) {
-      return false;
-    }
-    if (!renderFromBootstrapPayload(prerenderedPayload)) {
-      return false;
-    }
-    writeBootstrapCache(prerenderedPayload);
     return true;
   }
 
@@ -5666,9 +5636,22 @@
     state.markerFilterInitialized = false;
     renderList();
   });
-  if (!renderFromBootstrapCache()) {
-    renderFromPrerenderBootstrap();
-  }
+  window.__wizardryRenderFromBootstrapSources({
+    readCache: function () {
+      return window.__wizardryReadBootstrapCache({
+        storageKey: bootstrapCacheKey(),
+        maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+        authSignature: authSignature,
+        isExpectedPayload: isExpectedPayload,
+        allowRead: hasLikelyAuthenticatedSession
+      });
+    },
+    readPrerender: function () {
+      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
+    },
+    renderPayload: renderFromBootstrapPayload,
+    writeCache: writeBootstrapCache
+  });
   startAuthRefreshPoll();
   load();
 })();
