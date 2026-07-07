@@ -454,6 +454,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function normalize
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderFetchedPostsIfChanged(previousSignature);' 'blog hydration skips post-list repaints when fetched posts match the prerendered list'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "state.payload.prerender && state.payload.prerender.description_html" 'blog view-mode hydration reuses server-rendered description fragments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "state.payload && state.payload.prerender && state.payload.prerender[key]" 'NIP-23 view-mode hydration reuses server-rendered fragments'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "function prerenderFragment(key)" 'list view-mode hydration exposes shared prerender fragment access'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "prerenderFragment('content_html')" 'list view-mode hydration reuses server-rendered content fragments'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "prerenderFragment('content_html')" 'contact view-mode hydration can reuse server-rendered content fragments'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" "prerenderFragment('content_html')" 'public ranking view-mode hydration reuses server-rendered content fragments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
 
 # 3) Frontend fetches must opt out of HTTP caches.

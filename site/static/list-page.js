@@ -388,6 +388,10 @@
 	    return !payload.is_admin && !hasLikelyAuthenticatedSession();
 	  }
 
+  function prerenderFragment(key) {
+    return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
+  }
+
   function shouldPreserveAdoptedStaticPrerender() {
     return state.staticPrerenderListAdopted &&
       !hasLikelyAuthenticatedSession() &&
@@ -777,6 +781,57 @@
       state.viewModeOverride = loadProductGalleryViewOverride(fallback);
     }
     return normalizeViewMode(state.viewModeOverride || fallback);
+  }
+
+  function normalizedMarkerSelection(markers) {
+    return (Array.isArray(markers) ? markers : [])
+      .map(function (marker) { return String(marker || '').trim(); })
+      .filter(Boolean)
+      .sort()
+      .join('\n');
+  }
+
+  function defaultPrerenderMarkerFilterInclude(renderState) {
+    if (!renderState || hasMarkerFilterHashOverride()) {
+      return [];
+    }
+    var defaults = markerTokensFromText(renderState.default_markers || '');
+    if (!defaults.length) {
+      return [];
+    }
+    var allowed = {};
+    var elements = Array.isArray(renderState.elements) ? renderState.elements : [];
+    elements.forEach(function (entry) {
+      markerTokensFromText(normalizeMarkerListText(entry && entry.marker || '')).forEach(function (marker) {
+        allowed[String(marker)] = true;
+      });
+    });
+    return defaults.filter(function (marker) {
+      return !!allowed[String(marker)];
+    });
+  }
+
+  function canUsePrerenderReadOnlyView(renderState) {
+    if (isAdmin() || hasLikelyAuthenticatedSession() || state.publicSubmitExpanded || isReadInlineEditing()) {
+      return false;
+    }
+    if (hasMarkerFilterHashOverride()) {
+      return false;
+    }
+    if (isProductGalleryPage() && state.viewModeOverride) {
+      var fallbackMode = normalizeViewModeForPage(renderState && renderState.view_mode || '');
+      if (normalizeViewMode(state.viewModeOverride) !== fallbackMode) {
+        return false;
+      }
+    }
+    var expectedInclude = normalizedMarkerSelection(defaultPrerenderMarkerFilterInclude(renderState));
+    var currentInclude = state.markerFilterInitialized
+      ? normalizedMarkerSelection(state.markerFilterInclude)
+      : expectedInclude;
+    var currentExclude = state.markerFilterInitialized
+      ? normalizedMarkerSelection(state.markerFilterExclude)
+      : '';
+    return currentInclude === expectedInclude && currentExclude === '';
   }
 
   function slugFromUrlPath(raw) {
@@ -3178,8 +3233,13 @@
         }
       }
     } else {
-      els.description.textContent = descText;
-      els.description.hidden = !descText && !hasMainContent;
+      if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
+        els.description.innerHTML = prerenderFragment('description_html');
+        els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+      } else {
+        els.description.textContent = descText;
+        els.description.hidden = !descText && !hasMainContent;
+      }
     }
 
     if (isAdmin() && state.activeHeadField) {
@@ -3927,6 +3987,7 @@
     var afterContent = renderExtraContent(s.extras_after, s.extras_after_format, 'after');
     var fullEditMode = isAdmin() && state.editMode;
     var wideEditMode = isAdmin() && (state.editMode || isReadInlineEditing());
+    var usePrerenderReadOnly = canUsePrerenderReadOnlyView(s);
     if (root && root.classList) {
       root.classList.toggle('is-editing', wideEditMode);
     }
@@ -3938,7 +3999,11 @@
     if (!elements.length) {
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
+      } else if (usePrerenderReadOnly && prerenderFragment('content_html')) {
+        els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
+        replaceListContentHtml(prerenderFragment('content_html'));
       } else {
+        els.content.hidden = false;
         replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
       }
       renderAdmin();
@@ -3946,12 +4011,23 @@
     }
 
     if (fullEditMode) {
+      els.content.hidden = false;
       replaceListContentHtml(renderInlineEditor(elements) + afterContent);
       renderAdmin();
       return;
     }
 
+    if (usePrerenderReadOnly && prerenderFragment('content_html')) {
+      initializePrerenderMarkerFiltersFromPayload();
+      els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
+      replaceListContentHtml(prerenderFragment('content_html'));
+      refreshProductCartButtons();
+      renderAdmin();
+      return;
+    }
+
     var readViewMode = currentReadViewMode(s);
+    els.content.hidden = false;
     replaceListContentHtml(renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
       return isEntryType(String(el && el.type || 'entry'));
     }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent);
