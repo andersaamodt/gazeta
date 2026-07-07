@@ -317,19 +317,17 @@
     if (!title) {
       return;
     }
-    let text = title.querySelector('.list-page-title-text');
-    if (!text) {
-      text = document.createElement('span');
-      text.className = 'list-page-title-text';
-      text.textContent = title.textContent || 'Overworld';
-      title.replaceChildren(text);
+    let shell = null;
+    if (typeof window.__wizardryEnsureReadOnlyTitleShell === 'function') {
+      shell = window.__wizardryEnsureReadOnlyTitleShell(title, {
+        actionsId: 'overworld-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'Overworld'
+      });
     }
-    let actions = document.getElementById('overworld-page-title-actions');
+    let actions = shell && shell.actions ? shell.actions : document.getElementById('overworld-page-title-actions');
     if (!actions) {
-      actions = document.createElement('span');
-      actions.id = 'overworld-page-title-actions';
-      actions.className = 'list-page-title-actions';
-      title.appendChild(actions);
+      return;
     }
     actions.innerHTML = pageSyncStatusPillHtml();
   }

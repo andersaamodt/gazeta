@@ -750,34 +750,21 @@
   }
 
   function ensureReadOnlyPublicRankingTitleShell() {
-    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
-    if (!text && els.title) {
-      text = document.createElement('span');
-      text.className = 'list-page-title-text';
-      text.textContent = els.title.textContent || '';
-      els.title.replaceChildren(text);
+    if (typeof window.__wizardryEnsureReadOnlyTitleShell !== 'function') {
+      return { text: null, actions: null };
     }
-    var actions = document.getElementById('public-ranking-page-title-actions');
-    if (!actions && els.title) {
-      actions = document.createElement('span');
-      actions.id = 'public-ranking-page-title-actions';
-      actions.className = 'list-page-title-actions public-ranking-sync-actions';
-      els.title.appendChild(actions);
-    }
-    return { text: text, actions: actions };
+    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+      actionsId: 'public-ranking-page-title-actions',
+      actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
+      fallbackText: 'Public Ranking'
+    });
   }
 
   function ensureReadOnlyPublicRankingDescriptionShell() {
-    var text = els.description ? els.description.querySelector('.list-page-description-text') : null;
-    if (!text && els.description) {
-      text = document.createElement('span');
-      text.className = 'list-page-description-text';
-      while (els.description.firstChild) {
-        text.appendChild(els.description.firstChild);
-      }
-      els.description.appendChild(text);
+    if (typeof window.__wizardryEnsureReadOnlyDescriptionShell !== 'function') {
+      return null;
     }
-    return text;
+    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function renderAdmin() {

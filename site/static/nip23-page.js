@@ -734,21 +734,14 @@
   }
 
   function ensureReadOnlyNip23TitleShell() {
-    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
-    if (!text && els.title) {
-      text = document.createElement('span');
-      text.className = 'list-page-title-text';
-      text.textContent = els.title.textContent || '';
-      els.title.replaceChildren(text);
+    if (typeof window.__wizardryEnsureReadOnlyTitleShell !== 'function') {
+      return { text: null, actions: null };
     }
-    var actions = document.getElementById('nip23-page-title-actions');
-    if (!actions && els.title) {
-      actions = document.createElement('span');
-      actions.id = 'nip23-page-title-actions';
-      actions.className = 'list-page-title-actions';
-      els.title.appendChild(actions);
-    }
-    return { text: text, actions: actions };
+    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+      actionsId: 'nip23-page-title-actions',
+      actionsClassName: 'list-page-title-actions',
+      fallbackText: 'Untitled'
+    });
   }
 
   removeLegacyTitleBlock();

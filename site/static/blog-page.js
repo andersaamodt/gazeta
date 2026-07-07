@@ -627,45 +627,21 @@
   }
 
   function ensureBlogTitleActionsHost() {
-    if (!els.title) {
+    if (typeof window.__wizardryEnsureReadOnlyTitleShell !== 'function') {
       return null;
     }
-    var text = els.title.querySelector('.list-page-title-text');
-    if (!text) {
-      text = document.createElement('span');
-      text.className = 'list-page-title-text';
-      while (els.title.firstChild) {
-        text.appendChild(els.title.firstChild);
-      }
-      els.title.appendChild(text);
-    }
-    var actions = document.getElementById('blog-page-title-actions');
-    if (!actions) {
-      actions = document.createElement('span');
-      actions.id = 'blog-page-title-actions';
-      actions.className = 'list-page-title-actions';
-      els.title.appendChild(actions);
-    }
-    return {
-      text: text,
-      actions: actions
-    };
+    return window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+      actionsId: 'blog-page-title-actions',
+      actionsClassName: 'list-page-title-actions',
+      fallbackText: 'Blog'
+    });
   }
 
   function ensureBlogDescriptionTextNode() {
-    if (!els.description) {
+    if (typeof window.__wizardryEnsureReadOnlyDescriptionShell !== 'function') {
       return null;
     }
-    var text = els.description.querySelector('.list-page-description-text');
-    if (!text) {
-      text = document.createElement('span');
-      text.className = 'list-page-description-text';
-      while (els.description.firstChild) {
-        text.appendChild(els.description.firstChild);
-      }
-      els.description.appendChild(text);
-    }
-    return text;
+    return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
   }
 
   function ensureFilterGutterLayout() {
