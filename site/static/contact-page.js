@@ -284,7 +284,9 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
-    scheduleMarkedUpgrade();
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
@@ -399,14 +401,10 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
-    scheduleMarkedUpgrade();
-    return escapeHtml(value);
-  }
-
-  function scheduleMarkedUpgrade() {
     window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
       renderAll();
     });
+    return escapeHtml(value);
   }
 
   function normalizeExtraFormat(value) {

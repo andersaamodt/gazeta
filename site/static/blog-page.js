@@ -4567,7 +4567,7 @@
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       hasMatchingStaticPrerender: function (optimisticPayload) {
-        return hasMatchingStaticPrerender(optimisticPayload, els.list);
+        return window.__wizardryHasMatchingStaticPrerender(root, els.list, optimisticPayload);
       },
       renderAdoptedPrerender: function () {
         state.postsLoading = !hasWarmPosts;
@@ -4593,29 +4593,25 @@
     });
   }
 
-	  function hasMatchingStaticPrerender(payload, node) {
-	    return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
-	  }
-
-	  function normalizedPayloadForRenderSignature() {
-	    if (!state.payload) {
-	      return null;
-	    }
-	    return {
-	      slug: state.payload.slug || '',
-	      page_type: state.payload.page_type || '',
-	      nav_title: state.payload.nav_title || '',
-	      kind: state.payload.kind || '',
-	      is_admin: !!state.payload.is_admin,
-	      view_mode: state.payload.view_mode || '',
-	      canonical_exists: !!state.payload.canonical_exists,
-	      draft_exists: !!state.payload.draft_exists,
-	      draft_differs: !!state.payload.draft_differs,
-	      sync_status: state.payload.sync_status || null,
-	      state: state.payload.state || null,
-	      validation: state.payload.validation || null
-	    };
-	  }
+  function normalizedPayloadForRenderSignature() {
+    if (!state.payload) {
+      return null;
+    }
+    return {
+      slug: state.payload.slug || '',
+      page_type: state.payload.page_type || '',
+      nav_title: state.payload.nav_title || '',
+      kind: state.payload.kind || '',
+      is_admin: !!state.payload.is_admin,
+      view_mode: state.payload.view_mode || '',
+      canonical_exists: !!state.payload.canonical_exists,
+      draft_exists: !!state.payload.draft_exists,
+      draft_differs: !!state.payload.draft_differs,
+      sync_status: state.payload.sync_status || null,
+      state: state.payload.state || null,
+      validation: state.payload.validation || null
+    };
+  }
 
 	  function renderSignature() {
 	    function sortedSet(setObj) {

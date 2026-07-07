@@ -81,7 +81,9 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
-    scheduleMarkedUpgrade();
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
@@ -293,12 +295,6 @@
       },
       renderAll: renderAll,
       markInitialContentPainted: markInitialContentPainted
-    });
-  }
-
-  function scheduleMarkedUpgrade() {
-    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
-      renderAll();
     });
   }
 

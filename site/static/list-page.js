@@ -210,16 +210,12 @@
     });
   }
 
-	  function hasMatchingStaticPrerender(payload, node) {
-	    return window.__wizardryHasMatchingStaticPrerender(root, node, payload);
-	  }
-
-	  function canPreserveStaticPrerender(payload) {
-	    if (!payload || typeof payload !== 'object') {
-	      return false;
-	    }
-	    return !payload.is_admin && !window.__wizardryHasLikelyAuthenticatedSession();
-	  }
+  function canPreserveStaticPrerender(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    return !payload.is_admin && !window.__wizardryHasLikelyAuthenticatedSession();
+  }
 
   function prerenderFragment(key) {
     return window.__wizardryPrerenderFragment(state.payload, key);
@@ -289,7 +285,7 @@
         return canPreserveStaticPrerender(optimisticPayload);
       },
       hasMatchingStaticPrerender: function (optimisticPayload) {
-        return hasMatchingStaticPrerender(optimisticPayload, els.content);
+        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
       },
       renderAdoptedPrerender: function () {
         state.staticPrerenderListAdopted = true;
@@ -433,20 +429,6 @@
       return '';
     }
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
-  }
-
-  function scheduleMarkedUpgrade() {
-    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
-      if (shouldPreserveAdoptedStaticPrerender()) {
-        renderHead();
-        renderAdmin();
-        renderValidation();
-        return;
-      }
-      renderList();
-      renderAdmin();
-      renderValidation();
-    });
   }
 
   function normalizeExtraFormat(value) {

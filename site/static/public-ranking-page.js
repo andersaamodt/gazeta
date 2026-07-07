@@ -131,7 +131,9 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
-    scheduleMarkedUpgrade();
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return escapeHtml(value);
   }
 
@@ -143,14 +145,10 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
-    scheduleMarkedUpgrade();
-    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
-  }
-
-  function scheduleMarkedUpgrade() {
     window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
       renderAll();
     });
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
   function normalizeMetric(raw) {

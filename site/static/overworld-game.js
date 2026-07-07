@@ -53,11 +53,6 @@
       String(payload.page_type || '').trim().toLowerCase() === 'overworld';
   }
 
-  function hasMatchingStaticPrerender(host, payload) {
-    const root = host && host.closest ? host.closest('#overworld-page-root') : null;
-    return window.__wizardryHasMatchingStaticPrerender(root, host, payload);
-  }
-
   function renderSyncStatusPill() {
     const title = document.getElementById('overworld-page-title');
     if (!title) {
@@ -126,7 +121,8 @@
     if (!(host instanceof HTMLElement)) {
       return null;
     }
-    if (!hasMatchingStaticPrerender(host, payload)) {
+    const root = host.closest ? host.closest('#overworld-page-root') : null;
+    if (!window.__wizardryHasMatchingStaticPrerender(root, host, payload)) {
       host.innerHTML = OVERWORLD_STATIC_SHELL_HTML;
     }
     if (!host.querySelector('.overworld-godot-shell')) {
