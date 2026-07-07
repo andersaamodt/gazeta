@@ -188,42 +188,107 @@ nav_file="$includes_dir/nav.md"
 footer_file="$includes_dir/footer.md"
 head_file="$includes_dir/head.html"
 
-if [ -n "$html_file" ] && [ -f "$html_file" ]; then
-  tmp_injected=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-html.XXXXXX")
-  POST_MENU_HTML=$post_menu_html \
-  POST_HEADER_META_HTML=$post_header_meta_html \
-  POST_EXTRAS_HTML=$post_end_tags_html$post_nav_html \
-  perl -0pe '
-    BEGIN {
-      $menu = $ENV{"POST_MENU_HTML"} // "";
-      $header = $ENV{"POST_HEADER_META_HTML"} // "";
-      $extras = $ENV{"POST_EXTRAS_HTML"} // "";
-    }
-    if (index($_, "post-single-item") < 0) {
-      s{<article\b([^>]*)\bclass=(["\x27])([^"\x27]*)\2([^>]*)>}{<article$1class=$2$3 post-item post-single-item$2$4>}s
-        or s{<article\b((?:(?!>).)*)>}{<article$1 class="post-item post-single-item">}s;
-    }
-    if (index($_, "post-single-body") < 0) {
-      s{<div class="post-head">\s*(<h1\b[^>]*>.*?</h1>)\s*</div>}{"<div class=\"post-head\">$menu<div class=\"post-head-main\">$1$header</div></div><div class=\"post-single-body\">"}se;
-      if (index($_, "post-single-body") >= 0) {
-        s{</article>}{</div>$extras</article>}s;
-      }
-    }
-    if (index($_, "post-page-menu") < 0) {
-      s{<div class="post-head">}{<div class="post-head">$menu}s;
-    }
-    if (index($_, "post-head-divider") < 0) {
-      s{</h1>}{</h1>$header}s;
-    }
-    if (index($_, "post-end-tags") < 0 || index($_, "post-nav-enhanced") < 0) {
-      s{</article>}{$extras</article>}s;
-    }
-  ' "$html_file" > "$tmp_injected"
+emit_post_document() {
+  body_html_file=${1-}
+  [ -n "$body_html_file" ] && [ -f "$body_html_file" ] || return 1
   http-status 200 "OK"
   http-header "Content-Type" "text/html; charset=utf-8"
   http-end-headers
-  cat "$tmp_injected"
-  rm -f "$tmp_injected"
+  cat <<HTML
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$safe_title</title>
+  <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
+  <link rel="stylesheet" href="/static/style.css?v=$style_css_version">
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/idiomorph-ext.min.js"></script>
+HTML
+  if [ -f "$head_file" ]; then
+    cat "$head_file"
+  fi
+  cat <<HTML
+</head>
+<body>
+HTML
+  if [ -f "$nav_file" ]; then
+    cat "$nav_file"
+  fi
+  cat <<HTML
+  <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
+    <article class="post-item post-single-item">
+      <div class="post-head">
+        $post_menu_html
+        <div class="post-head-main">
+          <h1 class="post-title">$safe_title</h1>
+          $post_header_meta_html
+        </div>
+      </div>
+      <div class="post-single-body">
+HTML
+  cat "$body_html_file"
+  cat <<HTML
+      </div>
+      $post_end_tags_html
+      $post_nav_html
+    </article>
+  </main>
+HTML
+  if [ -f "$footer_file" ]; then
+    cat "$footer_file"
+  fi
+  cat <<HTML
+</body>
+</html>
+HTML
+}
+
+extract_generated_post_body_html() {
+  source_html_file=${1-}
+  output_html_file=${2-}
+  [ -n "$source_html_file" ] && [ -f "$source_html_file" ] || return 1
+  [ -n "$output_html_file" ] || return 1
+  perl -0ne '
+    my $html = $_;
+    my $body = "";
+    if ($html =~ m{<article\b[^>]*>(.*)</article>}is) {
+      $body = $1;
+      $body =~ s{^\s*<div\b[^>]*class=(["\x27])[^"\x27]*\bpost-head\b[^"\x27]*\1[^>]*>.*?</div>\s*}{}is;
+      $body =~ s{\s*<section\b[^>]*class=(["\x27])[^"\x27]*\bpost-end-tags\b[^"\x27]*\1[^>]*>.*?</section>\s*}{}gis;
+      $body =~ s{\s*<nav\b[^>]*class=(["\x27])[^"\x27]*\bpost-nav-enhanced\b[^"\x27]*\1[^>]*>.*?</nav>\s*}{}gis;
+      if ($body =~ /post-single-body/i) {
+        $body =~ s{^\s*<div\b[^>]*class=(["\x27])[^"\x27]*\bpost-single-body\b[^"\x27]*\1[^>]*>}{}is;
+        $body =~ s{</div>\s*$}{}is;
+      }
+    } elsif ($html =~ m{<body\b[^>]*>(.*)</body>}is) {
+      $body = $1;
+    } else {
+      $body = $html;
+    }
+    $body =~ s/^\s+//s;
+    $body =~ s/\s+$//s;
+    print $body;
+  ' "$source_html_file" > "$output_html_file"
+  [ -s "$output_html_file" ]
+}
+
+if [ -n "$html_file" ] && [ -f "$html_file" ]; then
+  body_html_file=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-generated-body.XXXXXX")
+  if extract_generated_post_body_html "$html_file" "$body_html_file"; then
+    emit_post_document "$body_html_file"
+    rm -f "$body_html_file"
+    exit 0
+  fi
+  rm -f "$body_html_file"
+fi
+
+if [ -n "$html_file" ] && [ -f "$html_file" ]; then
+  http-status 200 "OK"
+  http-header "Content-Type" "text/html; charset=utf-8"
+  http-end-headers
+  cat "$html_file"
   exit 0
 fi
 
@@ -244,56 +309,7 @@ if command -v pandoc >/dev/null 2>&1; then
     "$body_md" >/dev/null 2>&1 || true
 
   if [ -f "$body_html_file" ]; then
-    http-status 200 "OK"
-    http-header "Content-Type" "text/html; charset=utf-8"
-    http-end-headers
-    cat <<HTML
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>$safe_title</title>
-  <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=$style_css_version">
-  <script src="/static/js/htmx.min.js"></script>
-  <script src="/static/js/idiomorph-ext.min.js"></script>
-HTML
-    if [ -f "$head_file" ]; then
-      cat "$head_file"
-    fi
-    cat <<HTML
-</head>
-<body>
-HTML
-    if [ -f "$nav_file" ]; then
-      cat "$nav_file"
-    fi
-    cat <<HTML
-  <article class="post-item post-single-item">
-    <div class="post-head">
-      $post_menu_html
-      <div class="post-head-main">
-        <h1 id="main-content" class="post-title">$safe_title</h1>
-        $post_header_meta_html
-      </div>
-    </div>
-    <div class="post-single-body">
-HTML
-    cat "$body_html_file"
-    cat <<HTML
-    </div>
-    $post_end_tags_html
-    $post_nav_html
-  </article>
-HTML
-    if [ -f "$footer_file" ]; then
-      cat "$footer_file"
-    fi
-    cat <<HTML
-</body>
-</html>
-HTML
+    emit_post_document "$body_html_file"
     exit 0
   fi
 fi
@@ -309,51 +325,7 @@ post_type=$(blog_normalize_post_type "$post_type")
 body=$(blog_read_markdown_body "$md_file" 2>/dev/null || printf '')
 title=$(blog_effective_post_title "$title" "$body" "$post_type")
 safe_title=$(printf '%s' "$title" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-safe_body=$(printf '%s' "$body" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-
-http-status 200 "OK"
-http-header "Content-Type" "text/html; charset=utf-8"
-http-end-headers
-cat <<HTML
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>$safe_title</title>
-  <style>html{background:#f3e9d7;}body{background:transparent;color:#2f2517;}</style>
-  <link rel="stylesheet" href="/static/style.css?v=$style_css_version">
-HTML
-if [ -f "$head_file" ]; then
-  cat "$head_file"
-fi
-cat <<HTML
-</head>
-<body>
-HTML
-if [ -f "$nav_file" ]; then
-  cat "$nav_file"
-fi
-cat <<HTML
-  <main id="main-content" style="max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem;">
-    <article class="post-item post-single-item">
-      <div class="post-head">
-        $post_menu_html
-        <div class="post-head-main">
-          <h1 class="post-title">$safe_title</h1>
-          $post_header_meta_html
-        </div>
-      </div>
-      <div class="post-single-body"><pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">$safe_body</pre></div>
-      $post_end_tags_html
-      $post_nav_html
-    </article>
-  </main>
-HTML
-if [ -f "$footer_file" ]; then
-  cat "$footer_file"
-fi
-cat <<HTML
-</body>
-</html>
-HTML
+safe_body_file=$(mktemp "${TMPDIR:-/tmp}/blog-open-post-plain-body.XXXXXX")
+printf '<pre style="white-space: pre-wrap; line-height: 1.55; background: transparent; border: 0; padding: 0;">%s</pre>\n' "$(printf '%s' "$body" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')" > "$safe_body_file"
+emit_post_document "$safe_body_file"
+rm -f "$safe_body_file"
