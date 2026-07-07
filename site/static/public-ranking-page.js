@@ -483,25 +483,28 @@
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
-	      } else {
-	        if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	            html: prerenderFragment('description_html'),
-	            hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
-	          });
-	        } else if (desc) {
-	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	            html: markdownInline(desc),
-	            hidden: false
-	          });
-	        } else {
-	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	            html: '',
-	            hidden: true
-	          });
-	        }
-	      }
-	    }
+      } else {
+        var descriptionFragment = canUsePrerenderReadOnlyView(s)
+          ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
+          : null;
+        if (descriptionFragment) {
+          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+            html: descriptionFragment.html,
+            hidden: descriptionFragment.hidden
+          });
+        } else if (desc) {
+          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+            html: markdownInline(desc),
+            hidden: false
+          });
+        } else {
+          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+            html: '',
+            hidden: true
+          });
+        }
+      }
+    }
     if (isAdmin() && state.activeHeadField) {
       requestAnimationFrame(function () {
         var id = state.activeHeadField === 'title' ? 'public-ranking-head-title-input' : 'public-ranking-head-description-input';
@@ -1028,9 +1031,12 @@
       return;
     }
     var renderState = getRenderState();
-    if (canUsePrerenderReadOnlyView(renderState) && prerenderFragment('content_html')) {
-      els.content.innerHTML = prerenderFragment('content_html');
-      els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
+    var prerenderContentFragment = canUsePrerenderReadOnlyView(renderState)
+      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
+      : null;
+    if (prerenderContentFragment) {
+      els.content.innerHTML = prerenderContentFragment.html;
+      els.content.hidden = prerenderContentFragment.hidden;
       return;
     }
     els.content.hidden = false;

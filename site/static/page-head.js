@@ -290,6 +290,21 @@
     return String(payload && payload.prerender && payload.prerender[key] || '');
   }
 
+  function readPrerenderHtmlFragment(payload, name) {
+    var fragmentName = String(name || '').trim();
+    if (!fragmentName) {
+      return null;
+    }
+    var html = prerenderFragment(payload, fragmentName + '_html');
+    if (!html) {
+      return null;
+    }
+    return {
+      html: html,
+      hidden: /\bhidden\b/i.test(prerenderFragment(payload, fragmentName + '_attrs'))
+    };
+  }
+
   function hasMatchingStaticPrerender(rootNode, contentNode, payload) {
     var signature = String(payload && payload.prerender_signature || '').trim();
     if (!signature || !rootNode || !contentNode) {
@@ -869,6 +884,7 @@
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
+  window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
   window.__wizardryPageBootstrapCacheKey = pageBootstrapCacheKey;
   window.__wizardryReadBootstrapCache = readBootstrapCache;

@@ -652,8 +652,9 @@
       return;
     }
 
-    els.content.innerHTML = prerenderFragment('content_html');
-    els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
+    var prerenderContentFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
+    els.content.innerHTML = prerenderContentFragment ? prerenderContentFragment.html : '';
+    els.content.hidden = !!(prerenderContentFragment && prerenderContentFragment.hidden);
   }
 
   function renderAll() {

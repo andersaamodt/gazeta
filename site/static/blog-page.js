@@ -491,12 +491,11 @@
     if (!els.description) {
       return;
 	    }
-	    var descriptionHtml = prerenderFragment('description_html');
-	    var descriptionAttrs = prerenderFragment('description_attrs');
-	    if (descriptionHtml) {
+	    var descriptionFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description');
+	    if (descriptionFragment) {
 	      window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	        html: descriptionHtml,
-	        hidden: descriptionAttrs.indexOf('hidden') !== -1
+	        html: descriptionFragment.html,
+	        hidden: descriptionFragment.hidden
 	      });
 	      return;
 	    }
@@ -4039,10 +4038,9 @@
     if (!els.content) {
       return;
     }
-    var contentHtml = prerenderFragment('content_html');
-    var contentAttrs = prerenderFragment('content_attrs');
-    els.content.hidden = contentAttrs.indexOf('hidden') !== -1;
-    els.content.innerHTML = contentHtml;
+    var contentFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
+    els.content.hidden = !!(contentFragment && contentFragment.hidden);
+    els.content.innerHTML = contentFragment ? contentFragment.html : '';
   }
 
   function formatType(value) {

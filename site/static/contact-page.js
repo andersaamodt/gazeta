@@ -3735,19 +3735,22 @@
           els.description.hidden = true;
           els.description.innerHTML = '';
         }
-	      } else if (text) {
-	        if (canUsePrerenderReadOnlyView() && prerenderFragment('description_html')) {
-	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	            html: prerenderFragment('description_html'),
-	            hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
-	          });
-	        } else {
-	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	            html: markdownInline(text),
-	            hidden: false
-	          });
-	        }
-	      } else if (!hasMainContent) {
+      } else if (text) {
+        var descriptionFragment = canUsePrerenderReadOnlyView()
+          ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
+          : null;
+        if (descriptionFragment) {
+          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+            html: descriptionFragment.html,
+            hidden: descriptionFragment.hidden
+          });
+        } else {
+          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+            html: markdownInline(text),
+            hidden: false
+          });
+        }
+      } else if (!hasMainContent) {
 	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
 	          html: '',
 	          hidden: true
@@ -4082,8 +4085,10 @@
     var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    var usePrerenderReadOnly = canUsePrerenderReadOnlyView() && prerenderFragment('content_html');
-    var nextContentHtml = usePrerenderReadOnly ? prerenderFragment('content_html') : renderContentHtml();
+    var prerenderContentFragment = canUsePrerenderReadOnlyView()
+      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
+      : null;
+    var nextContentHtml = prerenderContentFragment ? prerenderContentFragment.html : renderContentHtml();
     var nextContentSignature = stableSecureChatContentHtml(nextContentHtml);
     if (state.lastContentHtml === nextContentSignature) {
       restoreSecureChatRenderState(secureChatRenderState);
@@ -4091,7 +4096,7 @@
       return;
     }
     state.lastContentHtml = nextContentSignature;
-    els.content.hidden = usePrerenderReadOnly ? (prerenderFragment('content_attrs').indexOf('hidden') !== -1) : false;
+    els.content.hidden = prerenderContentFragment ? prerenderContentFragment.hidden : false;
     els.content.innerHTML = nextContentHtml;
     restoreVideoChatWidgetHost(videoChatHost);
     reconnectVideoChatAutoMountAfterRender(videoChatObserverPaused);

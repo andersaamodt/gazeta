@@ -2966,19 +2966,22 @@
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
       }
-	    } else {
-	      if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	          html: prerenderFragment('description_html'),
-	          hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
-	        });
-	      } else {
-	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	          text: descText,
-	          hidden: !descText && !hasMainContent
-	        });
-	      }
-	    }
+    } else {
+      var descriptionFragment = canUsePrerenderReadOnlyView(s)
+        ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
+        : null;
+      if (descriptionFragment) {
+        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+          html: descriptionFragment.html,
+          hidden: descriptionFragment.hidden
+        });
+      } else {
+        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+          text: descText,
+          hidden: !descText && !hasMainContent
+        });
+      }
+    }
 
     if (isAdmin() && state.activeHeadField) {
       requestAnimationFrame(function () {
@@ -3726,6 +3729,9 @@
     var fullEditMode = isAdmin() && state.editMode;
     var wideEditMode = isAdmin() && (state.editMode || isReadInlineEditing());
     var usePrerenderReadOnly = canUsePrerenderReadOnlyView(s);
+    var prerenderContentFragment = usePrerenderReadOnly
+      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
+      : null;
     if (root && root.classList) {
       root.classList.toggle('is-editing', wideEditMode);
     }
@@ -3737,9 +3743,9 @@
     if (!elements.length) {
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
-      } else if (usePrerenderReadOnly && prerenderFragment('content_html')) {
-        els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
-        replaceListContentHtml(prerenderFragment('content_html'));
+      } else if (prerenderContentFragment) {
+        els.content.hidden = prerenderContentFragment.hidden;
+        replaceListContentHtml(prerenderContentFragment.html);
       } else {
         els.content.hidden = false;
         replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
@@ -3755,10 +3761,10 @@
       return;
     }
 
-    if (usePrerenderReadOnly && prerenderFragment('content_html')) {
+    if (prerenderContentFragment) {
       initializePrerenderMarkerFiltersFromPayload();
-      els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
-      replaceListContentHtml(prerenderFragment('content_html'));
+      els.content.hidden = prerenderContentFragment.hidden;
+      replaceListContentHtml(prerenderContentFragment.html);
       refreshProductCartButtons();
       renderAdmin();
       return;
