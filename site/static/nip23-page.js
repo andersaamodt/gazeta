@@ -725,16 +725,30 @@
       }
     }
     if (els.title) {
-      if (isAdmin() && state.editMode) {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
-      } else {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Untitled') + '</span><span id="nip23-page-title-actions" class="list-page-title-actions"></span>';
-      }
+      ensureReadOnlyNip23TitleShell().text.textContent = String(s.title || 'Untitled');
     }
     if (!isAdmin()) {
       renderSyncStatusPill();
     }
     renderNavbarTitleRow(s);
+  }
+
+  function ensureReadOnlyNip23TitleShell() {
+    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
+    if (!text && els.title) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      text.textContent = els.title.textContent || '';
+      els.title.replaceChildren(text);
+    }
+    var actions = document.getElementById('nip23-page-title-actions');
+    if (!actions && els.title) {
+      actions = document.createElement('span');
+      actions.id = 'nip23-page-title-actions';
+      actions.className = 'list-page-title-actions';
+      els.title.appendChild(actions);
+    }
+    return { text: text, actions: actions };
   }
 
   removeLegacyTitleBlock();

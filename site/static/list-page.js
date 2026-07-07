@@ -3196,7 +3196,7 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
       } else {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
+        ensureReadOnlyListTitleShell().text.textContent = String(s.title || 'List');
       }
     }
     renderSyncStatusPill();
@@ -3234,10 +3234,10 @@
       }
     } else {
       if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-        els.description.innerHTML = prerenderFragment('description_html');
+        ensureReadOnlyListDescriptionShell().innerHTML = prerenderFragment('description_html');
         els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
       } else {
-        els.description.textContent = descText;
+        ensureReadOnlyListDescriptionShell().textContent = descText;
         els.description.hidden = !descText && !hasMainContent;
       }
     }
@@ -3254,6 +3254,37 @@
         }
       });
     }
+  }
+
+  function ensureReadOnlyListTitleShell() {
+    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
+    if (!text && els.title) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      text.textContent = els.title.textContent || '';
+      els.title.replaceChildren(text);
+    }
+    var actions = document.getElementById('list-page-title-actions');
+    if (!actions && els.title) {
+      actions = document.createElement('span');
+      actions.id = 'list-page-title-actions';
+      actions.className = 'list-page-title-actions';
+      els.title.appendChild(actions);
+    }
+    return { text: text, actions: actions };
+  }
+
+  function ensureReadOnlyListDescriptionShell() {
+    var text = els.description ? els.description.querySelector('.list-page-description-text') : null;
+    if (!text && els.description) {
+      text = document.createElement('span');
+      text.className = 'list-page-description-text';
+      while (els.description.firstChild) {
+        text.appendChild(els.description.firstChild);
+      }
+      els.description.appendChild(text);
+    }
+    return text;
   }
 
   function datePillForEntryInSection(entry, groupBy, sectionLabel) {

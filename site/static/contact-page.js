@@ -3912,7 +3912,7 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
         }
       } else {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
+        ensureReadOnlyContactTitleShell().text.textContent = String(s.title || 'Profile');
       }
     }
     if (!isAdmin()) {
@@ -3948,17 +3948,17 @@
       } else if (text) {
         if (canUsePrerenderReadOnlyView() && prerenderFragment('description_html')) {
           els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
-          els.description.innerHTML = prerenderFragment('description_html');
+          ensureReadOnlyContactDescriptionShell().innerHTML = prerenderFragment('description_html');
         } else {
           els.description.hidden = false;
-          els.description.innerHTML = markdownInline(text);
+          ensureReadOnlyContactDescriptionShell().innerHTML = markdownInline(text);
         }
       } else if (!hasMainContent) {
         els.description.hidden = true;
-        els.description.innerHTML = '';
+        ensureReadOnlyContactDescriptionShell().innerHTML = '';
       } else {
         els.description.hidden = true;
-        els.description.innerHTML = '';
+        ensureReadOnlyContactDescriptionShell().innerHTML = '';
       }
     }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
@@ -3971,6 +3971,37 @@
         state.headFocusPending = false;
       });
     }
+  }
+
+  function ensureReadOnlyContactTitleShell() {
+    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
+    if (!text && els.title) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      text.textContent = els.title.textContent || '';
+      els.title.replaceChildren(text);
+    }
+    var actions = document.getElementById('contact-page-title-actions');
+    if (!actions && els.title) {
+      actions = document.createElement('span');
+      actions.id = 'contact-page-title-actions';
+      actions.className = 'list-page-title-actions';
+      els.title.appendChild(actions);
+    }
+    return { text: text, actions: actions };
+  }
+
+  function ensureReadOnlyContactDescriptionShell() {
+    var text = els.description ? els.description.querySelector('.list-page-description-text') : null;
+    if (!text && els.description) {
+      text = document.createElement('span');
+      text.className = 'list-page-description-text';
+      while (els.description.firstChild) {
+        text.appendChild(els.description.firstChild);
+      }
+      els.description.appendChild(text);
+    }
+    return text;
   }
 
   function renderAdmin() {

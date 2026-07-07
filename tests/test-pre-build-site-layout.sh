@@ -209,6 +209,10 @@ grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
   exit 1
 }
+grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span></h1>' "$canonical_root/pages/contact.md" || {
+  printf '%s\n' "contact page missing hydration-matching title shell after pre-build rewrite" >&2
+  exit 1
+}
 grep -Fq 'class="contact-qualifier-pill contact-qualifier-open" data-qualifier="preferred">Preferred</span>' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing styled prerendered preferred qualifier pill" >&2
   exit 1
@@ -261,6 +265,11 @@ fi
 }
 grep -Fq 'Seeded reading entry' "$canonical_root/pages/reading-list.md" || {
   printf '%s\n' "list page missing prerendered list entry after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq '<h1 id="list-page-title"><span class="list-page-title-text">' "$canonical_root/pages/reading-list.md" &&
+  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span></h1>' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }
 if grep -Fq 'Loading page content' "$canonical_root/pages/reading-list.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/reading-list.md"; then

@@ -691,7 +691,7 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
       } else {
-        els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(true);
+        ensureReadOnlyPublicRankingTitleShell().text.textContent = String(s.title || 'Public Ranking');
       }
     }
     if (!isAdmin()) {
@@ -724,13 +724,13 @@
         }
       } else {
         if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-          els.description.innerHTML = prerenderFragment('description_html');
+          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = prerenderFragment('description_html');
           els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
         } else if (desc) {
-          els.description.innerHTML = markdownInline(desc);
+          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = markdownInline(desc);
           els.description.hidden = false;
         } else {
-          els.description.innerHTML = '';
+          ensureReadOnlyPublicRankingDescriptionShell().innerHTML = '';
           els.description.hidden = true;
         }
       }
@@ -747,6 +747,37 @@
         }
       });
     }
+  }
+
+  function ensureReadOnlyPublicRankingTitleShell() {
+    var text = els.title ? els.title.querySelector('.list-page-title-text') : null;
+    if (!text && els.title) {
+      text = document.createElement('span');
+      text.className = 'list-page-title-text';
+      text.textContent = els.title.textContent || '';
+      els.title.replaceChildren(text);
+    }
+    var actions = document.getElementById('public-ranking-page-title-actions');
+    if (!actions && els.title) {
+      actions = document.createElement('span');
+      actions.id = 'public-ranking-page-title-actions';
+      actions.className = 'list-page-title-actions public-ranking-sync-actions';
+      els.title.appendChild(actions);
+    }
+    return { text: text, actions: actions };
+  }
+
+  function ensureReadOnlyPublicRankingDescriptionShell() {
+    var text = els.description ? els.description.querySelector('.list-page-description-text') : null;
+    if (!text && els.description) {
+      text = document.createElement('span');
+      text.className = 'list-page-description-text';
+      while (els.description.firstChild) {
+        text.appendChild(els.description.firstChild);
+      }
+      els.description.appendChild(text);
+    }
+    return text;
   }
 
   function renderAdmin() {
