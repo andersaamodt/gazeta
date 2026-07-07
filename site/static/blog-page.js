@@ -614,8 +614,8 @@
     if (!els.description) {
       return;
     }
-    var descriptionHtml = String(state.payload && state.payload.prerender && state.payload.prerender.description_html || '');
-    var descriptionAttrs = String(state.payload && state.payload.prerender && state.payload.prerender.description_attrs || '');
+    var descriptionHtml = prerenderFragment('description_html');
+    var descriptionAttrs = prerenderFragment('description_attrs');
     var descriptionText = ensureBlogDescriptionTextNode();
     if (descriptionHtml) {
       descriptionText.innerHTML = descriptionHtml;
@@ -642,6 +642,10 @@
       return null;
     }
     return window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
+  }
+
+  function prerenderFragment(key) {
+    return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
   }
 
   function ensureFilterGutterLayout() {
@@ -4173,8 +4177,8 @@
     if (!els.content) {
       return;
     }
-    var contentHtml = String(state.payload && state.payload.prerender && state.payload.prerender.content_html || '');
-    var contentAttrs = String(state.payload && state.payload.prerender && state.payload.prerender.content_attrs || '');
+    var contentHtml = prerenderFragment('content_html');
+    var contentAttrs = prerenderFragment('content_attrs');
     els.content.hidden = contentAttrs.indexOf('hidden') !== -1;
     els.content.innerHTML = contentHtml;
   }
@@ -4683,6 +4687,54 @@
 	    }
 	    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
 	  }
+
+  function applyBootstrapPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    state.payload = payload;
+    applyDefaultFilters();
+    return true;
+  }
+
+  function primeBootstrapPosts(payload) {
+    var prerenderedPosts = readPrerenderPostsBootstrap(payload);
+    if (prerenderedPosts) {
+      postsCatalogReady = true;
+      state.posts = prerenderedPosts;
+      if (!payloadHasDefaultPostTag(payload)) {
+        writeCache(prerenderedPosts);
+      }
+      return true;
+    }
+    var cached = readCache();
+    if (!cached) {
+      return false;
+    }
+    postsCatalogReady = true;
+    state.posts = filteredPostsForPageDefaults(cached, payload);
+    return true;
+  }
+
+  function renderBootstrapState(payload, hasWarmPosts) {
+    state.postsLoading = !hasWarmPosts;
+    if (hasMatchingStaticPrerender(payload, els.list)) {
+      state.staticPrerenderListAdopted = true;
+      state.adoptedPostListSignature = postListSignature();
+      syncRenderedListDecorations();
+      renderHead();
+      renderAdmin();
+      renderDraftNotice();
+      renderValidation();
+      renderExtrasAfter();
+      renderFilters();
+      renderComposeUi();
+    } else {
+      state.staticPrerenderListAdopted = false;
+      renderAll();
+    }
+    state.renderSignature = renderSignature();
+  }
 
 	  function hasMatchingStaticPrerender(payload, node) {
 	    var signature = String(payload && payload.prerender_signature || '').trim();
@@ -5485,43 +5537,9 @@
     var hasWarmPosts = false;
     hydrateDraftNoticeFromCache();
     var prerenderedPayload = readPrerenderPageBootstrap();
-    if (prerenderedPayload) {
-      state.payload = prerenderedPayload;
-      applyDefaultFilters();
-    }
-
-    var prerenderedPosts = readPrerenderPostsBootstrap(prerenderedPayload);
-    if (prerenderedPosts) {
-      postsCatalogReady = true;
-      state.posts = prerenderedPosts;
-      if (!payloadHasDefaultPostTag(prerenderedPayload)) {
-        writeCache(prerenderedPosts);
-      }
-      hasWarmPosts = true;
-    } else {
-      var cached = readCache();
-      if (cached) {
-        postsCatalogReady = true;
-        state.posts = filteredPostsForPageDefaults(cached, prerenderedPayload);
-        hasWarmPosts = true;
-      }
-    }
-	    state.postsLoading = !hasWarmPosts;
-	    if (hasMatchingStaticPrerender(prerenderedPayload, els.list)) {
-	      state.staticPrerenderListAdopted = true;
-	      state.adoptedPostListSignature = postListSignature();
-	      syncRenderedListDecorations();
-	      renderHead();
-	      renderAdmin();
-	      renderDraftNotice();
-	      renderValidation();
-	      renderExtrasAfter();
-	      renderFilters();
-	      renderComposeUi();
-	    } else {
-	      renderAll();
-	    }
-	    state.renderSignature = renderSignature();
+    applyBootstrapPayload(prerenderedPayload);
+    hasWarmPosts = primeBootstrapPosts(prerenderedPayload);
+    renderBootstrapState(prerenderedPayload, hasWarmPosts);
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
     waitForInitialDraftNotice().finally(function () {
