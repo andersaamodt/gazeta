@@ -117,8 +117,7 @@
   var pageSettingsHideTimer = null;
   var composeToggleGuardUntil = 0;
   var composeDropHoverTimer = null;
-  var authRefreshPollTimer = 0;
-  var authRefreshPollStartedAt = 0;
+  var authRefreshPollState = { timer: 0, startedAt: 0 };
   var postsCatalogReady = false;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
@@ -175,25 +174,6 @@
     state.authSignature = nextSig;
     applyOptimisticAdminFromAuthEvent(event);
     loadPageState({ deferRender: false, deferInitialFlags: true });
-  }
-
-  function startAuthRefreshPoll() {
-    if (authRefreshPollTimer) {
-      return;
-    }
-    authRefreshPollStartedAt = Date.now();
-    authRefreshPollTimer = window.setInterval(function () {
-      if (Date.now() - authRefreshPollStartedAt > 15000) {
-        window.clearInterval(authRefreshPollTimer);
-        authRefreshPollTimer = 0;
-        return;
-      }
-      maybeReloadForAuthChange();
-      if (isAdmin()) {
-        window.clearInterval(authRefreshPollTimer);
-        authRefreshPollTimer = 0;
-      }
-    }, 500);
   }
 
   function ensureComposeStateShape() {
@@ -5347,22 +5327,13 @@
     });
   }
 
-  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
-  window.addEventListener('storage', function (event) {
-    if (!event || !event.key) {
-      return;
-    }
-    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_is_admin') {
-      maybeReloadForAuthChange();
-    }
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: maybeReloadForAuthChange,
+    storageKeys: ['session_token', 'csrf_token', 'last_auth_is_admin'],
+    pollState: authRefreshPollState,
+    pollDurationMs: 15000,
+    stopWhen: isAdmin
   });
-  window.addEventListener('focus', maybeReloadForAuthChange);
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
-      maybeReloadForAuthChange();
-    }
-  });
-  startAuthRefreshPoll();
 
   window.addEventListener('beforeunload', function () {
     clearComposePostTypeCollapseTimer();

@@ -1036,20 +1036,8 @@
   }
 
   bindEvents();
-  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
-  window.addEventListener('storage', function (event) {
-    if (!event || !event.key) {
-      return;
-    }
-    if (event.key === 'session_token' || event.key === 'csrf_token') {
-      maybeReloadForAuthChange();
-    }
-  });
-  window.addEventListener('focus', maybeReloadForAuthChange);
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
-      maybeReloadForAuthChange();
-    }
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: maybeReloadForAuthChange
   });
   window.__wizardryRenderManagedNostrBootstrapSources({
     slug: slug,

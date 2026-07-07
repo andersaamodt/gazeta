@@ -395,6 +395,60 @@
     });
   }
 
+  function bindSessionAuthRefresh(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
+    if (!onChange) {
+      return false;
+    }
+    var onVisible = typeof opts.onVisible === 'function' ? opts.onVisible : null;
+    var onHidden = typeof opts.onHidden === 'function' ? opts.onHidden : null;
+    var storageKeys = Array.isArray(opts.storageKeys) ? opts.storageKeys.map(function (key) {
+      return String(key || '');
+    }).filter(Boolean) : ['session_token', 'csrf_token'];
+    window.addEventListener('blog-auth-changed', onChange);
+    window.addEventListener('storage', function (event) {
+      if (!event || !event.key) {
+        return;
+      }
+      if (storageKeys.indexOf(String(event.key || '')) !== -1) {
+        onChange(event);
+      }
+    });
+    window.addEventListener('focus', onChange);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        if (onVisible) {
+          onVisible();
+          return;
+        }
+        onChange();
+        return;
+      }
+      if (onHidden) {
+        onHidden();
+      }
+    });
+    var pollState = opts.pollState && typeof opts.pollState === 'object' ? opts.pollState : null;
+    var pollDurationMs = Math.max(0, Number(opts.pollDurationMs || 0) || 0);
+    if (pollState && pollDurationMs > 0 && !pollState.timer) {
+      pollState.startedAt = Date.now();
+      pollState.timer = window.setInterval(function () {
+        if (Date.now() - Number(pollState.startedAt || 0) > pollDurationMs) {
+          window.clearInterval(pollState.timer);
+          pollState.timer = 0;
+          return;
+        }
+        onChange();
+        if (typeof opts.stopWhen === 'function' && opts.stopWhen()) {
+          window.clearInterval(pollState.timer);
+          pollState.timer = 0;
+        }
+      }, Math.max(100, Number(opts.pollIntervalMs || 500) || 500));
+    }
+    return true;
+  }
+
   function authPayload() {
     try {
       return {
@@ -822,6 +876,7 @@
   window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
+  window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;

@@ -87,8 +87,7 @@
   };
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
-  var authRefreshPollTimer = 0;
-  var authRefreshPollStartedAt = 0;
+  var authRefreshPollState = { timer: 0, startedAt: 0 };
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -339,25 +338,6 @@
     state.authSignature = nextSig;
     applyOptimisticAdminFromAuthEvent(event);
     load();
-  }
-
-  function startAuthRefreshPoll() {
-    if (authRefreshPollTimer) {
-      return;
-    }
-    authRefreshPollStartedAt = Date.now();
-    authRefreshPollTimer = window.setInterval(function () {
-      if (Date.now() - authRefreshPollStartedAt > 15000) {
-        window.clearInterval(authRefreshPollTimer);
-        authRefreshPollTimer = 0;
-        return;
-      }
-      maybeReloadForAuthChange();
-      if (isAdmin()) {
-        window.clearInterval(authRefreshPollTimer);
-        authRefreshPollTimer = 0;
-      }
-    }, 500);
   }
 
   function escapeHtml(text) {
@@ -5466,20 +5446,11 @@
     }
     closeActiveInlineEditor({ forceAutosave: true, delayMs: 120 });
   });
-  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
-  window.addEventListener('storage', function (event) {
-    if (!event || !event.key) {
-      return;
-    }
-    if (event.key === 'session_token' || event.key === 'csrf_token') {
-      maybeReloadForAuthChange();
-    }
-  });
-  window.addEventListener('focus', maybeReloadForAuthChange);
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
-      maybeReloadForAuthChange();
-    }
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: maybeReloadForAuthChange,
+    pollState: authRefreshPollState,
+    pollDurationMs: 15000,
+    stopWhen: isAdmin
   });
   window.addEventListener('hashchange', function () {
     var s = getRenderState();
@@ -5503,6 +5474,5 @@
     renderPayload: renderFromBootstrapPayload,
     writeCache: writeBootstrapCache
   });
-  startAuthRefreshPoll();
   load();
 })();

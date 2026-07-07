@@ -5058,29 +5058,22 @@
   window.addEventListener('beforeunload', markPageLifecycleClosing);
   window.addEventListener('pagehide', markPageLifecycleClosing);
   window.addEventListener('pageshow', clearPageLifecycleClosing);
-  window.addEventListener('blog-auth-changed', maybeReloadForAuthChange);
-  window.addEventListener('storage', function (event) {
-    if (!event || !event.key) {
-      return;
-    }
-    if (event.key === 'session_token' || event.key === 'csrf_token' || event.key === 'last_auth_method' || event.key === 'last_auth_pubkey') {
-      maybeReloadForAuthChange();
-    }
-  });
-  window.addEventListener('focus', maybeReloadForAuthChange);
-  window.addEventListener('focus', releaseSecureChatFilePickerSoon);
-  window.addEventListener('wizardry-plugins-ready', maybeLoadVideoChatWidget);
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: maybeReloadForAuthChange,
+    onVisible: function () {
       maybeReloadForAuthChange();
       scheduleSecureChatPoll();
-      return;
-    }
-    if (state.chat.pollTimer) {
-      clearTimeout(state.chat.pollTimer);
-      state.chat.pollTimer = null;
-    }
+    },
+    onHidden: function () {
+      if (state.chat.pollTimer) {
+        clearTimeout(state.chat.pollTimer);
+        state.chat.pollTimer = null;
+      }
+    },
+    storageKeys: ['session_token', 'csrf_token', 'last_auth_method', 'last_auth_pubkey']
   });
+  window.addEventListener('focus', releaseSecureChatFilePickerSoon);
+  window.addEventListener('wizardry-plugins-ready', maybeLoadVideoChatWidget);
   window.__wizardryRenderManagedNostrBootstrapSources({
     slug: slug,
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
