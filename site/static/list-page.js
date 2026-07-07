@@ -125,10 +125,6 @@
     actionsHost.innerHTML = pageSyncStatusPillHtml();
   }
 
-  function markHydrationPageReady() {
-    window.__wizardryMarkHydrationPageReady();
-  }
-
   function authSignature() {
     var auth = getAuthPayload();
     var adminHint = '';
@@ -210,7 +206,8 @@
     window.__wizardryNotifyInitialContentPainted(slug, {
       state: state,
       rootNode: root,
-      loadingClass: 'is-loading'
+      loadingClass: 'is-loading',
+      markPageReady: true
     });
   }
 
@@ -330,21 +327,18 @@
         renderAdmin();
         renderValidation();
         markInitialContentPainted();
-        markHydrationPageReady();
         return true;
       }
 	      renderHead();
 	      renderAdmin();
 	      renderValidation();
 	      markInitialContentPainted();
-	      markHydrationPageReady();
 	      return true;
 	    }
 	    renderList();
 	    renderAdmin();
 	    renderValidation();
     markInitialContentPainted();
-    markHydrationPageReady();
     return true;
   }
 
@@ -5483,7 +5477,7 @@
         root.classList.remove('is-loading');
       }
     } finally {
-      markHydrationPageReady();
+      window.__wizardryMarkHydrationPageReady();
     }
   }
 

@@ -793,13 +793,10 @@
     renderComposeCrosspostingUi();
   }
 
-  function markHydrationPageReady() {
-    window.__wizardryMarkHydrationPageReady();
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted('admin', {
-      state: state
+      state: state,
+      markPageReady: true
     });
   }
 
@@ -3686,7 +3683,6 @@
       stopLocalDripWorker();
       setAuthMessage('Not logged in. Use the Login button in the top navigation to sign in with Nostr.', 'error');
       markInitialContentPainted();
-      markHydrationPageReady();
       return;
     }
 
@@ -3697,7 +3693,6 @@
         stopLocalDripWorker();
         setAuthMessage('Session expired. Use the Login button in the top navigation to sign in again.', 'error');
         markInitialContentPainted();
-        markHydrationPageReady();
         return;
       }
 
@@ -3755,7 +3750,6 @@
         activateSection('account', true);
         els.adminPanel.style.display = 'grid';
         markInitialContentPainted();
-        markHydrationPageReady();
         return;
       }
 
@@ -3795,7 +3789,6 @@
       renderPreview();
       els.adminPanel.style.display = 'grid';
       markInitialContentPainted();
-      markHydrationPageReady();
       maybeLoadAdminSection(state.activeSection, false).catch(function (_sectionErr) {
         // Section loader already writes actionable status output.
       });
@@ -3810,7 +3803,6 @@
       stopLocalDripWorker();
       setAuthMessage('Authentication check failed: ' + err.message, 'error');
       markInitialContentPainted();
-      markHydrationPageReady();
     }
   }
 

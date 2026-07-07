@@ -141,13 +141,11 @@
 	      renderHead();
 	      renderAdmin();
 	      renderValidation();
-	      markInitialContentPainted();
-	      markHydrationPageReady();
-	      return true;
+      markInitialContentPainted();
+      return true;
 	    }
 	    renderAll();
-	    markInitialContentPainted();
-    markHydrationPageReady();
+    markInitialContentPainted();
     return true;
   }
 
@@ -372,13 +370,10 @@
     }
   }
 
-  function markHydrationPageReady() {
-    window.__wizardryMarkHydrationPageReady();
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state
+      state: state,
+      markPageReady: true
     });
   }
 
@@ -1774,7 +1769,6 @@
     } catch (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
     } finally {
-      markHydrationPageReady();
       markInitialContentPainted();
     }
   }

@@ -332,10 +332,6 @@
     }
   }
 
-  function markHydrationPageReady() {
-    window.__wizardryMarkHydrationPageReady();
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
       state: state,

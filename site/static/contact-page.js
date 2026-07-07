@@ -620,7 +620,8 @@
 
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state
+      state: state,
+      markPageReady: true
     });
   }
 
@@ -688,14 +689,12 @@
 	      syncSecureChatLastContentHtmlFromDom();
 	      maybeLoadVideoChatWidget();
 	      markInitialContentPainted();
-	      markHydrationPageReady();
 	      return true;
 	    }
 	    renderAll();
 	    markInitialContentPainted();
-    markHydrationPageReady();
-    return true;
-  }
+	    return true;
+	  }
 
   function isAdmin() {
     return !!(state.payload && state.payload.is_admin && state.draft);
@@ -731,10 +730,6 @@
       return;
     }
     actionsHost.innerHTML = pageSyncStatusPillHtml();
-  }
-
-  function markHydrationPageReady() {
-    window.__wizardryMarkHydrationPageReady();
   }
 
   function apiPost(url, payload) {
@@ -5126,7 +5121,7 @@
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
     }).finally(function () {
-      markHydrationPageReady();
+      window.__wizardryMarkHydrationPageReady();
     });
   }
 
