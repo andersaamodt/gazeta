@@ -919,25 +919,6 @@
     return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
   }
 
-  function renderPostMeta(current) {
-    var summary = current.summary ? '<p class="post-context-summary">' + escapeHtml(current.summary) + '</p>' : '';
-    var author = current.author ? '<span class="post-context-author">' + escapeHtml(current.author) + '</span>' : '';
-    var detail = [
-      author,
-      author ? '<span aria-hidden="true">•</span>' : '',
-      postDateHtml(current, 'post-context-date'),
-      '<span aria-hidden="true">•</span>',
-      '<span class="post-context-reading">' + escapeHtml(String(current.reading_minutes || 1)) + ' min read</span>',
-      '<span aria-hidden="true">•</span>',
-      '<span class="post-context-words">' + escapeHtml(String(current.word_count || 0)) + ' words</span>'
-    ].join(' ');
-
-    return '<section class="post-context-card">' +
-      '<div class="post-context-detail">' + detail + '</div>' +
-      summary +
-      '</section>';
-  }
-
   function ensureSinglePostCard(current) {
     var root = document.body;
     if (!root) {

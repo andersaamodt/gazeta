@@ -32,7 +32,7 @@ EOFCONF
 
 cat > "$canonical_root/includes/head.html" <<'EOFHEAD'
 <script defer src="/static/site-bootstrap.js"></script>
-<script defer src="/static/post-context.js?v=20260615-post-sync-pill1"></script>
+<script defer src="/static/post-context.js?v=20260707-post-context-cleanup1"></script>
 EOFHEAD
 
 cat > "$canonical_root/includes/nav.md" <<'EOFNAV'

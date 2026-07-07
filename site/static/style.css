@@ -12563,30 +12563,6 @@ button.loading::after {
   left: 1rem;
 }
 
-/* Post Context Enhancements */
-.post-context-card {
-  margin: 0.75rem 0 1.5rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-raised-strong, #fff);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-}
-
-.post-context-detail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  color: var(--light-text);
-  font-size: 0.92rem;
-  align-items: center;
-}
-
-.post-context-summary {
-  margin: 0.75rem 0 0;
-  color: var(--text);
-}
-
 .post-context-tags {
   margin-top: 0.4rem;
 }
