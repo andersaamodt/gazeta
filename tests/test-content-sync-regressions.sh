@@ -1993,10 +1993,12 @@ assert_success test -x "$ROOT_DIR/cgi/blog-purchase"
 assert_success test -x "$ROOT_DIR/cgi/blog-download"
 assert_success test -x "$ROOT_DIR/cgi/blog-delivery"
 assert_success test -x "$ROOT_DIR/cgi/blog-create-product-page"
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'create_order' 'payments cgi supports create_order action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'order_status' 'payments cgi supports order_status action'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'simulate_paid' 'payments cgi supports simulated paid transition'
-assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'webhook' 'payments cgi supports provider webhook action'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-action-registry.conf" 'admin blog-payments' 'payments endpoint is registered to the admin runtime'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-payments" => blog_payments().map(CgiResponse::json)' 'payments endpoint is runtime-owned'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'create_order' 'payments implementation supports create_order action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'order_status' 'payments implementation supports order_status action'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'simulate_paid' 'payments implementation supports simulated paid transition'
+assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'webhook' 'payments implementation supports provider webhook action'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'blog_btcpay_create_invoice_json' 'payments cgi creates BTCPay invoices through Greenfield API'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'refresh_btcpay_order_json' 'payments cgi can refresh pending BTCPay invoice state'
 assert_file_contains "$ROOT_DIR/cgi/blog-payments-legacy" 'crossmint_client_api_key:' 'payments status emits Crossmint runtime key for checkout embeds'

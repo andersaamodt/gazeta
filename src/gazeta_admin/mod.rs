@@ -47,6 +47,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
     match action {
         "blog-manage-post" => blog_manage_post().map(CgiResponse::json),
         "blog-create-draft-from-post" => blog_create_draft_from_post().map(CgiResponse::json),
+        "blog-payments" => blog_payments().map(CgiResponse::json),
         "blog-publish-nostr-page" => blog_publish_nostr_page().map(CgiResponse::json),
         "blog-save-post" => blog_save_post().map(CgiResponse::json),
         "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
@@ -620,6 +621,13 @@ fn blog_publish_nostr_page() -> Result<Value> {
         ],
     )
     .map_err(|message| AdminError::new("publish_failed", message))?;
+    Ok(response)
+}
+
+fn blog_payments() -> Result<Value> {
+    let request = RequestParams::from_env_and_stdin();
+    let response = run_legacy_cgi_json("blog-payments", &request, &[])
+        .map_err(|message| AdminError::new("payments_failed", message))?;
     Ok(response)
 }
 
@@ -2762,6 +2770,68 @@ fn run_shell_function(
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         Err(if !stderr.is_empty() { stderr } else { stdout })
     }
+}
+
+fn run_legacy_cgi_json(
+    action: &str,
+    request: &RequestParams,
+    envs: &[(&str, String)],
+) -> std::result::Result<Value, String> {
+    let legacy_script = gazeta_repo_root()
+        .join("cgi")
+        .join(format!("{action}-legacy"));
+    let method = env::var("REQUEST_METHOD").unwrap_or_else(|_| "GET".to_string());
+    let content_type = env::var("CONTENT_TYPE").unwrap_or_default();
+    let host = env::var("HTTP_HOST").unwrap_or_default();
+    let body = request.body().to_string();
+    let mut command = Command::new("/bin/sh");
+    command.arg(legacy_script);
+    command.env("REQUEST_METHOD", &method);
+    command.env("QUERY_STRING", request.query());
+    if !host.is_empty() {
+        command.env("HTTP_HOST", host);
+    }
+    if !content_type.is_empty() {
+        command.env("CONTENT_TYPE", content_type);
+    }
+    if method == "POST" {
+        command.env("CONTENT_LENGTH", body.len().to_string());
+        command.stdin(Stdio::piped());
+    }
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    if method == "POST" && !body.is_empty() {
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "Could not open CGI stdin".to_string())?;
+        stdin
+            .write_all(body.as_bytes())
+            .map_err(|error| error.to_string())?;
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|error| error.to_string())?;
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    let payload = stdout
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    serde_json::from_str(&payload).map_err(|error| {
+        if !stderr.is_empty() {
+            stderr
+        } else if !payload.is_empty() {
+            format!("Could not decode legacy CGI response: {error}")
+        } else {
+            "Legacy CGI produced no JSON response".to_string()
+        }
+    })
 }
 
 fn gazeta_repo_root() -> PathBuf {

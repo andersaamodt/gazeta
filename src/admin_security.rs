@@ -60,6 +60,14 @@ impl RequestParams {
         }
         value
     }
+
+    pub(crate) fn query(&self) -> &str {
+        &self.query
+    }
+
+    pub(crate) fn body(&self) -> &str {
+        &self.body
+    }
 }
 
 pub(crate) struct SessionState {
