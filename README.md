@@ -14,13 +14,13 @@ gazeta is a single-author Nostr blog and self-hosted publishing console for wiza
 - **Content-addressed posts**: SHA-256 hash per published post
 - **Public discovery**: Index, tags, search, RSS, Atom, sitemap
 - **Archive index**: Month-grouped archive view with per-month counts
-- **Post context UX**: Read-time card, tags, and automatic older/newer links
+- **Post context UX**: Canonical post header metadata, tags, and automatic older/newer links
 - **Nostr-first auth**: Nostr challenge login with optional delegated device sessions and optional SSH link
 - **Video chat widget**: Self-contained Shadow-DOM WebRTC widget with Janus videoroom support, data-attribute auto-mount, manual init API, and iframe embed route
 
 ## Post Model
 
-Posts are stored as `.md` files in the canonical content directory under `.sitedata/<site>/blog/content/posts/` with YAML front-matter:
+Posts are stored as `.md` files in the canonical content directory under `.sitedata/<site>/content/posts/` with YAML front-matter:
 
 ```markdown
 ---
@@ -80,11 +80,13 @@ blog/
 │   └── static/
 │       └── style.css             # Shared blog styling and page bundles
 │
-├── .sitedata/<site>/blog/content/
+├── .sitedata/<site>/content/
 │   ├── posts/                    # Canonical post markdown
 │   ├── pages/                    # Canonical public page markdown shells
-│   └── drafts/                   # Canonical draft markdown
-├── .sitedata/<site>/blog/lists/  # Draft JSON state for managed Nostr/list pages
+│   ├── drafts/                   # Canonical draft markdown
+│   └── page-states/              # Canonical managed page draft state JSON
+├── .sitedata/<site>/origin/      # Cross-post platform settings + emitted state
+├── .sitedata/<site>/files/       # Uploaded files and public-file aliases
 ├── .sitedata/<site>/nostr/events/ # Canonical mirrored/signed event JSON files
 ├── .sitedata/<site>/nostr/derived/# Disposable indexes generated from events
 └── .sitedata/<site>/nostr/state/  # Authors, relays, blocklist, hidden posts, key
@@ -132,7 +134,7 @@ visibility: "public"  # Change from "draft"
 
 ## Static Pages
 
-- Public page source lives under `.sitedata/<site>/blog/content/pages/`
+- Public page source lives under `.sitedata/<site>/content/pages/`
 - `site/pages/*.md` mounts are generated from that canonical content directory during build
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
 - Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
@@ -147,8 +149,8 @@ visibility: "public"  # Change from "draft"
 site_name=myblog
 sites_root=${WIZARDRY_SITES_DIR:-$HOME/sites}
 site_data_root="$sites_root/.sitedata/$site_name"
-mkdir -p "$site_data_root/blog/content/posts"
-cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/"
+mkdir -p "$site_data_root/content/posts"
+cp -R sample-site-data/blog/content/posts/. "$site_data_root/content/posts/"
 ```
 
 ## Interaction Model
@@ -168,7 +170,9 @@ Gazeta is migrating high-value read and admin mutation paths to the Theurgy web 
 - `cgi/blog-list-public-posts` execs `gazeta-read list-public-posts`.
 - `cgi/blog-list-navbar-pages` execs `gazeta-read list-navbar-pages`.
 - `cgi/blog-manage-post` and `cgi/blog-upload-media` run directly in `gazeta-admin`.
-- `cgi/blog-save-post`, `cgi/blog-publish-nostr-page`, `cgi/blog-video-chat-control`, `cgi/blog-secure-chat-admin`, and `cgi/blog-payments` now enter through `gazeta-admin` and bridge to explicit `*-legacy` handlers while those deeper subsystems are still being peeled out of shell.
+- `cgi/blog-save-post`, `cgi/blog-publish-nostr-page`, `cgi/blog-video-chat-control`, `cgi/blog-secure-chat-admin`, and `cgi/blog-payments` now enter through `gazeta-admin`.
+- `blog-publish-nostr-page` and `blog-payments` still bridge from the runtime into shared shell functions for their deeper domain logic.
+- The separate `*-legacy` scripts remain only as adapter fallback when the corresponding runtime binary is unavailable.
 - `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
 - Build runtime binaries with:
 
@@ -206,7 +210,9 @@ web-wizardry install-nostril
 web-wizardry install-syncthing   # optional, for content mirroring/backups
 
 # Edit content
-vim ~/sites/.sitedata/myblog/blog/content/posts/first-post.md
+sites_root=${WIZARDRY_SITES_DIR:-$HOME/sites}
+site_data_root=${WIZARDRY_SITES_DATA_DIR:-$sites_root/.sitedata}/myblog
+vim "$site_data_root/content/posts/first-post.md"
 
 # Build
 web-wizardry build myblog
@@ -225,9 +231,9 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 
 ## Canonical Content Storage
 
-- Canonical authored content lives under `.sitedata/<site>/blog/content/`, not in the template tree.
+- Canonical authored content lives under `.sitedata/<site>/content/`, not in the template tree.
 - `site/pages/posts` and managed public page files in `site/pages/*.md` are mounts generated from that content directory.
-- Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/blog/content/`.
+- Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/content/`.
 - That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
 - For repo-root local tooling runs under `~/git`, Gazeta also moves the canonical `.sitedata/<site>` default to `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/sites-data/<site>` so local app state and generated mounts do not accumulate inside the synced git tree.
 - Wizardry builds should consume Gazeta projections through explicit `pages-dir`, `static-dir`, and `build-dir` paths, or the equivalent `WIZARDRY_PAGES_DIR`, `WIZARDRY_STATIC_DIR`, and `WIZARDRY_BUILD_DIR` environment variables.
@@ -485,9 +491,14 @@ Set CSP to allow:
 │           └── slug-2.md
 └── .sitedata/
     └── myblog/
+        ├── content/
+        │   ├── posts/
+        │   ├── pages/
+        │   ├── drafts/
+        │   └── page-states/
+        ├── files/
+        ├── origin/
         ├── ssh-auth/
-        ├── blog/
-        │   └── drafts/
         └── nostr/
             ├── events/        # Canonical event store
             ├── derived/       # Rebuildable indexes
@@ -497,7 +508,6 @@ Set CSP to allow:
                 ├── blocklist.txt
                 ├── hidden_posts.txt
                 └── secret.key # Local signing key (not committed)
-        └── uploads/
 ```
 
 ### Security Model
