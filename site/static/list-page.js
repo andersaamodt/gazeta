@@ -235,15 +235,12 @@
       els.content.getAttribute('data-prerender-painted') === 'true';
   }
 
-	  function renderFromBootstrapPayload(payload) {
-    if (!payload || typeof payload !== 'object' || !isExpectedPayload(payload)) {
-      return false;
-    }
+  function applyBootstrapState(optimisticPayload, payload, authenticated) {
     var cachedPayload = payload;
     try {
-      cachedPayload = JSON.parse(JSON.stringify(payload));
+      cachedPayload = JSON.parse(JSON.stringify(optimisticPayload));
     } catch (_cloneErr) {
-      cachedPayload = payload;
+      cachedPayload = optimisticPayload;
     }
     // Bootstrap cache is an optimistic first-paint path; avoid showing stale
     // validation alarms from previous runs before fresh server validation lands.
@@ -253,7 +250,7 @@
     cachedPayload.validation.errors = [];
     cachedPayload.validation.warnings = [];
     cachedPayload.validation.can_publish = true;
-    if (!cachedPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession()) {
+    if (!cachedPayload.is_admin && authenticated) {
       cachedPayload.is_admin = true;
     }
     state.payload = cachedPayload;
@@ -272,38 +269,50 @@
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
-	      state.renderSignature = JSON.stringify({
-	      slug: String(cachedPayload && cachedPayload.slug || ''),
-	      page_type: String(cachedPayload && cachedPayload.page_type || ''),
+    state.renderSignature = JSON.stringify({
+      slug: String(cachedPayload && cachedPayload.slug || ''),
+      page_type: String(cachedPayload && cachedPayload.page_type || ''),
       nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
       is_admin: !!(cachedPayload && cachedPayload.is_admin),
       canonical_exists: !!(cachedPayload && cachedPayload.canonical_exists),
-	      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
-	      sync_status: cachedPayload && cachedPayload.sync_status ? cachedPayload.sync_status : null,
-	      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
-	    });
-	    if (canPreserveStaticPrerender(cachedPayload) && hasMatchingStaticPrerender(cachedPayload, els.content)) {
-	      state.staticPrerenderListAdopted = true;
-	      initializePrerenderMarkerFiltersFromPayload();
-      if (hasMarkerFilterHashOverride()) {
+      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
+      sync_status: cachedPayload && cachedPayload.sync_status ? cachedPayload.sync_status : null,
+      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
+    });
+  }
+
+  function renderBootstrapPayload(payload) {
+    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: isExpectedPayload,
+      applyState: applyBootstrapState,
+      canAdoptStaticPrerender: function (optimisticPayload) {
+        return canPreserveStaticPrerender(optimisticPayload);
+      },
+      hasMatchingStaticPrerender: function (optimisticPayload) {
+        return hasMatchingStaticPrerender(optimisticPayload, els.content);
+      },
+      renderAdoptedPrerender: function () {
+        state.staticPrerenderListAdopted = true;
+        initializePrerenderMarkerFiltersFromPayload();
+        if (hasMarkerFilterHashOverride()) {
+          state.staticPrerenderListAdopted = false;
+          renderList();
+          renderAdmin();
+          renderValidation();
+          return;
+        }
+        renderHead();
+        renderAdmin();
+        renderValidation();
+      },
+      renderAll: function () {
         state.staticPrerenderListAdopted = false;
         renderList();
         renderAdmin();
         renderValidation();
-        markInitialContentPainted();
-        return true;
-      }
-	      renderHead();
-	      renderAdmin();
-	      renderValidation();
-	      markInitialContentPainted();
-	      return true;
-	    }
-	    renderList();
-	    renderAdmin();
-	    renderValidation();
-    markInitialContentPainted();
-    return true;
+      },
+      markInitialContentPainted: markInitialContentPainted
+    });
   }
 
   function authEventIsAdmin(event) {
@@ -5471,7 +5480,7 @@
     allowWrite: function (nextPayload) {
       return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
     },
-    renderPayload: renderFromBootstrapPayload,
+    renderPayload: renderBootstrapPayload,
     writeCache: writeBootstrapCache
   });
   load();
