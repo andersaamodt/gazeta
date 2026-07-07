@@ -420,6 +420,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_draft_
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_source" = "true" ]; then' 'public Nostr-backed pages prefer the server copy whenever local source exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'prerender_signature: $signature' 'runtime Nostr page payloads carry the server prerender signature'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_attach_prerender_projection "$response_json" "$page_type"' 'runtime Nostr page payloads attach shared prerender fragments'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_source_sync_signature "$cfg_json"' 'Nostr source page sync has a deterministic input signature'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_expected_source_pages_exist "$cfg_json"' 'Nostr source page sync verifies expected canonical sources before skipping'
@@ -433,6 +434,7 @@ assert_file_contains "$ROOT_DIR/cgi/pre-build" 'copy_tree_overlay "$legacy_asset
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'sync_legacy_asset_aliases "$site_bootstrap_dir/legacy-assets"' 'pre-build exposes legacy asset files through clean generated URLs'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_prerender_contact_video_chat_html() {' 'contact prerender reserves the public video chat shell when enabled'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json"' 'bootstrap prerender writes static source pages from the hydration payload'
+assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'blog_nostr_page_attach_prerender_projection "$payload_json" "$page_type"' 'bootstrap payloads attach shared prerender fragments before signature and write'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Loading page content...' 'managed templates do not ship generic page loading copy'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'Loading posts...' 'managed templates do not ship generic post loading copy'
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'data-page-initial-placeholder' 'managed templates do not ship legacy placeholder markers'
@@ -450,6 +452,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'renderFromBoots
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'renderFromBootstrapPayload(payload);' 'public ranking hydration reuses matching prerendered DOM after fetch'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function normalizedPayloadForRenderSignature() {' 'blog hydration compares fetched state against the currently rendered page state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderFetchedPostsIfChanged(previousSignature);' 'blog hydration skips post-list repaints when fetched posts match the prerendered list'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "state.payload.prerender && state.payload.prerender.description_html" 'blog view-mode hydration reuses server-rendered description fragments'
+assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "state.payload && state.payload.prerender && state.payload.prerender[key]" 'NIP-23 view-mode hydration reuses server-rendered fragments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
 
 # 3) Frontend fetches must opt out of HTTP caches.

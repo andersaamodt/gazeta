@@ -281,6 +281,12 @@ else
   fail 'hydrated Nostr page payload carries a prerender signature for DOM preservation'
 fi
 
+if printf '%s\n' "$oeuvre_body" | jq -e '((.prerender.content_html // "") | contains("list-year-group")) and ((.prerender.content_attrs // "") == "")' >/dev/null; then
+  pass
+else
+  fail 'hydrated Nostr page payload carries shared prerender fragments'
+fi
+
 index_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=index "$ROOT_DIR/cgi/blog-get-nostr-page")
 index_body=$(printf '%s\n' "$index_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
 if [ -z "$index_body" ]; then
@@ -335,6 +341,7 @@ assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog pre
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender includes the default-tag text'
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
+assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" '"prerender"' 'blog bootstrap carries shared prerender fragments'
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'

@@ -240,6 +240,10 @@
     return productPriceDisplayText(s) || '$0.00';
   }
 
+  function prerenderFragment(key) {
+    return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
+  }
+
   function authPayload() {
     return {
       session_token: String(localStorage.getItem('session_token') || '').trim(),
@@ -855,20 +859,18 @@
       return;
     }
     var s = getRenderState();
-    var outroHtml = '';
-    if (String(s.extras_after || '').trim()) {
-      outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
-        markdownBlock(s.extras_after || '') +
-        '</section>';
-    }
-
-    var hasMainContent = String(s.content || '').trim().length > 0;
-    var readOnlyMain = hasMainContent
-      ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
-      : '<p class="list-page-empty-state">No content yet.</p>';
-    var productCardHtml = renderProductCard(s);
-
     if (isAdmin() && state.editMode) {
+      var outroHtml = '';
+      if (String(s.extras_after || '').trim()) {
+        outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
+          markdownBlock(s.extras_after || '') +
+          '</section>';
+      }
+      var hasMainContent = String(s.content || '').trim().length > 0;
+      var readOnlyMain = hasMainContent
+        ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
+        : '<p class="list-page-empty-state">No content yet.</p>';
+      var productCardHtml = renderProductCard(s);
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
@@ -895,7 +897,8 @@
       return;
     }
 
-    els.content.innerHTML = productCardHtml + readOnlyMain + outroHtml;
+    els.content.innerHTML = prerenderFragment('content_html');
+    els.content.hidden = prerenderFragment('content_attrs').indexOf('hidden') !== -1;
   }
 
   function renderAll() {

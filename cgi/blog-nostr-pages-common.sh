@@ -1224,6 +1224,68 @@ blog_nostr_prerender_blog_html() {
   ' 2>/dev/null || printf ''
 }
 
+blog_nostr_page_prerender_content_html() {
+  payload_json=${1-}
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  case "$page_type" in
+    contact)
+      blog_nostr_prerender_contact_html "$payload_json"
+      ;;
+    nip23)
+      blog_nostr_prerender_nip23_html "$payload_json"
+      ;;
+    blog)
+      blog_nostr_prerender_blog_html "$payload_json"
+      ;;
+    public-ranking)
+      blog_nostr_prerender_public_ranking_html "$payload_json"
+      ;;
+    overworld)
+      blog_nostr_prerender_overworld_html
+      ;;
+    list|icon-gallery|software-gallery)
+      blog_nostr_prerender_list_html "$payload_json"
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
+blog_nostr_page_prerender_projection_json() {
+  payload_json=${1-}
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  description_text=$(blog_nostr_prerender_description "$payload_json")
+  description_html=$(blog_nostr_prerender_inline_html_from_text "$description_text")
+  content_html=$(blog_nostr_page_prerender_content_html "$payload_json" "$page_type")
+  description_attrs=''
+  content_attrs=''
+  if [ -z "$description_html" ]; then
+    description_attrs=' hidden'
+  fi
+  if [ -z "$content_html" ]; then
+    content_attrs=' hidden'
+  fi
+  jq -cn \
+    --arg description_html "$description_html" \
+    --arg description_attrs "$description_attrs" \
+    --arg content_html "$content_html" \
+    --arg content_attrs "$content_attrs" \
+    '{
+      description_html: $description_html,
+      description_attrs: $description_attrs,
+      content_html: $content_html,
+      content_attrs: $content_attrs
+    }'
+}
+
+blog_nostr_page_attach_prerender_projection() {
+  payload_json=${1-}
+  page_type=${2-}
+  projection_json=$(blog_nostr_page_prerender_projection_json "$payload_json" "$page_type")
+  printf '%s\n' "$payload_json" | jq -c --argjson prerender "$projection_json" '. + {prerender: $prerender}' 2>/dev/null || printf '%s\n' "$payload_json"
+}
+
 blog_nostr_prerender_contact_html() {
   payload_json=${1-}
   contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
@@ -1515,15 +1577,7 @@ blog_nostr_page_write_prerendered_source() {
   esac
   blog_nostr_page_front_matter_to_tmp "$page_file" "$page_title" "$tags" "$tmp"
 
-  lodestone_content_html=''
-  case "$page_type" in
-    contact) lodestone_content_html=$(blog_nostr_prerender_contact_html "$payload_json") ;;
-    nip23) lodestone_content_html=$(blog_nostr_prerender_nip23_html "$payload_json") ;;
-    blog) lodestone_content_html=$(blog_nostr_prerender_blog_html "$payload_json") ;;
-    public-ranking) lodestone_content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json") ;;
-    overworld) lodestone_content_html=$(blog_nostr_prerender_overworld_html) ;;
-    *) lodestone_content_html=$(blog_nostr_prerender_list_html "$payload_json") ;;
-  esac
+  lodestone_content_html=$(blog_nostr_page_prerender_content_html "$payload_json" "$page_type")
 
   if ! blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "$page_description" "$attrs" "$lodestone_content_html" "$tmp"; then
     rm -f "$payload_tmp" "$tmp"
