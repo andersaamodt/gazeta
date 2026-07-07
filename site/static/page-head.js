@@ -357,6 +357,27 @@
     return true;
   }
 
+  function renderLoadFallback(err, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var consoleLabel = String(opts.consoleLabel || 'Page').trim() || 'Page';
+    if (err && window.console && typeof window.console.warn === 'function') {
+      window.console.warn(consoleLabel + ' refresh failed:', err);
+    }
+    var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
+    var contentNode = opts.contentNode || null;
+    if ((state && state.initialContentPainted) || !contentNode) {
+      return false;
+    }
+    var fallbackText = String(opts.fallbackText || 'Page content is still loading.');
+    contentNode.innerHTML = '<p class="placeholder">' + fallbackText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;') + '</p>';
+    return notifyInitialContentPainted(opts.slug || '', opts);
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -467,6 +488,7 @@
 
   window.__wizardryMarkHydrationPageReady = markHydrationPageReady;
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
+  window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;

@@ -625,14 +625,13 @@
   }
 
   function renderLoadFallback(err, fallbackText) {
-    if (err && window.console && typeof window.console.warn === 'function') {
-      window.console.warn('Contact page refresh failed:', err);
-    }
-    if (state.initialContentPainted || !els.content) {
-      return;
-    }
-    els.content.innerHTML = '<p class="placeholder">' + escapeHtml(fallbackText || 'Page content is still loading.') + '</p>';
-    markInitialContentPainted();
+    window.__wizardryRenderLoadFallback(err, {
+      consoleLabel: 'Contact page',
+      state: state,
+      contentNode: els.content,
+      fallbackText: fallbackText,
+      slug: slug
+    });
   }
 
   function bootstrapCacheKey() {

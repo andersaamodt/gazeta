@@ -139,6 +139,7 @@ visibility: "public"  # Change from "draft"
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
 - Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
 - Gazeta-specific Lodestone components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
+- Shared visitor hydration lifecycle helpers such as page-title reconciliation, prerender adoption checks, readiness signaling, and load-fallback placeholders live in `site/static/page-head.js`; page-specific scripts should only own state and behavior that differs by page type.
 
 ## Sample Site Data
 
