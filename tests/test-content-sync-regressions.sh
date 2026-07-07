@@ -601,7 +601,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "function prerender
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "prerenderFragment('content_html')" 'list view-mode hydration reuses server-rendered content fragments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "prerenderFragment('content_html')" 'contact view-mode hydration can reuse server-rendered content fragments'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" "prerenderFragment('content_html')" 'public ranking view-mode hydration reuses server-rendered content fragments'
-assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'existingShell' 'Overworld runtime reuses the prerendered game shell'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'host.innerHTML = OVERWORLD_STATIC_SHELL_HTML;' 'Overworld runtime falls back to one canonical static shell when prerendered markup is missing or stale'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'function injectStyles()' 'Overworld runtime no longer duplicates stylesheet ownership in page JS'
 
 # 3) Frontend fetches must opt out of HTTP caches.
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "cache: 'no-store'" 'contact api no-store'

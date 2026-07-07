@@ -142,6 +142,7 @@ visibility: "public"  # Change from "draft"
 - The same Gazeta-owned Lodestone component boundary should also own reusable read-only Nostr page content in prerender projections, so bootstrap payload HTML and generated page HTML stay on one render path.
 - Shared visitor hydration lifecycle helpers such as page-title reconciliation, prerender adoption checks, readiness signaling, load-fallback placeholders, and session-auth refresh observation live in `site/static/page-head.js`; page-specific scripts should only own state and behavior that differs by page type.
 - Shared first-paint bootstrap policy also lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow, managed-page bootstrap cache transport, and the simple managed-page prerender-adoption decision should stay shared unless a page has materially different bootstrap behavior.
+- When Lodestone/Gazeta already prerenders a stable read-only shell, the page script should preserve that shell and bind behavior onto it; static shell markup and CSS should not be re-owned in page-local JavaScript.
 
 ## Sample Site Data
 
