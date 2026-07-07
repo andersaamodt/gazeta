@@ -175,7 +175,7 @@ Gazeta is migrating high-value read and admin mutation paths to the Theurgy web 
 - `cgi/blog-list-navbar-pages` execs `gazeta-read list-navbar-pages`.
 - `cgi/blog-manage-post` and `cgi/blog-upload-media` run directly in `gazeta-admin`.
 - `cgi/blog-save-post`, `cgi/blog-publish-nostr-page`, `cgi/blog-video-chat-control`, `cgi/blog-secure-chat-admin`, and `cgi/blog-payments` now enter through `gazeta-admin`.
-- `blog-publish-nostr-page` and `blog-payments` still use dedicated runtime-to-shell bridge adapters for their deeper domain logic.
+- `blog-publish-nostr-page` and `blog-payments` still use dedicated runtime-to-shell bridge adapters (`cgi/blog-publish-nostr-page-bridge.sh`, `cgi/blog-payments-bridge.sh`) for their deeper domain logic.
 - The separate `*-legacy` scripts remain only as adapter fallback when the corresponding runtime binary is unavailable.
 - `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
 - Build runtime binaries with:

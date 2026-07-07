@@ -2726,12 +2726,7 @@ fn run_publish_nostr_page_bridge(
     envs: &[(&str, String)],
 ) -> std::result::Result<Value, String> {
     let output = run_shell_function(
-        &[
-            "cgi/blog-lib.sh",
-            "cgi/blog-list-common.sh",
-            "cgi/blog-public-ranking-common.sh",
-            "cgi/blog-nostr-pages-common.sh",
-        ],
+        &["cgi/blog-lib.sh", "cgi/blog-publish-nostr-page-bridge.sh"],
         "blog_publish_nostr_page_json",
         args,
         envs,
@@ -2747,6 +2742,7 @@ fn run_shell_function(
 ) -> std::result::Result<String, String> {
     let repo_root = gazeta_repo_root();
     let mut command = Command::new("/bin/sh");
+    command.current_dir(&repo_root);
     command
         .arg("-c")
         .arg(
@@ -2780,6 +2776,7 @@ fn run_payments_bridge(request: &RequestParams) -> std::result::Result<Value, St
     let host = env::var("HTTP_HOST").unwrap_or_default();
     let body = request.body().to_string();
     let mut command = Command::new("/bin/sh");
+    command.current_dir(&repo_root);
     command
         .arg("-c")
         .arg(
@@ -2787,13 +2784,7 @@ fn run_payments_bridge(request: &RequestParams) -> std::result::Result<Value, St
         )
         .arg("shell-request-function")
         .arg(repo_root.join("cgi/blog-lib.sh"));
-    for source in [
-        "cgi/blog-list-common.sh",
-        "cgi/blog-public-ranking-common.sh",
-        "cgi/blog-nostr-pages-common.sh",
-        "cgi/blog-payments-common.sh",
-        "cgi/blog-merch-common.sh",
-    ] {
+    for source in ["cgi/blog-payments-bridge.sh"] {
         command.arg(repo_root.join(source));
     }
     command.arg("--").arg("blog_payments_json");

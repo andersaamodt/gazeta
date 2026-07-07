@@ -369,9 +369,11 @@ assert_contains "$headers_out" 'END-HEADERS' 'json headers terminator'
 # 2) Publish endpoints must trigger sync and rebuild.
 assert_file_contains "$ROOT_DIR/cgi/gazeta-action-registry.conf" 'admin blog-publish-nostr-page' 'publish nostr page endpoint is registered to the admin runtime'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-publish-nostr-page" => blog_publish_nostr_page().map(CgiResponse::json)' 'publish nostr page endpoint is runtime-owned'
-assert_file_contains "$ROOT_DIR/README.md" 'blog-publish-nostr-page` and `blog-payments` still use dedicated runtime-to-shell bridge adapters' 'README describes the narrowed runtime-to-shell bridge boundary accurately'
+assert_file_contains "$ROOT_DIR/README.md" 'blog-publish-nostr-page` and `blog-payments` still use dedicated runtime-to-shell bridge adapters (`cgi/blog-publish-nostr-page-bridge.sh`, `cgi/blog-payments-bridge.sh`)' 'README describes the narrowed runtime-to-shell bridge boundary accurately'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_publish_nostr_page_bridge(' 'publish endpoint uses a dedicated runtime-to-shell bridge adapter'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_payments_bridge(' 'payments endpoint uses a dedicated runtime-to-shell bridge adapter'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"cgi/blog-publish-nostr-page-bridge.sh"' 'publish bridge adapter sources one shell-owned bridge script instead of a runtime-maintained dependency list'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"cgi/blog-payments-bridge.sh"' 'payments bridge adapter sources one shell-owned bridge script instead of a runtime-maintained dependency list'
 assert_file_not_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_shell_function_json(' 'runtime no longer exposes a generic JSON shell-function bridge helper'
 assert_file_not_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_shell_request_function_json(' 'runtime no longer exposes a generic JSON shell-request bridge helper'
 assert_file_not_contains "$ROOT_DIR/README.md" 'bridge to explicit `*-legacy` handlers' 'README no longer describes runtime-owned endpoints as primary legacy-handler bridges'
@@ -1976,10 +1978,12 @@ assert_success sh -n "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-post-cards-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page"
+assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page-bridge.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-nostr-page-legacy"
 assert_success sh -n "$ROOT_DIR/cgi/blog-audit-nostr-backing"
 assert_success sh -n "$ROOT_DIR/cgi/blog-publish-list-page"
 assert_success sh -n "$ROOT_DIR/cgi/blog-submit-public-ranking"
+assert_success sh -n "$ROOT_DIR/cgi/blog-payments-bridge.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments-common.sh"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments"
 assert_success sh -n "$ROOT_DIR/cgi/blog-payments-legacy"
