@@ -142,6 +142,41 @@
     return text;
   }
 
+  function readNostrPageBootstrap(slug, isExpectedPayload) {
+    try {
+      var allPayloads = window.__wizardryNostrPageBootstrap;
+      if (!allPayloads || typeof allPayloads !== 'object') {
+        return null;
+      }
+      var payload = allPayloads[String(slug || '')];
+      if (!payload || typeof payload !== 'object') {
+        return null;
+      }
+      if (typeof isExpectedPayload === 'function' && !isExpectedPayload(payload)) {
+        return null;
+      }
+      return payload;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function prerenderFragment(payload, key) {
+    return String(payload && payload.prerender && payload.prerender[key] || '');
+  }
+
+  function hasMatchingStaticPrerender(rootNode, contentNode, payload) {
+    var signature = String(payload && payload.prerender_signature || '').trim();
+    if (!signature || !rootNode || !contentNode) {
+      return false;
+    }
+    if (rootNode.getAttribute('data-prerender-painted') !== 'true' || contentNode.getAttribute('data-prerender-painted') !== 'true') {
+      return false;
+    }
+    return rootNode.getAttribute('data-prerender-signature') === signature ||
+      contentNode.getAttribute('data-prerender-signature') === signature;
+  }
+
   function normalizeSlug(value) {
     return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   }
@@ -319,6 +354,9 @@
 
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
+  window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
+  window.__wizardryPrerenderFragment = prerenderFragment;
+  window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);

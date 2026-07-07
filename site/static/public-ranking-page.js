@@ -152,6 +152,9 @@
   }
 
   function readPrerenderBootstrap() {
+    if (typeof window.__wizardryReadNostrPageBootstrap === 'function') {
+      return window.__wizardryReadNostrPageBootstrap(slug, isExpectedPayload);
+    }
     try {
       var allPayloads = window.__wizardryNostrPageBootstrap;
       if (!allPayloads || typeof allPayloads !== 'object') {
@@ -168,6 +171,9 @@
   }
 
   function prerenderFragment(key) {
+    if (typeof window.__wizardryPrerenderFragment === 'function') {
+      return window.__wizardryPrerenderFragment(state.payload, key);
+    }
     return String(state.payload && state.payload.prerender && state.payload.prerender[key] || '');
   }
 
@@ -227,15 +233,18 @@
 	  }
 
 	  function hasMatchingStaticPrerender(payload) {
-	    var signature = String(payload && payload.prerender_signature || '').trim();
-	    if (!signature || !root || !els.content) {
-	      return false;
-	    }
-	    if (root.getAttribute('data-prerender-painted') !== 'true' || els.content.getAttribute('data-prerender-painted') !== 'true') {
-	      return false;
-	    }
-	    return root.getAttribute('data-prerender-signature') === signature ||
-	      els.content.getAttribute('data-prerender-signature') === signature;
+	    if (typeof window.__wizardryHasMatchingStaticPrerender === 'function') {
+      return window.__wizardryHasMatchingStaticPrerender(root, els.content, payload);
+    }
+    var signature = String(payload && payload.prerender_signature || '').trim();
+    if (!signature || !root || !els.content) {
+      return false;
+    }
+    if (root.getAttribute('data-prerender-painted') !== 'true' || els.content.getAttribute('data-prerender-painted') !== 'true') {
+      return false;
+    }
+    return root.getAttribute('data-prerender-signature') === signature ||
+      els.content.getAttribute('data-prerender-signature') === signature;
 	  }
 
   function isAdmin() {
