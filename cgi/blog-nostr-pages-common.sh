@@ -495,6 +495,26 @@ blog_nostr_prerender_description() {
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '(.state.description // .state.content // "") | tostring' 2>/dev/null || printf ''
 }
 
+blog_nostr_prerender_inline_html_from_text() {
+  inline_text=${1-}
+  printf '%s\n' "$inline_text" | jq -Rrs '
+    def h:
+      tostring
+      | gsub("&"; "&amp;")
+      | gsub("<"; "&lt;")
+      | gsub(">"; "&gt;")
+      | gsub("\""; "&quot;")
+      | gsub("'"'"'"; "&#39;");
+    def md_inline:
+      tostring
+      | h
+      | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>");
+    tostring
+    | gsub("^\\s+|\\s+$"; "")
+    | if length > 0 then md_inline else "" end
+  ' 2>/dev/null || printf ''
+}
+
 blog_nostr_prerender_list_html() {
   payload_json=${1-}
   if command -v python3 >/dev/null 2>&1; then
@@ -1175,6 +1195,35 @@ blog_nostr_prerender_nip23_html() {
   ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
 }
 
+blog_nostr_prerender_blog_html() {
+  payload_json=${1-}
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r '
+    def h:
+      tostring
+      | gsub("&"; "&amp;")
+      | gsub("<"; "&lt;")
+      | gsub(">"; "&gt;")
+      | gsub("\""; "&quot;")
+      | gsub("'"'"'"; "&#39;");
+    def md_inline:
+      tostring
+      | h
+      | gsub("\\[(?<label>[^\\]]+)\\]\\((?<href>[^)]+)\\)"; "<a href=\"\(.href)\">\(.label)</a>");
+    def md_block:
+      tostring as $raw
+      | if ($raw | gsub("\\s"; "") | length) == 0 then ""
+        else ($raw | split("\n\n") | map("<p>" + (md_inline | gsub("\n"; "<br>")) + "</p>") | join(""))
+        end;
+    (.state // {}) as $s
+    | (($s.extras_after // "") | md_block) as $after
+    | if ($after | length) > 0 then
+        "<section class=\"nostr-page-extra nostr-page-extra-after\">" + $after + "</section>"
+      else
+        ""
+      end
+  ' 2>/dev/null || printf ''
+}
+
 blog_nostr_prerender_contact_html() {
   payload_json=${1-}
   contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
@@ -1382,8 +1431,19 @@ blog_nostr_page_render_lodestone_source() {
   render_template=$(blog_nostr_page_lodestone_template_path "$render_page_type")
   [ -f "$render_template" ] || return 1
   render_content_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-content.XXXXXX")
+  render_description_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-description.XXXXXX")
   render_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-posts.XXXXXX")
+  render_description_html=$(blog_nostr_prerender_inline_html_from_text "$render_description")
+  render_description_attrs=''
+  render_content_attrs=''
+  if [ -z "$render_description_html" ]; then
+    render_description_attrs=' hidden'
+  fi
+  if [ -z "$render_content_html" ]; then
+    render_content_attrs=' hidden'
+  fi
   printf '%s\n' "$render_content_html" > "$render_content_tmp"
+  printf '%s\n' "$render_description_html" > "$render_description_tmp"
   if [ "$render_page_type" = "blog" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
     jq -c '.bootstrap_posts // []' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" > "$render_posts_tmp" 2>/dev/null || printf '[]\n' > "$render_posts_tmp"
   else
@@ -1394,6 +1454,8 @@ blog_nostr_page_render_lodestone_source() {
     --set "slug=$render_slug" \
     --set "page_type=$render_page_type" \
     --set "description=$render_description" \
+    --set "description_attrs=$render_description_attrs" \
+    --set "content_attrs=$render_content_attrs" \
     --set "prerender_attrs=$render_attrs" \
     --set "list_page_js_version=$blog_nostr_list_page_js_version" \
     --set "contact_page_js_version=$blog_nostr_contact_page_js_version" \
@@ -1403,9 +1465,10 @@ blog_nostr_page_render_lodestone_source() {
     --set "public_ranking_page_js_version=$blog_nostr_public_ranking_page_js_version" \
     --set "overworld_game_js_version=$blog_nostr_overworld_game_js_version" \
     --set "blog_page_js_version=$blog_page_js_version" \
+    --html-file "description_html=$render_description_tmp" \
     --html-file "content_html=$render_content_tmp" \
     --html-file "posts_json=$render_posts_tmp" > "$render_out"
-  rm -f "$render_content_tmp" "$render_posts_tmp"
+  rm -f "$render_content_tmp" "$render_description_tmp" "$render_posts_tmp"
 }
 
 blog_install_generated_file_if_changed() {
@@ -1456,7 +1519,7 @@ blog_nostr_page_write_prerendered_source() {
   case "$page_type" in
     contact) lodestone_content_html=$(blog_nostr_prerender_contact_html "$payload_json") ;;
     nip23) lodestone_content_html=$(blog_nostr_prerender_nip23_html "$payload_json") ;;
-    blog) lodestone_content_html='' ;;
+    blog) lodestone_content_html=$(blog_nostr_prerender_blog_html "$payload_json") ;;
     public-ranking) lodestone_content_html=$(blog_nostr_prerender_public_ranking_html "$payload_json") ;;
     overworld) lodestone_content_html=$(blog_nostr_prerender_overworld_html) ;;
     *) lodestone_content_html=$(blog_nostr_prerender_list_html "$payload_json") ;;

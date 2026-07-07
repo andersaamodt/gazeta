@@ -119,6 +119,11 @@ grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   exit 1
 }
 
+grep -Fq '<h1 id="blog-page-title">Blog</h1>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing prerendered title from lodestone render" >&2
+  exit 1
+}
+
 grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing script from lodestone source" >&2
   exit 1

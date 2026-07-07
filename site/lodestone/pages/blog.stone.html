@@ -19,12 +19,12 @@ title: Blog
 </div>
 <div class="blog-main-column">
 <div class="list-page-head">
-<h1 id="blog-page-title" hidden></h1>
-<p id="blog-page-description" class="muted" hidden></p>
+<h1 id="blog-page-title">{title}</h1>
+<p id="blog-page-description" class="muted"{@html description_attrs}>{@html description_html}</p>
 </div>
 <div id="blog-page-admin" class="list-admin" hidden></div>
 <div id="blog-page-validation" class="list-validation" hidden></div>
-<div id="blog-page-content" class="list-page-content" hidden></div>
+<div id="blog-page-content" class="list-page-content"{@html content_attrs}{@html prerender_attrs}>{@html content_html}</div>
 <div id="blog-filter-panel" class="blog-filter-panel" hidden>
 <div class="blog-filter-grid">
 <div class="blog-filter-group">
