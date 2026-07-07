@@ -324,15 +324,15 @@
     return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
   }
 
-  function renderSyncStatusPill() {
-    const title = document.getElementById('overworld-page-title');
-    if (!title) {
-      return;
-    }
-    const shell = window.__wizardryEnsureReadOnlyTitleShell(title, {
-      actionsId: 'overworld-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'Overworld'
+	  function renderSyncStatusPill() {
+	    const title = document.getElementById('overworld-page-title');
+	    if (!title) {
+	      return;
+	    }
+	    const shell = window.__wizardryRenderReadOnlyTitleShell(title, 'Overworld', {
+	      actionsId: 'overworld-page-title-actions',
+	      actionsClassName: 'list-page-title-actions',
+	      fallbackText: 'Overworld'
     });
     let actions = shell && shell.actions ? shell.actions : null;
     if (!actions) {

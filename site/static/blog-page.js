@@ -588,30 +588,30 @@
 	    var title = String(page.title || '').trim() || titleizeSlug(slug);
 	    window.__wizardryApplyPageTitle(title);
 	    if (els.title) {
-	      var titleShell = window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	      var titleShell = window.__wizardryRenderReadOnlyTitleShell(els.title, title, {
 	        actionsId: 'blog-page-title-actions',
 	        actionsClassName: 'list-page-title-actions',
 	        fallbackText: 'Blog'
 	      });
-	      if (titleShell && titleShell.text) {
-	        titleShell.text.textContent = title;
-	      }
-      els.title.hidden = false;
-      renderSyncStatusPill();
-    }
+	      els.title.hidden = false;
+	      renderSyncStatusPill();
+	    }
     if (!els.description) {
       return;
 	    }
 	    var descriptionHtml = prerenderFragment('description_html');
 	    var descriptionAttrs = prerenderFragment('description_attrs');
-	    var descriptionText = window.__wizardryEnsureReadOnlyDescriptionShell(els.description);
 	    if (descriptionHtml) {
-	      descriptionText.innerHTML = descriptionHtml;
-	      els.description.hidden = descriptionAttrs.indexOf('hidden') !== -1;
-      return;
-    }
-    descriptionText.innerHTML = '';
-    els.description.hidden = true;
+	      window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	        html: descriptionHtml,
+	        hidden: descriptionAttrs.indexOf('hidden') !== -1
+	      });
+	      return;
+	    }
+	    window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	      html: '',
+	      hidden: true
+	    });
   }
 
   function prerenderFragment(key) {

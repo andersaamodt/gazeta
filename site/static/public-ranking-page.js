@@ -591,11 +591,11 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
 	      } else {
-	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Public Ranking'), {
 	          actionsId: 'public-ranking-page-title-actions',
 	          actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
 	          fallbackText: 'Public Ranking'
-	        }).text.textContent = String(s.title || 'Public Ranking');
+	        });
 	      }
 	    }
     if (!isAdmin()) {
@@ -628,14 +628,20 @@
         }
 	      } else {
 	        if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
-	          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	            html: prerenderFragment('description_html'),
+	            hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
+	          });
 	        } else if (desc) {
-	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = markdownInline(desc);
-	          els.description.hidden = false;
+	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	            html: markdownInline(desc),
+	            hidden: false
+	          });
 	        } else {
-	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
-	          els.description.hidden = true;
+	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	            html: '',
+	            hidden: true
+	          });
 	        }
 	      }
 	    }

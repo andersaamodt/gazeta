@@ -621,15 +621,15 @@
 
   function renderHead() {
     var s = getRenderState();
-    if (s && s.title) {
-      window.__wizardryApplyPageTitle(String(s.title));
-    }
+	    if (s && s.title) {
+	      window.__wizardryApplyPageTitle(String(s.title));
+	    }
 	    if (els.title) {
-	      window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	      window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Untitled'), {
 	        actionsId: 'nip23-page-title-actions',
 	        actionsClassName: 'list-page-title-actions',
 	        fallbackText: 'Untitled'
-	      }).text.textContent = String(s.title || 'Untitled');
+	      });
 	    }
     if (!isAdmin()) {
       renderSyncStatusPill();

@@ -3096,11 +3096,11 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
 	      } else {
-	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'List'), {
 	          actionsId: 'list-page-title-actions',
 	          actionsClassName: 'list-page-title-actions',
 	          fallbackText: 'List'
-	        }).text.textContent = String(s.title || 'List');
+	        });
 	      }
 	    }
     renderSyncStatusPill();
@@ -3138,11 +3138,15 @@
       }
 	    } else {
 	      if (canUsePrerenderReadOnlyView(s) && prerenderFragment('description_html')) {
-	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
-	        els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
+	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	          html: prerenderFragment('description_html'),
+	          hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
+	        });
 	      } else {
-	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).textContent = descText;
-	        els.description.hidden = !descText && !hasMainContent;
+	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	          text: descText,
+	          hidden: !descText && !hasMainContent
+	        });
 	      }
 	    }
 

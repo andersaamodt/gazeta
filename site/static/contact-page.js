@@ -3812,11 +3812,11 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
         }
 	      } else {
-	        window.__wizardryEnsureReadOnlyTitleShell(els.title, {
+	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Profile'), {
 	          actionsId: 'contact-page-title-actions',
 	          actionsClassName: 'list-page-title-actions',
 	          fallbackText: 'Profile'
-	        }).text.textContent = String(s.title || 'Profile');
+	        });
 	      }
 	    }
     if (!isAdmin()) {
@@ -3851,18 +3851,26 @@
         }
 	      } else if (text) {
 	        if (canUsePrerenderReadOnlyView() && prerenderFragment('description_html')) {
-	          els.description.hidden = prerenderFragment('description_attrs').indexOf('hidden') !== -1;
-	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = prerenderFragment('description_html');
+	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	            html: prerenderFragment('description_html'),
+	            hidden: prerenderFragment('description_attrs').indexOf('hidden') !== -1
+	          });
 	        } else {
-	          els.description.hidden = false;
-	          window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = markdownInline(text);
+	          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	            html: markdownInline(text),
+	            hidden: false
+	          });
 	        }
 	      } else if (!hasMainContent) {
-	        els.description.hidden = true;
-	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
+	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	          html: '',
+	          hidden: true
+	        });
 	      } else {
-	        els.description.hidden = true;
-	        window.__wizardryEnsureReadOnlyDescriptionShell(els.description).innerHTML = '';
+	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+	          html: '',
+	          hidden: true
+	        });
 	      }
 	    }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
