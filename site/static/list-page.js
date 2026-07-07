@@ -2967,15 +2967,9 @@
         }
       }
     } else {
-      var descriptionFragment = canUsePrerenderReadOnlyView(s)
-        ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
-        : null;
-      if (descriptionFragment) {
-        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-          html: descriptionFragment.html,
-          hidden: descriptionFragment.hidden
-        });
-      } else {
+      var adoptedPrerenderDescription = canUsePrerenderReadOnlyView(s) &&
+        window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
+      if (!adoptedPrerenderDescription) {
         window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
           text: descText,
           hidden: !descText && !hasMainContent
@@ -3729,9 +3723,6 @@
     var fullEditMode = isAdmin() && state.editMode;
     var wideEditMode = isAdmin() && (state.editMode || isReadInlineEditing());
     var usePrerenderReadOnly = canUsePrerenderReadOnlyView(s);
-    var prerenderContentFragment = usePrerenderReadOnly
-      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
-      : null;
     if (root && root.classList) {
       root.classList.toggle('is-editing', wideEditMode);
     }
@@ -3743,12 +3734,15 @@
     if (!elements.length) {
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
-      } else if (prerenderContentFragment) {
-        els.content.hidden = prerenderContentFragment.hidden;
-        replaceListContentHtml(prerenderContentFragment.html);
       } else {
-        els.content.hidden = false;
-        replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
+        var adoptedEmptyPrerenderContent = usePrerenderReadOnly &&
+          window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content', {
+            applyHtml: replaceListContentHtml
+          });
+        if (!adoptedEmptyPrerenderContent) {
+          els.content.hidden = false;
+          replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
+        }
       }
       renderAdmin();
       return;
@@ -3761,10 +3755,12 @@
       return;
     }
 
-    if (prerenderContentFragment) {
+    var adoptedPrerenderContent = usePrerenderReadOnly &&
+      window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content', {
+        applyHtml: replaceListContentHtml
+      });
+    if (adoptedPrerenderContent) {
       initializePrerenderMarkerFiltersFromPayload();
-      els.content.hidden = prerenderContentFragment.hidden;
-      replaceListContentHtml(prerenderContentFragment.html);
       refreshProductCartButtons();
       renderAdmin();
       return;

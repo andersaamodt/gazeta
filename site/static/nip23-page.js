@@ -652,9 +652,10 @@
       return;
     }
 
-    var prerenderContentFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
-    els.content.innerHTML = prerenderContentFragment ? prerenderContentFragment.html : '';
-    els.content.hidden = !!(prerenderContentFragment && prerenderContentFragment.hidden);
+    if (!window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
+      els.content.innerHTML = '';
+      els.content.hidden = false;
+    }
   }
 
   function renderAll() {

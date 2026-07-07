@@ -491,12 +491,7 @@
     if (!els.description) {
       return;
 	    }
-	    var descriptionFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description');
-	    if (descriptionFragment) {
-	      window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	        html: descriptionFragment.html,
-	        hidden: descriptionFragment.hidden
-	      });
+	    if (window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description')) {
 	      return;
 	    }
 	    window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
@@ -4038,9 +4033,10 @@
     if (!els.content) {
       return;
     }
-    var contentFragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
-    els.content.hidden = !!(contentFragment && contentFragment.hidden);
-    els.content.innerHTML = contentFragment ? contentFragment.html : '';
+    if (!window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
+      els.content.hidden = false;
+      els.content.innerHTML = '';
+    }
   }
 
   function formatType(value) {

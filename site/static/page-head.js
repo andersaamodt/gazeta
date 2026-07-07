@@ -185,6 +185,18 @@
     return text;
   }
 
+  function renderReadOnlyPrerenderDescriptionShell(descriptionNode, payload, name) {
+    var fragment = readPrerenderHtmlFragment(payload, name);
+    if (!fragment) {
+      return false;
+    }
+    renderReadOnlyDescriptionShell(descriptionNode, {
+      html: fragment.html,
+      hidden: fragment.hidden
+    });
+    return true;
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -303,6 +315,21 @@
       html: html,
       hidden: /\bhidden\b/i.test(prerenderFragment(payload, fragmentName + '_attrs'))
     };
+  }
+
+  function mountPrerenderHtmlFragment(targetNode, payload, name, options) {
+    var fragment = readPrerenderHtmlFragment(payload, name);
+    if (!targetNode || !fragment) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    if (typeof opts.applyHtml === 'function') {
+      opts.applyHtml(fragment.html);
+    } else {
+      targetNode.innerHTML = fragment.html;
+    }
+    targetNode.hidden = fragment.hidden;
+    return true;
   }
 
   function hasMatchingStaticPrerender(rootNode, contentNode, payload) {
@@ -879,12 +906,14 @@
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
+  window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
+  window.__wizardryMountPrerenderHtmlFragment = mountPrerenderHtmlFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
   window.__wizardryPageBootstrapCacheKey = pageBootstrapCacheKey;
   window.__wizardryReadBootstrapCache = readBootstrapCache;

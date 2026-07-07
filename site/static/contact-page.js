@@ -3736,15 +3736,9 @@
           els.description.innerHTML = '';
         }
       } else if (text) {
-        var descriptionFragment = canUsePrerenderReadOnlyView()
-          ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
-          : null;
-        if (descriptionFragment) {
-          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-            html: descriptionFragment.html,
-            hidden: descriptionFragment.hidden
-          });
-        } else {
+        var adoptedPrerenderDescription = canUsePrerenderReadOnlyView() &&
+          window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
+        if (!adoptedPrerenderDescription) {
           window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
             html: markdownInline(text),
             hidden: false

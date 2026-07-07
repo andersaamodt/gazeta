@@ -484,20 +484,14 @@
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
       } else {
-        var descriptionFragment = canUsePrerenderReadOnlyView(s)
-          ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'description')
-          : null;
-        if (descriptionFragment) {
-          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-            html: descriptionFragment.html,
-            hidden: descriptionFragment.hidden
-          });
-        } else if (desc) {
+        var adoptedPrerenderDescription = canUsePrerenderReadOnlyView(s) &&
+          window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
+        if (!adoptedPrerenderDescription && desc) {
           window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
             html: markdownInline(desc),
             hidden: false
           });
-        } else {
+        } else if (!adoptedPrerenderDescription) {
           window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
             html: '',
             hidden: true
@@ -1031,12 +1025,8 @@
       return;
     }
     var renderState = getRenderState();
-    var prerenderContentFragment = canUsePrerenderReadOnlyView(renderState)
-      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
-      : null;
-    if (prerenderContentFragment) {
-      els.content.innerHTML = prerenderContentFragment.html;
-      els.content.hidden = prerenderContentFragment.hidden;
+    if (canUsePrerenderReadOnlyView(renderState) &&
+        window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
       return;
     }
     els.content.hidden = false;
