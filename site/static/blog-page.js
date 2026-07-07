@@ -4515,10 +4515,14 @@
 
   function readPrerenderPageBootstrap() {
     return window.__wizardryReadNostrPageBootstrap(slug, function (payload) {
-      var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
-      var payloadSlug = String(payload && payload.slug || '').trim();
-      return payloadType === 'blog' && !!payloadSlug && slugsEquivalent(payloadSlug, slug);
+      return isExpectedPayload(payload);
     });
+  }
+
+  function isExpectedPayload(payload) {
+    var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
+    var payloadSlug = String(payload && payload.slug || '').trim();
+    return payloadType === 'blog' && !!payloadSlug && slugsEquivalent(payloadSlug, slug);
   }
 
   function readPrerenderPostsBootstrap(payload) {
@@ -4534,13 +4538,9 @@
 	    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
 	  }
 
-  function applyBootstrapPayload(payload) {
-    if (!payload || typeof payload !== 'object') {
-      return false;
-    }
-    state.payload = payload;
+  function applyBootstrapState(optimisticPayload) {
+    state.payload = optimisticPayload;
     applyDefaultFilters();
-    return true;
   }
 
   function primeBootstrapPosts(payload) {
@@ -4562,24 +4562,35 @@
     return true;
   }
 
-  function renderBootstrapState(payload, hasWarmPosts) {
-    state.postsLoading = !hasWarmPosts;
-    if (hasMatchingStaticPrerender(payload, els.list)) {
-      state.staticPrerenderListAdopted = true;
-      state.adoptedPostListSignature = postListSignature();
-      syncRenderedListDecorations();
-      renderHead();
-      renderAdmin();
-      renderDraftNotice();
-      renderValidation();
-      renderExtrasAfter();
-      renderFilters();
-      renderComposeUi();
-    } else {
-      state.staticPrerenderListAdopted = false;
-      renderAll();
-    }
-    state.renderSignature = renderSignature();
+  function renderBootstrapPayload(payload, hasWarmPosts) {
+    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: isExpectedPayload,
+      applyState: applyBootstrapState,
+      hasMatchingStaticPrerender: function (optimisticPayload) {
+        return hasMatchingStaticPrerender(optimisticPayload, els.list);
+      },
+      renderAdoptedPrerender: function () {
+        state.postsLoading = !hasWarmPosts;
+        state.staticPrerenderListAdopted = true;
+        state.adoptedPostListSignature = postListSignature();
+        syncRenderedListDecorations();
+        renderHead();
+        renderAdmin();
+        renderDraftNotice();
+        renderValidation();
+        renderExtrasAfter();
+        renderFilters();
+        renderComposeUi();
+      },
+      renderAll: function () {
+        state.postsLoading = !hasWarmPosts;
+        state.staticPrerenderListAdopted = false;
+        renderAll();
+      },
+      afterRender: function () {
+        state.renderSignature = renderSignature();
+      }
+    });
   }
 
 	  function hasMatchingStaticPrerender(payload, node) {
@@ -5366,9 +5377,8 @@
     var hasWarmPosts = false;
     hydrateDraftNoticeFromCache();
     var prerenderedPayload = readPrerenderPageBootstrap();
-    applyBootstrapPayload(prerenderedPayload);
     hasWarmPosts = primeBootstrapPosts(prerenderedPayload);
-    renderBootstrapState(prerenderedPayload, hasWarmPosts);
+    renderBootstrapPayload(prerenderedPayload, hasWarmPosts);
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
     waitForInitialDraftNotice().finally(function () {
