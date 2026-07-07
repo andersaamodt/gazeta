@@ -109,56 +109,8 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function syncStatusConfig(status) {
-    switch (status) {
-      case 'local_newer_than_nostr':
-        return {
-          label: 'Server newer',
-          message: 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
-          className: 'status-local-newer-than-nostr'
-        };
-      case 'nostr_newer_than_local':
-        return {
-          label: 'Nostr newer',
-          message: 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
-          className: 'status-nostr-newer-than-local'
-        };
-      case 'in_sync':
-        return {
-          label: 'Synced',
-          message: 'Server copy and published Nostr state are in sync.',
-          className: 'status-in-sync'
-        };
-      case 'unpublished_local_changes':
-        return {
-          label: 'Server only',
-          message: 'This page exists only on the server so far. Visitors see the server copy.',
-          className: 'status-unpublished-local-changes'
-        };
-      default:
-        return {
-          label: 'Sync unknown',
-          message: 'Cannot determine local-vs-Nostr sync status yet.',
-          className: 'status-unknown'
-        };
-    }
-  }
-
-  function pageSyncStatusInfo() {
-    var sync = state.payload && state.payload.sync_status && typeof state.payload.sync_status === 'object' ? state.payload.sync_status : {};
-    var status = String(sync.status || 'unknown').trim();
-    var config = syncStatusConfig(status);
-    var message = String(sync.message || config.message).trim();
-    return {
-      label: config.label,
-      message: message,
-      className: config.className
-    };
-  }
-
   function pageSyncStatusPillHtml() {
-    var info = pageSyncStatusInfo();
-    return '<span class="page-sync-status-pill ' + info.className + '" title="' + escapeHtml(info.message) + '">' + escapeHtml(info.label) + '</span>';
+    return window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
   }
 
   function stripLegacyNostrSyncPills(value) {

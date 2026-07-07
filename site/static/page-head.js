@@ -167,6 +167,68 @@
     return text;
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function syncStatusDefaults(status, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var variant = String(opts.messageVariant || 'server_copy').trim().toLowerCase();
+    switch (status) {
+      case 'local_newer_than_nostr':
+        return {
+          label: 'Server newer',
+          message: variant === 'local_source'
+            ? 'Local source is newer than latest published Nostr state.'
+            : 'Server copy is newer than the latest published Nostr state. Visitors see the server copy.',
+          className: 'status-local-newer-than-nostr'
+        };
+      case 'nostr_newer_than_local':
+        return {
+          label: 'Nostr newer',
+          message: variant === 'local_source'
+            ? 'Published Nostr state is newer than local source.'
+            : 'Published Nostr state is newer than the server copy. Visitors still see the server copy until the site source changes.',
+          className: 'status-nostr-newer-than-local'
+        };
+      case 'in_sync':
+        return {
+          label: 'Synced',
+          message: variant === 'local_source'
+            ? 'Local source and published state are in sync.'
+            : 'Server copy and published Nostr state are in sync.',
+          className: 'status-in-sync'
+        };
+      case 'unpublished_local_changes':
+        return {
+          label: 'Server only',
+          message: variant === 'local_source'
+            ? 'No published Nostr state yet for this page.'
+            : 'This page exists only on the server so far. Visitors see the server copy.',
+          className: 'status-unpublished-local-changes'
+        };
+      default:
+        return {
+          label: 'Sync unknown',
+          message: 'Cannot determine local-vs-Nostr sync status yet.',
+          className: 'status-unknown'
+        };
+    }
+  }
+
+  function syncStatusPillHtml(syncStatus, options) {
+    var sync = syncStatus && typeof syncStatus === 'object' ? syncStatus : {};
+    var status = String(sync.status || 'unknown').trim();
+    var config = syncStatusDefaults(status, options);
+    var message = String(sync.message || config.message).trim();
+    return '<span class="page-sync-status-pill ' + config.className + '" title="' + escapeHtml(message) + '">' + escapeHtml(config.label) + '</span>';
+  }
+
   function readNostrPageBootstrap(slug, isExpectedPayload) {
     try {
       var allPayloads = window.__wizardryNostrPageBootstrap;
@@ -546,6 +608,7 @@
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
+  window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
   window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
