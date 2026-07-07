@@ -182,12 +182,9 @@
     closeOverflow();
   });
 
-  window.addEventListener('storage', function (event) {
-    if (event.key === 'session_token' || event.key === 'csrf_token') {
-      loadStatus();
-    }
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: loadStatus
   });
-  window.addEventListener('blog-auth-changed', loadStatus);
 
   loadStatus();
 })();

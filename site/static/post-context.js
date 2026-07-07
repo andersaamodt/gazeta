@@ -2428,6 +2428,9 @@
       normalizeAllMarkdownSeparators();
       loadPostContext();
     }
-    window.addEventListener('blog-auth-changed', refreshPostPageMenuVisibility);
+    window.__wizardryBindSessionAuthRefresh({
+      onChange: refreshPostPageMenuVisibility,
+      storageKeys: ['session_token', 'csrf_token', 'last_auth_is_admin']
+    });
   }
 })();

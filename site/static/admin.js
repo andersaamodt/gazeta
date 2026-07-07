@@ -10393,10 +10393,6 @@
       if (!event) {
         return;
       }
-      if (event.key === 'session_token' || event.key === 'csrf_token') {
-        refreshAuthFromStorage();
-        return;
-      }
       if (event.key === LOCAL_DRIP_ENABLED_KEY) {
         state.localDripEnabled = localStorage.getItem(LOCAL_DRIP_ENABLED_KEY) !== '0';
         syncLocalDripToggleUi();
@@ -10414,8 +10410,10 @@
         setLocalDripLeader(!!(lease && lease.owner === state.localDripTabId));
       }
     });
-    window.addEventListener('blog-auth-changed', function () {
-      refreshAuthFromStorage();
+    window.__wizardryBindSessionAuthRefresh({
+      onChange: function () {
+        refreshAuthFromStorage();
+      }
     });
     window.addEventListener('beforeunload', function (event) {
       if (state.activeUploadCount > 0) {

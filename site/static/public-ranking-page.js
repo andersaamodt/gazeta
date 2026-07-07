@@ -1688,7 +1688,10 @@
   }
 
   bindEvents();
-  window.addEventListener('blog-auth-changed', load);
+  window.__wizardryBindSessionAuthRefresh({
+    onChange: load,
+    storageKeys: ['session_token', 'csrf_token', 'last_auth_is_admin']
+  });
   window.__wizardryRenderManagedNostrBootstrapSources({
     slug: slug,
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
