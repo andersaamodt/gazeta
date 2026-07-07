@@ -1,6 +1,9 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
-use crate::admin_security::{require_admin_session as require_admin_session_shared, RequestParams};
-use crate::config_kv::{config_string, read_config, write_config};
+use crate::admin_security::{
+    require_admin_session as require_admin_session_shared,
+    require_session as require_session_shared, RequestParams, SessionState,
+};
+use crate::config_kv::{config_string, read_config, update_config_value, write_config};
 use crate::markdown_content::{normalize_post_type, normalize_tags, read_markdown_front_matter};
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
@@ -44,6 +47,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
         "blog-unqueue-draft" => blog_unqueue_draft().map(CgiResponse::json),
         "blog-delete-draft" => blog_delete_draft().map(CgiResponse::json),
         "blog-crosspost-post" => blog_crosspost_post().map(CgiResponse::json),
+        "blog-video-chat-control" => blog_video_chat_control().map(CgiResponse::json),
         "blog-list-files" => blog_list_files().map(CgiResponse::json),
         "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
         "blog-update-file" => blog_update_file().map(CgiResponse::json),
@@ -332,6 +336,40 @@ fn blog_crosspost_post() -> Result<Value> {
         "results": results,
         "crossposting": origin_crossposting_summary_for_file(&paths, &file, &rel_path),
     }))
+}
+
+fn blog_video_chat_control() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    if !plugin_enabled(&paths, "video_chat") {
+        return Err(AdminError::new(
+            "plugin_disabled",
+            "Video calling plugin is disabled for this site",
+        ));
+    }
+    let request = RequestParams::from_env_and_stdin();
+    let action = normalize_video_chat_action(request.value("action").unwrap_or_default());
+    let require_admin = matches!(
+        action.as_str(),
+        "admin_status" | "admin_call_user" | "admin_cancel_call"
+    );
+    let session = require_session(&paths, &request, require_admin, false)?;
+    let state = VideoChatState::new(&paths)?;
+    state.cleanup_stale()?;
+
+    match action.as_str() {
+        "status" => state.video_chat_status(&session),
+        "heartbeat" => state.video_chat_heartbeat(&session, &request),
+        "set_preference" => state.video_chat_set_preference(&session, &request),
+        "admin_status" => state.video_chat_admin_status(&session),
+        "admin_call_user" => state.video_chat_admin_call_user(&session, &request),
+        "answer_call" => state.video_chat_answer_call(&session, &request),
+        "decline_call" => state.video_chat_decline_call(&session, &request),
+        "admin_cancel_call" => state.video_chat_admin_cancel_call(&session, &request),
+        _ => Err(AdminError::new(
+            "unknown_action",
+            "Unknown video calling action",
+        )),
+    }
 }
 
 fn blog_upload_media() -> Result<Value> {
@@ -712,6 +750,22 @@ impl SitePaths {
         self.file_records_dir().join(format!("{file_id}.conf"))
     }
 
+    fn video_chat_dir(&self) -> PathBuf {
+        self.state_dir.join("video-chat")
+    }
+
+    fn video_chat_presence_dir(&self) -> PathBuf {
+        self.video_chat_dir().join("presence")
+    }
+
+    fn video_chat_calls_dir(&self) -> PathBuf {
+        self.video_chat_dir().join("calls")
+    }
+
+    fn video_chat_rooms_dir(&self) -> PathBuf {
+        self.video_chat_dir().join("rooms")
+    }
+
     fn origin_dir(&self) -> PathBuf {
         self.state_dir.join("origin")
     }
@@ -763,6 +817,30 @@ fn require_admin_session(
     Ok(Session {
         username: session.username,
     })
+}
+
+fn require_session(
+    paths: &SitePaths,
+    request: &RequestParams,
+    require_admin: bool,
+    require_interactive: bool,
+) -> Result<SessionState> {
+    let session = require_session_shared(
+        &paths.sessions_dir(),
+        &paths.users_dir(),
+        request,
+        Some(43_200),
+        require_admin,
+    )
+    .map_err(|error| AdminError::new(error.code, error.message))?;
+    if require_interactive && session.auth_method == "nostr_delegated" && session.force_interactive
+    {
+        return Err(AdminError::new(
+            "interactive_signature_required",
+            "This action requires direct signer approval. Sign in with Login with Nostr or Use phone signer (QR).",
+        ));
+    }
+    Ok(session)
 }
 
 #[derive(Clone)]
@@ -852,6 +930,542 @@ struct OriginPlatformMeta {
     family: String,
 }
 
+struct VideoChatState<'a> {
+    paths: &'a SitePaths,
+    now: u64,
+    presence_ttl_seconds: u64,
+    call_ttl_seconds: u64,
+}
+
+impl<'a> VideoChatState<'a> {
+    fn new(paths: &'a SitePaths) -> Result<Self> {
+        fs::create_dir_all(paths.video_chat_presence_dir()).map_err(io_error(
+            "write_failed",
+            "Could not prepare video chat presence directory",
+        ))?;
+        fs::create_dir_all(paths.video_chat_calls_dir()).map_err(io_error(
+            "write_failed",
+            "Could not prepare video chat calls directory",
+        ))?;
+        fs::create_dir_all(paths.video_chat_rooms_dir()).map_err(io_error(
+            "write_failed",
+            "Could not prepare video chat rooms directory",
+        ))?;
+        Ok(Self {
+            paths,
+            now: now_epoch(),
+            presence_ttl_seconds: 90,
+            call_ttl_seconds: 300,
+        })
+    }
+
+    fn cleanup_stale(&self) -> Result<()> {
+        for entry in fs::read_dir(self.paths.video_chat_presence_dir())
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            let path = entry.path();
+            if path.extension().and_then(|value| value.to_str()) != Some("conf") {
+                continue;
+            }
+            let updated = read_config(&path)
+                .map(|config| config_string(&config, "updated_at"))
+                .and_then(|value| value.parse::<u64>().ok())
+                .unwrap_or(0);
+            if updated < self.now.saturating_sub(self.presence_ttl_seconds) {
+                let _ = fs::remove_file(path);
+            }
+        }
+        for entry in fs::read_dir(self.paths.video_chat_calls_dir())
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            let path = entry.path();
+            if path.extension().and_then(|value| value.to_str()) != Some("conf") {
+                continue;
+            }
+            let config = read_config(&path).unwrap_or_default();
+            let expires = config_string(&config, "expires_at")
+                .parse::<u64>()
+                .unwrap_or(0);
+            let status = config_string(&config, "status");
+            if expires < self.now || status == "expired" {
+                let _ = fs::remove_file(path);
+            }
+        }
+        Ok(())
+    }
+
+    fn video_chat_status(&self, session: &SessionState) -> Result<Value> {
+        Ok(json!({
+            "success": true,
+            "username": session.username,
+            "player_name": self.user_display_name(&session.username),
+            "is_admin": session.is_admin,
+            "allow_admin_calls": self.profile_allows_admin_calls(&session.username),
+            "incoming_calls": self.calls_for_user(&session.username),
+        }))
+    }
+
+    fn video_chat_heartbeat(
+        &self,
+        session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        self.write_presence(session, request)?;
+        self.video_chat_status(session)
+    }
+
+    fn video_chat_set_preference(
+        &self,
+        session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        let allow = boolish(request.value("allow_admin_calls").as_deref());
+        let profile = self.user_profile(&session.username);
+        write_record(
+            &profile,
+            &[
+                ("username", session.username.as_str()),
+                (
+                    "video_chat_allow_admin_calls",
+                    if allow { "true" } else { "false" },
+                ),
+                ("updated_at", &now_iso()?),
+            ],
+        )?;
+        self.write_presence(session, request)?;
+        Ok(json!({
+            "success": true,
+            "allow_admin_calls": allow,
+        }))
+    }
+
+    fn video_chat_admin_status(&self, session: &SessionState) -> Result<Value> {
+        Ok(json!({
+            "success": true,
+            "now": self.now,
+            "presence_ttl_seconds": self.presence_ttl_seconds,
+            "call_ttl_seconds": self.call_ttl_seconds,
+            "users": self.presence_list(&session.username),
+            "rooms": self.room_list(),
+            "calls": self.call_list(),
+        }))
+    }
+
+    fn video_chat_admin_call_user(
+        &self,
+        session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        let target = request
+            .value("username")
+            .unwrap_or_default()
+            .replace(['\r', '\n'], "");
+        if target.is_empty() || !self.user_profile(&target).is_file() {
+            return Err(AdminError::new("unknown_user", "Unknown user"));
+        }
+        let self_test = target == session.username;
+        if !self_test && !self.profile_allows_admin_calls(&target) {
+            return Err(AdminError::new(
+                "not_allowed",
+                "This user has not allowed admin calls",
+            ));
+        }
+        let presence = self.presence_path_for(&target);
+        let updated = read_config(&presence)
+            .map(|config| config_string(&config, "updated_at"))
+            .and_then(|value| value.parse::<u64>().ok())
+            .unwrap_or(0);
+        if updated < self.now.saturating_sub(self.presence_ttl_seconds) {
+            return Err(AdminError::new(
+                "not_online",
+                "This user is not currently online",
+            ));
+        }
+        let call_id = random_hex(12)?;
+        let room_id = room_key(&format!(
+            "admin-{}-{}-{}",
+            session.username, target, call_id
+        ));
+        let room_password = random_hex(18)?;
+        let room_path = self.room_path_for(&room_id);
+        write_record(
+            &room_path,
+            &[
+                ("room_id", room_id.as_str()),
+                ("private_room", "true"),
+                ("room_password", room_password.as_str()),
+                ("created_at", &self.now.to_string()),
+                ("updated_at", &self.now.to_string()),
+            ],
+        )?;
+        let call_path = self.call_path_for(&call_id);
+        write_record(
+            &call_path,
+            &[
+                ("call_id", call_id.as_str()),
+                ("room_id", room_id.as_str()),
+                ("room_password", room_password.as_str()),
+                ("private_room", "true"),
+                ("from_admin", session.username.as_str()),
+                (
+                    "from_admin_name",
+                    self.user_display_name(&session.username).as_str(),
+                ),
+                ("to_user", target.as_str()),
+                ("to_user_name", self.user_display_name(&target).as_str()),
+                ("status", "ringing"),
+                ("call_mode", "video"),
+                ("owner_call", "false"),
+                ("self_test", if self_test { "true" } else { "false" }),
+                ("created_at", &self.now.to_string()),
+                (
+                    "expires_at",
+                    &(self.now + self.call_ttl_seconds).to_string(),
+                ),
+                ("answered_at", "0"),
+            ],
+        )?;
+        Ok(json!({
+            "success": true,
+            "call": self.call_json(&call_path),
+        }))
+    }
+
+    fn video_chat_answer_call(
+        &self,
+        session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        let call_id = safe_key(&request.value("call_id").unwrap_or_default());
+        let call_path = self.call_path_for(&call_id);
+        let config = read_config(&call_path)
+            .ok_or_else(|| AdminError::new("call_not_found", "Call was not found"))?;
+        let to_user = config_string(&config, "to_user");
+        if to_user != session.username {
+            return Err(AdminError::new(
+                "call_not_allowed",
+                "Call is for a different user",
+            ));
+        }
+        let expires = config_string(&config, "expires_at")
+            .parse::<u64>()
+            .unwrap_or(0);
+        if expires < self.now {
+            let _ = update_config_value(
+                &call_path,
+                "status",
+                "expired",
+                "Could not update call state",
+            );
+            return Err(AdminError::new("call_expired", "Call expired"));
+        }
+        update_config_value(
+            &call_path,
+            "status",
+            "accepted",
+            "Could not update call state",
+        )
+        .map_err(|error| AdminError::new(error.code, error.message))?;
+        update_config_value(
+            &call_path,
+            "answered_at",
+            &self.now.to_string(),
+            "Could not update call state",
+        )
+        .map_err(|error| AdminError::new(error.code, error.message))?;
+        let refreshed = read_config(&call_path).unwrap_or_default();
+        let room_id = config_string(&refreshed, "room_id");
+        let room_password = config_string(&refreshed, "room_password");
+        Ok(json!({
+            "success": true,
+            "room_id": room_id,
+            "room_password": room_password,
+            "call": self.call_json(&call_path),
+        }))
+    }
+
+    fn video_chat_decline_call(
+        &self,
+        session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        let call_id = safe_key(&request.value("call_id").unwrap_or_default());
+        let call_path = self.call_path_for(&call_id);
+        let config = read_config(&call_path)
+            .ok_or_else(|| AdminError::new("call_not_found", "Call was not found"))?;
+        let to_user = config_string(&config, "to_user");
+        if to_user != session.username {
+            return Err(AdminError::new(
+                "call_not_allowed",
+                "Call is for a different user",
+            ));
+        }
+        update_config_value(
+            &call_path,
+            "status",
+            "declined",
+            "Could not update call state",
+        )
+        .map_err(|error| AdminError::new(error.code, error.message))?;
+        Ok(json!({
+            "success": true,
+            "call": self.call_json(&call_path),
+        }))
+    }
+
+    fn video_chat_admin_cancel_call(
+        &self,
+        _session: &SessionState,
+        request: &RequestParams,
+    ) -> Result<Value> {
+        let call_id = safe_key(&request.value("call_id").unwrap_or_default());
+        let call_path = self.call_path_for(&call_id);
+        read_config(&call_path)
+            .ok_or_else(|| AdminError::new("call_not_found", "Call was not found"))?;
+        update_config_value(
+            &call_path,
+            "status",
+            "cancelled",
+            "Could not update call state",
+        )
+        .map_err(|error| AdminError::new(error.code, error.message))?;
+        Ok(json!({
+            "success": true,
+            "call": self.call_json(&call_path),
+        }))
+    }
+
+    fn write_presence(&self, session: &SessionState, request: &RequestParams) -> Result<()> {
+        let room = room_key(&request.value("current_room").unwrap_or_default());
+        let page_url = request
+            .value("page_url")
+            .unwrap_or_default()
+            .chars()
+            .take(240)
+            .collect::<String>();
+        let mut status = request
+            .value("status")
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .chars()
+            .map(|ch| {
+                if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-') {
+                    ch
+                } else {
+                    '-'
+                }
+            })
+            .collect::<String>();
+        status.truncate(32);
+        if status.is_empty() {
+            status = "online".to_string();
+        }
+        let allow = self.profile_allows_admin_calls(&session.username);
+        write_record(
+            &self.presence_path_for(&session.username),
+            &[
+                ("username", session.username.as_str()),
+                (
+                    "player_name",
+                    self.user_display_name(&session.username).as_str(),
+                ),
+                ("allow_admin_calls", if allow { "true" } else { "false" }),
+                ("current_room", room.as_str()),
+                ("page_url", page_url.as_str()),
+                ("status", status.as_str()),
+                ("updated_at", &self.now.to_string()),
+            ],
+        )
+    }
+
+    fn profile_allows_admin_calls(&self, username: &str) -> bool {
+        read_config(&self.user_profile(username))
+            .map(|config| {
+                boolish(Some(&config_string(
+                    &config,
+                    "video_chat_allow_admin_calls",
+                )))
+            })
+            .unwrap_or(false)
+    }
+
+    fn user_display_name(&self, username: &str) -> String {
+        let config = read_config(&self.user_profile(username)).unwrap_or_default();
+        let player_name = config_string(&config, "player_name");
+        if !player_name.is_empty() {
+            return player_name;
+        }
+        let publish_name = config_string(&config, "publish_name");
+        if !publish_name.is_empty() {
+            return publish_name;
+        }
+        username.to_string()
+    }
+
+    fn user_profile(&self, username: &str) -> PathBuf {
+        self.paths.users_dir().join(username).join("profile.conf")
+    }
+
+    fn presence_path_for(&self, username: &str) -> PathBuf {
+        self.paths
+            .video_chat_presence_dir()
+            .join(format!("{}.conf", safe_key(username)))
+    }
+
+    fn call_path_for(&self, call_id: &str) -> PathBuf {
+        self.paths
+            .video_chat_calls_dir()
+            .join(format!("{}.conf", safe_key(call_id)))
+    }
+
+    fn room_path_for(&self, room_id: &str) -> PathBuf {
+        self.paths
+            .video_chat_rooms_dir()
+            .join(format!("{}.conf", safe_key(room_id)))
+    }
+
+    fn calls_for_user(&self, username: &str) -> Vec<Value> {
+        self.read_conf_dir(self.paths.video_chat_calls_dir())
+            .into_iter()
+            .filter(|(_, config)| {
+                config_string(config, "to_user") == username
+                    && config_string(config, "status") == "ringing"
+                    && config_string(config, "expires_at")
+                        .parse::<u64>()
+                        .unwrap_or(0)
+                        >= self.now
+            })
+            .map(|(path, _)| self.call_json(&path))
+            .collect()
+    }
+
+    fn presence_list(&self, self_username: &str) -> Vec<Value> {
+        self.read_conf_dir(self.paths.video_chat_presence_dir())
+            .into_iter()
+            .filter_map(|(_, config)| {
+                let username = config_string(&config, "username");
+                if username.is_empty() {
+                    return None;
+                }
+                let updated = config_string(&config, "updated_at")
+                    .parse::<u64>()
+                    .unwrap_or(0);
+                Some(json!({
+                    "username": username,
+                    "player_name": config_string(&config, "player_name"),
+                    "allow_admin_calls": boolish(Some(&config_string(&config, "allow_admin_calls"))),
+                    "is_self": config_string(&config, "username") == self_username,
+                    "current_room": config_string(&config, "current_room"),
+                    "page_url": config_string(&config, "page_url"),
+                    "status": config_string(&config, "status"),
+                    "updated_at": updated,
+                    "age_seconds": self.now.saturating_sub(updated),
+                }))
+            })
+            .collect()
+    }
+
+    fn room_list(&self) -> Vec<Value> {
+        let mut rooms: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        for (_, config) in self.read_conf_dir(self.paths.video_chat_presence_dir()) {
+            let room_id = config_string(&config, "current_room");
+            let username = config_string(&config, "username");
+            if room_id.is_empty() || username.is_empty() {
+                continue;
+            }
+            rooms.entry(room_id).or_default().push(json!({
+                "username": username,
+                "player_name": config_string(&config, "player_name"),
+            }));
+        }
+        rooms
+            .into_iter()
+            .map(|(room_id, members)| {
+                json!({
+                    "room_id": room_id,
+                    "members": members,
+                })
+            })
+            .collect()
+    }
+
+    fn call_list(&self) -> Vec<Value> {
+        self.read_conf_dir(self.paths.video_chat_calls_dir())
+            .into_iter()
+            .map(|(path, _)| self.call_json(&path))
+            .collect()
+    }
+
+    fn call_json(&self, path: &Path) -> Value {
+        let config = read_config(path).unwrap_or_default();
+        let call_mode = match config_string(&config, "call_mode").as_str() {
+            "voice" => "voice",
+            _ => "video",
+        };
+        let from_admin = config_string(&config, "from_admin");
+        let from_admin_name = {
+            let value = config_string(&config, "from_admin_name");
+            if value.is_empty() {
+                from_admin.clone()
+            } else {
+                value
+            }
+        };
+        let to_user = config_string(&config, "to_user");
+        let to_user_name = {
+            let value = config_string(&config, "to_user_name");
+            if value.is_empty() {
+                to_user.clone()
+            } else {
+                value
+            }
+        };
+        let status = {
+            let value = config_string(&config, "status");
+            if value.is_empty() {
+                "ringing".to_string()
+            } else {
+                value
+            }
+        };
+        json!({
+            "call_id": config_string(&config, "call_id"),
+            "room_id": config_string(&config, "room_id"),
+            "room_password": config_string(&config, "room_password"),
+            "private_room": boolish(Some(&config_string(&config, "private_room"))),
+            "call_mode": call_mode,
+            "from_admin": from_admin,
+            "from_admin_name": from_admin_name,
+            "to_user": to_user,
+            "to_user_name": to_user_name,
+            "status": status,
+            "self_test": boolish(Some(&config_string(&config, "self_test"))),
+            "owner_call": boolish(Some(&config_string(&config, "owner_call"))),
+            "created_at": config_string(&config, "created_at").parse::<u64>().unwrap_or(0),
+            "expires_at": config_string(&config, "expires_at").parse::<u64>().unwrap_or(0),
+            "answered_at": config_string(&config, "answered_at").parse::<u64>().unwrap_or(0),
+        })
+    }
+
+    fn read_conf_dir(&self, dir: PathBuf) -> Vec<(PathBuf, BTreeMap<String, String>)> {
+        let mut rows = Vec::new();
+        for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|value| value.to_str()) != Some("conf") {
+                continue;
+            }
+            if let Some(config) = read_config(&path) {
+                rows.push((path, config));
+            }
+        }
+        rows
+    }
+}
+
 fn normalize_requested_post_path(raw: &str) -> Option<String> {
     let mut requested = raw.trim().trim_start_matches('/').to_string();
     if let Some(stripped) = requested
@@ -873,6 +1487,15 @@ fn normalize_requested_post_path(raw: &str) -> Option<String> {
         && !requested.contains('\\')
         && !requested.contains("//"))
     .then_some(requested)
+}
+
+fn normalize_video_chat_action(raw: String) -> String {
+    let normalized = raw.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        "status".to_string()
+    } else {
+        normalized
+    }
 }
 
 fn resolve_post_markdown_file(paths: &SitePaths, raw: &str) -> Option<PathBuf> {
@@ -1780,6 +2403,90 @@ fn first_heading(content: &str) -> Option<String> {
         .lines()
         .find_map(|line| line.strip_prefix("# ").map(|line| line.trim().to_string()))
         .filter(|line| !line.is_empty())
+}
+
+fn plugin_enabled(paths: &SitePaths, key: &str) -> bool {
+    let key = key.to_ascii_lowercase();
+    let supported = matches!(
+        key.as_str(),
+        "nostr_support"
+            | "nostr_login"
+            | "nostr_bridge"
+            | "nostr_posts"
+            | "zaps"
+            | "commerce"
+            | "btcpay"
+            | "crossmint"
+            | "merch_store"
+            | "video_chat"
+            | "overworld"
+    );
+    if !supported {
+        return false;
+    }
+    let enabled = plugin_raw_enabled(paths, &key);
+    if !enabled {
+        return false;
+    }
+    if matches!(
+        key.as_str(),
+        "nostr_login" | "nostr_bridge" | "nostr_posts" | "zaps"
+    ) {
+        plugin_raw_enabled(paths, "nostr_support")
+    } else {
+        true
+    }
+}
+
+fn plugin_raw_enabled(paths: &SitePaths, key: &str) -> bool {
+    let default_enabled = !matches!(
+        key,
+        "crossmint" | "merch_store" | "video_chat" | "overworld"
+    );
+    let config_key = format!("plugin_{key}");
+    let value = read_config(&paths.site_conf)
+        .map(|config| config_string(&config, &config_key))
+        .unwrap_or_default();
+    match value.as_str() {
+        "" => default_enabled,
+        "true" | "1" | "yes" | "on" => true,
+        "false" | "0" | "no" | "off" => false,
+        _ => default_enabled,
+    }
+}
+
+fn safe_key(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('_')
+        .to_string()
+}
+
+fn room_key(value: &str) -> String {
+    value
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 fn append_unique_line(path: &Path, value: &str) -> Result<()> {

@@ -59,6 +59,7 @@ call_control() {
   query=$1
   REQUEST_METHOD=GET \
     QUERY_STRING="$query&session_token=$session_token&csrf_token=$csrf_token" \
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
     WIZARDRY_SITES_DIR="$SITES_DIR" \
     WIZARDRY_SITE_NAME="$SITE_NAME" \
     "$ROOT_DIR/cgi/blog-video-chat-control" | strip_cgi_headers
@@ -173,6 +174,8 @@ assert_jq "$call_id_join_json" ".success == true and .room_id == \"$owner_room\"
 
 assert_file_contains "$ROOT_DIR/site/static/video-chat-widget.js" "body.set('call_mode', self.state.callMode === 'voice' ? 'voice' : 'video');" 'owner call token requests preserve voice/video mode for admin notifications'
 assert_file_contains "$ROOT_DIR/site/static/nav-auth.js" "var callKind = callMode === 'voice' ? 'voice call' : 'video call';" 'nav auth renders voice and video call notification labels from call mode'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-action-registry.conf" 'admin blog-video-chat-control' 'video chat control endpoint is registered to the admin runtime'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-video-chat-control" => blog_video_chat_control().map(CgiResponse::json)' 'video chat control endpoint is runtime-owned'
 
 printf 'PASS: %s\n' "$PASS_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then

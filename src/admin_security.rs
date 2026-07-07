@@ -64,15 +64,17 @@ impl RequestParams {
 
 pub(crate) struct SessionState {
     pub(crate) username: String,
+    pub(crate) is_admin: bool,
     pub(crate) auth_method: String,
     pub(crate) force_interactive: bool,
 }
 
-pub(crate) fn require_admin_session(
+pub(crate) fn require_session(
     sessions_dir: &Path,
     users_dir: &Path,
     request: &RequestParams,
     extend_ttl_seconds: Option<u64>,
+    require_admin: bool,
 ) -> Result<SessionState, RuntimeError> {
     let token = request.value("session_token").unwrap_or_default();
     let csrf = request.value("csrf_token").unwrap_or_default();
@@ -101,7 +103,7 @@ pub(crate) fn require_admin_session(
     }
     let is_admin =
         user_is_admin(users_dir, &username) || boolish(Some(&config_string(&session, "is_admin")));
-    if !is_admin {
+    if require_admin && !is_admin {
         return Err(RuntimeError::new(
             "admin_required",
             "Admin permission required",
@@ -118,9 +120,19 @@ pub(crate) fn require_admin_session(
     }
     Ok(SessionState {
         username,
+        is_admin,
         auth_method,
         force_interactive,
     })
+}
+
+pub(crate) fn require_admin_session(
+    sessions_dir: &Path,
+    users_dir: &Path,
+    request: &RequestParams,
+    extend_ttl_seconds: Option<u64>,
+) -> Result<SessionState, RuntimeError> {
+    require_session(sessions_dir, users_dir, request, extend_ttl_seconds, true)
 }
 
 fn lookup_url_param(source: &str, key: &str) -> Option<String> {
