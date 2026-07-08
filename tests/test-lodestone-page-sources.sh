@@ -269,18 +269,18 @@ printf '%s\n' 'console.log("stale blog page js");' > "$local_site_root/site/stat
 
 WIZARDRY_SITE_NAME="$local_site_name" "$local_site_root/cgi/pre-build"
 
-require_managed_page_title_shell "$local_site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "local-template build still rendered stale site-owned blog head instead of repo template head" || {
-  printf '%s\n' "local-template build still rendered stale site-owned blog head instead of repo template head" >&2
+require_managed_page_title_shell "$local_site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "local-template build still rendered a stale local blog head override instead of the repo template head" || {
+  printf '%s\n' "local-template build still rendered a stale local blog head override instead of the repo template head" >&2
   exit 1
 }
 
 if grep -Fq '<nostr-sync-pill slug=' "$local_site_root/site/pages/blog.md"; then
-  printf '%s\n' "local-template build still emitted stale static sync pill from site-owned blog template copy" >&2
+  printf '%s\n' "local-template build still emitted a stale static sync pill from a local blog template override" >&2
   exit 1
 fi
 
 cmp -s "$ROOT_DIR/site/static/blog-page.js" "$local_site_root/site/static/blog-page.js" || {
-  printf '%s\n' "local-template build did not refresh stale site-owned blog-page.js from repo template sources" >&2
+  printf '%s\n' "local-template build did not refresh a stale local blog-page.js override from the repo template sources" >&2
   exit 1
 }
 
