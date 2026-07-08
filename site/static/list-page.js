@@ -361,10 +361,7 @@
   function markdownBlock(md) {
     return window.__wizardryRenderManagedMarkdownBlock(md, {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll,
-      renderFallback: function (value) {
-        return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
-      }
+      onUpgrade: renderAll
     });
   }
 

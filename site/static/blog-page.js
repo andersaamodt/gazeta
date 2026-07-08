@@ -221,9 +221,7 @@
     return window.__wizardryRenderManagedMarkdownBlock(md, {
       upgradeState: markedUpgradeState,
       onUpgrade: renderAll,
-      renderFallback: function (value) {
-        return '<p>' + window.__wizardryRenderManagedMarkdownInlineLinkFallback(value).replace(/\n/g, '<br>') + '</p>';
-      }
+      renderInlineFallback: window.__wizardryRenderManagedMarkdownInlineLinkFallback
     });
   }
 

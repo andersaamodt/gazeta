@@ -1826,7 +1826,10 @@
     if (typeof opts.renderFallback === 'function') {
       return opts.renderFallback(value);
     }
-    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+    var inlineFallback = typeof opts.renderInlineFallback === 'function'
+      ? opts.renderInlineFallback
+      : escapeHtml;
+    return '<p>' + inlineFallback(value).replace(/\n/g, '<br>') + '</p>';
   }
 
   function normalizeSlug(value) {
