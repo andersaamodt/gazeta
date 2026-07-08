@@ -1005,6 +1005,15 @@
     return load({ sortMetric: requestedMetric() });
   }
 
+  function defaultMetricForCache() {
+    var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
+    return normalizeMetric(
+      payloadState.default_metric
+      || (state.draft && state.draft.default_metric)
+      || 'momentum'
+    );
+  }
+
   async function persistDraft(options) {
     if (!isAdmin()) {
       return false;
@@ -1556,6 +1565,9 @@
       unexpectedPayloadMessage: 'Unexpected page payload for public ranking page',
       extraParams: {
         sort_metric: sortMetric
+      },
+      allowWrite: function () {
+        return sortMetric === defaultMetricForCache();
       },
       renderPayload: renderBootstrapPayload,
       handleError: function (err) {

@@ -2520,6 +2520,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'extraPar
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'sort_metric: sortMetric' 'public ranking refresh asks the server for the selected metric view'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'await refreshCurrentMetricView();' 'public ranking mutations now refresh the canonical server-rendered metric view after writes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'if (canRefreshMetricFromServer()) {' 'public ranking metric changes prefer server-prerendered refreshes when visitor view can stay read-only'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowWrite: function () {' 'public ranking metric refresh only persists cache entries through an explicit shared allowWrite gate'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return sortMetric === defaultMetricForCache();' 'public ranking metric refresh does not poison the slug-scoped bootstrap cache with non-default metric views'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function applyLiveRankingUpdate(' 'public ranking runtime no longer maintains a separate local live-ranking patch path for visitor metric views'
 assert_file_contains "$ROOT_DIR/cgi/blog-submit-public-ranking" 'exec "$SCRIPT_DIR/blog-submit-public-ranking-node"' 'public ranking compatibility endpoint delegates to node submit handler'
 assert_success test -x "$ROOT_DIR/cgi/blog-submit-public-ranking"
