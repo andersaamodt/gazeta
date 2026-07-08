@@ -122,6 +122,7 @@
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
   var managedSlugFromPath = window.__wizardryManagedSlugFromPath;
+  var ROUTE_REPAIR_PARAM = '__route_repair';
 
   function normalizeManagedSlug(value) {
     return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
@@ -200,12 +201,52 @@
       return;
     }
     routeSelfHealTriggered = true;
-    window.__wizardryRequestManagedRouteRepair({
+    requestManagedRouteRepair({
       reason: reason,
       preflight: function () {
         return fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' });
       }
     });
+  }
+
+  function requestManagedRouteRepair(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var url;
+    try {
+      url = Object.prototype.hasOwnProperty.call(opts, 'url')
+        ? new URL(String(opts.url || ''), window.location.href)
+        : new URL(window.location.href);
+    } catch (_err) {
+      if (typeof opts.onUrlError === 'function') {
+        opts.onUrlError();
+        return false;
+      }
+      window.location.reload();
+      return false;
+    }
+    if (url.searchParams.get(ROUTE_REPAIR_PARAM) === '1') {
+      url.searchParams.delete(ROUTE_REPAIR_PARAM);
+      return false;
+    }
+    url.searchParams.set(ROUTE_REPAIR_PARAM, '1');
+    var preflight = typeof opts.preflight === 'function' ? opts.preflight() : null;
+    Promise.resolve(preflight)
+      .catch(function () {
+        // Ignore preflight failures; still attempt one repair reload.
+      })
+      .finally(function () {
+        window.setTimeout(function () {
+          if (opts.reason) {
+            try {
+              sessionStorage.setItem('wizardry_last_route_repair_reason', String(opts.reason));
+            } catch (_storageErr) {
+              // Ignore storage errors.
+            }
+          }
+          window.location.replace(url.toString());
+        }, Math.max(0, Number(opts.delayMs || 220) || 0));
+      });
+    return true;
   }
 
   function escapeHtml(value) {
