@@ -431,6 +431,44 @@
     return true;
   }
 
+  function renderManagedNavbarTitleRow(targetNode, options) {
+    if (!targetNode) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    var titleNode = opts.titleNode || null;
+    var titleActiveClassName = String(opts.titleActiveClassName || '').trim();
+    var shouldShow = opts.isAdmin === true && opts.editMode === true;
+    if (titleNode && titleNode.classList && titleActiveClassName) {
+      titleNode.classList.toggle(titleActiveClassName, shouldShow);
+    }
+    if (!shouldShow) {
+      return renderEditableNavbarTitleRow(targetNode, { hidden: true });
+    }
+    var editing = opts.editing === true;
+    var rendered = renderEditableNavbarTitleRow(targetNode, {
+      currentText: opts.currentText,
+      editing: editing,
+      inputValue: opts.inputValue,
+      labelText: opts.labelText,
+      inputAriaLabel: opts.inputAriaLabel,
+      inputAttrName: opts.inputAttrName,
+      actionAttrName: opts.actionAttrName,
+      editLabel: opts.editLabel,
+      editButtonClassName: opts.editButtonClassName,
+      saveButtonClassName: opts.saveButtonClassName,
+      saveDisabled: opts.saveDisabled
+    });
+    if (rendered && editing) {
+      focusEditableNavbarTitleInput({
+        targetNode: targetNode,
+        inputAttrName: opts.inputAttrName,
+        selectOnFocus: opts.selectOnFocus
+      });
+    }
+    return rendered;
+  }
+
   function resolveReadOnlyContentFromPrerender(options) {
     var opts = options && typeof options === 'object' ? options : {};
     if (opts.allowPrerender !== false) {
@@ -1348,8 +1386,7 @@
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
-  window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
-  window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
+  window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;

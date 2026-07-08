@@ -2988,21 +2988,14 @@
     if (!host) {
       return;
     }
-    if (!isAdmin() || !state.editMode) {
-      if (els.title) {
-        els.title.classList.remove('has-nav-title-row');
-      }
-      window.__wizardryRenderEditableNavbarTitleRow(host, { hidden: true });
-      return;
-    }
-    if (els.title) {
-      els.title.classList.add('has-nav-title-row');
-    }
     var current = currentNavbarTitle(renderState);
-    var editing = !!state.navTitleEditing;
-    window.__wizardryRenderEditableNavbarTitleRow(host, {
+    window.__wizardryRenderManagedNavbarTitleRow(host, {
+      isAdmin: isAdmin(),
+      editMode: state.editMode,
+      titleNode: els.title || null,
+      titleActiveClassName: 'has-nav-title-row',
       currentText: current,
-      editing: editing,
+      editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput || current,
       labelText: 'Link:',
       inputAriaLabel: 'Link title',
@@ -3010,9 +3003,6 @@
       saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
       saveDisabled: state.navTitleBusy
     });
-    if (editing) {
-      window.__wizardryFocusEditableNavbarTitleInput({ targetNode: host });
-    }
   }
 
   function qualifierLabel(qualifier) {
