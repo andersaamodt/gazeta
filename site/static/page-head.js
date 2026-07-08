@@ -1612,6 +1612,7 @@
     var requestSlug = Object.prototype.hasOwnProperty.call(opts, 'pageSlug')
       ? String(opts.pageSlug || slug).trim()
       : slug;
+    var retryAttempts = Math.max(1, Math.floor(Number(opts.retryAttempts || 1) || 1));
     var auth = authPayload();
     var params = new URLSearchParams({
       page_slug: requestSlug,
@@ -1632,53 +1633,87 @@
         params.set(name, String(value));
       });
     }
-    return fetch(endpoint, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-      body: params.toString()
-    }).then(function (res) {
-      return res.text().then(function (text) {
-        var data;
-        try {
-          data = JSON.parse(text);
-        } catch (_err) {
-          throw new Error('Invalid JSON response');
-        }
-        if (!res.ok || !data || data.success === false) {
-          if (typeof opts.handleFailurePayload === 'function' && opts.handleFailurePayload(data || null, res) === true) {
-            return null;
+
+    function resolveRetryDelayMs(attempt, err) {
+      if (attempt >= retryAttempts) {
+        return -1;
+      }
+      var configured = opts.retryDelayMs;
+      if (typeof configured === 'function') {
+        configured = configured(attempt, err);
+      }
+      var delayMs = Number(configured);
+      if (!isFinite(delayMs) || delayMs < 0) {
+        delayMs = 0;
+      }
+      return delayMs;
+    }
+
+    function fetchManagedPageOnce() {
+      return fetch(endpoint, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        body: params.toString()
+      }).then(function (res) {
+        return res.text().then(function (text) {
+          var data;
+          try {
+            data = JSON.parse(text);
+          } catch (_err) {
+            throw new Error('Invalid JSON response');
           }
-          var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
-          err.code = data && data.code ? String(data.code) : '';
-          err.payload = data || null;
-          throw err;
-        }
-        return data;
-      });
-    }).then(function (payload) {
-      if (!payload) {
-        return null;
-      }
-      if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(payload)) {
-        throw new Error(String(opts.unexpectedPayloadMessage || 'Unexpected managed page payload'));
-      }
-      if (opts.persist !== false) {
-        writePageBootstrapCache(payload, {
-          slug: slug || requestSlug,
-          authSignature: opts.authSignature || sessionAuthSignature,
-          allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
-          clearOnDeny: opts.clearOnDeny
+          if (!res.ok || !data || data.success === false) {
+            if (typeof opts.handleFailurePayload === 'function' && opts.handleFailurePayload(data || null, res) === true) {
+              return null;
+            }
+            var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+            err.code = data && data.code ? String(data.code) : '';
+            err.payload = data || null;
+            throw err;
+          }
+          return data;
         });
-      }
-      if (typeof opts.renderPayload === 'function') {
-        opts.renderPayload(payload);
-      }
-      if (typeof opts.afterRender === 'function') {
-        opts.afterRender(payload);
-      }
-      return payload;
-    }).catch(function (err) {
+      }).then(function (payload) {
+        if (!payload) {
+          return null;
+        }
+        if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(payload)) {
+          throw new Error(String(opts.unexpectedPayloadMessage || 'Unexpected managed page payload'));
+        }
+        if (opts.persist !== false) {
+          writePageBootstrapCache(payload, {
+            slug: slug || requestSlug,
+            authSignature: opts.authSignature || sessionAuthSignature,
+            allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
+            clearOnDeny: opts.clearOnDeny
+          });
+        }
+        if (typeof opts.renderPayload === 'function') {
+          opts.renderPayload(payload);
+        }
+        if (typeof opts.afterRender === 'function') {
+          opts.afterRender(payload);
+        }
+        return payload;
+      });
+    }
+
+    function fetchManagedPageAttempt(attempt) {
+      return fetchManagedPageOnce().catch(function (err) {
+        var delayMs = resolveRetryDelayMs(attempt, err);
+        if (delayMs >= 0) {
+          return new Promise(function (resolve) {
+            window.setTimeout(resolve, delayMs);
+          }).then(function () {
+            return fetchManagedPageAttempt(attempt + 1);
+          });
+        }
+        throw err;
+      });
+    }
+
+    return fetchManagedPageAttempt(1).catch(function (err) {
       if (typeof opts.handleError === 'function') {
         opts.handleError(err);
         return null;

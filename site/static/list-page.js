@@ -5076,106 +5076,81 @@
     });
   }
 
-  async function load() {
-    var maxAttempts = 3;
-    var lastErr = null;
-    try {
-      state.authSignature = window.__wizardryViewerAuthSignature();
-      function applyFetchedPayload(payload) {
-        var nextRenderSignature = JSON.stringify({
-          slug: String(payload && payload.slug || ''),
-          page_type: String(payload && payload.page_type || ''),
-          nav_title: String(payload && payload.nav_title || ''),
-          is_admin: !!(payload && payload.is_admin),
-          canonical_exists: !!(payload && payload.canonical_exists),
-          draft_differs: !!(payload && payload.draft_differs),
-          sync_status: payload && payload.sync_status ? payload.sync_status : null,
-          state: (payload && payload.state) ? payload.state : null
-        });
-        var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
-        state.payload = payload;
-        state.draft = readEditableStateFromPayload();
-        state.navTitle = String(payload.nav_title || '').trim();
-        state.navTitleEditing = false;
-        state.navTitleInput = '';
-        state.navTitleBusy = false;
-        state.pendingNewEntry = null;
-        state.markerFilterInclude = [];
-        state.markerFilterExclude = [];
-        state.markerFilterInitialized = false;
-        state.markerColorByToken = {};
-        state.createProductBusyUid = '';
-        state.viewModeOverride = '';
-        state.saveIndicatorVisible = false;
-        resetInlineHistory();
-        if (!state.activeEntryUid && state.draft.elements.length) {
-          state.activeEntryUid = state.draft.elements[0]._uid;
-        }
-        setSaveStatus('saved');
-        state.renderSignature = nextRenderSignature;
-        function renderPreservedStaticPrerender() {
-          initializePrerenderMarkerFiltersFromPayload();
-          renderHead();
-          renderAdmin();
-          renderValidation();
-        }
-        if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
-          renderPreservedStaticPrerender();
-        } else {
-          state.staticPrerenderListAdopted = false;
-          renderList();
-          renderAdmin();
-          renderValidation();
-          window.__wizardryNotifyInitialContentPainted(slug, {
-            state: state,
-            rootNode: root,
-            loadingClass: 'is-loading',
-            markPageReady: true
-          });
-        }
+  function load() {
+    state.authSignature = window.__wizardryViewerAuthSignature();
+    function applyFetchedPayload(payload) {
+      var nextRenderSignature = JSON.stringify({
+        slug: String(payload && payload.slug || ''),
+        page_type: String(payload && payload.page_type || ''),
+        nav_title: String(payload && payload.nav_title || ''),
+        is_admin: !!(payload && payload.is_admin),
+        canonical_exists: !!(payload && payload.canonical_exists),
+        draft_differs: !!(payload && payload.draft_differs),
+        sync_status: payload && payload.sync_status ? payload.sync_status : null,
+        state: (payload && payload.state) ? payload.state : null
+      });
+      var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
+      state.payload = payload;
+      state.draft = readEditableStateFromPayload();
+      state.navTitle = String(payload.nav_title || '').trim();
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      state.navTitleBusy = false;
+      state.pendingNewEntry = null;
+      state.markerFilterInclude = [];
+      state.markerFilterExclude = [];
+      state.markerFilterInitialized = false;
+      state.markerColorByToken = {};
+      state.createProductBusyUid = '';
+      state.viewModeOverride = '';
+      state.saveIndicatorVisible = false;
+      resetInlineHistory();
+      if (!state.activeEntryUid && state.draft.elements.length) {
+        state.activeEntryUid = state.draft.elements[0]._uid;
       }
-      for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        var payload = await window.__wizardryRefreshManagedNostrPage({
-          slug: slug,
-          authSignature: window.__wizardryViewerAuthSignature,
-          isExpectedPayload: isExpectedPayload,
-          persistMode: 'authenticated_admin',
-          unexpectedPayloadMessage: 'Unexpected page payload for list page',
-          renderPayload: applyFetchedPayload,
-          handleError: function (err) {
-            lastErr = err;
-          }
-        });
-        if (payload) {
-          return;
-        }
-        if (attempt >= maxAttempts) {
-          break;
-        }
-        await new Promise(function (resolve) {
-          window.setTimeout(resolve, attempt * 220);
-        });
+      setSaveStatus('saved');
+      state.renderSignature = nextRenderSignature;
+      function renderPreservedStaticPrerender() {
+        initializePrerenderMarkerFiltersFromPayload();
+        renderHead();
+        renderAdmin();
+        renderValidation();
       }
-      window.__wizardryRenderLoadFallback(lastErr, {
+      if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
+        renderPreservedStaticPrerender();
+        return;
+      }
+      state.staticPrerenderListAdopted = false;
+      renderList();
+      renderAdmin();
+      renderValidation();
+    }
+    return window.__wizardryRefreshManagedNostrPage({
+      slug: slug,
+      authSignature: window.__wizardryViewerAuthSignature,
+      isExpectedPayload: isExpectedPayload,
+      persistMode: 'authenticated_admin',
+      retryAttempts: 3,
+      retryDelayMs: function (attempt) {
+        return attempt * 220;
+      },
+      unexpectedPayloadMessage: 'Unexpected page payload for list page',
+      renderPayload: applyFetchedPayload,
+      loadFallback: {
         consoleLabel: 'List page',
         state: state,
         contentNode: els.content,
         fallbackText: 'Page content is still loading. The latest list data was not available yet.',
-        slug: slug,
         rootNode: root,
         loadingClass: 'is-loading'
-      });
-      if (root && root.classList) {
-        root.classList.remove('is-loading');
-      }
-    } finally {
-      window.__wizardryNotifyInitialContentPainted(slug, {
+      },
+      notifyInitialContentPainted: {
         state: state,
         rootNode: root,
         loadingClass: 'is-loading',
         markPageReady: true
-      });
-    }
+      }
+    });
   }
 
   bindAdminEvents();
