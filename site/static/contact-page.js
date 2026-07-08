@@ -465,10 +465,11 @@
   }
 
   function fallbackPageTitle() {
-    if (!root) {
-      return 'Contact';
-    }
-    return String(root.getAttribute('data-page-title') || 'Contact').trim() || 'Contact';
+    return window.__wizardryResolveRootAttributeFallbackText(
+      root,
+      ['data-page-title'],
+      'Contact'
+    ) || 'Contact';
   }
 
   function storedSessionToken() {

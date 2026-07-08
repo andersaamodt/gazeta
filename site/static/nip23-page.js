@@ -176,10 +176,11 @@
   }
 
   function fallbackPageTitle() {
-    if (!root) {
-      return 'Untitled';
-    }
-    return String(root.getAttribute('data-page-title') || 'Untitled').trim() || 'Untitled';
+    return window.__wizardryResolveRootAttributeFallbackText(
+      root,
+      ['data-page-title'],
+      'Untitled'
+    ) || 'Untitled';
   }
 
   function parseMoney(value) {

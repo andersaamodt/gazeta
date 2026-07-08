@@ -31,7 +31,11 @@
   }
 
   function fallbackPageTitle() {
-    return String(overworldRoot()?.getAttribute('data-page-title') || 'Overworld').trim() || 'Overworld';
+    return window.__wizardryResolveRootAttributeFallbackText(
+      overworldRoot(),
+      ['data-page-title'],
+      'Overworld'
+    ) || 'Overworld';
   }
 
   function isExpectedPayload(payload) {

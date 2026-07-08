@@ -140,10 +140,11 @@
   }
 
   function fallbackPageTitle() {
-    if (!root) {
-      return 'Public Ranking';
-    }
-    return String(root.getAttribute('data-page-title') || 'Public Ranking').trim() || 'Public Ranking';
+    return window.__wizardryResolveRootAttributeFallbackText(
+      root,
+      ['data-page-title'],
+      'Public Ranking'
+    ) || 'Public Ranking';
   }
 
   function normalizeMetric(raw) {

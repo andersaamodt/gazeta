@@ -44,7 +44,7 @@
     clear: document.getElementById('blog-clear-filters'),
     list: document.getElementById('blog-post-list'),
     empty: document.getElementById('blog-empty'),
-    draftNotice: null,
+    draftNotice: document.getElementById('blog-draft-notice'),
     composeFab: null,
     composeSlot: null
   };
@@ -276,8 +276,11 @@
   }
 
   function fallbackPageTitle() {
-    var rootTitle = root ? String(root.getAttribute('data-page-title') || '').trim() : '';
-    return rootTitle || titleizeSlug(slug);
+    return window.__wizardryResolveRootAttributeFallbackText(
+      root,
+      ['data-page-title'],
+      titleizeSlug(slug)
+    ) || titleizeSlug(slug);
   }
 
   function normalizePageState(raw) {
@@ -377,18 +380,6 @@
     if (filterCol && els.toggle.parentNode !== filterCol) {
       filterCol.appendChild(els.toggle);
     }
-  }
-
-  function ensureDraftNoticeHost() {
-    if (els.draftNotice && els.draftNotice.isConnected) {
-      return els.draftNotice;
-    }
-    var existing = document.getElementById('blog-draft-notice');
-    if (existing) {
-      els.draftNotice = existing;
-      return existing;
-    }
-    return null;
   }
 
   function clearDraftNoticeState() {
@@ -569,7 +560,7 @@
   }
 
   function renderDraftNotice() {
-    var host = ensureDraftNoticeHost();
+    var host = els.draftNotice;
     if (!host) {
       return;
     }
@@ -5082,7 +5073,6 @@
 
   window.__wizardryRemoveLegacyTitleBlock(root);
   syncFilterTogglePlacement();
-  ensureDraftNoticeHost();
 
   (function bootstrapOnce() {
     hydrateDraftNoticeFromCache();

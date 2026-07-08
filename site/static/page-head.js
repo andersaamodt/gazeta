@@ -616,6 +616,24 @@
     return rendered;
   }
 
+  function resolveRootAttributeFallbackText(rootNode, attributeNames, fallbackText) {
+    var root = rootNode || null;
+    var names = Array.isArray(attributeNames) ? attributeNames : [];
+    if (root && typeof root.getAttribute === 'function') {
+      for (var i = 0; i < names.length; i += 1) {
+        var attrName = String(names[i] || '').trim();
+        if (!attrName) {
+          continue;
+        }
+        var attrValue = String(root.getAttribute(attrName) || '').trim();
+        if (attrValue) {
+          return attrValue;
+        }
+      }
+    }
+    return String(fallbackText || '').trim();
+  }
+
   function resolveManagedNavbarTitle(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var configured = String(opts.configuredText || '').trim();
@@ -632,21 +650,11 @@
     if (renderTitle) {
       return renderTitle;
     }
-    var rootNode = opts.rootNode || null;
-    var fallbackAttributeNames = Array.isArray(opts.fallbackAttributeNames) ? opts.fallbackAttributeNames : ['data-page-title'];
-    if (rootNode && typeof rootNode.getAttribute === 'function') {
-      for (var i = 0; i < fallbackAttributeNames.length; i += 1) {
-        var attrName = String(fallbackAttributeNames[i] || '').trim();
-        if (!attrName) {
-          continue;
-        }
-        var attrValue = String(rootNode.getAttribute(attrName) || '').trim();
-        if (attrValue) {
-          return attrValue;
-        }
-      }
-    }
-    var fallbackText = String(opts.fallbackText || '').trim();
+    var fallbackText = resolveRootAttributeFallbackText(
+      opts.rootNode || null,
+      Array.isArray(opts.fallbackAttributeNames) ? opts.fallbackAttributeNames : ['data-page-title'],
+      opts.fallbackText
+    );
     if (fallbackText) {
       return fallbackText;
     }
@@ -2562,6 +2570,7 @@
   window.__wizardryStartManagedNavbarTitleEditForPage = startManagedNavbarTitleEditForPage;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardrySaveManagedNavbarTitleForPage = saveManagedNavbarTitleForPage;
+  window.__wizardryResolveRootAttributeFallbackText = resolveRootAttributeFallbackText;
   window.__wizardryResetManagedNavbarTitleState = resetManagedNavbarTitleState;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardryRenderManagedBlogFilterPanel = renderManagedBlogFilterPanel;

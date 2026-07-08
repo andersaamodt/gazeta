@@ -1419,14 +1419,11 @@
   }
 
   function fallbackPageTitle() {
-    if (!root) {
-      return 'List';
-    }
-    return String(
-      root.getAttribute('data-page-title')
-      || root.getAttribute('data-list-title')
-      || 'List'
-    ).trim() || 'List';
+    return window.__wizardryResolveRootAttributeFallbackText(
+      root,
+      ['data-page-title', 'data-list-title'],
+      'List'
+    ) || 'List';
   }
 
   function findElementIndex(uid) {
@@ -2807,7 +2804,7 @@
         configuredText: state.navTitle,
         renderState: s,
         rootNode: root,
-        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+        fallbackAttributeNames: ['data-page-title', 'data-list-title'],
         fallbackText: fallbackPageTitle(),
         state: state,
         slug: slug,
@@ -3668,7 +3665,7 @@
       state: state,
       payload: state.payload,
       rootNode: root,
-      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackAttributeNames: ['data-page-title', 'data-list-title'],
       fallbackText: fallbackPageTitle(),
       slug: slug,
       isAdmin: isAdmin,
@@ -3681,7 +3678,7 @@
       configuredText: state.navTitle,
       renderState: getRenderState(),
       rootNode: root,
-      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackAttributeNames: ['data-page-title', 'data-list-title'],
       fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
