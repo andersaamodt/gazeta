@@ -3550,6 +3550,38 @@
       document.body.classList.toggle('list-page-wide', wideEditMode);
     }
 
+    function renderInteractiveReadOnlyContent() {
+      if (!elements.length) {
+        return renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
+      }
+      return renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
+        return isEntryType(String(el && el.type || 'entry'));
+      }), s.group_by, currentReadViewMode(s), !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
+    }
+
+    if (!fullEditMode && usePrerenderReadOnly) {
+      var adoptedReadOnlyContent = window.__wizardryRenderResolvedReadOnlyContent({
+        targetNode: els.content,
+        payload: state.payload,
+        allowPrerender: true,
+        renderFallback: function () {
+          return '<p class="placeholder">Page content is still loading. The latest page data was not available yet.</p>';
+        },
+        mountOptions: {
+          applyHtml: replaceListContentHtml
+        },
+        afterAdopt: function () {
+          initializePrerenderMarkerFiltersFromPayload();
+          refreshProductCartButtons();
+        }
+      });
+      if (!adoptedReadOnlyContent || !adoptedReadOnlyContent.adopted) {
+        refreshProductCartButtons();
+      }
+      renderAdmin();
+      return;
+    }
+
     if (!elements.length) {
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
@@ -3557,17 +3589,13 @@
         var emptyContent = window.__wizardryRenderResolvedReadOnlyContent({
           targetNode: els.content,
           payload: state.payload,
-          allowPrerender: usePrerenderReadOnly,
+          allowPrerender: false,
           renderFallback: function () {
-            return renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
+            return renderInteractiveReadOnlyContent();
           },
           mountOptions: {
             applyHtml: replaceListContentHtml
           },
-          afterAdopt: function () {
-            initializePrerenderMarkerFiltersFromPayload();
-            refreshProductCartButtons();
-          }
         });
         if (!emptyContent || !emptyContent.adopted) {
           refreshProductCartButtons();
@@ -3587,18 +3615,12 @@
     var readOnlyContent = window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
-      allowPrerender: usePrerenderReadOnly,
+      allowPrerender: false,
       renderFallback: function () {
-        return renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
-          return isEntryType(String(el && el.type || 'entry'));
-        }), s.group_by, currentReadViewMode(s), !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
+        return renderInteractiveReadOnlyContent();
       },
       mountOptions: {
         applyHtml: replaceListContentHtml
-      },
-      afterAdopt: function () {
-        initializePrerenderMarkerFiltersFromPayload();
-        refreshProductCartButtons();
       }
     });
     if (readOnlyContent && readOnlyContent.adopted) {
