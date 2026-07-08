@@ -122,7 +122,7 @@ blog_nostr_page_save_draft_state_json reading-list list '{"title":"Reading list"
 mkdir -p "$site_root/build/contact"
 cat > "$site_root/build/contact/index.html" <<'EOFSTALE'
 <section id="contact-page-root" class="list-page-shell" data-page-slug="contact" data-page-type="contact" data-page-title="Contact">
-<div id="contact-page-content" class="list-page-content">Loading page content...</div>
+<div id="contact-page-content" class="list-page-content"></div>
 </section>
 EOFSTALE
 
