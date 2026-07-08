@@ -4131,23 +4131,22 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
-      window.__wizardryMergeManagedPagePayload(state.payload, data, {
-        validationFallback: { errors: [], warnings: [], can_publish: true }
-      });
-      state.payload.draft_exists = true;
       var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
-      state.payload.draft_differs = localChangedDuringSave;
-      if (!localChangedDuringSave) {
-        state.payload.state = data.state || state.payload.state;
-        state.draft = normalizeDraftState(data.state || state.draft);
-      } else {
-        state.payload.state = normalizeDraftState(state.draft || {});
-      }
-      window.__wizardryPersistManagedPagePayload(state.payload, {
+      var nextState = !localChangedDuringSave
+        ? (data.state || state.payload.state)
+        : normalizeDraftState(state.draft || {});
+      window.__wizardryCommitManagedPagePayload(state.payload, data, {
+        validationFallback: { errors: [], warnings: [], can_publish: true },
+        statePayload: nextState,
+        draftExists: true,
+        draftDiffers: localChangedDuringSave,
         slug: slug,
         authSignature: window.__wizardrySessionAuthSignature,
         persistMode: 'authenticated_admin'
       });
+      if (!localChangedDuringSave) {
+        state.draft = normalizeDraftState(data.state || state.draft);
+      }
       setSaveStatus('saved');
       if (state.activeHeadField === 'title' || state.activeHeadField === 'description') {
         // Avoid replacing the active head input while autosave returns.
@@ -4257,17 +4256,16 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
-      window.__wizardryMergeManagedPagePayload(state.payload, data, {
-        validationFallback: { errors: [], warnings: [], can_publish: true }
-      });
-      state.payload.draft_exists = true;
-      state.payload.draft_differs = false;
-      state.draft = normalizeDraftState(data.state);
-      window.__wizardryPersistManagedPagePayload(state.payload, {
+      window.__wizardryCommitManagedPagePayload(state.payload, data, {
+        validationFallback: { errors: [], warnings: [], can_publish: true },
+        statePayload: data.state,
+        draftExists: true,
+        draftDiffers: false,
         slug: slug,
         authSignature: window.__wizardrySessionAuthSignature,
         persistMode: 'authenticated_admin'
       });
+      state.draft = normalizeDraftState(data.state);
       setSaveStatus('saved');
       renderAll();
     }).catch(function (err) {

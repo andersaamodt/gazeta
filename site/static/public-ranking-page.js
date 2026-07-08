@@ -1038,13 +1038,12 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      window.__wizardryMergeManagedPagePayload(state.payload, data);
-      state.draft = normalizeDraftState(data.state || state.draft || {});
-      window.__wizardryPersistManagedPagePayload(state.payload, {
+      window.__wizardryCommitManagedPagePayload(state.payload, data, {
         slug: slug,
         authSignature: window.__wizardrySessionAuthSignature,
         persistMode: 'authenticated_admin'
       });
+      state.draft = normalizeDraftState(data.state || state.draft || {});
       setSaveStatus('saved');
       renderAll();
       return true;
@@ -1099,14 +1098,13 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      window.__wizardryMergeManagedPagePayload(state.payload, data);
-      state.draft = normalizeDraftState(data.state || state.payload.state || {});
-      maybeSetMetricFromPayload();
-      window.__wizardryPersistManagedPagePayload(state.payload, {
+      window.__wizardryCommitManagedPagePayload(state.payload, data, {
         slug: slug,
         authSignature: window.__wizardrySessionAuthSignature,
         persistMode: 'authenticated_admin'
       });
+      state.draft = normalizeDraftState(data.state || state.payload.state || {});
+      maybeSetMetricFromPayload();
       setSaveStatus('saved');
       renderAll();
     } catch (err) {

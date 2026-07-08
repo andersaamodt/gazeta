@@ -794,6 +794,36 @@
     });
   }
 
+  function commitManagedPagePayload(targetPayload, sourcePayload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var target = mergeManagedPagePayload(targetPayload, sourcePayload, {
+      includeState: opts.includeState,
+      validationFallback: opts.validationFallback,
+      passthroughFields: opts.passthroughFields
+    });
+    if (!target) {
+      return target;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, 'draftExists')) {
+      target.draft_exists = !!opts.draftExists;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, 'draftDiffers')) {
+      target.draft_differs = !!opts.draftDiffers;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, 'statePayload')) {
+      target.state = opts.statePayload;
+    }
+    if (opts.persist !== false && opts.slug) {
+      persistManagedPagePayload(target, {
+        slug: opts.slug,
+        authSignature: opts.authSignature || sessionAuthSignature,
+        persistMode: opts.persistMode || 'always',
+        clearOnDeny: opts.clearOnDeny
+      });
+    }
+    return target;
+  }
+
   function bindSessionAuthRefresh(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
@@ -1451,6 +1481,7 @@
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
   window.__wizardryMergeManagedPagePayload = mergeManagedPagePayload;
+  window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
   window.__wizardryPostFormJson = postFormJson;
 
   window.__wizardrySetPageTitleConfig = function (options) {

@@ -1796,14 +1796,18 @@
       state.payload.draft_exists = true;
       syncVisibleInlineInputsToDraft();
       var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
-      state.payload.draft_differs = localChangedDuringSave;
+      var nextState = savedPayload && savedPayload.state ? savedPayload.state : state.payload.state;
+      window.__wizardryCommitManagedPagePayload(state.payload, savedPayload, {
+        statePayload: nextState,
+        draftExists: true,
+        draftDiffers: localChangedDuringSave,
+        slug: slug,
+        authSignature: authSignature,
+        persistMode: 'authenticated_admin'
+      });
       if (!localChangedDuringSave) {
-        state.payload.state = savedPayload.state || state.payload.state;
         state.draft = readEditableStateFromPayload();
-      } else if (savedPayload && savedPayload.state) {
-        state.payload.state = savedPayload.state;
       }
-      persistCurrentPayload();
       setSaveStatus('saved');
       refreshValidation();
     } catch (err) {
@@ -1971,9 +1975,12 @@
     if (!state.payload || typeof state.payload !== 'object') {
       state.payload = { success: true, slug: slug, page_type: 'list' };
     }
-    window.__wizardryMergeManagedPagePayload(state.payload, data);
+    window.__wizardryCommitManagedPagePayload(state.payload, data, {
+      slug: slug,
+      authSignature: authSignature,
+      persistMode: 'authenticated_admin'
+    });
     state.draft = readEditableStateFromPayload();
-    persistCurrentPayload();
     if (beforeRects) {
       renderListWithFlip(beforeRects);
     } else {
