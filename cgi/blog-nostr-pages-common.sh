@@ -1915,6 +1915,7 @@ blog_nostr_page_template_is_current() {
   case "$page_type" in
     blog)
       grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
+      grep -q 'data-page-nav-title-host="true"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-content"' "$file" 2>/dev/null &&
       grep -q '/static/nostr-page-bootstrap/' "$file" 2>/dev/null &&

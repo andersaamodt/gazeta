@@ -429,6 +429,16 @@
 
   var apiPost = window.__wizardryPostFormJson;
 
+  function currentNavbarTitle(renderState) {
+    var configured = String(state.payload && state.payload.nav_title || '').trim();
+    if (configured) {
+      return configured;
+    }
+    var page = renderState || getRenderState();
+    var title = String(page && page.title || '').trim();
+    return title || titleizeSlug(slug);
+  }
+
   function renderHead() {
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
@@ -444,6 +454,12 @@
         html: '',
         hidden: true
       }
+    });
+    window.__wizardryRenderManagedNavbarTitleRow({
+      isAdmin: false,
+      editMode: false,
+      titleNode: els.title || null,
+      currentText: currentNavbarTitle(page)
     });
   }
 

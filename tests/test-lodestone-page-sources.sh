@@ -119,7 +119,7 @@ grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   exit 1
 }
 
-grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span></h1>' "$site_root/site/pages/blog.md" || {
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing hydration-matching prerendered title shell from lodestone render" >&2
   exit 1
 }
@@ -262,7 +262,7 @@ printf '%s\n' 'console.log("stale blog page js");' > "$local_site_root/site/stat
 
 WIZARDRY_SITE_NAME="$local_site_name" "$local_site_root/cgi/pre-build"
 
-grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span></h1>' "$local_site_root/site/pages/blog.md" || {
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$local_site_root/site/pages/blog.md" || {
   printf '%s\n' "local-template build still rendered stale site-owned blog head instead of repo template head" >&2
   exit 1
 }
