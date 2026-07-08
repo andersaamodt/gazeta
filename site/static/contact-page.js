@@ -647,17 +647,20 @@
   }
 
   function canUsePrerenderReadOnlyView() {
-    return !isAdmin() &&
-      !window.__wizardryHasLikelyAuthenticatedSession() &&
-      !state.chat.chatStarted &&
-      !state.chat.chatOpening &&
-      !state.chat.chatClosing &&
-      !state.chat.sending &&
-      !state.chat.filePickerOpen &&
-      !state.chat.emojiPickerOpen &&
-      !state.chat.voiceRecording &&
-      !(Array.isArray(state.chat.pendingFiles) && state.chat.pendingFiles.length) &&
-      !String(state.chat.draftText || '').trim();
+    return window.__wizardryCanUseVisitorPrerenderReadOnly({
+      isAdmin: isAdmin(),
+      extraCheck: function () {
+        return !state.chat.chatStarted &&
+          !state.chat.chatOpening &&
+          !state.chat.chatClosing &&
+          !state.chat.sending &&
+          !state.chat.filePickerOpen &&
+          !state.chat.emojiPickerOpen &&
+          !state.chat.voiceRecording &&
+          !(Array.isArray(state.chat.pendingFiles) && state.chat.pendingFiles.length) &&
+          !String(state.chat.draftText || '').trim();
+      }
+    });
   }
 
   function apiPost(url, payload) {

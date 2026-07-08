@@ -95,12 +95,17 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    if (isAdmin() || window.__wizardryHasLikelyAuthenticatedSession() || state.submitComposerOpen || state.submitAdvancedOpen) {
-      return false;
-    }
-    var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
-    var defaultMetric = normalizeMetric(payloadState.metric || payloadState.default_metric || (renderState && renderState.default_metric) || 'momentum');
-    return normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
+    return window.__wizardryCanUseVisitorPrerenderReadOnly({
+      isAdmin: isAdmin(),
+      extraCheck: function () {
+        if (state.submitComposerOpen || state.submitAdvancedOpen) {
+          return false;
+        }
+        var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
+        var defaultMetric = normalizeMetric(payloadState.metric || payloadState.default_metric || (renderState && renderState.default_metric) || 'momentum');
+        return normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
+      }
+    });
   }
 
   function titleActionsHtml(syncOnly) {

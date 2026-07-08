@@ -646,6 +646,23 @@
     return !!(auth && auth.session_token && auth.csrf_token);
   }
 
+  function canUseVisitorPrerenderReadOnly(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (opts.isAdmin === true) {
+      return false;
+    }
+    if (opts.allowAuthenticated !== true && hasLikelyAuthenticatedSession()) {
+      return false;
+    }
+    if (typeof opts.extraCheck === 'function') {
+      return opts.extraCheck() !== false;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, 'extraAllowed')) {
+      return opts.extraAllowed !== false;
+    }
+    return true;
+  }
+
   function ensureNostrPublishDialog() {
     if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
       return Promise.resolve(true);
@@ -1102,6 +1119,7 @@
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
+  window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;

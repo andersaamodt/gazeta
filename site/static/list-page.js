@@ -214,7 +214,9 @@
     if (!payload || typeof payload !== 'object') {
       return false;
     }
-    return !payload.is_admin && !window.__wizardryHasLikelyAuthenticatedSession();
+    return window.__wizardryCanUseVisitorPrerenderReadOnly({
+      isAdmin: !!payload.is_admin
+    });
   }
 
   function shouldPreserveAdoptedStaticPrerender() {
@@ -541,26 +543,31 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    if (isAdmin() || window.__wizardryHasLikelyAuthenticatedSession() || state.publicSubmitExpanded || isReadInlineEditing()) {
-      return false;
-    }
-    if (hasMarkerFilterHashOverride()) {
-      return false;
-    }
-    if (isProductGalleryPage() && state.viewModeOverride) {
-      var fallbackMode = normalizeViewModeForPage(renderState && renderState.view_mode || '');
-      if (normalizeViewMode(state.viewModeOverride) !== fallbackMode) {
-        return false;
+    return window.__wizardryCanUseVisitorPrerenderReadOnly({
+      isAdmin: isAdmin(),
+      extraCheck: function () {
+        if (state.publicSubmitExpanded || isReadInlineEditing()) {
+          return false;
+        }
+        if (hasMarkerFilterHashOverride()) {
+          return false;
+        }
+        if (isProductGalleryPage() && state.viewModeOverride) {
+          var fallbackMode = normalizeViewModeForPage(renderState && renderState.view_mode || '');
+          if (normalizeViewMode(state.viewModeOverride) !== fallbackMode) {
+            return false;
+          }
+        }
+        var expectedInclude = normalizedMarkerSelection(defaultPrerenderMarkerFilterInclude(renderState));
+        var currentInclude = state.markerFilterInitialized
+          ? normalizedMarkerSelection(state.markerFilterInclude)
+          : expectedInclude;
+        var currentExclude = state.markerFilterInitialized
+          ? normalizedMarkerSelection(state.markerFilterExclude)
+          : '';
+        return currentInclude === expectedInclude && currentExclude === '';
       }
-    }
-    var expectedInclude = normalizedMarkerSelection(defaultPrerenderMarkerFilterInclude(renderState));
-    var currentInclude = state.markerFilterInitialized
-      ? normalizedMarkerSelection(state.markerFilterInclude)
-      : expectedInclude;
-    var currentExclude = state.markerFilterInitialized
-      ? normalizedMarkerSelection(state.markerFilterExclude)
-      : '';
-    return currentInclude === expectedInclude && currentExclude === '';
+    });
   }
 
   function slugFromUrlPath(raw) {
