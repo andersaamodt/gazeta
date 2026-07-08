@@ -1272,12 +1272,14 @@
       if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(payload)) {
         throw new Error(String(opts.unexpectedPayloadMessage || 'Unexpected managed page payload'));
       }
-      writePageBootstrapCache(payload, {
-        slug: slug || requestSlug,
-        authSignature: opts.authSignature || sessionAuthSignature,
-        allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
-        clearOnDeny: opts.clearOnDeny
-      });
+      if (opts.persist !== false) {
+        writePageBootstrapCache(payload, {
+          slug: slug || requestSlug,
+          authSignature: opts.authSignature || sessionAuthSignature,
+          allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
+          clearOnDeny: opts.clearOnDeny
+        });
+      }
       if (typeof opts.renderPayload === 'function') {
         opts.renderPayload(payload);
       }

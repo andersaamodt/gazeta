@@ -1646,10 +1646,7 @@
         slug: slug,
         authSignature: window.__wizardryViewerAuthSignature,
         isExpectedPayload: isExpectedPayload,
-        allowWrite: function () {
-          return false;
-        },
-        clearOnDeny: false,
+        persist: false,
         unexpectedPayloadMessage: 'Unexpected page payload for list validation refresh',
         renderPayload: function (payload) {
           return payload;

@@ -1570,9 +1570,7 @@
       extraParams: {
         sort_metric: sortMetric
       },
-      allowWrite: function () {
-        return sortMetric === defaultMetricForCache();
-      },
+      persist: sortMetric === defaultMetricForCache(),
       renderPayload: renderBootstrapPayload,
       handleError: function (err) {
         window.__wizardryRenderLoadFallback(err, {
