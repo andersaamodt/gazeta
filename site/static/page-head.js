@@ -272,6 +272,69 @@
     return true;
   }
 
+  function managedPageHeadFieldState(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
+    var fallbackTitleText = String(opts.fallbackTitleText || '').trim() || 'Untitled';
+    var rawTitle = renderState && Object.prototype.hasOwnProperty.call(renderState, 'title')
+      ? renderState.title
+      : '';
+    var titleText = String(rawTitle || fallbackTitleText);
+    var activeField = String(opts.activeField || '').trim().toLowerCase();
+    var isAdmin = opts.isAdmin === true;
+    var titleInputId = String(opts.titleInputId || '').trim();
+    var descriptionInputId = String(opts.descriptionInputId || '').trim();
+    var inputAttrName = String(opts.inputAttrName || '').trim();
+    var editAttrName = String(opts.editAttrName || '').trim();
+    var saveAttrName = String(opts.saveAttrName || '').trim();
+    var descriptionText = String(opts.descriptionText || '');
+    var descriptionHtml = String(opts.descriptionHtml || '');
+    var hasMainContent = opts.hasMainContent === true;
+    var focusOptions = null;
+    if (isAdmin && activeField && opts.enableFocus === true) {
+      focusOptions = {
+        activeField: activeField,
+        titleInputId: titleInputId,
+        descriptionInputId: descriptionInputId
+      };
+      if (Object.prototype.hasOwnProperty.call(opts, 'focusSelectOnFocus')) {
+        focusOptions.selectOnFocus = opts.focusSelectOnFocus;
+      }
+      if (typeof opts.focusAfter === 'function') {
+        focusOptions.afterFocus = opts.focusAfter;
+      }
+    }
+    return {
+      pageTitle: renderState && renderState.title ? String(renderState.title) : null,
+      titleText: titleText,
+      titleEditOptions: {
+        activeField: activeField,
+        editMode: opts.editMode === true,
+        value: titleText,
+        fallbackText: fallbackTitleText,
+        inputId: titleInputId,
+        inputAttrName: inputAttrName,
+        editAttrName: editAttrName,
+        saveAttrName: saveAttrName,
+        showSaveButton: opts.showTitleSaveButton === true
+      },
+      descriptionEditOptions: {
+        activeField: activeField,
+        editMode: opts.editMode === true,
+        text: descriptionText,
+        textHtml: descriptionHtml,
+        suppressEmpty: !descriptionText.trim() && !hasMainContent && activeField !== 'description',
+        hideWhenEmpty: opts.descriptionHideWhenEmpty === true,
+        inputId: descriptionInputId,
+        inputAttrName: inputAttrName,
+        editAttrName: editAttrName,
+        saveAttrName: saveAttrName,
+        editingExtraHtml: String(opts.descriptionEditingExtraHtml || '')
+      },
+      focusOptions: focusOptions
+    };
+  }
+
   function renderManagedPageHead(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var admin = opts.isAdmin === true;
@@ -1973,6 +2036,7 @@
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
+  window.__wizardryManagedPageHeadFieldState = managedPageHeadFieldState;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;

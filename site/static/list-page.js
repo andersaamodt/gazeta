@@ -2772,11 +2772,28 @@
     var descText = String(s.description || '');
     var elements = Array.isArray(s.elements) ? s.elements : [];
     var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
+    var headFields = window.__wizardryManagedPageHeadFieldState({
+      renderState: s,
+      fallbackTitleText: 'List',
+      isAdmin: isAdmin(),
+      activeField: state.activeHeadField,
+      editMode: state.editMode,
+      titleInputId: 'list-head-title-input',
+      descriptionInputId: 'list-head-description-input',
+      inputAttrName: 'data-head-input',
+      editAttrName: 'data-list-head-edit',
+      saveAttrName: 'data-list-head-save',
+      descriptionText: descText,
+      descriptionHtml: markdownInline(descText),
+      hasMainContent: hasMainContent,
+      descriptionHideWhenEmpty: hasMainContent,
+      enableFocus: true
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: isAdmin(),
-      pageTitle: s && s.title ? String(s.title) : null,
+      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: String(s.title || 'List'),
+      titleText: headFields.titleText,
       syncStatus: state.payload && state.payload.sync_status,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
@@ -2785,32 +2802,9 @@
         text: descText,
         hidden: !descText && !hasMainContent
       },
-      titleEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        value: String(s.title || 'List'),
-        fallbackText: 'List',
-        inputId: 'list-head-title-input',
-        inputAttrName: 'data-head-input',
-        editAttrName: 'data-list-head-edit'
-      },
-      descriptionEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        text: descText,
-        textHtml: markdownInline(descText),
-        suppressEmpty: !descText.trim() && !hasMainContent && state.activeHeadField !== 'description',
-        hideWhenEmpty: hasMainContent,
-        inputId: 'list-head-description-input',
-        inputAttrName: 'data-head-input',
-        editAttrName: 'data-list-head-edit',
-        saveAttrName: 'data-list-head-save'
-      },
-      focusOptions: isAdmin() && state.activeHeadField ? {
-        activeField: state.activeHeadField,
-        titleInputId: 'list-head-title-input',
-        descriptionInputId: 'list-head-description-input'
-      } : null,
+      titleEditOptions: headFields.titleEditOptions,
+      descriptionEditOptions: headFields.descriptionEditOptions,
+      focusOptions: headFields.focusOptions,
       navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
           configuredText: state.navTitle,
           renderState: s,

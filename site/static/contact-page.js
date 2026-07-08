@@ -3209,11 +3209,34 @@
     var s = getRenderState();
     var text = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s.rows || [], s.extras_after || '');
+    var headFields = window.__wizardryManagedPageHeadFieldState({
+      renderState: s,
+      fallbackTitleText: 'Profile',
+      isAdmin: isAdmin(),
+      activeField: state.activeHeadField,
+      editMode: state.editMode,
+      titleInputId: 'contact-head-title-input',
+      descriptionInputId: 'contact-head-description-input',
+      inputAttrName: 'data-contact-head-input',
+      editAttrName: 'data-contact-head-edit',
+      saveAttrName: 'data-contact-head-save',
+      showTitleSaveButton: true,
+      descriptionText: text,
+      descriptionHtml: markdownInline(text),
+      hasMainContent: hasMainContent,
+      descriptionHideWhenEmpty: true,
+      descriptionEditingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>',
+      enableFocus: state.headFocusPending,
+      focusSelectOnFocus: false,
+      focusAfter: function () {
+        state.headFocusPending = false;
+      }
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: isAdmin(),
-      pageTitle: s && s.title ? String(s.title) : null,
+      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: String(s.title || 'Profile'),
+      titleText: headFields.titleText,
       titleSyncOptions: {
         messageVariant: 'local_source'
       },
@@ -3228,39 +3251,9 @@
         html: '',
         hidden: true
       },
-      titleEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        value: String(s.title || 'Profile'),
-        fallbackText: 'Profile',
-        inputId: 'contact-head-title-input',
-        inputAttrName: 'data-contact-head-input',
-        editAttrName: 'data-contact-head-edit',
-        saveAttrName: 'data-contact-head-save',
-        showSaveButton: true
-      },
-      descriptionEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        text: text,
-        textHtml: markdownInline(text),
-        suppressEmpty: !text && !hasMainContent && state.activeHeadField !== 'description',
-        hideWhenEmpty: true,
-        inputId: 'contact-head-description-input',
-        inputAttrName: 'data-contact-head-input',
-        editAttrName: 'data-contact-head-edit',
-        saveAttrName: 'data-contact-head-save',
-        editingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>'
-      },
-      focusOptions: isAdmin() && state.activeHeadField && state.headFocusPending ? {
-        activeField: state.activeHeadField,
-        titleInputId: 'contact-head-title-input',
-        descriptionInputId: 'contact-head-description-input',
-        selectOnFocus: false,
-        afterFocus: function () {
-          state.headFocusPending = false;
-        }
-      } : null,
+      titleEditOptions: headFields.titleEditOptions,
+      descriptionEditOptions: headFields.descriptionEditOptions,
+      focusOptions: headFields.focusOptions,
       navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
           configuredText: state.navTitle,
           renderState: s,

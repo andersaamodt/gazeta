@@ -288,11 +288,28 @@
     var s = getRenderState();
     var desc = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s);
+    var headFields = window.__wizardryManagedPageHeadFieldState({
+      renderState: s,
+      fallbackTitleText: 'Public Ranking',
+      isAdmin: isAdmin(),
+      activeField: state.activeHeadField,
+      editMode: state.editMode,
+      titleInputId: 'public-ranking-head-title-input',
+      descriptionInputId: 'public-ranking-head-description-input',
+      inputAttrName: 'data-ranking-head-input',
+      editAttrName: 'data-ranking-head-edit',
+      saveAttrName: 'data-ranking-head-save',
+      descriptionText: desc,
+      descriptionHtml: markdownInline(desc),
+      hasMainContent: hasMainContent,
+      descriptionHideWhenEmpty: hasMainContent,
+      enableFocus: true
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: isAdmin(),
-      pageTitle: s && s.title ? String(s.title) : null,
+      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: String(s.title || 'Public Ranking'),
+      titleText: headFields.titleText,
       titleSyncOptions: {
         messageVariant: 'local_source'
       },
@@ -307,32 +324,9 @@
         html: '',
         hidden: true
       },
-      titleEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        value: String(s.title || 'Public Ranking'),
-        fallbackText: 'Public Ranking',
-        inputId: 'public-ranking-head-title-input',
-        inputAttrName: 'data-ranking-head-input',
-        editAttrName: 'data-ranking-head-edit'
-      },
-      descriptionEditOptions: {
-        activeField: state.activeHeadField,
-        editMode: state.editMode,
-        text: desc,
-        textHtml: markdownInline(desc),
-        suppressEmpty: !desc && !hasMainContent && state.activeHeadField !== 'description',
-        hideWhenEmpty: hasMainContent,
-        inputId: 'public-ranking-head-description-input',
-        inputAttrName: 'data-ranking-head-input',
-        editAttrName: 'data-ranking-head-edit',
-        saveAttrName: 'data-ranking-head-save'
-      },
-      focusOptions: isAdmin() && state.activeHeadField ? {
-        activeField: state.activeHeadField,
-        titleInputId: 'public-ranking-head-title-input',
-        descriptionInputId: 'public-ranking-head-description-input'
-      } : null,
+      titleEditOptions: headFields.titleEditOptions,
+      descriptionEditOptions: headFields.descriptionEditOptions,
+      focusOptions: headFields.focusOptions,
       navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
           configuredText: state.navTitle,
           renderState: s,
