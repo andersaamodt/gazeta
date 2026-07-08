@@ -374,6 +374,7 @@ assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"blog-publish-nostr-pa
 assert_file_contains "$ROOT_DIR/README.md" 'blog-publish-nostr-page` and `blog-payments` use dedicated runtime-to-site adapters (`cgi/blog-publish-nostr-page-bridge.sh`, `cgi/blog-payments-bridge.sh`) for their site-specific domain logic.' 'README describes the intentional runtime-to-site adapter boundary accurately'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_publish_nostr_page_adapter(' 'publish endpoint uses a dedicated runtime-to-site adapter'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_payments_adapter(' 'payments endpoint uses a dedicated runtime-to-site adapter'
+assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_shell_request_function(' 'request-shaped runtime-to-site adapters share one common helper'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"cgi/blog-publish-nostr-page-bridge.sh"' 'publish adapter sources one shell-owned site adapter script instead of a runtime-maintained dependency list'
 assert_file_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" '"cgi/blog-payments-bridge.sh"' 'payments adapter sources one shell-owned site adapter script instead of a runtime-maintained dependency list'
 assert_file_not_contains "$ROOT_DIR/src/gazeta_admin/mod.rs" 'run_shell_function_json(' 'runtime no longer exposes a generic JSON shell-function bridge helper'

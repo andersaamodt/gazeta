@@ -2769,7 +2769,14 @@ fn run_shell_function(
     }
 }
 
-fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, String> {
+fn run_shell_request_function(
+    request: &RequestParams,
+    sources: &[&str],
+    setup_functions: &[&str],
+    function: &str,
+    args: &[String],
+    envs: &[(&str, String)],
+) -> std::result::Result<String, String> {
     let repo_root = gazeta_repo_root();
     let method = env::var("REQUEST_METHOD").unwrap_or_else(|_| "GET".to_string());
     let content_type = env::var("CONTENT_TYPE").unwrap_or_default();
@@ -2780,14 +2787,18 @@ fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, S
     command
         .arg("-c")
         .arg(
-            ". \"$1\"; shift; while [ \"$1\" != \"--\" ]; do . \"$1\"; shift; done; shift; blog_init; blog_read_request_body; fn=\"$1\"; shift; \"$fn\" \"$@\"",
+            ". \"$1\"; shift; while [ \"$1\" != \"--sources-end\" ]; do . \"$1\"; shift; done; shift; blog_init; while [ \"$1\" != \"--setup-end\" ]; do step=\"$1\"; shift; \"$step\"; done; shift; fn=\"$1\"; shift; \"$fn\" \"$@\"",
         )
         .arg("shell-request-function")
         .arg(repo_root.join("cgi/blog-lib.sh"));
-    for source in ["cgi/blog-payments-bridge.sh"] {
+    for source in sources {
         command.arg(repo_root.join(source));
     }
-    command.arg("--").arg("blog_payments_json");
+    command.arg("--sources-end");
+    for setup_function in setup_functions {
+        command.arg(setup_function);
+    }
+    command.arg("--setup-end").arg(function).args(args);
     command.env("REQUEST_METHOD", &method);
     command.env("QUERY_STRING", request.query());
     if !host.is_empty() {
@@ -2795,6 +2806,9 @@ fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, S
     }
     if !content_type.is_empty() {
         command.env("CONTENT_TYPE", content_type);
+    }
+    for (key, value) in envs {
+        command.env(key, value);
     }
     if method == "POST" {
         command.env("CONTENT_LENGTH", body.len().to_string());
@@ -2814,13 +2828,24 @@ fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, S
         .wait_with_output()
         .map_err(|error| error.to_string())?;
     if output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        serde_json::from_str(&stdout).map_err(|error| error.to_string())
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         Err(if !stderr.is_empty() { stderr } else { stdout })
     }
+}
+
+fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, String> {
+    let output = run_shell_request_function(
+        request,
+        &["cgi/blog-payments-bridge.sh"],
+        &["blog_payments_init", "blog_read_request_body"],
+        "blog_payments_json",
+        &[],
+        &[],
+    )?;
+    serde_json::from_str(&output).map_err(|error| error.to_string())
 }
 
 fn gazeta_repo_root() -> PathBuf {
