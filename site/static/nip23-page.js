@@ -329,8 +329,6 @@
     });
   }
 
-	  window.__wizardryRemoveLegacyTitleBlock(root);
-
   function renderAdmin() {
     if (!els.admin) {
       return;

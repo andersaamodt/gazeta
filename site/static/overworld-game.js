@@ -18,6 +18,10 @@
     payload: null
   };
 
+  function overworldRoot() {
+    return document.querySelector('[data-page-slug]') || null;
+  }
+
   function markInitialContentPainted(host) {
     window.__wizardryNotifyInitialContentPainted(overworldSlug(), {
       rootNode: host || null,
@@ -49,21 +53,28 @@
     return true;
   }
 
-  function renderSyncStatusPill() {
+  function renderHead() {
     const payload = bootstrapPayload();
     const currentTitle = String(payload && payload.nav_title || '').trim() || 'Overworld';
+    const titleNode = document.getElementById('overworld-page-title');
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
       pageTitle: 'Overworld',
-      titleNode: document.getElementById('overworld-page-title'),
+      titleNode: titleNode,
       titleText: 'Overworld',
+      titleSyncOptions: {
+        messageVariant: 'local_source'
+      },
       syncStatus: payload && payload.sync_status,
-      navbarTitleOptions: {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
+        configuredText: currentTitle,
+        rootNode: overworldRoot(),
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Overworld',
         isAdmin: false,
         editMode: false,
-        titleNode: document.getElementById('overworld-page-title'),
-        currentText: currentTitle
-      }
+        titleNode: titleNode
+      })
     });
   }
 
@@ -243,7 +254,7 @@
       isExpectedPayload: isExpectedPayload,
       renderPayload: renderBootstrapPayload
     });
-    renderSyncStatusPill();
+    renderHead();
     const mounts = Array.from(document.querySelectorAll('[data-overworld-game], .overworld-game-mount'));
     mounts.forEach(mount);
     if (!mounts.length) {
