@@ -58,7 +58,7 @@ render_nostr_page_content() {
   . "$SCRIPT_DIR/blog-lib.sh"
   . "$SCRIPT_DIR/blog-list-common.sh"
   . "$SCRIPT_DIR/blog-public-ranking-common.sh"
-  . "$SCRIPT_DIR/blog-nostr-pages-common.sh"
+  . "$SCRIPT_DIR/gazeta-nostr-page-content-renderer.sh"
   rendered_html=$(blog_nostr_page_prerender_content_html "$(cat "$payload_file")" "$page_type" 2>/dev/null || printf '')
   if [ -n "$rendered_html" ]; then
     printf '%s' "$rendered_html"
