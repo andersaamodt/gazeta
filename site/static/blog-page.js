@@ -116,6 +116,7 @@
   var composeToggleGuardUntil = 0;
   var composeDropHoverTimer = null;
   var authRefreshPollState = { timer: 0, startedAt: 0 };
+  var markedUpgradeState = { timer: 0, attempts: 0 };
   var postsCatalogReady = false;
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
@@ -216,6 +217,9 @@
     if (window.marked && typeof window.marked.parseInline === 'function') {
       return window.marked.parseInline(value);
     }
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return markdownInlineFallback(value);
   }
 
@@ -262,6 +266,9 @@
     if (window.marked && typeof window.marked.parse === 'function') {
       return window.marked.parse(value);
     }
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return '<p>' + markdownInlineFallback(value).replace(/\n/g, '<br>') + '</p>';
   }
 
