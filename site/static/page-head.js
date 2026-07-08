@@ -1249,6 +1249,40 @@
     });
   }
 
+  function mergeManagedPagePayload(targetPayload, sourcePayload, options) {
+    var target = targetPayload && typeof targetPayload === 'object' ? targetPayload : null;
+    var source = sourcePayload && typeof sourcePayload === 'object' ? sourcePayload : null;
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!target || !source) {
+      return target;
+    }
+    if (opts.includeState !== false && source.state && typeof source.state === 'object') {
+      target.state = source.state;
+    }
+    if (Object.prototype.hasOwnProperty.call(source, 'sync_status')) {
+      target.sync_status = source.sync_status;
+    }
+    var hasValidationFallback = Object.prototype.hasOwnProperty.call(opts, 'validationFallback');
+    if (Object.prototype.hasOwnProperty.call(source, 'validation')) {
+      target.validation = source.validation || (hasValidationFallback ? opts.validationFallback : target.validation);
+    } else if (hasValidationFallback) {
+      target.validation = opts.validationFallback;
+    }
+    ['canonical_exists', 'draft_exists', 'draft_differs'].forEach(function (fieldName) {
+      if (Object.prototype.hasOwnProperty.call(source, fieldName)) {
+        target[fieldName] = !!source[fieldName];
+      }
+    });
+    var passthroughFields = Array.isArray(opts.passthroughFields) ? opts.passthroughFields : [];
+    passthroughFields.forEach(function (fieldName) {
+      if (!fieldName || !Object.prototype.hasOwnProperty.call(source, fieldName)) {
+        return;
+      }
+      target[fieldName] = source[fieldName];
+    });
+    return target;
+  }
+
   function postFormJson(url, payload, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var body = new URLSearchParams(payload || {});
@@ -1400,6 +1434,7 @@
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
+  window.__wizardryMergeManagedPagePayload = mergeManagedPagePayload;
   window.__wizardryPostFormJson = postFormJson;
 
   window.__wizardrySetPageTitleConfig = function (options) {

@@ -4131,10 +4131,9 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
-      if (typeof data.sync_status !== 'undefined') {
-        state.payload.sync_status = data.sync_status;
-      }
-      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      window.__wizardryMergeManagedPagePayload(state.payload, data, {
+        validationFallback: { errors: [], warnings: [], can_publish: true }
+      });
       state.payload.draft_exists = true;
       var localChangedDuringSave = JSON.stringify(state.draft || {}) !== serializedBeforeSave;
       state.payload.draft_differs = localChangedDuringSave;
@@ -4253,11 +4252,9 @@
       session_token: payload.session_token,
       csrf_token: payload.csrf_token
     }).then(function (data) {
-      if (typeof data.sync_status !== 'undefined') {
-        state.payload.sync_status = data.sync_status;
-      }
-      state.payload.state = data.state;
-      state.payload.validation = data.validation || { errors: [], warnings: [], can_publish: true };
+      window.__wizardryMergeManagedPagePayload(state.payload, data, {
+        validationFallback: { errors: [], warnings: [], can_publish: true }
+      });
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
       state.draft = normalizeDraftState(data.state);

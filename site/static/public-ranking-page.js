@@ -1020,30 +1020,6 @@
     state.currentMetric = metric;
   }
 
-  function refreshPayloadStateFromResponse(data) {
-    if (!data || typeof data !== 'object') {
-      return;
-    }
-    if (data.state && typeof data.state === 'object') {
-      state.payload.state = data.state;
-    }
-    if (typeof data.sync_status !== 'undefined') {
-      state.payload.sync_status = data.sync_status;
-    }
-    if (data.validation && typeof data.validation === 'object') {
-      state.payload.validation = data.validation;
-    }
-    if (typeof data.canonical_exists !== 'undefined') {
-      state.payload.canonical_exists = !!data.canonical_exists;
-    }
-    if (typeof data.draft_exists !== 'undefined') {
-      state.payload.draft_exists = !!data.draft_exists;
-    }
-    if (typeof data.draft_differs !== 'undefined') {
-      state.payload.draft_differs = !!data.draft_differs;
-    }
-  }
-
   async function persistDraft(options) {
     if (!isAdmin()) {
       return false;
@@ -1062,7 +1038,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshPayloadStateFromResponse(data);
+      window.__wizardryMergeManagedPagePayload(state.payload, data);
       state.draft = normalizeDraftState(data.state || state.draft || {});
       setSaveStatus('saved');
       renderAll();
@@ -1118,7 +1094,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshPayloadStateFromResponse(data);
+      window.__wizardryMergeManagedPagePayload(state.payload, data);
       state.draft = normalizeDraftState(data.state || state.payload.state || {});
       maybeSetMetricFromPayload();
       setSaveStatus('saved');
@@ -1189,7 +1165,10 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshPayloadStateFromResponse({ state: data.ranking, validation: state.payload.validation });
+      window.__wizardryMergeManagedPagePayload(state.payload, {
+        state: data.ranking,
+        validation: state.payload.validation
+      });
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {
@@ -1245,7 +1224,10 @@
       });
       state.submitComposerOpen = false;
       state.submitAdvancedOpen = false;
-      refreshPayloadStateFromResponse({ state: data.ranking, validation: state.payload.validation });
+      window.__wizardryMergeManagedPagePayload(state.payload, {
+        state: data.ranking,
+        validation: state.payload.validation
+      });
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {
@@ -1287,7 +1269,10 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      refreshPayloadStateFromResponse({ state: data.ranking, validation: state.payload.validation });
+      window.__wizardryMergeManagedPagePayload(state.payload, {
+        state: data.ranking,
+        validation: state.payload.validation
+      });
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {

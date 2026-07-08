@@ -1722,14 +1722,10 @@
       if (!latest) {
         return;
       }
-      state.payload.validation = latest.validation;
-      state.payload.canonical_exists = latest.canonical_exists;
-      state.payload.canonical_event = latest.canonical_event;
-      state.payload.draft_exists = latest.draft_exists;
-      state.payload.draft_differs = latest.draft_differs;
-      if (typeof latest.sync_status !== 'undefined') {
-        state.payload.sync_status = latest.sync_status;
-      }
+      window.__wizardryMergeManagedPagePayload(state.payload, latest, {
+        includeState: false,
+        passthroughFields: ['canonical_event']
+      });
       renderValidation();
       renderAdmin();
     } catch (_err) {
@@ -1970,22 +1966,7 @@
     if (!state.payload || typeof state.payload !== 'object') {
       state.payload = { success: true, slug: slug, page_type: 'list' };
     }
-    state.payload.state = data.state;
-    if (data.validation) {
-      state.payload.validation = data.validation;
-    }
-    if (typeof data.sync_status !== 'undefined') {
-      state.payload.sync_status = data.sync_status;
-    }
-    if (typeof data.canonical_exists !== 'undefined') {
-      state.payload.canonical_exists = !!data.canonical_exists;
-    }
-    if (typeof data.draft_exists !== 'undefined') {
-      state.payload.draft_exists = !!data.draft_exists;
-    }
-    if (typeof data.draft_differs !== 'undefined') {
-      state.payload.draft_differs = !!data.draft_differs;
-    }
+    window.__wizardryMergeManagedPagePayload(state.payload, data);
     state.draft = readEditableStateFromPayload();
     writeBootstrapCache(state.payload);
     if (beforeRects) {
