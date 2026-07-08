@@ -4013,7 +4013,10 @@
     var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    var resolvedContent = window.__wizardryResolveReadOnlyContentFromPrerender({
+    var contentReplaced = false;
+    var contentUnchanged = false;
+    window.__wizardryRenderResolvedReadOnlyContent({
+      targetNode: els.content,
       payload: state.payload,
       allowPrerender: canUsePrerenderReadOnlyView(),
       renderFallback: function () {
@@ -4021,18 +4024,26 @@
           html: renderContentHtml(),
           hidden: false
         };
+      },
+      mountOptions: {
+        applyHtml: function (html) {
+          var nextContentHtml = String(html || '');
+          var nextContentSignature = stableSecureChatContentHtml(nextContentHtml);
+          if (state.lastContentHtml === nextContentSignature) {
+            contentUnchanged = true;
+            return;
+          }
+          state.lastContentHtml = nextContentSignature;
+          contentReplaced = true;
+          els.content.innerHTML = nextContentHtml;
+        }
       }
     });
-    var nextContentHtml = resolvedContent ? resolvedContent.html : '';
-    var nextContentSignature = stableSecureChatContentHtml(nextContentHtml);
-    if (state.lastContentHtml === nextContentSignature) {
+    if (contentUnchanged && !contentReplaced) {
       restoreSecureChatRenderState(secureChatRenderState);
       renderSecureChatThreadScrollState(secureChatRenderState);
       return;
     }
-    state.lastContentHtml = nextContentSignature;
-    els.content.hidden = !!(resolvedContent && resolvedContent.hidden);
-    els.content.innerHTML = nextContentHtml;
     restoreVideoChatWidgetHost(videoChatHost);
     reconnectVideoChatAutoMountAfterRender(videoChatObserverPaused);
     if (stableSimplexInfo && state.chat.simplexWebIntroDismissed !== true) {

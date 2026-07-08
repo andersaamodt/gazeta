@@ -1364,16 +1364,12 @@
   window.__wizardryRenderManagedNostrBootstrapPayload = renderManagedNostrBootstrapPayload;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
-  window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
-  window.__wizardryRenderReadOnlyTitleShellWithSync = renderReadOnlyTitleShellWithSync;
-  window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
   window.__wizardryRenderEditablePageHeadTitle = renderEditablePageHeadTitle;
   window.__wizardryRenderEditablePageHeadDescription = renderEditablePageHeadDescription;
   window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
   window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
   window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
-  window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
