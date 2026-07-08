@@ -9,20 +9,6 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 payload=$(cat)
 name=$(printf '%s\n' "$payload" | jq -r '.name // ""' 2>/dev/null || printf '')
 
-render_sync_pill() {
-  printf '%s\n' "$payload" | jq -r '
-    def html_unescape:
-      gsub("&quot;"; "\"")
-      | gsub("&#39;"; "\u0027")
-      | gsub("&gt;"; ">")
-      | gsub("&lt;"; "<")
-      | gsub("&amp;"; "&");
-
-    ((.attrs.slug // .frontmatter.slug // "page") | tostring | html_unescape) as $slug
-    | "<span class=\"page-sync-status-pill status-unknown nostr-sync-pill\" data-gazeta-component=\"sync-pill\" data-nostr-sync-slug=\"\($slug | @html)\" aria-live=\"polite\">Nostr sync</span>"
-  '
-}
-
 render_blog_post_list() {
   posts_json=$(
     printf '%s\n' "$payload" | jq -r '
@@ -68,9 +54,6 @@ render_nostr_page_content() {
 }
 
 case "$name" in
-  gazeta-sync-pill)
-    render_sync_pill
-    ;;
   gazeta-blog-post-list)
     render_blog_post_list
     ;;

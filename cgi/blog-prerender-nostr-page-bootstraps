@@ -214,7 +214,6 @@ fallback_payload_json() {
     slug: $slug,
     page_type: $page_type,
     is_admin: false,
-    view_mode: "static-fallback",
     canonical_exists: false,
     draft_exists: true,
     draft_differs: false,
