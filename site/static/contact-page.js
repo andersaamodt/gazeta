@@ -645,6 +645,9 @@
       contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
+      canAdoptStaticPrerender: function () {
+        return canAdoptSecureChatPrerenderShell();
+      },
       renderHead: renderHead,
       renderAdmin: renderAdmin,
       renderValidation: renderValidation,
@@ -666,11 +669,16 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
+  function canAdoptSecureChatPrerenderShell() {
+    return !hasUsableSecureChatSession() && !secureChatLoadingBeforeVerification(false);
+  }
+
   function canUsePrerenderReadOnlyView() {
     return window.__wizardryCanUseVisitorPrerenderReadOnly({
       isAdmin: isAdmin(),
       extraCheck: function () {
-        return !state.chat.chatStarted &&
+        return canAdoptSecureChatPrerenderShell() &&
+          !state.chat.chatStarted &&
           !state.chat.chatOpening &&
           !state.chat.chatClosing &&
           !state.chat.sending &&
