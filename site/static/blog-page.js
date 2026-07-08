@@ -132,35 +132,6 @@
     return '<svg class="blog-draft-notice-close-svg" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
 
-  function clearRouteRepairParam() {
-    var url;
-    try {
-      url = new URL(window.location.href);
-    } catch (_err) {
-      return;
-    }
-    if (url.searchParams.get('__route_repair') !== '1') {
-      return;
-    }
-    url.searchParams.delete('__route_repair');
-    if (!window.history || typeof window.history.replaceState !== 'function') {
-      return;
-    }
-    var next = url.pathname;
-    var query = url.searchParams.toString();
-    if (query) {
-      next += '?' + query;
-    }
-    if (url.hash) {
-      next += url.hash;
-    }
-    try {
-      window.history.replaceState(null, '', next);
-    } catch (_replaceErr) {
-      // Ignore history replacement failures.
-    }
-  }
-
   function maybeReloadForAuthChange(event) {
     var nextSig = window.__wizardryViewerAuthSignature();
     var lastSig = String(state.authSignature || '');
@@ -5103,7 +5074,6 @@
   });
 
   window.__wizardryRemoveLegacyTitleBlock(root);
-  clearRouteRepairParam();
   syncFilterTogglePlacement();
   ensureDraftNoticeHost();
 
