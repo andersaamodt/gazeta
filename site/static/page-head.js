@@ -442,23 +442,18 @@
     return true;
   }
 
-  function resolveManagedNavbarTitleHost(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var titleNode = opts.titleNode || null;
-    var host = titleNode && titleNode.querySelector ? titleNode.querySelector('[data-page-nav-title-host="true"]') : null;
-    if (!(host instanceof HTMLElement) && titleNode && titleNode.parentNode && titleNode.parentNode.querySelector) {
-      host = titleNode.parentNode.querySelector('[data-page-nav-title-host="true"]');
-    }
-    return host instanceof HTMLElement ? host : null;
-  }
-
   function renderManagedNavbarTitleRow(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    var resolvedTarget = resolveManagedNavbarTitleHost(opts);
+    var titleNode = opts.titleNode || null;
+    var resolvedTarget = titleNode && titleNode.querySelector
+      ? titleNode.querySelector('[data-page-nav-title-host="true"]')
+      : null;
+    if (!(resolvedTarget instanceof HTMLElement) && titleNode && titleNode.parentNode && titleNode.parentNode.querySelector) {
+      resolvedTarget = titleNode.parentNode.querySelector('[data-page-nav-title-host="true"]');
+    }
     if (!resolvedTarget) {
       return false;
     }
-    var titleNode = opts.titleNode || null;
     var titleActiveClassName = String(opts.titleActiveClassName || '').trim();
     var shouldShow = opts.isAdmin === true && opts.editMode === true;
     if (titleNode && titleNode.classList && titleActiveClassName) {
