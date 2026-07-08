@@ -163,7 +163,7 @@
 
   function authSignature() {
     var auth = window.__wizardryAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (cachedAdminFlag() ? 'admin' : 'visitor');
+    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (window.__wizardryHasLikelyAdminSession() ? 'admin' : 'visitor');
   }
 
   function maybeReloadForAuthChange(event) {
@@ -433,24 +433,11 @@
     return normalizePageState({ title: titleizeSlug(slug) });
   }
 
-  function hasAuthTokens() {
-    var auth = window.__wizardryAuthPayload();
-    return !!(auth.session_token && auth.csrf_token);
-  }
-
-  function cachedAdminFlag() {
-    try {
-      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
-    } catch (_err) {
-      return false;
-    }
-  }
-
   function isAdmin() {
     if (state.payload && state.payload.is_admin) {
       return true;
     }
-    return hasAuthTokens() && cachedAdminFlag();
+    return window.__wizardryHasLikelyAdminSession();
   }
 
   var apiPost = window.__wizardryPostFormJson;
@@ -4713,7 +4700,7 @@
     if (event && event.detail && event.detail.is_admin === true) {
       return true;
     }
-    return cachedAdminFlag();
+    return typeof window.__wizardryHasLikelyAdminSession === 'function' && window.__wizardryHasLikelyAdminSession();
   }
 
   function applyOptimisticAdminFromAuthEvent(event) {

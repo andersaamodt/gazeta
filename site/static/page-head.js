@@ -837,6 +837,17 @@
     return !!(auth && auth.session_token && auth.csrf_token);
   }
 
+  function hasLikelyAdminSession() {
+    if (!hasLikelyAuthenticatedSession()) {
+      return false;
+    }
+    try {
+      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
   function canUseVisitorPrerenderReadOnly(options) {
     var opts = options && typeof options === 'object' ? options : {};
     if (opts.isAdmin === true && opts.allowAdmin !== true) {
@@ -1041,8 +1052,9 @@
       return false;
     }
     var authenticated = window.__wizardryHasLikelyAuthenticatedSession();
+    var likelyAdmin = hasLikelyAdminSession();
     var optimisticPayload = payload;
-    if (opts.promoteAuthenticated !== false && !optimisticPayload.is_admin && authenticated) {
+    if (opts.promoteAuthenticated !== false && !optimisticPayload.is_admin && likelyAdmin) {
       optimisticPayload = Object.assign({}, optimisticPayload, { is_admin: true });
     }
     if (typeof opts.applyState !== 'function') {
@@ -1410,6 +1422,7 @@
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
+  window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;

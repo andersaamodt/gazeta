@@ -237,7 +237,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field="file-upload"' 'blog compose includes file input'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'data-compose-field="audio-upload"' 'blog compose includes audio input'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (!isAdmin()) {' 'blog paste guard requires admin auth'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "+ '|' + (cachedAdminFlag() ? 'admin' : 'visitor')" 'blog auth signature tracks cached admin changes'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "+ '|' + (window.__wizardryHasLikelyAdminSession() ? 'admin' : 'visitor')" 'blog auth signature tracks shared likely-admin changes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'isAdmin: isAdmin(),' 'blog prerender render signature includes admin mode'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryBindSessionAuthRefresh' 'blog index re-checks late navbar auth hydration through the shared session-auth refresh helper so post edit menus appear'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "storageKeys: ['session_token', 'csrf_token', 'last_auth_is_admin']" 'blog index notices late admin flag storage changes through the shared session-auth refresh helper'

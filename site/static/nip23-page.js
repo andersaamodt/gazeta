@@ -910,11 +910,7 @@
     if (event && event.detail && event.detail.is_admin === true) {
       return true;
     }
-    try {
-      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
-    } catch (_err) {
-      return false;
-    }
+    return typeof window.__wizardryHasLikelyAdminSession === 'function' && window.__wizardryHasLikelyAdminSession();
   }
 
   function applyOptimisticAdminFromAuthEvent(event) {

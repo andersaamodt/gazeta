@@ -204,7 +204,7 @@
       els.content.getAttribute('data-prerender-painted') === 'true';
   }
 
-  function applyBootstrapState(optimisticPayload, payload, authenticated) {
+  function applyBootstrapState(optimisticPayload, payload) {
     var cachedPayload = payload;
     try {
       cachedPayload = JSON.parse(JSON.stringify(optimisticPayload));
@@ -219,7 +219,9 @@
     cachedPayload.validation.errors = [];
     cachedPayload.validation.warnings = [];
     cachedPayload.validation.can_publish = true;
-    if (!cachedPayload.is_admin && authenticated) {
+    if (!cachedPayload.is_admin
+        && typeof window.__wizardryHasLikelyAdminSession === 'function'
+        && window.__wizardryHasLikelyAdminSession()) {
       cachedPayload.is_admin = true;
     }
     state.payload = cachedPayload;
@@ -294,11 +296,7 @@
     if (event && event.detail && event.detail.is_admin === true) {
       return true;
     }
-    try {
-      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
-    } catch (_err) {
-      return false;
-    }
+    return typeof window.__wizardryHasLikelyAdminSession === 'function' && window.__wizardryHasLikelyAdminSession();
   }
 
   function applyOptimisticAdminFromAuthEvent(event) {
