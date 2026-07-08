@@ -384,7 +384,12 @@
 
   function renderHead() {
     var page = getRenderState();
-    var title = String(page.title || '').trim() || titleizeSlug(slug);
+    var titleState = window.__wizardryManagedPageHeadTitleState({
+      renderState: page,
+      payload: state.payload,
+      fallbackTitleText: titleizeSlug(slug),
+      useFallbackForPageTitle: true
+    });
     var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
       configuredText: state.payload && state.payload.nav_title,
       renderState: page,
@@ -398,10 +403,10 @@
     });
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
-      pageTitle: title,
+      pageTitle: titleState.pageTitle,
       titleNode: els.title,
-      titleText: title,
-      syncStatus: state.payload && state.payload.sync_status,
+      titleText: titleState.titleText,
+      syncStatus: titleState.syncStatus,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       descriptionFallback: {

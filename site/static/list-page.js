@@ -2774,6 +2774,7 @@
     var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
     var headFields = window.__wizardryManagedPageHeadFieldState({
       renderState: s,
+      payload: state.payload,
       fallbackTitleText: 'List',
       isAdmin: isAdmin(),
       activeField: state.activeHeadField,
@@ -2811,7 +2812,7 @@
       pageTitle: headFields.pageTitle,
       titleNode: els.title,
       titleText: headFields.titleText,
-      syncStatus: state.payload && state.payload.sync_status,
+      syncStatus: headFields.syncStatus,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),

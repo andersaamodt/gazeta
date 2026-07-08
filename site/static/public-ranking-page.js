@@ -290,7 +290,9 @@
     var hasMainContent = hasVisibleMainContent(s);
     var headFields = window.__wizardryManagedPageHeadFieldState({
       renderState: s,
+      payload: state.payload,
       fallbackTitleText: 'Public Ranking',
+      syncMessageVariant: 'local_source',
       isAdmin: isAdmin(),
       activeField: state.activeHeadField,
       editMode: state.editMode,
@@ -327,10 +329,8 @@
       pageTitle: headFields.pageTitle,
       titleNode: els.title,
       titleText: headFields.titleText,
-      titleSyncOptions: {
-        messageVariant: 'local_source'
-      },
-      syncStatus: state.payload && state.payload.sync_status,
+      titleSyncOptions: headFields.titleSyncOptions,
+      syncStatus: headFields.syncStatus,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),

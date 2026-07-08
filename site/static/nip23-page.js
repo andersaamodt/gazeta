@@ -303,6 +303,12 @@
 
   function renderHead() {
     var s = getRenderState();
+    var titleState = window.__wizardryManagedPageHeadTitleState({
+      renderState: s,
+      payload: state.payload,
+      fallbackTitleText: 'Untitled',
+      syncMessageVariant: 'local_source'
+    });
     var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
       configuredText: state.navTitle,
       renderState: s,
@@ -322,13 +328,11 @@
     });
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
-      pageTitle: s && s.title ? String(s.title) : null,
+      pageTitle: titleState.pageTitle,
       titleNode: els.title,
-      titleText: String(s.title || 'Untitled'),
-      titleSyncOptions: {
-        messageVariant: 'local_source'
-      },
-      syncStatus: state.payload && state.payload.sync_status,
+      titleText: titleState.titleText,
+      titleSyncOptions: titleState.titleSyncOptions,
+      syncStatus: titleState.syncStatus,
       navbarTitleOptions: navbarTitle
     });
   }

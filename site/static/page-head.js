@@ -272,14 +272,48 @@
     return true;
   }
 
+  function managedPageHeadTitleState(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
+    var fallbackTitleText = String(opts.fallbackTitleText || '').trim() || 'Untitled';
+    var explicitTitleText = Object.prototype.hasOwnProperty.call(opts, 'titleText')
+      ? String(opts.titleText || '').trim()
+      : '';
+    var renderTitle = String(renderState && renderState.title || '').trim();
+    var titleText = explicitTitleText || renderTitle || fallbackTitleText;
+    var pageTitle = null;
+    if (Object.prototype.hasOwnProperty.call(opts, 'pageTitle')) {
+      pageTitle = opts.pageTitle === null || typeof opts.pageTitle === 'undefined'
+        ? null
+        : String(opts.pageTitle || '').trim();
+    } else if (renderTitle) {
+      pageTitle = renderTitle;
+    } else if (opts.useFallbackForPageTitle === true) {
+      pageTitle = titleText;
+    }
+    var syncStatus = payload && Object.prototype.hasOwnProperty.call(payload, 'sync_status')
+      ? payload.sync_status
+      : null;
+    var syncMessageVariant = String(opts.syncMessageVariant || '').trim();
+    return {
+      pageTitle: pageTitle,
+      titleText: titleText,
+      syncStatus: syncStatus,
+      titleSyncOptions: syncMessageVariant ? { messageVariant: syncMessageVariant } : null
+    };
+  }
+
   function managedPageHeadFieldState(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
-    var fallbackTitleText = String(opts.fallbackTitleText || '').trim() || 'Untitled';
-    var rawTitle = renderState && Object.prototype.hasOwnProperty.call(renderState, 'title')
-      ? renderState.title
-      : '';
-    var titleText = String(rawTitle || fallbackTitleText);
+    var titleState = managedPageHeadTitleState({
+      renderState: renderState,
+      payload: opts.payload,
+      fallbackTitleText: opts.fallbackTitleText,
+      syncMessageVariant: opts.syncMessageVariant
+    });
+    var titleText = titleState.titleText;
     var activeField = String(opts.activeField || '').trim().toLowerCase();
     var isAdmin = opts.isAdmin === true;
     var titleInputId = String(opts.titleInputId || '').trim();
@@ -305,13 +339,15 @@
       }
     }
     return {
-      pageTitle: renderState && renderState.title ? String(renderState.title) : null,
-      titleText: titleText,
+      pageTitle: titleState.pageTitle,
+      titleText: titleState.titleText,
+      syncStatus: titleState.syncStatus,
+      titleSyncOptions: titleState.titleSyncOptions,
       titleEditOptions: {
         activeField: activeField,
         editMode: opts.editMode === true,
         value: titleText,
-        fallbackText: fallbackTitleText,
+        fallbackText: String(opts.fallbackTitleText || '').trim() || 'Untitled',
         inputId: titleInputId,
         inputAttrName: inputAttrName,
         editAttrName: editAttrName,
@@ -2068,6 +2104,7 @@
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
+  window.__wizardryManagedPageHeadTitleState = managedPageHeadTitleState;
   window.__wizardryManagedPageHeadFieldState = managedPageHeadFieldState;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
