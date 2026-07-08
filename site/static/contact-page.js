@@ -657,7 +657,6 @@
         maybeLoadVideoChatWidget();
       },
       notifyInitialContentPainted: {
-        slug: slug,
         state: state,
         markPageReady: true
       }

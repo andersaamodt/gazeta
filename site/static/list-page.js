@@ -254,7 +254,6 @@
         renderValidation();
       },
       notifyInitialContentPainted: {
-        slug: slug,
         state: state,
         rootNode: root,
         loadingClass: 'is-loading',

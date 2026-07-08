@@ -1475,6 +1475,14 @@
     }
   }
 
+  function resolveManagedPageReadySlug(slug) {
+    var explicitSlug = String(slug || '').trim();
+    if (explicitSlug) {
+      return explicitSlug;
+    }
+    return routeRootSlugFromDom() || slugFromPath(window.location.pathname || '/') || '';
+  }
+
   function notifyInitialContentPainted(slug, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
@@ -1492,7 +1500,7 @@
     pageInitialContentReady = true;
     try {
       window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
-        detail: { slug: String(slug || '') }
+        detail: { slug: resolveManagedPageReadySlug(slug) }
       }));
     } catch (_err) {
       // Ignore event dispatch failures.
@@ -1505,10 +1513,10 @@
 
   function notifyCurrentManagedPageReady(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    var resolvedSlug = Object.prototype.hasOwnProperty.call(opts, 'slug')
-      ? String(opts.slug || '')
-      : (routeRootSlugFromDom() || slugFromPath(window.location.pathname || '/') || '');
-    return notifyInitialContentPainted(resolvedSlug, opts);
+    return notifyInitialContentPainted(
+      Object.prototype.hasOwnProperty.call(opts, 'slug') ? opts.slug : '',
+      opts
+    );
   }
 
   function renderLoadFallback(err, options) {

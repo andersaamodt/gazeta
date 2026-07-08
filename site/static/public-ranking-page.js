@@ -83,7 +83,6 @@
       renderValidation: renderValidation,
       renderAll: renderAll,
       notifyInitialContentPainted: {
-        slug: slug,
         state: state,
         markPageReady: true
       }
@@ -862,10 +861,6 @@
     renderAdmin();
     renderValidation();
     renderContent();
-    window.__wizardryNotifyCurrentManagedPageReady({
-      state: state,
-      markPageReady: true
-    });
   }
 
   function saveNavbarTitle() {

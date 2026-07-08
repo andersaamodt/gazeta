@@ -249,7 +249,6 @@
       renderValidation: renderValidation,
       renderAll: renderAll,
       notifyInitialContentPainted: {
-        slug: slug,
         state: state,
         markPageReady: true
       }
