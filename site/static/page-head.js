@@ -526,6 +526,38 @@
     return result;
   }
 
+  function managedNavbarTitlePageActionOptions(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    return Object.assign(
+      managedNavbarTitleOptions({
+        configuredText: opts.configuredText,
+        renderState: opts.renderState,
+        rootNode: opts.rootNode,
+        fallbackAttributeNames: opts.fallbackAttributeNames,
+        fallbackText: opts.fallbackText,
+        isAdmin: opts.isAdmin,
+        editMode: opts.editMode,
+        titleNode: opts.titleNode,
+        editing: opts.editing,
+        inputValue: opts.inputValue,
+        labelText: opts.labelText,
+        inputAriaLabel: opts.inputAriaLabel,
+        editButtonClassName: opts.editButtonClassName,
+        saveButtonClassName: opts.saveButtonClassName,
+        saveDisabled: opts.saveDisabled,
+        selectOnFocus: opts.selectOnFocus
+      }),
+      {
+        state: opts.state,
+        payload: opts.payload,
+        rootNode: opts.rootNode || null,
+        slug: opts.slug,
+        isAdmin: opts.isAdmin,
+        renderHead: opts.renderHead
+      }
+    );
+  }
+
   function renderManagedValidationSummary(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var containerNode = opts.containerNode || null;
@@ -799,6 +831,14 @@
         opts.renderHead();
       }
     });
+  }
+
+  function saveManagedNavbarTitleForPage(options) {
+    return saveManagedNavbarTitle(managedNavbarTitlePageActionOptions(options));
+  }
+
+  function startManagedNavbarTitleEditForPage(options) {
+    return startManagedNavbarTitleEdit(managedNavbarTitlePageActionOptions(options));
   }
 
   function renderResolvedReadOnlyContent(options) {
@@ -1921,13 +1961,16 @@
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
   window.__wizardryManagedNavbarTitleOptions = managedNavbarTitleOptions;
+  window.__wizardryManagedNavbarTitlePageActionOptions = managedNavbarTitlePageActionOptions;
   window.__wizardryRenderManagedValidationSummary = renderManagedValidationSummary;
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
   window.__wizardryRenderManagedAdminActionBarHtml = renderManagedAdminActionBarHtml;
   window.__wizardryRenderManagedAdminActionBar = renderManagedAdminActionBar;
   window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
+  window.__wizardryStartManagedNavbarTitleEditForPage = startManagedNavbarTitleEditForPage;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
+  window.__wizardrySaveManagedNavbarTitleForPage = saveManagedNavbarTitleForPage;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardryRenderManagedBlogFilterFragments = renderManagedBlogFilterFragments;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;

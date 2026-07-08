@@ -3646,37 +3646,28 @@
   }
 
   function saveNavbarTitle() {
-    return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      window.__wizardryManagedNavbarTitleOptions({
-        rootNode: root,
-        fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Untitled'
-      }),
-      {
-        state: state,
-        payload: state.payload,
-        rootNode: root,
-        slug: slug,
-        isAdmin: isAdmin,
-        renderHead: renderHead
-      }
-    ));
+    return window.__wizardrySaveManagedNavbarTitleForPage({
+      state: state,
+      payload: state.payload,
+      rootNode: root,
+      fallbackAttributeNames: ['data-page-title'],
+      fallbackText: 'Untitled',
+      slug: slug,
+      isAdmin: isAdmin,
+      renderHead: renderHead
+    });
   }
 
   function beginNavbarTitleEdit() {
-    return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      window.__wizardryManagedNavbarTitleOptions({
-        configuredText: state.navTitle,
-        renderState: getRenderState(),
-        rootNode: root,
-        fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Untitled'
-      }),
-      {
-        state: state,
-        renderHead: renderHead
-      }
-    ));
+    return window.__wizardryStartManagedNavbarTitleEditForPage({
+      configuredText: state.navTitle,
+      renderState: getRenderState(),
+      rootNode: root,
+      fallbackAttributeNames: ['data-page-title'],
+      fallbackText: 'Untitled',
+      state: state,
+      renderHead: renderHead
+    });
   }
 
   function persistDraft(opts) {

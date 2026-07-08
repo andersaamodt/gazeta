@@ -3669,37 +3669,28 @@
   }
 
   function saveNavbarTitle() {
-    return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      window.__wizardryManagedNavbarTitleOptions({
-        rootNode: root,
-        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-        fallbackText: 'List'
-      }),
-      {
-        state: state,
-        payload: state.payload,
-        rootNode: root,
-        slug: slug,
-        isAdmin: isAdmin,
-        renderHead: renderHead
-      }
-    ));
+    return window.__wizardrySaveManagedNavbarTitleForPage({
+      state: state,
+      payload: state.payload,
+      rootNode: root,
+      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackText: 'List',
+      slug: slug,
+      isAdmin: isAdmin,
+      renderHead: renderHead
+    });
   }
 
   function beginNavbarTitleEdit() {
-    return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      window.__wizardryManagedNavbarTitleOptions({
-        configuredText: state.navTitle,
-        renderState: getRenderState(),
-        rootNode: root,
-        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-        fallbackText: 'List'
-      }),
-      {
-        state: state,
-        renderHead: renderHead
-      }
-    ));
+    return window.__wizardryStartManagedNavbarTitleEditForPage({
+      configuredText: state.navTitle,
+      renderState: getRenderState(),
+      rootNode: root,
+      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackText: 'List',
+      state: state,
+      renderHead: renderHead
+    });
   }
 
   function focusInlineField(uid, field) {
