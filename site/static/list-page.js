@@ -365,6 +365,12 @@
     if (!value) {
       return '';
     }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
+      renderAll();
+    });
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
