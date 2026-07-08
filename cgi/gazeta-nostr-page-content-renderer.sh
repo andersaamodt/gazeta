@@ -971,22 +971,38 @@ blog_nostr_prerender_public_ranking_html() {
   ' 2>/dev/null || printf '<p class="list-page-empty-state">No rankings yet.</p>\n'
 }
 
+blog_nostr_overworld_template_path() {
+  template_rel='site/lodestone/templates/overworld.stone.html'
+  template_source=$(blog_template_rel_path "$template_rel" 2>/dev/null || printf '')
+  if [ -n "$template_source" ] && [ -f "$template_source" ]; then
+    printf '%s\n' "$template_source"
+    return 0
+  fi
+  if [ -n "${blog_site_root:-}" ] && [ -f "$blog_site_root/$template_rel" ]; then
+    printf '%s\n' "$blog_site_root/$template_rel"
+    return 0
+  fi
+  if [ -n "${SCRIPT_DIR:-}" ]; then
+    default_template_root=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
+    default_template="$default_template_root/$template_rel"
+    if [ -f "$default_template" ]; then
+      printf '%s\n' "$default_template"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+blog_nostr_prerender_overworld_template_html() {
+  template_file=$(blog_nostr_overworld_template_path 2>/dev/null || printf '')
+  [ -f "$template_file" ] || return 1
+  awk '
+    /<template id="overworld-static-shell-template">/ { in_template=1; next }
+    /<\/template>/ && in_template { exit }
+    in_template { print }
+  ' "$template_file"
+}
+
 blog_nostr_prerender_overworld_html() {
-  cat <<'EOOVERWORLDHTML'
-<div class="overworld-godot-shell" data-overworld-static-shell="true">
-<div class="overworld-godot-frame-wrap">
-<div class="overworld-godot-splash">
-<div class="overworld-godot-splash-panel">
-<h2 class="overworld-godot-title">Overworld</h2>
-<button type="button" class="overworld-godot-download">Download (6.8 MB)</button>
-</div>
-</div>
-</div>
-<div class="overworld-godot-status">Waiting for download</div>
-<div class="overworld-godot-help">
-<div class="overworld-godot-keys"><span class="overworld-godot-key">Enter: note</span><span class="overworld-godot-key">I: inventory</span><span class="overworld-godot-key">B: spells</span><span class="overworld-godot-key">C: character</span></div>
-<div class="overworld-godot-login-note">Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.</div>
-</div>
-</div>
-EOOVERWORLDHTML
+  blog_nostr_prerender_overworld_template_html
 }

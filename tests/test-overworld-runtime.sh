@@ -118,6 +118,8 @@ assert_file_not_contains "$ROOT_DIR/site/static/overworld-game.js" 'index.png") 
 assert_file_contains "$ROOT_DIR/site/static/overworld-game.js" 'staticShellTemplateHtml()' 'web game reuses the Lodestone-owned static shell template for non-prerendered mounts'
 assert_file_not_contains "$ROOT_DIR/site/static/overworld-game.js" 'OVERWORLD_STATIC_SHELL_HTML' 'web game no longer hardcodes the fallback static shell HTML in page JS'
 assert_file_contains "$ROOT_DIR/site/lodestone/templates/overworld.stone.html" '<template id="overworld-static-shell-template">' 'Overworld Lodestone template owns the static shell fallback markup'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'blog_nostr_prerender_overworld_template_html()' 'server prerender reuses the Lodestone-owned static shell template'
+assert_file_not_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" '<div class="overworld-godot-shell" data-overworld-static-shell="true">' 'server prerender no longer hardcodes the static shell HTML'
 assert_file_not_contains "$ROOT_DIR/site/static/overworld-game.js" 'function injectStyles()' 'web game no longer duplicates the shared Overworld CSS in JS'
 assert_file_contains "$ROOT_DIR/site/static/style.css" 'background: linear-gradient(180deg, #101310, #080a08)' 'web game splash styling lives in the shared stylesheet'
 assert_file_contains "$ROOT_DIR/site/static/style.css" 'text-fill-color: #fff8e8' 'web game title resets inherited heading gradient text fill in the shared stylesheet'
