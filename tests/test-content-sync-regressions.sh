@@ -399,6 +399,7 @@ assert_file_contains "$ROOT_DIR/README.md" '.sitedata/<site>/content/' 'README d
 assert_file_contains "$ROOT_DIR/README.md" 'sample-site-data/content/posts/' 'README copies sample posts from the simplified sample-site-data content root'
 assert_file_contains "$ROOT_DIR/README.md" 'template-owned build inputs such as `cgi/`, `site/static/`, `site/includes/`, and Lodestone page/template sources should come from that Gazeta checkout' 'README documents local-template as the canonical source root for template-owned build inputs'
 assert_file_contains "$ROOT_DIR/README.md" 'Shared Secure Chat shell rendering lives in `site/static/simplex-web-default-chat.js`' 'README documents shared Secure Chat render-shape ownership instead of leaving contact-page renderer ownership implicit'
+assert_file_contains "$ROOT_DIR/README.md" 'visitor- and payload-aware prerender eligibility policy, viewer/auth-event signature helpers' 'README documents the fuller shared page-head runtime ownership boundary'
 assert_file_contains "$ROOT_DIR/README.md" 'optional Nostr bridge features' 'README uses the current Nostr bridge terminology instead of older generic bridge wording'
 assert_success test ! -f "$ROOT_DIR/CHECKLIST.md"
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'BLOG_SUPPRESS_ASYNC_BUILD:-${WIZARDRY_BUILD_IN_PROGRESS:-}' 'async rebuild helper honors build-in-progress suppression'
