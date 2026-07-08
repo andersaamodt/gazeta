@@ -540,6 +540,64 @@
     return true;
   }
 
+  function managedSaveStatusHtml(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (opts.visible !== true) {
+      return '';
+    }
+    var statusId = String(opts.statusId || '').trim();
+    var status = String(opts.status || '').trim();
+    var html = '<span';
+    if (statusId) {
+      html += ' id="' + escapeHtml(statusId) + '"';
+    }
+    html += ' class="list-admin-save-status" aria-live="polite">';
+    if (status === 'saving') {
+      html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+    } else if (status === 'error') {
+      html += 'Save failed';
+    } else {
+      html += 'Saved';
+    }
+    html += '</span>';
+    return html;
+  }
+
+  function renderManagedAdminActionBarHtml(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    function actionAttr(name, value) {
+      var attrName = String(name || '').trim();
+      if (!attrName) {
+        return '';
+      }
+      return ' ' + attrName + '="' + escapeHtml(String(value || '')) + '"';
+    }
+    var html = '<span class="list-page-admin-bar">';
+    html += managedSaveStatusHtml({
+      visible: opts.saveIndicatorVisible === true,
+      statusId: opts.saveStatusId,
+      status: opts.saveStatus
+    });
+    if (opts.showRevert === true) {
+      html += '<button type="button"'
+        + actionAttr(opts.revertActionAttrName || 'data-action', String(opts.revertAction || 'revert'))
+        + htmlAttr('title', String(opts.revertTitle || ''))
+        + (opts.canRevert === true ? '' : ' disabled aria-disabled="true"')
+        + '>Revert</button>';
+    }
+    html += syncStatusPillHtml(opts.syncStatus, opts.syncOptions);
+    if (opts.showPublish === true) {
+      html += '<button type="button" class="' + escapeHtml(String(opts.primaryButtonClassName || 'list-admin-primary-btn')) + '"'
+        + actionAttr(opts.publishActionAttrName || 'data-action', String(opts.publishAction || 'publish'))
+        + '>' + escapeHtml(String(opts.publishLabel || 'Publish to Nostr...')) + '</button>';
+    }
+    html += '<button type="button" class="' + escapeHtml(String(opts.primaryButtonClassName || 'list-admin-primary-btn')) + '"'
+      + actionAttr(opts.editActionAttrName || 'data-action', String(opts.editAction || 'toggle-edit'))
+      + '>' + escapeHtml(opts.editMode ? String(opts.doneLabel || 'Done') : String(opts.editLabel || 'Edit')) + '</button>';
+    html += '</span>';
+    return html;
+  }
+
   function startManagedNavbarTitleEdit(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
@@ -1682,6 +1740,7 @@
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
   window.__wizardryRenderManagedValidationSummary = renderManagedValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
+  window.__wizardryRenderManagedAdminActionBarHtml = renderManagedAdminActionBarHtml;
   window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;

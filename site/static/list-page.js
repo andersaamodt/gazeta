@@ -3691,28 +3691,23 @@
       : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
 
     var actionsHost = document.getElementById('list-page-title-actions');
-    var html = '';
-    html += '<span class="list-page-admin-bar">';
-      if (state.saveIndicatorVisible) {
-        html += '<span id="list-admin-save-status" class="list-admin-save-status" aria-live="polite">';
-        if (state.saveStatus === 'saving') {
-          html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      } else if (state.saveStatus === 'error') {
-        html += 'Save failed';
-      } else {
-        html += 'Saved';
-      }
-      html += '</span>';
-      }
-    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status);
-    if (showRevert) {
-      html += '<button type="button" data-list-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    }
-    if (showPublish) {
-      html += '<button type="button" class="list-admin-primary-btn" data-list-action="publish">Publish to Nostr...</button>';
-    }
-    html += '<button type="button" class="list-admin-primary-btn" data-list-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '</span>';
+    var html = window.__wizardryRenderManagedAdminActionBarHtml({
+      saveIndicatorVisible: state.saveIndicatorVisible,
+      saveStatusId: 'list-admin-save-status',
+      saveStatus: state.saveStatus,
+      showRevert: showRevert,
+      revertActionAttrName: 'data-list-action',
+      revertAction: 'revert',
+      revertTitle: revertTitle,
+      canRevert: canRevert,
+      syncStatus: state.payload && state.payload.sync_status,
+      showPublish: showPublish,
+      publishActionAttrName: 'data-list-action',
+      publishAction: 'publish',
+      editActionAttrName: 'data-list-action',
+      editAction: 'toggle-edit',
+      editMode: state.editMode
+    });
     if (actionsHost) {
       actionsHost.innerHTML = html;
     }

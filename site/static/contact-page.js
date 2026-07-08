@@ -3316,30 +3316,24 @@
     var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
 
     var actionsHost = document.getElementById('contact-page-title-actions');
-    var html = '<span class="list-page-admin-bar">';
-    if (state.saveIndicatorVisible) {
-      html += '<span id="contact-admin-save-status" class="list-admin-save-status" aria-live="polite">';
-      if (state.saveStatus === 'saving') {
-        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      } else if (state.saveStatus === 'error') {
-        html += 'Save failed';
-      } else {
-        html += 'Saved';
-      }
-      html += '</span>';
-    }
-    if (showRevert) {
-      html += '<button type="button" data-contact-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    }
-    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-      messageVariant: 'local_source'
+    var html = window.__wizardryRenderManagedAdminActionBarHtml({
+      saveIndicatorVisible: state.saveIndicatorVisible,
+      saveStatusId: 'contact-admin-save-status',
+      saveStatus: state.saveStatus,
+      showRevert: showRevert,
+      revertActionAttrName: 'data-contact-action',
+      revertAction: 'revert',
+      revertTitle: revertTitle,
+      canRevert: canRevert,
+      syncStatus: state.payload && state.payload.sync_status,
+      syncOptions: { messageVariant: 'local_source' },
+      showPublish: showPublish,
+      publishActionAttrName: 'data-contact-action',
+      publishAction: 'publish',
+      editActionAttrName: 'data-contact-action',
+      editAction: 'toggle-edit',
+      editMode: state.editMode
     });
-    if (showPublish) {
-      html += '<button type="button" class="list-admin-primary-btn" data-contact-action="publish">Publish to Nostr...</button>';
-    }
-    html += '<button type="button" class="list-admin-primary-btn" data-contact-action="toggle-edit">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '</span>';
-
     if (actionsHost) {
       actionsHost.innerHTML = html;
     }

@@ -394,30 +394,24 @@
     if (actionsHost) {
       actionsHost.classList.remove('public-ranking-sync-actions');
     }
-    var html = '';
-    html += '<span class="list-page-admin-bar">';
-    if (state.saveIndicatorVisible) {
-      html += '<span id="public-ranking-save-status" class="list-admin-save-status" aria-live="polite">';
-      if (state.saveStatus === 'saving') {
-        html += '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      } else if (state.saveStatus === 'error') {
-        html += 'Save failed';
-      } else {
-        html += 'Saved';
-      }
-      html += '</span>';
-    }
-    if (showRevert) {
-      html += '<button type="button" data-ranking-action="revert" title="' + escapeHtml(revertTitle) + '"' + (canRevert ? '' : ' disabled aria-disabled="true"') + '>Revert</button>';
-    }
-    html += window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-      messageVariant: 'local_source'
+    var html = window.__wizardryRenderManagedAdminActionBarHtml({
+      saveIndicatorVisible: state.saveIndicatorVisible,
+      saveStatusId: 'public-ranking-save-status',
+      saveStatus: state.saveStatus,
+      showRevert: showRevert,
+      revertActionAttrName: 'data-ranking-action',
+      revertAction: 'revert',
+      revertTitle: revertTitle,
+      canRevert: canRevert,
+      syncStatus: state.payload && state.payload.sync_status,
+      syncOptions: { messageVariant: 'local_source' },
+      showPublish: showPublish,
+      publishActionAttrName: 'data-ranking-action',
+      publishAction: 'publish',
+      editActionAttrName: 'data-ranking-action',
+      editAction: 'toggle-edit',
+      editMode: state.editMode
     });
-    if (showPublish) {
-      html += '<button type="button" data-ranking-action="publish" class="list-admin-primary-btn">Publish to Nostr...</button>';
-    }
-    html += '<button type="button" data-ranking-action="toggle-edit" class="list-admin-primary-btn">' + (state.editMode ? 'Done' : 'Edit') + '</button>';
-    html += '</span>';
     if (actionsHost) {
       actionsHost.innerHTML = html;
     }
