@@ -161,7 +161,7 @@ grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md"
   exit 1
 }
 
-grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Projects</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span></h1><div data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></div>' "$site_root/site/pages/projects.md" || {
+grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Projects</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/projects.md" || {
   printf '%s\n' "projects page missing hydration-matching public-ranking title shell" >&2
   exit 1
 }

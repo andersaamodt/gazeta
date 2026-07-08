@@ -400,9 +400,6 @@
     var resolvedTarget = titleNode && titleNode.querySelector
       ? titleNode.querySelector('[data-page-nav-title-host="true"]')
       : null;
-    if (!(resolvedTarget instanceof HTMLElement) && titleNode && titleNode.parentNode && titleNode.parentNode.querySelector) {
-      resolvedTarget = titleNode.parentNode.querySelector('[data-page-nav-title-host="true"]');
-    }
     if (!resolvedTarget) {
       return false;
     }
