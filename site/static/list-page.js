@@ -2886,67 +2886,53 @@
     var descText = String(s.description || '');
     var elements = Array.isArray(s.elements) ? s.elements : [];
     var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
-    if (els.title) {
-      if (isAdmin()) {
-        window.__wizardryRenderEditablePageHeadTitle(els.title, {
-          activeField: state.activeHeadField,
-          editMode: state.editMode,
-          value: String(s.title || 'List'),
-          fallbackText: 'List',
-          inputId: 'list-head-title-input',
-          inputAttrName: 'data-head-input',
-          editAttrName: 'data-list-head-edit',
-          actionsHtml: '<span id="list-page-title-actions" class="list-page-title-actions"></span>'
-        });
-      } else {
-        window.__wizardryRenderReadOnlyPageHead({
-          pageTitle: s && s.title ? String(s.title) : null,
-          titleNode: els.title,
-          titleText: String(s.title || 'List'),
-          syncStatus: state.payload && state.payload.sync_status,
-          titleOptions: {
-            actionsId: 'list-page-title-actions',
-            actionsClassName: 'list-page-title-actions',
-            fallbackText: 'List'
-          },
-          descriptionNode: els.description,
-          descriptionPayload: state.payload,
-          allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-          descriptionFallback: {
-            text: descText,
-            hidden: !descText && !hasMainContent
-          }
-        });
-      }
-    }
-    renderNavbarTitleRow(s);
-
-    if (!els.description) {
-      return;
-    }
-    var suppressEmptyDescription = !descText.trim() && !hasMainContent && state.activeHeadField !== 'description';
-    if (isAdmin()) {
-      window.__wizardryRenderEditablePageHeadDescription(els.description, {
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: isAdmin(),
+      pageTitle: s && s.title ? String(s.title) : null,
+      titleNode: els.title,
+      titleText: String(s.title || 'List'),
+      syncStatus: state.payload && state.payload.sync_status,
+      readOnlyTitleOptions: {
+        actionsId: 'list-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'List'
+      },
+      descriptionNode: els.description,
+      descriptionPayload: state.payload,
+      allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
+      readOnlyDescriptionFallback: {
+        text: descText,
+        hidden: !descText && !hasMainContent
+      },
+      titleEditOptions: {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        value: String(s.title || 'List'),
+        fallbackText: 'List',
+        inputId: 'list-head-title-input',
+        inputAttrName: 'data-head-input',
+        editAttrName: 'data-list-head-edit',
+        actionsHtml: '<span id="list-page-title-actions" class="list-page-title-actions"></span>'
+      },
+      descriptionEditOptions: {
         activeField: state.activeHeadField,
         editMode: state.editMode,
         text: descText,
         textHtml: markdownInline(descText),
-        suppressEmpty: suppressEmptyDescription,
+        suppressEmpty: !descText.trim() && !hasMainContent && state.activeHeadField !== 'description',
         hideWhenEmpty: hasMainContent,
         inputId: 'list-head-description-input',
         inputAttrName: 'data-head-input',
         editAttrName: 'data-list-head-edit',
         saveAttrName: 'data-list-head-save'
-      });
-    }
-
-    if (isAdmin() && state.activeHeadField) {
-      window.__wizardryFocusEditablePageHeadField({
+      },
+      focusOptions: isAdmin() && state.activeHeadField ? {
         activeField: state.activeHeadField,
         titleInputId: 'list-head-title-input',
         descriptionInputId: 'list-head-description-input'
-      });
-    }
+      } : null
+    });
+    renderNavbarTitleRow(s);
   }
 
   function datePillForEntryInSection(entry, groupBy, sectionLabel) {

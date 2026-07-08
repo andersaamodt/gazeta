@@ -371,71 +371,60 @@
     var s = getRenderState();
     var desc = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s);
-    if (els.title) {
-      if (isAdmin()) {
-        window.__wizardryRenderEditablePageHeadTitle(els.title, {
-          activeField: state.activeHeadField,
-          editMode: state.editMode,
-          value: String(s.title || 'Public Ranking'),
-          fallbackText: 'Public Ranking',
-          inputId: 'public-ranking-head-title-input',
-          inputAttrName: 'data-ranking-head-input',
-          editAttrName: 'data-ranking-head-edit',
-          actionsHtml: titleActionsHtml(false)
-        });
-      } else {
-        window.__wizardryRenderReadOnlyPageHead({
-          pageTitle: s && s.title ? String(s.title) : null,
-          titleNode: els.title,
-          titleText: String(s.title || 'Public Ranking'),
-          syncStatus: state.payload && state.payload.sync_status,
-          titleOptions: {
-            actionsId: 'public-ranking-page-title-actions',
-            actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
-            fallbackText: 'Public Ranking',
-            syncOptions: {
-              messageVariant: 'local_source',
-              hostClassName: 'public-ranking-sync-actions'
-            }
-          },
-          descriptionNode: els.description,
-          descriptionPayload: state.payload,
-          allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-          descriptionFallback: desc ? {
-            html: markdownInline(desc),
-            hidden: false
-          } : {
-            html: '',
-            hidden: true
-          }
-        });
-      }
-    }
-    renderNavbarTitleRow(s);
-    if (els.description) {
-      var suppressEmptyDescription = !desc && !hasMainContent && state.activeHeadField !== 'description';
-      if (isAdmin()) {
-        window.__wizardryRenderEditablePageHeadDescription(els.description, {
-          activeField: state.activeHeadField,
-          editMode: state.editMode,
-          text: desc,
-          textHtml: markdownInline(desc),
-          suppressEmpty: suppressEmptyDescription,
-          hideWhenEmpty: hasMainContent,
-          inputId: 'public-ranking-head-description-input',
-          inputAttrName: 'data-ranking-head-input',
-          editAttrName: 'data-ranking-head-edit',
-          saveAttrName: 'data-ranking-head-save'
-        });
-      }
-    }
-    if (isAdmin() && state.activeHeadField) {
-      window.__wizardryFocusEditablePageHeadField({
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: isAdmin(),
+      pageTitle: s && s.title ? String(s.title) : null,
+      titleNode: els.title,
+      titleText: String(s.title || 'Public Ranking'),
+      syncStatus: state.payload && state.payload.sync_status,
+      readOnlyTitleOptions: {
+        actionsId: 'public-ranking-page-title-actions',
+        actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
+        fallbackText: 'Public Ranking',
+        syncOptions: {
+          messageVariant: 'local_source',
+          hostClassName: 'public-ranking-sync-actions'
+        }
+      },
+      descriptionNode: els.description,
+      descriptionPayload: state.payload,
+      allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
+      readOnlyDescriptionFallback: desc ? {
+        html: markdownInline(desc),
+        hidden: false
+      } : {
+        html: '',
+        hidden: true
+      },
+      titleEditOptions: {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        value: String(s.title || 'Public Ranking'),
+        fallbackText: 'Public Ranking',
+        inputId: 'public-ranking-head-title-input',
+        inputAttrName: 'data-ranking-head-input',
+        editAttrName: 'data-ranking-head-edit',
+        actionsHtml: titleActionsHtml(false)
+      },
+      descriptionEditOptions: {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        text: desc,
+        textHtml: markdownInline(desc),
+        suppressEmpty: !desc && !hasMainContent && state.activeHeadField !== 'description',
+        hideWhenEmpty: hasMainContent,
+        inputId: 'public-ranking-head-description-input',
+        inputAttrName: 'data-ranking-head-input',
+        editAttrName: 'data-ranking-head-edit',
+        saveAttrName: 'data-ranking-head-save'
+      },
+      focusOptions: isAdmin() && state.activeHeadField ? {
         activeField: state.activeHeadField,
         titleInputId: 'public-ranking-head-title-input',
         descriptionInputId: 'public-ranking-head-description-input'
-      });
-    }
+      } : null
+    });
+    renderNavbarTitleRow(s);
   }
 
   function renderAdmin() {

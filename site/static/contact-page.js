@@ -3629,68 +3629,56 @@
     var s = getRenderState();
     var text = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s.rows || [], s.extras_after || '');
-    if (els.title) {
-      if (isAdmin()) {
-        window.__wizardryRenderEditablePageHeadTitle(els.title, {
-          activeField: state.activeHeadField,
-          editMode: state.editMode,
-          value: String(s.title || 'Profile'),
-          fallbackText: 'Profile',
-          inputId: 'contact-head-title-input',
-          inputAttrName: 'data-contact-head-input',
-          editAttrName: 'data-contact-head-edit',
-          saveAttrName: 'data-contact-head-save',
-          showSaveButton: true,
-          actionsHtml: '<span id="contact-page-title-actions" class="list-page-title-actions"></span>'
-        });
-      } else {
-        window.__wizardryRenderReadOnlyPageHead({
-          pageTitle: s && s.title ? String(s.title) : null,
-          titleNode: els.title,
-          titleText: String(s.title || 'Profile'),
-          syncStatus: state.payload && state.payload.sync_status,
-          titleOptions: {
-            actionsId: 'contact-page-title-actions',
-            actionsClassName: 'list-page-title-actions',
-            fallbackText: 'Profile',
-            syncOptions: {
-              messageVariant: 'local_source'
-            }
-          },
-          descriptionNode: els.description,
-          descriptionPayload: state.payload,
-          allowPrerenderDescription: canUsePrerenderReadOnlyView(),
-          descriptionFallback: text ? {
-            html: markdownInline(text),
-            hidden: false
-          } : {
-            html: '',
-            hidden: true
-          }
-        });
-      }
-    }
-    renderNavbarTitleRow(s);
-    if (els.description) {
-      if (isAdmin()) {
-        var suppressEmptyDescription = !text && !hasMainContent && state.activeHeadField !== 'description';
-        window.__wizardryRenderEditablePageHeadDescription(els.description, {
-          activeField: state.activeHeadField,
-          editMode: state.editMode,
-          text: text,
-          textHtml: markdownInline(text),
-          suppressEmpty: suppressEmptyDescription,
-          hideWhenEmpty: true,
-          inputId: 'contact-head-description-input',
-          inputAttrName: 'data-contact-head-input',
-          editAttrName: 'data-contact-head-edit',
-          saveAttrName: 'data-contact-head-save',
-          editingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>'
-        });
-      }
-    }
-    if (isAdmin() && state.activeHeadField && state.headFocusPending) {
-      window.__wizardryFocusEditablePageHeadField({
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: isAdmin(),
+      pageTitle: s && s.title ? String(s.title) : null,
+      titleNode: els.title,
+      titleText: String(s.title || 'Profile'),
+      syncStatus: state.payload && state.payload.sync_status,
+      readOnlyTitleOptions: {
+        actionsId: 'contact-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'Profile',
+        syncOptions: {
+          messageVariant: 'local_source'
+        }
+      },
+      descriptionNode: els.description,
+      descriptionPayload: state.payload,
+      allowPrerenderDescription: canUsePrerenderReadOnlyView(),
+      readOnlyDescriptionFallback: text ? {
+        html: markdownInline(text),
+        hidden: false
+      } : {
+        html: '',
+        hidden: true
+      },
+      titleEditOptions: {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        value: String(s.title || 'Profile'),
+        fallbackText: 'Profile',
+        inputId: 'contact-head-title-input',
+        inputAttrName: 'data-contact-head-input',
+        editAttrName: 'data-contact-head-edit',
+        saveAttrName: 'data-contact-head-save',
+        showSaveButton: true,
+        actionsHtml: '<span id="contact-page-title-actions" class="list-page-title-actions"></span>'
+      },
+      descriptionEditOptions: {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        text: text,
+        textHtml: markdownInline(text),
+        suppressEmpty: !text && !hasMainContent && state.activeHeadField !== 'description',
+        hideWhenEmpty: true,
+        inputId: 'contact-head-description-input',
+        inputAttrName: 'data-contact-head-input',
+        editAttrName: 'data-contact-head-edit',
+        saveAttrName: 'data-contact-head-save',
+        editingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>'
+      },
+      focusOptions: isAdmin() && state.activeHeadField && state.headFocusPending ? {
         activeField: state.activeHeadField,
         titleInputId: 'contact-head-title-input',
         descriptionInputId: 'contact-head-description-input',
@@ -3698,8 +3686,9 @@
         afterFocus: function () {
           state.headFocusPending = false;
         }
-      });
-    }
+      } : null
+    });
+    renderNavbarTitleRow(s);
   }
 
   function renderAdmin() {

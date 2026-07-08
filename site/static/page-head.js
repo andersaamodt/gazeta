@@ -318,6 +318,35 @@
     return true;
   }
 
+  function renderManagedPageHead(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var admin = opts.isAdmin === true;
+    if (admin) {
+      if (opts.titleNode) {
+        renderEditablePageHeadTitle(opts.titleNode, opts.titleEditOptions);
+      }
+      if (opts.descriptionNode) {
+        renderEditablePageHeadDescription(opts.descriptionNode, opts.descriptionEditOptions);
+      }
+      if (opts.focusOptions && typeof opts.focusOptions === 'object') {
+        focusEditablePageHeadField(opts.focusOptions);
+      }
+      return true;
+    }
+    renderReadOnlyPageHead({
+      pageTitle: opts.pageTitle,
+      titleNode: opts.titleNode,
+      titleText: opts.titleText,
+      syncStatus: opts.syncStatus,
+      titleOptions: opts.readOnlyTitleOptions,
+      descriptionNode: opts.descriptionNode,
+      descriptionPayload: opts.descriptionPayload,
+      allowPrerenderDescription: opts.allowPrerenderDescription,
+      descriptionFallback: opts.readOnlyDescriptionFallback
+    });
+    return true;
+  }
+
   function renderEditableNavbarTitleRow(targetNode, options) {
     if (!targetNode) {
       return false;
@@ -1317,10 +1346,8 @@
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
+  window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
-  window.__wizardryRenderEditablePageHeadTitle = renderEditablePageHeadTitle;
-  window.__wizardryRenderEditablePageHeadDescription = renderEditablePageHeadDescription;
-  window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
   window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
   window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
