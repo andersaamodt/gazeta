@@ -626,12 +626,22 @@
     return String(fragment.html || '');
   }
 
+  function hasPaintedPrerenderShell(rootNode, contentNode) {
+    if (!rootNode || rootNode.getAttribute('data-prerender-painted') !== 'true') {
+      return false;
+    }
+    if (!contentNode) {
+      return true;
+    }
+    return contentNode.getAttribute('data-prerender-painted') === 'true';
+  }
+
   function hasMatchingStaticPrerender(rootNode, contentNode, payload) {
     var signature = String(payload && payload.prerender_signature || '').trim();
     if (!signature || !rootNode || !contentNode) {
       return false;
     }
-    if (rootNode.getAttribute('data-prerender-painted') !== 'true' || contentNode.getAttribute('data-prerender-painted') !== 'true') {
+    if (!hasPaintedPrerenderShell(rootNode, contentNode)) {
       return false;
     }
     return rootNode.getAttribute('data-prerender-signature') === signature ||
@@ -1466,6 +1476,7 @@
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryViewerAuthSignature = viewerAuthSignature;
+  window.__wizardryHasPaintedPrerenderShell = hasPaintedPrerenderShell;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;

@@ -7,7 +7,7 @@
   if (!root) {
     return;
   }
-  if (!root.hasAttribute('data-prerender-painted')) {
+  if (!window.__wizardryHasPaintedPrerenderShell(root)) {
     root.classList.add('is-loading');
   }
 
@@ -178,10 +178,7 @@
     return state.staticPrerenderListAdopted &&
       canPreserveStaticPrerender(state.payload) &&
       !hasMarkerFilterHashOverride() &&
-      root &&
-      els.content &&
-      root.getAttribute('data-prerender-painted') === 'true' &&
-      els.content.getAttribute('data-prerender-painted') === 'true';
+      window.__wizardryHasPaintedPrerenderShell(root, els.content);
   }
 
   function applyBootstrapState(optimisticPayload, payload) {
