@@ -3453,7 +3453,7 @@
     return window.blogZapUi.open(options);
   }
 
-  function renderContentHtml() {
+  function renderInteractiveContentHtml() {
     var s = getRenderState();
     var rows = normalizeRows(s.rows || []);
     var extrasAfter = window.__wizardryStripLegacyNostrSyncPills(s.extras_after);
@@ -3473,7 +3473,7 @@
 
   function syncSecureChatLastContentHtml() {
     if (els.content) {
-      state.lastContentHtml = stableSecureChatContentHtml(renderContentHtml());
+      state.lastContentHtml = stableSecureChatContentHtml(renderInteractiveContentHtml());
     }
   }
 
@@ -3540,14 +3540,36 @@
     var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
+    if (canUsePrerenderReadOnlyView()) {
+      window.__wizardryRenderResolvedReadOnlyContent({
+        targetNode: els.content,
+        payload: state.payload,
+        allowPrerender: true,
+        renderFallback: function () {
+          return '<p class="placeholder">Page content is still loading. The latest page data was not available yet.</p>';
+        },
+        mountOptions: {
+          applyHtml: function (html) {
+            var nextContentHtml = String(html || '');
+            state.lastContentHtml = stableSecureChatContentHtml(nextContentHtml);
+            els.content.innerHTML = nextContentHtml;
+          }
+        },
+        afterAdopt: function () {
+          syncSecureChatLastContentHtmlFromDom();
+          maybeLoadVideoChatWidget();
+        }
+      });
+      return;
+    }
     var contentReplaced = false;
     var contentUnchanged = false;
     window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
-      allowPrerender: canUsePrerenderReadOnlyView(),
+      allowPrerender: false,
       renderFallback: function () {
-        return renderContentHtml();
+        return renderInteractiveContentHtml();
       },
       mountOptions: {
         applyHtml: function (html) {
