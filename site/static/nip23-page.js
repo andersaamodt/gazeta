@@ -444,12 +444,11 @@
     if (!state.payload || !window.__wizardryResolveManagedPagePreviewHtml) {
       return '';
     }
-    var currentState = normalizeDraftState(renderState || getRenderState());
     return window.__wizardryResolveManagedPagePreviewHtml({
       payload: state.payload,
-      matchesPayload: function (payload) {
-        var payloadState = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
-        return JSON.stringify(payloadState) === JSON.stringify(currentState);
+      renderState: renderState || getRenderState(),
+      normalizeState: function (value) {
+        return normalizeDraftState(value || { title: '', content: '' });
       }
     });
   }

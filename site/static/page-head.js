@@ -1365,7 +1365,16 @@
     if (!payload) {
       return '';
     }
-    if (typeof opts.matchesPayload !== 'function' || opts.matchesPayload(payload) !== true) {
+    var matches = false;
+    if (typeof opts.matchesPayload === 'function') {
+      matches = opts.matchesPayload(payload) === true;
+    } else if (typeof opts.normalizeState === 'function') {
+      var normalizeState = opts.normalizeState;
+      var payloadState = normalizeState((payload && payload.state) || null);
+      var renderState = normalizeState(opts.renderState || null);
+      matches = JSON.stringify(payloadState) === JSON.stringify(renderState);
+    }
+    if (!matches) {
       return '';
     }
     var fragment = readPrerenderHtmlFragment(payload, 'content');
