@@ -144,11 +144,11 @@ blog_nostr_pages_save_json '{"pages":[]}'
   exit 1
 }
 [ -f "$generated_root/static/overworld-godot/test-build/index.html" ] || {
-  printf '%s\n' "missing generated site-owned static overlay" >&2
+  printf '%s\n' "missing generated site-specific static overlay" >&2
   exit 1
 }
 [ -f "$generated_root/build-static/overworld-godot/test-build/index.pck" ] || {
-  printf '%s\n' "missing build-static site-owned static overlay" >&2
+  printf '%s\n' "missing build-static site-specific static overlay" >&2
   exit 1
 }
 [ -f "$generated_root/static/nostr-page-bootstrap/blog.js" ] || {
@@ -193,7 +193,7 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$generated_root/static/nostr-pag
   exit 1
 }
 grep -Fq 'Overworld Fixture' "$generated_root/static/overworld-godot/test-build/index.html" || {
-  printf '%s\n' "generated site-owned static overlay content mismatch" >&2
+  printf '%s\n' "generated site-specific static overlay content mismatch" >&2
   exit 1
 }
 grep -Fq 'fixture-theme' "$generated_root/static/themes/lapidarist.css" || {
