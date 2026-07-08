@@ -148,8 +148,7 @@ sync_product_state_json() {
             }
           | select((.id | length) > 0)
         ],
-        extras_after: "",
-        extras_after_format: "markdown"
+        extras_after: ""
       }
   ' 2>/dev/null
 }
@@ -335,8 +334,7 @@ rebuild_merch_landing_page() {
     tag:"",
     image_url:"",
     variants:[],
-    extras_after:"",
-    extras_after_format:"markdown"
+    extras_after:""
   }')
   ensure_unlisted_nip23_page "merch" "Merchandise" || return 1
   blog_nostr_page_save_draft_state_json "merch" nip23 "$state_json"

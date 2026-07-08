@@ -174,7 +174,6 @@
       description: String(src.description || ''),
       content: String(src.content || ''),
       extras_after: String(src.extras_after || ''),
-      extras_after_format: String(src.extras_after_format || 'markdown').toLowerCase() === 'html' ? 'html' : 'markdown',
       vote_cooldown_seconds: Math.max(60, Math.floor(Number(src.vote_cooldown_seconds || 86400) || 86400)),
       submission_mode: normalizeSubmissionMode(
         src.submission_mode
@@ -533,7 +532,7 @@
     return 'Hotness (recent-weighted)';
   }
 
-  function renderExtraContent(text, format, role) {
+  function renderExtraContent(text, role) {
     var value = window.__wizardryStripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
@@ -830,7 +829,7 @@
         if (isAdmin() && state.editMode) {
           html += renderPrefixEditor(renderState);
         } else {
-          html += renderExtraContent(renderState.content, 'markdown', 'before');
+          html += renderExtraContent(renderState.content, 'before');
         }
         html += renderPendingToast(nodes);
         html += renderTree(graph, renderState);
@@ -838,7 +837,7 @@
         if (isAdmin() && state.editMode) {
           html += renderPostfixEditor(renderState);
         } else {
-          html += renderExtraContent(renderState.extras_after, renderState.extras_after_format, 'after');
+          html += renderExtraContent(renderState.extras_after, 'after');
         }
         return html;
       }

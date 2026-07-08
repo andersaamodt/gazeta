@@ -47,7 +47,6 @@ if [ -z "$state_json" ]; then
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
       extras_after=$(blog_param extras_after)
-      extras_after_format='markdown'
       rows_json=$(blog_param rows_json)
       if [ -z "$rows_json" ]; then
         rows_json='[]'
@@ -56,7 +55,7 @@ if [ -z "$state_json" ]; then
         blog_json_error "rows_json must be a JSON array" "invalid_rows"
         exit 0
       fi
-      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg publish_intro_to_nostr "$publish_intro_to_nostr" --arg extras_before "$extras_before" --arg extras_before_format "$extras_before_format" --arg extras_after "$extras_after" --arg extras_after_format "$extras_after_format" --argjson rows "$rows_json" '{
+      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg publish_intro_to_nostr "$publish_intro_to_nostr" --arg extras_before "$extras_before" --arg extras_before_format "$extras_before_format" --arg extras_after "$extras_after" --argjson rows "$rows_json" '{
         slug: $slug,
         type: "contact",
         title: $title,
@@ -65,7 +64,6 @@ if [ -z "$state_json" ]; then
         extras_before: $extras_before,
         extras_before_format: $extras_before_format,
         extras_after: $extras_after,
-        extras_after_format: $extras_after_format,
         rows: $rows
       }')
       ;;
@@ -80,7 +78,6 @@ if [ -z "$state_json" ]; then
       blacklist_pubkeys_json=$(blog_param blacklist_pubkeys_json)
       root_refs_json=$(blog_param root_refs_json)
       extras_after=$(blog_param extras_after)
-      extras_after_format='markdown'
       [ -n "$blacklist_pubkeys_json" ] || blacklist_pubkeys_json='[]'
       [ -n "$root_refs_json" ] || root_refs_json='[]'
       if ! printf '%s\n' "$blacklist_pubkeys_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
@@ -101,7 +98,6 @@ if [ -z "$state_json" ]; then
         --arg show_marker_filters "$show_marker_filters" \
         --arg default_metric "$default_metric" \
         --arg extras_after "$extras_after" \
-        --arg extras_after_format "$extras_after_format" \
         --argjson blacklist_pubkeys "$blacklist_pubkeys_json" \
         --argjson root_refs "$root_refs_json" \
         '{
@@ -116,8 +112,7 @@ if [ -z "$state_json" ]; then
           default_metric: $default_metric,
           blacklist_pubkeys: $blacklist_pubkeys,
           root_refs: $root_refs,
-          extras_after: $extras_after,
-          extras_after_format: $extras_after_format
+          extras_after: $extras_after
         }')
       ;;
     nip23|blog)
@@ -132,7 +127,6 @@ if [ -z "$state_json" ]; then
       repo=$(blog_param repo)
       tag=$(blog_param tag)
       extras_after=$(blog_param extras_after)
-      extras_after_format='markdown'
       state_json=$(jq -cn \
         --arg slug "$page_slug" \
         --arg page_type "$page_type" \
@@ -147,7 +141,6 @@ if [ -z "$state_json" ]; then
         --arg repo "$repo" \
         --arg tag "$tag" \
         --arg extras_after "$extras_after" \
-        --arg extras_after_format "$extras_after_format" \
         '{
           slug: $slug,
           type: $page_type,
@@ -161,8 +154,7 @@ if [ -z "$state_json" ]; then
           purchase_endpoint: $purchase_endpoint,
           repo: $repo,
           tag: $tag,
-          extras_after: $extras_after,
-          extras_after_format: $extras_after_format
+          extras_after: $extras_after
         }')
       existing_product_local=$(blog_nostr_page_load_draft_state_json "$page_slug" "$page_type" 2>/dev/null | jq -c '{
         image_url: (.image_url // ""),
@@ -199,7 +191,6 @@ if [ -z "$state_json" ]; then
       extras_before=$(blog_param extras_before)
       extras_before_format=$(blog_param extras_before_format)
       extras_after=$(blog_param extras_after)
-      extras_after_format='markdown'
       entries_json=$(blog_param entries_json)
       elements_json=$(blog_param elements_json)
       if [ -z "$elements_json" ]; then
@@ -233,7 +224,6 @@ if [ -z "$state_json" ]; then
         --arg extras_before "$extras_before" \
         --arg extras_before_format "$extras_before_format" \
         --arg extras_after "$extras_after" \
-        --arg extras_after_format "$extras_after_format" \
         --argjson elements "$elements_json" \
         --argjson entries "$entries_json" \
         '{
@@ -253,7 +243,6 @@ if [ -z "$state_json" ]; then
           extras_before: $extras_before,
           extras_before_format: $extras_before_format,
           extras_after: $extras_after,
-          extras_after_format: $extras_after_format,
           elements: (if ($elements | length) > 0 then $elements else ($entries | map(. + {type:"entry"})) end),
           entries: $entries
         }')

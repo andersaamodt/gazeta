@@ -445,11 +445,6 @@
     return escapeHtml(value);
   }
 
-  function normalizeExtraFormat(value) {
-    var next = String(value || '').trim().toLowerCase();
-    return next === 'html' ? 'html' : 'markdown';
-  }
-
   function normalizeDraftState(raw) {
     var src = raw || {};
     return {
@@ -459,7 +454,6 @@
       description: String(src.description || ''),
       publish_intro_to_nostr: !!src.publish_intro_to_nostr,
       extras_after: String(src.extras_after || ''),
-      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       rows: normalizeRows(src.rows || [])
     };
   }

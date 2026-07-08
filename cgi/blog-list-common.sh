@@ -30,7 +30,6 @@ blog_list_default_state_json() {
     extras_before: "",
     extras_before_format: "markdown",
     extras_after: "",
-    extras_after_format: "markdown",
     elements: [],
     entries: [],
     tags: [["title", $title], ["group_by", "year"], ["view_mode", "list"]]
@@ -233,7 +232,6 @@ blog_list_normalize_state_json() {
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-        extras_after_format: "markdown",
         elements: $elements,
         entries: $elements
       }

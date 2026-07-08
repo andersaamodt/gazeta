@@ -364,11 +364,6 @@
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
-  function normalizeExtraFormat(value) {
-    var next = String(value || '').trim().toLowerCase();
-    return next === 'html' ? 'html' : 'markdown';
-  }
-
   function normalizeViewMode(value) {
     var next = String(value || '').trim().toLowerCase();
     return next === 'tile' ? 'tile' : 'list';
@@ -898,7 +893,6 @@
       view_mode: normalizeViewModeForPage(s.view_mode || ''),
       content: String(s.content || ''),
       extras_after: String(s.extras_after || ''),
-      extras_after_format: normalizeExtraFormat(s.extras_after_format || 'markdown'),
       elements: elements
     };
   }
@@ -1395,7 +1389,6 @@
         group_by: state.draft.group_by,
         view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
         extras_after: String(state.draft.extras_after || ''),
-        extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
         elements: cloneEditableElements(state.draft.elements)
       };
     }
@@ -1413,7 +1406,6 @@
       group_by: String(src.group_by || ''),
       view_mode: normalizeViewModeForPage(src.view_mode || ''),
       extras_after: String(src.extras_after || ''),
-      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
     };
   }
@@ -1663,7 +1655,6 @@
           view_mode: normalizeViewModeForPage(state.draft.view_mode || ''),
           content: state.draft.content || '',
           extras_after: state.draft.extras_after || '',
-          extras_after_format: normalizeExtraFormat(state.draft.extras_after_format || 'markdown'),
           elements: elements,
           entries: toEntries(elements)
         },
@@ -3303,7 +3294,7 @@
     return 0;
   }
 
-  function renderExtraContent(text, format, role) {
+  function renderExtraContent(text, role) {
     var value = window.__wizardryStripLegacyNostrSyncPills(text);
     if (!value.trim()) {
       return '';
@@ -3546,7 +3537,7 @@
 
     var s = getRenderState();
     var elements = Array.isArray(s.elements) ? s.elements : [];
-    var afterContent = renderExtraContent(s.extras_after, s.extras_after_format, 'after');
+    var afterContent = renderExtraContent(s.extras_after, 'after');
     var fullEditMode = isAdmin() && state.editMode;
     var wideEditMode = isAdmin() && (state.editMode || isReadInlineEditing());
     var usePrerenderReadOnly = canUsePrerenderReadOnlyView(s);

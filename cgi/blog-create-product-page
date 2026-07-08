@@ -109,8 +109,7 @@ state_json=$(jq -cn \
     purchase_endpoint: $purchase_endpoint,
     repo: $repo,
     tag: $tag,
-    extras_after: "",
-    extras_after_format: "markdown"
+    extras_after: ""
   }')
 
 blog_nostr_page_save_draft_state_json "$slug" 'nip23' "$state_json"

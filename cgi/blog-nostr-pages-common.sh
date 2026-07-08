@@ -925,8 +925,7 @@ blog_nip23_default_state_json() {
     purchase_endpoint: $purchase_endpoint,
     repo: "",
     tag: "latest",
-    extras_after: "",
-    extras_after_format: "markdown"
+    extras_after: ""
   }'
 }
 
@@ -1033,8 +1032,7 @@ blog_nip23_normalize_state_json() {
       printful_sync_variant_id: norm_trim(.printful_sync_variant_id // .sync_variant_id // ""),
       printful_external_variant_id: norm_trim(.printful_external_variant_id // .external_variant_id // ""),
       variants: (if ((.variants // null) | type) == "array" then [.variants[]? | norm_variant] else [] end),
-      extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-      extras_after_format: "markdown"
+      extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring)
     }
   ' 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type"
 }
@@ -1456,7 +1454,6 @@ blog_contact_default_state_json() {
     extras_before: "",
     extras_before_format: "markdown",
     extras_after: "",
-    extras_after_format: "markdown",
     rows: [],
     content_json: {
       title: $title,
@@ -1570,7 +1567,6 @@ blog_contact_normalize_state_json() {
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
-        extras_after_format: "markdown",
         rows: $rows
       }
     | .content_json = (
@@ -2268,7 +2264,6 @@ blog_publish_nostr_page_json() {
   if [ -n "$existing_draft_state" ]; then
     draft_local_json=$(printf '%s\n' "$existing_draft_state" | jq -c '{
       extras_after: (.extras_after // ""),
-      extras_after_format: ((.extras_after_format // "markdown") | ascii_downcase | if . == "html" then "html" else "markdown" end),
       product_type: (.product_type // "software"),
       crypto_discount_percent: (.crypto_discount_percent // 0),
       repo: (.repo // ""),
@@ -2343,7 +2338,7 @@ blog_publish_nostr_page_json() {
         fi
       fi
       canonical_state_json=$(blog_contact_state_from_event_json "$page_slug" "$event_json")
-      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
+      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after)}')
       validation_after=$(blog_contact_validate_and_enrich_state_json "$canonical_state_json" false)
       canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {rows: $validation.rows, content_json: $validation.content_json}')
       ;;
@@ -2379,7 +2374,7 @@ blog_publish_nostr_page_json() {
         fi
       fi
       canonical_state_json=$(blog_public_ranking_state_from_event_json "$page_slug" "$event_json")
-      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
+      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after)}')
       validation_after=$(blog_public_ranking_validate_and_enrich_state_json "$canonical_state_json" false)
       canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson ranking "$(blog_public_ranking_view_json "$page_slug" "$canonical_state_json" "$event_json" true \"\" \"${BLOG_SESSION_USER_PUBKEY-}\")" '. + $ranking')
       ;;
@@ -2442,7 +2437,6 @@ blog_publish_nostr_page_json() {
       canonical_state_json=$(blog_nip23_state_from_event_json "$page_slug" "$event_json" "$page_type")
       canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {
         extras_after: ($local.extras_after // .extras_after),
-        extras_after_format: ($local.extras_after_format // .extras_after_format),
         product_type: ($local.product_type // .product_type),
         crypto_discount_percent: ($local.crypto_discount_percent // .crypto_discount_percent),
         repo: ($local.repo // .repo),
@@ -2486,7 +2480,7 @@ blog_publish_nostr_page_json() {
         fi
       fi
       canonical_state_json=$(blog_list_state_from_event_json "$page_slug" "$event_json")
-      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after), extras_after_format: ($local.extras_after_format // .extras_after_format)}')
+      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after)}')
       validation_after=$(blog_list_validate_and_enrich_state_json "$canonical_state_json" false)
       canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson validation "$validation_after" '. + {elements: $validation.elements, entries: $validation.entries}')
       ;;

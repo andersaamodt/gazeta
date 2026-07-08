@@ -280,8 +280,7 @@ product_state=$(jq -cn '{
   purchase_endpoint:"/purchase/sample-product",
   repo:"owner/private-repo",
   tag:"latest",
-  extras_after:"",
-  extras_after_format:"markdown"
+  extras_after:""
 }')
 blog_nostr_page_save_draft_state_json "sample-product" "nip23" "$product_state"
 
@@ -320,8 +319,7 @@ merch_state=$(jq -cn '{
     printful_external_variant_id:"shirt-large",
     printful_variant_id:"4012"
   }],
-  extras_after:"",
-  extras_after_format:"markdown"
+  extras_after:""
 }')
 blog_nostr_page_save_draft_state_json "merch-shirt" "nip23" "$merch_state"
 "$ROOT_DIR/cgi/blog-maintenance" rebuild-product-index >/dev/null 2>&1

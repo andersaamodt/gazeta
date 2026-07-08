@@ -72,11 +72,6 @@
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
-  function normalizeExtraFormat(value) {
-    var next = String(value || '').trim().toLowerCase();
-    return next === 'html' ? 'html' : 'markdown';
-  }
-
   function normalizeProductType(value) {
     var next = String(value || '').trim().toLowerCase();
     if (next === 'service' || next === 'membership' || next === 'merch') {
@@ -171,8 +166,7 @@
       printful_sync_variant_id: String(src.printful_sync_variant_id || ''),
       printful_external_variant_id: String(src.printful_external_variant_id || ''),
       variants: (Array.isArray(src.variants) ? src.variants : []).map(normalizeVariant).filter(Boolean),
-      extras_after: String(src.extras_after || ''),
-      extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown')
+      extras_after: String(src.extras_after || '')
     };
   }
 

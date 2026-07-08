@@ -17,7 +17,6 @@ blog_public_ranking_default_state_json() {
     description: "",
     content: "",
     extras_after: "",
-    extras_after_format: "markdown",
     vote_cooldown_seconds: 86400,
     submission_mode: $submission_mode,
     show_marker_filters: false,
@@ -64,7 +63,6 @@ blog_public_ranking_normalize_state_json() {
       description: ((.description // .summary // "") | tostring),
       content: clean_editable_markdown(.content),
       extras_after: clean_editable_markdown(.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // ""),
-      extras_after_format: "markdown",
       vote_cooldown_seconds: ((.vote_cooldown_seconds // .vote_cooldown // 86400) | tonumber? // 86400),
       submission_mode: norm_mode(
         .submission_mode
