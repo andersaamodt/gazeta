@@ -3188,9 +3188,9 @@
         setComposeOutput((data && data.message) || 'Saved.', 'ok');
       }
       renderComposeUi();
-      loadPosts();
+      loadPageState();
       loadDraftNoticeData();
-      setTimeout(function () { loadPosts(); }, 2500);
+      setTimeout(function () { loadPageState(); }, 2500);
     }).catch(function (err) {
       var message = err && err.message ? err.message : 'Save failed';
       if (action === 'autosave') {
@@ -4572,19 +4572,6 @@
 	    return true;
 	  }
 
-  function renderFetchedPostsIfChanged(previousSignature) {
-    var nextSignature = renderSignature();
-    if (previousSignature === nextSignature) {
-      state.renderSignature = nextSignature;
-      return false;
-    }
-    renderAdminChromeUi();
-    renderFilters();
-    renderList();
-    state.renderSignature = nextSignature;
-    return true;
-  }
-
   function loadPageState(options) {
     var opts = options || {};
     var expectedSlug = slugFromPath(window.location.pathname || '/');
@@ -4658,61 +4645,6 @@
       }
     });
   }
-
-	  function loadPosts(options) {
-	    var opts = options || {};
-	    var previousSignature = state.renderSignature;
-	    var postsRenderedAfterFetch = false;
-	    state.postsLoading = true;
-	    if (!opts.deferRender) {
-	      renderList();
-    }
-    function fetchPostsJson(url) {
-      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-        .then(function (res) {
-          if (!res.ok) {
-            throw new Error('Post catalog request failed: ' + res.status);
-          }
-          return res.json();
-        });
-    }
-    return fetchPostsJson('/static/public-posts.json')
-      .catch(function () {
-        return fetchPostsJson('/cgi/blog-list-public-posts');
-      })
-      .then(function (data) {
-        if (!data || !data.success || !Array.isArray(data.posts)) {
-          return;
-        }
-        var allPosts = data.posts.slice();
-        if (!postsHaveRenderedHtml(allPosts)) {
-          return;
-        }
-        postsCatalogReady = true;
-	        state.posts = filteredPostsForPageDefaults(allPosts, state.payload);
-	        writeCache(allPosts);
-	        if (!opts.deferRender) {
-	          previousSignature = previousSignature || state.renderSignature;
-	          postsRenderedAfterFetch = renderFetchedPostsIfChanged(previousSignature);
-	        }
-	      })
-      .catch(function () {
-        // Keep cached posts if fetch fails.
-      })
-      .finally(function () {
-        state.postsLoading = false;
-        if (!opts.deferInitialFlags) {
-          state.initialPostsLoaded = true;
-          maybeMarkInitialContentPainted();
-        }
-	        if (!opts.deferRender) {
-	          if (!postsRenderedAfterFetch) {
-	            renderList();
-	            updateRenderSignature();
-	          }
-	        }
-	      });
-	  }
 
   function applyOptimisticAdminFromAuthEvent(event) {
     if (!window.__wizardryAuthEventIsLikelyAdmin(event) || !state.payload || state.payload.is_admin) {
@@ -5326,10 +5258,7 @@
       markInitialContentPainted();
     });
 
-    Promise.allSettled([
-      loadPageState({ deferRender: true, deferInitialFlags: true }),
-      loadPosts({ deferRender: true, deferInitialFlags: true })
-    ]).finally(function () {
+    loadPageState({ deferRender: true, deferInitialFlags: true }).finally(function () {
       state.postsLoading = false;
       loadDraftNoticeData();
       var nextSignature = renderSignature();
