@@ -5378,8 +5378,10 @@
       state.postsLoading = false;
       loadDraftNoticeData();
       var nextSignature = renderSignature();
-      if (state.renderSignature !== nextSignature) {
-        if (state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature()) {
+      var refreshMode = window.__wizardryReconcileAdoptedPrerenderRefresh({
+        hasChanges: state.renderSignature !== nextSignature,
+        canPreserve: state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature(),
+        renderPreserved: function () {
           syncRenderedListDecorations();
           renderHead();
           renderAdmin();
@@ -5388,11 +5390,13 @@
           renderExtrasAfter();
           renderFilters();
           renderComposeUi();
-          state.renderSignature = nextSignature;
-          return;
+        },
+        renderRepainted: function () {
+          renderAll();
         }
+      });
+      if (refreshMode !== 'unchanged') {
         state.renderSignature = nextSignature;
-        renderAll();
       }
     });
   })();

@@ -5338,18 +5338,27 @@
           setSaveStatus('saved');
           state.renderSignature = nextRenderSignature;
           writeBootstrapCache(state.payload);
-	          if (shouldRepaint && !shouldPreserveAdoptedStaticPrerender()) {
+          function renderPreservedStaticPrerender() {
+            initializePrerenderMarkerFiltersFromPayload();
+            renderHead();
+            renderAdmin();
+            renderValidation();
+          }
+          window.__wizardryReconcileAdoptedPrerenderRefresh({
+            hasChanges: shouldRepaint,
+            canPreserve: shouldPreserveAdoptedStaticPrerender(),
+            renderStable: renderPreservedStaticPrerender,
+            renderPreserved: renderPreservedStaticPrerender,
+            beforeRepaint: function () {
               state.staticPrerenderListAdopted = false;
-	            renderList();
-	            renderAdmin();
-	            renderValidation();
-	            markInitialContentPainted();
-	          } else {
-	            initializePrerenderMarkerFiltersFromPayload();
-	            renderHead();
-	            renderAdmin();
-	            renderValidation();
-	          }
+            },
+            renderRepainted: function () {
+              renderList();
+              renderAdmin();
+              renderValidation();
+              markInitialContentPainted();
+            }
+          });
           return;
         } catch (err) {
           lastErr = err;

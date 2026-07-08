@@ -293,6 +293,29 @@
     return shell instanceof HTMLElement ? shell : null;
   }
 
+  function reconcileAdoptedPrerenderRefresh(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!opts.hasChanges) {
+      if (typeof opts.renderStable === 'function') {
+        opts.renderStable();
+      }
+      return 'unchanged';
+    }
+    if (opts.canPreserve === true) {
+      if (typeof opts.renderPreserved === 'function') {
+        opts.renderPreserved();
+      }
+      return 'preserved';
+    }
+    if (typeof opts.beforeRepaint === 'function') {
+      opts.beforeRepaint();
+    }
+    if (typeof opts.renderRepainted === 'function') {
+      opts.renderRepainted();
+    }
+    return 'repainted';
+  }
+
   function renderReadOnlyContentFromPrerender(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var resolved = resolveReadOnlyContentFromPrerender({
@@ -1062,6 +1085,7 @@
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
   window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
+  window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
