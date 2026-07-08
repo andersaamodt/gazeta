@@ -196,11 +196,6 @@
     cachedPayload.validation.errors = [];
     cachedPayload.validation.warnings = [];
     cachedPayload.validation.can_publish = true;
-    if (!cachedPayload.is_admin
-        && typeof window.__wizardryHasLikelyAdminSession === 'function'
-        && window.__wizardryHasLikelyAdminSession()) {
-      cachedPayload.is_admin = true;
-    }
     state.payload = cachedPayload;
     state.draft = readEditableStateFromPayload();
     state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();

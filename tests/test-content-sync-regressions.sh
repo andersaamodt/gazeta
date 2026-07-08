@@ -485,7 +485,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'allowRead: window.
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "persistMode: 'authenticated_admin'" 'public list payloads use the shared authenticated-admin bootstrap cache write policy'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'persist: false' 'list validation refresh uses the shared no-persist switch instead of a deny-write lambda'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'list hydration delegates managed page bootstrap adoption to the shared page-head helper'
-assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'window.__wizardryHasLikelyAdminSession' 'list hydration uses the shared likely-admin helper for optimistic admin bootstrap adoption'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'window.__wizardryHasLikelyAdminSession' 'list runtime no longer re-promotes optimistic admin state locally once the shared managed bootstrap owns that hint'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'if (!cachedPayload.is_admin && authenticated)' 'list hydration no longer treats any authenticated session as an optimistic admin bootstrap hint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'blog hydration preserves matching static prerendered DOM through the shared managed-page bootstrap helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'blog hydration delegates managed page bootstrap adoption to the shared page-head helper'
