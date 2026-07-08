@@ -169,7 +169,6 @@
     merchSyncBusy: false,
     composeSubmitInFlight: false,
     composeSubmitAction: '',
-    initialContentPainted: false,
     loadedAdminSections: {},
     loadingAdminSections: {},
     preloadAdminStarted: false,

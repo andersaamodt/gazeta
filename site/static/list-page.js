@@ -79,7 +79,6 @@
     productPriceBySlug: {},
     productPriceBatchPending: {},
     uidCounter: 1,
-    initialContentPainted: false,
     publicSubmitBusy: false,
     publicSubmitExpanded: false,
     renderSignature: '',

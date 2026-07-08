@@ -66,7 +66,6 @@
     saveTimer: null,
     saveStatus: 'saved',
     saveIndicatorVisible: false,
-    initialContentPainted: false,
     lastContentHtml: '',
     chat: {
       available: false,

@@ -56,7 +56,6 @@
     postsLoading: true,
     staticPrerenderListAdopted: false,
     adoptedPostListSignature: '',
-    initialContentPainted: false,
     renderSignature: '',
     defaultFiltersApplied: false,
     pageSettingsOpen: false,

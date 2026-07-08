@@ -37,7 +37,6 @@
     saveError: '',
     saveIndicatorVisible: false,
     currentMetric: 'momentum',
-    initialContentPainted: false
   };
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
