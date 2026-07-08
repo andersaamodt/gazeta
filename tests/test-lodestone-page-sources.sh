@@ -169,7 +169,7 @@ grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md"
   exit 1
 }
 
-require_managed_page_title_shell "$site_root/site/pages/projects.md" "public-ranking-title" "Projects" "public-ranking-page-title-actions" "projects page missing hydration-matching public-ranking title shell" "list-page-title-actions public-ranking-sync-actions" || {
+require_managed_page_title_shell "$site_root/site/pages/projects.md" "public-ranking-title" "Projects" "public-ranking-page-title-actions" "projects page missing hydration-matching public-ranking title shell" || {
   printf '%s\n' "projects page missing hydration-matching public-ranking title shell" >&2
   exit 1
 }

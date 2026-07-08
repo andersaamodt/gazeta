@@ -812,12 +812,7 @@
     if (!host) {
       return false;
     }
-    var opts = options && typeof options === 'object' ? options : {};
-    var hostClassName = String(opts.hostClassName || '').trim();
-    if (hostClassName && host.classList) {
-      host.classList.add(hostClassName);
-    }
-    host.innerHTML = syncStatusPillHtml(syncStatus, opts);
+    host.innerHTML = syncStatusPillHtml(syncStatus, options);
     return true;
   }
 

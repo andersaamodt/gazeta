@@ -4499,11 +4499,11 @@ body.nav-cart-open {
   gap: 0;
 }
 
-#public-ranking-title:has(.public-ranking-sync-actions) {
+#public-ranking-title:has(.list-page-title-actions > .page-sync-status-pill) {
   padding-right: 6.8rem;
 }
 
-#public-ranking-title .public-ranking-sync-actions {
+#public-ranking-title .list-page-title-actions:has(> .page-sync-status-pill) {
   position: absolute;
   top: 0.12rem;
   right: 0;
@@ -14580,7 +14580,7 @@ nav.site-nav > .nav-right .nav-search button {
     row-gap: 0.36rem;
   }
 
-  #public-ranking-title .public-ranking-sync-actions {
+  #public-ranking-title .list-page-title-actions:has(> .page-sync-status-pill) {
     width: fit-content;
     margin: 0;
     padding: 0;

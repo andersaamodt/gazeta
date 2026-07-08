@@ -382,9 +382,6 @@
     var canRevert = hasCanonical && hasDraftChanges;
     var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
     var actionsHost = document.getElementById('public-ranking-page-title-actions');
-    if (actionsHost) {
-      actionsHost.classList.remove('public-ranking-sync-actions');
-    }
     var html = window.__wizardryRenderManagedAdminActionBarHtml({
       saveIndicatorVisible: state.saveIndicatorVisible,
       saveStatusId: 'public-ranking-save-status',
