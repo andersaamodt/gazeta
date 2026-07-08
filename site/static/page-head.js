@@ -1242,6 +1242,33 @@
     });
   }
 
+  function postFormJson(url, payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var body = new URLSearchParams(payload || {});
+    return fetch(String(url || ''), {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: body.toString()
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var data;
+        try {
+          data = JSON.parse(text);
+        } catch (_err) {
+          throw new Error(String(opts.invalidJsonMessage || 'Invalid JSON response'));
+        }
+        if (!res.ok || !data || data.success === false) {
+          var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+          err.code = data && data.code ? String(data.code) : '';
+          err.payload = data || null;
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -1395,6 +1422,7 @@
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
+  window.__wizardryPostFormJson = postFormJson;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);

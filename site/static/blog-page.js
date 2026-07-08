@@ -453,28 +453,7 @@
     return hasAuthTokens() && cachedAdminFlag();
   }
 
-  function apiPost(url, payload) {
-    var body = new URLSearchParams(payload || {});
-    return fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-      body: body.toString()
-    }).then(function (res) {
-      return res.text().then(function (text) {
-        var data;
-        try {
-          data = JSON.parse(text);
-        } catch (_err) {
-          throw new Error('Invalid JSON response');
-        }
-        if (!res.ok || !data || data.success === false) {
-          throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
-        }
-        return data;
-      });
-    });
-  }
+  var apiPost = window.__wizardryPostFormJson;
 
   function renderHead() {
     var page = getRenderState();

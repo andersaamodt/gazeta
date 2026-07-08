@@ -265,31 +265,7 @@
     });
   }
 
-  function apiPost(url, payload) {
-    var params = new URLSearchParams(payload || {});
-    return fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString()
-    }).then(function (res) {
-      return res.text().then(function (text) {
-        var data;
-        try {
-          data = JSON.parse(text);
-        } catch (_err) {
-          throw new Error('Invalid JSON response');
-        }
-        if (!res.ok || !data || data.success === false) {
-          var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
-          err.code = data && data.code ? String(data.code) : '';
-          err.payload = data || null;
-          throw err;
-        }
-        return data;
-      });
-    });
-  }
+  var apiPost = window.__wizardryPostFormJson;
 
   async function apiPostFirstAvailable(urls, payload) {
     var list = Array.isArray(urls) ? urls : [];
