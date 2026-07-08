@@ -824,6 +824,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function pr
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" "prerenderFragment('content_html')" 'contact runtime no longer decodes Lodestone content fragment keys directly'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'content_attrs' 'contact runtime no longer parses Lodestone content attrs directly'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function canAdoptSecureChatPrerenderShell() {' 'contact runtime centralizes Secure Chat prerender eligibility in one semantic helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'return window.__wizardryCanUseVisitorPrerenderReadOnly({' 'contact runtime keeps prerender preservation on the shared visitor-only baseline because Secure Chat live state diverges after login'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryCanUsePayloadPrerenderReadOnly' 'contact runtime does not preserve authenticated prerender shells through the payload-aware helper because Secure Chat must repaint after authentication'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function renderSecureChatStartGate(summary) {' 'contact runtime no longer owns a local Secure Chat start-gate renderer once the shared chat renderer owns that shell'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function renderSecureChatEmojiPicker() {' 'contact runtime no longer owns a local Secure Chat emoji-picker renderer once the shared chat renderer owns that shell'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function secureChatAttachmentHtml(message) {' 'contact runtime no longer owns a local Secure Chat attachment renderer once the shared chat renderer owns that shell'
@@ -3040,6 +3042,20 @@ list_anonymous_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-p
 assert_contains "$list_anonymous_html" 'placeholder="Sign in to add entries"' 'list prerender shows the anonymous submit placeholder when no authenticated viewer state is present'
 assert_contains "$list_anonymous_html" 'data-list-public-action="submit" disabled aria-disabled="true"' 'list prerender disables submit action for anonymous viewers'
 assert_contains "$list_anonymous_html" 'title="Sign in to vote."' 'list prerender keeps anonymous vote tooltip text when no authenticated viewer state is present'
+
+contact_prerender_base_payload='{
+  "state": {
+    "rows": [
+      {"transport":"email","qualifier":"preferred","value":"hello@example.com"}
+    ],
+    "extras_after": ""
+  }
+}'
+contact_anonymous_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_contact_html "$2"' sh "$ROOT_DIR" "$(printf '%s\n' "$contact_prerender_base_payload" | jq -c '. + {viewer_authenticated:false}')")
+contact_authenticated_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_contact_html "$2"' sh "$ROOT_DIR" "$(printf '%s\n' "$contact_prerender_base_payload" | jq -c '. + {viewer_authenticated:true}')")
+assert_eq "$contact_anonymous_html" "$contact_authenticated_html" 'contact prerender keeps one visitor-owned secure-chat first frame even when fetched payload is authenticated because live chat state must repaint after hydration'
+assert_contains "$contact_authenticated_html" 'secure-chat-login-gate' 'contact prerender keeps the Lodestone-owned secure-chat login gate as the universal first-frame shell'
+assert_not_contains "$contact_authenticated_html" 'id="secure-chat-thread"' 'contact prerender does not claim a live secure-chat thread shell before the authenticated runtime has loaded'
 
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"
