@@ -168,6 +168,19 @@
     return shell;
   }
 
+  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var shell = renderReadOnlyTitleShell(titleNode, textValue, opts);
+    if (titleNode && opts.unhide !== false) {
+      titleNode.hidden = false;
+    }
+    var syncTarget = opts.syncTarget || opts.actionsId || (shell && shell.actions ? shell.actions : null);
+    if (syncTarget) {
+      renderSyncStatusPill(syncTarget, syncStatus, opts.syncOptions);
+    }
+    return shell;
+  }
+
   function renderReadOnlyDescriptionShell(descriptionNode, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var text = ensureReadOnlyDescriptionShell(descriptionNode);
@@ -905,6 +918,7 @@
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyTitleShell = renderReadOnlyTitleShell;
+  window.__wizardryRenderReadOnlyTitleShellWithSync = renderReadOnlyTitleShellWithSync;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;

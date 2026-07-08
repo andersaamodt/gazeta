@@ -445,19 +445,17 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
 	      } else {
-	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Public Ranking'), {
+	        window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'Public Ranking'), state.payload && state.payload.sync_status, {
 	          actionsId: 'public-ranking-page-title-actions',
 	          actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
-	          fallbackText: 'Public Ranking'
+	          fallbackText: 'Public Ranking',
+	          syncOptions: {
+	            messageVariant: 'local_source',
+	            hostClassName: 'public-ranking-sync-actions'
+	          }
 	        });
 	      }
 	    }
-    if (!isAdmin()) {
-      window.__wizardryRenderSyncStatusPill('public-ranking-page-title-actions', state.payload && state.payload.sync_status, {
-        messageVariant: 'local_source',
-        hostClassName: 'public-ranking-sync-actions'
-      });
-    }
     renderNavbarTitleRow(s);
     if (els.description) {
       var desc = String(s.description || '').trim();

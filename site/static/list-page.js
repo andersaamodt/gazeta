@@ -2926,14 +2926,13 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
 	      } else {
-	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'List'), {
+	        window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'List'), state.payload && state.payload.sync_status, {
 	          actionsId: 'list-page-title-actions',
 	          actionsClassName: 'list-page-title-actions',
 	          fallbackText: 'List'
 	        });
 	      }
 	    }
-    window.__wizardryRenderSyncStatusPill('list-page-title-actions', state.payload && state.payload.sync_status);
     renderNavbarTitleRow(s);
 
     if (!els.description) {

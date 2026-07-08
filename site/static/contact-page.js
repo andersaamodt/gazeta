@@ -3696,18 +3696,16 @@
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
         }
 	      } else {
-	        window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Profile'), {
+	        window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'Profile'), state.payload && state.payload.sync_status, {
 	          actionsId: 'contact-page-title-actions',
 	          actionsClassName: 'list-page-title-actions',
-	          fallbackText: 'Profile'
+	          fallbackText: 'Profile',
+	          syncOptions: {
+	            messageVariant: 'local_source'
+	          }
 	        });
 	      }
 	    }
-    if (!isAdmin()) {
-      window.__wizardryRenderSyncStatusPill('contact-page-title-actions', state.payload && state.payload.sync_status, {
-        messageVariant: 'local_source'
-      });
-    }
     renderNavbarTitleRow(s);
     if (els.description) {
       var text = String(s.description || '').trim();

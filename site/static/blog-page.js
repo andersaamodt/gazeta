@@ -480,13 +480,11 @@
 	    var title = String(page.title || '').trim() || titleizeSlug(slug);
 	    window.__wizardryApplyPageTitle(title);
 	    if (els.title) {
-	      var titleShell = window.__wizardryRenderReadOnlyTitleShell(els.title, title, {
+	      window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, title, state.payload && state.payload.sync_status, {
 	        actionsId: 'blog-page-title-actions',
 	        actionsClassName: 'list-page-title-actions',
 	        fallbackText: 'Blog'
 	      });
-	      els.title.hidden = false;
-	      window.__wizardryRenderSyncStatusPill('blog-page-title-actions', state.payload && state.payload.sync_status);
 	    }
     if (!els.description) {
       return;

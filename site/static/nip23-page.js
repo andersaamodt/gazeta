@@ -476,17 +476,15 @@
 	      window.__wizardryApplyPageTitle(String(s.title));
 	    }
 	    if (els.title) {
-	      window.__wizardryRenderReadOnlyTitleShell(els.title, String(s.title || 'Untitled'), {
+	      window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'Untitled'), state.payload && state.payload.sync_status, {
 	        actionsId: 'nip23-page-title-actions',
 	        actionsClassName: 'list-page-title-actions',
-	        fallbackText: 'Untitled'
+	        fallbackText: 'Untitled',
+	        syncOptions: {
+	          messageVariant: 'local_source'
+	        }
 	      });
 	    }
-    if (!isAdmin()) {
-      window.__wizardryRenderSyncStatusPill('nip23-page-title-actions', state.payload && state.payload.sync_status, {
-        messageVariant: 'local_source'
-      });
-    }
     renderNavbarTitleRow(s);
   }
 
