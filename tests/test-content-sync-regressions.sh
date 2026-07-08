@@ -3057,6 +3057,44 @@ assert_eq "$contact_anonymous_html" "$contact_authenticated_html" 'contact prere
 assert_contains "$contact_authenticated_html" 'secure-chat-login-gate' 'contact prerender keeps the Lodestone-owned secure-chat login gate as the universal first-frame shell'
 assert_not_contains "$contact_authenticated_html" 'id="secure-chat-thread"' 'contact prerender does not claim a live secure-chat thread shell before the authenticated runtime has loaded'
 
+blog_projection_base_payload='{
+  "state": {
+    "title": "Writing",
+    "default_tag": "writing",
+    "extras_after": "After blog content"
+  },
+  "bootstrap_posts": [
+    {
+      "title": "Fixture Blog Post",
+      "post_url": "/posts/fixture-post",
+      "rendered_html": "<article class=\"post-card\"><h2>Fixture Blog Post</h2><div class=\"post-card-meta-tags\"><button type=\"button\" class=\"tag blog-inline-tag is-active\" data-inline-tag=\"writing\" aria-pressed=\"true\">writing</button></div></article>",
+      "tags": ["writing"],
+      "published_at": "2026-01-01T00:00:00Z",
+      "post_type": "longform"
+    }
+  ]
+}'
+blog_projection_anonymous=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" blog' sh "$ROOT_DIR" "$(printf '%s\n' "$blog_projection_base_payload" | jq -c '. + {viewer_authenticated:false}')")
+blog_projection_authenticated=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" blog' sh "$ROOT_DIR" "$(printf '%s\n' "$blog_projection_base_payload" | jq -c '. + {viewer_authenticated:true}')")
+assert_eq "$blog_projection_anonymous" "$blog_projection_authenticated" 'blog prerender projection stays identical across anonymous and authenticated read-only viewers when the fetched page and post catalog state match'
+assert_contains "$blog_projection_authenticated" '"filter_tags_html":"' 'blog prerender projection still carries Lodestone-owned filter fragments in the authenticated-invariant read-only case'
+
+nip23_projection_base_payload='{
+  "state": {
+    "title": "Values",
+    "content": "Values body",
+    "product_enabled": true,
+    "product_type": "software",
+    "price": "19.00",
+    "currency": "USD",
+    "extras_after": "After values"
+  }
+}'
+nip23_projection_anonymous=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" nip23' sh "$ROOT_DIR" "$(printf '%s\n' "$nip23_projection_base_payload" | jq -c '. + {viewer_authenticated:false}')")
+nip23_projection_authenticated=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" nip23' sh "$ROOT_DIR" "$(printf '%s\n' "$nip23_projection_base_payload" | jq -c '. + {viewer_authenticated:true}')")
+assert_eq "$nip23_projection_anonymous" "$nip23_projection_authenticated" 'nip23 prerender projection stays identical across anonymous and authenticated viewers because the read-only product/article shell is not viewer-specific'
+assert_contains "$nip23_projection_authenticated" 'Add to Cart' 'nip23 prerender projection keeps the canonical Lodestone/Gazeta checkout shell in the auth-invariant read-only case'
+
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"
 managed_shared_data="$managed_home/.sitedata/site"
