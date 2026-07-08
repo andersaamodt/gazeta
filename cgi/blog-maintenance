@@ -45,7 +45,9 @@ case "$action" in
       body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
       printf '%s\n' "$row_json" | jq -c \
         --arg body "$body" '
-          . + {
+          {
+            source_path: (.source_path // ""),
+            url: (.url // ""),
             search_text: [
               (.title // ""),
               ((.tags // []) | if type == "array" then join(",") else "" end),

@@ -123,7 +123,7 @@ printf '%s\n' "$tags_payload" | grep 'data-tag="replay"' >/dev/null
 printf '%s\n' "$tags_payload" | grep '<li class="tag-result-item" data-post-url="/posts/link-post" data-post-tags="links">' >/dev/null
 
 cat > "$GENERATED_ROOT/static/search-index.json" <<'JSON'
-{"success":true,"entries":[{"url":"/posts/replay-post","title":"Replay Post","pub_date":"2026-06-11","summary":"Replay summary","tags":["test","replay"],"comment_count":3,"search_text":"Replay Post\ntest,replay\nReplay summary\nReplay body with fixture keyword"},{"url":"/posts/link-post","title":"Useful linked page","pub_date":"2026-06-10","summary":"Useful link summary","tags":["links"],"comment_count":0,"search_text":"Useful linked page\nlinks\nUseful link summary\nOff-site article"}]}
+{"success":true,"entries":[{"source_path":"posts/replay-post.md","url":"/posts/replay-post","search_text":"Replay Post\ntest,replay\nReplay summary\nReplay body with fixture keyword"},{"source_path":"posts/link-post.md","url":"/posts/link-post","search_text":"Useful linked page\nlinks\nUseful link summary\nOff-site article"}]}
 JSON
 
 search_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-search"

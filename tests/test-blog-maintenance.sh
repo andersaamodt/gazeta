@@ -41,7 +41,7 @@ search_payload=$(/bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-search-index)
 printf '%s\n' "$search_payload" | jq -e '.success == true and .rebuilt == ["search-index"] and .entry_count == 1' >/dev/null
 [ -f "$GENERATED_ROOT/static/search-index.json" ]
 [ -f "$SITE_DATA/search-index-cache.json" ]
-jq -e '.entries[0].title == "Maintenance Post"' "$GENERATED_ROOT/static/search-index.json" >/dev/null
+jq -e '.entries[0].source_path == "posts/maintenance-post.md"' "$GENERATED_ROOT/static/search-index.json" >/dev/null
 jq -e '.entries[0].search_text | contains("Maintenance body.")' "$GENERATED_ROOT/static/search-index.json" >/dev/null
 
 mkdir -p "$SITE_DATA/lists"
