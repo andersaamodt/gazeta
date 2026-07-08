@@ -115,31 +115,21 @@
   }
 
   function markdownInline(md) {
-    var value = String(md || '');
-    if (!value) {
-      return '';
-    }
-    if (window.marked && typeof window.marked.parseInline === 'function') {
-      return window.marked.parseInline(value);
-    }
-    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
-      renderAll();
+    return window.__wizardryRenderManagedMarkdownInline(md, {
+      upgradeState: markedUpgradeState,
+      onUpgrade: renderAll,
+      renderFallback: escapeHtml
     });
-    return escapeHtml(value);
   }
 
   function markdownBlock(md) {
-    var value = String(md || '');
-    if (!value) {
-      return '';
-    }
-    if (window.marked && typeof window.marked.parse === 'function') {
-      return window.marked.parse(value);
-    }
-    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
-      renderAll();
+    return window.__wizardryRenderManagedMarkdownBlock(md, {
+      upgradeState: markedUpgradeState,
+      onUpgrade: renderAll,
+      renderFallback: function (value) {
+        return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+      }
     });
-    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
   function fallbackPageTitle() {

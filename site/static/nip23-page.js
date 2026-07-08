@@ -59,17 +59,13 @@
   }
 
   function markdownBlock(md) {
-    var value = window.__wizardryStripLegacyNostrSyncPills(md);
-    if (!value) {
-      return '';
-    }
-    if (window.marked && typeof window.marked.parse === 'function') {
-      return window.marked.parse(value);
-    }
-    window.__wizardryScheduleMarkedUpgrade(markedUpgradeState, function () {
-      renderAll();
+    return window.__wizardryRenderManagedMarkdownBlock(window.__wizardryStripLegacyNostrSyncPills(md), {
+      upgradeState: markedUpgradeState,
+      onUpgrade: renderAll,
+      renderFallback: function (value) {
+        return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+      }
     });
-    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
   function normalizeProductType(value) {

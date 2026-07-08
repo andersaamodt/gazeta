@@ -1758,6 +1758,42 @@
     return true;
   }
 
+  function renderManagedMarkdownInline(md, options) {
+    var value = String(md || '');
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parseInline === 'function') {
+      return window.marked.parseInline(value);
+    }
+    if (opts.upgradeState && typeof opts.onUpgrade === 'function') {
+      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade);
+    }
+    if (typeof opts.renderFallback === 'function') {
+      return opts.renderFallback(value);
+    }
+    return escapeHtml(value);
+  }
+
+  function renderManagedMarkdownBlock(md, options) {
+    var value = String(md || '');
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!value) {
+      return '';
+    }
+    if (window.marked && typeof window.marked.parse === 'function') {
+      return window.marked.parse(value);
+    }
+    if (opts.upgradeState && typeof opts.onUpgrade === 'function') {
+      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade);
+    }
+    if (typeof opts.renderFallback === 'function') {
+      return opts.renderFallback(value);
+    }
+    return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
+  }
+
   function normalizeSlug(value) {
     return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   }
@@ -2574,6 +2610,8 @@
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
+  window.__wizardryRenderManagedMarkdownInline = renderManagedMarkdownInline;
+  window.__wizardryRenderManagedMarkdownBlock = renderManagedMarkdownBlock;
   window.__wizardryNormalizeManagedSlug = normalizeSlug;
   window.__wizardryManagedSlugFromPath = slugFromPath;
   window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
