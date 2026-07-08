@@ -778,22 +778,6 @@
     });
   }
 
-  function persistManagedPagePayload(payload, options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var persistMode = String(opts.persistMode || 'always').trim().toLowerCase();
-    return writePageBootstrapCache(payload, {
-      slug: opts.slug,
-      authSignature: opts.authSignature || sessionAuthSignature,
-      clearOnDeny: opts.clearOnDeny,
-      allowWrite: function (nextPayload) {
-        if (persistMode === 'authenticated_admin') {
-          return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
-        }
-        return true;
-      }
-    });
-  }
-
   function commitManagedPagePayload(targetPayload, sourcePayload, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var target = mergeManagedPagePayload(targetPayload, sourcePayload, {
@@ -814,11 +798,17 @@
       target.state = opts.statePayload;
     }
     if (opts.persist !== false && opts.slug) {
-      persistManagedPagePayload(target, {
+      var persistMode = String(opts.persistMode || 'always').trim().toLowerCase();
+      writePageBootstrapCache(target, {
         slug: opts.slug,
         authSignature: opts.authSignature || sessionAuthSignature,
-        persistMode: opts.persistMode || 'always',
-        clearOnDeny: opts.clearOnDeny
+        clearOnDeny: opts.clearOnDeny,
+        allowWrite: function (nextPayload) {
+          if (persistMode === 'authenticated_admin') {
+            return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
+          }
+          return true;
+        }
       });
     }
     return target;
@@ -1091,33 +1081,6 @@
     return notifyInitialContentPainted(opts.slug || '', opts);
   }
 
-  function renderFromBootstrapSources(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var renderPayload = typeof opts.renderPayload === 'function' ? opts.renderPayload : null;
-    if (!renderPayload) {
-      return false;
-    }
-    if (typeof opts.readCache === 'function') {
-      if (renderPayload(opts.readCache())) {
-        return true;
-      }
-    }
-    if (typeof opts.readPrerender !== 'function') {
-      return false;
-    }
-    var prerenderedPayload = opts.readPrerender();
-    if (!prerenderedPayload) {
-      return false;
-    }
-    if (!renderPayload(prerenderedPayload)) {
-      return false;
-    }
-    if (typeof opts.writeCache === 'function') {
-      opts.writeCache(prerenderedPayload);
-    }
-    return true;
-  }
-
   function renderManagedNostrBootstrapPayload(payload, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var isExpectedPayload = typeof opts.isExpectedPayload === 'function' ? opts.isExpectedPayload : null;
@@ -1199,30 +1162,32 @@
 
   function renderManagedNostrBootstrapSources(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    return renderFromBootstrapSources({
-      readCache: function () {
-        return readBootstrapCache({
-          storageKey: pageBootstrapCacheKey(opts.slug),
-          maxAgeMs: opts.maxAgeMs,
-          authSignature: opts.authSignature || sessionAuthSignature,
-          isExpectedPayload: opts.isExpectedPayload,
-          allowRead: opts.allowRead,
-          clearOnDeny: opts.clearOnDeny
-        });
-      },
-      readPrerender: function () {
-        return readNostrPageBootstrap(opts.slug, opts.isExpectedPayload);
-      },
-      renderPayload: opts.renderPayload,
-      writeCache: opts.writeCache || function (payload) {
-        writePageBootstrapCache(payload, {
-          slug: opts.slug,
-          authSignature: opts.authSignature || sessionAuthSignature,
-          allowWrite: opts.allowWrite,
-          clearOnDeny: opts.clearOnDeny
-        });
-      }
+    var renderPayload = typeof opts.renderPayload === 'function' ? opts.renderPayload : null;
+    if (!renderPayload) {
+      return false;
+    }
+    var cachedPayload = readBootstrapCache({
+      storageKey: pageBootstrapCacheKey(opts.slug),
+      maxAgeMs: opts.maxAgeMs,
+      authSignature: opts.authSignature || sessionAuthSignature,
+      isExpectedPayload: opts.isExpectedPayload,
+      allowRead: opts.allowRead,
+      clearOnDeny: opts.clearOnDeny
     });
+    if (renderPayload(cachedPayload)) {
+      return true;
+    }
+    var prerenderedPayload = readNostrPageBootstrap(opts.slug, opts.isExpectedPayload);
+    if (!prerenderedPayload || !renderPayload(prerenderedPayload)) {
+      return false;
+    }
+    writePageBootstrapCache(prerenderedPayload, {
+      slug: opts.slug,
+      authSignature: opts.authSignature || sessionAuthSignature,
+      allowWrite: opts.allowWrite,
+      clearOnDeny: opts.clearOnDeny
+    });
+    return true;
   }
 
   function refreshManagedNostrPage(options) {
