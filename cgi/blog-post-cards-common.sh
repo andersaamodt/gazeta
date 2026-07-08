@@ -105,7 +105,7 @@ blog_post_cards_render_card_html() {
       + (if $post_type == "link-share" then " is-link-share" else "" end)
       + "\""
       + (if $source_path == "" then "" else " data-post-path=\"\($source_path | @html)\"" end)
-      + "\">\n"
+      + ">\n"
       + "<div class=\"post-head\">\n"
       + "<div class=\"post-head-main\">\n"
       + "<h2 class=\"post-title\"><a href=\"\($url | @html)\">\($title | @html)</a></h2>\n"

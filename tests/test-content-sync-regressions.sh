@@ -2272,6 +2272,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "data-compose-actio
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "apiPost('/cgi/blog-delete-draft'" 'in-blog compose can delete local draft via delete endpoint'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "class=\"field-row blog-compose-title-row\"" 'in-blog compose puts preview control on title row without separate New post heading'
 assert_file_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" '<div class=\"post-summary\"><p>\($summary | @html)</p>' 'shared blog card renderer owns blog summary markup for prerender and hydration'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" '+ "\\\">\\n"' 'shared blog card renderer no longer emits a stray extra quote before closing blog post article tags'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function markdownInlineFallback(md)' 'blog index markdown fallback renders summary links when marked is unavailable'
 assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" "cache: 'no-store'" 'page-head shared transports have no-store directives'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" 'id="nip23-price-input"' 'nip23 editor exposes product USD price input'
