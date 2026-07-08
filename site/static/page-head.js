@@ -1384,13 +1384,7 @@
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
-  window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
-  window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
-  window.__wizardryMountPrerenderHtmlFragment = mountPrerenderHtmlFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
-  window.__wizardryPageBootstrapCacheKey = pageBootstrapCacheKey;
-  window.__wizardryReadBootstrapCache = readBootstrapCache;
-  window.__wizardryWriteBootstrapCache = writeBootstrapCache;
   window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
