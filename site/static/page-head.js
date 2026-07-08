@@ -303,7 +303,7 @@
     if (opts.descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'descriptionFallback')) {
       var descriptionFragment = null;
       if (opts.allowPrerenderDescription !== false) {
-        descriptionFragment = readPrerenderHtmlFragment(opts.descriptionPayload, String(opts.descriptionName || 'description'));
+        descriptionFragment = readPrerenderHtmlFragment(opts.descriptionPayload, 'description');
       }
       if (descriptionFragment) {
         renderReadOnlyDescriptionShell(opts.descriptionNode, {
@@ -332,9 +332,6 @@
     var labelText = String(opts.labelText || 'Navbar title');
     var inputValue = String(opts.inputValue || currentText);
     var inputAriaLabel = String(opts.inputAriaLabel || labelText);
-    var inputAttrName = String(opts.inputAttrName || 'data-page-nav-title-input').trim();
-    var actionAttrName = String(opts.actionAttrName || 'data-page-nav-title-action').trim();
-    var editLabel = String(opts.editLabel || 'Edit...');
     var editButtonClassName = String(opts.editButtonClassName || 'list-inline-edit-link').trim() || 'list-inline-edit-link';
     var saveButtonClassName = String(opts.saveButtonClassName || editButtonClassName).trim() || editButtonClassName;
     var saveDisabled = opts.saveDisabled === true;
@@ -342,12 +339,12 @@
     html += '<span class="list-page-nav-title-label">' + escapeHtml(labelText) + '</span>';
     if (editing) {
       html += '<span class="list-page-nav-title-edit-wrap">';
-      html += '<input type="text" class="list-page-nav-title-input" value="' + escapeHtml(inputValue) + '"' + htmlAttr(inputAttrName, 'true') + ' aria-label="' + escapeHtml(inputAriaLabel) + '">';
-      html += '<button type="button" class="' + escapeHtml(saveButtonClassName) + '"' + htmlAttr(actionAttrName, 'save') + (saveDisabled ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '<input type="text" class="list-page-nav-title-input" value="' + escapeHtml(inputValue) + '" data-page-nav-title-input="true" aria-label="' + escapeHtml(inputAriaLabel) + '">';
+      html += '<button type="button" class="' + escapeHtml(saveButtonClassName) + '" data-page-nav-title-action="save"' + (saveDisabled ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
       html += '</span>';
     } else {
       html += '<span class="list-page-nav-title-value">' + escapeHtml(currentText) + '</span>';
-      html += '<button type="button" class="' + escapeHtml(editButtonClassName) + '"' + htmlAttr(actionAttrName, 'edit') + '>' + escapeHtml(editLabel) + '</button>';
+      html += '<button type="button" class="' + escapeHtml(editButtonClassName) + '" data-page-nav-title-action="edit">Edit...</button>';
     }
     html += '</div>';
     targetNode.hidden = false;
@@ -385,12 +382,8 @@
     if (!targetNode || !targetNode.querySelector) {
       return false;
     }
-    var inputAttrName = String(opts.inputAttrName || 'data-page-nav-title-input').trim();
-    if (!inputAttrName) {
-      return false;
-    }
     requestAnimationFrame(function () {
-      var input = targetNode.querySelector('[' + inputAttrName + '="true"]');
+      var input = targetNode.querySelector('[data-page-nav-title-input="true"]');
       if (input && typeof input.focus === 'function') {
         input.focus();
         if (opts.selectOnFocus !== false && typeof input.select === 'function') {
@@ -428,9 +421,6 @@
       inputValue: opts.inputValue,
       labelText: opts.labelText,
       inputAriaLabel: opts.inputAriaLabel,
-      inputAttrName: opts.inputAttrName,
-      actionAttrName: opts.actionAttrName,
-      editLabel: opts.editLabel,
       editButtonClassName: opts.editButtonClassName,
       saveButtonClassName: opts.saveButtonClassName,
       saveDisabled: opts.saveDisabled
@@ -438,7 +428,6 @@
     if (rendered && editing) {
       focusEditableNavbarTitleInput({
         targetNode: resolvedTarget,
-        inputAttrName: opts.inputAttrName,
         selectOnFocus: opts.selectOnFocus
       });
     }
