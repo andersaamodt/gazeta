@@ -881,7 +881,8 @@ blog_nostr_page_attach_prerender_projection() {
 blog_nostr_prerender_contact_html() {
   payload_json=${1-}
   contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
-  blog_nostr_prerender_payload_input "$payload_json" | jq -r --arg video_chat_html "$contact_video_chat_html" '
+  contact_secure_chat_login_gate_html=$(blog_nostr_prerender_contact_secure_chat_login_gate_html)
+  blog_nostr_prerender_payload_input "$payload_json" | jq -r --arg video_chat_html "$contact_video_chat_html" --arg secure_chat_login_gate_html "$contact_secure_chat_login_gate_html" '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     def transport($v):
@@ -912,7 +913,7 @@ blog_nostr_prerender_contact_html() {
     def secure_chat_panel:
       "<h2 id=\"secure-chat-title\" class=\"contact-section-heading\"><span>Secure Chat</span></h2>" +
       "<section class=\"secure-chat-panel\" aria-labelledby=\"secure-chat-title\">" +
-      "<div class=\"secure-chat-head\"><div class=\"secure-chat-login-gate\"><p class=\"secure-chat-login-note\">Login with Nostr to chat.</p><button type=\"button\" class=\"list-admin-primary-btn secure-chat-login-btn\" data-secure-chat-action=\"login\">Login...</button></div></div>" +
+      "<div class=\"secure-chat-head\">" + $secure_chat_login_gate_html + "</div>" +
       "</section>";
     def has_secure_chat_include($v):
       (($v // "") | tostring | test("\\{\\{[[:space:]]*secure-chat[[:space:]]*\\}\\}"; "i"));
@@ -946,12 +947,13 @@ blog_nostr_prerender_contact_video_chat_html() {
   contact_video_chat_rooms=$(blog_config_get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
   contact_video_chat_rooms_attr=$(printf '%s' "$contact_video_chat_rooms" | tr ';' ',' | jq -Rr '@html' 2>/dev/null || printf '')
   contact_video_chat_max=$(blog_config_get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
+  contact_video_chat_loading_html=$(blog_nostr_prerender_contact_video_chat_loading_html)
   case "$contact_video_chat_max" in ''|*[!0-9]*) contact_video_chat_max=6 ;; esac
   if [ "$contact_video_chat_max" -lt 2 ]; then contact_video_chat_max=2; fi
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
 
   cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true"><section class="video-chat-loading-mockup vcw-shell vcw-shell-no-heading vcw-shell-center-precall" role="status" aria-label="Loading call controls"><div class="vcw-head"><h2 class="vcw-heading">Call</h2></div><p class="vcw-status" data-tone="info">Ready. Choose voice or video.</p><section class="vcw-precall"><div class="vcw-precall-actions"><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Voice Call" title="Voice Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg></button><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Video Call" title="Video Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path><path d="m16 10 6-3v10l-6-3"></path></svg></button></div><div class="vcw-join-row"><button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="false" disabled aria-disabled="true">Invite Link...</button></div></section></section></div></section>
+<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true">$contact_video_chat_loading_html</div></section>
 EOF
 }
 
@@ -971,8 +973,9 @@ blog_nostr_prerender_public_ranking_html() {
   ' 2>/dev/null || printf '<p class="list-page-empty-state">No rankings yet.</p>\n'
 }
 
-blog_nostr_overworld_template_path() {
-  template_rel='site/lodestone/templates/overworld.stone.html'
+blog_nostr_template_path() {
+  template_rel=${1-}
+  [ -n "$template_rel" ] || return 1
   template_source=$(blog_template_rel_path "$template_rel" 2>/dev/null || printf '')
   if [ -n "$template_source" ] && [ -f "$template_source" ]; then
     printf '%s\n' "$template_source"
@@ -993,16 +996,28 @@ blog_nostr_overworld_template_path() {
   return 1
 }
 
-blog_nostr_prerender_overworld_template_html() {
-  template_file=$(blog_nostr_overworld_template_path 2>/dev/null || printf '')
+blog_nostr_template_inner_html() {
+  template_rel=${1-}
+  template_id=${2-}
+  [ -n "$template_rel" ] || return 1
+  [ -n "$template_id" ] || return 1
+  template_file=$(blog_nostr_template_path "$template_rel" 2>/dev/null || printf '')
   [ -f "$template_file" ] || return 1
-  awk '
-    /<template id="overworld-static-shell-template">/ { in_template=1; next }
+  awk -v template_id="$template_id" '
+    index($0, "<template id=\"" template_id "\">") { in_template=1; next }
     /<\/template>/ && in_template { exit }
     in_template { print }
   ' "$template_file"
 }
 
+blog_nostr_prerender_contact_secure_chat_login_gate_html() {
+  blog_nostr_template_inner_html 'site/lodestone/templates/contact.stone.html' 'contact-secure-chat-login-gate-template'
+}
+
+blog_nostr_prerender_contact_video_chat_loading_html() {
+  blog_nostr_template_inner_html 'site/lodestone/templates/contact.stone.html' 'contact-video-chat-loading-shell-template'
+}
+
 blog_nostr_prerender_overworld_html() {
-  blog_nostr_prerender_overworld_template_html
+  blog_nostr_template_inner_html 'site/lodestone/templates/overworld.stone.html' 'overworld-static-shell-template'
 }

@@ -82,7 +82,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/contact.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/contact-page.js?v=20260622-single-sync-pill1"></script>
+<script src="/static/contact-page.js?v=20260707-contact-template-owned1"></script>
 EOFCONTACT
 
 mkdir -p "$tmp_root/bin"
@@ -201,7 +201,7 @@ grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.m
   printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '/static/contact-page.js?v=20260622-single-sync-pill1' "$canonical_root/pages/contact.md" || {
+grep -Fq '/static/contact-page.js?v=20260707-contact-template-owned1' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
   exit 1
 }
@@ -209,7 +209,7 @@ grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span></h1>' "$canonical_root/pages/contact.md" || {
+grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }
@@ -268,7 +268,7 @@ grep -Fq 'Seeded reading entry' "$canonical_root/pages/reading-list.md" || {
   exit 1
 }
 grep -Fq '<h1 id="list-page-title"><span class="list-page-title-text">' "$canonical_root/pages/reading-list.md" &&
-  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span></h1>' "$canonical_root/pages/reading-list.md" || {
+  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/reading-list.md" || {
   printf '%s\n' "list page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }

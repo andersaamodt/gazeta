@@ -193,23 +193,23 @@
     return videoChatScriptLoading;
   }
 
+  function templateInnerHtml(templateId) {
+    var template = document.getElementById(String(templateId || ''));
+    if (!template || String(template.tagName || '').toLowerCase() !== 'template') {
+      return '';
+    }
+    return String(template.innerHTML || '');
+  }
+
+  function secureChatLoginGateHtml() {
+    return templateInnerHtml('contact-secure-chat-login-gate-template')
+      || (window.SimplexWebDefaultChat && typeof window.SimplexWebDefaultChat.defaultLoginGateHtml === 'function'
+        ? window.SimplexWebDefaultChat.defaultLoginGateHtml()
+        : '');
+  }
+
   function videoChatUnavailableHtml() {
-    var voiceIcon = '<svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg>';
-    var videoIcon = '<svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path><path d="m16 10 6-3v10l-6-3"></path></svg>';
-    return '' +
-      '<section class="video-chat-loading-mockup vcw-shell vcw-shell-no-heading vcw-shell-center-precall" role="status" aria-label="Loading call controls">' +
-        '<div class="vcw-head"><h2 class="vcw-heading">Call</h2></div>' +
-        '<p class="vcw-status" data-tone="info">Ready. Choose voice or video.</p>' +
-        '<section class="vcw-precall">' +
-          '<div class="vcw-precall-actions">' +
-            '<button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Voice Call" title="Voice Call" disabled aria-disabled="true">' + voiceIcon + '</button>' +
-            '<button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Video Call" title="Video Call" disabled aria-disabled="true">' + videoIcon + '</button>' +
-          '</div>' +
-          '<div class="vcw-join-row">' +
-            '<button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="false" disabled aria-disabled="true">Invite Link...</button>' +
-          '</div>' +
-        '</section>' +
-      '</section>';
+    return templateInnerHtml('contact-video-chat-loading-shell-template');
   }
 
   function markVideoChatUnavailable(rootNode) {
@@ -2581,6 +2581,7 @@
       return renderContactSectionHeading('Secure Chat', 'secure-chat-title') + sharedRenderer.renderPanel({
         loggedIn: loggedIn,
         loading: secureChatLoadingBeforeVerification(loggedIn),
+        loginGateHtml: secureChatLoginGateHtml(),
         hasSigner: true,
         error: state.chat.error,
         sending: state.chat.sending,
@@ -2620,7 +2621,7 @@
     if (!fallbackLoggedIn && fallbackLoading) {
       html += '<div class="secure-chat-loading" role="status" aria-live="polite"><span>Loading...</span>' + secureChatSpinnerHtml('secure-chat-loading-spinner') + '</div>';
     } else if (!fallbackLoggedIn) {
-      html += '<div class="secure-chat-login-gate"><p class="secure-chat-login-note">Login with Nostr to chat.</p><button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button></div>';
+      html += secureChatLoginGateHtml();
     } else if (state.chat.chatStarted !== true) {
       html += renderSecureChatStartGate(secureChatStoredHistorySummary());
     } else {

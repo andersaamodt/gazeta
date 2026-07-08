@@ -435,6 +435,7 @@
       emojiGroups: normalizeEmojiGroups(next.emojiGroups),
       emojiSearchResults: normalizeEmojiItems(next.emojiSearchResults),
       recentEmojis: normalizeRecentEmojis(next.recentEmojis),
+      loginGateHtml: limitString(next.loginGateHtml || '', 2000),
       voiceNoteSupported: next.voiceNoteSupported !== false,
       voicePermission: normalizeVoicePermission(next.voicePermission),
       voiceRecording: next.voiceRecording === true,
@@ -587,6 +588,10 @@
     return html;
   }
 
+  function defaultLoginGateHtml() {
+    return '<div class="secure-chat-login-gate"><p class="secure-chat-login-note">Login with Nostr to chat.</p><button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button></div>';
+  }
+
   function renderPanel(model) {
     // renderPanel is pure: model in, HTML string out. Event handling lives in
     // mount(), which keeps UI rendering testable without a browser framework.
@@ -599,7 +604,7 @@
     if (!state.loggedIn && state.loading) {
       html += '<div class="secure-chat-loading" role="status" aria-live="polite"><span>Loading...</span>' + spinnerHtml('secure-chat-loading-spinner') + '</div>';
     } else if (!state.loggedIn) {
-      html += '<div class="secure-chat-login-gate"><p class="secure-chat-login-note">Login with Nostr to chat.</p><button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button></div>';
+      html += state.loginGateHtml || defaultLoginGateHtml();
     } else if (!state.chatStarted) {
       html += renderStartGate(state);
     } else {
@@ -922,6 +927,7 @@
     spinnerPhaseStyle: spinnerPhaseStyle,
     spinnerHtml: spinnerHtml,
     statusHtml: statusHtml,
+    defaultLoginGateHtml: defaultLoginGateHtml,
     renderPanel: renderPanel,
     renderAttachment: renderAttachment,
     mount: mount

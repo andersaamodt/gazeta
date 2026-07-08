@@ -17,6 +17,12 @@ license: "CC BY 4.0"
 <div id="contact-page-admin" class="list-admin" hidden></div>
 <div id="contact-page-validation" class="list-validation" hidden></div>
 <div id="contact-page-content" class="list-page-content"{@html prerender_attrs}><gazeta-nostr-page-content page_type="contact">{@html content_html}</gazeta-nostr-page-content></div>
+<template id="contact-secure-chat-login-gate-template">
+<div class="secure-chat-login-gate"><p class="secure-chat-login-note">Login with Nostr to chat.</p><button type="button" class="list-admin-primary-btn secure-chat-login-btn" data-secure-chat-action="login">Login...</button></div>
+</template>
+<template id="contact-video-chat-loading-shell-template">
+<section class="video-chat-loading-mockup vcw-shell vcw-shell-no-heading vcw-shell-center-precall" role="status" aria-label="Loading call controls"><div class="vcw-head"><h2 class="vcw-heading">Call</h2></div><p class="vcw-status" data-tone="info">Ready. Choose voice or video.</p><section class="vcw-precall"><div class="vcw-precall-actions"><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Voice Call" title="Voice Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V7a3 3 0 0 0-3-3Z"></path><path d="M5 11v1a7 7 0 0 0 14 0v-1"></path><path d="M12 19v3"></path></svg></button><button type="button" class="vcw-btn vcw-btn-primary vcw-call-owner-btn" aria-label="Video Call" title="Video Call" disabled aria-disabled="true"><svg class="vcw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path><path d="m16 10 6-3v10l-6-3"></path></svg></button></div><div class="vcw-join-row"><button type="button" class="vcw-btn vcw-invite-toggle-btn" aria-expanded="false" disabled aria-disabled="true">Invite Link...</button></div></section></section>
+</template>
 </section>
 
 <script src="/static/nostr-page-bootstrap/{slug}.js"></script>
