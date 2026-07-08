@@ -865,6 +865,36 @@
     return true;
   }
 
+  function canUsePayloadPrerenderReadOnly(payload, options) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    var allowAuthenticated = false;
+    var allowAdmin = false;
+    if (typeof opts.allowAuthenticated === 'function') {
+      allowAuthenticated = opts.allowAuthenticated(payload) === true;
+    } else if (typeof opts.allowAuthenticatedField === 'string' && opts.allowAuthenticatedField) {
+      allowAuthenticated = payload[opts.allowAuthenticatedField] === true;
+    } else if (Object.prototype.hasOwnProperty.call(opts, 'allowAuthenticated')) {
+      allowAuthenticated = opts.allowAuthenticated === true;
+    }
+    if (typeof opts.allowAdmin === 'function') {
+      allowAdmin = opts.allowAdmin(payload) === true;
+    } else if (typeof opts.allowAdminField === 'string' && opts.allowAdminField) {
+      allowAdmin = payload[opts.allowAdminField] === true;
+    } else if (Object.prototype.hasOwnProperty.call(opts, 'allowAdmin')) {
+      allowAdmin = opts.allowAdmin === true;
+    }
+    return canUseVisitorPrerenderReadOnly({
+      isAdmin: !!payload.is_admin,
+      allowAuthenticated: allowAuthenticated,
+      allowAdmin: allowAdmin,
+      extraCheck: opts.extraCheck,
+      extraAllowed: opts.extraAllowed
+    });
+  }
+
   function ensureNostrPublishDialog() {
     if (window.blogNostrPublishDialog && typeof window.blogNostrPublishDialog.open === 'function') {
       return Promise.resolve(true);
@@ -1424,6 +1454,7 @@
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
+  window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;

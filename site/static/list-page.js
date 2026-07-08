@@ -180,23 +180,14 @@
   }
 
   function canPreserveStaticPrerender(payload) {
-    if (!payload || typeof payload !== 'object') {
-      return false;
-    }
-    var allowAuthenticated = payload.viewer_authenticated === true;
-    return window.__wizardryCanUseVisitorPrerenderReadOnly({
-      isAdmin: !!payload.is_admin,
-      allowAuthenticated: allowAuthenticated
+    return window.__wizardryCanUsePayloadPrerenderReadOnly(payload, {
+      allowAuthenticatedField: 'viewer_authenticated'
     });
-  }
-
-  function canAdoptAuthenticatedPrerender(payload) {
-    return !!(payload && payload.viewer_authenticated === true);
   }
 
   function shouldPreserveAdoptedStaticPrerender() {
     return state.staticPrerenderListAdopted &&
-      (!window.__wizardryHasLikelyAuthenticatedSession() || canAdoptAuthenticatedPrerender(state.payload)) &&
+      canPreserveStaticPrerender(state.payload) &&
       !hasMarkerFilterHashOverride() &&
       root &&
       els.content &&
@@ -523,9 +514,8 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    return window.__wizardryCanUseVisitorPrerenderReadOnly({
-      isAdmin: isAdmin(),
-      allowAuthenticated: canAdoptAuthenticatedPrerender(state.payload),
+    return window.__wizardryCanUsePayloadPrerenderReadOnly(state.payload, {
+      allowAuthenticatedField: 'viewer_authenticated',
       extraCheck: function () {
         if (state.publicSubmitExpanded || isReadInlineEditing()) {
           return false;

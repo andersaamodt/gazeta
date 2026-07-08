@@ -72,8 +72,11 @@
       contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
-      canAdoptStaticPrerender: function (optimisticPayload, _rawPayload, authenticated) {
-        return canAdoptManagedPrerenderPayload(optimisticPayload, authenticated);
+      canAdoptStaticPrerender: function (optimisticPayload) {
+        return window.__wizardryCanUsePayloadPrerenderReadOnly(optimisticPayload, {
+          allowAuthenticatedField: 'viewer_can_submit',
+          allowAdminField: 'viewer_can_submit'
+        });
       },
       renderHead: renderHead,
       renderAdmin: renderAdmin,
@@ -92,22 +95,10 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function canAdoptManagedPrerenderPayload(payload, authenticated) {
-    if (!payload || typeof payload !== 'object') {
-      return false;
-    }
-    if (authenticated !== true && payload.is_admin !== true) {
-      return true;
-    }
-    return payload.viewer_can_submit === true;
-  }
-
   function canUsePrerenderReadOnlyView(renderState) {
-    var canAdoptManagedPrerender = !!(state.payload && state.payload.viewer_can_submit === true);
-    return window.__wizardryCanUseVisitorPrerenderReadOnly({
-      isAdmin: isAdmin(),
-      allowAuthenticated: canAdoptManagedPrerender,
-      allowAdmin: canAdoptManagedPrerender,
+    return window.__wizardryCanUsePayloadPrerenderReadOnly(state.payload, {
+      allowAuthenticatedField: 'viewer_can_submit',
+      allowAdminField: 'viewer_can_submit',
       extraCheck: function () {
         if (state.submitComposerOpen || state.submitAdvancedOpen) {
           return false;
