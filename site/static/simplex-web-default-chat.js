@@ -927,7 +927,11 @@
     spinnerPhaseStyle: spinnerPhaseStyle,
     spinnerHtml: spinnerHtml,
     statusHtml: statusHtml,
+    timeHtml: timeHtml,
+    shortcutModifierLabel: shortcutModifierLabel,
+    voiceButtonLabel: voiceButtonLabel,
     defaultLoginGateHtml: defaultLoginGateHtml,
+    renderSendIcon: renderSendIcon,
     renderPanel: renderPanel,
     renderAttachment: renderAttachment,
     mount: mount
