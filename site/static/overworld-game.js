@@ -4,6 +4,7 @@
   const GODOT_SERVICE_WORKER_URL = GODOT_BUILD_PATH + 'index.service.worker.js';
   const GODOT_SERVICE_WORKER_SCOPE = GODOT_BUILD_PATH;
   const GODOT_CACHE_NAME = 'Overworld-sw-cache-1779582932|1469358';
+  const BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   const GODOT_CACHE_FILES = [
     'index.html',
     'index.js',
@@ -30,6 +31,10 @@
     '</div>'
   ].join('');
 
+  const state = {
+    payload: null
+  };
+
   function markInitialContentPainted(host) {
     window.__wizardryNotifyInitialContentPainted(overworldSlug(), {
       rootNode: host || null,
@@ -38,7 +43,7 @@
   }
 
   function bootstrapPayload() {
-    return window.__wizardryReadNostrPageBootstrap(overworldSlug(), isExpectedPayload) || {};
+    return state.payload || {};
   }
 
   function overworldSlug() {
@@ -51,6 +56,14 @@
     }
     return String(payload.slug || '').trim() === overworldSlug() &&
       String(payload.page_type || '').trim().toLowerCase() === 'overworld';
+  }
+
+  function renderBootstrapPayload(payload) {
+    if (!isExpectedPayload(payload)) {
+      return false;
+    }
+    state.payload = payload;
+    return true;
   }
 
   function renderSyncStatusPill() {
@@ -226,6 +239,13 @@
   }
 
   function init() {
+    window.__wizardryRenderManagedNostrBootstrapSources({
+      slug: overworldSlug(),
+      maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+      authSignature: window.__wizardrySessionAuthSignature,
+      isExpectedPayload: isExpectedPayload,
+      renderPayload: renderBootstrapPayload
+    });
     renderSyncStatusPill();
     const mounts = Array.from(document.querySelectorAll('[data-overworld-game], .overworld-game-mount'));
     mounts.forEach(mount);
