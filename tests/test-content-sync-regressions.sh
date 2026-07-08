@@ -1182,6 +1182,8 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-maintenance" 'blog_nostr_comment_co
 assert_file_contains "$ROOT_DIR/cgi/blog-maintenance" 'source_path: (.source_path // ""),' 'search-index rebuild persists canonical post identity so the read route can rejoin display metadata from the public-post catalog'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_search.rs" 'public_posts_catalog_value()?' 'blog search rejoins canonical public-post display rows instead of duplicating them inside the search artifact'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_search.rs" 'struct SearchIndexEntry {' 'blog search keeps a narrow search-only artifact contract separate from display rows'
+assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_search.rs" 'let rendered = entry.rendered_html.trim();' 'blog search adopts canonical rendered post-card HTML instead of rebuilding a second visitor-facing card shape in Rust'
+assert_file_not_contains "$ROOT_DIR/src/gazeta_read/blog_search.rs" 'fn render_result(' 'blog search no longer owns a second Rust-side post card renderer'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" '. "$SCRIPT_DIR/blog-post-cards-common.sh"' 'Lodestone blog component reuses the shared blog card renderer'
 assert_file_not_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" 'gazeta-sync-pill)' 'Gazeta Lodestone component renderer no longer carries an unused sync-pill component surface'
 assert_file_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" 'blog_post_cards_render_card_html() {' 'shared blog card renderer owns post card markup'

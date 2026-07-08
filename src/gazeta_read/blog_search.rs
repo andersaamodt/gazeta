@@ -140,66 +140,31 @@ fn render_form(query: &str) -> String {
 
 fn render_results(query: &str, matches: &[&PublicPost]) -> String {
     let mut html = String::new();
+    let rendered_matches: Vec<&str> = matches
+        .iter()
+        .filter_map(|entry| {
+            let rendered = entry.rendered_html.trim();
+            (!rendered.is_empty()).then_some(rendered)
+        })
+        .collect();
     html.push_str("<div class=\"search-results\">\n");
-    if matches.is_empty() {
+    if rendered_matches.is_empty() {
         html.push_str("  <p>No results found for <strong>");
         html.push_str(&html_escape(query));
         html.push_str("</strong>.</p>\n");
     } else {
         html.push_str("  <h2>Found ");
-        html.push_str(&html_escape(&matches.len().to_string()));
+        html.push_str(&html_escape(&rendered_matches.len().to_string()));
         html.push_str(" result(s) for <strong>");
         html.push_str(&html_escape(query));
         html.push_str("</strong></h2>\n");
         html.push_str("  <div class=\"post-list\">\n");
-        for entry in matches {
-            render_result(&mut html, entry);
+        for rendered in rendered_matches {
+            html.push_str(rendered);
+            html.push('\n');
         }
         html.push_str("  </div>\n");
     }
     html.push_str("</div>\n");
     html
-}
-
-fn render_result(html: &mut String, entry: &PublicPost) {
-    let url = &entry.url;
-    let title = &entry.title;
-    let pub_date = &entry.pub_date;
-    let summary = &entry.summary;
-    let comment_count = entry.comment_count;
-
-    html.push_str("    <article class=\"post-item\">\n");
-    html.push_str("      <h3 class=\"post-title\"><a href=\"");
-    html.push_str(&html_escape(&url));
-    html.push_str("\">");
-    html.push_str(&html_escape(&title));
-    html.push_str("</a></h3>\n");
-    html.push_str("      <div class=\"post-meta\">");
-    if !pub_date.is_empty() {
-        html.push_str("<span class=\"post-date\">");
-        html.push_str(&html_escape(&pub_date));
-        html.push_str("</span>");
-    }
-    html.push_str(" <span class=\"post-comments-count\">");
-    html.push_str(&html_escape(&comment_count.to_string()));
-    html.push_str(" comments</span></div>\n");
-
-    if !summary.is_empty() {
-        html.push_str("      <p class=\"post-summary\">");
-        html.push_str(&html_escape(&summary));
-        html.push_str("</p>\n");
-    }
-
-    if !entry.tags.is_empty() {
-        html.push_str("      <div class=\"tags\">\n");
-        for tag in entry.tags.iter().map(String::as_str) {
-            html.push_str("        <a href=\"/tags#");
-            html.push_str(&html_escape(tag));
-            html.push_str("\" class=\"tag\">");
-            html.push_str(&html_escape(tag));
-            html.push_str("</a>\n");
-        }
-        html.push_str("      </div>\n");
-    }
-    html.push_str("    </article>\n\n");
 }

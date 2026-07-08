@@ -131,6 +131,7 @@ search_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$search_fixture
 
 printf '%s\n' "$search_payload" | grep '<div class="search-form">' >/dev/null
 printf '%s\n' "$search_payload" | grep 'Found 1 result(s) for <strong>fixture</strong>' >/dev/null
-printf '%s\n' "$search_payload" | grep '<h3 class="post-title"><a href="/posts/replay-post">Replay Post</a></h3>' >/dev/null
+printf '%s\n' "$search_payload" | grep '<article class="post-item blog-post-item">' >/dev/null
+printf '%s\n' "$search_payload" | grep '>Read more...</a>' >/dev/null
 
 printf '%s\n' 'gazeta read fixture tests passed'
