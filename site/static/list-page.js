@@ -292,12 +292,10 @@
   }
 
   function markdownInline(md) {
-    var value = String(md || '');
-    if (!value) {
-      return '';
-    }
-    return escapeHtml(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_match, label, href) {
-      return '<a href="' + href + '">' + label + '</a>';
+    return window.__wizardryRenderManagedMarkdownInline(md, {
+      upgradeState: markedUpgradeState,
+      onUpgrade: renderAll,
+      renderFallback: window.__wizardryRenderManagedMarkdownInlineLinkFallback
     });
   }
 

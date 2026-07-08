@@ -213,43 +213,8 @@
     return window.__wizardryRenderManagedMarkdownInline(md, {
       upgradeState: markedUpgradeState,
       onUpgrade: renderAll,
-      renderFallback: markdownInlineFallback
+      renderFallback: window.__wizardryRenderManagedMarkdownInlineLinkFallback
     });
-  }
-
-  function safeMarkdownHref(raw) {
-    var href = String(raw || '').trim().replace(/^<|>$/g, '');
-    if (!href) {
-      return '';
-    }
-    if (/^(https?:|mailto:|\/|#)/i.test(href)) {
-      return href;
-    }
-    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href)) {
-      return '';
-    }
-    return href;
-  }
-
-  function markdownInlineFallback(md) {
-    var value = String(md || '');
-    var linkPattern = /\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
-    var html = '';
-    var lastIndex = 0;
-    var match;
-    while ((match = linkPattern.exec(value)) !== null) {
-      html += escapeHtml(value.slice(lastIndex, match.index));
-      var label = String(match[1] || '');
-      var href = safeMarkdownHref(match[2] || '');
-      if (href) {
-        html += '<a href="' + escapeHtml(href) + '">' + escapeHtml(label) + '</a>';
-      } else {
-        html += escapeHtml(label);
-      }
-      lastIndex = linkPattern.lastIndex;
-    }
-    html += escapeHtml(value.slice(lastIndex));
-    return html;
   }
 
   function markdownBlock(md) {
@@ -257,7 +222,7 @@
       upgradeState: markedUpgradeState,
       onUpgrade: renderAll,
       renderFallback: function (value) {
-        return '<p>' + markdownInlineFallback(value).replace(/\n/g, '<br>') + '</p>';
+        return '<p>' + window.__wizardryRenderManagedMarkdownInlineLinkFallback(value).replace(/\n/g, '<br>') + '</p>';
       }
     });
   }

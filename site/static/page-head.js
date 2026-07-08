@@ -1776,6 +1776,41 @@
     return escapeHtml(value);
   }
 
+  function safeManagedMarkdownHref(raw) {
+    var href = String(raw || '').trim().replace(/^<|>$/g, '');
+    if (!href) {
+      return '';
+    }
+    if (/^(https?:|mailto:|\/|#)/i.test(href)) {
+      return href;
+    }
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href)) {
+      return '';
+    }
+    return href;
+  }
+
+  function renderManagedMarkdownInlineLinkFallback(md) {
+    var value = String(md || '');
+    var linkPattern = /\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+    var html = '';
+    var lastIndex = 0;
+    var match;
+    while ((match = linkPattern.exec(value)) !== null) {
+      html += escapeHtml(value.slice(lastIndex, match.index));
+      var href = safeManagedMarkdownHref(match[2] || '');
+      var label = escapeHtml(match[1] || '');
+      if (href) {
+        html += '<a href="' + escapeHtml(href) + '">' + label + '</a>';
+      } else {
+        html += label;
+      }
+      lastIndex = linkPattern.lastIndex;
+    }
+    html += escapeHtml(value.slice(lastIndex));
+    return html;
+  }
+
   function renderManagedMarkdownBlock(md, options) {
     var value = String(md || '');
     var opts = options && typeof options === 'object' ? options : {};
@@ -2611,6 +2646,7 @@
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedMarkdownInline = renderManagedMarkdownInline;
+  window.__wizardryRenderManagedMarkdownInlineLinkFallback = renderManagedMarkdownInlineLinkFallback;
   window.__wizardryRenderManagedMarkdownBlock = renderManagedMarkdownBlock;
   window.__wizardryNormalizeManagedSlug = normalizeSlug;
   window.__wizardryManagedSlugFromPath = slugFromPath;
