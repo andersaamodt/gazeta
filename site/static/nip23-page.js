@@ -990,6 +990,13 @@
       isExpectedPayload: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for long-form page',
       renderPayload: renderBootstrapPayload,
+      handleFailurePayload: function (payload) {
+        if (payload && payload.success === false && slug === 'index' && String(payload.code || '') === 'unknown_page') {
+          window.location.replace('/posts');
+          return true;
+        }
+        return false;
+      },
       handleError: function (err) {
         renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
       },

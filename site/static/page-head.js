@@ -1199,6 +1199,9 @@
           throw new Error('Invalid JSON response');
         }
         if (!res.ok || !data || data.success === false) {
+          if (typeof opts.handleFailurePayload === 'function' && opts.handleFailurePayload(data || null, res) === true) {
+            return null;
+          }
           var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
           err.code = data && data.code ? String(data.code) : '';
           err.payload = data || null;
@@ -1207,6 +1210,9 @@
         return data;
       });
     }).then(function (payload) {
+      if (!payload) {
+        return null;
+      }
       if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(payload)) {
         throw new Error(String(opts.unexpectedPayloadMessage || 'Unexpected managed page payload'));
       }
