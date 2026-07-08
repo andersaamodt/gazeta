@@ -275,6 +275,24 @@
     return null;
   }
 
+  function ensureMatchingStaticShell(rootNode, hostNode, payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!hostNode) {
+      return null;
+    }
+    var selector = String(opts.selector || '').trim();
+    var fallbackHtml = String(opts.fallbackHtml || '');
+    if (!hasMatchingStaticPrerender(rootNode || null, hostNode, payload) && fallbackHtml) {
+      hostNode.innerHTML = fallbackHtml;
+    }
+    var shell = selector ? hostNode.querySelector(selector) : hostNode.firstElementChild;
+    if (!shell && fallbackHtml) {
+      hostNode.innerHTML = fallbackHtml;
+      shell = selector ? hostNode.querySelector(selector) : hostNode.firstElementChild;
+    }
+    return shell instanceof HTMLElement ? shell : null;
+  }
+
   function renderReadOnlyContentFromPrerender(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var resolved = resolveReadOnlyContentFromPrerender({
@@ -1043,6 +1061,7 @@
   window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
   window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
+  window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;

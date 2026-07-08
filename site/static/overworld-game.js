@@ -54,21 +54,18 @@
   }
 
   function renderSyncStatusPill() {
-    const title = document.getElementById('overworld-page-title');
-    if (!title) {
-      return;
-    }
-    const shell = window.__wizardryRenderReadOnlyTitleShell(title, 'Overworld', {
-      actionsId: 'overworld-page-title-actions',
-      actionsClassName: 'list-page-title-actions',
-      fallbackText: 'Overworld'
-    });
-    const actions = shell && shell.actions ? shell.actions : null;
-    if (!actions) {
-      return;
-    }
     const payload = bootstrapPayload();
-    window.__wizardryRenderSyncStatusPill(actions, payload && payload.sync_status);
+    window.__wizardryRenderReadOnlyPageHead({
+      pageTitle: 'Overworld',
+      titleNode: document.getElementById('overworld-page-title'),
+      titleText: 'Overworld',
+      syncStatus: payload && payload.sync_status,
+      titleOptions: {
+        actionsId: 'overworld-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'Overworld'
+      }
+    });
   }
 
   function hasCacheStorage() {
@@ -122,17 +119,10 @@
       return null;
     }
     const root = host.closest ? host.closest('#overworld-page-root') : null;
-    if (!window.__wizardryHasMatchingStaticPrerender(root, host, payload)) {
-      host.innerHTML = OVERWORLD_STATIC_SHELL_HTML;
-    }
-    if (!host.querySelector('.overworld-godot-shell')) {
-      host.innerHTML = OVERWORLD_STATIC_SHELL_HTML;
-    }
-    const shell = host.querySelector('.overworld-godot-shell');
-    if (!(shell instanceof HTMLElement)) {
-      return null;
-    }
-    return shell;
+    return window.__wizardryEnsureMatchingStaticShell(root, host, payload, {
+      selector: '.overworld-godot-shell',
+      fallbackHtml: OVERWORLD_STATIC_SHELL_HTML
+    });
   }
 
   function resolveShellParts(host, payload) {

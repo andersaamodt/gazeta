@@ -515,7 +515,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" '__wizard
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" '__wizardryBindSessionAuthRefresh' 'public-ranking runtime delegates session-auth refresh observation to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/admin.js" '__wizardryBindSessionAuthRefresh' 'admin runtime delegates session-auth refresh observation to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryReadNostrPageBootstrap' 'Overworld runtime delegates bootstrap payload lookup to the shared page-head helper'
-assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryHasMatchingStaticPrerender' 'Overworld runtime delegates static-prerender signature matching to the shared page-head helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryEnsureMatchingStaticShell' 'Overworld runtime delegates prerender-owned static shell preservation to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryNotifyInitialContentPainted' 'Overworld runtime delegates initial-content-ready signaling to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryRenderManagedNostrBootstrapSources' 'NIP-23 runtime delegates bootstrap-source assembly to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryWritePageBootstrapCache' 'contact runtime delegates managed-page bootstrap-cache writes to the shared page-head helper'
@@ -651,7 +651,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryRenderR
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryRenderReadOnlyContentFromPrerender({' 'list view-mode hydration reuses server-rendered content fragments through the shared Lodestone content adoption helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryResolveReadOnlyContentFromPrerender({' 'contact view-mode hydration can reuse server-rendered content fragments through the shared Lodestone content resolver'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" '__wizardryRenderReadOnlyContentFromPrerender({' 'public ranking view-mode hydration reuses server-rendered content fragments through the shared Lodestone content adoption helper'
-assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'host.innerHTML = OVERWORLD_STATIC_SHELL_HTML;' 'Overworld runtime falls back to one canonical static shell when prerendered markup is missing or stale'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryEnsureMatchingStaticShell(root, host, payload, {' 'Overworld runtime falls back to one canonical static shell through the shared page-head helper when prerendered markup is missing or stale'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'function injectStyles()' 'Overworld runtime no longer duplicates stylesheet ownership in page JS'
 
 # 3) Frontend fetches must opt out of HTTP caches.
@@ -752,7 +752,7 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'lodestone_c
 assert_file_not_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'cat > "$page_file" <<EOBLOG' 'missing blog page creation has no hand-written fallback template'
 assert_file_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'filter_blog_posts_json_for_default_tag()' 'blog prerender bootstrap filters post catalogs for default-tag blog pages'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderReadOnlyPageHead({' 'blog index page mounts the shared Nostr sync status pill through the shared page-head renderer'
-assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'function renderSyncStatusPill()' 'overworld page renders one sync status pill in the canonical title slot'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryRenderReadOnlyPageHead({' 'overworld page renders one sync status pill in the canonical title slot through the shared page-head renderer'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'window.__wizardryStripLegacyNostrSyncPills(text)' 'list pages strip legacy static sync pills from editable content through the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'window.__wizardryStripLegacyNostrSyncPills(text)' 'public ranking pages strip legacy static sync pills from editable content through the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" 'grid-template-columns: minmax(0, 1fr) auto;' 'blog layout reserves the right column for the filter button'
