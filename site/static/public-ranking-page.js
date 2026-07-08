@@ -1020,6 +1020,17 @@
     state.currentMetric = metric;
   }
 
+  function applyLiveRankingUpdate(nextRanking) {
+    window.__wizardryCommitManagedPagePayload(state.payload, {
+      state: nextRanking
+    }, {
+      includeState: false,
+      statePayload: nextRanking,
+      validationFallback: state.payload && state.payload.validation,
+      persist: false
+    });
+  }
+
   async function persistDraft(options) {
     if (!isAdmin()) {
       return false;
@@ -1173,10 +1184,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      window.__wizardryMergeManagedPagePayload(state.payload, {
-        state: data.ranking,
-        validation: state.payload.validation
-      });
+      applyLiveRankingUpdate(data.ranking);
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {
@@ -1232,10 +1240,7 @@
       });
       state.submitComposerOpen = false;
       state.submitAdvancedOpen = false;
-      window.__wizardryMergeManagedPagePayload(state.payload, {
-        state: data.ranking,
-        validation: state.payload.validation
-      });
+      applyLiveRankingUpdate(data.ranking);
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {
@@ -1277,10 +1282,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      window.__wizardryMergeManagedPagePayload(state.payload, {
-        state: data.ranking,
-        validation: state.payload.validation
-      });
+      applyLiveRankingUpdate(data.ranking);
       maybeSetMetricFromPayload();
       renderAll();
     } catch (err) {

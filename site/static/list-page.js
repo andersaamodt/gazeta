@@ -1727,9 +1727,10 @@
       if (!latest) {
         return;
       }
-      window.__wizardryMergeManagedPagePayload(state.payload, latest, {
+      window.__wizardryCommitManagedPagePayload(state.payload, latest, {
         includeState: false,
-        passthroughFields: ['canonical_event']
+        passthroughFields: ['canonical_event'],
+        persist: false
       });
       renderValidation();
       renderAdmin();
