@@ -1155,6 +1155,17 @@
     var opts = options && typeof options === 'object' ? options : {};
     var rootNode = opts.rootNode || null;
     var contentNode = opts.contentNode || null;
+    var bootstrapNotify = opts.markInitialContentPainted;
+    if (!bootstrapNotify && opts.notifyInitialContentPainted && typeof opts.notifyInitialContentPainted === 'object') {
+      bootstrapNotify = function () {
+        notifyInitialContentPainted(
+          Object.prototype.hasOwnProperty.call(opts.notifyInitialContentPainted, 'slug')
+            ? opts.notifyInitialContentPainted.slug
+            : '',
+          opts.notifyInitialContentPainted
+        );
+      };
+    }
     return renderManagedNostrBootstrapPayload(payload, {
       isExpectedPayload: opts.isExpectedPayload,
       applyState: opts.applyState,
@@ -1180,7 +1191,7 @@
           },
       renderAll: opts.renderAll,
       afterRender: opts.afterRender,
-      markInitialContentPainted: opts.markInitialContentPainted
+      markInitialContentPainted: bootstrapNotify
     });
   }
 

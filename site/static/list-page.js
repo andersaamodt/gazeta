@@ -253,13 +253,12 @@
         renderAdmin();
         renderValidation();
       },
-      markInitialContentPainted: function () {
-        window.__wizardryNotifyInitialContentPainted(slug, {
-          state: state,
-          rootNode: root,
-          loadingClass: 'is-loading',
-          markPageReady: true
-        });
+      notifyInitialContentPainted: {
+        slug: slug,
+        state: state,
+        rootNode: root,
+        loadingClass: 'is-loading',
+        markPageReady: true
       }
     });
   }

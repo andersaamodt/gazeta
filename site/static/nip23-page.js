@@ -263,11 +263,10 @@
       renderAdmin: renderAdmin,
       renderValidation: renderValidation,
       renderAll: renderAll,
-      markInitialContentPainted: function () {
-        window.__wizardryNotifyInitialContentPainted(slug, {
-          state: state,
-          markPageReady: true
-        });
+      notifyInitialContentPainted: {
+        slug: slug,
+        state: state,
+        markPageReady: true
       }
     });
   }
