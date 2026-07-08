@@ -69,6 +69,7 @@ if [ -z "$blog_site_name" ]; then
 fi
 
 blog_site_root="$blog_sites_dir/$blog_site_name"
+blog_site_conf="$blog_site_root/site.conf"
 blog_site_data="$blog_sites_data_dir/$blog_site_name"
 blog_legacy_site_data="$blog_default_sites_data_dir/$blog_site_name"
 if [ "$blog_site_data" != "$blog_legacy_site_data" ] && [ -d "$blog_legacy_site_data" ]; then
@@ -78,8 +79,73 @@ if [ "$blog_site_data" != "$blog_legacy_site_data" ] && [ -d "$blog_legacy_site_
     mv "$blog_legacy_site_data" "$blog_site_data"
   fi
 fi
-blog_source_pages_dir="$blog_site_root/site/pages"
-blog_source_static_dir="$blog_site_root/site/static"
+
+blog_local_template_root() {
+  if [ -n "${BLOG_LOCAL_TEMPLATE_ROOT:-}" ] && [ -d "$BLOG_LOCAL_TEMPLATE_ROOT" ]; then
+    printf '%s\n' "$BLOG_LOCAL_TEMPLATE_ROOT"
+    return 0
+  fi
+  [ -f "$blog_site_conf" ] || return 1
+  local_template_path=$(config-get "$blog_site_conf" local-template 2>/dev/null || printf '')
+  [ -n "$local_template_path" ] || return 1
+  case "$local_template_path" in
+    ~/*)
+      local_template_path="$HOME/${local_template_path#~/}"
+      ;;
+  esac
+  local_template_path=$(CDPATH= cd -- "$local_template_path" 2>/dev/null && pwd -P) || return 1
+  if [ -d "$local_template_path/template" ] &&
+     [ ! -d "$local_template_path/site" ] &&
+     [ ! -d "$local_template_path/pages" ] &&
+     [ ! -d "$local_template_path/static" ] &&
+     [ ! -d "$local_template_path/includes" ] &&
+     [ ! -d "$local_template_path/cgi" ]; then
+    local_template_path="$local_template_path/template"
+  fi
+  [ -d "$local_template_path" ] || return 1
+  printf '%s\n' "$local_template_path"
+}
+
+blog_template_component_dir() {
+  component=${1-}
+  [ -n "$component" ] || return 1
+  template_root=$(blog_local_template_root 2>/dev/null || printf '')
+  [ -n "$template_root" ] || return 1
+  if [ -d "$template_root/$component" ]; then
+    printf '%s\n' "$template_root/$component"
+    return 0
+  fi
+  if [ -d "$template_root/site/$component" ]; then
+    printf '%s\n' "$template_root/site/$component"
+    return 0
+  fi
+  return 1
+}
+
+blog_template_rel_path() {
+  rel=${1-}
+  [ -n "$rel" ] || return 1
+  template_root=$(blog_local_template_root 2>/dev/null || printf '')
+  [ -n "$template_root" ] || return 1
+  if [ -e "$template_root/$rel" ]; then
+    printf '%s\n' "$template_root/$rel"
+    return 0
+  fi
+  case "$rel" in
+    site/*)
+      rel=${rel#site/}
+      if [ -e "$template_root/$rel" ]; then
+        printf '%s\n' "$template_root/$rel"
+        return 0
+      fi
+      ;;
+  esac
+  return 1
+}
+
+blog_source_pages_dir=$(blog_template_component_dir pages 2>/dev/null || printf '%s/site/pages\n' "$blog_site_root")
+blog_source_static_dir=$(blog_template_component_dir static 2>/dev/null || printf '%s/site/static\n' "$blog_site_root")
+blog_source_lodestone_pages_dir=$(blog_template_component_dir lodestone/pages 2>/dev/null || printf '%s/site/lodestone/pages\n' "$blog_site_root")
 
 blog_site_root_is_git_checkout() {
   case "$blog_site_root" in
@@ -112,7 +178,7 @@ blog_managed_pages_dir() {
     printf '%s/pages\n' "$(blog_generated_repo_root)"
     return 0
   fi
-  printf '%s\n' "$blog_source_pages_dir"
+  printf '%s/site/pages\n' "$blog_site_root"
 }
 
 blog_generated_static_dir() {
@@ -124,7 +190,7 @@ blog_generated_static_dir() {
     printf '%s/static\n' "$(blog_generated_repo_root)"
     return 0
   fi
-  printf '%s\n' "$blog_source_static_dir"
+  printf '%s/site/static\n' "$blog_site_root"
 }
 
 blog_generated_build_static_dir() {
@@ -200,7 +266,6 @@ esac
 if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_managed_sites_data_dir/site" ]; then
   blog_site_data="$blog_managed_sites_data_dir/site"
 fi
-blog_site_conf="$blog_site_root/site.conf"
 blog_content_root="$blog_site_data/content"
 blog_posts_dir="$(blog_managed_pages_dir)/posts"
 blog_posts_store_dir="$blog_content_root/posts"

@@ -390,7 +390,7 @@ esac
 sync_site_static_overlay "overworld-godot"
 
 sync_lodestone_pages() {
-  lodestone_pages_dir="$blog_site_root/site/lodestone/pages"
+  lodestone_pages_dir="$blog_source_lodestone_pages_dir"
   [ -d "$lodestone_pages_dir" ] || return 0
   [ -x "$SCRIPT_DIR/gazeta-lodestone" ] || return 0
   (

@@ -1513,6 +1513,11 @@ blog_nostr_page_lodestone_template_relpath() {
 
 blog_nostr_page_lodestone_template_path() {
   page_rel=$(blog_nostr_page_lodestone_template_relpath "${1-}")
+  template_source=$(blog_template_rel_path "$page_rel" 2>/dev/null || printf '')
+  if [ -n "$template_source" ] && [ -f "$template_source" ]; then
+    printf '%s\n' "$template_source"
+    return 0
+  fi
   site_template="$blog_site_root/$page_rel"
   if [ -f "$site_template" ]; then
     printf '%s\n' "$site_template"

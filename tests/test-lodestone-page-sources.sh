@@ -193,6 +193,80 @@ do
   fi
 done
 
+local_site_name="local-template-site"
+local_site_root="$WIZARDRY_SITES_DIR/$local_site_name"
+local_state_root="$WIZARDRY_SITES_DIR/.sitedata/$local_site_name"
+mkdir -p "$local_site_root" "$local_state_root"
+cp -R "$ROOT_DIR/cgi" "$ROOT_DIR/site" "$local_site_root/"
+cat > "$local_site_root/site.conf" <<EOFCONF
+template=blog
+theme=lapidarist
+site_title=Local Template Fixture
+append_site_title_to_page_title=false
+local-template=$ROOT_DIR
+EOFCONF
+
+local_posts_store="$local_state_root/content/posts"
+mkdir -p "$local_posts_store" "$local_site_root/site/pages"
+rm -rf "$local_site_root/site/pages/posts"
+ln -s "$local_posts_store" "$local_site_root/site/pages/posts"
+cat > "$local_posts_store/local-template-post.md" <<'POST'
+---
+title: "Local Template Post"
+visibility: "public"
+published_at: "2026-06-21T12:00:00Z"
+tags: ["blog"]
+post_type: "longform"
+summary: "Rendered from current repo-owned template sources."
+---
+
+This post proves local-template build sources came from the current repo.
+POST
+cat > "$local_state_root/nostr-pages.json" <<'JSON'
+{
+  "pages": [
+    {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog"}
+  ]
+}
+JSON
+cat > "$local_site_root/site/lodestone/pages/blog.stone.html" <<'EOFBLOGSTALE'
+---
+title: Blog
+---
+
+<lode-page>
+<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type="blog" aria-live="polite"{@html prerender_attrs}>
+<div class="blog-main-column">
+<div class="list-page-head">
+<h1 id="blog-page-title" hidden></h1>
+<nostr-sync-pill slug={slug}></nostr-sync-pill>
+<p id="blog-page-description" class="muted" hidden></p>
+</div>
+</div>
+</section>
+<script src="/static/nostr-page-bootstrap/{slug}.js"></script>
+<lode-script src="/static/blog-page.js?v={blog_page_js_version}" />
+</lode-page>
+EOFBLOGSTALE
+printf '%s\n' 'console.log("stale blog page js");' > "$local_site_root/site/static/blog-page.js"
+
+WIZARDRY_SITE_NAME="$local_site_name" "$local_site_root/cgi/pre-build"
+
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span></h1>' "$local_site_root/site/pages/blog.md" || {
+  printf '%s\n' "local-template build still rendered stale site-owned blog head instead of repo template head" >&2
+  exit 1
+}
+
+if grep -Fq '<nostr-sync-pill slug=' "$local_site_root/site/pages/blog.md"; then
+  printf '%s\n' "local-template build still emitted stale static sync pill from site-owned blog template copy" >&2
+  exit 1
+fi
+
+cmp -s "$ROOT_DIR/site/static/blog-page.js" "$local_site_root/site/static/blog-page.js" || {
+  printf '%s\n' "local-template build did not refresh stale site-owned blog-page.js from repo template sources" >&2
+  exit 1
+}
+
 if grep -Fq '&lt;section id=&quot;public-ranking-root&quot;' "$site_root/site/pages/projects.md" ||
    grep -Fq '&lt;div data-lodestone-root=&quot;page&quot;' "$site_root/site/pages/projects.md"; then
   printf '%s\n' "projects page escaped its previous generated shell into content" >&2
