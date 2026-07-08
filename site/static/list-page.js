@@ -208,15 +208,19 @@
     state.viewModeOverride = '';
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
-    state.renderSignature = JSON.stringify({
-      slug: String(cachedPayload && cachedPayload.slug || ''),
-      page_type: String(cachedPayload && cachedPayload.page_type || ''),
-      nav_title: String(cachedPayload && cachedPayload.nav_title || ''),
-      is_admin: !!(cachedPayload && cachedPayload.is_admin),
-      canonical_exists: !!(cachedPayload && cachedPayload.canonical_exists),
-      draft_differs: !!(cachedPayload && cachedPayload.draft_differs),
-      sync_status: cachedPayload && cachedPayload.sync_status ? cachedPayload.sync_status : null,
-      state: (cachedPayload && cachedPayload.state) ? cachedPayload.state : null
+    state.renderSignature = listPageRenderSignature(cachedPayload);
+  }
+
+  function listPageRenderSignature(payload) {
+    return JSON.stringify({
+      slug: String(payload && payload.slug || ''),
+      page_type: String(payload && payload.page_type || ''),
+      nav_title: String(payload && payload.nav_title || ''),
+      is_admin: !!(payload && payload.is_admin),
+      canonical_exists: !!(payload && payload.canonical_exists),
+      draft_differs: !!(payload && payload.draft_differs),
+      sync_status: payload && payload.sync_status ? payload.sync_status : null,
+      prerender_signature: String(payload && payload.prerender_signature || '')
     });
   }
 
@@ -5053,16 +5057,7 @@
   function load() {
     state.authSignature = window.__wizardryViewerAuthSignature();
     function applyFetchedPayload(payload) {
-      var nextRenderSignature = JSON.stringify({
-        slug: String(payload && payload.slug || ''),
-        page_type: String(payload && payload.page_type || ''),
-        nav_title: String(payload && payload.nav_title || ''),
-        is_admin: !!(payload && payload.is_admin),
-        canonical_exists: !!(payload && payload.canonical_exists),
-        draft_differs: !!(payload && payload.draft_differs),
-        sync_status: payload && payload.sync_status ? payload.sync_status : null,
-        state: (payload && payload.state) ? payload.state : null
-      });
+      var nextRenderSignature = listPageRenderSignature(payload);
       state.payload = payload;
       state.draft = readEditableStateFromPayload();
       window.__wizardryResetManagedNavbarTitleState(state, { payload: payload });
