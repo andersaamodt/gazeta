@@ -92,6 +92,9 @@
       allowAuthenticatedField: 'viewer_can_submit',
       allowAdminField: 'viewer_can_submit',
       extraCheck: function () {
+        if (isAdmin() && state.editMode) {
+          return false;
+        }
         if (state.submitComposerOpen || state.submitAdvancedOpen) {
           return false;
         }
