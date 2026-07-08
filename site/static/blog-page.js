@@ -3894,14 +3894,6 @@
     });
   }
 
-  function formatType(value) {
-    var raw = String(value || '').trim();
-    if (!raw) {
-      return 'post';
-    }
-    return composePostTypeLabel(raw);
-  }
-
   function matchFacet(set, value) {
     if (!set || !set.size) {
       return true;
@@ -3965,116 +3957,19 @@
     }));
   }
 
-  function filterButtonHtml(group, value, label, isActive) {
-    return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
-  }
-
-  function filterCatalogSignature(posts) {
-    return JSON.stringify((Array.isArray(posts) ? posts : []).map(function (post) {
-      return {
-        tags: normalizePostTags(post && post.tags),
-        year: String(post && post.year || ''),
-        type: String(post && post.type || 'post')
-      };
-    }).sort(function (a, b) {
-      var left = JSON.stringify(a);
-      var right = JSON.stringify(b);
-      return left.localeCompare(right);
-    }));
-  }
-
-  function uniqueSorted(items, compareFn) {
-    var map = {};
-    items.forEach(function (item) {
-      var key = String(item || '');
-      if (!key) {
-        return;
-      }
-      map[key] = true;
-    });
-    var out = Object.keys(map);
-    out.sort(compareFn);
-    return out;
-  }
-
-  function syncFilterPanelState() {
-    [els.tags, els.years, els.types].forEach(function (host) {
-      if (!host) {
-        return;
-      }
-      host.querySelectorAll('[data-filter-group][data-filter-value]').forEach(function (button) {
-        var group = String(button.getAttribute('data-filter-group') || '');
-        var value = String(button.getAttribute('data-filter-value') || '');
-        var filterSet = state.filters[group];
-        var active = !!(filterSet && filterSet.has(value));
-        button.classList.toggle('is-active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    });
-  }
-
-  function canMountPayloadFilterFragments(payload) {
-    if (!payload || !window.__wizardryRenderManagedBlogFilterFragments) {
-      return false;
-    }
-    var prerenderedPosts = readPrerenderPostsBootstrap(payload);
-    if (!prerenderedPosts) {
-      return false;
-    }
-    return filterCatalogSignature(state.posts) === filterCatalogSignature(prerenderedPosts);
-  }
-
   function renderFilters() {
     if (!els.tags || !els.years || !els.types) {
       return;
     }
-
-    if (canMountPayloadFilterFragments(state.payload)) {
-      if (window.__wizardryRenderManagedBlogFilterFragments({
-        payload: state.payload,
-        tagsNode: els.tags,
-        yearsNode: els.years,
-        typesNode: els.types
-      })) {
-        syncFilterPanelState();
-        return;
-      }
-    }
-
-    var tags = uniqueSorted(state.posts.reduce(function (acc, post) {
-      return acc.concat(normalizePostTags(post.tags));
-    }, []), function (a, b) {
-      return a.localeCompare(b);
+    window.__wizardryRenderManagedBlogFilterPanel({
+      payload: state.payload,
+      posts: state.posts,
+      tagsNode: els.tags,
+      yearsNode: els.years,
+      typesNode: els.types,
+      activeFilters: state.filters,
+      readPayloadPosts: readPrerenderPostsBootstrap
     });
-
-    var years = uniqueSorted(state.posts.map(function (post) {
-      return post.year || '';
-    }), function (a, b) {
-      var an = Number(a);
-      var bn = Number(b);
-      if (isFinite(an) && isFinite(bn)) {
-        return bn - an;
-      }
-      return a.localeCompare(b);
-    });
-
-    var types = uniqueSorted(state.posts.map(function (post) {
-      return post.type || 'post';
-    }), function (a, b) {
-      return formatType(a).localeCompare(formatType(b));
-    });
-
-    els.tags.innerHTML = tags.map(function (tag) {
-      return filterButtonHtml('tags', tag, tag, state.filters.tags.has(tag));
-    }).join('');
-
-    els.years.innerHTML = years.map(function (year) {
-      return filterButtonHtml('years', year, year, state.filters.years.has(year));
-    }).join('');
-
-    els.types.innerHTML = types.map(function (type) {
-      return filterButtonHtml('types', type, formatType(type), state.filters.types.has(type));
-    }).join('');
   }
 
   function renderList() {
