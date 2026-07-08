@@ -309,6 +309,17 @@ else
   fail 'public ranking page payload uses the shared enriched graph instead of falling back to a thin bootstrap-only shape'
 fi
 
+blog_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=blog "$ROOT_DIR/cgi/blog-get-nostr-page")
+blog_body=$(printf '%s\n' "$blog_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$blog_body" ]; then
+  blog_body=$blog_payload
+fi
+if printf '%s\n' "$blog_body" | jq -e '.success == true and .page_type == "blog" and any(.bootstrap_posts[]?; .title == "Fixture Blog Post") and (any(.bootstrap_posts[]?; .title == "Filtered Out Post") | not)' >/dev/null; then
+  pass
+else
+  fail 'blog page runtime payload carries the filtered bootstrap post-card list on the shared managed-page contract'
+fi
+
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading page content' "$page page does not ship page-loading copy"

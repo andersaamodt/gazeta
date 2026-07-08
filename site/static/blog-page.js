@@ -4432,31 +4432,38 @@
   }
 
   function readPrerenderPostsBootstrap(payload) {
-	    if (!payload || typeof payload !== 'object') {
-	      return null;
+    if (!payload || typeof payload !== 'object') {
+      return null;
     }
     if (!Array.isArray(payload.bootstrap_posts)) {
       return null;
     }
-	    if (!postsHaveRenderedHtml(payload.bootstrap_posts)) {
-	      return null;
-	    }
-	    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
-	  }
+    if (!postsHaveRenderedHtml(payload.bootstrap_posts)) {
+      return null;
+    }
+    return filteredPostsForPageDefaults(payload.bootstrap_posts, payload);
+  }
 
   function applyBootstrapState(optimisticPayload) {
     state.payload = optimisticPayload;
     applyDefaultFilters();
   }
 
-  function primeBootstrapPosts(payload) {
+  function applyPayloadBootstrapPosts(payload) {
     var prerenderedPosts = readPrerenderPostsBootstrap(payload);
-    if (prerenderedPosts) {
-      postsCatalogReady = true;
-      state.posts = prerenderedPosts;
-      if (!payloadHasDefaultPostTag(payload)) {
-        writeCache(prerenderedPosts);
-      }
+    if (!prerenderedPosts) {
+      return false;
+    }
+    postsCatalogReady = true;
+    state.posts = prerenderedPosts;
+    if (!payloadHasDefaultPostTag(payload)) {
+      writeCache(prerenderedPosts);
+    }
+    return true;
+  }
+
+  function primeBootstrapPosts(payload) {
+    if (applyPayloadBootstrapPosts(payload)) {
       return true;
     }
     var cached = readCache();
@@ -4611,6 +4618,7 @@
       } catch (_storageErr) {
         // Ignore storage sync failures.
       }
+      applyPayloadBootstrapPosts(data);
       applyDefaultFilters();
       if (!opts.deferRender) {
         renderFetchedPageStateIfChanged(previousSignature);

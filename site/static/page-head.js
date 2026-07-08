@@ -761,17 +761,11 @@
       target.state = opts.statePayload;
     }
     if (opts.persist !== false && opts.slug) {
-      var persistMode = String(opts.persistMode || 'always').trim().toLowerCase();
       writePageBootstrapCache(target, {
         slug: opts.slug,
         authSignature: opts.authSignature || sessionAuthSignature,
         clearOnDeny: opts.clearOnDeny,
-        allowWrite: function (nextPayload) {
-          if (persistMode === 'authenticated_admin') {
-            return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
-          }
-          return true;
-        }
+        allowWrite: managedBootstrapAllowWriteForPersistMode(opts.persistMode)
       });
     }
     return target;
@@ -860,6 +854,16 @@
 
   function viewerAuthSignature() {
     return sessionAuthSignature() + '|' + (hasLikelyAdminSession() ? 'admin' : 'visitor');
+  }
+
+  function managedBootstrapAllowWriteForPersistMode(persistMode) {
+    var mode = String(persistMode || 'always').trim().toLowerCase();
+    return function (nextPayload) {
+      if (mode === 'authenticated_admin') {
+        return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
+      }
+      return true;
+    };
   }
 
   function eventHasVerifiedAdminState(event) {
@@ -1204,7 +1208,7 @@
     writePageBootstrapCache(prerenderedPayload, {
       slug: opts.slug,
       authSignature: opts.authSignature || sessionAuthSignature,
-      allowWrite: opts.allowWrite,
+      allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
       clearOnDeny: opts.clearOnDeny
     });
     return true;
@@ -1271,7 +1275,7 @@
       writePageBootstrapCache(payload, {
         slug: slug || requestSlug,
         authSignature: opts.authSignature || sessionAuthSignature,
-        allowWrite: opts.allowWrite,
+        allowWrite: opts.allowWrite || managedBootstrapAllowWriteForPersistMode(opts.persistMode),
         clearOnDeny: opts.clearOnDeny
       });
       if (typeof opts.renderPayload === 'function') {

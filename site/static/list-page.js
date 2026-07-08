@@ -5240,9 +5240,7 @@
           slug: slug,
           authSignature: window.__wizardryViewerAuthSignature,
           isExpectedPayload: isExpectedPayload,
-          allowWrite: function (nextPayload) {
-            return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
-          },
+          persistMode: 'authenticated_admin',
           unexpectedPayloadMessage: 'Unexpected page payload for list page',
           renderPayload: applyFetchedPayload,
           handleError: function (err) {
@@ -5375,9 +5373,7 @@
     authSignature: window.__wizardryViewerAuthSignature,
     isExpectedPayload: isExpectedPayload,
     allowRead: window.__wizardryHasLikelyAuthenticatedSession,
-    allowWrite: function (nextPayload) {
-      return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
-    },
+    persistMode: 'authenticated_admin',
     renderPayload: renderBootstrapPayload
   });
   load();

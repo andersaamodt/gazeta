@@ -462,6 +462,13 @@ jq -cn \
     }
   }' > "$response_tmp"
 response_json=$(cat "$response_tmp")
+if [ "$page_type" = "blog" ]; then
+  default_tag=$(printf '%s\n' "$response_json" | jq -r '.state.default_tag // ""' 2>/dev/null || printf '')
+  blog_posts_json=$(blog_public_posts_catalog_for_default_tag_json "$default_tag" 2>/dev/null || printf '')
+  if [ -n "$blog_posts_json" ]; then
+    response_json=$(printf '%s\n' "$response_json" | jq -c --argjson posts "$blog_posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$response_json")
+  fi
+fi
 blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"
 rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$sync_status_tmp" "$zap_config_tmp" "$validation_tmp" "$response_tmp"
 printf '\n'

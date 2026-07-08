@@ -6639,6 +6639,58 @@ blog_public_posts_catalog_cache_path() {
   printf '%s/public-posts-cache.json\n' "$blog_state_dir"
 }
 
+blog_public_posts_catalog_json() {
+  static_catalog=$(blog_public_posts_catalog_static_path)
+  cache_catalog=$(blog_public_posts_catalog_cache_path)
+
+  for candidate in "$static_catalog" "$cache_catalog"; do
+    [ -f "$candidate" ] || continue
+    if jq -e '
+      (.success == true) and
+      ((.posts // null) != null) and
+      ((.posts | type) == "array") and
+      ((.posts | length) > 0)
+    ' "$candidate" >/dev/null 2>&1; then
+      cat "$candidate"
+      return 0
+    fi
+  done
+
+  for candidate in "$static_catalog" "$cache_catalog"; do
+    [ -f "$candidate" ] || continue
+    if jq -e '
+      (.success == true) and
+      ((.posts // null) != null) and
+      ((.posts | type) == "array")
+    ' "$candidate" >/dev/null 2>&1; then
+      cat "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+blog_public_posts_catalog_for_default_tag_json() {
+  default_tag=${1-}
+  posts_json=$(blog_public_posts_catalog_json) || return 1
+  if [ -z "$default_tag" ]; then
+    printf '%s\n' "$posts_json"
+    return 0
+  fi
+  printf '%s\n' "$posts_json" | jq -c --arg default_tag "$default_tag" '
+    .posts |= map(
+      select(
+        (
+          ((.tags // []) | if type == "array" then . else (tostring | split(",")) end)
+          | map(tostring | gsub("^\\s+|\\s+$"; ""))
+          | index($default_tag)
+        ) != null
+      )
+    )
+  ' 2>/dev/null || printf '%s\n' "$posts_json"
+}
+
 blog_public_posts_catalog_build_json() {
   posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts.XXXXXX")
   comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-post-comments.XXXXXX")
