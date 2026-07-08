@@ -40,6 +40,249 @@ assert_file_not_contains() {
   fi
 }
 
+normalize_text_fragment() {
+  printf '%s' "${1-}" | node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  process.stdout.write(input.trim());
+});
+'
+}
+
+assert_text_equals() {
+  actual=$(normalize_text_fragment "${1-}")
+  expected=$(normalize_text_fragment "${2-}")
+  label=$3
+  if [ "$actual" = "$expected" ]; then
+    pass
+  else
+    actual_cksum=$(printf '%s' "$actual" | cksum | awk '{print $1 ":" $2}')
+    expected_cksum=$(printf '%s' "$expected" | cksum | awk '{print $1 ":" $2}')
+    fail "$label (expected checksum $expected_cksum got $actual_cksum)"
+  fi
+}
+
+extract_bootstrap_payload_json() {
+  bootstrap_file=$1
+  slug=$2
+  node - "$bootstrap_file" "$slug" <<'EOFNODE'
+const fs = require('fs');
+const vm = require('vm');
+
+const bootstrapFile = process.argv[2];
+const slug = process.argv[3];
+const source = fs.readFileSync(bootstrapFile, 'utf8');
+const sandbox = { window: {} };
+vm.runInNewContext(source, sandbox, { filename: bootstrapFile });
+const payloads = sandbox.window && sandbox.window.__wizardryNostrPageBootstrap;
+if (!payloads || typeof payloads !== 'object' || !payloads[slug]) {
+  process.exit(1);
+}
+process.stdout.write(JSON.stringify(payloads[slug]));
+EOFNODE
+}
+
+extract_element_field() {
+  html_file=$1
+  element_id=$2
+  field=$3
+  node - "$html_file" "$element_id" "$field" <<'EOFNODE'
+const fs = require('fs');
+
+const htmlFile = process.argv[2];
+const elementId = process.argv[3];
+const field = process.argv[4];
+const html = fs.readFileSync(htmlFile, 'utf8');
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isVoidTag(tagName) {
+  return /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(tagName);
+}
+
+const openTagPattern = new RegExp(`<([A-Za-z][A-Za-z0-9:-]*)([^>]*\\bid=["']${escapeRegex(elementId)}["'][^>]*)>`, 'i');
+const openMatch = openTagPattern.exec(html);
+if (!openMatch) {
+  process.exit(1);
+}
+
+const tagName = openMatch[1];
+const outerStart = openMatch.index;
+const contentStart = outerStart + openMatch[0].length;
+const tagPattern = /<\/?([A-Za-z][A-Za-z0-9:-]*)(?:\s[^<>]*?)?\s*\/?>/g;
+tagPattern.lastIndex = outerStart;
+
+let depth = 0;
+let closingIndex = -1;
+let outerEnd = -1;
+let match;
+while ((match = tagPattern.exec(html))) {
+  if (String(match[1] || '').toLowerCase() !== tagName.toLowerCase()) {
+    continue;
+  }
+  const tagText = match[0];
+  const isClosing = tagText[1] === '/';
+  const isSelfClosing = /\/>$/.test(tagText) || isVoidTag(tagName);
+  if (isClosing) {
+    depth -= 1;
+    if (depth === 0) {
+      closingIndex = match.index;
+      outerEnd = tagPattern.lastIndex;
+      break;
+    }
+    continue;
+  }
+  depth += 1;
+  if (isSelfClosing) {
+    depth -= 1;
+    if (depth === 0) {
+      closingIndex = tagPattern.lastIndex;
+      outerEnd = tagPattern.lastIndex;
+      break;
+    }
+  }
+}
+
+if (outerEnd < 0) {
+  process.exit(1);
+}
+
+const outerHtml = html.slice(outerStart, outerEnd);
+const innerHtml = html.slice(contentStart, closingIndex >= 0 ? closingIndex : outerEnd);
+const attrs = openMatch[2] || '';
+
+if (field === 'outer') {
+  process.stdout.write(outerHtml);
+} else if (field === 'inner') {
+  process.stdout.write(innerHtml);
+} else if (field === 'attrs') {
+  process.stdout.write(attrs);
+} else {
+  process.exit(2);
+}
+EOFNODE
+}
+
+extract_element_inner_html() {
+  extract_element_field "$1" "$2" inner
+}
+
+extract_element_attrs() {
+  extract_element_field "$1" "$2" attrs
+}
+
+extract_class_element_inner_html() {
+  html_file=$1
+  class_name=$2
+  node - "$html_file" "$class_name" <<'EOFNODE'
+const fs = require('fs');
+
+const htmlFile = process.argv[2];
+const className = process.argv[3];
+const html = fs.readFileSync(htmlFile, 'utf8');
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const pattern = new RegExp(`<([A-Za-z][A-Za-z0-9:-]*)([^>]*\\bclass=["'][^"']*\\b${escapeRegex(className)}\\b[^"']*["'][^>]*)>([\\s\\S]*?)<\\/\\1>`, 'i');
+const match = pattern.exec(html);
+if (!match) {
+  process.exit(1);
+}
+process.stdout.write(match[3] || '');
+EOFNODE
+}
+
+assert_blog_shared_fragment_contract() {
+  page_file=$1
+  bootstrap_file=$2
+  slug=$3
+  label_prefix=$4
+
+  payload_json=$(extract_bootstrap_payload_json "$bootstrap_file" "$slug")
+  posts_json=$(printf '%s\n' "$payload_json" | jq -c '.bootstrap_posts // []')
+  default_tag=$(printf '%s\n' "$payload_json" | jq -r '.state.default_tag // ""')
+  expected_list_html=$(blog_post_cards_render_list_html "$posts_json" "$default_tag")
+  expected_tags_html=$(blog_post_cards_render_tag_filter_html "$posts_json" "$default_tag")
+  expected_years_html=$(blog_post_cards_render_year_filter_html "$posts_json")
+  expected_types_html=$(blog_post_cards_render_type_filter_html "$posts_json")
+  expected_empty_text=$(blog_post_cards_empty_text "$posts_json")
+  expected_empty_attrs=$(blog_post_cards_empty_attrs "$posts_json")
+  expected_description_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_html // ""')
+  expected_description_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_attrs // ""')
+  expected_content_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_html // ""')
+  expected_content_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_attrs // ""')
+
+  actual_list_html=$(extract_element_inner_html "$page_file" blog-post-list)
+  actual_tags_html=$(extract_element_inner_html "$page_file" blog-filter-tags)
+  actual_years_html=$(extract_element_inner_html "$page_file" blog-filter-years)
+  actual_types_html=$(extract_element_inner_html "$page_file" blog-filter-types)
+  actual_empty_text=$(extract_element_inner_html "$page_file" blog-empty)
+  actual_empty_attrs=$(extract_element_attrs "$page_file" blog-empty)
+  actual_description_attrs=$(extract_element_attrs "$page_file" blog-page-description)
+  actual_description_html=$(extract_class_element_inner_html "$page_file" list-page-description-text)
+  actual_content_attrs=$(extract_element_attrs "$page_file" blog-page-content)
+  actual_content_html=$(extract_element_inner_html "$page_file" blog-page-content)
+
+  assert_text_equals "$actual_list_html" "$expected_list_html" "$label_prefix prerendered post list exactly matches the shared blog-card renderer"
+  assert_text_equals "$actual_tags_html" "$expected_tags_html" "$label_prefix prerendered tag filters exactly match the shared blog filter renderer"
+  assert_text_equals "$actual_years_html" "$expected_years_html" "$label_prefix prerendered year filters exactly match the shared blog filter renderer"
+  assert_text_equals "$actual_types_html" "$expected_types_html" "$label_prefix prerendered type filters exactly match the shared blog filter renderer"
+  assert_text_equals "$actual_empty_text" "$expected_empty_text" "$label_prefix prerendered empty-state text exactly matches the shared blog-card contract"
+  assert_text_equals "$actual_description_html" "$expected_description_html" "$label_prefix prerendered description markup exactly matches the payload prerender fragment"
+  assert_text_equals "$actual_content_html" "$expected_content_html" "$label_prefix prerendered content markup exactly matches the payload prerender fragment"
+
+  case "$expected_empty_attrs" in
+    *hidden*)
+      case "$actual_empty_attrs" in
+        *hidden*) pass ;;
+        *) fail "$label_prefix prerendered empty-state visibility matches the shared blog-card contract" ;;
+      esac
+      ;;
+    *)
+      case "$actual_empty_attrs" in
+        *hidden*) fail "$label_prefix prerendered empty-state visibility matches the shared blog-card contract" ;;
+        *) pass ;;
+      esac
+      ;;
+  esac
+
+  case "$expected_description_attrs" in
+    *hidden*)
+      case "$actual_description_attrs" in
+        *hidden*) pass ;;
+        *) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
+      esac
+      ;;
+    *)
+      case "$actual_description_attrs" in
+        *hidden*) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
+        *) pass ;;
+      esac
+      ;;
+  esac
+
+  case "$expected_content_attrs" in
+    *hidden*)
+      case "$actual_content_attrs" in
+        *hidden*) pass ;;
+        *) fail "$label_prefix prerendered content visibility matches the payload prerender attrs" ;;
+      esac
+      ;;
+    *)
+      case "$actual_content_attrs" in
+        *hidden*) fail "$label_prefix prerendered content visibility matches the payload prerender attrs" ;;
+        *) pass ;;
+      esac
+      ;;
+  esac
+}
+
 assert_managed_payload_contract() {
   body=$1
   expected_type=$2
@@ -423,6 +666,7 @@ assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'bl
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'blog-inline-tag is-active' 'blog bootstrap carries post-card HTML with the default tag active before hydration'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" '"prerender"' 'blog bootstrap carries shared prerender fragments'
+assert_blog_shared_fragment_contract "$SITE_ROOT/site/pages/blog.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" blog 'blog page'
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
@@ -573,6 +817,7 @@ assert_file_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js
 assert_file_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" '"Writing Fixture Post"' 'index-backed Writing bootstrap carries the filtered writing post card'
 assert_file_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" 'blog-inline-tag is-active' 'index-backed Writing bootstrap carries post-card HTML with the default tag active before hydration'
 assert_file_not_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" 'Non Writing Fixture Post' 'index-backed Writing bootstrap excludes posts outside the default tag'
+assert_blog_shared_fragment_contract "$INDEX_SITE_ROOT/site/pages/index.md" "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" index 'index-backed Writing page'
 
 printf 'PASS: %s\n' "$PASS_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then
