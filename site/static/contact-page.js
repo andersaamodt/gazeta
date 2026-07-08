@@ -4999,30 +4999,24 @@
   }
 
   function load() {
-    var auth = window.__wizardryAuthPayload();
     state.authSignature = secureChatAuthSignature();
     resetSecureChatState();
     if (!hasSecureChatSession() && storedSessionToken()) {
       state.chat.authChecking = true;
     }
-    return apiPost('/cgi/blog-get-nostr-page', {
-      page_slug: slug,
-      session_token: auth.session_token,
-      csrf_token: auth.csrf_token
-    }).then(function (payload) {
-      if (!isExpectedPayload(payload)) {
-        throw new Error('Unexpected page payload for profile page');
+    return window.__wizardryRefreshManagedNostrPage({
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature,
+      isExpectedPayload: isExpectedPayload,
+      unexpectedPayloadMessage: 'Unexpected page payload for profile page',
+      renderPayload: renderBootstrapPayload,
+      afterRender: initializeSecureChatAfterLoad,
+      handleError: function (err) {
+        renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
+      },
+      onFinally: function () {
+        window.__wizardryMarkHydrationPageReady();
       }
-      window.__wizardryWritePageBootstrapCache(payload, {
-        slug: slug,
-        authSignature: window.__wizardrySessionAuthSignature
-      });
-      renderBootstrapPayload(payload);
-      initializeSecureChatAfterLoad();
-    }).catch(function (err) {
-      renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
-    }).finally(function () {
-      window.__wizardryMarkHydrationPageReady();
     });
   }
 

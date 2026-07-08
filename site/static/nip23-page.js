@@ -983,29 +983,19 @@
   }
 
   function load() {
-    var auth = window.__wizardryAuthPayload();
     state.authSignature = window.__wizardrySessionAuthSignature();
-    return apiPost('/cgi/blog-get-nostr-page', {
-      page_slug: slug,
-      session_token: auth.session_token,
-      csrf_token: auth.csrf_token
-    }).then(function (payload) {
-      if (payload && payload.success === false && slug === 'index' && String(payload.code || '') === 'unknown_page') {
-        window.location.replace('/posts');
-        return;
+    return window.__wizardryRefreshManagedNostrPage({
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature,
+      isExpectedPayload: isExpectedPayload,
+      unexpectedPayloadMessage: 'Unexpected page payload for long-form page',
+      renderPayload: renderBootstrapPayload,
+      handleError: function (err) {
+        renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
+      },
+      onFinally: function () {
+        window.__wizardryMarkHydrationPageReady();
       }
-      if (!isExpectedPayload(payload)) {
-        throw new Error('Unexpected page payload for long-form page');
-      }
-      window.__wizardryWritePageBootstrapCache(payload, {
-        slug: slug,
-        authSignature: window.__wizardrySessionAuthSignature
-      });
-      renderBootstrapPayload(payload);
-    }).catch(function (err) {
-      renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
-    }).finally(function () {
-      window.__wizardryMarkHydrationPageReady();
     });
   }
 

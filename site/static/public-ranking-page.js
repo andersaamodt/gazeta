@@ -1625,27 +1625,18 @@
     });
   }
 
-  async function load() {
-    try {
-      var auth = window.__wizardryAuthPayload();
-      var payload = await apiPost('/cgi/blog-get-nostr-page', {
-        page_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
-      });
-      if (!payload || String(payload.page_type || '').toLowerCase() !== 'public-ranking') {
-        throw new Error('Unexpected page payload for public ranking page');
-      }
-      window.__wizardryWritePageBootstrapCache(payload, {
-        slug: slug,
-        authSignature: window.__wizardrySessionAuthSignature
-      });
-      renderBootstrapPayload(payload);
-    } catch (err) {
-      renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
-    } finally {
-      markInitialContentPainted();
-    }
+  function load() {
+    return window.__wizardryRefreshManagedNostrPage({
+      slug: slug,
+      authSignature: window.__wizardrySessionAuthSignature,
+      isExpectedPayload: isExpectedPayload,
+      unexpectedPayloadMessage: 'Unexpected page payload for public ranking page',
+      renderPayload: renderBootstrapPayload,
+      handleError: function (err) {
+        renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
+      },
+      onFinally: markInitialContentPainted
+    });
   }
 
   bindEvents();

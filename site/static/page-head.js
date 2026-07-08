@@ -1172,6 +1172,70 @@
     });
   }
 
+  function refreshManagedNostrPage(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var endpoint = String(opts.endpoint || '/cgi/blog-get-nostr-page').trim() || '/cgi/blog-get-nostr-page';
+    var slug = String(opts.slug || '').trim();
+    var requestSlug = Object.prototype.hasOwnProperty.call(opts, 'pageSlug')
+      ? String(opts.pageSlug || slug).trim()
+      : slug;
+    var auth = authPayload();
+    var params = new URLSearchParams({
+      page_slug: requestSlug,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    });
+    return fetch(endpoint, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: params.toString()
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var data;
+        try {
+          data = JSON.parse(text);
+        } catch (_err) {
+          throw new Error('Invalid JSON response');
+        }
+        if (!res.ok || !data || data.success === false) {
+          var err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+          err.code = data && data.code ? String(data.code) : '';
+          err.payload = data || null;
+          throw err;
+        }
+        return data;
+      });
+    }).then(function (payload) {
+      if (typeof opts.isExpectedPayload === 'function' && !opts.isExpectedPayload(payload)) {
+        throw new Error(String(opts.unexpectedPayloadMessage || 'Unexpected managed page payload'));
+      }
+      writePageBootstrapCache(payload, {
+        slug: slug || requestSlug,
+        authSignature: opts.authSignature || sessionAuthSignature,
+        allowWrite: opts.allowWrite,
+        clearOnDeny: opts.clearOnDeny
+      });
+      if (typeof opts.renderPayload === 'function') {
+        opts.renderPayload(payload);
+      }
+      if (typeof opts.afterRender === 'function') {
+        opts.afterRender(payload);
+      }
+      return payload;
+    }).catch(function (err) {
+      if (typeof opts.handleError === 'function') {
+        opts.handleError(err);
+        return null;
+      }
+      throw err;
+    }).finally(function () {
+      if (typeof opts.onFinally === 'function') {
+        opts.onFinally();
+      }
+    });
+  }
+
   function showRouteLoadFailure() {
     var mainContainer = document.querySelector('main');
     var nav = document.querySelector('nav.site-nav');
@@ -1324,6 +1388,7 @@
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
+  window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
 
   window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
     var normalizedSiteTitle = normalizeSiteTitle(siteTitle);
