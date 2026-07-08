@@ -3265,13 +3265,12 @@
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(),
-      descriptionFallback: text ? {
+      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+        format: 'html',
+        text: text,
         html: markdownInline(text),
-        hidden: false
-      } : {
-        html: '',
-        hidden: true
-      },
+        hideWhenEmpty: true
+      }).descriptionFallback,
       titleEditOptions: headFields.titleEditOptions,
       descriptionEditOptions: headFields.descriptionEditOptions,
       focusOptions: headFields.focusOptions,

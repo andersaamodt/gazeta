@@ -2816,10 +2816,11 @@
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-      descriptionFallback: {
+      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+        format: 'text',
         text: descText,
         hidden: !descText && !hasMainContent
-      },
+      }).descriptionFallback,
       titleEditOptions: headFields.titleEditOptions,
       descriptionEditOptions: headFields.descriptionEditOptions,
       focusOptions: headFields.focusOptions,

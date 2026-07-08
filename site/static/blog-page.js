@@ -409,10 +409,12 @@
       syncStatus: titleState.syncStatus,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
-      descriptionFallback: {
+      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+        format: 'html',
+        text: '',
         html: '',
         hidden: true
-      },
+      }).descriptionFallback,
       navbarTitleOptions: navbarTitle
     });
   }

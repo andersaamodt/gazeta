@@ -272,6 +272,29 @@
     return true;
   }
 
+  function managedPageHeadDescriptionState(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var format = String(opts.format || '').trim().toLowerCase() === 'text' ? 'text' : 'html';
+    var text = String(opts.text || '');
+    var hidden = Object.prototype.hasOwnProperty.call(opts, 'hidden')
+      ? !!opts.hidden
+      : (!text.trim() && opts.hideWhenEmpty === true);
+    if (format === 'text') {
+      return {
+        descriptionFallback: {
+          text: text,
+          hidden: hidden
+        }
+      };
+    }
+    return {
+      descriptionFallback: {
+        html: String(opts.html || ''),
+        hidden: hidden
+      }
+    };
+  }
+
   function managedPageHeadTitleState(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
@@ -2104,6 +2127,7 @@
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
+  window.__wizardryManagedPageHeadDescriptionState = managedPageHeadDescriptionState;
   window.__wizardryManagedPageHeadTitleState = managedPageHeadTitleState;
   window.__wizardryManagedPageHeadFieldState = managedPageHeadFieldState;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
