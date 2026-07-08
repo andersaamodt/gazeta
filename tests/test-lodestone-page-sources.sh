@@ -146,6 +146,12 @@ grep -Fq '<div id="blog-post-list" class="post-list" data-gazeta-component="blog
   exit 1
 }
 
+grep -Fq '<div id="blog-filter-tags" class="blog-filter-options">' "$site_root/site/pages/blog.md" &&
+  grep -Fq 'class="blog-filter-chip" data-filter-group="tags" data-filter-value="blog" aria-pressed="false">blog</button>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-rendered tag filter chips" >&2
+  exit 1
+}
+
 if grep -Fq '<div data-gazeta-component="blog-post-list">' "$site_root/site/pages/blog.md"; then
   printf '%s\n' "blog page kept a nested prerender wrapper that hydration does not own" >&2
   exit 1

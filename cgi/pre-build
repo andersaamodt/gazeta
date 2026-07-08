@@ -429,11 +429,17 @@ sync_lodestone_pages() {
       blog)
         empty_html_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-empty.XXXXXX")
         posts_json_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-posts.XXXXXX")
+        filter_tags_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-filter-tags.XXXXXX")
+        filter_years_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-filter-years.XXXXXX")
+        filter_types_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-filter-types.XXXXXX")
         printf '' > "$empty_html_tmp"
         jq -c '.posts // []' "$(blog_public_posts_catalog_static_path)" > "$posts_json_tmp" 2>/dev/null || printf '[]\n' > "$posts_json_tmp"
         blog_posts_json=$(cat "$posts_json_tmp")
         blog_empty_text=$(blog_post_cards_empty_text "$blog_posts_json")
         blog_empty_attrs=$(blog_post_cards_empty_attrs "$blog_posts_json")
+        blog_post_cards_render_tag_filter_html "$blog_posts_json" '' > "$filter_tags_tmp"
+        blog_post_cards_render_year_filter_html "$blog_posts_json" > "$filter_years_tmp"
+        blog_post_cards_render_type_filter_html "$blog_posts_json" > "$filter_types_tmp"
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
           --set "title=Blog" \
           --set "slug=blog" \
@@ -445,8 +451,11 @@ sync_lodestone_pages() {
           --html-file "description_html=$empty_html_tmp" \
           --html-file "content_html=$empty_html_tmp" \
           --html-file "posts_json=$posts_json_tmp" \
+          --html-file "filter_tags_html=$filter_tags_tmp" \
+          --html-file "filter_years_html=$filter_years_tmp" \
+          --html-file "filter_types_html=$filter_types_tmp" \
           --set "blog_page_js_version=$blog_page_js_version" > "$page_tmp"
-        rm -f "$empty_html_tmp" "$posts_json_tmp"
+        rm -f "$empty_html_tmp" "$posts_json_tmp" "$filter_tags_tmp" "$filter_years_tmp" "$filter_types_tmp"
         ;;
       *)
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"

@@ -601,8 +601,18 @@ blog_nostr_page_render_lodestone_source() {
   fi
   printf '%s\n' "$render_content_html" > "$render_content_tmp"
   printf '%s\n' "$render_description_html" > "$render_description_tmp"
+  render_filter_tags_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-filter-tags.XXXXXX")
+  render_filter_years_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-filter-years.XXXXXX")
+  render_filter_types_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-filter-types.XXXXXX")
+  : > "$render_filter_tags_tmp"
+  : > "$render_filter_years_tmp"
+  : > "$render_filter_types_tmp"
   if [ "$render_page_type" = "blog" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
     jq -c '.bootstrap_posts // []' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" > "$render_posts_tmp" 2>/dev/null || printf '[]\n' > "$render_posts_tmp"
+    render_default_tag=$(jq -r '.state.default_tag // ""' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" 2>/dev/null || printf '')
+    blog_post_cards_render_tag_filter_html "$(cat "$render_posts_tmp")" "$render_default_tag" > "$render_filter_tags_tmp"
+    blog_post_cards_render_year_filter_html "$(cat "$render_posts_tmp")" > "$render_filter_years_tmp"
+    blog_post_cards_render_type_filter_html "$(cat "$render_posts_tmp")" > "$render_filter_types_tmp"
   else
     printf '[]\n' > "$render_posts_tmp"
   fi
@@ -629,8 +639,11 @@ blog_nostr_page_render_lodestone_source() {
     --set "blog_page_js_version=$blog_page_js_version" \
     --html-file "description_html=$render_description_tmp" \
     --html-file "content_html=$render_content_tmp" \
-    --html-file "posts_json=$render_posts_tmp" > "$render_out"
-  rm -f "$render_content_tmp" "$render_description_tmp" "$render_posts_tmp"
+    --html-file "posts_json=$render_posts_tmp" \
+    --html-file "filter_tags_html=$render_filter_tags_tmp" \
+    --html-file "filter_years_html=$render_filter_years_tmp" \
+    --html-file "filter_types_html=$render_filter_types_tmp" > "$render_out"
+  rm -f "$render_content_tmp" "$render_description_tmp" "$render_posts_tmp" "$render_filter_tags_tmp" "$render_filter_years_tmp" "$render_filter_types_tmp"
 }
 
 blog_install_generated_file_if_changed() {

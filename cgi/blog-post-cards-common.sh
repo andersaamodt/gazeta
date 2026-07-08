@@ -35,8 +35,9 @@ blog_post_cards_empty_attrs() {
 
 blog_post_cards_render_card_html() {
   post_json=${1-}
+  active_tag=${2-}
   [ -n "$post_json" ] || return 1
-  printf '%s\n' "$post_json" | jq -r '
+  printf '%s\n' "$post_json" | jq -r --arg active_tag "$active_tag" '
     def trimmed($value):
       (($value // "") | tostring | gsub("^\\s+|\\s+$"; ""));
     def esc($value):
@@ -119,7 +120,14 @@ blog_post_cards_render_card_html() {
       + "<div class=\"post-card-footer\"><div class=\"tags post-card-meta-tags\">"
       + render_blog_filter_pill("tag blog-type-pill"; "types"; $post_type; format_post_type($post_type))
       + render_blog_filter_pill("tag blog-year-pill"; "years"; $year; $year)
-      + ($tags | map("<button type=\"button\" class=\"tag blog-inline-tag\" data-inline-tag=\"\(. | @html)\" aria-pressed=\"false\">\(. | @html)</button>") | join(""))
+      + ($tags | map(
+          (. == $active_tag) as $is_active
+          | "<button type=\"button\" class=\"tag blog-inline-tag"
+            + (if $is_active then " is-active" else "" end)
+            + "\" data-inline-tag=\"\(. | @html)\" aria-pressed=\""
+            + (if $is_active then "true" else "false" end)
+            + "\">\(. | @html)</button>"
+        ) | join(""))
       + "</div><span class=\"post-card-comments-count\">\($comments_label | @html)</span></div>\n"
       + "</article>\n"
   ' 2>/dev/null
@@ -127,6 +135,7 @@ blog_post_cards_render_card_html() {
 
 blog_post_cards_render_list_html() {
   posts_json=${1-}
+  active_tag=${2-}
   count=$(blog_post_cards_count "$posts_json")
   if [ "$count" -eq 0 ]; then
     return 0
@@ -136,7 +145,102 @@ blog_post_cards_render_list_html() {
   printf '%s\n' "$posts_json" | jq -c '.[]' > "$tmp"
   while IFS= read -r post_json || [ -n "$post_json" ]; do
     [ -n "$post_json" ] || continue
-    blog_post_cards_render_card_html "$post_json"
+    blog_post_cards_render_card_html "$post_json" "$active_tag"
   done < "$tmp"
   rm -f "$tmp"
+}
+
+blog_post_cards_type_label() {
+  raw_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
+  case "$raw_type" in
+    shortform)
+      printf 'shortform\n'
+      ;;
+    capture-media)
+      printf 'capture\n'
+      ;;
+    upload-media)
+      printf 'media\n'
+      ;;
+    attachment)
+      printf 'attachment\n'
+      ;;
+    audio-note)
+      printf 'audio\n'
+      ;;
+    link-share)
+      printf 'link\n'
+      ;;
+    go-live)
+      printf 'go live\n'
+      ;;
+    *)
+      printf 'post\n'
+      ;;
+  esac
+}
+
+blog_post_cards_filter_chip_html() {
+  group=${1-}
+  value=${2-}
+  label=${3-}
+  active=${4-false}
+  class_name='blog-filter-chip'
+  aria_pressed='false'
+  if [ "$active" = "true" ]; then
+    class_name="$class_name is-active"
+    aria_pressed='true'
+  fi
+  jq -rn \
+    --arg class_name "$class_name" \
+    --arg group "$group" \
+    --arg value "$value" \
+    --arg label "$label" \
+    --arg aria_pressed "$aria_pressed" \
+    '"<button type=\"button\" class=\"\($class_name | @html)\" data-filter-group=\"\($group | @html)\" data-filter-value=\"\($value | @html)\" aria-pressed=\"\($aria_pressed)\">\($label | @html)</button>"' 2>/dev/null
+}
+
+blog_post_cards_render_tag_filter_html() {
+  posts_json=${1-}
+  active_tag=${2-}
+  printf '%s\n' "$posts_json" | jq -r '
+    [ .[]? | (.tags // [])[]? | tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0) ]
+    | unique
+    | sort
+    | .[]
+  ' 2>/dev/null | while IFS= read -r tag || [ -n "$tag" ]; do
+    [ -n "$tag" ] || continue
+    active=false
+    if [ "$tag" = "$active_tag" ]; then
+      active=true
+    fi
+    blog_post_cards_filter_chip_html 'tags' "$tag" "$tag" "$active"
+  done
+}
+
+blog_post_cards_render_year_filter_html() {
+  posts_json=${1-}
+  printf '%s\n' "$posts_json" | jq -r '
+    [ .[]? | (.year // "") | tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0) ]
+    | unique
+    | sort_by((tonumber? // -1))
+    | reverse
+    | .[]
+  ' 2>/dev/null | while IFS= read -r year || [ -n "$year" ]; do
+    [ -n "$year" ] || continue
+    blog_post_cards_filter_chip_html 'years' "$year" "$year" false
+  done
+}
+
+blog_post_cards_render_type_filter_html() {
+  posts_json=${1-}
+  printf '%s\n' "$posts_json" | jq -r '
+    [ .[]? | (.type // "post") | tostring | gsub("^\\s+|\\s+$"; "") | select(length > 0) ]
+    | unique
+    | sort
+    | .[]
+  ' 2>/dev/null | while IFS= read -r post_type || [ -n "$post_type" ]; do
+    [ -n "$post_type" ] || continue
+    blog_post_cards_filter_chip_html 'types' "$post_type" "$(blog_post_cards_type_label "$post_type")" false
+  done
 }

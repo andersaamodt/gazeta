@@ -6678,7 +6678,7 @@ blog_public_posts_catalog_for_default_tag_json() {
     printf '%s\n' "$posts_json"
     return 0
   fi
-  printf '%s\n' "$posts_json" | jq -c --arg default_tag "$default_tag" '
+  filtered_posts_json=$(printf '%s\n' "$posts_json" | jq -c --arg default_tag "$default_tag" '
     .posts |= map(
       select(
         (
@@ -6688,7 +6688,33 @@ blog_public_posts_catalog_for_default_tag_json() {
         ) != null
       )
     )
-  ' 2>/dev/null || printf '%s\n' "$posts_json"
+  ' 2>/dev/null || printf '%s\n' "$posts_json")
+  rendered_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts-default-rendered.XXXXXX")
+  rebuilt_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-public-posts-default-rebuilt.XXXXXX")
+  if printf '%s\n' "$filtered_posts_json" | jq -c '.posts[]?' > "$rendered_tmp" 2>/dev/null; then
+    {
+      printf '{"success":true,"posts":['
+      first=1
+      while IFS= read -r post_json || [ -n "$post_json" ]; do
+        [ -n "$post_json" ] || continue
+        rendered_html=$(blog_post_cards_render_card_html "$post_json" "$default_tag" 2>/dev/null || printf '')
+        next_json=$(printf '%s\n' "$post_json" | jq -c --arg rendered_html "$rendered_html" '. + {rendered_html: $rendered_html}' 2>/dev/null || printf '%s\n' "$post_json")
+        if [ "$first" -eq 1 ]; then
+          first=0
+        else
+          printf ','
+        fi
+        printf '%s' "$next_json"
+      done < "$rendered_tmp"
+      printf ']}'
+      printf '\n'
+    } > "$rebuilt_tmp"
+    cat "$rebuilt_tmp"
+    rm -f "$rendered_tmp" "$rebuilt_tmp"
+    return 0
+  fi
+  rm -f "$rendered_tmp" "$rebuilt_tmp"
+  printf '%s\n' "$filtered_posts_json"
 }
 
 blog_public_posts_catalog_build_json() {

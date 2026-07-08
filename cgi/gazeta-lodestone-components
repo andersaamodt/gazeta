@@ -22,7 +22,12 @@ render_blog_post_list() {
       ((.attrs.posts // "[]") | tostring | html_unescape)
     ' 2>/dev/null || printf '[]'
   )
-  blog_post_cards_render_list_html "$posts_json"
+  active_tag=''
+  payload_file=${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE-}
+  if [ -n "$payload_file" ] && [ -f "$payload_file" ]; then
+    active_tag=$(jq -r '.state.default_tag // ""' "$payload_file" 2>/dev/null || printf '')
+  fi
+  blog_post_cards_render_list_html "$posts_json" "$active_tag"
 }
 
 render_nostr_page_content() {
