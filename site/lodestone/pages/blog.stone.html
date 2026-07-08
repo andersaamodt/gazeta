@@ -46,10 +46,12 @@ title: Blog
 </div>
 </div>
 
+<div id="blog-compose-slot" class="blog-compose-slot" hidden></div>
 <div id="blog-post-list" class="post-list" data-gazeta-component="blog-post-list"{@html prerender_attrs}><gazeta-blog-post-list posts={posts_json}></gazeta-blog-post-list></div>
 <p id="blog-empty" class="placeholder"{@html empty_attrs}>{empty_text}</p>
 </div>
 </div>
+<button id="blog-compose-fab" type="button" class="blog-compose-fab list-admin-primary-btn" data-blog-action="toggle-compose" aria-label="Compose" hidden><span class="blog-compose-fab-icon" aria-hidden="true">+</span></button>
 </section>
 
 <script src="/static/nostr-page-bootstrap/{slug}.js"></script>

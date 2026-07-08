@@ -45,8 +45,8 @@
     list: document.getElementById('blog-post-list'),
     empty: document.getElementById('blog-empty'),
     draftNotice: document.getElementById('blog-draft-notice'),
-    composeFab: null,
-    composeSlot: null
+    composeFab: document.getElementById('blog-compose-fab'),
+    composeSlot: document.getElementById('blog-compose-slot')
   };
 
   var state = {
@@ -802,33 +802,6 @@
     }
   }
 
-  function resolveComposeListHost() {
-    if (els.list && els.list.isConnected && els.list.parentNode) {
-      return els.list;
-    }
-    var nextList = document.getElementById('blog-post-list');
-    if (!nextList) {
-      nextList = root.querySelector('#blog-post-list') || root.querySelector('.post-list');
-    }
-    if (!nextList || !nextList.parentNode) {
-      return null;
-    }
-    els.list = nextList;
-    return nextList;
-  }
-
-  function bindComposeFabListener(fab) {
-    if (!fab || fab.__composeFabBound) {
-      return;
-    }
-    fab.__composeFabBound = true;
-    fab.addEventListener('click', function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleComposeFromUi(!state.compose.open);
-    });
-  }
-
   function eventTargetElement(target) {
     if (target instanceof Element) {
       return target;
@@ -840,33 +813,11 @@
   }
 
   function ensureComposeHosts() {
-    var listHost = resolveComposeListHost();
-    if (!listHost) {
-      return;
-    }
     if (!els.composeSlot || !els.composeSlot.isConnected) {
-      var slot = document.createElement('div');
-      slot.className = 'blog-compose-slot';
-      slot.hidden = true;
-      listHost.parentNode.insertBefore(slot, listHost);
-      els.composeSlot = slot;
+      els.composeSlot = document.getElementById('blog-compose-slot');
     }
     if (!els.composeFab || !els.composeFab.isConnected) {
-      var existingFab = root.querySelector('.blog-compose-fab[data-blog-action="toggle-compose"]');
-      if (existingFab instanceof HTMLButtonElement) {
-        els.composeFab = existingFab;
-      }
-    }
-    if (!els.composeFab || !els.composeFab.isConnected) {
-      var fab = document.createElement('button');
-      fab.type = 'button';
-      fab.className = 'blog-compose-fab list-admin-primary-btn';
-      fab.setAttribute('data-blog-action', 'toggle-compose');
-      fab.setAttribute('aria-label', 'Compose');
-      fab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span>';
-      fab.hidden = true;
-      root.appendChild(fab);
-      els.composeFab = fab;
+      els.composeFab = document.getElementById('blog-compose-fab');
     }
     if (els.composeFab instanceof HTMLButtonElement) {
       els.composeFab.type = 'button';
@@ -877,7 +828,6 @@
       if (!els.composeFab.querySelector('.blog-compose-fab-icon')) {
         els.composeFab.innerHTML = '<span class="blog-compose-fab-icon" aria-hidden="true">+</span>';
       }
-      bindComposeFabListener(els.composeFab);
     }
   }
 

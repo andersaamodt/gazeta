@@ -697,6 +697,8 @@ assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="tag blog-inline-tag
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="blog-filter-chip is-active" data-filter-group="tags" data-filter-value="writing" aria-pressed="true">writing</button>' 'blog prerender keeps the default tag visually active in the filter panel before hydration'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' 'blog prerender publishes the Lodestone-owned page title on the managed root shell'
 assert_managed_page_title_shell "$SITE_ROOT/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" 'blog prerender includes the hydration-matching shared title shell'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" '<div id="blog-compose-slot" class="blog-compose-slot" hidden></div>' 'blog prerender includes the Lodestone-owned compose slot shell'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" '<button id="blog-compose-fab" type="button" class="blog-compose-fab list-admin-primary-btn" data-blog-action="toggle-compose" aria-label="Compose" hidden><span class="blog-compose-fab-icon" aria-hidden="true">+</span></button>' 'blog prerender includes the Lodestone-owned compose FAB shell'
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'blog-inline-tag is-active' 'blog bootstrap carries post-card HTML with the default tag active before hydration'

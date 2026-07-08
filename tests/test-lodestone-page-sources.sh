@@ -141,6 +141,16 @@ grep -Fq '<div id="blog-draft-notice" class="blog-draft-notice" hidden></div>' "
   exit 1
 }
 
+grep -Fq '<div id="blog-compose-slot" class="blog-compose-slot" hidden></div>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned compose slot shell" >&2
+  exit 1
+}
+
+grep -Fq '<button id="blog-compose-fab" type="button" class="blog-compose-fab list-admin-primary-btn" data-blog-action="toggle-compose" aria-label="Compose" hidden><span class="blog-compose-fab-icon" aria-hidden="true">+</span></button>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned compose FAB shell" >&2
+  exit 1
+}
+
 grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing script from lodestone source" >&2
   exit 1
