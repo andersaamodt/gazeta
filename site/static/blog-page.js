@@ -463,11 +463,6 @@
       titleNode: els.title,
       titleText: title,
       syncStatus: state.payload && state.payload.sync_status,
-      titleOptions: {
-        actionsId: 'blog-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'Blog'
-      },
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       descriptionFallback: {

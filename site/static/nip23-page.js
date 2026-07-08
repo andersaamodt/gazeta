@@ -409,9 +409,6 @@
       titleText: String(s.title || 'Untitled'),
       syncStatus: state.payload && state.payload.sync_status,
       titleOptions: {
-        actionsId: 'nip23-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'Untitled',
         syncOptions: {
           messageVariant: 'local_source'
         }

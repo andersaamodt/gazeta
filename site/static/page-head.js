@@ -99,11 +99,12 @@
       return { text: null, actions: null };
     }
     var opts = options && typeof options === 'object' ? options : {};
-    var actionsId = String(opts.actionsId || '').trim();
-    var actionsClassName = String(opts.actionsClassName || 'list-page-title-actions').trim() || 'list-page-title-actions';
+    var existingActions = titleNode.querySelector('.list-page-title-actions');
+    var actionsId = String(opts.actionsId || (existingActions && existingActions.id) || '').trim();
+    var actionsClassName = String(opts.actionsClassName || (existingActions && existingActions.className) || 'list-page-title-actions').trim() || 'list-page-title-actions';
     var fallbackText = String(opts.fallbackText || '').trim();
     var text = titleNode.querySelector('.list-page-title-text');
-    var actions = actionsId ? document.getElementById(actionsId) : titleNode.querySelector('.list-page-title-actions');
+    var actions = actionsId ? document.getElementById(actionsId) : existingActions;
     if (!text) {
       text = document.createElement('span');
       text.className = 'list-page-title-text';
@@ -143,6 +144,22 @@
       }
     }
     return { text: text, actions: actions };
+  }
+
+  function titleActionsHostHtml(titleNode, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var explicitHtml = String(opts.actionsHtml || '');
+    if (explicitHtml) {
+      return explicitHtml;
+    }
+    var existingActions = titleNode && titleNode.querySelector
+      ? titleNode.querySelector('.list-page-title-actions')
+      : null;
+    var actionsId = String(opts.actionsId || (existingActions && existingActions.id) || '').trim();
+    var actionsClassName = String(opts.actionsClassName || (existingActions && existingActions.className) || 'list-page-title-actions').trim() || 'list-page-title-actions';
+    return '<span' +
+      (actionsId ? ' id="' + escapeHtml(actionsId) + '"' : '') +
+      ' class="' + escapeHtml(actionsClassName) + '"></span>';
   }
 
   function ensureReadOnlyDescriptionShell(descriptionNode) {
@@ -254,7 +271,7 @@
     var opts = options && typeof options === 'object' ? options : {};
     var activeField = String(opts.activeField || '').trim().toLowerCase();
     var value = String(opts.value || opts.fallbackText || '');
-    var actionsHtml = String(opts.actionsHtml || '');
+    var actionsHtml = titleActionsHostHtml(targetNode, opts);
     var editLabel = String(opts.editLabel || 'Edit...');
     var inputId = String(opts.inputId || '').trim();
     var inputAttrName = String(opts.inputAttrName || '').trim();

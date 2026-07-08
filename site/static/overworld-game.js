@@ -72,12 +72,7 @@
       pageTitle: 'Overworld',
       titleNode: document.getElementById('overworld-page-title'),
       titleText: 'Overworld',
-      syncStatus: payload && payload.sync_status,
-      titleOptions: {
-        actionsId: 'overworld-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'Overworld'
-      }
+      syncStatus: payload && payload.sync_status
     });
   }
 

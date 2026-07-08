@@ -106,10 +106,6 @@
     });
   }
 
-  function titleActionsHtml(syncOnly) {
-    return '<span id="public-ranking-page-title-actions" class="list-page-title-actions' + (syncOnly ? ' public-ranking-sync-actions' : '') + '"></span>';
-  }
-
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')
@@ -372,12 +368,8 @@
       titleText: String(s.title || 'Public Ranking'),
       syncStatus: state.payload && state.payload.sync_status,
       readOnlyTitleOptions: {
-        actionsId: 'public-ranking-page-title-actions',
-        actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
-        fallbackText: 'Public Ranking',
         syncOptions: {
-          messageVariant: 'local_source',
-          hostClassName: 'public-ranking-sync-actions'
+          messageVariant: 'local_source'
         }
       },
       descriptionNode: els.description,
@@ -397,8 +389,7 @@
         fallbackText: 'Public Ranking',
         inputId: 'public-ranking-head-title-input',
         inputAttrName: 'data-ranking-head-input',
-        editAttrName: 'data-ranking-head-edit',
-        actionsHtml: titleActionsHtml(false)
+        editAttrName: 'data-ranking-head-edit'
       },
       descriptionEditOptions: {
         activeField: state.activeHeadField,

@@ -3626,9 +3626,6 @@
       titleText: String(s.title || 'Profile'),
       syncStatus: state.payload && state.payload.sync_status,
       readOnlyTitleOptions: {
-        actionsId: 'contact-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'Profile',
         syncOptions: {
           messageVariant: 'local_source'
         }
@@ -3652,8 +3649,7 @@
         inputAttrName: 'data-contact-head-input',
         editAttrName: 'data-contact-head-edit',
         saveAttrName: 'data-contact-head-save',
-        showSaveButton: true,
-        actionsHtml: '<span id="contact-page-title-actions" class="list-page-title-actions"></span>'
+        showSaveButton: true
       },
       descriptionEditOptions: {
         activeField: state.activeHeadField,

@@ -2879,11 +2879,6 @@
       titleNode: els.title,
       titleText: String(s.title || 'List'),
       syncStatus: state.payload && state.payload.sync_status,
-      readOnlyTitleOptions: {
-        actionsId: 'list-page-title-actions',
-        actionsClassName: 'list-page-title-actions',
-        fallbackText: 'List'
-      },
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
@@ -2898,8 +2893,7 @@
         fallbackText: 'List',
         inputId: 'list-head-title-input',
         inputAttrName: 'data-head-input',
-        editAttrName: 'data-list-head-edit',
-        actionsHtml: '<span id="list-page-title-actions" class="list-page-title-actions"></span>'
+        editAttrName: 'data-list-head-edit'
       },
       descriptionEditOptions: {
         activeField: state.activeHeadField,
