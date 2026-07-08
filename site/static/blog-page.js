@@ -531,17 +531,17 @@
     return '';
   }
 
-  function clearDraftNoticeCache() {
+  function removeTimedCacheRecord(storageKey) {
     try {
-      localStorage.removeItem(DRAFT_NOTICE_CACHE_KEY);
+      localStorage.removeItem(String(storageKey || ''));
     } catch (_err) {
       // Ignore storage failures.
     }
   }
 
-  function readDraftNoticeCache() {
+  function readTimedCacheRecord(storageKey, maxAgeMs) {
     try {
-      var raw = localStorage.getItem(DRAFT_NOTICE_CACHE_KEY);
+      var raw = localStorage.getItem(String(storageKey || ''));
       if (!raw) {
         return null;
       }
@@ -550,10 +550,36 @@
         return null;
       }
       var savedAt = Number(parsed.saved_at || 0);
-      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > DRAFT_NOTICE_CACHE_MAX_AGE_MS) {
-        localStorage.removeItem(DRAFT_NOTICE_CACHE_KEY);
+      if (!isFinite(savedAt) || savedAt <= 0 || (Number(maxAgeMs || 0) > 0 && (Date.now() - savedAt) > Number(maxAgeMs || 0))) {
+        removeTimedCacheRecord(storageKey);
         return null;
       }
+      return parsed;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function writeTimedCacheRecord(storageKey, payload) {
+    try {
+      localStorage.setItem(String(storageKey || ''), JSON.stringify(Object.assign({}, payload || {}, {
+        saved_at: Date.now()
+      })));
+    } catch (_err) {
+      // Ignore storage failures.
+    }
+  }
+
+  function clearDraftNoticeCache() {
+    removeTimedCacheRecord(DRAFT_NOTICE_CACHE_KEY);
+  }
+
+  function readDraftNoticeCache() {
+    var parsed = readTimedCacheRecord(DRAFT_NOTICE_CACHE_KEY, DRAFT_NOTICE_CACHE_MAX_AGE_MS);
+    if (!parsed) {
+      return null;
+    }
+    try {
       var identity = String(parsed.identity || '').trim();
       if (!identity || identity !== draftNoticeIdentity()) {
         return null;
@@ -566,19 +592,14 @@
   }
 
   function writeDraftNoticeCache(drafts) {
-    try {
-      var identity = draftNoticeIdentity();
-      if (!identity) {
-        return;
-      }
-      localStorage.setItem(DRAFT_NOTICE_CACHE_KEY, JSON.stringify({
-        identity: identity,
-        drafts: Array.isArray(drafts) ? drafts : [],
-        saved_at: Date.now()
-      }));
-    } catch (_err) {
-      // Ignore storage failures.
+    var identity = draftNoticeIdentity();
+    if (!identity) {
+      return;
     }
+    writeTimedCacheRecord(DRAFT_NOTICE_CACHE_KEY, {
+      identity: identity,
+      drafts: Array.isArray(drafts) ? drafts : []
+    });
   }
 
   function hydrateDraftNoticeFromCache() {
@@ -4405,20 +4426,14 @@
   }
 
   function readCache() {
+    var parsed = readTimedCacheRecord(CACHE_KEY, POSTS_CACHE_MAX_AGE_MS);
+    if (!parsed) {
+      return null;
+    }
     try {
-      var raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) {
-        return null;
-      }
-      var parsed = JSON.parse(raw);
-      var savedAt = Number(parsed && parsed.saved_at || 0);
-      if (!isFinite(savedAt) || savedAt <= 0 || (Date.now() - savedAt) > POSTS_CACHE_MAX_AGE_MS) {
-        localStorage.removeItem(CACHE_KEY);
-        return null;
-      }
-      if (parsed && Array.isArray(parsed.posts)) {
+      if (Array.isArray(parsed.posts)) {
         if (!postsHaveRenderedHtml(parsed.posts)) {
-          localStorage.removeItem(CACHE_KEY);
+          removeTimedCacheRecord(CACHE_KEY);
           return null;
         }
         return parsed.posts;
@@ -4430,14 +4445,9 @@
   }
 
   function writeCache(posts) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        posts: posts || [],
-        saved_at: Date.now()
-      }));
-    } catch (_err) {
-      // Ignore storage failures.
-    }
+    writeTimedCacheRecord(CACHE_KEY, {
+      posts: posts || []
+    });
   }
 
   function isExpectedPayload(payload) {

@@ -187,6 +187,13 @@
     });
   }
 
+  function persistCurrentPayload() {
+    if (!state.payload || typeof state.payload !== 'object') {
+      return;
+    }
+    writeBootstrapCache(state.payload);
+  }
+
   function canPreserveStaticPrerender(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -1796,7 +1803,7 @@
       } else if (savedPayload && savedPayload.state) {
         state.payload.state = savedPayload.state;
       }
-      writeBootstrapCache(state.payload);
+      persistCurrentPayload();
       setSaveStatus('saved');
       refreshValidation();
     } catch (err) {
@@ -1966,7 +1973,7 @@
     }
     window.__wizardryMergeManagedPagePayload(state.payload, data);
     state.draft = readEditableStateFromPayload();
-    writeBootstrapCache(state.payload);
+    persistCurrentPayload();
     if (beforeRects) {
       renderListWithFlip(beforeRects);
     } else {
@@ -2037,7 +2044,7 @@
       }
     });
     if (changed && state.payload) {
-      writeBootstrapCache(state.payload);
+      persistCurrentPayload();
     }
     return changed;
   }
@@ -2075,7 +2082,7 @@
     if (snapshot && typeof snapshot === 'object') {
       state.payload = snapshot;
       state.draft = readEditableStateFromPayload();
-      writeBootstrapCache(state.payload);
+      persistCurrentPayload();
     }
     if (beforeRects) {
       renderListWithFlip(beforeRects);
