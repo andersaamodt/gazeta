@@ -384,38 +384,31 @@
 
   function renderHead() {
     var page = getRenderState();
-    var titleState = window.__wizardryManagedPageHeadTitleState({
-      renderState: page,
-      payload: state.payload,
-      fallbackTitleText: titleizeSlug(slug),
-      useFallbackForPageTitle: true
-    });
-    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
-      configuredText: state.payload && state.payload.nav_title,
-      renderState: page,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: titleizeSlug(slug),
-      payload: state.payload,
+    window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: false,
-      editMode: false,
-      titleNode: els.title || null
-    });
-    window.__wizardryRenderManagedPageHead({
-      isAdmin: false,
-      pageTitle: titleState.pageTitle,
+      payload: state.payload,
       titleNode: els.title,
-      titleText: titleState.titleText,
-      syncStatus: titleState.syncStatus,
       descriptionNode: els.description,
-      descriptionPayload: state.payload,
-      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+      titleStateOptions: {
+        renderState: page,
+        fallbackTitleText: titleizeSlug(slug),
+        useFallbackForPageTitle: true
+      },
+      descriptionStateOptions: {
         format: 'html',
         text: '',
         html: '',
         hidden: true
-      }).descriptionFallback,
-      navbarTitleOptions: navbarTitle
+      },
+      navbarTitleOptions: {
+        configuredText: state.payload && state.payload.nav_title,
+        renderState: page,
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: titleizeSlug(slug),
+        isAdmin: false,
+        editMode: false
+      }
     });
   }
 

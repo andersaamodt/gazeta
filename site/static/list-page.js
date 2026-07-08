@@ -2772,59 +2772,49 @@
     var descText = String(s.description || '');
     var elements = Array.isArray(s.elements) ? s.elements : [];
     var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
-    var headFields = window.__wizardryManagedPageHeadFieldState({
-      renderState: s,
-      payload: state.payload,
-      fallbackTitleText: 'List',
+    window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: isAdmin(),
-      activeField: state.activeHeadField,
-      editMode: state.editMode,
-      titleInputId: 'list-head-title-input',
-      descriptionInputId: 'list-head-description-input',
-      inputAttrName: 'data-head-input',
-      editAttrName: 'data-list-head-edit',
-      saveAttrName: 'data-list-head-save',
-      descriptionText: descText,
-      descriptionHtml: markdownInline(descText),
-      hasMainContent: hasMainContent,
-      descriptionHideWhenEmpty: hasMainContent,
-      enableFocus: true
-    });
-    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
-      configuredText: state.navTitle,
-      renderState: s,
-      rootNode: root,
-      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-      fallbackText: 'List',
-      state: state,
       payload: state.payload,
-      slug: slug,
-      isAdmin: isAdmin,
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy,
-      renderHead: renderHead
-    });
-    window.__wizardryRenderManagedPageHead({
-      isAdmin: isAdmin(),
-      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: headFields.titleText,
-      syncStatus: headFields.syncStatus,
       descriptionNode: els.description,
-      descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+      fieldStateOptions: {
+        renderState: s,
+        fallbackTitleText: 'List',
+        isAdmin: isAdmin(),
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        titleInputId: 'list-head-title-input',
+        descriptionInputId: 'list-head-description-input',
+        inputAttrName: 'data-head-input',
+        editAttrName: 'data-list-head-edit',
+        saveAttrName: 'data-list-head-save',
+        descriptionText: descText,
+        descriptionHtml: markdownInline(descText),
+        hasMainContent: hasMainContent,
+        descriptionHideWhenEmpty: hasMainContent,
+        enableFocus: true
+      },
+      descriptionStateOptions: {
         format: 'text',
         text: descText,
         hidden: !descText && !hasMainContent
-      }).descriptionFallback,
-      titleEditOptions: headFields.titleEditOptions,
-      descriptionEditOptions: headFields.descriptionEditOptions,
-      focusOptions: headFields.focusOptions,
-      navbarTitleOptions: navbarTitle
+      },
+      navbarTitleOptions: {
+        configuredText: state.navTitle,
+        renderState: s,
+        rootNode: root,
+        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+        fallbackText: 'List',
+        state: state,
+        slug: slug,
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        editing: !!state.navTitleEditing,
+        inputValue: state.navTitleInput,
+        saveDisabled: state.navTitleBusy,
+        renderHead: renderHead
+      }
     });
   }
 

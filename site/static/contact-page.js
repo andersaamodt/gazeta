@@ -3209,72 +3209,61 @@
     var s = getRenderState();
     var text = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s.rows || [], s.extras_after || '');
-    var headFields = window.__wizardryManagedPageHeadFieldState({
-      renderState: s,
-      payload: state.payload,
-      fallbackTitleText: 'Profile',
-      syncMessageVariant: 'local_source',
+    window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: isAdmin(),
-      activeField: state.activeHeadField,
-      editMode: state.editMode,
-      titleInputId: 'contact-head-title-input',
-      descriptionInputId: 'contact-head-description-input',
-      inputAttrName: 'data-contact-head-input',
-      editAttrName: 'data-contact-head-edit',
-      saveAttrName: 'data-contact-head-save',
-      showTitleSaveButton: true,
-      descriptionText: text,
-      descriptionHtml: markdownInline(text),
-      hasMainContent: hasMainContent,
-      descriptionHideWhenEmpty: true,
-      descriptionEditingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>',
-      enableFocus: state.headFocusPending,
-      focusSelectOnFocus: false,
-      focusAfter: function () {
-        state.headFocusPending = false;
-      }
-    });
-    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
-      configuredText: state.navTitle,
-      renderState: s,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
-      state: state,
       payload: state.payload,
-      slug: slug,
-      isAdmin: isAdmin,
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      labelText: 'Link:',
-      inputAriaLabel: 'Link title',
-      editButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
-      saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
-      saveDisabled: state.navTitleBusy,
-      renderHead: renderHead
-    });
-    window.__wizardryRenderManagedPageHead({
-      isAdmin: isAdmin(),
-      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: headFields.titleText,
-      titleSyncOptions: headFields.titleSyncOptions,
-      syncStatus: headFields.syncStatus,
       descriptionNode: els.description,
-      descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(),
-      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+      fieldStateOptions: {
+        renderState: s,
+        fallbackTitleText: 'Profile',
+        syncMessageVariant: 'local_source',
+        isAdmin: isAdmin(),
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        titleInputId: 'contact-head-title-input',
+        descriptionInputId: 'contact-head-description-input',
+        inputAttrName: 'data-contact-head-input',
+        editAttrName: 'data-contact-head-edit',
+        saveAttrName: 'data-contact-head-save',
+        showTitleSaveButton: true,
+        descriptionText: text,
+        descriptionHtml: markdownInline(text),
+        hasMainContent: hasMainContent,
+        descriptionHideWhenEmpty: true,
+        descriptionEditingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>',
+        enableFocus: state.headFocusPending,
+        focusSelectOnFocus: false,
+        focusAfter: function () {
+          state.headFocusPending = false;
+        }
+      },
+      descriptionStateOptions: {
         format: 'html',
         text: text,
         html: markdownInline(text),
         hideWhenEmpty: true
-      }).descriptionFallback,
-      titleEditOptions: headFields.titleEditOptions,
-      descriptionEditOptions: headFields.descriptionEditOptions,
-      focusOptions: headFields.focusOptions,
-      navbarTitleOptions: navbarTitle
+      },
+      navbarTitleOptions: {
+        configuredText: state.navTitle,
+        renderState: s,
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled',
+        state: state,
+        slug: slug,
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        editing: !!state.navTitleEditing,
+        inputValue: state.navTitleInput,
+        labelText: 'Link:',
+        inputAriaLabel: 'Link title',
+        editButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
+        saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
+        saveDisabled: state.navTitleBusy,
+        renderHead: renderHead
+      }
     });
   }
 

@@ -394,6 +394,64 @@
     };
   }
 
+  function renderManagedPageHeadForPage(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
+    var titleNode = opts.titleNode || null;
+    var descriptionNode = opts.descriptionNode || null;
+    var usingFieldState = opts.fieldStateOptions && typeof opts.fieldStateOptions === 'object';
+    var headStateOptions = usingFieldState
+      ? Object.assign({}, opts.fieldStateOptions)
+      : Object.assign({}, opts.titleStateOptions && typeof opts.titleStateOptions === 'object'
+          ? opts.titleStateOptions
+          : {});
+    if (!Object.prototype.hasOwnProperty.call(headStateOptions, 'payload')) {
+      headStateOptions.payload = payload;
+    }
+    var headState = usingFieldState
+      ? managedPageHeadFieldState(headStateOptions)
+      : managedPageHeadTitleState(headStateOptions);
+    var navbarTitleOptions = null;
+    if (opts.navbarTitleOptions && typeof opts.navbarTitleOptions === 'object') {
+      navbarTitleOptions = managedNavbarTitlePageOptions(Object.assign({}, opts.navbarTitleOptions, {
+        payload: Object.prototype.hasOwnProperty.call(opts.navbarTitleOptions, 'payload')
+          ? opts.navbarTitleOptions.payload
+          : payload,
+        titleNode: Object.prototype.hasOwnProperty.call(opts.navbarTitleOptions, 'titleNode')
+          ? opts.navbarTitleOptions.titleNode
+          : titleNode
+      }));
+    }
+    var renderOptions = {
+      isAdmin: opts.isAdmin === true,
+      pageTitle: headState.pageTitle,
+      titleNode: titleNode,
+      titleText: headState.titleText,
+      titleSyncOptions: headState.titleSyncOptions,
+      syncStatus: headState.syncStatus,
+      navbarTitleOptions: navbarTitleOptions
+    };
+    if (descriptionNode && opts.descriptionStateOptions && typeof opts.descriptionStateOptions === 'object') {
+      renderOptions.descriptionNode = descriptionNode;
+      renderOptions.descriptionPayload = payload;
+      renderOptions.descriptionFallback = managedPageHeadDescriptionState(opts.descriptionStateOptions).descriptionFallback;
+      if (Object.prototype.hasOwnProperty.call(opts, 'allowPrerenderDescription')) {
+        renderOptions.allowPrerenderDescription = opts.allowPrerenderDescription;
+      }
+    }
+    if (usingFieldState) {
+      renderOptions.titleEditOptions = headState.titleEditOptions;
+      renderOptions.descriptionEditOptions = headState.descriptionEditOptions;
+      renderOptions.focusOptions = headState.focusOptions;
+    }
+    renderManagedPageHead(renderOptions);
+    return {
+      headState: headState,
+      navbarTitleOptions: navbarTitleOptions,
+      renderOptions: renderOptions
+    };
+  }
+
   function renderManagedPageHead(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var admin = opts.isAdmin === true;
@@ -2130,6 +2188,7 @@
   window.__wizardryManagedPageHeadDescriptionState = managedPageHeadDescriptionState;
   window.__wizardryManagedPageHeadTitleState = managedPageHeadTitleState;
   window.__wizardryManagedPageHeadFieldState = managedPageHeadFieldState;
+  window.__wizardryRenderManagedPageHeadForPage = renderManagedPageHeadForPage;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;

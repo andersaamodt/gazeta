@@ -303,37 +303,30 @@
 
   function renderHead() {
     var s = getRenderState();
-    var titleState = window.__wizardryManagedPageHeadTitleState({
-      renderState: s,
-      payload: state.payload,
-      fallbackTitleText: 'Untitled',
-      syncMessageVariant: 'local_source'
-    });
-    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
-      configuredText: state.navTitle,
-      renderState: s,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
-      state: state,
-      payload: state.payload,
-      slug: slug,
-      isAdmin: isAdmin,
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy,
-      renderHead: renderHead
-    });
-    window.__wizardryRenderManagedPageHead({
+    window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: false,
-      pageTitle: titleState.pageTitle,
+      payload: state.payload,
       titleNode: els.title,
-      titleText: titleState.titleText,
-      titleSyncOptions: titleState.titleSyncOptions,
-      syncStatus: titleState.syncStatus,
-      navbarTitleOptions: navbarTitle
+      titleStateOptions: {
+        renderState: s,
+        fallbackTitleText: 'Untitled',
+        syncMessageVariant: 'local_source'
+      },
+      navbarTitleOptions: {
+        configuredText: state.navTitle,
+        renderState: s,
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled',
+        state: state,
+        slug: slug,
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        editing: !!state.navTitleEditing,
+        inputValue: state.navTitleInput,
+        saveDisabled: state.navTitleBusy,
+        renderHead: renderHead
+      }
     });
   }
 

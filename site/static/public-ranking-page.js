@@ -288,62 +288,51 @@
     var s = getRenderState();
     var desc = String(s.description || '').trim();
     var hasMainContent = hasVisibleMainContent(s);
-    var headFields = window.__wizardryManagedPageHeadFieldState({
-      renderState: s,
-      payload: state.payload,
-      fallbackTitleText: 'Public Ranking',
-      syncMessageVariant: 'local_source',
+    window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: isAdmin(),
-      activeField: state.activeHeadField,
-      editMode: state.editMode,
-      titleInputId: 'public-ranking-head-title-input',
-      descriptionInputId: 'public-ranking-head-description-input',
-      inputAttrName: 'data-ranking-head-input',
-      editAttrName: 'data-ranking-head-edit',
-      saveAttrName: 'data-ranking-head-save',
-      descriptionText: desc,
-      descriptionHtml: markdownInline(desc),
-      hasMainContent: hasMainContent,
-      descriptionHideWhenEmpty: hasMainContent,
-      enableFocus: true
-    });
-    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
-      configuredText: state.navTitle,
-      renderState: s,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Public Ranking',
-      state: state,
       payload: state.payload,
-      slug: slug,
-      isAdmin: isAdmin,
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy,
-      renderHead: renderHead
-    });
-    window.__wizardryRenderManagedPageHead({
-      isAdmin: isAdmin(),
-      pageTitle: headFields.pageTitle,
       titleNode: els.title,
-      titleText: headFields.titleText,
-      titleSyncOptions: headFields.titleSyncOptions,
-      syncStatus: headFields.syncStatus,
       descriptionNode: els.description,
-      descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-      descriptionFallback: window.__wizardryManagedPageHeadDescriptionState({
+      fieldStateOptions: {
+        renderState: s,
+        fallbackTitleText: 'Public Ranking',
+        syncMessageVariant: 'local_source',
+        isAdmin: isAdmin(),
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        titleInputId: 'public-ranking-head-title-input',
+        descriptionInputId: 'public-ranking-head-description-input',
+        inputAttrName: 'data-ranking-head-input',
+        editAttrName: 'data-ranking-head-edit',
+        saveAttrName: 'data-ranking-head-save',
+        descriptionText: desc,
+        descriptionHtml: markdownInline(desc),
+        hasMainContent: hasMainContent,
+        descriptionHideWhenEmpty: hasMainContent,
+        enableFocus: true
+      },
+      descriptionStateOptions: {
         format: 'html',
         text: desc,
         html: markdownInline(desc),
         hideWhenEmpty: true
-      }).descriptionFallback,
-      titleEditOptions: headFields.titleEditOptions,
-      descriptionEditOptions: headFields.descriptionEditOptions,
-      focusOptions: headFields.focusOptions,
-      navbarTitleOptions: navbarTitle
+      },
+      navbarTitleOptions: {
+        configuredText: state.navTitle,
+        renderState: s,
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Public Ranking',
+        state: state,
+        slug: slug,
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        editing: !!state.navTitleEditing,
+        inputValue: state.navTitleInput,
+        saveDisabled: state.navTitleBusy,
+        renderHead: renderHead
+      }
     });
   }
 
