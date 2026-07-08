@@ -148,10 +148,6 @@
 
   function titleActionsHostHtml(titleNode, options) {
     var opts = options && typeof options === 'object' ? options : {};
-    var explicitHtml = String(opts.actionsHtml || '');
-    if (explicitHtml) {
-      return explicitHtml;
-    }
     var existingActions = titleNode && titleNode.querySelector
       ? titleNode.querySelector('.list-page-title-actions')
       : null;
