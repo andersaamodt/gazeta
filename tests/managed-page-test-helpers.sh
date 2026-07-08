@@ -5,7 +5,14 @@ managed_page_title_shell_html() {
   title_text=$2
   actions_id=$3
   actions_class=${4-list-page-title-actions}
-  printf '%s' "<h1 id=\"$title_id\"><span class=\"list-page-title-text\">$title_text</span><span id=\"$actions_id\" class=\"$actions_class\"></span><span data-page-nav-title-host=\"true\" class=\"list-page-nav-title-row-wrap\"></span></h1>"
+  printf '%s' "<h1 id=\"$title_id\">$(managed_page_title_shell_fragment_html "$title_text" "$actions_id" "$actions_class")</h1>"
+}
+
+managed_page_title_shell_fragment_html() {
+  title_text=$1
+  actions_id=$2
+  actions_class=${3-list-page-title-actions}
+  printf '%s' "<span class=\"list-page-title-text\">$title_text</span><span id=\"$actions_id\" class=\"$actions_class\"></span><span data-page-nav-title-host=\"true\" class=\"list-page-nav-title-row-wrap\"></span>"
 }
 
 require_managed_page_title_shell() {

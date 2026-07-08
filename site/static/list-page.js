@@ -1426,30 +1426,28 @@
     };
   }
 
-  function defaultNavbarTitle(renderState) {
-    var s = renderState || getRenderState();
-    var fallback = String(root.getAttribute('data-list-title') || root.getAttribute('data-page-title') || '').trim();
-    var title = String((s && s.title) || fallback || 'List').trim();
-    return title || 'List';
-  }
-
-  function currentNavbarTitle(renderState) {
-    var configured = String(state.navTitle || '').trim();
-    if (configured) {
-      return configured;
-    }
-    return defaultNavbarTitle(renderState);
+  function resolvedNavbarTitle(renderState, configuredText) {
+    return window.__wizardryResolveManagedNavbarTitle({
+      configuredText: configuredText,
+      renderState: renderState,
+      rootNode: root,
+      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackText: 'List'
+    });
   }
 
   function renderNavbarTitleRow(renderState) {
-    var current = currentNavbarTitle(renderState);
-    window.__wizardryRenderManagedNavbarTitleRow({
+    return window.__wizardryRenderManagedNavbarTitleState({
+      configuredText: state.navTitle,
+      renderState: renderState,
+      rootNode: root,
+      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackText: 'List',
       isAdmin: isAdmin(),
       editMode: state.editMode,
       titleNode: els.title || null,
-      currentText: current,
       editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput || current,
+      inputValue: state.navTitleInput,
       saveDisabled: state.navTitleBusy
     });
   }
@@ -3769,7 +3767,7 @@
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     }).then(function (data) {
-      var updated = String((data && data.nav_title) || nextTitle || defaultNavbarTitle()).trim();
+      var updated = String((data && data.nav_title) || nextTitle || resolvedNavbarTitle()).trim();
       state.navTitle = updated;
       state.navTitleEditing = false;
       state.navTitleInput = '';
@@ -3972,7 +3970,7 @@
         var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
         if (navTitleAction === 'edit') {
           state.navTitleEditing = true;
-          state.navTitleInput = currentNavbarTitle();
+          state.navTitleInput = resolvedNavbarTitle();
           renderHead();
           return;
         }

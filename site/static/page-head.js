@@ -430,6 +430,64 @@
     return rendered;
   }
 
+  function resolveManagedNavbarTitle(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var configured = String(opts.configuredText || '').trim();
+    if (configured) {
+      return configured;
+    }
+    var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
+    var renderTitle = String(renderState && renderState.title || '').trim();
+    if (renderTitle) {
+      return renderTitle;
+    }
+    var rootNode = opts.rootNode || null;
+    var fallbackAttributeNames = Array.isArray(opts.fallbackAttributeNames) ? opts.fallbackAttributeNames : ['data-page-title'];
+    if (rootNode && typeof rootNode.getAttribute === 'function') {
+      for (var i = 0; i < fallbackAttributeNames.length; i += 1) {
+        var attrName = String(fallbackAttributeNames[i] || '').trim();
+        if (!attrName) {
+          continue;
+        }
+        var attrValue = String(rootNode.getAttribute(attrName) || '').trim();
+        if (attrValue) {
+          return attrValue;
+        }
+      }
+    }
+    var fallbackText = String(opts.fallbackText || '').trim();
+    if (fallbackText) {
+      return fallbackText;
+    }
+    return 'Untitled';
+  }
+
+  function renderManagedNavbarTitleState(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var current = resolveManagedNavbarTitle({
+      configuredText: opts.configuredText,
+      renderState: opts.renderState,
+      rootNode: opts.rootNode,
+      fallbackAttributeNames: opts.fallbackAttributeNames,
+      fallbackText: opts.fallbackText
+    });
+    renderManagedNavbarTitleRow({
+      isAdmin: opts.isAdmin,
+      editMode: opts.editMode,
+      titleNode: opts.titleNode,
+      currentText: current,
+      editing: opts.editing,
+      inputValue: Object.prototype.hasOwnProperty.call(opts, 'inputValue') ? opts.inputValue : current,
+      labelText: opts.labelText,
+      inputAriaLabel: opts.inputAriaLabel,
+      editButtonClassName: opts.editButtonClassName,
+      saveButtonClassName: opts.saveButtonClassName,
+      saveDisabled: opts.saveDisabled,
+      selectOnFocus: opts.selectOnFocus
+    });
+    return current;
+  }
+
   function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
@@ -1503,6 +1561,8 @@
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
+  window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;
+  window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
