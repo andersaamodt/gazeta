@@ -121,6 +121,9 @@
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
+  var normalizeManagedSlug = window.__wizardryNormalizeManagedSlug;
+  var managedSlugFromPath = window.__wizardryManagedSlugFromPath;
+  var managedSlugsEquivalent = window.__wizardryManagedSlugsEquivalent;
 
   function overflowMenuIconSvg() {
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
@@ -211,49 +214,6 @@
     if (typeof state.compose.output !== 'string') state.compose.output = '';
     if (typeof state.compose.outputTone !== 'string') state.compose.outputTone = '';
     if (typeof state.compose.saveStatus !== 'string') state.compose.saveStatus = '';
-  }
-
-  function normalizeSlug(value) {
-    return String(value || '')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
-
-  function slugFromPath(pathname) {
-    var path = String(pathname || '').trim();
-    if (!path) {
-      return 'index';
-    }
-    path = path.split('?')[0].split('#')[0];
-    path = path.replace(/\/+$/, '');
-    if (!path || path === '/') {
-      return 'index';
-    }
-    if (path.indexOf('/pages/') === 0) {
-      path = path.slice('/pages/'.length);
-    } else if (path.charAt(0) === '/') {
-      path = path.slice(1);
-    }
-    path = path.replace(/\.html?$/i, '');
-    if (path.indexOf('/') >= 0) {
-      return '';
-    }
-    return normalizeSlug(path);
-  }
-
-  function slugsEquivalent(aRaw, bRaw) {
-    var a = normalizeSlug(aRaw);
-    var b = normalizeSlug(bRaw);
-    if (!a || !b) {
-      return false;
-    }
-    if (a === b) {
-      return true;
-    }
-    return (a === 'index' && b === 'blog') || (a === 'blog' && b === 'index');
   }
 
   function maybeRepairRoute(reason) {
@@ -4459,7 +4419,7 @@
   function isExpectedPayload(payload) {
     var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
     var payloadSlug = String(payload && payload.slug || '').trim();
-    return payloadType === 'blog' && !!payloadSlug && slugsEquivalent(payloadSlug, slug);
+    return payloadType === 'blog' && !!payloadSlug && managedSlugsEquivalent(payloadSlug, slug);
   }
 
   function readPrerenderPostsBootstrap(payload) {
@@ -4598,12 +4558,12 @@
 
   function loadPageState(options) {
     var opts = options || {};
-    var expectedSlug = slugFromPath(window.location.pathname || '/');
+    var expectedSlug = managedSlugFromPath(window.location.pathname || '/');
     var requestedSlug = expectedSlug || slug;
-    if (slugsEquivalent(expectedSlug, slug) && normalizeSlug(expectedSlug) === 'index' && normalizeSlug(slug) === 'blog') {
+    if (managedSlugsEquivalent(expectedSlug, slug) && normalizeManagedSlug(expectedSlug) === 'index' && normalizeManagedSlug(slug) === 'blog') {
       requestedSlug = slug;
     }
-    if (expectedSlug && !slugsEquivalent(expectedSlug, slug)) {
+    if (expectedSlug && !managedSlugsEquivalent(expectedSlug, slug)) {
       maybeRepairRoute('blog-root-slug-mismatch');
       return Promise.resolve();
     }
@@ -4612,7 +4572,7 @@
       if (!payload || typeof payload !== 'object') {
         return false;
       }
-      return slugsEquivalent(String(payload.slug || '').trim(), slug);
+      return managedSlugsEquivalent(String(payload.slug || '').trim(), slug);
     }
     function applyFetchedPageState(data) {
       var pageType = String(data && data.page_type || '').trim().toLowerCase();

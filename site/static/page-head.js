@@ -1910,6 +1910,9 @@
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
+  window.__wizardryNormalizeManagedSlug = normalizeSlug;
+  window.__wizardryManagedSlugFromPath = slugFromPath;
+  window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
   window.__wizardryResolveManagedPagePreviewHtml = resolveManagedPagePreviewHtml;

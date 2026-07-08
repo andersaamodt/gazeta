@@ -9,30 +9,15 @@
   window.__wizardryRemoveLegacyTitleBlock(root);
 
   var query = new URLSearchParams(window.location.search || '');
-
-  function slugFromPathname(pathname) {
-    var path = String(pathname || '').trim();
-    if (!path || path === '/' || path === '/pages/index' || path === '/pages/index.html') {
-      return '';
-    }
-    path = path.replace(/^\/+/, '').replace(/\/+$/, '');
-    if (!path) {
-      return '';
-    }
-    if (path.indexOf('pages/') === 0) {
-      path = path.slice('pages/'.length);
-      path = path.replace(/\.html?$/i, '');
-    }
-    path = path.replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
-    if (!path || path === 'index') {
-      return '';
-    }
-    return path;
+  var managedSlugFromPath = window.__wizardryManagedSlugFromPath;
+  var routeSlug = managedSlugFromPath(window.location.pathname || '/');
+  if (routeSlug === 'index') {
+    routeSlug = '';
   }
 
   var slug = String(
     root.getAttribute('data-page-slug') ||
-    slugFromPathname(window.location.pathname) ||
+    routeSlug ||
     query.get('page_slug') ||
     query.get('slug') ||
     'index'
