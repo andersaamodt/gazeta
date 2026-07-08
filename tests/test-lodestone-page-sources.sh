@@ -194,6 +194,22 @@ require_managed_page_title_shell "$site_root/site/pages/reading-list.md" "list-p
   printf '%s\n' "reading-list page missing hydration-matching list title shell" >&2
   exit 1
 }
+grep -Fq 'data-list-slug="reading-list"' "$site_root/site/pages/reading-list.md" || {
+  printf '%s\n' "reading-list page missing Lodestone-owned list slug on the root shell" >&2
+  exit 1
+}
+grep -Fq 'data-list-title="Reading list"' "$site_root/site/pages/reading-list.md" || {
+  printf '%s\n' "reading-list page missing Lodestone-owned list title on the root shell" >&2
+  exit 1
+}
+grep -Fq 'data-page-title="Reading list"' "$site_root/site/pages/reading-list.md" || {
+  printf '%s\n' "reading-list page missing Lodestone-owned page title on the root shell" >&2
+  exit 1
+}
+grep -Fq 'data-page-type="list"' "$site_root/site/pages/reading-list.md" || {
+  printf '%s\n' "reading-list page missing managed page type on the root shell" >&2
+  exit 1
+}
 
 require_managed_page_title_shell "$site_root/site/pages/contact.md" "contact-page-title" "Contact" "contact-page-title-actions" "contact page missing hydration-matching contact title shell" || {
   printf '%s\n' "contact page missing hydration-matching contact title shell" >&2
@@ -214,6 +230,15 @@ do
     exit 1
   fi
 done
+
+grep -Fq 'data-list-title={title} data-page-title={title}' "$site_root/site/lodestone/templates/list.stone.html" || {
+  printf '%s\n' "list template missing shared page-title root attribute" >&2
+  exit 1
+}
+grep -Fq 'data-list-title={title} data-page-title={title}' "$site_root/site/lodestone/templates/icon-gallery.stone.html" || {
+  printf '%s\n' "icon-gallery template missing shared page-title root attribute" >&2
+  exit 1
+}
 
 local_site_name="local-template-site"
 local_site_root="$WIZARDRY_SITES_DIR/$local_site_name"

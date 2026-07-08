@@ -289,6 +289,22 @@ require_managed_page_title_shell "$canonical_root/pages/reading-list.md" "list-p
   printf '%s\n' "list page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }
+grep -Fq 'data-list-slug="reading-list"' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing Lodestone-owned list slug on the root shell after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'data-list-title="Reading list"' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing Lodestone-owned list title on the root shell after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'data-page-title="Reading list"' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing Lodestone-owned page title on the root shell after pre-build rewrite" >&2
+  exit 1
+}
+grep -Fq 'data-page-type="list"' "$canonical_root/pages/reading-list.md" || {
+  printf '%s\n' "list page missing managed page type on the root shell after pre-build rewrite" >&2
+  exit 1
+}
 if grep -Fq 'Loading page content' "$canonical_root/pages/reading-list.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/reading-list.md"; then
   printf '%s\n' "list page still ships a generic loading placeholder" >&2
   exit 1

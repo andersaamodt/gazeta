@@ -888,7 +888,7 @@
     var s = (state.payload && state.payload.state) ? state.payload.state : {};
     var elements = Array.isArray(s.elements) ? cloneEditableElements(s.elements) : elementsFromLegacyEntries(s.entries);
     return {
-      title: String(s.title || root.getAttribute('data-list-title') || 'List'),
+      title: String(s.title || fallbackPageTitle()),
       description: String(s.description || ''),
       publish_intro_to_nostr: !!s.publish_intro_to_nostr,
       show_marker_filters: !!s.show_marker_filters,
@@ -1419,6 +1419,17 @@
       extras_after_format: normalizeExtraFormat(src.extras_after_format || 'markdown'),
       elements: Array.isArray(src.elements) ? cloneEditableElements(src.elements) : elementsFromLegacyEntries(src.entries)
     };
+  }
+
+  function fallbackPageTitle() {
+    if (!root) {
+      return 'List';
+    }
+    return String(
+      root.getAttribute('data-page-title')
+      || root.getAttribute('data-list-title')
+      || 'List'
+    ).trim() || 'List';
   }
 
   function findElementIndex(uid) {
@@ -2776,7 +2787,7 @@
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
       fieldStateOptions: {
         renderState: s,
-        fallbackTitleText: 'List',
+        fallbackTitleText: fallbackPageTitle(),
         isAdmin: isAdmin(),
         activeField: state.activeHeadField,
         editMode: state.editMode,
@@ -2801,7 +2812,7 @@
         renderState: s,
         rootNode: root,
         fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-        fallbackText: 'List',
+        fallbackText: fallbackPageTitle(),
         state: state,
         slug: slug,
         isAdmin: isAdmin,
@@ -3662,7 +3673,7 @@
       payload: state.payload,
       rootNode: root,
       fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-      fallbackText: 'List',
+      fallbackText: fallbackPageTitle(),
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
@@ -3675,7 +3686,7 @@
       renderState: getRenderState(),
       rootNode: root,
       fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-      fallbackText: 'List',
+      fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
     }));
