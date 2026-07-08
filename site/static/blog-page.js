@@ -4344,8 +4344,10 @@
 
   function renderBootstrapPayload(payload, hasWarmPosts) {
     return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      state: state,
       rootNode: root,
       contentNode: els.list,
+      markPageReady: true,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       canAdoptStaticPrerender: function (optimisticPayload) {
@@ -5093,12 +5095,7 @@
         return renderBootstrapPayload(payload, primeBootstrapPosts(payload));
       }
     });
-    waitForInitialDraftNotice().finally(function () {
-      window.__wizardryNotifyCurrentManagedPageReady({
-        state: state,
-        markPageReady: true
-      });
-    });
+    waitForInitialDraftNotice();
 
     loadPageState({ deferRender: true }).finally(function () {
       state.postsLoading = false;
@@ -5110,6 +5107,11 @@
         shouldPreserveAdoptedPrerender: shouldPreserveAdoptedStaticPrerender,
         renderPreserved: renderPreservedPostListShell,
         renderAll: renderAll
+      });
+      window.__wizardryNotifyCurrentManagedPageReady({
+        state: state,
+        rootNode: root,
+        markPageReady: true
       });
     });
   })();
