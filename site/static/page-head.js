@@ -2593,9 +2593,7 @@
   window.__wizardryRenderManagedMarkdownInline = renderManagedMarkdownInline;
   window.__wizardryRenderManagedMarkdownInlineLinkFallback = renderManagedMarkdownInlineLinkFallback;
   window.__wizardryRenderManagedMarkdownBlock = renderManagedMarkdownBlock;
-  window.__wizardryNormalizeManagedSlug = normalizeSlug;
   window.__wizardryManagedSlugFromPath = slugFromPath;
-  window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
   window.__wizardryRequestManagedRouteRepair = requestManagedRouteRepair;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;

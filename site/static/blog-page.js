@@ -121,9 +121,17 @@
   var COMPOSE_POST_TYPES = ['shortform', 'longform', 'capture-media', 'upload-media', 'attachment', 'audio-note', 'link-share', 'go-live'];
   var routeSelfHealTriggered = false;
   var postCardMenuBusy = false;
-  var normalizeManagedSlug = window.__wizardryNormalizeManagedSlug;
   var managedSlugFromPath = window.__wizardryManagedSlugFromPath;
-  var managedSlugsEquivalent = window.__wizardryManagedSlugsEquivalent;
+
+  function normalizeManagedSlug(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  function managedSlugsEquivalent(expected, rootSlug) {
+    var a = normalizeManagedSlug(expected);
+    var b = normalizeManagedSlug(rootSlug);
+    return !!(a && b && (a === b || (a === 'index' && b === 'blog') || (a === 'blog' && b === 'index')));
+  }
 
   function overflowMenuIconSvg() {
     return '<svg class="overflow-menu-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5.5" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="18.5" r="1.9" fill="currentColor"/></svg>';
