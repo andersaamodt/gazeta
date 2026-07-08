@@ -4473,12 +4473,27 @@
     return true;
   }
 
+  function canUsePrerenderReadOnlyView(payload) {
+    return window.__wizardryCanUsePayloadPrerenderReadOnly(payload, {
+      allowAuthenticatedField: 'viewer_authenticated'
+    });
+  }
+
+  function shouldPreserveAdoptedStaticPrerender() {
+    return state.staticPrerenderListAdopted &&
+      canUsePrerenderReadOnlyView(state.payload) &&
+      state.adoptedPostListSignature === postListSignature();
+  }
+
   function renderBootstrapPayload(payload, hasWarmPosts) {
     return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
       rootNode: root,
       contentNode: els.list,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
+      canAdoptStaticPrerender: function (optimisticPayload) {
+        return canUsePrerenderReadOnlyView(optimisticPayload);
+      },
       renderAdoptedPrerender: function () {
         state.postsLoading = !hasWarmPosts;
         state.staticPrerenderListAdopted = true;
@@ -5316,7 +5331,7 @@
       loadDraftNoticeData();
       var nextSignature = renderSignature();
       var hasChanges = state.renderSignature !== nextSignature;
-      var canPreserve = state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature();
+      var canPreserve = shouldPreserveAdoptedStaticPrerender();
       if (!hasChanges || canPreserve) {
         syncRenderedListDecorations();
         renderHead();
