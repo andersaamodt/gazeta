@@ -4464,13 +4464,6 @@
     applyDefaultFilters();
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
-      slug: slug,
-      authSignature: authSignature
-    });
-  }
-
   function primeBootstrapPosts(payload) {
     var prerenderedPosts = readPrerenderPostsBootstrap(payload);
     if (prerenderedPosts) {
@@ -4608,7 +4601,10 @@
         maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
         return;
       }
-      writeBootstrapCache(data);
+      window.__wizardryWritePageBootstrapCache(data, {
+        slug: slug,
+        authSignature: authSignature
+      });
 	      var previousSignature = state.renderSignature;
 	      state.payload = data;
 	      try {
