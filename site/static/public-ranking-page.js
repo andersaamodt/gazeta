@@ -862,7 +862,7 @@
     renderAdmin();
     renderValidation();
     renderContent();
-    window.__wizardryNotifyInitialContentPainted(slug, {
+    window.__wizardryNotifyCurrentManagedPageReady({
       state: state,
       markPageReady: true
     });

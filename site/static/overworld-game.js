@@ -22,13 +22,6 @@
     return document.querySelector('[data-page-slug]') || null;
   }
 
-  function markInitialContentPainted(host) {
-    window.__wizardryNotifyInitialContentPainted(overworldSlug(), {
-      rootNode: host || null,
-      markPageReady: true
-    });
-  }
-
   function bootstrapPayload() {
     return state.payload || {};
   }
@@ -176,7 +169,10 @@
     const payload = bootstrapPayload();
     const parts = resolveShellParts(host, payload);
     if (!parts) {
-      markInitialContentPainted(host);
+      window.__wizardryNotifyCurrentManagedPageReady({
+        rootNode: host || null,
+        markPageReady: true
+      });
       return;
     }
 
@@ -232,7 +228,10 @@
       });
     }
 
-    markInitialContentPainted(host);
+    window.__wizardryNotifyCurrentManagedPageReady({
+      rootNode: host || null,
+      markPageReady: true
+    });
 
     registerGodotServiceWorker().then(function () {
       return hasCurrentGodotCache();
@@ -258,7 +257,10 @@
     const mounts = Array.from(document.querySelectorAll('[data-overworld-game], .overworld-game-mount'));
     mounts.forEach(mount);
     if (!mounts.length) {
-      markInitialContentPainted(null);
+      window.__wizardryNotifyCurrentManagedPageReady({
+        rootNode: null,
+        markPageReady: true
+      });
     }
   }
 

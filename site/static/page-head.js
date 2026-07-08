@@ -1503,6 +1503,14 @@
     return true;
   }
 
+  function notifyCurrentManagedPageReady(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var resolvedSlug = Object.prototype.hasOwnProperty.call(opts, 'slug')
+      ? String(opts.slug || '')
+      : (routeRootSlugFromDom() || slugFromPath(window.location.pathname || '/') || '');
+    return notifyInitialContentPainted(resolvedSlug, opts);
+  }
+
   function renderLoadFallback(err, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var consoleLabel = String(opts.consoleLabel || 'Page').trim() || 'Page';
@@ -1953,6 +1961,7 @@
   }
 
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
+  window.__wizardryNotifyCurrentManagedPageReady = notifyCurrentManagedPageReady;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;

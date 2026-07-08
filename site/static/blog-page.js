@@ -253,13 +253,6 @@
       });
   }
 
-  function markInitialContentPainted() {
-    window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state,
-      markPageReady: true
-    });
-  }
-
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -5231,7 +5224,10 @@
       }
     });
     waitForInitialDraftNotice().finally(function () {
-      markInitialContentPainted();
+      window.__wizardryNotifyCurrentManagedPageReady({
+        state: state,
+        markPageReady: true
+      });
     });
 
     loadPageState({ deferRender: true }).finally(function () {
