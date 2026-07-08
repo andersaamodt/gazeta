@@ -384,7 +384,6 @@
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Untitled'),
-      titleFallbackText: 'Untitled',
       titleSyncOptions: {
         messageVariant: 'local_source'
       },

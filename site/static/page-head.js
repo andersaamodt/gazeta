@@ -94,14 +94,13 @@
     }
   }
 
-  function ensureReadOnlyTitleShell(titleNode, fallbackText) {
+  function ensureReadOnlyTitleShell(titleNode) {
     if (!titleNode) {
       return { text: null, actions: null };
     }
     var existingActions = titleNode.querySelector('.list-page-title-actions');
     var actionsId = String(existingActions && existingActions.id || '').trim();
     var actionsClassName = String(existingActions && existingActions.className || 'list-page-title-actions').trim() || 'list-page-title-actions';
-    var fallback = String(fallbackText || '').trim();
     var text = titleNode.querySelector('.list-page-title-text');
     var actions = actionsId ? document.getElementById(actionsId) : existingActions;
     if (!text) {
@@ -114,9 +113,6 @@
           text.appendChild(child);
         }
         child = next;
-      }
-      if (!text.textContent && fallback) {
-        text.textContent = fallback;
       }
       if (actions && actions.parentNode === titleNode) {
         titleNode.insertBefore(text, actions);
@@ -145,7 +141,7 @@
     return { text: text, actions: actions };
   }
 
-  function titleActionsHostHtml(titleNode, options) {
+  function titleActionsHostHtml(titleNode) {
     var existingActions = titleNode && titleNode.querySelector
       ? titleNode.querySelector('.list-page-title-actions')
       : null;
@@ -172,16 +168,16 @@
     return text;
   }
 
-  function renderReadOnlyTitleShell(titleNode, textValue, fallbackText) {
-    var shell = ensureReadOnlyTitleShell(titleNode, fallbackText);
+  function renderReadOnlyTitleShell(titleNode, textValue) {
+    var shell = ensureReadOnlyTitleShell(titleNode);
     if (shell && shell.text) {
       shell.text.textContent = String(textValue || '');
     }
     return shell;
   }
 
-  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, fallbackText, syncOptions) {
-    var shell = renderReadOnlyTitleShell(titleNode, textValue, fallbackText);
+  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, syncOptions) {
+    var shell = renderReadOnlyTitleShell(titleNode, textValue);
     if (titleNode) {
       titleNode.hidden = false;
     }
@@ -243,7 +239,6 @@
         opts.titleNode,
         opts.titleText,
         opts.syncStatus,
-        opts.titleFallbackText,
         opts.titleSyncOptions
       );
     }
@@ -270,7 +265,7 @@
     var opts = options && typeof options === 'object' ? options : {};
     var activeField = String(opts.activeField || '').trim().toLowerCase();
     var value = String(opts.value || opts.fallbackText || '');
-    var actionsHtml = titleActionsHostHtml(targetNode, opts);
+    var actionsHtml = titleActionsHostHtml(targetNode);
     var editLabel = String(opts.editLabel || 'Edit...');
     var inputId = String(opts.inputId || '').trim();
     var inputAttrName = String(opts.inputAttrName || '').trim();
@@ -354,7 +349,6 @@
       titleNode: opts.titleNode,
       titleText: opts.titleText,
       syncStatus: opts.syncStatus,
-      titleFallbackText: opts.titleFallbackText,
       titleSyncOptions: opts.titleSyncOptions,
       descriptionNode: opts.descriptionNode,
       descriptionPayload: opts.descriptionPayload,

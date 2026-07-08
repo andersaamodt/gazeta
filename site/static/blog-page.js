@@ -462,7 +462,6 @@
       pageTitle: title,
       titleNode: els.title,
       titleText: title,
-      titleFallbackText: 'Blog',
       syncStatus: state.payload && state.payload.sync_status,
       descriptionNode: els.description,
       descriptionPayload: state.payload,

@@ -3600,7 +3600,6 @@
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Profile'),
-      titleFallbackText: 'Profile',
       titleSyncOptions: {
         messageVariant: 'local_source'
       },

@@ -341,7 +341,6 @@
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Public Ranking'),
-      titleFallbackText: 'Public Ranking',
       titleSyncOptions: {
         messageVariant: 'local_source'
       },
