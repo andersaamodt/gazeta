@@ -58,7 +58,11 @@ fi
 is_admin=false
 req_token=$(blog_param session_token)
 req_csrf=$(blog_param csrf_token)
+viewer_authenticated=false
 if [ -n "$req_token" ] && blog_load_session "$req_token" 2>/dev/null; then
+  if [ -n "$req_csrf" ] && [ "$req_csrf" = "$BLOG_SESSION_CSRF" ]; then
+    viewer_authenticated=true
+  fi
   if [ -n "$req_csrf" ] && [ "$req_csrf" = "$BLOG_SESSION_CSRF" ] && blog_user_is_admin "$BLOG_SESSION_USERNAME"; then
     is_admin=true
     BLOG_SESSION_IS_ADMIN=true
@@ -421,6 +425,7 @@ jq -cn \
   --arg nav_title "$nav_title" \
   --argjson kind "$kind" \
   --argjson is_admin "$( [ "$is_admin" = "true" ] && printf true || printf false )" \
+  --argjson viewer_authenticated "$( [ "$viewer_authenticated" = "true" ] && printf true || printf false )" \
   --argjson viewer_can_submit "$( [ "$viewer_can_submit" = "true" ] && printf true || printf false )" \
   --arg view_mode "$view_mode" \
   --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
@@ -439,6 +444,7 @@ jq -cn \
     nav_title: $nav_title,
     kind: $kind,
     is_admin: $is_admin,
+    viewer_authenticated: $viewer_authenticated,
     viewer_can_submit: $viewer_can_submit,
     view_mode: $view_mode,
     canonical_exists: $canonical_exists,

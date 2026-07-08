@@ -411,7 +411,20 @@ def list_vote_arrow_svg(direction):
     path = "M12 20 4.5 10.8h4.25V4h6.5v6.8h4.25L12 20Z" if direction == "down" else "M12 4 19.5 13.2h-4.25V20h-6.5v-6.8H4.5L12 4Z"
     return '<svg class="list-entry-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="%s" fill="currentColor"/></svg>' % path
 
-def vote_controls(entry, allow_votes):
+def vote_tooltip(entry, signed_in):
+    if not signed_in:
+        return "Sign in to vote."
+    viewer_vote = normalize_vote_value(entry.get("viewer_vote"))
+    viewer_can_vote_now = entry.get("viewer_can_vote_now") is not False
+    if viewer_vote > 0:
+        return "Signed-in voting enabled. Your upvote is recorded%s." % ("" if viewer_can_vote_now else " for the current cooldown window")
+    if viewer_vote < 0:
+        return "Signed-in voting enabled. Your downvote is recorded%s." % ("" if viewer_can_vote_now else " for the current cooldown window")
+    if not viewer_can_vote_now:
+        return "Signed-in voting enabled. You have already voted in the current cooldown window."
+    return "Signed-in voting enabled."
+
+def vote_controls(entry, allow_votes, signed_in):
     entry_id = entry_key(entry)
     if not allow_votes or not entry_id:
         return ""
@@ -422,20 +435,32 @@ def vote_controls(entry, allow_votes):
     escaped_id = html.escape(entry_id, quote=True)
     upvote_only = page_slug == "reading-list"
     control_class = "list-entry-vote-controls is-upvote-only" if upvote_only else "list-entry-vote-controls"
+    viewer_vote = normalize_vote_value(entry.get("viewer_vote")) if signed_in else 0
+    viewer_can_vote_now = entry.get("viewer_can_vote_now") is not False if signed_in else False
+    disabled_attrs = "" if signed_in else ' disabled aria-disabled="true"'
+    upvote_class = "list-entry-vote-btn is-upvote"
+    if signed_in and viewer_vote > 0:
+        upvote_class += " is-stale" if viewer_can_vote_now else " is-active"
+    downvote_class = "list-entry-vote-btn is-downvote"
+    if signed_in and viewer_vote < 0:
+        downvote_class += " is-stale" if viewer_can_vote_now else " is-active"
     downvote = "" if upvote_only else (
-        '<button type="button" class="list-entry-vote-btn is-downvote" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="-1" aria-label="Downvote" disabled aria-disabled="true">%s</button>'
-        % (escaped_id, list_vote_arrow_svg("down"))
+        '<button type="button" class="%s" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="-1" aria-label="Downvote"%s>%s</button>'
+        % (downvote_class, escaped_id, disabled_attrs, list_vote_arrow_svg("down"))
     )
     return (
-        '<span class="%s" data-list-entry-id="%s" aria-label="Entry score" title="Sign in to vote.">'
-        '<button type="button" class="list-entry-vote-btn is-upvote" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="1" aria-label="Upvote" disabled aria-disabled="true">%s</button>'
+        '<span class="%s" data-list-entry-id="%s" aria-label="Entry score" title="%s">'
+        '<button type="button" class="%s" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="1" aria-label="Upvote"%s>%s</button>'
         '<span class="list-entry-score">%s</span>'
         '%s'
         '</span>'
     ) % (
         control_class,
         escaped_id,
+        html.escape(vote_tooltip(entry, signed_in), quote=True),
+        upvote_class,
         escaped_id,
+        disabled_attrs,
         list_vote_arrow_svg("up"),
         html.escape(str(score), quote=True),
         downvote,
@@ -485,7 +510,7 @@ def sort_entries_for_votes(entries, allow_votes):
         return (-score, -vote_action_rank(latest_vote), -latest_at if latest_vote > 0 else latest_at if latest_vote < 0 else 0, index)
     return [entry for _index, entry in sorted(enumerate(entries), key=sort_key)]
 
-def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False, color_map=None, allow_votes=False, row_index=0, hidden_default_markers=None):
+def row_html(entry, group_by="", section_label="", show_markers=False, gallery=False, color_map=None, allow_votes=False, row_index=0, hidden_default_markers=None, viewer_authenticated=False):
     line = text(entry.get("markdown"))
     description = text(entry.get("description"))
     image = text(entry.get("image_url"))
@@ -508,7 +533,7 @@ def row_html(entry, group_by="", section_label="", show_markers=False, gallery=F
     if gallery and description:
         desc = '<span class="list-entry-description-inline">%s</span>' % md_inline(description)
     key = html.escape(entry_key(entry), quote=True)
-    votes = vote_controls(entry, allow_votes)
+    votes = vote_controls(entry, allow_votes, viewer_authenticated)
     first_line_class = "list-entry-first-line" + (" has-votes" if votes else "")
     row_class = "list-entry-line list-depth-%d" % depth
     if row_index % 2 == 1:
@@ -557,6 +582,7 @@ show_markers = state.get("show_markers") is True
 show_marker_filters = state.get("show_marker_filters") is True
 allow_votes = state.get("allow_signed_in_votes") is True
 default_markers = text(state.get("default_markers"))
+viewer_authenticated = bool(payload.get("viewer_authenticated"))
 source_entries = state.get("elements") if isinstance(state.get("elements"), list) else state.get("entries")
 if not isinstance(source_entries, list):
     source_entries = []
@@ -572,7 +598,18 @@ hidden_default_markers = selected_default_marker_set(entries, show_marker_filter
 
 parts = []
 if state.get("allow_signed_in_submissions") is True:
-    parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><div class="list-public-submit-reveal" aria-hidden="true"><div class="list-public-submit-fields"><input type="text" id="list-public-submit-title" placeholder="New entry"><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit">Add</button></div></div><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="Add entry" title="Add entry" aria-expanded="false"><span class="list-public-submit-toggle-icon" aria-hidden="true">+</span></button></div></section>')
+    submit_disabled = "" if viewer_authenticated else ' disabled aria-disabled="true"'
+    submit_placeholder = "New entry" if viewer_authenticated else "Sign in to add entries"
+    submit_label = "Add entry" if viewer_authenticated else "Sign in to add entries"
+    toggle_disabled = "" if viewer_authenticated else ' disabled aria-disabled="true"'
+    parts.append('<section class="list-public-submit" aria-label="Add list entry"><div class="list-public-submit-inline"><div class="list-public-submit-reveal" aria-hidden="true"><div class="list-public-submit-fields"><input type="text" id="list-public-submit-title" placeholder="%s"%s><button type="button" class="list-admin-primary-btn list-public-submit-add" data-list-public-action="submit"%s>Add</button></div></div><button type="button" class="list-public-submit-toggle" data-list-public-action="expand-submit" aria-label="%s" title="%s" aria-expanded="false"%s><span class="list-public-submit-toggle-icon" aria-hidden="true">+</span></button></div></section>' % (
+        html.escape(submit_placeholder, quote=True),
+        submit_disabled,
+        submit_disabled,
+        html.escape(submit_label, quote=True),
+        html.escape(submit_label, quote=True),
+        toggle_disabled,
+    ))
 
 parts.append(marker_filter_html(entries, show_marker_filters, default_markers, marker_color_by_token))
 
@@ -600,13 +637,13 @@ elif group_by in ("year", "first_letter", "month", "marker"):
         else:
             parts.append('<ul class="list-entries">')
             for row_index, entry in enumerate(sort_entries_for_votes(bucket, allow_votes)):
-                parts.append(row_html(entry, group_by, label, show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers))
+                parts.append(row_html(entry, group_by, label, show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers, viewer_authenticated))
             parts.append("</ul>")
         parts.append("</section>")
 elif view == "tile":
     parts.append('<ul class="list-tiles">%s</ul>' % "".join(tile_html(entry) for entry in display_entries))
 else:
-    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers) for row_index, entry in enumerate(sort_entries_for_votes(display_entries, allow_votes))))
+    parts.append('<ul class="list-entries">%s</ul>' % "".join(row_html(entry, "", "", show_markers, gallery, marker_color_by_token, allow_votes, row_index, hidden_default_markers, viewer_authenticated) for row_index, entry in enumerate(sort_entries_for_votes(display_entries, allow_votes))))
 
 if after:
     parts.append(after)
@@ -670,7 +707,23 @@ PY
       | if ($date | length) == 0 or ($group_by == "year" and $date == $section_label) then ""
         else "<span class=\"list-entry-date-pill\">" + ($date | h) + "</span>"
         end;
-    def row_html($e; $group_by; $section_label; $show_markers; $gallery):
+    def vote_tooltip($e; $viewer_authenticated):
+      if (not $viewer_authenticated) then
+        "Sign in to vote."
+      else
+        (($e.viewer_vote // 0) | tonumber? // 0) as $viewer_vote
+        | (($e.viewer_can_vote_now // true) == false) as $cooldown_blocked
+        | if $viewer_vote > 0 then
+            "Signed-in voting enabled. Your upvote is recorded" + (if $cooldown_blocked then " for the current cooldown window." else "." end)
+          elif $viewer_vote < 0 then
+            "Signed-in voting enabled. Your downvote is recorded" + (if $cooldown_blocked then " for the current cooldown window." else "." end)
+          elif $cooldown_blocked then
+            "Signed-in voting enabled. You have already voted in the current cooldown window."
+          else
+            "Signed-in voting enabled."
+          end
+      end;
+    def row_html($e; $group_by; $section_label; $show_markers; $gallery; $viewer_authenticated):
       (($e.markdown // "") | tostring) as $line
       | (($e.description // "") | tostring) as $description
       | (($e.image_url // "") | tostring) as $image
@@ -688,8 +741,20 @@ PY
       | (if $gallery and ($description | length) > 0 then
           "<span class=\"list-entry-description-inline\">" + ($description | md_inline) + "</span>"
         else "" end) as $desc
+      | (if (($s.allow_signed_in_votes // false) == true and ($key | length) > 0) then
+          (($e.viewer_vote // 0) | tonumber? // 0) as $viewer_vote
+          | (($e.viewer_can_vote_now // true) == false) as $viewer_cooldown
+          | (if $viewer_authenticated and $viewer_vote > 0 then "list-entry-vote-btn is-upvote" + (if $viewer_cooldown then " is-active" else " is-stale" end) else "list-entry-vote-btn is-upvote" end) as $upvote_class
+          | (if $viewer_authenticated and $viewer_vote < 0 then "list-entry-vote-btn is-downvote" + (if $viewer_cooldown then " is-active" else " is-stale" end) else "list-entry-vote-btn is-downvote" end) as $downvote_class
+          | (if $viewer_authenticated then "" else " disabled aria-disabled=\"true\"" end) as $vote_disabled
+          | "<span class=\"list-entry-vote-controls" + (if $page_slug == "reading-list" then " is-upvote-only" else "" end) + "\" data-list-entry-id=\"" + ($key | h) + "\" aria-label=\"Entry score\" title=\"" + (vote_tooltip($e; $viewer_authenticated) | h) + "\">" +
+            "<button type=\"button\" class=\"" + $upvote_class + "\" data-list-public-action=\"vote\" data-list-entry-id=\"" + ($key | h) + "\" data-list-vote-value=\"1\" aria-label=\"Upvote\"" + $vote_disabled + ">" + list_vote_arrow_svg("up") + "</button>" +
+            "<span class=\"list-entry-score\">" + (((($e.list_score // 0) | tonumber? // 0) | round | tostring) | h) + "</span>" +
+            (if $page_slug == "reading-list" then "" else "<button type=\"button\" class=\"" + $downvote_class + "\" data-list-public-action=\"vote\" data-list-entry-id=\"" + ($key | h) + "\" data-list-vote-value=\"-1\" aria-label=\"Downvote\"" + $vote_disabled + ">" + list_vote_arrow_svg("down") + "</button>" end) +
+            "</span>"
+        else "" end) as $votes
       | "<li class=\"list-entry-line list-depth-" + ($depth | tostring) + "\" data-list-entry-id=\"" + ($key | h) + "\" style=\"--list-depth:" + ($depth | tostring) + ";\"" + entry_href_attr($e) + ">" +
-        "<div class=\"list-entry-first-line\"><span class=\"list-entry-main-inline\">" + $icon + linked_text($line; $post_url; "list-entry-markdown") + $desc + "</span>" + $meta + "</div></li>";
+        "<div class=\"list-entry-first-line" + (if ($votes | length) > 0 then " has-votes" else "" end) + "\">" + $votes + "<span class=\"list-entry-main-inline\">" + $icon + linked_text($line; $post_url; "list-entry-markdown") + $desc + "</span>" + $meta + "</div></li>";
     def tile_html($e):
       (($e.markdown // "") | tostring) as $line
       | (($e.description // "") | tostring) as $description
@@ -715,9 +780,10 @@ PY
     | (if $gallery and ($raw_view | length) == 0 then "tile" elif $raw_view == "tile" then "tile" else "list" end) as $view
     | (($s.group_by // "") | tostring) as $group_by
     | (($s.show_markers // false) == true) as $show_markers
+    | ((.viewer_authenticated // false) == true) as $viewer_authenticated
     | (($s.elements // $s.entries // []) | map(select(((.type // "entry") | tostring) == "entry" and (((.markdown // "") | tostring | length) > 0)))) as $entries
     | (if (($s.allow_signed_in_submissions // false) == true) then
-        "<section class=\"list-public-submit\" aria-label=\"Add list entry\"><div class=\"list-public-submit-inline\"><div class=\"list-public-submit-reveal\" aria-hidden=\"true\"><div class=\"list-public-submit-fields\"><input type=\"text\" id=\"list-public-submit-title\" placeholder=\"New entry\"><button type=\"button\" class=\"list-admin-primary-btn list-public-submit-add\" data-list-public-action=\"submit\">Add</button></div></div><button type=\"button\" class=\"list-public-submit-toggle\" data-list-public-action=\"expand-submit\" aria-label=\"Add entry\" title=\"Add entry\" aria-expanded=\"false\"><span class=\"list-public-submit-toggle-icon\" aria-hidden=\"true\">+</span></button></div></section>"
+        "<section class=\"list-public-submit\" aria-label=\"Add list entry\"><div class=\"list-public-submit-inline\"><div class=\"list-public-submit-reveal\" aria-hidden=\"true\"><div class=\"list-public-submit-fields\"><input type=\"text\" id=\"list-public-submit-title\" placeholder=\"" + (if $viewer_authenticated then "New entry" else "Sign in to add entries" end) + "\"" + (if $viewer_authenticated then "" else " disabled aria-disabled=\"true\"" end) + "><button type=\"button\" class=\"list-admin-primary-btn list-public-submit-add\" data-list-public-action=\"submit\"" + (if $viewer_authenticated then "" else " disabled aria-disabled=\"true\"" end) + ">Add</button></div></div><button type=\"button\" class=\"list-public-submit-toggle\" data-list-public-action=\"expand-submit\" aria-label=\"" + (if $viewer_authenticated then "Add entry" else "Sign in to add entries" end) + "\" title=\"" + (if $viewer_authenticated then "Add entry" else "Sign in to add entries" end) + "\" aria-expanded=\"false\"" + (if $viewer_authenticated then "" else " disabled aria-disabled=\"true\"" end) + "><span class=\"list-public-submit-toggle-icon\" aria-hidden=\"true\">+</span></button></div></section>"
       else "" end) as $submit
     | (if (($s.extras_after // "") | tostring | length) > 0 then
         "<section class=\"nostr-page-extra nostr-page-extra-after\"><p>" + (($s.extras_after // "") | md_inline) + "</p></section>"
@@ -733,14 +799,14 @@ PY
                 | .label = $label
                 | .open = true
               else . end
-            | .html = (.html + (if $view == "tile" then tile_html($e) else row_html($e; $group_by; $label; $show_markers; $gallery) end))
+            | .html = (.html + (if $view == "tile" then tile_html($e) else row_html($e; $group_by; $label; $show_markers; $gallery; $viewer_authenticated) end))
           )
           | .html + "</ul></section>"
         ) + $after
       elif $view == "tile" then
         $submit + "<ul class=\"list-tiles\">" + ($entries | map(tile_html(.)) | join("")) + "</ul>" + $after
       else
-        $submit + "<ul class=\"list-entries\">" + ($entries | map(row_html(.; ""; ""; $show_markers; $gallery)) | join("")) + "</ul>" + $after
+        $submit + "<ul class=\"list-entries\">" + ($entries | map(row_html(.; ""; ""; $show_markers; $gallery; $viewer_authenticated)) | join("")) + "</ul>" + $after
       end
   ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
 }

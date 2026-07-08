@@ -438,6 +438,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_draft_
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_source" = "true" ]; then' 'public Nostr-backed pages prefer the server copy whenever local source exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"' 'runtime Nostr page payloads finalize shared prerender fragments and signature together'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'viewer_authenticated=false' 'runtime Nostr page payloads track whether the fetched viewer is authenticated for viewer-specific prerender shells'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'viewer_can_submit=false' 'runtime Nostr page payloads track whether the fetched viewer can submit interactive ranking content'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_source_sync_signature "$cfg_json"' 'Nostr source page sync has a deterministic input signature'
@@ -464,6 +465,7 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-prerender-nostr-page-bootstraps" 'h
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'list hydration preserves matching static prerendered DOM through the shared managed-page bootstrap helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'canPreserveStaticPrerender' 'list hydration only preserves static prerender when user-specific controls cannot differ'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryCanUseVisitorPrerenderReadOnly' 'list hydration delegates visitor prerender eligibility baseline to the shared page-head helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'allowAuthenticated: allowAuthenticated' 'list bootstrap preservation explicitly allows authenticated viewer-owned prerender when the payload already carries the matching shell'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'initializePrerenderMarkerFiltersFromPayload' 'list hydration seeds marker filter state when preserving static prerendered DOM'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'allowRead: window.__wizardryHasLikelyAuthenticatedSession' 'anonymous list hydration skips persisted browser bootstrap caches through the shared auth/cache helper policy'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());' 'public list payloads are not written into persisted browser bootstrap caches through the shared auth/cache helper policy'
@@ -695,6 +697,9 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function prere
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" "prerenderFragment('content_html')" 'list runtime no longer decodes Lodestone content fragment keys directly'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'content_attrs' 'list runtime no longer parses Lodestone content attrs directly'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryReadPrerenderHtmlFragment' 'list runtime no longer reads Lodestone fragments directly when shared mount/shell helpers can own the adoption'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function canAdoptAuthenticatedPrerender(payload) {' 'list runtime centralizes authenticated viewer prerender eligibility in one semantic helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'allowAuthenticated: canAdoptAuthenticatedPrerender' 'list read mode explicitly opts authenticated viewers into server-owned prerender when the fetched payload already carries the correct interaction shell'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'payload.viewer_authenticated === true' 'list prerender adoption keys off the fetched payload authentication state instead of a blanket session ban'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function markHydrationPageReady()' 'contact runtime no longer carries a vestigial hydration-ready wrapper'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function stripLegacyNostrSyncPills' 'contact runtime no longer carries a private legacy sync-pill stripper'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function removeLegacyTitleBlock()' 'contact runtime no longer carries a private legacy title-block remover'
@@ -868,6 +873,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'state.staticPreren
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'if (!hasChanges || canPreserve) {' 'blog hydration keeps adopted prerender refresh decisions local and skips redraw when nothing changed or the adopted list is still valid'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'staticPrerenderListAdopted: false' 'list hydration tracks adopted static prerendered content'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'function shouldPreserveAdoptedStaticPrerender()' 'list hydration can preserve adopted prerendered content after async refresh'
+assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'canAdoptAuthenticatedPrerender(state.payload)' 'list hydration can keep an adopted prerender alive for authenticated viewers when the payload shell already matches'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {' 'list hydration keeps adopted prerender refresh decisions local and skips redraw when the adopted static content remains valid'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/pages/blog.stone.html" '<div id="blog-post-list" class="post-list" data-gazeta-component="blog-post-list"{@html prerender_attrs}><gazeta-blog-post-list posts={posts_json}></gazeta-blog-post-list></div>' 'blog Lodestone page keeps the canonical blog-post-list wrapper in template ownership while routing card children through the Gazeta-owned component'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/pages/blog.stone.html" '<p id="blog-empty" class="placeholder"{@html empty_attrs}>{empty_text}</p>' 'blog Lodestone page owns the hydration-matching empty-state shell alongside the post list'
@@ -1483,7 +1489,10 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'disabled aria-disa
 assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'list-entry-vote-controls' 'list prerender includes reading-list vote controls in static HTML'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'data-list-vote-value="-1"' 'list prerender includes downvote controls in static HTML'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'page_slug == "reading-list"' 'reading-list prerender omits downvote controls'
-assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'title="Sign in to vote."' 'list prerender uses anonymous vote tooltip for static HTML'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'def vote_tooltip(entry, signed_in):' 'list prerender centralizes vote tooltip text in a shared helper instead of duplicating inline source markup'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'return "Sign in to vote."' 'list prerender keeps the anonymous vote tooltip text available through the shared helper'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'Signed-in voting enabled.' 'list prerender can emit authenticated vote tooltip text from fetched viewer state'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'Sign in to add entries' 'list prerender can emit anonymous submit-shell copy from fetched viewer state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" 'signedIn && viewerVote > 0' 'signed-out vote buttons ignore viewer-specific active state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" "slug === 'reading-list'" 'reading-list client votes are upvote-only'
 assert_file_contains "$SITE_SOURCE_ROOT/static/style.css" '.list-entry-vote-controls.is-upvote-only' 'reading-list upvote-only controls have a dedicated layout'
@@ -2596,6 +2605,50 @@ ranking_readonly_payload=$(jq -cn '{
 }')
 ranking_readonly_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_readonly_payload")
 assert_not_contains "$ranking_readonly_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender omits the submit-composer shell when the payload is read-only'
+
+list_authenticated_payload=$(jq -cn '{
+  viewer_authenticated: true,
+  state: {
+    allow_signed_in_submissions: true,
+    allow_signed_in_votes: true,
+    elements: [
+      {
+        type: "entry",
+        _list_entry_id: "entry-1",
+        markdown: "Authenticated fixture",
+        list_score: 3,
+        viewer_vote: 1,
+        viewer_can_vote_now: false
+      }
+    ]
+  }
+}')
+list_authenticated_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_list_html "$2"' sh "$ROOT_DIR" "$list_authenticated_payload")
+assert_contains "$list_authenticated_html" 'placeholder="New entry"' 'list prerender shows the enabled submit placeholder for authenticated viewers'
+assert_not_contains "$list_authenticated_html" 'placeholder="Sign in to add entries"' 'list prerender does not show anonymous submit placeholder for authenticated viewers'
+assert_not_contains "$list_authenticated_html" 'data-list-public-action="submit" disabled aria-disabled="true"' 'list prerender enables submit action for authenticated viewers'
+assert_contains "$list_authenticated_html" 'title="Signed-in voting enabled. Your upvote is recorded for the current cooldown window."' 'list prerender emits authenticated vote tooltip text from fetched viewer state'
+assert_contains "$list_authenticated_html" 'class="list-entry-vote-btn is-upvote is-active"' 'list prerender emits authenticated active vote state from fetched viewer state'
+
+list_anonymous_payload=$(jq -cn '{
+  viewer_authenticated: false,
+  state: {
+    allow_signed_in_submissions: true,
+    allow_signed_in_votes: true,
+    elements: [
+      {
+        type: "entry",
+        _list_entry_id: "entry-1",
+        markdown: "Anonymous fixture",
+        list_score: 3
+      }
+    ]
+  }
+}')
+list_anonymous_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_list_html "$2"' sh "$ROOT_DIR" "$list_anonymous_payload")
+assert_contains "$list_anonymous_html" 'placeholder="Sign in to add entries"' 'list prerender shows the anonymous submit placeholder when no authenticated viewer state is present'
+assert_contains "$list_anonymous_html" 'data-list-public-action="submit" disabled aria-disabled="true"' 'list prerender disables submit action for anonymous viewers'
+assert_contains "$list_anonymous_html" 'title="Sign in to vote."' 'list prerender keeps anonymous vote tooltip text when no authenticated viewer state is present'
 
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"
