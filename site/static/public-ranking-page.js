@@ -1040,6 +1040,11 @@
       });
       window.__wizardryMergeManagedPagePayload(state.payload, data);
       state.draft = normalizeDraftState(data.state || state.draft || {});
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       renderAll();
       return true;
@@ -1097,6 +1102,11 @@
       window.__wizardryMergeManagedPagePayload(state.payload, data);
       state.draft = normalizeDraftState(data.state || state.payload.state || {});
       maybeSetMetricFromPayload();
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       renderAll();
     } catch (err) {

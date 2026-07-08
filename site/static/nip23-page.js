@@ -699,6 +699,11 @@
       } else {
         state.payload.state = normalizeDraftState(state.draft || {});
       }
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       renderAll();
       return true;
@@ -762,6 +767,11 @@
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
       state.draft = normalizeDraftState(data.state);
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       renderAll();
     }).catch(function (err) {

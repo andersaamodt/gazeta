@@ -778,6 +778,22 @@
     });
   }
 
+  function persistManagedPagePayload(payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var persistMode = String(opts.persistMode || 'always').trim().toLowerCase();
+    return writePageBootstrapCache(payload, {
+      slug: opts.slug,
+      authSignature: opts.authSignature || sessionAuthSignature,
+      clearOnDeny: opts.clearOnDeny,
+      allowWrite: function (nextPayload) {
+        if (persistMode === 'authenticated_admin') {
+          return !!(nextPayload && nextPayload.is_admin && hasLikelyAuthenticatedSession());
+        }
+        return true;
+      }
+    });
+  }
+
   function bindSessionAuthRefresh(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
@@ -1424,7 +1440,7 @@
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
-  window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
+  window.__wizardryPersistManagedPagePayload = persistManagedPagePayload;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;

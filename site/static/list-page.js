@@ -180,12 +180,10 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
+    window.__wizardryPersistManagedPagePayload(payload, {
       slug: slug,
       authSignature: authSignature,
-      allowWrite: function (nextPayload) {
-        return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
-      }
+      persistMode: 'authenticated_admin'
     });
   }
 

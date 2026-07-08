@@ -4514,9 +4514,10 @@
   }
 
   function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
+    window.__wizardryPersistManagedPagePayload(payload, {
       slug: slug,
-      authSignature: authSignature
+      authSignature: authSignature,
+      persistMode: 'always'
     });
   }
 

@@ -4143,6 +4143,11 @@
       } else {
         state.payload.state = normalizeDraftState(state.draft || {});
       }
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       if (state.activeHeadField === 'title' || state.activeHeadField === 'description') {
         // Avoid replacing the active head input while autosave returns.
@@ -4258,6 +4263,11 @@
       state.payload.draft_exists = true;
       state.payload.draft_differs = false;
       state.draft = normalizeDraftState(data.state);
+      window.__wizardryPersistManagedPagePayload(state.payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature,
+        persistMode: 'authenticated_admin'
+      });
       setSaveStatus('saved');
       renderAll();
     }).catch(function (err) {
