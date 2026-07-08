@@ -34,6 +34,7 @@
     payload: null,
     draft: null,
     editMode: false,
+    activeHeadField: '',
     navTitle: '',
     navTitleEditing: false,
     navTitleInput: '',
@@ -306,13 +307,21 @@
   function renderHead() {
     var s = getRenderState();
     window.__wizardryRenderManagedPageHeadForPage({
-      isAdmin: false,
+      isAdmin: isAdmin(),
       payload: state.payload,
       titleNode: els.title,
-      titleStateOptions: {
+      fieldStateOptions: {
         renderState: s,
         fallbackTitleText: fallbackPageTitle(),
-        syncMessageVariant: 'local_source'
+        syncMessageVariant: 'local_source',
+        isAdmin: isAdmin(),
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        titleInputId: 'nip23-head-title-input',
+        inputAttrName: 'data-nip23-head-input',
+        editAttrName: 'data-nip23-head-edit',
+        saveAttrName: 'data-nip23-head-save',
+        enableFocus: true
       },
       navbarTitleOptions: {
         configuredText: state.navTitle,
@@ -423,7 +432,7 @@
     return html;
   }
 
-  function renderLocalPreviewHtml(s) {
+  function renderReadOnlyContentHtml(s) {
     var outroHtml = '';
     if (String(s.extras_after || '').trim()) {
       outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
@@ -457,11 +466,10 @@
     }
     var s = getRenderState();
     if (isAdmin() && state.editMode) {
-      var previewHtml = currentPayloadPreviewHtml(s) || renderLocalPreviewHtml(s);
+      var previewHtml = currentPayloadPreviewHtml(s) || renderReadOnlyContentHtml(s);
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
-      html += '<label class="nostr-page-extra-edit"><span>Title <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><input type="text" id="nip23-title-input" value="' + escapeHtml(s.title || '') + '"></label>';
       html += '<label class="nostr-page-extra-edit"><span>Content (Markdown) <span class="nostr-page-scope-pill is-nostr">Nostr</span></span><textarea id="nip23-content-input" rows="12" placeholder="Write markdown content">' + escapeHtml(s.content || '') + '</textarea></label>';
       html += '<section class="nip23-product-editor" aria-label="Product settings">';
       html += '<h4>Product settings</h4>';
@@ -486,7 +494,7 @@
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        return '';
+        return renderReadOnlyContentHtml(s);
       }
     });
   }
@@ -696,6 +704,13 @@
           return;
         }
       }
+      var headEditNode = target.closest('[data-nip23-head-edit]');
+      if (headEditNode instanceof HTMLElement && isAdmin() && state.editMode) {
+        event.preventDefault();
+        state.activeHeadField = String(headEditNode.getAttribute('data-nip23-head-edit') || '').trim().toLowerCase();
+        renderHead();
+        return;
+      }
       if (!(actionNode instanceof HTMLElement)) {
         return;
       }
@@ -703,6 +718,7 @@
       if (action === 'toggle-edit') {
         state.editMode = !state.editMode;
         if (!state.editMode) {
+          state.activeHeadField = '';
           window.__wizardryResetManagedNavbarTitleState(state);
         }
         renderAll();
@@ -732,14 +748,13 @@
         state.navTitleInput = String(target.value || '');
         return;
       }
-      state.draft = normalizeDraftState(state.draft);
-      if (target.id === 'nip23-title-input') {
+      if (target instanceof HTMLInputElement && target.hasAttribute('data-nip23-head-input')) {
+        state.draft = normalizeDraftState(state.draft);
         state.draft.title = String(target.value || '');
-        renderHead();
-        renderAdmin();
         queueAutosave(500);
         return;
       }
+      state.draft = normalizeDraftState(state.draft);
       if (target.id === 'nip23-content-input') {
         state.draft.content = String(target.value || '');
         queueAutosave(500);
@@ -792,13 +807,48 @@
 
     root.addEventListener('keydown', function (event) {
       var target = event.target;
-      if (!(target instanceof HTMLInputElement) || !target.hasAttribute('data-page-nav-title-input')) {
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      if (target.hasAttribute('data-page-nav-title-input')) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          saveNavbarTitle();
+        }
+        return;
+      }
+      if (!isAdmin() || !state.editMode || !target.hasAttribute('data-nip23-head-input')) {
         return;
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        saveNavbarTitle();
+        state.activeHeadField = '';
+        renderHead();
+        renderAdmin();
+        return;
       }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        state.activeHeadField = '';
+        renderHead();
+      }
+    });
+
+    root.addEventListener('focusout', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLInputElement) || !isAdmin() || !state.editMode || !target.hasAttribute('data-nip23-head-input')) {
+        return;
+      }
+      window.setTimeout(function () {
+        var active = document.activeElement;
+        if (active instanceof HTMLElement && root.contains(active) && active.hasAttribute('data-nip23-head-input')) {
+          return;
+        }
+        if (state.activeHeadField) {
+          state.activeHeadField = '';
+          renderHead();
+        }
+      }, 0);
     });
   }
 
