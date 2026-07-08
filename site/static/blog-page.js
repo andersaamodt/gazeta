@@ -3815,25 +3815,12 @@
     });
   }
 
+  function renderedPostCardHtml(post) {
+    return String(post && post.rendered_html || '').trim();
+  }
+
   function postListSignature() {
-    return JSON.stringify(filteredPosts().map(function (post) {
-      return {
-        url: String(post && post.url || ''),
-        title: String(post && post.title || ''),
-        type: String(post && post.type || 'post'),
-        year: String(post && post.year || ''),
-        tags: normalizePostTags(post && post.tags),
-        summary: String(post && post.summary || ''),
-        summary_truncated: !!(post && post.summary_truncated),
-        published_date: String(post && (post.published_date || post.pub_date) || ''),
-        reading_minutes: Number(post && post.reading_minutes || 0) || 0,
-        author: String(post && post.author || ''),
-        link_url: String(post && post.link_url || ''),
-        comment_count: Number(post && post.comment_count || 0) || 0,
-        source_path: String(post && post.source_path || ''),
-        rendered_html: String(post && post.rendered_html || '')
-      };
-    }));
+    return JSON.stringify(filteredPosts().map(renderedPostCardHtml).filter(Boolean));
   }
 
   function renderFilters() {
@@ -3881,9 +3868,7 @@
     }
 
     els.empty.hidden = true;
-    els.list.innerHTML = shown.map(function (post) {
-      return String(post && post.rendered_html || '').trim();
-    }).filter(Boolean).join('');
+    els.list.innerHTML = shown.map(renderedPostCardHtml).filter(Boolean).join('');
     syncRenderedListDecorations();
   }
 
