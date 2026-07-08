@@ -5272,79 +5272,82 @@
     var lastErr = null;
     try {
       state.authSignature = authSignature();
-      for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        try {
-          var auth = window.__wizardryAuthPayload();
-          var payload = await apiPost('/cgi/blog-get-nostr-page', {
-            page_slug: slug,
-            session_token: auth.session_token,
-            csrf_token: auth.csrf_token
-          });
-          if (!isExpectedPayload(payload)) {
-            throw new Error('Unexpected page payload for list page');
-          }
-          var nextRenderSignature = JSON.stringify({
-            slug: String(payload && payload.slug || ''),
-            page_type: String(payload && payload.page_type || ''),
-            nav_title: String(payload && payload.nav_title || ''),
-            is_admin: !!(payload && payload.is_admin),
-            canonical_exists: !!(payload && payload.canonical_exists),
-            draft_differs: !!(payload && payload.draft_differs),
-            sync_status: payload && payload.sync_status ? payload.sync_status : null,
-            state: (payload && payload.state) ? payload.state : null
-          });
-          var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
-          state.payload = payload;
-          state.draft = readEditableStateFromPayload();
-          state.navTitle = String(payload.nav_title || '').trim();
-          state.navTitleEditing = false;
-          state.navTitleInput = '';
-          state.navTitleBusy = false;
-          state.pendingNewEntry = null;
-          state.markerFilterInclude = [];
-          state.markerFilterExclude = [];
-          state.markerFilterInitialized = false;
-          state.markerColorByToken = {};
-          state.createProductBusyUid = '';
-          state.viewModeOverride = '';
-          state.saveIndicatorVisible = false;
-          resetInlineHistory();
-          if (!state.activeEntryUid && state.draft.elements.length) {
-            state.activeEntryUid = state.draft.elements[0]._uid;
-          }
-          setSaveStatus('saved');
-          state.renderSignature = nextRenderSignature;
-          writeBootstrapCache(state.payload);
-          function renderPreservedStaticPrerender() {
-            initializePrerenderMarkerFiltersFromPayload();
-            renderHead();
-            renderAdmin();
-            renderValidation();
-          }
-          if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
-            renderPreservedStaticPrerender();
-          } else {
-            state.staticPrerenderListAdopted = false;
-            renderList();
-            renderAdmin();
-            renderValidation();
-            window.__wizardryNotifyInitialContentPainted(slug, {
-              state: state,
-              rootNode: root,
-              loadingClass: 'is-loading',
-              markPageReady: true
-            });
-          }
-          return;
-        } catch (err) {
-          lastErr = err;
-          if (attempt >= maxAttempts) {
-            break;
-          }
-          await new Promise(function (resolve) {
-            window.setTimeout(resolve, attempt * 220);
+      function applyFetchedPayload(payload) {
+        var nextRenderSignature = JSON.stringify({
+          slug: String(payload && payload.slug || ''),
+          page_type: String(payload && payload.page_type || ''),
+          nav_title: String(payload && payload.nav_title || ''),
+          is_admin: !!(payload && payload.is_admin),
+          canonical_exists: !!(payload && payload.canonical_exists),
+          draft_differs: !!(payload && payload.draft_differs),
+          sync_status: payload && payload.sync_status ? payload.sync_status : null,
+          state: (payload && payload.state) ? payload.state : null
+        });
+        var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
+        state.payload = payload;
+        state.draft = readEditableStateFromPayload();
+        state.navTitle = String(payload.nav_title || '').trim();
+        state.navTitleEditing = false;
+        state.navTitleInput = '';
+        state.navTitleBusy = false;
+        state.pendingNewEntry = null;
+        state.markerFilterInclude = [];
+        state.markerFilterExclude = [];
+        state.markerFilterInitialized = false;
+        state.markerColorByToken = {};
+        state.createProductBusyUid = '';
+        state.viewModeOverride = '';
+        state.saveIndicatorVisible = false;
+        resetInlineHistory();
+        if (!state.activeEntryUid && state.draft.elements.length) {
+          state.activeEntryUid = state.draft.elements[0]._uid;
+        }
+        setSaveStatus('saved');
+        state.renderSignature = nextRenderSignature;
+        function renderPreservedStaticPrerender() {
+          initializePrerenderMarkerFiltersFromPayload();
+          renderHead();
+          renderAdmin();
+          renderValidation();
+        }
+        if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
+          renderPreservedStaticPrerender();
+        } else {
+          state.staticPrerenderListAdopted = false;
+          renderList();
+          renderAdmin();
+          renderValidation();
+          window.__wizardryNotifyInitialContentPainted(slug, {
+            state: state,
+            rootNode: root,
+            loadingClass: 'is-loading',
+            markPageReady: true
           });
         }
+      }
+      for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        var payload = await window.__wizardryRefreshManagedNostrPage({
+          slug: slug,
+          authSignature: authSignature,
+          isExpectedPayload: isExpectedPayload,
+          allowWrite: function (nextPayload) {
+            return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
+          },
+          unexpectedPayloadMessage: 'Unexpected page payload for list page',
+          renderPayload: applyFetchedPayload,
+          handleError: function (err) {
+            lastErr = err;
+          }
+        });
+        if (payload) {
+          return;
+        }
+        if (attempt >= maxAttempts) {
+          break;
+        }
+        await new Promise(function (resolve) {
+          window.setTimeout(resolve, attempt * 220);
+        });
       }
       window.__wizardryRenderLoadFallback(lastErr, {
         consoleLabel: 'List page',
