@@ -5321,26 +5321,20 @@
             renderAdmin();
             renderValidation();
           }
-          window.__wizardryReconcileAdoptedPrerenderRefresh({
-            hasChanges: shouldRepaint,
-            canPreserve: shouldPreserveAdoptedStaticPrerender(),
-            renderStable: renderPreservedStaticPrerender,
-            renderPreserved: renderPreservedStaticPrerender,
-            beforeRepaint: function () {
-              state.staticPrerenderListAdopted = false;
-            },
-            renderRepainted: function () {
-              renderList();
-              renderAdmin();
-              renderValidation();
-              window.__wizardryNotifyInitialContentPainted(slug, {
-                state: state,
-                rootNode: root,
-                loadingClass: 'is-loading',
-                markPageReady: true
-              });
-            }
-          });
+          if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
+            renderPreservedStaticPrerender();
+          } else {
+            state.staticPrerenderListAdopted = false;
+            renderList();
+            renderAdmin();
+            renderValidation();
+            window.__wizardryNotifyInitialContentPainted(slug, {
+              state: state,
+              rootNode: root,
+              loadingClass: 'is-loading',
+              markPageReady: true
+            });
+          }
           return;
         } catch (err) {
           lastErr = err;

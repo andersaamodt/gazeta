@@ -439,29 +439,6 @@
     return null;
   }
 
-  function reconcileAdoptedPrerenderRefresh(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    if (!opts.hasChanges) {
-      if (typeof opts.renderStable === 'function') {
-        opts.renderStable();
-      }
-      return 'unchanged';
-    }
-    if (opts.canPreserve === true) {
-      if (typeof opts.renderPreserved === 'function') {
-        opts.renderPreserved();
-      }
-      return 'preserved';
-    }
-    if (typeof opts.beforeRepaint === 'function') {
-      opts.beforeRepaint();
-    }
-    if (typeof opts.renderRepainted === 'function') {
-      opts.renderRepainted();
-    }
-    return 'repainted';
-  }
-
   function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
@@ -1346,7 +1323,6 @@
   window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
   window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
   window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
-  window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;

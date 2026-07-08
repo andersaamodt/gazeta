@@ -5318,24 +5318,21 @@
       state.postsLoading = false;
       loadDraftNoticeData();
       var nextSignature = renderSignature();
-      var refreshMode = window.__wizardryReconcileAdoptedPrerenderRefresh({
-        hasChanges: state.renderSignature !== nextSignature,
-        canPreserve: state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature(),
-        renderPreserved: function () {
-          syncRenderedListDecorations();
-          renderHead();
-          renderAdmin();
-          renderDraftNotice();
-          renderValidation();
-          renderExtrasAfter();
-          renderFilters();
-          renderComposeUi();
-        },
-        renderRepainted: function () {
-          renderAll();
-        }
-      });
-      if (refreshMode !== 'unchanged') {
+      var hasChanges = state.renderSignature !== nextSignature;
+      var canPreserve = state.staticPrerenderListAdopted && state.adoptedPostListSignature === postListSignature();
+      if (!hasChanges || canPreserve) {
+        syncRenderedListDecorations();
+        renderHead();
+        renderAdmin();
+        renderDraftNotice();
+        renderValidation();
+        renderExtrasAfter();
+        renderFilters();
+        renderComposeUi();
+      } else {
+        renderAll();
+      }
+      if (hasChanges) {
         state.renderSignature = nextSignature;
       }
     });
