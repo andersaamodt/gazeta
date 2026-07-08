@@ -4513,6 +4513,13 @@
     });
   }
 
+  function writeBootstrapCache(payload) {
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
+      authSignature: authSignature
+    });
+  }
+
   function normalizedPayloadForRenderSignature() {
     if (!state.payload) {
       return null;
@@ -4589,49 +4596,64 @@
       maybeRepairRoute('blog-root-slug-mismatch');
       return Promise.resolve();
     }
-    var auth = window.__wizardryAuthPayload();
     state.authSignature = authSignature();
-    return apiPost('/cgi/blog-get-nostr-page', {
-      page_slug: requestedSlug,
-      session_token: auth.session_token,
-      csrf_token: auth.csrf_token
-    }).then(function (data) {
+    function hasExpectedSlug(payload) {
+      if (!payload || typeof payload !== 'object') {
+        return false;
+      }
+      return slugsEquivalent(String(payload.slug || '').trim(), slug);
+    }
+    function applyFetchedPageState(data) {
       var pageType = String(data && data.page_type || '').trim().toLowerCase();
       if (pageType && pageType !== 'blog') {
         maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
         return;
       }
-      window.__wizardryWritePageBootstrapCache(data, {
-        slug: slug,
-        authSignature: authSignature
-      });
-	      var previousSignature = state.renderSignature;
-	      state.payload = data;
-	      try {
-	        if (typeof data.is_admin !== 'undefined') {
+      var previousSignature = state.renderSignature;
+      state.payload = data;
+      try {
+        if (typeof data.is_admin !== 'undefined') {
           localStorage.setItem('last_auth_is_admin', data.is_admin ? '1' : '0');
         }
       } catch (_storageErr) {
         // Ignore storage sync failures.
-	      }
-	      applyDefaultFilters();
-	      if (!opts.deferRender) {
-	        renderFetchedPageStateIfChanged(previousSignature);
-	      }
-	      loadDraftNoticeData();
-    }).catch(function (err) {
-      var message = String(err && err.message || '');
-      if (/unknown nostr page slug/i.test(message) || /unknown_page/i.test(message)) {
-        maybeRepairRoute('unknown-page-slug');
       }
+      applyDefaultFilters();
       if (!opts.deferRender) {
-	        renderFetchedPageStateIfChanged(state.renderSignature);
-	      }
-	      loadDraftNoticeData();
-    }).finally(function () {
-      if (!opts.deferInitialFlags) {
-        state.initialPageStateLoaded = true;
-        maybeMarkInitialContentPainted();
+        renderFetchedPageStateIfChanged(previousSignature);
+      }
+      loadDraftNoticeData();
+    }
+    return window.__wizardryRefreshManagedNostrPage({
+      slug: slug,
+      pageSlug: requestedSlug,
+      authSignature: authSignature,
+      isExpectedPayload: hasExpectedSlug,
+      allowWrite: isExpectedPayload,
+      unexpectedPayloadMessage: 'Unexpected page payload for blog page',
+      renderPayload: applyFetchedPageState,
+      handleFailurePayload: function (payload) {
+        if (payload && payload.success === false && String(payload.code || '') === 'unknown_page') {
+          maybeRepairRoute('unknown-page-slug');
+          if (!opts.deferRender) {
+            renderFetchedPageStateIfChanged(state.renderSignature);
+          }
+          loadDraftNoticeData();
+          return true;
+        }
+        return false;
+      },
+      handleError: function () {
+        if (!opts.deferRender) {
+          renderFetchedPageStateIfChanged(state.renderSignature);
+        }
+        loadDraftNoticeData();
+      },
+      onFinally: function () {
+        if (!opts.deferInitialFlags) {
+          state.initialPageStateLoaded = true;
+          maybeMarkInitialContentPainted();
+        }
       }
     });
   }
