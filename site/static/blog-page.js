@@ -3711,25 +3711,13 @@
     }
   }
 
-  function renderReadOnlyContentHtml(s) {
-    var outroText = String(s && s.extras_after || '');
-    if (!outroText.trim()) {
-      return '';
-    }
-    return '<section class="nostr-page-extra nostr-page-extra-after">' + markdownBlock(outroText) + '</section>';
-  }
-
   function renderExtrasAfter() {
     if (!els.content) {
       return;
     }
-    var page = getRenderState();
     window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
-      payload: state.payload,
-      renderFallback: function () {
-        return renderReadOnlyContentHtml(page);
-      }
+      payload: state.payload
     });
   }
 

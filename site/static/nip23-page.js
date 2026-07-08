@@ -419,7 +419,7 @@
     return html;
   }
 
-  function renderReadOnlyContentHtml(s) {
+  function renderEditPreviewContentHtml(s) {
     var outroHtml = '';
     if (String(s.extras_after || '').trim()) {
       outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
@@ -452,7 +452,7 @@
     }
     var s = getRenderState();
     if (isAdmin() && state.editMode) {
-      var previewHtml = currentPayloadPreviewHtml(s) || renderReadOnlyContentHtml(s);
+      var previewHtml = currentPayloadPreviewHtml(s) || renderEditPreviewContentHtml(s);
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
@@ -480,7 +480,7 @@
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        return renderReadOnlyContentHtml(s);
+        return '<p class="placeholder">Page content is still loading. The latest page data was not available yet.</p>';
       }
     });
   }
