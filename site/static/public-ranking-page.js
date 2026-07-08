@@ -919,10 +919,7 @@
         } else {
           html += renderExtraContent(renderState.extras_after, renderState.extras_after_format, 'after');
         }
-        return {
-          html: html,
-          hidden: false
-        };
+        return html;
       }
     });
   }

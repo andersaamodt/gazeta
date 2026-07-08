@@ -500,13 +500,6 @@
     }
     if (typeof opts.renderFallback === 'function') {
       var fallback = opts.renderFallback();
-      if (fallback && typeof fallback === 'object') {
-        return {
-          adopted: false,
-          html: String(fallback.html || ''),
-          hidden: !!fallback.hidden
-        };
-      }
       if (typeof fallback === 'string') {
         return {
           adopted: false,

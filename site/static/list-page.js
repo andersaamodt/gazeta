@@ -3641,10 +3641,7 @@
           payload: state.payload,
           allowPrerender: usePrerenderReadOnly,
           renderFallback: function () {
-            return {
-              html: renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent,
-              hidden: false
-            };
+            return renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent;
           },
           mountOptions: {
             applyHtml: replaceListContentHtml
@@ -3674,12 +3671,9 @@
       payload: state.payload,
       allowPrerender: usePrerenderReadOnly,
       renderFallback: function () {
-        return {
-          html: renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
-            return isEntryType(String(el && el.type || 'entry'));
-          }), s.group_by, currentReadViewMode(s), !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent,
-          hidden: false
-        };
+        return renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
+          return isEntryType(String(el && el.type || 'entry'));
+        }), s.group_by, currentReadViewMode(s), !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent;
       },
       mountOptions: {
         applyHtml: replaceListContentHtml

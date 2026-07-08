@@ -3969,10 +3969,7 @@
       payload: state.payload,
       allowPrerender: canUsePrerenderReadOnlyView(),
       renderFallback: function () {
-        return {
-          html: renderContentHtml(),
-          hidden: false
-        };
+        return renderContentHtml();
       },
       mountOptions: {
         applyHtml: function (html) {

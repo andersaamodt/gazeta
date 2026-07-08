@@ -3980,10 +3980,7 @@
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        return {
-          html: '',
-          hidden: false
-        };
+        return '';
       }
     });
   }
