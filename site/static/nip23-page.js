@@ -227,23 +227,6 @@
     return productPriceDisplayText(s) || '$0.00';
   }
 
-  function markInitialContentPainted() {
-    window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state,
-      markPageReady: true
-    });
-  }
-
-  function renderLoadFallback(err, fallbackText) {
-    window.__wizardryRenderLoadFallback(err, {
-      consoleLabel: 'Nostr page',
-      state: state,
-      contentNode: els.content,
-      fallbackText: fallbackText,
-      slug: slug
-    });
-  }
-
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -280,7 +263,12 @@
       renderAdmin: renderAdmin,
       renderValidation: renderValidation,
       renderAll: renderAll,
-      markInitialContentPainted: markInitialContentPainted
+      markInitialContentPainted: function () {
+        window.__wizardryNotifyInitialContentPainted(slug, {
+          state: state,
+          markPageReady: true
+        });
+      }
     });
   }
 
@@ -979,7 +967,13 @@
         return false;
       },
       handleError: function (err) {
-        renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
+        window.__wizardryRenderLoadFallback(err, {
+          consoleLabel: 'Nostr page',
+          state: state,
+          contentNode: els.content,
+          fallbackText: 'Page content is still loading. The latest page data was not available yet.',
+          slug: slug
+        });
       },
       onFinally: function () {
         window.__wizardryMarkHydrationPageReady();

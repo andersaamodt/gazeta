@@ -79,7 +79,12 @@
       renderAdmin: renderAdmin,
       renderValidation: renderValidation,
       renderAll: renderAll,
-      markInitialContentPainted: markInitialContentPainted
+      markInitialContentPainted: function () {
+        window.__wizardryNotifyInitialContentPainted(slug, {
+          state: state,
+          markPageReady: true
+        });
+      }
     });
   }
 
@@ -246,23 +251,6 @@
     if (editing) {
       window.__wizardryFocusEditableNavbarTitleInput({ targetNode: host });
     }
-  }
-
-  function markInitialContentPainted() {
-    window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state,
-      markPageReady: true
-    });
-  }
-
-  function renderLoadFallback(err, fallbackText) {
-    window.__wizardryRenderLoadFallback(err, {
-      consoleLabel: 'Public ranking page',
-      state: state,
-      contentNode: els.content,
-      fallbackText: fallbackText,
-      slug: slug
-    });
   }
 
   var apiPost = window.__wizardryPostFormJson;
@@ -997,7 +985,10 @@
     renderAdmin();
     renderValidation();
     renderContent();
-    markInitialContentPainted();
+    window.__wizardryNotifyInitialContentPainted(slug, {
+      state: state,
+      markPageReady: true
+    });
   }
 
   function saveNavbarTitle() {
@@ -1609,9 +1600,20 @@
       unexpectedPayloadMessage: 'Unexpected page payload for public ranking page',
       renderPayload: renderBootstrapPayload,
       handleError: function (err) {
-        renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
+        window.__wizardryRenderLoadFallback(err, {
+          consoleLabel: 'Public ranking page',
+          state: state,
+          contentNode: els.content,
+          fallbackText: 'Page content is still loading. The latest ranking data was not available yet.',
+          slug: slug
+        });
       },
-      onFinally: markInitialContentPainted
+      onFinally: function () {
+        window.__wizardryNotifyInitialContentPainted(slug, {
+          state: state,
+          markPageReady: true
+        });
+      }
     });
   }
 

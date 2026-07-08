@@ -170,27 +170,6 @@
     return changed;
   }
 
-  function markInitialContentPainted() {
-    window.__wizardryNotifyInitialContentPainted(slug, {
-      state: state,
-      rootNode: root,
-      loadingClass: 'is-loading',
-      markPageReady: true
-    });
-  }
-
-  function renderLoadFallback(err, fallbackText) {
-    window.__wizardryRenderLoadFallback(err, {
-      consoleLabel: 'List page',
-      state: state,
-      contentNode: els.content,
-      fallbackText: fallbackText,
-      slug: slug,
-      rootNode: root,
-      loadingClass: 'is-loading'
-    });
-  }
-
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -304,7 +283,14 @@
         renderAdmin();
         renderValidation();
       },
-      markInitialContentPainted: markInitialContentPainted
+      markInitialContentPainted: function () {
+        window.__wizardryNotifyInitialContentPainted(slug, {
+          state: state,
+          rootNode: root,
+          loadingClass: 'is-loading',
+          markPageReady: true
+        });
+      }
     });
   }
 
@@ -5347,7 +5333,12 @@
               renderList();
               renderAdmin();
               renderValidation();
-              markInitialContentPainted();
+              window.__wizardryNotifyInitialContentPainted(slug, {
+                state: state,
+                rootNode: root,
+                loadingClass: 'is-loading',
+                markPageReady: true
+              });
             }
           });
           return;
@@ -5361,7 +5352,15 @@
           });
         }
       }
-      renderLoadFallback(lastErr, 'Page content is still loading. The latest list data was not available yet.');
+      window.__wizardryRenderLoadFallback(lastErr, {
+        consoleLabel: 'List page',
+        state: state,
+        contentNode: els.content,
+        fallbackText: 'Page content is still loading. The latest list data was not available yet.',
+        slug: slug,
+        rootNode: root,
+        loadingClass: 'is-loading'
+      });
       if (root && root.classList) {
         root.classList.remove('is-loading');
       }
